@@ -173,6 +173,36 @@ FLOW_OUTRO = (
     "root fix = the cooling physics (mixing layer), integrated into the structure solve.</p>"
 )
 
+SEC_CONFIGTABLE = r"""
+<h2 id="configs-table">The six configurations &mdash; what each one is</h2>
+<p>Every figure and table below is keyed by these six config names. They are not arbitrary: they
+<b>span the regime space</b> &mdash; \(\sim\!3\) dex in cloud mass (\(10^4\!-\!10^7\,M_\odot\)), every density
+profile (flat, steep \(r^{-2}\), Bonnor&ndash;Ebert), and the full star-formation-efficiency range
+(\(\text{sfe}=0.01\!-\!0.5\)) &mdash; so a verdict that holds across all six is regime-spanning, not a one-config
+fluke. Values are read straight from each <code>.param</code> (in
+<code>docs/dev/transition/cleanroom/configs/</code>, except <code>simple_cluster</code> =
+<code>param/simple_cluster.param</code>); \(r_{\text{cloud}}\) is TRINITY&rsquo;s own <code>validate_gmc</code>
+reconstruction (via <code>blowout_marker.py</code>), not a hardcoded value.</p>
+<table><thead><tr>
+<th>config</th><th>\(m_{\text{cloud}}\) [\(M_\odot\)]</th><th>sfe</th>
+<th>\(M_\star\!=\!\text{sfe}\,m_{\text{cloud}}\) [\(M_\odot\)]</th><th>density profile</th>
+<th>\(n_{\text{core}}\) [cm\(^{-3}\)]</th><th>\(r_{\text{cloud}}\) [pc]</th><th>why it&rsquo;s in the set</th>
+</tr></thead><tbody>
+<tr><td>small_dense_highsfe</td><td>\(10^4\)</td><td>0.50</td><td>\(5\times10^3\)</td><td>flat (densPL, \(\alpha\!=\!0\))</td><td>\(10^6\)</td><td>0.33</td><td>compact, dense, high-sfe &mdash; <b>earliest blowout</b></td></tr>
+<tr><td>simple_cluster</td><td>\(10^5\)</td><td>0.30</td><td>\(3\times10^4\)</td><td>flat (densPL, \(\alpha\!=\!0\))</td><td>\(10^5\)</td><td>1.69</td><td>the energy-driven <b>baseline</b> (tracked example)</td></tr>
+<tr><td>midrange_pl0</td><td>\(10^6\)</td><td>0.10</td><td>\(10^5\)</td><td>flat (densPL, \(\alpha\!=\!0\))</td><td>\(10^4\)</td><td>8.53</td><td>mid-mass flat reference</td></tr>
+<tr><td>pl2_steep <span class="tag" style="background:#e8842a">crux</span></td><td>\(10^6\)</td><td>0.10</td><td>\(10^5\)</td><td>steep \(r^{-2}\) (densPL, \(\alpha\!=\!-2\))</td><td>\(10^5\)</td><td>21.40</td><td>steep profile &mdash; cooling collapses <i>within</i> the cloud</td></tr>
+<tr><td>be_sphere</td><td>\(10^6\)</td><td>0.05</td><td>\(5\times10^4\)</td><td>Bonnor&ndash;Ebert (densBE, \(\Omega\!=\!14\))</td><td>\(10^4\)</td><td>15.50</td><td>self-gravitating BE profile</td></tr>
+<tr><td>large_diffuse_lowsfe</td><td>\(10^7\)</td><td>0.01</td><td>\(10^5\)</td><td>flat (densPL, \(\alpha\!=\!0\))</td><td>\(10^2\)</td><td>88.00</td><td>huge, diffuse, low-sfe &mdash; <b>latest blowout</b>; the lone \(E_b\)-peak config</td></tr>
+</tbody></table>
+<p class="small muted">\(n_{\text{core}}\) is the central number density (for the flat \(\alpha\!=\!0\) clouds it is the
+near-uniform interior density; for the steep / BE clouds it is the peak that falls off outward). The cluster mass
+\(M_\star\) sets the feedback power (\(L_{\text{mech}}\!\propto\!M_\star\)); \(r_{\text{cloud}}\) sets the geometric
+blowout epoch (&sect;5, &sect;7.8). Note all six clusters are of order \(10^4\!-\!10^5\,M_\odot\) (\(\lesssim\!1.5\) dex
+spread) yet \(r_{\text{cloud}}\) spans \(2.5\) dex &mdash; which is exactly why the transition epoch tracks <i>cloud
+size</i>, not feedback strength.</p>
+"""
+
 SEC_PROBLEM = r"""
 <h2 id="problem">1 &middot; Identify the problem &mdash; the mechanism, not the symptom</h2>
 <p>TRINITY walks a feedback bubble through four phases: energy &rarr; implicit energy-driven &rarr;
@@ -674,6 +704,68 @@ unchanged (frozen min \(\approx\) real min, everywhere) and still produces the d
 form of the §7.8 result: a cooling-balance trigger \((L_{\text{gain}}-L_{\text{loss}})/L_{\text{gain}}<0.05\) cannot
 fire at the physical transition <b>even with perfectly steady feedback</b> &mdash; the geometry drives cooling the wrong
 way (up, away from 0.05) regardless. The transition must be detected geometrically (§5, §7.8), not thermally.</div>
+
+<h3>7.10&nbsp; Step by step: why \(R_2>r_{\text{cloud}}\) makes the ratio rise at the end</h3>
+<p>&sect;7.8 traces in prose <i>why</i> the ratio climbs once the shell clears the cloud, and &sect;7.9 proves that
+climb is geometric (it survives frozen feedback). Here is the same result as an explicit <b>ordered chain of physics
+and code</b> &mdash; each link is one equation and the routine that evaluates it &mdash; turning &ldquo;\(R_2\) crosses
+\(r_{\text{cloud}}\)&rdquo; into &ldquo;the trigger ratio rises toward 1&rdquo;. The metric throughout is
+\[ r \;=\; \frac{L_{\text{gain}}-L_{\text{loss}}}{L_{\text{gain}}}, \qquad\text{the transition asks } r<0.05 . \]</p>
+<div class="flow">
+<div class="step"><div class="q">0 &middot; Precondition &mdash; the shell exits the cloud</div>
+<div class="a">\(R_2 > r_{\text{cloud}}\): the leading shock now ploughs the dilute <b>ambient ISM</b>, not cloud gas.
+\(r_{\text{cloud}}\) is reconstructed per config from the <code>.param</code> via TRINITY <code>validate_gmc</code>
+(<code>blowout_marker.py</code>).</div></div>
+<div class="arrow">&#9660;</div>
+<div class="step"><div class="q">1 &middot; Swept density collapses</div>
+<div class="a">The density the shell sweeps drops by orders of magnitude as it leaves the core:
+\(n_{\text{amb}}:\,n_{\text{core}}\!\to\!n_{\text{ISM}}\) (a factor \(\sim\!10^5\) for simple_cluster).
+<code>density_profile.py</code>.</div></div>
+<div class="arrow">&#9660;</div>
+<div class="step"><div class="q">2 &middot; The ram-brake (snowplow) term vanishes</div>
+<div class="a">The swept-mass rate \(\dot m_{\text{shell}}=4\pi R_2^2\,\rho_{\text{amb}}\,v_2\) collapses with
+\(\rho_{\text{amb}}\), so the deceleration term \(-\dot m_{\text{shell}}v_2\) drops out of the shell-velocity ODE
+\[ \dot v_2=\frac{4\pi R_2^2\,(P_b-P_{\text{ext}})-\dot m_{\text{shell}}\,v_2-F_{\text{grav}}+F_{\text{rad}}}{m_{\text{shell}}}. \]
+<code>energy_phase_ODEs.py</code> (the <code>vd</code> expression).</div></div>
+<div class="arrow">&#9660;</div>
+<div class="step"><div class="q">3 &middot; Shell re-accelerates, the bubble balloons</div>
+<div class="a">With the brake gone \(v_2\) re-accelerates and \(R_2\) growth speeds up (measured
+\(d\ln R_2/d\ln t:\,0.52\!\to\!0.70\)), so the bubble volume \(V=\tfrac{4\pi}{3}\,(R_2^3-R_1^3)\) rises fast.</div></div>
+<div class="arrow">&#9660;</div>
+<div class="step"><div class="q">4 &middot; Bubble pressure collapses</div>
+<div class="a">At roughly fixed interior energy \(E_b\), the over-pressure falls as the volume grows:
+\(P_b=(\gamma-1)\,E_b/V\). <code>get_bubbleParams.py:236</code>.</div></div>
+<div class="arrow">&#9660;</div>
+<div class="step"><div class="q">5 &middot; Interior density falls</div>
+<div class="a">Inside the bubble (ideal gas, \(T_0\) ~ flat at \(>\!10^6\) K), \(n=\dfrac{P_b}{\mu\,k_B\,T_0}\propto P_b\),
+so the interior \(n\) drops with \(P_b\). <code>bubble_luminosity.py</code> (the <code>n_array</code> line).</div></div>
+<div class="arrow">&#9660;</div>
+<div class="step"><div class="q">6 &middot; Cooling luminosity turns over</div>
+<div class="a">\(L_{\text{loss}}=\int n^2\Lambda(T)\,dV\propto\big(P_b/T_0\big)^2R_2^3\) (the emission measure; \(\Lambda\) is
+~flat in the hot tail). The \(n^2\) collapse beats the \(R_2^3\) growth, so \(L_{\text{loss}}\) <b>falls</b> &mdash;
+data: \(\ln L_{\text{loss}}\) vs \(\ln[(P_b/T_0)^2R_2^3]\) has slope \(\approx0.6\), \(r\approx0.99\).</div></div>
+<div class="arrow">&#9660;</div>
+<div class="step" style="border-left-color:var(--find)"><div class="q">7 &middot; The trigger ratio rises &mdash; away from 0.05</div>
+<div class="a">\(L_{\text{gain}}\) is ~flat while \(L_{\text{loss}}\) collapses, so
+\(r=(L_{\text{gain}}-L_{\text{loss}})/L_{\text{gain}}\to 1\). It moves <b>up</b> &mdash; the <i>opposite</i> direction a
+cooling transition (\(r<0.05\)) would need.</div></div>
+</div>
+<div class="box over"><div class="lab">the gate: why hybr <i>recovers</i> here while legacy <i>crossed</i></div>
+Steps 4&ndash;6 only fire if \(P_b\) is <i>allowed</i> to collapse, and that rate is set by
+\(\beta=-(t/P_b)\,dP_b/dt\). <b>hybr</b> is unbounded and returns \(\beta\!\approx\!+2\) to \(+4\) at blowout, so \(P_b\)
+and \(L_{\text{loss}}\) collapse freely and the ratio recovers. <b>legacy</b> clips \(\beta\!\in\![0,1]\)
+(<code>get_betadelta.py</code>, <code>np.clip(beta, BETA_MIN, BETA_MAX)</code>), forcing \(|dP_b/dt|\le P_b/t\): \(P_b\)
+and \(L_{\text{loss}}\) stay high and the ratio is driven through 0.05 instead. Same blowout, opposite verdict &mdash;
+the difference is the clamp, not the temperature (&sect;7.5). Clean split at be_sphere just after blowout: legacy
+\(\beta\!=\!0\Rightarrow L_{\text{loss}}\!=\!1.17\times10^9\) (ratio \(-0.02\), crossed) vs hybr
+\(\beta\!=\!2.46\Rightarrow 5.4\times10^8\) (ratio \(0.535\), recovered), at identical \(T_0\).</div>
+<div class="box find"><div class="lab">the one-line reading of the cascade</div>Hitting the cloud edge <b>removes confinement</b>
+&rarr; <b>depressurises</b> the bubble &rarr; <b>suppresses</b> radiative cooling (\(L_{\text{loss}}\!\propto\!\) emission
+measure) &mdash; so a cooling-balance trigger sees the ratio move the <i>wrong way</i> at the very event that ends the
+energy phase. The transition is a geometric <b>confinement loss</b>, not a thermal one, and must be detected as such
+(&sect;5, &sect;7.8). <span class="muted">Scope: this sharp blowout&rarr;rise is the compact-flat regime; for
+steep/BE the in-cloud density fall-off does it earlier, and the \(\sim\!3\) Myr SN bump is a feedback event
+(&sect;4).</span></div>
 """
 
 SEC_REPRO = r"""
@@ -707,6 +799,7 @@ def main():
             parts.append('<div class="arrow">&#9660;</div>')
     parts.append("</div>")
     parts.append(FLOW_OUTRO)
+    parts.append(SEC_CONFIGTABLE)
     parts += [SEC_PROBLEM, SEC_IDEAS, SEC_CONFIGS, SEC_MEASURE, SEC_SOLUTION, SEC_ARC,
               SEC_FOLLOWUP, SEC_REPRO]
     parts.append("</div></body></html>")
