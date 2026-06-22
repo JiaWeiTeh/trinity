@@ -20,15 +20,12 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from blowout_marker import mark
+from blowout_marker import apply_style, color, mark
+
+apply_style()
 
 HERE = Path(__file__).resolve().parent
-STYLE = HERE.parents[3] / "paper" / "_lib" / "trinity.mplstyle"
-if STYLE.exists():
-    plt.style.use(str(STYLE))
-plt.rcParams["text.usetex"] = False  # no LaTeX in this container
 
-WONG = ["#E69F00", "#56B4E9", "#009E73", "#0072B2", "#D55E00", "#CC79A7", "#F0E442", "#000000"]
 WEAVER = 5.0 / 11.0          # Weaver energy-conserving retained fraction
 BAND = (0.01, 0.10)          # Lancaster+2021 / Geen+2021
 
@@ -55,15 +52,15 @@ def main():
     ax.axhline(WEAVER, ls="--", lw=1.2, color="0.4", zorder=1)
 
     n = 0
-    for i, p in enumerate(paths):
+    for p in paths:
         name = Path(p).name.replace("c0_", "").replace("_st6.csv", "")
         t, f, ph = load(p)
         if not t:
             continue
-        c = WONG[i % len(WONG)]
+        c = color(name)
         ax.plot(t, f, color=c, lw=1.6, label=f"{name}  (end {f[-1]:.2f})")
-        # blowout (R2 exits rCloud) in this config's colour; label only the first plotted run
-        mark(ax, name, color=c, label=(n == 0))
+        # blowout (R2 exits rCloud) as a star ON the f_ret curve; label only the first plotted run
+        mark(ax, name, t, f, color=c, label=(n == 0))
         n += 1
 
     ax.set_yscale("log")

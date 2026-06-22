@@ -16,14 +16,11 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from blowout_marker import mark
+from blowout_marker import apply_style, color, mark
+
+apply_style()
 
 HERE = Path(__file__).resolve().parent
-STYLE = HERE.parents[3] / "paper" / "_lib" / "trinity.mplstyle"
-if STYLE.exists():
-    plt.style.use(str(STYLE))
-plt.rcParams["text.usetex"] = False
-WONG = ["#E69F00", "#56B4E9", "#009E73", "#0072B2", "#D55E00", "#CC79A7"]
 
 
 def load(path, key):
@@ -47,17 +44,17 @@ def main():
     fig, (a1, a2) = plt.subplots(2, 1, figsize=(7.2, 5.4), sharex=True)
     for i, p in enumerate(paths):
         name = Path(p).name.replace("c0_", "").replace("_st6.csv", "")
-        c = WONG[i % len(WONG)]
-        t, y = load(p, "res_beta")
-        if t:
-            a1.plot(t, y, color=c, lw=1.0, alpha=0.85, label=name)
-        t, y = load(p, "res_T0_struct")
-        if t:
-            a2.plot(t, y, color=c, lw=1.0, alpha=0.85)
-        # blowout (R2 exits rCloud) in this config's colour, on both residual panels;
-        # label only on the top panel (a1) for the first config to avoid clutter.
-        mark(a1, name, color=c, label=(i == 0))
-        mark(a2, name, color=c, label=False)
+        c = color(name)
+        t1, y1 = load(p, "res_beta")
+        if t1:
+            a1.plot(t1, y1, color=c, lw=1.0, alpha=0.85, label=name)
+        t2, y2 = load(p, "res_T0_struct")
+        if t2:
+            a2.plot(t2, y2, color=c, lw=1.0, alpha=0.85)
+        # blowout (R2 exits rCloud) in this config's colour, as a star ON each residual
+        # curve; label only on the top panel (a1) for the first config to avoid clutter.
+        mark(a1, name, t1, y1, color=c, label=(i == 0))
+        mark(a2, name, t2, y2, color=c, label=False)
     for ax in (a1, a2):
         ax.set_yscale("log")
         ax.axhline(0.05, ls="--", lw=1.0, color="0.5")  # 5% reference bar

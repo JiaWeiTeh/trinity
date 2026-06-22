@@ -24,13 +24,9 @@ import matplotlib.pyplot as plt
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 from harvest_h0 import harvest  # noqa: E402
+from blowout_marker import apply_style, color  # noqa: E402
 
-STYLE = HERE.parents[3] / "paper" / "_lib" / "trinity.mplstyle"
-if STYLE.exists():
-    plt.style.use(str(STYLE))
-plt.rcParams["text.usetex"] = False
-
-WONG = ["#E69F00", "#56B4E9", "#009E73", "#0072B2", "#D55E00", "#CC79A7", "#F0E442", "#000000"]
+apply_style()
 
 
 def main():
@@ -50,7 +46,7 @@ def main():
     NUDGE = {"be_sphere": (-6, 13, "bottom", "right"),
              "pl2_steep": (8, -6, "top", "left")}
     for i, (name, rc, f4) in enumerate(pts):
-        ax.scatter(rc, f4, s=95, color=WONG[i % len(WONG)], edgecolor="white",
+        ax.scatter(rc, f4, s=95, color=color(name), edgecolor="white",
                    linewidth=0.7, zorder=3)
         dx, dy, va, ha = NUDGE.get(name, (8, -3, "top", "left"))
         ax.annotate(name, (rc, f4), textcoords="offset points", xytext=(dx, dy),

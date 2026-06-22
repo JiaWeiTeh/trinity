@@ -35,15 +35,11 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from blowout_marker import mark, t_blowout, rcloud
+from blowout_marker import apply_style, mark, t_blowout, rcloud
+
+apply_style()
 
 HERE = Path(__file__).resolve().parent
-STYLE = HERE.parents[3] / "paper" / "_lib" / "trinity.mplstyle"
-if STYLE.exists():
-    plt.style.use(str(STYLE))
-plt.rcParams["text.usetex"] = False  # no LaTeX in this container
-
-WONG = ["#E69F00", "#56B4E9", "#009E73", "#0072B2", "#D55E00", "#CC79A7", "#000000"]
 
 # Early crossers -- where the dip is sharp and blowout-driven (see analysis).
 CONFIGS = ["small_dense_highsfe", "simple_cluster", "midrange_pl0"]

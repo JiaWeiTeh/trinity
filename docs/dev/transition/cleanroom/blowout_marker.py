@@ -13,10 +13,59 @@ dash-dot style, on time-axis figures, so coincidence with the dip/surge is visib
 import csv
 from pathlib import Path
 
+import numpy as np
+
 HERE = Path(__file__).resolve().parent
-BLOWOUT_LS = (0, (7, 2, 1, 2))  # distinct dash-dot, reserved for blowout lines
+BLOWOUT_LS = (0, (7, 2, 1, 2))  # distinct dash-dot, reserved for legacy blowout lines
+BLOWOUT_MARKER = "o"            # blowout shown as a circle ON the trajectory (cleaner)
+_BLOWOUT_LABEL = r"blowout ($R_2>r_{\rm cloud}$)"
 _rc_cache = {}
 _tb_cache = {}
+
+# --- Canonical cloud-config -> colour --------------------------------------- #
+# Keyed by config NAME so a given cloud keeps ONE colour across EVERY transition
+# figure. Plots previously used WONG[index], which drifted with glob/list order (e.g.
+# simple_cluster differed between frozen_feedback and the rest). These values match the
+# historical glob-sorted assignment, so existing figures keep their colours and only the
+# order-dependent outliers are corrected. Wong colourblind-safe palette.
+CONFIG_COLOR = {
+    "be_sphere":            "#E69F00",
+    "large_diffuse_lowsfe": "#56B4E9",
+    "midrange_pl0":         "#009E73",
+    "pl2_steep":            "#0072B2",
+    "simple_cluster":       "#D55E00",
+    "small_dense_highsfe":  "#CC79A7",
+}
+
+
+def color(config):
+    """Dedicated colour for a cloud config. Raises (asserts) on an unregistered config so a
+    new one cannot silently drift in colour across the storyline."""
+    try:
+        return CONFIG_COLOR[config]
+    except KeyError:
+        raise KeyError(
+            f"{config!r} is not in blowout_marker.CONFIG_COLOR -- add it so its colour "
+            f"stays consistent across every figure in the storyline."
+        )
+
+
+def apply_style():
+    """Shared dev-figure style: trinity.mplstyle (serif Computer Modern) with usetex OFF
+    (no LaTeX in this container) and doc-friendly, smaller axis/tick/legend fonts so the
+    multi-panel figures stop overlapping. Call once at import time in each plot generator."""
+    import matplotlib.pyplot as plt
+    style = HERE.parents[3] / "paper" / "_lib" / "trinity.mplstyle"
+    if style.exists():
+        plt.style.use(str(style))
+    plt.rcParams.update({
+        "text.usetex": False,
+        "axes.labelsize": 11.5,
+        "axes.titlesize": 11,
+        "xtick.labelsize": 9.5,
+        "ytick.labelsize": 9.5,
+        "legend.fontsize": 8.5,
+    })
 
 
 def rcloud(config):
@@ -53,16 +102,56 @@ def t_blowout(config):
     return t
 
 
-def mark(ax, config, color="0.35", label=False, lw=1.3, **kw):
-    """Vertical blowout line at t_blowout(config), in the config's colour, dash-dot."""
-    t = t_blowout(config)
-    if t is None:
+def _interp_y(t_b, t_arr, y_arr):
+    """y of the trajectory (t_arr, y_arr) at time t_b, by linear interp. Returns None if
+    t_b is outside the curve's finite span (so the marker is simply skipped, never faked)."""
+    ts, ys = [], []
+    for ti, yi in zip(t_arr, y_arr):
+        if ti is not None and yi is not None and np.isfinite(ti) and np.isfinite(yi):
+            ts.append(ti)
+            ys.append(yi)
+    if len(ts) < 2:
         return None
-    ax.axvline(t, color=color, ls=BLOWOUT_LS, lw=lw, zorder=1.4, alpha=0.9, **kw)
+    order = np.argsort(ts)
+    ts = np.asarray(ts)[order]
+    ys = np.asarray(ys)[order]
+    if not (ts[0] <= t_b <= ts[-1]):
+        return None
+    return float(np.interp(t_b, ts, ys))
+
+
+def mark_point(ax, t_b, t_arr, y_arr, color="0.35", label=False, ms=13, **kw):
+    """Drop a blowout star ON the trajectory (t_arr, y_arr) at an explicit epoch t_b.
+
+    Use this when the blowout time is computed by the caller (e.g. a frozen run's own
+    R2 column). Interpolates the curve's y at t_b so the star sits on the line, replacing
+    the full-height vertical line. No-op if t_b is None or off the curve's span."""
+    if t_b is None:
+        return None
+    y_b = _interp_y(t_b, t_arr, y_arr)
+    if y_b is None:
+        return None
+    ax.plot([t_b], [y_b], marker=BLOWOUT_MARKER, ms=ms, color=color, mec="white", mew=0.8,
+            ls="none", zorder=5, label=(_BLOWOUT_LABEL if label else None), **kw)
+    return t_b
+
+
+def mark(ax, config, t=None, y=None, color="0.35", label=False, lw=1.3, ms=13, **kw):
+    """Blowout indicator at t_blowout(config), in the config's colour.
+
+    If a trajectory (t, y) is supplied, drop a star marker ON that curve at the blowout
+    epoch (clean, uncluttered) -- preferred for multi-config time-axis figures. With no
+    trajectory it falls back to the legacy full-height dash-dot vertical line."""
+    tb = t_blowout(config)
+    if tb is None:
+        return None
+    if t is not None and y is not None:
+        return mark_point(ax, tb, t, y, color=color, label=label, ms=ms, **kw)
+    ax.axvline(tb, color=color, ls=BLOWOUT_LS, lw=lw, zorder=1.4, alpha=0.9, **kw)
     if label:
-        ax.text(t, 0.97, " blowout", transform=ax.get_xaxis_transform(),
+        ax.text(tb, 0.97, " blowout", transform=ax.get_xaxis_transform(),
                 ha="left", va="top", fontsize=6.5, color=color, rotation=90)
-    return t
+    return tb
 
 
 if __name__ == "__main__":  # quick self-check: reconstructed rCloud + blowout epoch

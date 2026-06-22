@@ -18,14 +18,11 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from blowout_marker import mark
+from blowout_marker import apply_style, color, mark
+
+apply_style()
 
 HERE = Path(__file__).resolve().parent
-STYLE = HERE.parents[3] / "paper" / "_lib" / "trinity.mplstyle"
-if STYLE.exists():
-    plt.style.use(str(STYLE))
-plt.rcParams["text.usetex"] = False
-WONG = ["#E69F00", "#56B4E9", "#009E73", "#0072B2", "#D55E00", "#CC79A7"]
 
 
 def load(path):
@@ -51,13 +48,13 @@ def main():
                                  gridspec_kw={"height_ratios": [2, 1]})
     for i, p in enumerate(paths):
         name = Path(p).name.replace("c0_", "").replace("_h0.csv", "")
-        c = WONG[i % len(WONG)]
+        c = color(name)
         t, ratio, lm = load(p)
         a1.plot(t, ratio, color=c, lw=1.3, label=name)
         a2.plot(t, lm, color=c, lw=1.0)
-        # blowout (R2 exits rCloud) in this config's colour; label only on the first (top axis)
-        mark(a1, name, color=c, label=(i == 0))
-        mark(a2, name, color=c, label=False)
+        # blowout (R2 exits rCloud) as a star ON each panel's curve; label only the first (top axis)
+        mark(a1, name, t, ratio, color=c, label=(i == 0))
+        mark(a2, name, t, lm, color=c, label=False)
     a1.axhline(0.05, ls="--", lw=1.3, color="#D55E00")
     a1.text(0.99, 0.06, r"$\epsilon=0.05$ threshold (F0 fires below)", transform=a1.get_yaxis_transform(),
             ha="right", va="bottom", fontsize=8, color="#D55E00")
