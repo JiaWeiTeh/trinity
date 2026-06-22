@@ -1,0 +1,2 @@
+config,variant,t_window,kappa,crashed,crash_phase,crash_excpt,end_reason,end_code,reached_phase,final_t,final_R2,final_v2,final_Eb,E0,min_Eb_seen,cap_activated,n1a,n1b,max_pdv_ratio,max_pdv_ratio_in_window,max_pdv_ratio_after,survived_past_window,self_sustained,final_Eb_growth,n_rows,runtime_s
+simple_cluster,V0,0.001,0.9,False,,,Stopping time reached,1,1b,0.005,0.3708657862593461,37.2134944121833,1153007.3446452585,93.70688505918945,93.70688505918945,False,0,0,0.0,0.0,0.0,True,True,53997.23983259592,104,185.2

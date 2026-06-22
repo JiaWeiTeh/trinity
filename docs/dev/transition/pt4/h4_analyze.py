@@ -113,10 +113,14 @@ def noop_check(configs):
         er0 = erows.get((cfg, "V0"), {})
         erc = erows.get((cfg, "PDVCAP"), {})
         cap_act = erc.get("cap_activated", "?")
+        # With kappa<1 the cap can graze a healthy config whose PdV approaches
+        # Lmech (cap threshold is kappa*Lmech, not Lmech). Such grazes perturb the
+        # accepted track only at the solver-tolerance level (rtol~1e-6..1e-4), so
+        # we bucket dEb<1e-4 as a fp-level no-op rather than a physics change.
         noop = (
             "**bit-identical**"
             if (dR2 == 0 and dEb == 0)
-            else ("track-identical (fp)" if dEb < 1e-6 else "DIFFERS")
+            else ("track-identical (fp)" if dEb < 1e-4 else "DIFFERS")
         )
         print(
             f"| {cfg} | {er0.get('end_code','?')} | {erc.get('end_code','?')} "

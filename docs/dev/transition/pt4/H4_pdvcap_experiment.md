@@ -124,24 +124,151 @@ Myr at `κ=0.9`, plus a V0 baseline per config. Control/no-op configs (`small_1e
 byte-identical to V0. Per-cell rows in `h4_eval.csv`; trajectories in `traj/h4_traj_<tag>.csv`;
 per-cell logs in `h4_logs/`.
 
-<!-- TABLE: filled from h4_eval.csv via `python h4_analyze.py` -->
-_(results table inserted below once the matrix completes)_
+Full matrix (21 cells, regenerate the table with `python h4_analyze.py`; `code` blank = run did not
+reach a clean end (truncated by `timeout`/`stop_t`); `code 51` = ENERGY_COLLAPSED; `code 1` =
+STOPPING_TIME). `rt_s=480` ⇒ the cell ran to the wall-clock timeout (a survivor/grind that kept
+integrating), not a hang.
+
+| config | variant | t_win | code | phase | final_t | R2 | v2 | final_Eb | min_Eb | cap | PdV/L_in | PdV/L_after | survived | selfsust | rt_s |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| fail_helix | V0 | 0.001 | 51 | 1a | 0.00255 | 7.03 | 2e+03 | 0.00509 | 0.00509 | False | 0 | 0 | True | False | 60 |
+| fail_helix | PDVCAP | 0.001 | 51 | 1a | 0.00264 | 7.21 | 1.96e+03 | 0.00508 | 0.00508 | True | 2.36 | 1.62e+102 | True | False | 69.6 |
+| fail_helix | PDVCAP | 0.003 | - | 1b | 0.0103 | 17.1 | 942 | 9.81e+09 | 2.25e+09 | True | 2.36 | 1.21 | True | True | 480 |
+| fail_helix | PDVCAP | 0.01 | - | 1b | 0.0133 | 19.8 | 824 | 1.55e+10 | 2.25e+09 | True | 2.36 | 0.668 | True | True | 480 |
+| fail_helix | PDVCAP | 0.1 | - | 1b | 0.0133 | 19.8 | 824 | 1.55e+10 | 2.25e+09 | True | 2.36 | 0 | False | - | 480 |
+| fail_repro | V0 | 0.001 | 51 | 1b | 0.00341 | 9.73 | 2.16e+03 | -9.14e+08 | -9.14e+08 | False | 0 | 0 | False | False | 81.4 |
+| fail_repro | PDVCAP | 0.001 | 51 | 1b | 0.00341 | 9.73 | 2.16e+03 | -9.14e+08 | -9.14e+08 | False | 0 | 2.65 | False | False | 82.9 |
+| fail_repro | PDVCAP | 0.003 | 51 | 1b | 0.00515 | 13.2 | 1.68e+03 | -2.82e+07 | -2.82e+07 | True | 2.65 | 1.57 | False | False | 177 |
+| fail_repro | PDVCAP | 0.01 | - | 1b | 0.0122 | 22.2 | 1.02e+03 | 2.18e+10 | 6.38e+09 | True | 2.65 | 0.738 | True | True | 480 |
+| fail_repro | PDVCAP | 0.1 | - | 1b | 0.0132 | 23.2 | 982 | 2.48e+10 | 6.38e+09 | True | 2.65 | 0 | False | - | 480 |
+| mass_1e9 | V0 | 0.001 | - | 1b | 0.03 | 24.8 | 457 | 2.13e+10 | 2.15e+08 | False | 0 | 0 | True | True | 480 |
+| mass_1e9 | PDVCAP | 0.001 | - | 1b | 0.03 | 24.8 | 457 | 2.13e+10 | 2.55e+08 | True | 1.65 | 1.66 | True | True | 480 |
+| mass_1e9 | PDVCAP | 0.003 | - | 1b | 0.0236 | 21.9 | 509 | 1.61e+10 | 5.70e+08 | True | 1.65 | 0.914 | True | True | 480 |
+| mass_1e9 | PDVCAP | 0.01 | - | 1b | 0.0292 | 24.6 | 462 | 2.07e+10 | 5.70e+08 | True | 1.65 | 0.618 | True | True | 480 |
+| mass_1e9 | PDVCAP | 0.1 | 1 | 1b | 0.03 | 24.9 | 456 | 2.15e+10 | 5.70e+08 | True | 1.65 | 0 | False | - | 475 |
+| pl2_steep | V0 | 0.001 | 1 | 1b | 0.005 | 0.455 | 48.7 | 3.75e+06 | 570 | False | 0 | 0 | True | True | 190 |
+| pl2_steep | PDVCAP | 0.01 | 1 | 1b | 0.005 | 0.455 | 48.7 | 3.75e+06 | 570 | True | 0.909 | 0 | False | - | 186 |
+| simple_cluster | V0 | 0.001 | 1 | 1b | 0.005 | 0.371 | 37.2 | 1.15e+06 | 93.7 | False | 0 | 0 | True | True | 185 |
+| simple_cluster | PDVCAP | 0.01 | 1 | 1b | 0.005 | 0.371 | 37.2 | 1.15e+06 | 93.7 | True | 0.909 | 0 | False | - | 179 |
+| small_1e6 | V0 | 0.001 | 1 | 1b | 0.005 | 1.88 | 219 | 4.27e+06 | 1.80e+04 | False | 0 | 0 | True | True | 134 |
+| small_1e6 | PDVCAP | 0.01 | 1 | 1b | 0.005 | 1.88 | 219 | 4.27e+06 | 1.80e+04 | True | 0.909 | 0 | False | - | 152 |
+
+**How to read it (flag caveats — flags are heuristics, read them with `final_Eb` / `PdV/L_after`):**
+- `survived` = an accepted snapshot exists with `t ≥ t_window` and `Eb > 0`; `selfsust` = `Eb` rose
+  between the last two such snapshots. Both are **only meaningful when the run actually integrated
+  past `t_window`.**
+- **`t_win=0.1` rows always show `survived=False, selfsust=-`** because the run truncates at
+  `t≈0.013–0.03 < 0.1`, so *no* snapshot reaches `t_window`. These are the **"cap never released within
+  the run" control** — the high, growing `final_Eb` (1.5–2.5e10) is the real read, not the flag.
+- **`fail_helix tw=1e-3` shows `survived=True` but `final_Eb≈0.005`** — a *false positive*: the 1a
+  bubble-solve degenerated (`PdV/L_after=1.6e102` is the Eb→0 artifact) and the run hit the same
+  code-51 stop as V0, just ~1e-4 Myr later. Trust `final_Eb≈0` + `selfsust=False`, not the boolean.
+- The control PDVCAP rows (`tw=1e-2`, `stop_t=0.005`) also show `survived=False` for the same
+  truncation reason — irrelevant; §5 confirms they are no-ops via the matched-snapshot diff.
 
 ## 4. Trajectory evidence — does it self-sustain or re-collapse?
 
-<!-- filled from traj CSVs + figures -->
+The answer is **window-dependent**, and the two collapse configs differ in *when* PdV crosses 1.
+Figures (`figures/h4_*`): `h4_Eb_sweep_<cfg>` (Eb(t), V0 + each window, dotted = cap release),
+`h4_pdvratio_sweep_<cfg>` (PdV/Lmech(t), =1 line marked), `h4_summary` (survived/self-sustained vs
+t_window). Per-snapshot data in `traj/h4_traj_<tag>.csv`.
+
+**fail_helix (1a, sfe=0.05, mCloud=5e9).** PdV/Lmech is >1 from the phase start (~1.66, declining).
+- `tw=1e-3`: too short — the cap lifts at t=1e-3 while PdV/L is still ~2.4; the bubble solve
+  degenerates as Eb→0 and the run hits the same code-51 1a stop as V0, only ~1e-4 Myr later
+  (final_t 0.00255 → 0.00264, final_Eb ≈ 0.005 both). The `survived_past_window=True` flag here is a
+  **false positive** — it only means an accepted snapshot exists past t_window with a *barely*-positive
+  degenerate Eb (~0.005); the real signal is `self_sustained=False` and final_Eb≈0. (Read the boolean
+  alongside final_Eb, never alone.)
+- `tw=3e-3`: **survives.** Eb grows under the cap (2.25e9 → 3.06e9 → 3.21e9), the run crosses into 1b,
+  and at release Eb dips (3.21e9 → 2.73e9 → 2.51e9) but PdV/Lmech then falls **through 1**
+  (1.09 → 1.00 → 0.94 → 0.88) and **Eb recovers** (2.51e9 → 2.58e9 → 2.71e9, still growing at
+  truncation). A genuine *survivable transient*: the cap bought enough time for PdV/Lmech to drop
+  below 1, after which the bubble self-sustains on its own.
+
+**fail_repro (1b, sfe=0.1, mCloud=5e9).** PdV/Lmech first exceeds 1 at t~0.0015 Myr (the bubble grows
+to ~6.45e9 first, then the drain takes over) and stays >1 until t~0.0045.
+- `tw=1e-3`: **the cap never bites** (PdV<Lmech for the whole `t<1e-3` window; activation counters 0,
+  `max_pdv_ratio_in_window=0`). The run is **byte-identical to V0** and collapses through zero at
+  t=0.0034 (code 51). The maintainer's exact "~1e-3 Myr" is *too early* for this config.
+- `tw=3e-3`: cap lifts while PdV/Lmech is still ~1.36. Eb is inflated to 7.9e9 under the cap, dips
+  hard at release (7.9e9 → 5.4e9 → 2.4e9 → 6e8), bottoms near zero with a feeble recovery flicker
+  (2.6e7 → 5.3e7), then **re-collapses through zero** at t=0.00515 (code 51). PdV/Lmech only crosses
+  below 1 at t~0.0046, by which point Eb is already drained — *too little, too late.*
+- `tw=1e-2`: cap lifts at t=0.01, by which point a full 1e-2 Myr of injection has built Eb to ~2.2e10
+  and PdV/Lmech has fallen to **0.74 (<1)**. Post-release Eb **keeps growing** (15.7e9 → 17.7e9 →
+  19.5e9 → 21.8e9): **self-sustains.** But note this is achieved on an Eb reservoir *manufactured* by
+  10× the maintainer's window of non-physical energy injection.
+- `tw=1e-1`: cap never lifts within `stop_t=0.03` (the whole run is capped); Eb grows monotonically.
+  This is the trivial "cap-never-released" control, not a self-sustain test.
+
+**mass_1e9 (1b, mCloud=1e9 — the lighter "collapse" config).** Important caveat: in this matrix
+`mass_1e9` **does NOT collapse even at V0** — it reaches the full `stop_t=0.03` (or grinds to it) with
+`Eb` *growing* from 5.7e8 to ~2.1e10 (`self_sustained=True` at V0). So mass_1e9 is **not in the
+over-drained collapse regime** at all (its `PdV/Lmech` is modest, ~1.65 briefly then <1), and the cap
+neither helps nor hurts the qualitative outcome (all windows survive; `tw=1e-1` even closes cleanly at
+code 1). It is a useful negative control: a 5× lighter cloud at the same density is *already*
+self-sustaining, confirming the collapse is specific to the heaviest (5e9) clouds — consistent with
+the failed-large-clouds mass-threshold picture (`PLAN.md`, unverified).
 
 ## 5. No-op confirmation — control (healthy/stall) configs
 
-Where PdV never exceeds the cap (`PdV < Lmech < κ·Lmech`… in fact `PdV<Lmech` so `excess=0`), the
-`PDVCAP` variant is designed to be identical to V0. Matched-snapshot diff via
-`python h4_analyze.py --noop`:
+The cap threshold is `κ·Lmech` with κ=0.9, so the strict no-op condition is **`PdV < 0.9·Lmech`**
+(not `PdV < Lmech`). All three control configs reach a clean STOPPING_TIME (code 1) under both V0 and
+PDVCAP, and their accepted trajectories match V0 to the solver-tolerance level. Matched-snapshot diff
+via `python h4_analyze.py --noop` (every common (t,R2,Eb) row, V0 vs PDVCAP tw=1e-2):
 
-<!-- filled -->
+| config | V0 code | PDVCAP code | cap_act | max\|ΔR2\| [pc] | max rel\|ΔEb\| | no-op? |
+|---|---|---|---|---|---|---|
+| small_1e6 | 1 | 1 | True | 2.7e-07 | 2.6e-05 | track-identical (fp) |
+| simple_cluster | 1 | 1 | True | 4.9e-10 | 3.0e-08 | track-identical (fp) |
+| pl2_steep | 1 | 1 | True | 1.5e-10 | 1.9e-08 | track-identical (fp) |
+
+**Key nuance — `cap_act=True` does NOT mean the physics changed.** Two effects, both benign:
+(1) the activation counter tallies *every* RHS eval where `PdV > κ·Lmech`, **including `solve_ivp`'s
+rejected trial steps**; (2) with **κ=0.9**, the cap can graze a *healthy* config whose `PdV` rises
+into the band `0.9·Lmech < PdV < Lmech` (the control PDVCAP rows all show `PdV/L_in≈0.909`, i.e. they
+just touched `0.9·Lmech`). On these healthy runs that graze perturbs the accepted track only at the
+**solver-tolerance level** — `simple_cluster`/`pl2_steep` differ at ~1e-8 (a single trial-step
+probe); `small_1e6` at ~2.6e-5 (one accepted step grazed the band). Both are negligible vs the physics
+(`rtol~1e-6..1e-4`) — **a genuine no-op to ≥4 significant figures.** The cap never engages where the
+bubble does not over-drain, exactly the "test on all configs" payoff. (Were κ=1.0 the controls would
+be bit-identical; κ=0.9 is the experiment's chosen drain ceiling, and the graze is its honest cost.)
 
 ## 6. Verdict
 
-<!-- filled -->
+**These massive clouds are NOT instantaneously "stillborn", but they are also not saved by the
+maintainer's specific prescription.** The PdV drain stays super-critical (PdV/Lmech > 1) for an
+extended epoch (~1.5–4.5e-3 Myr from the phase start), and the outcome of a transient cap depends
+entirely on whether the window outlasts that epoch:
+
+- The maintainer's exact **~1e-3 Myr** window is **too short for both configs** — for fail_repro the
+  cap doesn't even engage (PdV<Lmech that early); for fail_helix it only delays the 1a collapse by
+  ~1e-4 Myr. So as literally proposed, the idea does not establish the bubble.
+- A **moderately longer window** (3e-3) **splits the two configs**: fail_helix survives and
+  self-sustains (PdV/Lmech crosses below 1 shortly after release); fail_repro re-collapses (PdV/Lmech
+  is still >1 at release and the dipped Eb cannot recover in time).
+- A **long window** (1e-2) lets even fail_repro self-sustain — but only by injecting ~10× the
+  proposed window of non-physical energy, building an Eb reservoir an order of magnitude above its
+  natural value, so that PdV/Lmech has dropped below 1 by release.
+- **mass_1e9 (1e9 M⊙) is a negative control**, not a collapse: it self-sustains at V0, so the cap is
+  immaterial there. The over-drained collapse is specific to the heaviest (5e9 M⊙) clouds.
+
+**Interpretation:** the collapse is a *survivable early transient in principle* — there exists a
+PdV-cap window after which the bubble self-sustains — but the required window is **config-dependent
+and longer than the natural PdV>1 epoch the real (uncapped) physics imposes.** Under the true
+physics the bubble drains before PdV/Lmech falls below 1, so it collapses; the cap "rescues" it only
+by manufacturing the energy reservoir that the real expansion work would have removed. This is
+**consistent with the failed-large-clouds picture** (`PLAN.md` §3b, unverified): for these clouds the
+energy-driven phase is over-drained by *real* PdV expansion work (Lcool is ~1% of Lmech), so the
+honest fate is a transition to a momentum-driven continuation — **not** an energy-conservation-
+violating cap. H4 confirms the cause (PdV super-criticality over an extended epoch) that H3's Eb-floor
+only backstopped as a symptom.
+
+**This is a DIAGNOSTIC result, NOT a production fix.** Every "survives"/"self-sustains" outcome above
+is purchased with injected, non-conserved energy (the capped excess `PdV − κ·Lmech`, integrated over
+the window). It cannot ship; it tells us the *regime* (extended PdV super-criticality), which is the
+input a real momentum-driven-continuation fix needs.
 
 ## 7. Artifacts (all committed under `docs/dev/transition/pt4/`)
 - `h4_variants.py` — PDVCAP monkeypatch (add-back-the-capped-excess; 1a + 1b) + V0.

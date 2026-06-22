@@ -105,6 +105,11 @@ def fig_ratio(cfg):
         ax.axvline(TWVAL[tw], color=c, ls=":", lw=1.0, alpha=0.7)
     ax.axhline(1.0, color="0.4", lw=1.2, ls="--", label="PdV/Lmech = 1")
     ax.set_xscale("log")
+    # clip y: once Eb collapses through 0, Pb flips sign and PdV/Lmech spikes to
+    # ~-1e11, which would crush the meaningful [0,3] band. Cap the view so the
+    # crossing-of-1 behaviour is legible (the off-scale collapse spike is the
+    # Eb<0 artifact already shown in the Eb figure).
+    ax.set_ylim(-0.5, 3.0)
     ax.set_xlabel("t [Myr]")
     ax.set_ylabel(r"PdV / $L_{\rm mech}$")
     ax.set_title(f"H4 PdV-cap: PdV/$L_{{\\rm mech}}$ — {cfg} (does it stay >1 after release?)")

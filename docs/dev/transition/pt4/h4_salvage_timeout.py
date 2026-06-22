@@ -11,6 +11,7 @@ Usage: python h4_salvage_timeout.py --tag T --config C --variant V \
            --t_window TW --kappa K --out DIR --csv row.csv --traj traj.csv \
            --timeout_s N
 """
+
 import argparse
 import csv
 import json
@@ -121,8 +122,18 @@ def main():
 
     if args.traj and rows:
         cols = [
-            "t_now", "phase", "R2", "v2", "Eb", "Pb", "R1", "T0",
-            "Lmech_total", "bubble_LTotal", "pdv_over_lmech", "rCloud",
+            "t_now",
+            "phase",
+            "R2",
+            "v2",
+            "Eb",
+            "Pb",
+            "R1",
+            "T0",
+            "Lmech_total",
+            "bubble_LTotal",
+            "pdv_over_lmech",
+            "rCloud",
         ]
         os.makedirs(os.path.dirname(os.path.abspath(args.traj)), exist_ok=True)
         with open(args.traj, "w", newline="") as f:
@@ -131,12 +142,18 @@ def main():
             for r in rows:
                 w.writerow(
                     {
-                        "t_now": r.get("t_now"), "phase": r.get("current_phase"),
-                        "R2": r.get("R2"), "v2": r.get("v2"), "Eb": r.get("Eb"),
-                        "Pb": r.get("Pb"), "R1": r.get("R1"), "T0": r.get("T0"),
+                        "t_now": r.get("t_now"),
+                        "phase": r.get("current_phase"),
+                        "R2": r.get("R2"),
+                        "v2": r.get("v2"),
+                        "Eb": r.get("Eb"),
+                        "Pb": r.get("Pb"),
+                        "R1": r.get("R1"),
+                        "T0": r.get("T0"),
                         "Lmech_total": r.get("Lmech_total"),
                         "bubble_LTotal": r.get("bubble_LTotal"),
-                        "pdv_over_lmech": _pdv_ratio(r), "rCloud": r.get("rCloud"),
+                        "pdv_over_lmech": _pdv_ratio(r),
+                        "rCloud": r.get("rCloud"),
                     }
                 )
     print(
