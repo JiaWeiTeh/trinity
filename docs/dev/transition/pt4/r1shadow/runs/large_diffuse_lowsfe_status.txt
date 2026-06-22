@@ -1,0 +1,7 @@
+config=large_diffuse_lowsfe
+param=docs/dev/transition/cleanroom/configs/large_diffuse_lowsfe.param
+stop_t=3.9
+timeout_s=2400
+exit_code=0
+status=completed
+runtime_s=1551

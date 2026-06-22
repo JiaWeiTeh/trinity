@@ -1,0 +1,7 @@
+config=small_dense_highsfe
+param=docs/dev/transition/cleanroom/configs/small_dense_highsfe.param
+stop_t=0.05
+timeout_s=900
+exit_code=0
+status=completed
+runtime_s=619

@@ -1,0 +1,2 @@
+config,variant,crashed,crash_phase,crash_excpt,end_reason,end_code,reached_phase,final_t,final_R2,final_v2,final_Eb,E0,floor,floor_activated,act_drive,act_state,min_Eb_seen,trigger_fired,ratio_min,n_rows,runtime_s
+simple_cluster,V0,False,,,Stopping time reached,1,1b,0.2,3.6650221534582013,25.826473455871163,18319665.18251079,93.70688505918945,0.001,False,0,0,,False,0.32402923635521286,155,891.9

@@ -1,0 +1,2 @@
+config,variant,crashed,crash_phase,crash_excpt,end_reason,end_code,reached_phase,final_t,final_R2,final_v2,final_Eb,E0,floor,floor_activated,act_drive,act_state,min_Eb_seen,trigger_fired,ratio_min,n_rows,runtime_s
+small_dense_highsfe,V0,False,,,Stopping time reached,1,1b,0.05,0.905320728509138,22.481102520461572,813270.664332962,2.0162511403289645,0.001,False,0,0,,False,0.2832291470299272,121,619.4

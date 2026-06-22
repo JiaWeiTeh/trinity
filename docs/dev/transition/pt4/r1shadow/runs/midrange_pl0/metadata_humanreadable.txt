@@ -1,0 +1,42 @@
+============================================================
+TRINITY run: midrange_pl0
+============================================================
+Status   : ✓ SUCCESS  (stopping_time)
+Detail   : Stopping time reached
+At       : 2026-06-22 19:04:07
+
+------------------------------------------------------------
+Cloud
+------------------------------------------------------------
+  mCloud        : 9.00e+05  Msun
+  nCore         : 1.00e+04  cm⁻³
+  rCloud        : 8.530  pc
+  rCore         : 0.010  pc
+  dens_profile  : densPL
+  densPL_alpha  : 0.00
+  nISM          : 1.00e+00  cm⁻³
+  sfe           : 0.1000
+  mCluster      : 1.00e+05  Msun
+  ZCloud        : 1.00  Z☉
+
+------------------------------------------------------------
+Final state  [t = 0.600 Myr]
+------------------------------------------------------------
+  R2            : 11.393 pc
+  v2            : 16.410 km/s    (1.678e+01 pc/Myr)
+  shell_mass    : 9.001e+05 Msun
+  shell_nMax    : 1.140e+06 cm⁻³    (3.350e+61 pc⁻³)
+  Pb            : 1.197e+08 K cm⁻³ (P/k_B)    (2.554e+04 internal)
+  Eb            : 4.489e+51 erg    (2.361e+08 internal)
+  T0            : 4.197e+06 K
+  bubble_Tavg   : 1.068e+07 K
+  phase         : momentum
+  collapsed     : no
+  dissolved     : no
+
+------------------------------------------------------------
+Termination diagnostics
+------------------------------------------------------------
+  reason        : Normal exit / atexit
+  (no flagged changes, no NaN/Inf, all sanity checks passed)
+============================================================

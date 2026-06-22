@@ -1,0 +1,42 @@
+============================================================
+TRINITY run: pl2_steep
+============================================================
+Status   : ✓ SUCCESS  (stopping_time)
+Detail   : Stopping time reached
+At       : 2026-06-22 19:33:03
+
+------------------------------------------------------------
+Cloud
+------------------------------------------------------------
+  mCloud        : 9.00e+05  Msun
+  nCore         : 1.00e+05  cm⁻³
+  rCloud        : 21.355  pc
+  rCore         : 1.000  pc
+  dens_profile  : densPL
+  densPL_alpha  : -2.00
+  nISM          : 1.00e+00  cm⁻³
+  sfe           : 0.1000
+  mCluster      : 1.00e+05  Msun
+  ZCloud        : 1.00  Z☉
+
+------------------------------------------------------------
+Final state  [t = 0.950 Myr]
+------------------------------------------------------------
+  R2            : 25.828 pc
+  v2            : 32.278 km/s    (3.301e+01 pc/Myr)
+  shell_mass    : 9.011e+05 Msun
+  shell_nMax    : 1.819e+05 cm⁻³    (5.343e+60 pc⁻³)
+  Pb            : 1.886e+07 K cm⁻³ (P/k_B)    (4.023e+03 internal)
+  Eb            : 8.216e+51 erg    (4.322e+08 internal)
+  T0            : 3.163e+06 K
+  bubble_Tavg   : 8.382e+06 K
+  phase         : momentum
+  collapsed     : no
+  dissolved     : no
+
+------------------------------------------------------------
+Termination diagnostics
+------------------------------------------------------------
+  reason        : Normal exit / atexit
+  (no flagged changes, no NaN/Inf, all sanity checks passed)
+============================================================
