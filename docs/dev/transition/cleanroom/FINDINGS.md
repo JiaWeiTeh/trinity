@@ -151,6 +151,17 @@ the SN surge.
   typical clouds (the stall). Handled today by: **robustness** (shipped: geometry guard + clean
   `ENERGY_COLLAPSED` termination) + **family T** (the Eb-peak handoff, deferred to this workstream).
 
+- **Frozen-feedback test — the stall is geometry, not feedback surges** (`figures/frozen_feedback`;
+  runs `c0_consistency.py --freeze-feedback-at 1.0 --stop-t 6` for all six, via `frozen_supervisor.sh`):
+  froze ALL stellar feedback to its t=1 Myr value (no WR/SN surges; `Lgain` verified dead-constant) to
+  test whether *steady* injection lets the cooling ratio fall to 0.05. It does **not** — in every config
+  the ratio dips early then surges back up and never approaches 0.05 (floor 0.25–0.50), and the
+  **frozen-feedback minimum is within ~0.01–0.04 of the real minimum** (e.g. small_dense 0.245 vs 0.283;
+  simple 0.327 vs 0.324; large_diffuse 0.496 vs 0.465). Removing the surges barely moves the floor and the
+  dip-then-surge persists with feedback constant → the surge is the §7.8 **geometry** (in-cloud dilution +
+  blowout) collapsing `Lloss`, not a feedback artifact. Strongest form of the geometric-not-thermal result:
+  a cooling-balance trigger cannot fire even under perfectly steady feedback.
+
 ## 4. Conclusion & recommendations
 
 1. **The stall is physics, not a threshold.** Retuning 0.05→X is futile — there is
