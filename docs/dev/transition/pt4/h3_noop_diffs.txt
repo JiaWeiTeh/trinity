@@ -1,0 +1,52 @@
+# no-op simple_cluster: V0 has 104 rows, EBFLOOR 104; comparing first 104
+  max|dR2|=0.000e+00 pc   max rel|dEb|=0.000e+00   max|dv2|=0.000e+00 km/s
+  => BIT/VALUE-IDENTICAL (no-op confirmed)
+
+# no-op large_diffuse_lowsfe: V0 has 105 rows, EBFLOOR 105; comparing first 105
+  max|dR2|=0.000e+00 pc   max rel|dEb|=0.000e+00   max|dv2|=0.000e+00 km/s
+  => BIT/VALUE-IDENTICAL (no-op confirmed)
+
+# no-op small_dense_highsfe: V0 has 103 rows, EBFLOOR 103; comparing first 103
+  max|dR2|=1.482e-11 pc   max rel|dEb|=5.907e-08   max|dv2|=3.007e-08 km/s
+  => DIFFERS
+
+# no-op midrange_pl0: V0 has 105 rows, EBFLOOR 105; comparing first 105
+  max|dR2|=0.000e+00 pc   max rel|dEb|=0.000e+00   max|dv2|=0.000e+00 km/s
+  => BIT/VALUE-IDENTICAL (no-op confirmed)
+
+# no-op pl2_steep: V0 has 104 rows, EBFLOOR 104; comparing first 104
+  max|dR2|=0.000e+00 pc   max rel|dEb|=0.000e+00   max|dv2|=0.000e+00 km/s
+  => BIT/VALUE-IDENTICAL (no-op confirmed)
+
+# no-op be_sphere: V0 has 105 rows, EBFLOOR 105; comparing first 105
+  max|dR2|=0.000e+00 pc   max rel|dEb|=0.000e+00   max|dv2|=0.000e+00 km/s
+  => BIT/VALUE-IDENTICAL (no-op confirmed)
+
+# no-op fail_repro: V0 has 53 rows, EBFLOOR 52; comparing first 52
+  max|dR2|=0.000e+00 pc   max rel|dEb|=0.000e+00   max|dv2|=0.000e+00 km/s
+  => BIT/VALUE-IDENTICAL (no-op confirmed)
+
+# no-op fail_helix: V0 has 57 rows, EBFLOOR 57; comparing first 57
+  max|dR2|=0.000e+00 pc   max rel|dEb|=0.000e+00   max|dv2|=0.000e+00 km/s
+  => BIT/VALUE-IDENTICAL (no-op confirmed)
+
+# no-op mass_5e8: V0 has 101 rows, EBFLOOR 101; comparing first 101
+  max|dR2|=0.000e+00 pc   max rel|dEb|=0.000e+00   max|dv2|=0.000e+00 km/s
+  => BIT/VALUE-IDENTICAL (no-op confirmed)
+
+# no-op mass_1e9: V0 has 90 rows, EBFLOOR 91; comparing first 90
+  max|dR2|=0.000e+00 pc   max rel|dEb|=0.000e+00   max|dv2|=0.000e+00 km/s
+  => BIT/VALUE-IDENTICAL (no-op confirmed)
+
+# no-op small_1e5: V0 has 105 rows, EBFLOOR 105; comparing first 105
+  max|dR2|=1.978e-10 pc   max rel|dEb|=6.764e-09   max|dv2|=5.760e-07 km/s
+  => DIFFERS
+
+# no-op small_1e6: V0 has 105 rows, EBFLOOR 105; comparing first 105
+  max|dR2|=0.000e+00 pc   max rel|dEb|=0.000e+00   max|dv2|=0.000e+00 km/s
+  => BIT/VALUE-IDENTICAL (no-op confirmed)
+
+# no-op small_1e7: V0 has 103 rows, EBFLOOR 103; comparing first 103
+  max|dR2|=0.000e+00 pc   max rel|dEb|=0.000e+00   max|dv2|=0.000e+00 km/s
+  => BIT/VALUE-IDENTICAL (no-op confirmed)
+

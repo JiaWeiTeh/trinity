@@ -73,29 +73,34 @@ def main():
                       f"{fmt(r.get('runtime_s'),4):6s}")
         print()
 
-    # No-op check: where floor never activated, EBFLOOR final state should match V0
-    print("## No-op check (floor never activated => EBFLOOR ?= V0)")
+    # No-op check: compare EBFLOOR final state to V0 at matched stop_t. NOTE
+    # floor_activated counts include solve_ivp's REJECTED trial-step probes, so
+    # 'True' does NOT imply the accepted trajectory changed -- compare states.
+    # (For per-snapshot bit-identity use: h3_traj_sample.py --noop <cfg>.)
+    print("## No-op check (EBFLOOR final state vs V0 at matched stop_t)")
+    print("   floor_act True can be transient probes; the state diff is the real test.")
     for cfg in CLASS:
         v0 = by_key.get((cfg, "V0"))
         eb = by_key.get((cfg, "EBFLOOR"))
         if not v0 or not eb:
             continue
         fa = str(eb.get("floor_activated"))
-        if fa == "False":
-            # compare final state at matched stop (both ran same stop_t)
-            same = True
-            for k in ("reached_phase", "end_code"):
-                if str(v0.get(k)) != str(eb.get(k)):
-                    same = False
-            dR = abs((_f(v0.get("final_R2")) or 0) - (_f(eb.get("final_R2")) or 0))
-            dEb_rel = None
-            e0, e1 = _f(v0.get("final_Eb")), _f(eb.get("final_Eb"))
-            if e0 and e1:
-                dEb_rel = abs(e0 - e1) / (abs(e0) + 1e-300)
-            verdict = "NO-OP(match)" if (same and dR < 1e-6 and (dEb_rel or 0) < 1e-9) else "DIFFERS"
-            print(f"  {cfg:22s} floor_act=False  dR2={dR:.2e} dEb_rel={dEb_rel}  -> {verdict}")
+        ec_v0, ec_eb = str(v0.get("end_code")), str(eb.get("end_code"))
+        dR = abs((_f(v0.get("final_R2")) or 0) - (_f(eb.get("final_R2")) or 0))
+        e0, e1 = _f(v0.get("final_Eb")), _f(eb.get("final_Eb"))
+        dEb_rel = abs(e0 - e1) / (abs(e0) + 1e-300) if (e0 is not None and e1 is not None) else None
+        if ec_v0 == "timeout" or ec_eb == "timeout":
+            verdict = "DIFFERS (timeout/grind)"
+        elif ec_v0 != ec_eb:
+            verdict = f"DIFFERS (end_code {ec_v0}!={ec_eb})"
+        elif dR == 0 and (dEb_rel or 0) == 0:
+            verdict = "NO-OP (bit-identical final state)"
+        elif dR < 1e-6 and (dEb_rel or 0) < 1e-6:
+            verdict = "NO-OP (track-identical within fp)"
         else:
-            print(f"  {cfg:22s} floor_act={fa}  (activated or killed -- see trajectory)")
+            verdict = "DIFFERS"
+        print(f"  {cfg:22s} floor_act={fa:14s} end[{ec_v0:>7}/{ec_eb:>7}] "
+              f"dR2={dR:.2e} dEb_rel={dEb_rel}  -> {verdict}")
 
 
 if __name__ == "__main__":
