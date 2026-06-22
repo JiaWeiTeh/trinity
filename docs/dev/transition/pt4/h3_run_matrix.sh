@@ -25,20 +25,26 @@ rm -f "$EVAL"
 # collapse configs reach the decision at t~0.003 Myr -> small stop_t, fits in timeout.
 # stall/healthy configs: short stop_t (0.05) just to confirm the floor is a no-op.
 CELLS=(
-  "simple_cluster:$CLEAN/simple_cluster.param:0.05:360:stall"
-  "large_diffuse_lowsfe:$CLEAN/large_diffuse_lowsfe.param:0.05:360:stall"
-  "small_dense_highsfe:$CLEAN/small_dense_highsfe.param:0.05:360:stall"
-  "midrange_pl0:$CLEAN/midrange_pl0.param:0.05:360:stall"
-  "pl2_steep:$CLEAN/pl2_steep.param:0.05:360:stall"
-  "be_sphere:$CLEAN/be_sphere.param:0.05:360:stall"
+  "simple_cluster:$CLEAN/simple_cluster.param:0.005:300:stall"
+  "large_diffuse_lowsfe:$CLEAN/large_diffuse_lowsfe.param:0.005:300:stall"
+  "small_dense_highsfe:$CLEAN/small_dense_highsfe.param:0.005:300:stall"
+  "midrange_pl0:$CLEAN/midrange_pl0.param:0.005:300:stall"
+  "pl2_steep:$CLEAN/pl2_steep.param:0.005:300:stall"
+  "be_sphere:$CLEAN/be_sphere.param:0.005:300:stall"
   "fail_repro:$FLC/fail_repro.param:0.01:300:collapse"
   "fail_helix:$FLC/fail_helix.param:0.01:300:collapse"
   "mass_5e8:$FLC/mass_5e8.param:0.01:300:collapse"
   "mass_1e9:$FLC/mass_1e9.param:0.01:300:collapse"
-  "small_1e5:$FLC/small_1e5.param:0.05:360:healthy"
-  "small_1e6:$FLC/small_1e6.param:0.05:360:healthy"
-  "small_1e7:$FLC/small_1e7.param:0.05:360:healthy"
+  "small_1e5:$FLC/small_1e5.param:0.005:300:healthy"
+  "small_1e6:$FLC/small_1e6.param:0.005:300:healthy"
+  "small_1e7:$FLC/small_1e7.param:0.005:300:healthy"
 )
+# NOTE: stall/healthy use a small stop_t (0.005 Myr) -- enough to confirm the Eb
+# floor is a no-op (it never activates where Eb does not collapse) and to get a
+# clean MATCHED-state V0-vs-EBFLOOR comparison. Full stall runs to stop_t~0.05+
+# are covered by H1/H2; reaching 0.05 here just times out (the implicit phase is
+# the stall under study). Collapse decision point is t~0.0034 Myr, so stop_t=0.01
+# clears it.
 
 for variant in V0 EBFLOOR; do
   for cell in "${CELLS[@]}"; do

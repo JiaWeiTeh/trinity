@@ -22,14 +22,17 @@ V0       baseline               : no patch (reference).
 V1       solve_R1 R1-clamp      : clamp R1 <= R2*(1-eps).
 V2       bubble_E2P vol-floor   : floor shell volume (r2^3-r1^3) at eps*r2^3.
 V3       both                   : V1 + V2 (the prior "geometry-guard-only" smoke).
-EBFLOOR  positive-Eb floor      : V3 geometry guards PLUS a reflecting floor on
-                                  the *state* Eb. Two coupled pieces:
+EBFLOOR  positive-Eb floor      : clamp the *state* Eb > 0 everywhere. Two
+                                  coupled pieces:
 
   (A) DRIVE stays positive. Clamp Eb = max(Eb, floor) at entry to
-      get_bubbleParams.bubble_E2P (-> Pb > 0) and .solve_R1 (-> R1 well-defined).
-      Reached everywhere via the module attribute (phase 1a/1b RHS, bubble
-      solve, diagnostics). Keeps the shell push positive even as the state Eb
-      decays toward / below the floor.
+      get_bubbleParams.bubble_E2P (-> Pb > 0) and .solve_R1 (-> R1 well-defined),
+      then DELEGATE to the ORIGINAL production helpers (which already carry the
+      shipped geometry guards: E2P floors shell_volume at 1e-13*r2**3 :229-235;
+      solve_R1 returns 0 for R2<=0 :433). So when Eb >= floor this is BIT-
+      IDENTICAL to V0. Reached everywhere via the module attribute (phase 1a/1b
+      RHS, bubble solve, diagnostics). Keeps the shell push positive even as the
+      state Eb decays toward / below the floor.
 
   (B) STATE stays positive (the key new piece). The shipped ENERGY_COLLAPSED
       early-stops read the ODE STATE Eb extracted from solution.y[:,-1]
@@ -95,12 +98,17 @@ def _bubble_E2P_vol_floored(Eb, r2, r1, gamma):
 
 
 # ---- EBFLOOR (A): clamp Eb in the drive helpers -----------------------------
+# Delegate to the ORIGINAL production helpers (which already carry the shipped
+# geometry guards: bubble_E2P floors shell_volume at 1e-13*r2**3 [get_bubbleParams
+# .py:229-235]; solve_R1 returns 0 for R2<=0 [:433]). So when Eb >= FLOOR these
+# are BIT-IDENTICAL to V0 -- the only change vs production is clamping Eb. That
+# makes EBFLOOR a provable no-op on any run whose Eb never drops below FLOOR.
 def _solve_R1_ebfloor(R2, Eb, Lmech_total, v_mech_total):
     if Eb < FLOOR:
         ACTIVATED["drive"] += 1
         ACTIVATED["min_Eb_seen"] = min(ACTIVATED["min_Eb_seen"], Eb)
         Eb = FLOOR
-    return _solve_R1_clamped(R2, Eb, Lmech_total, v_mech_total)
+    return _ORIG_SOLVE_R1(R2, Eb, Lmech_total, v_mech_total)
 
 
 def _bubble_E2P_ebfloor(Eb, r2, r1, gamma):
@@ -108,7 +116,7 @@ def _bubble_E2P_ebfloor(Eb, r2, r1, gamma):
         ACTIVATED["drive"] += 1
         ACTIVATED["min_Eb_seen"] = min(ACTIVATED["min_Eb_seen"], Eb)
         Eb = FLOOR
-    return _bubble_E2P_vol_floored(Eb, r2, r1, gamma)
+    return _ORIG_E2P(Eb, r2, r1, gamma)
 
 
 # ---- EBFLOOR (B): reflecting floor on the integrated state Eb ---------------
@@ -163,8 +171,9 @@ def apply(variant: str, floor: float | None = None):
         gbp.solve_R1 = _solve_R1_clamped
         gbp.bubble_E2P = _bubble_E2P_vol_floored
     elif variant == "EBFLOOR":
-        # (A) drive helpers clamp Eb -> they already include the V3 geometry
-        #     guards (_solve_R1_clamped / _bubble_E2P_vol_floored) internally.
+        # (A) drive helpers clamp Eb then delegate to the ORIGINAL production
+        #     helpers (shipped geometry guards already inside). Bit-identical to
+        #     V0 when Eb >= floor.
         gbp.solve_R1 = _solve_R1_ebfloor
         gbp.bubble_E2P = _bubble_E2P_ebfloor
         # (B) reflecting floor on the integrated state, both phases.
