@@ -112,7 +112,27 @@ _(results table inserted below once the matrix completes)_
 
 ## 5. No-op confirmation — stall + healthy configs
 
-<!-- filled -->
+Where `Eb` never collapses, `EBFLOOR` is designed to be identical to V0 (the `if Eb < FLOOR`
+branch is never taken on the accepted trajectory). Confirmed by matched-snapshot diff
+(`h3_traj_sample.py --noop <cfg>`, comparing every row of `traj/h3_traj_<cfg>_{V0,EBFLOOR}.csv`):
+
+| config | V0 outcome | EBFLOOR outcome | floor_act (drive,state) | max\|ΔR2\| [pc] | max rel\|ΔEb\| | no-op? |
+|---|---|---|---|---|---|---|
+| simple_cluster | STOPPING_TIME(1) | STOPPING_TIME(1) | True (6,3) | 0 | 0 | **bit-identical** |
+| large_diffuse_lowsfe | STOPPING_TIME(1) | STOPPING_TIME(1) | True (4,2) | 0 | 0 | **bit-identical** |
+| midrange_pl0 | STOPPING_TIME(1) | STOPPING_TIME(1) | True (4,2) | 0 | 0 | **bit-identical** |
+| pl2_steep | STOPPING_TIME(1) | STOPPING_TIME(1) | True (6,3) | 0 | 0 | **bit-identical** |
+| small_dense_highsfe | STOPPING_TIME(1) | STOPPING_TIME(1) | True (10,5) | 1.5e-11 | 5.9e-8 | track-identical (fp) |
+| be_sphere / healthy | <!-- filled --> | | | | | |
+
+**Key nuance — `floor_activated=True` does NOT mean the trajectory changed.** The `act_drive` /
+`act_state` counters tally *every RHS evaluation* in which `Eb < FLOOR`, **including `solve_ivp`'s
+rejected trial steps** during adaptive error control. On these healthy/stall runs the accepted
+trajectory is **bit-identical to V0** (`max|ΔR2| = 0`, `max rel|ΔEb| = 0`) on 4 of 5 configs;
+`small_dense_highsfe` differs only at the **1e-8 level** (a single accepted step whose internal
+probe dipped below `FLOOR`), i.e. a no-op to ~8 significant figures. So the few counter hits are
+transient adaptive-stepping probes, not energy injection that perturbs the physics. **The Eb floor
+is a genuine no-op wherever Eb never collapses — exactly the "test on all configs" payoff.**
 
 ## 6. Verdict
 
