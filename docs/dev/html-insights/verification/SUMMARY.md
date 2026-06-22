@@ -10,9 +10,11 @@
 > `file:line` evidence so a future visit need not re-derive it.
 
 **Verified:** 2026-06-22 · **Method:** five parallel read-only agents, each checking one or two
-rendered HTML reports **line-by-line against current `trinity/` source** (HEAD of
-`claude/exciting-gates-mkxqn6`), cross-checked with the committed CSVs/harnesses and the
-per-workstream `.md` docs. Per-report evidence: `01_betadelta.md` … `05_tables.md`.
+rendered HTML reports **line-by-line against current `trinity/` source** on branch
+`feature/grouped-insights` (commit `c1b6a15`, 2026-06-22), cross-checked with the committed
+CSVs/harnesses and the per-workstream `.md` docs. (Cite a commit, not just the branch, when a
+claim turns on specific line numbers — branches move, commits are absolute.) Per-report
+evidence: `01_betadelta.md` … `05_tables.md`.
 
 This pass supports merging the per-workstream reports into four storyline "books"
 (`build_storylines.py`). Sources are the source of truth — fixes land in each report's

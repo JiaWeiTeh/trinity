@@ -287,7 +287,14 @@ def build_chapter(
         sub = ""
     else:
         raw = Path(ch["src"]).read_text(encoding="utf-8", errors="replace")
-        style = f"<style>{scope_css(extract_style(raw), f'#{cid}')}</style>\n"
+        scoped = scope_css(extract_style(raw), f"#{cid}")
+        # Overflow guard: cap EVERY image (and code block) to the column width — the
+        # reports' own CSS often only targets `figure.fig img`, so `.grid2` cells, bare
+        # <img>, and embedded GIFs would otherwise render at natural size and overflow.
+        guard = (
+            f"#{cid} img{{max-width:100%;height:auto}} #{cid} pre{{max-width:100%;overflow-x:auto}}"
+        )
+        style = f"<style>{scoped}\n{guard}</style>\n"
         content = ensure_h2_ids(extract_content(raw))
         content, sub = drop_first_h1(content)
         body = namespace(demote_headings(content), cid)
@@ -352,6 +359,8 @@ letter-spacing:.08em;color:var(--accent);margin-bottom:3px;}
 .chapter h3{font-size:19px;margin:26px 0 8px;}
 .chapter ul,.chapter ol{margin:10px 0;}.chapter code{background:#f3f6fa;border:1px solid var(--line);
 border-radius:4px;padding:1px 5px;font:13px/1.4 "SFMono-Regular",Consolas,Menlo,monospace;}
+.book img,.chapter img{max-width:100%;height:auto}
+.book figure,.chapter figure{max-width:100%;margin:1.2rem 0}
 """
 
 

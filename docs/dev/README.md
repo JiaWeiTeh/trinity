@@ -32,8 +32,18 @@ doc's "About this document" block also carries a verified **Status** line.
 
 **Naming.** Each workstream folder is self-contained (writeups **+** its harnesses
 and figures); the folder name gives the context, so filenames inside drop the
-workstream prefix (`transition/TRIGGER_PLAN.md`, not `TRANSITION_TRIGGER_PLAN.md`).
-`SCREAMING_SNAKE.md` = a major plan/spec/overview, `kebab-case.md` = an audit/results note.
+workstream prefix (e.g. `transition/TRIGGER_PLAN.md`, not `transition/TRANSITION_TRIGGER_PLAN.md`).
+*Case style* (not a filename): `ALL_CAPS_SNAKE` marks a major plan/spec/overview
+(e.g. `HYBR_PLAN.md`, `MIGRATION_PLAN.md`); `kebab-case` marks an audit/results note
+(e.g. `refactor-audit.md`, `pshadow-design.md`).
+
+**Referencing convention (future-proofing).** Because the prefix-drop makes bare basenames
+ambiguous (a `P0.md` or `audit.md` can't be located or machine-checked on its own — this is
+what made the cross-reference audit noisy), **cite another doc by its repo-relative path**
+(`docs/dev/transition/P0.md`), not by bare name. For **code** citations, line numbers drift, so
+pin an **absolute anchor**: a commit SHA (and optionally the branch for context, e.g.
+`feature/grouped-insights@c1b6a15`) rather than relying on the line number alone — the ⚠️ banner
+already warns the reader to re-verify against current source.
 
 ## Layout
 

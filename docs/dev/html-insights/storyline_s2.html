@@ -27,6 +27,8 @@ letter-spacing:.08em;color:var(--accent);margin-bottom:3px;}
 .chapter h3{font-size:19px;margin:26px 0 8px;}
 .chapter ul,.chapter ol{margin:10px 0;}.chapter code{background:#f3f6fa;border:1px solid var(--line);
 border-radius:4px;padding:1px 5px;font:13px/1.4 "SFMono-Regular",Consolas,Menlo,monospace;}
+.book img,.chapter img{max-width:100%;height:auto}
+.book figure,.chapter figure{max-width:100%;margin:1.2rem 0}
 </style></head><body><div class="book">
 <h1>The ODE-solver saga — LSODA → solve_ivp</h1>
 <p class="lede">An LSODA warning flood in the shell ODE, the replay harness that diagnosed it, and what actually fixed it.</p>
@@ -55,7 +57,8 @@ padding:1px 5px;font:13.5px/1.4 "SFMono-Regular",Consolas,Menlo,monospace;}#s2-c
 border-radius:12px;padding:16px 20px;margin:18px 0 6px;}#s2-ch1 .tldr b{color:var(--accent);}#s2-ch1 .flow{display:flex;flex-direction:column;gap:0;margin:18px 0;}#s2-ch1 .step{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--accent);
 border-radius:8px;padding:12px 16px;}#s2-ch1 .step .q{font-weight:600;}#s2-ch1 .step .a{color:var(--mut);font-size:14.5px;margin-top:2px;}#s2-ch1 .arrow{align-self:center;color:#9aa6b4;font-size:18px;line-height:1;margin:5px 0;}#s2-ch1 .box{border:1px solid var(--line);border-radius:9px;padding:13px 17px;margin:14px 0;}#s2-ch1 .box .lab{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;}#s2-ch1 .hyp{background:#f5f2ff;border-color:#e0d8fb;}#s2-ch1 .hyp .lab{color:var(--hyp);}#s2-ch1 .find{background:#eef9f1;border-color:#cdeed6;}#s2-ch1 .find .lab{color:var(--find);}#s2-ch1 .over{background:#fff6ec;border-color:#f6dcbd;}#s2-ch1 .over .lab{color:var(--warn);}#s2-ch1 figure{margin:20px 0;}#s2-ch1 figure img{width:100%;border:1px solid var(--line);border-radius:8px;display:block;}#s2-ch1 figcaption{color:var(--mut);font-size:13.5px;margin-top:7px;text-align:center;}#s2-ch1 table{border-collapse:collapse;width:100%;margin:14px 0;font-size:13.5px;}#s2-ch1 th, #s2-ch1 td{border:1px solid var(--line);padding:6px 9px;text-align:left;vertical-align:top;}#s2-ch1 th{background:var(--panel);font-weight:600;}#s2-ch1 tbody tr:nth-child(even){background:#fbfcfe;}#s2-ch1 .win{color:var(--find);font-weight:700;}#s2-ch1 .loss{color:var(--bad);font-weight:700;}#s2-ch1 .tag{display:inline-block;background:var(--accent);color:#fff;border-radius:20px;
 padding:2px 11px;font-size:12.5px;font-weight:600;}#s2-ch1 .muted{color:var(--mut);}#s2-ch1 .small{font-size:13px;}#s2-ch1 ol.toc{columns:2;font-size:14.5px;color:var(--accent);}#s2-ch1 hr{border:0;border-top:1px solid var(--line);margin:30px 0;}#s2-ch1 footer{color:var(--mut);font-size:12.5px;margin-top:40px;border-top:1px solid var(--line);padding-top:14px;}
-</style>
+
+#s2-ch1 img{max-width:100%;height:auto} #s2-ch1 pre{max-width:100%;overflow-x:auto}</style>
 <section class="chapter" id="s2-ch1-body">
 <h2 class="ch-title" id="s2-ch1"><span class="ch-num">Chapter 1</span>The shell ODE: odeint, the LSODA flood, and the fix</h2>
 <p class="sub">An empirical investigation — background, hypotheses, a replay harness, five

@@ -44,7 +44,7 @@ Six panels, current time = the frame's t grid point:
   RIGHT D : interior velocity v(r) vs radial fraction (0=R1, 1=R2), cage SHADOW vs
             no cage (inflow = v<0; the cage's monotone solve hides the surge inflow).
   RIGHT E : Lmech_W / Lmech_SN / Lmech_total vs t, marker at the current t.
-  RIGHT F : shell radii vs t (log-log), both REAL runs: R2 (solid, inner edge) and
+  RIGHT F : shell radii vs t (LINEAR t, log radii), both REAL runs: R2 (solid, inner edge) and
             rShell (dashed, outer edge), caged (black) vs hybr (blue).
 
   python docs/dev/archive/betadelta/diagnostics/make_rootmap_gif.py
@@ -428,9 +428,10 @@ def main():
         aE.grid(alpha=0.3)
 
         # ---- F: shell radii vs t — both REAL runs, R2 (solid) & rShell (dashed) ----
-        # caged (black) vs hybr (blue). log-log: the two runs differ ~20x in both
-        # radius and lifetime, so log axes show the caged recollapse (R2 turns over
-        # ~2 pc, ends t~0.44 Myr) alongside the hybr run climbing to ~37 pc at 4 Myr.
+        # caged (black) vs hybr (blue). LINEAR t (so the current-t marker tracks the
+        # frame pacing, consistent with the other time panels) and log radii (the two
+        # runs differ ~20x): the caged recollapse (R2 turns over ~2 pc, ends t~0.44 Myr)
+        # shows as a short early segment alongside hybr climbing to ~37 pc at 4 Myr.
         aF.clear()
         aF.plot(hyb_t, hyb_R2, color=HYBR_C, lw=1.7, label=r"hybr $R_2$")
         aF.plot(hyb_t, hyb_rsh, color=HYBR_C, lw=1.4, ls="--", label=r"hybr $r_{\rm shell}$")
@@ -448,9 +449,8 @@ def main():
             )
         aF.axvline(tc, color="crimson", lw=1.0, alpha=0.6)
         aF.plot(tc, R2_f[i], "o", ms=7, mfc="#ffd000", mec="k", zorder=5)
-        aF.set_xscale("log")
-        aF.set_yscale("log")
-        aF.set_xlim(min(float(leg_t[0]), float(hyb_t[0])) * 0.8, float(hyb_t[-1]) * 1.1)
+        aF.set_yscale("log")  # radii span ~20x; the time axis stays LINEAR so all panels move consistently in t
+        aF.set_xlim(0.0, float(hyb_t[-1]) * 1.05)
         aF.set_ylim(RFMIN, RFMAX)
         aF.set_xlabel("t  [Myr]")
         aF.set_ylabel("radius  [pc]")
