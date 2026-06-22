@@ -1,0 +1,41 @@
+# wrote 30 rows -> /home/user/trinity/.claude/worktrees/agent-a82b01eb39c0f0577/docs/dev/transition/pt4/h5clamp/h5_sweep.csv
+
+=== cross_t (None = no 0.05 crossing) ===
+config                              W0              W1              W2              W3            hybr
+small_dense_highsfe            0.02418         0.02418         0.02418         0.02418            None
+simple_cluster                  0.1781            None            None            None            None
+midrange_pl0                    0.8225            None            None            None            None
+pl2_steep                       0.1278            None            None            None            None
+be_sphere                        1.037            None            None            None            None
+large_diffuse_lowsfe              None            None            None            None            None
+
+=== ratio_min ===
+config                              W0              W1              W2              W3            hybr
+small_dense_highsfe             0.0235         -0.0488         -0.0488         -0.0488          0.2832
+simple_cluster                 -0.0069          0.3047          0.3047          0.3047          0.3240
+midrange_pl0                   -0.0089               —               —               —          0.3645
+pl2_steep                      -0.0008          0.7109          0.7109          0.7171          0.4892
+be_sphere                      -0.0201               —               —               —          0.4714
+large_diffuse_lowsfe            0.5143               —               —               —          0.4650
+
+=== boundary_pin_frac (legacy boxes only) ===
+config                        W0        W1        W2        W3
+small_dense_highsfe         0.97      0.17      0.17      0.00
+simple_cluster              0.00      0.00      0.00      0.00
+midrange_pl0                0.00         —         —         —
+pl2_steep                   0.35      0.00      0.00      0.00
+be_sphere                   0.45         —         —         —
+large_diffuse_lowsfe        0.09         —         —         —
+
+=== per-config verdict ===
+  small_dense_highsfe   : crossing UNCHANGED (0.0242->0.0242) => box NOT the cause (refutes H5)
+  simple_cluster        : INCONCLUSIVE — widened-box data truncated at t<=0.131578840403142 < W0 cross_t=0.17813 (did not reach the crossing; see h5_pinning_summary.csv for the decisive beta-on-edge test)
+  midrange_pl0          : INCONCLUSIVE — widened-box data truncated at t<=None < W0 cross_t=0.822498 (did not reach the crossing; see h5_pinning_summary.csv for the decisive beta-on-edge test)
+  pl2_steep             : INCONCLUSIVE — widened-box data truncated at t<=0.00449122314298717 < W0 cross_t=0.127827 (did not reach the crossing; see h5_pinning_summary.csv for the decisive beta-on-edge test)
+  be_sphere             : INCONCLUSIVE — widened-box data truncated at t<=None < W0 cross_t=1.03743 (did not reach the crossing; see h5_pinning_summary.csv for the decisive beta-on-edge test)
+  large_diffuse_lowsfe  : W0 never crosses (control)
+
+=== consistency: capture-W0 vs committed-legacy-W0 (cross_t) ===
+  small_dense_highsfe   : capture cross_t=0.02417799284310138 ratio_min=-0.0501  | committed cross_t=0.02417799284310138 ratio_min=0.0235  [MATCH]
+  simple_cluster        : capture cross_t=None ratio_min=0.2947  | committed cross_t=0.17812982355454898 ratio_min=-0.0069  [DIFF]
+  pl2_steep             : capture cross_t=None ratio_min=0.7125  | committed cross_t=0.12782749955584832 ratio_min=-0.0008  [DIFF]

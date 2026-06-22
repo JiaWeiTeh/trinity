@@ -1,0 +1,7 @@
+config,legacy_crosses,cross_t,beta_at_cross,delta_at_cross,edge_at_cross,pin_frac_all,pin_frac_preX,hybr_ratio_min,hybr_crosses,hybr_beta_max,n_implicit
+small_dense_highsfe,True,0.024178,0.000,-0.140,b=0,0.968,0.967,0.2832,False,3.90,31
+simple_cluster,True,0.17813,0.500,-0.601,interior,0.000,0.000,0.3240,False,4.20,90
+midrange_pl0,True,0.8225,0.420,-0.581,interior,0.000,0.000,0.3645,False,4.41,100
+pl2_steep,True,0.12783,0.000,0.000,b=0+d=0,0.355,0.347,0.4892,False,3.99,76
+be_sphere,True,1.0374,0.000,0.000,b=0+d=0,0.455,0.450,0.4714,False,4.62,101
+large_diffuse_lowsfe,False,,,,,0.088,0.088,0.4650,False,3.43,136
