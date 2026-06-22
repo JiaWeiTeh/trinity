@@ -32,7 +32,7 @@
 - **Code it concerns:** `trinity/bubble_structure/bubble_luminosity.py` (conduction-zone luminosity; the `odeint` → `solve_ivp` switch).
 - **Linked files & data:** sibling `integrator-robustness.md`; code `trinity/bubble_structure/bubble_luminosity.py`; tool `tools/bubble_conduction_convergence.py`.
 
-Companion to `bubble-integrator-robustness.md`. That document covers the
+Companion to `integrator-robustness.md`. That document covers the
 *crash* (LSODA "illegal input" on the over-refined grid). This one quantifies
 the *accuracy* question that surfaced while rejecting the grid-de-refinement
 fix (Option 1): **how converged is the production conduction-zone luminosity,
@@ -116,7 +116,7 @@ python tools/bubble_conduction_convergence.py --stride 8 --max-states 12
   (shell thickness ~1.7e-4 pc), the conduction zone is most geometrically
   compressed, and the production trapezoid is most under-resolved → −0.89 %.
   This is the *same* thin-shell geometry that makes the legacy grid produce
-  near-duplicate radii and crash LSODA (see `bubble-integrator-robustness.md`
+  near-duplicate radii and crash LSODA (see `integrator-robustness.md`
   §I.6). The two pathologies share a root: a thin conduction zone forced onto a
   fixed logspace grid.
 - **Everywhere else the production value is fine** (|bias| ≤ 0.17 %). So the

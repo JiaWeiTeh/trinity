@@ -35,12 +35,12 @@ cross-checked with `CHANGELOG.md` and `git log`.
 | `archive/betadelta/PHASE0_BASELINES.md` | ✅ SHIPPED (record) | — | **Archive** |
 | `archive/betadelta/PHASE2_ARMS.md` | ✅ SHIPPED (arm D / hybr landed) | — | **Archive** (forward item lives in stalling + HYBR Phase 5) |
 | `archive/betadelta/stalling-energy-phase.md` | ✅ SHIPPED (settled study) | minor | Fix 1 parenthetical → **archive** |
-| `transition/TRIGGER_PLAN.md` | 🔵 ACTIONABLE | accurate | **Keep** (P-shadow unbuilt) |
-| `transition/P0.md` | ✅ SHIPPED (results record) | — | Keep alongside the plan (don't archive yet) |
-| `transition/pshadow-design.md` | 🔵 ACTIONABLE | ⚠️ (1: `stop_r`) | Fix ref → **keep** (actionable head) |
+| `transition/TRIGGER_PLAN.md` | ⛔ SUPERSEDED (concluded → `cleanroom/FINDINGS.md`) | line drift | **Keep** (historical entry point) |
+| `transition/P0.md` | ⛔ SUPERSEDED (G0 verdict overturned by 6-config cleanroom) | — | **Keep** (offline results record) |
+| `transition/pshadow-design.md` | ⛔ SUPERSEDED (F0-fires premise falsified; never built) | ⚠️ (line drift) | **Keep** (historical design) |
 | `archive/bubble/integrator-robustness.md` | ⛔ SUPERSEDED (by the `solve_ivp` migration) | ⚠️ (heavy) | Add "superseded" banner → **archive** |
 | `archive/bubble/conduction-convergence.md` | ✅ SHIPPED (sign-off; switch landed) | minor | **Archive** |
-| `cooling/refactor-audit.md` | 🔵 ACTIONABLE (nothing shipped) | ⚠️ (~1–3 lines) | Refresh refs → **keep** |
+| `cooling/refactor-audit.md` | 🟡 PARTIAL (T-floor `cc8ae76` + NameError→ValueError `3deec3d` shipped; core PR-1–4 pending) | ⚠️ (5–45 lines) | **Keep** |
 | `performance/HOTPATH_PLAN.md` | 🟡 PARTIAL (F1 + F2 SHIPPED; F1-cousin + F5 open) | accurate (fresh) | **Keep** |
 | `performance/BUBBLE_LUMINOSITY_PERFORMANCE.md` | 📘 REFERENCE (consolidated bubble-perf history A→D + methodology) | fresh (2026-06-19) | **Keep** (canonical) |
 | `performance/F1_SUMMARY.md` + `F1_REPORT.html` | 📘 REFERENCE (F1 tables + illustrated report) | fresh | **Keep** |
@@ -53,7 +53,16 @@ cross-checked with `CHANGELOG.md` and `git log`.
 | `misc/TERMINATION_EVENTS.md` | 📘 REFERENCE (accurate) | — | **Keep** (current reference) |
 | `misc/LEAKING_LUMINOSITIES_SKELETON.md` | 🟡 PARTIAL (A–C shipped; D/F/G open) | — | **Keep** |
 
-**Tally:** 7 ✅ shipped · 2 ⛔ superseded · 5 🔵 actionable · 2 🟡 partial · 1 📘 reference · (1 results-record). *(+1 actionable: `performance/HOTPATH_PLAN.md`, added 2026-06-18 — not part of the 2026-06-16 verification pass; its own claims are source-verified inline.)*
+**Tally (21 rows):** 8 ✅ shipped · 5 ⛔ superseded · 1 🔵 actionable · 4 🟡 partial · 3 📘 reference.
+
+> **Update 2026-06-22 (consistency pass).** A full docs/dev/ consistency audit reconciled status
+> drift against current source. Changes: the transition trio (`TRIGGER_PLAN`, `P0`, `pshadow-design`)
+> → ⛔ **SUPERSEDED** by `cleanroom/FINDINGS.md` (the F0-cooling-trigger premise was falsified; the
+> transition is geometric, nothing shipped); `cooling/refactor-audit` → 🟡 PARTIAL (two side items
+> shipped); the β–δ **Phase-4 hybr default flip shipped** (`registry.py:307`); `TERMINATION_EVENTS`
+> gained `ENERGY_COLLAPSED` (51); `HOTPATH §F1` marked shipped in its own doc; broken archive-reorg
+> cross-references (old flat filenames) fixed; the five `html-insights/verification/` ledgers gained
+> banners. The remaining 🔵 actionable doc is `misc/backward-compat-audit.md`.
 
 > **Acted on (2026-06-16):** the shipped/superseded workstreams were moved to
 > `docs/dev/archive/` (`betadelta/`, `bubble/`, `n-consistency/` — writeups +

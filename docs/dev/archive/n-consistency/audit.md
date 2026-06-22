@@ -73,7 +73,7 @@ sign on the bubble before the paper pinned the convention — see §0.1).
   CIE-curve normalisation (chi_e applied to the CIE branch); §3.5 BE EOS μ
   (left on μ_H — see implementation plan Phase 5.2/6B).
 - **Implementation:** SHIPPED in #657 (`Hotfix/mu audit`). The fixes below
-  landed in Phases 0–3, 5 and 6 of `n-consistency-implementation-plan.md`, with
+  landed in Phases 0–3, 5 and 6 of `implementation-plan.md`, with
   a later **Phase A** splitting shell vs bubble ionisation (see note below).
   This section is retained as the audit-time record; the ❌ verdicts mark what
   *was* defective and has since been fixed, not open work.

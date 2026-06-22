@@ -25,7 +25,7 @@
 > that produced each artifact.
 
 **About this document**
-- **Status (verified 2026-06-16):** ✅ **SHIPPED** (Phases 0–3, verified 2026-06-16) — historical record. Open tail: the Phase-4 default flip to `hybr` (still `legacy`) and the Phase-5 transition-criterion study (now the `transition/` workstream).
+- **Status (updated 2026-06-22):** ✅ **SHIPPED** (Phases 0–4) — historical record. The Phase-4 default flip **has landed**: `betadelta_solver` now defaults to `hybr` (`registry.py:307`, `default.param:49`); `legacy` remains a fallback. The Phase-5 transition-criterion study became the `transition/` workstream, which **concluded** the transition is geometric, not thermal (`transition/cleanroom/FINDINGS.md`) — no trigger candidate shipped.
 - **Type:** plan — the master, phased work plan for the β–δ solver repair (Phases 0–6: baselines, safety fixes, four-arm shadow race, hybr promotion behind a switch, validation/default-flip, transition-criterion study, velocity-structure "Problem 2").
 - **Workstream:** `betadelta/` — β–δ (beta–delta) implicit-phase solver repair.
 - **Where it sits:** entry point → **this** → results docs `PHASE0_BASELINES.md`, `PHASE2_ARMS.md`, study `stalling-energy-phase.md`.
@@ -441,6 +441,10 @@ scratch under `/tmp`, re-run to regenerate):
   with β to 4.20.
 
 ## Phase 4 — Validation and default flip
+
+> ✅ **SHIPPED (2026-06-22 review).** The flip has landed — `betadelta_solver` defaults to `hybr`
+> (`registry.py:307`, `default.param:49`), `legacy` retained as a fallback. The validation/rollout
+> text below is the original plan, kept as history; do not re-run it as pending work.
 
 Winner vs legacy, three configs + one config with a strong WR/SN luminosity
 jump:

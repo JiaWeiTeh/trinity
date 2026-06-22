@@ -124,7 +124,7 @@ state    L_total(3e4)   rel-to-baseline [1.5e4  2e4   3e4   4e4    5e4]    L3/L_
 ## Limitations
 
 - **One `(β+δ)=0.629` regime.** The smoke states are early energy phase. The
-  `(β+δ)→negative` transition regime (where `bubble-integrator-robustness.md`
+  `(β+δ)→negative` transition regime (where `../archive/bubble/integrator-robustness.md`
   §I.5 located the boundary dip) needs later-phase states (a longer run) — not
   covered here. The dip did not appear at `(β+δ)=0.629`.
 - **One param class** (`mCloud 1e5 / sfe 0.3`). The trend (L3-driven, asymmetric)

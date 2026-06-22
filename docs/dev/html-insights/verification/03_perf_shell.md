@@ -1,5 +1,14 @@
 # Verification ledger 03 — F1_REPORT.html (A) + shell-solver/insights.html (B)
 
+> ⚠️ **This document may be out of date — verify before trusting it.** Point-in-time
+> audit, not a maintained spec; re-check each claim against current source.
+>
+> 🔄 **Living ledger — recheck and refine on every visit.** Re-run the verdicts when you
+> touch the relevant code; tick the fix boxes as they land.
+>
+> 💾 **Persist diagnostics — commit, don't re-run.** The per-report ledgers (01–05) carry the
+> `file:line` evidence so a future visit need not re-derive it.
+
 Verified 2026-06-22 on branch `claude/exciting-gates-mkxqn6`.
 
 ---

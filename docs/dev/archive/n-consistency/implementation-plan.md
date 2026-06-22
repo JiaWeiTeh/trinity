@@ -39,7 +39,7 @@
 > `chi_e_shell`. Line numbers throughout have drifted (the doc already disclaims
 > this at the top of "Ground rules").
 
-Companion to `n-consistency-audit.md` (physics rationale) — this is the
+Companion to `audit.md` (physics rationale) — this is the
 **exact edit spec**. Branch `hotfix/mu-audit`. Ground truth = the model paper
 (`n ≡ n_H`). Every before-block below was read in source at audit time; line
 numbers are as-of-audit and may drift as edits land.
@@ -49,7 +49,7 @@ numbers are as-of-audit and may drift as edits land.
 > plus **exposing `densBE_sigma`** and relabelling `densBE_Teff` as an *effective
 > (turbulent)* temperature — the `μ_mol`/isothermal "6B" rewrite in §Phase 6 was
 > **rejected** (it would only rescale a round-trip-cancelling diagnostic, and
-> `μ_mol` makes it hotter, not cooler; see `n-consistency-audit.md`). **Phase A**
+> `μ_mol` makes it hotter, not cooler; see `audit.md`). **Phase A**
 > (added after): the ~10⁴ K shell/HII region is now **singly-ionised He**
 > (`Z_He_shell=1` → `mu_ion_shell`, `chi_e_shell`); the hot bubble stays doubly
 > ionised. All pinned by `test/test_mu_audit_drift.py`.

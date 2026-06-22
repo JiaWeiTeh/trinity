@@ -183,7 +183,11 @@ the root cause (overflow) is fixed.
 
 ## 4. Candidate fixes (ranked)
 
-*(Updated 2026-06-18 after the empirical finding above — cgs demoted, φ-guard promoted.)*
+> ⛔ **Superseded by the Status + final-verdict table at the top (2026-06-22 review).** The full
+> config×idea validation matrix settled on **`clip`** (shipped — bit-identical, silences the flood).
+> The rankings in §4–§5 are the *pre-final-validation* analysis (φ-guard shifts `n_IF` by 2.1%, not an
+> identity; **cgs-rescale does NOT silence the flood**) — kept only as the reasoning trail. **Do not
+> implement from §4–§5; `clip` is live** (`get_shellODE.py:32,100`, `b27cede`).
 
 | # | option | silences flood? (measured) | used-region change | risk | effort | verdict |
 |---|---|---|---|---|---|---|
@@ -195,7 +199,7 @@ the root cause (overflow) is fixed.
 | 6 | Silence `ODEintWarning`/Fortran stdout | hides only | none | LOW | trivial | band-aid fallback |
 | 7 | `mxstep=50000` (shipped) | no | none (bit-identical) | — | done | revert (moot) |
 
-### #1 — CGS-rescale (RECOMMENDED, = the maintainer's out-of-the-box idea)
+### #1 — CGS-rescale (⛔ falsified — does NOT silence the flood; was the maintainer's out-of-the-box idea)
 Evaluate the ionised (and, for symmetry, neutral) RHS in **cgs** so intermediates stay ~10⁰–10¹⁶,
 then convert the derivatives back to code units. **Verified to be an exact algebraic identity**
 (native-AU vs cgs-then-convert agree to rel ~1e-16; `dphidr` bit-identical). Must convert the
@@ -300,6 +304,9 @@ strong alternative if the migration happens anyway.
 invasive; touches the audited RHS. Not worth it.
 
 ## 5. Recommendation
+
+> ⛔ **Superseded (2026-06-22) — `clip` shipped, not the φ-guard rollout below.** See the Status
+> block + final-verdict table at the top; this section is the original plan-of-record, kept as history.
 
 1. **Flood fix = #1 (φ>0 freeze-past-front guard)** — empirically clears the overflow (`ovf→−1,
    warns→0`), ~1–3 lines, keeps `odeint`. Pick φ-guard vs #2 (terminate-at-front) on the validation

@@ -25,7 +25,7 @@
 > that produced each artifact.
 
 **About this document**
-- **Status (verified 2026-06-16):** 📘 **REFERENCE** (verified 2026-06-16) — accurate against `phase_events.py` / `simulation_end.py`; keep as a current reference.
+- **Status (updated 2026-06-22):** 📘 **REFERENCE** — accurate against `phase_events.py` / `simulation_end.py`; keep as a current reference. (2026-06-22: added `energy_collapsed` / `SimulationEndCode.ENERGY_COLLAPSED` (51), which shipped with the failed-large-clouds fix after the 2026-06-16 pass.)
 - **Type:** design — a reference overview of every termination event (simulation-ending, phase-ending, monitoring) and post-integration stopping check, tabulated per phase with thresholds and the event-result structure.
 - **Workstream:** `misc/` — standalone (simulation termination events / stopping fates).
 - **Where it sits:** standalone — spans the whole pipeline (energy → implicit → transition → momentum → simulation end), describing the phase-flow and exit conditions (these have no before/after within misc/).
@@ -124,6 +124,7 @@ In addition to solve_ivp events, each phase performs post-integration checks:
 | `dissolved` | shell_nMax < nISM for stop_t_diss Myr | `EndSimulationDirectly = True` |
 | `stop_at_rCloud` | R2 > rCloud and `_snapshots_after_rCloud >= stop_at_rCloud_nSnap` (segment-loop check in 1b/1c/2; main.py also short-circuits 1b when `nSnap == 0`) | `EndSimulationDirectly = True` |
 | `max_segments` | segment_count >= MAX_SEGMENTS | `termination_reason = "max_segments"` |
+| `energy_collapsed` | Eb ≤ 0 or non-finite after the bubble solve (energy phase `run_energy_phase.py:340-351`; implicit `run_energy_implicit_phase.py:1007-1019`) | `EndSimulationDirectly = True`; `SimulationEndCode.ENERGY_COLLAPSED` (51); `termination_reason = "energy_collapsed"` |
 
 ---
 
