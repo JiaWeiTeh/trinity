@@ -25,19 +25,19 @@ rm -f "$EVAL"
 # collapse configs reach the decision at t~0.003 Myr -> small stop_t, fits in timeout.
 # stall/healthy configs: short stop_t (0.05) just to confirm the floor is a no-op.
 CELLS=(
-  "simple_cluster:$CLEAN/simple_cluster.param:0.05:600:stall"
-  "large_diffuse_lowsfe:$CLEAN/large_diffuse_lowsfe.param:0.05:600:stall"
-  "small_dense_highsfe:$CLEAN/small_dense_highsfe.param:0.05:600:stall"
-  "midrange_pl0:$CLEAN/midrange_pl0.param:0.05:600:stall"
-  "pl2_steep:$CLEAN/pl2_steep.param:0.05:600:stall"
-  "be_sphere:$CLEAN/be_sphere.param:0.05:600:stall"
-  "fail_repro:$FLC/fail_repro.param:0.05:600:collapse"
-  "fail_helix:$FLC/fail_helix.param:0.05:600:collapse"
-  "mass_5e8:$FLC/mass_5e8.param:0.05:600:collapse"
-  "mass_1e9:$FLC/mass_1e9.param:0.05:600:collapse"
-  "small_1e5:$FLC/small_1e5.param:0.05:600:healthy"
-  "small_1e6:$FLC/small_1e6.param:0.05:600:healthy"
-  "small_1e7:$FLC/small_1e7.param:0.05:600:healthy"
+  "simple_cluster:$CLEAN/simple_cluster.param:0.05:360:stall"
+  "large_diffuse_lowsfe:$CLEAN/large_diffuse_lowsfe.param:0.05:360:stall"
+  "small_dense_highsfe:$CLEAN/small_dense_highsfe.param:0.05:360:stall"
+  "midrange_pl0:$CLEAN/midrange_pl0.param:0.05:360:stall"
+  "pl2_steep:$CLEAN/pl2_steep.param:0.05:360:stall"
+  "be_sphere:$CLEAN/be_sphere.param:0.05:360:stall"
+  "fail_repro:$FLC/fail_repro.param:0.01:300:collapse"
+  "fail_helix:$FLC/fail_helix.param:0.01:300:collapse"
+  "mass_5e8:$FLC/mass_5e8.param:0.01:300:collapse"
+  "mass_1e9:$FLC/mass_1e9.param:0.01:300:collapse"
+  "small_1e5:$FLC/small_1e5.param:0.05:360:healthy"
+  "small_1e6:$FLC/small_1e6.param:0.05:360:healthy"
+  "small_1e7:$FLC/small_1e7.param:0.05:360:healthy"
 )
 
 for variant in V0 EBFLOOR; do
@@ -52,7 +52,10 @@ for variant in V0 EBFLOOR; do
       >> "$LOG" 2>&1
     rc=$?
     if [ "$rc" -eq 124 ]; then
-      echo "TIMEOUT [$variant $cfg] after ${tmo}s (no CSV row appended)" | tee -a "$LOG"
+      echo "TIMEOUT [$variant $cfg] after ${tmo}s -- salvaging partial jsonl" | tee -a "$LOG"
+      python "$PT4/h3_salvage_timeout.py" --config "$cfg" --variant "$variant" \
+        --out "$out" --csv "$EVAL" --traj "$traj" --floor "$FLOOR" \
+        --timeout_s "$tmo" >> "$LOG" 2>&1
     fi
   done
 done
