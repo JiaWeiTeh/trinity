@@ -336,7 +336,7 @@ deeper inside the dip sits. Pure read of <code>h2_crossing_summary.csv</code> + 
 <th>\(R_2/r_{\text{cloud}}\) @ ratio min</th></tr></thead><tbody>
 <tr><td>small_dense_highsfe</td><td>0.326</td><td>0.0117</td><td>525&times;</td><td>0.283</td><td>1.11</td></tr>
 <tr><td>simple_cluster</td><td>1.69</td><td>0.0902</td><td>147&times;</td><td>0.324</td><td>1.07</td></tr>
-<tr><td>midrange_pl0</td><td>8.53</td><td>0.392</td><td>34.4&times;</td><td>0.365</td><td>1.06</td></tr>
+<tr><td>midrange_pl0</td><td>8.53</td><td>0.392</td><td>34.4&times;</td><td>0.364</td><td>1.06</td></tr>
 <tr><td>pl2_steep <span class="tag" style="background:#e8842a">outlier</span></td><td>21.35</td><td>0.840</td><td>13.9&times;</td><td>0.489</td><td>0.064</td></tr>
 <tr><td>be_sphere</td><td>15.5</td><td>0.856</td><td>15.2&times;</td><td>0.471</td><td>0.72</td></tr>
 <tr><td>large_diffuse_lowsfe</td><td>88.05</td><td>3.66</td><td>1.52&times;</td><td>0.465</td><td>1.22</td></tr>

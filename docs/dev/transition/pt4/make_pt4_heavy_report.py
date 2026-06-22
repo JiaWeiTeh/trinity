@@ -265,15 +265,18 @@ short; the window splits the two clouds at <span class="nowrap">$3\times10^{-3}$
 <span class="nowrap">max&nbsp;rel|$\Delta E_b$|&nbsp;$\le2.6\times10^{-5}$</span> vs V0) — a genuine
 no-op to <span class="nowrap">$\ge4$</span> significant figures, the
 <span class="nowrap">$\kappa=0.9$</span> graze being its only, negligible, honest cost. The reason is
-simple: on those configs PdV/$L_{\rm mech}$ stays below 1, so the cap never engages. The same single
-ratio that leaves the controls untouched is what crosses 1 and kills the
+simple: on those configs PdV/$L_{\rm mech}$ settles well below 1 once the self-similar phase is
+established (after a brief IC-handoff spike on the first step — a snapshot-proxy artifact that does not
+track the true $\dot E_b$, so the integrated cap stays a no-op), so the cap never meaningfully engages.
+The same single ratio that leaves the controls untouched is what crosses 1 and stays there to kill the
 <span class="nowrap">$5\times10^{9}$</span> clouds.</p>
 
 <figure>
   <img src="__FIG_H4_CONTROL__" alt="control vs collapse PdV ratio">
   <figcaption><strong>Fig 5 — one control parameter sorts the regimes.</strong> PdV/$L_{\rm mech}(t)$
-  for <code>simple_cluster</code> (control — stays below 1, the cap never bites, byte-identical) vs the
-  two <span class="nowrap">$5\times10^{9}$</span> clouds (cross 1 → $E_b$ collapses). The break-even
+  for <code>simple_cluster</code> (control — below 1 after the brief IC-handoff spike, so the cap never
+  bites; byte-identical) vs the two <span class="nowrap">$5\times10^{9}$</span> clouds (cross 1 and stay
+  there → $E_b$ collapses). The break-even
   crossing is the discriminator between a healthy bubble and an over-drained one.</figcaption>
 </figure>
 
