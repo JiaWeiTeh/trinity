@@ -194,6 +194,22 @@ def _inflow_frac_thickness(v_arr, r_arr) -> float:
     return abs(float(rneg.max()) - float(rneg.min())) / rspan
 
 
+def evaluate_r1_shadow(R2, rCloud, edot_balance, k_blowout=1.0):
+    """R1 transition criteria in SHADOW mode (computed/logged, never drives the switch).
+
+    Returns (blowout_fired, ebpeak_fired):
+      blowout : R2 > k_blowout * rCloud   -- shell escapes the cloud (geometric).
+      ebpeak  : edot_balance <= 0         -- PdV-inclusive net energy stops growing;
+                edot_balance is get_betadelta's Edot_from_balance
+                ( = Lmech_total - (bubble_LTotal + leak) - 4*pi*R2^2*v2*Pb ).
+    docs/dev/transition/pt4/R1_SHADOW_PLAN.md
+    """
+    blowout = bool(rCloud is not None and rCloud > 0 and R2 > k_blowout * rCloud)
+    ebpeak = bool(edot_balance is not None
+                  and np.isfinite(edot_balance) and edot_balance <= 0.0)
+    return blowout, ebpeak
+
+
 def compute_max_dex_change(params_before: dict, params_after: dict, keys: list) -> float:
     """
     Compute the maximum dex (log10) change across monitored parameters.
@@ -625,6 +641,12 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
 
     # Track previous R2 for collapse detection
     R2_prev = R2
+
+    # R1 transition SHADOW accumulators (does NOT drive the phase switch; the
+    # criteria are logged + written to a sideline CSV). docs/dev/transition/pt4/R1_SHADOW_PLAN.md
+    shadow_rows = []
+    shadow_blowout_t = None
+    shadow_ebpeak_t = None
 
     # Adaptive time stepping
     dt_segment = DT_SEGMENT_INIT
@@ -1092,6 +1114,32 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         else:
             threshold = 0.05
 
+        # --- R1 transition SHADOW: evaluate + log, but DO NOT drive the switch. ---
+        # Reads only already-set state; appends to a local list and logs the first
+        # firing of each criterion; never sets termination_reason / breaks / writes a
+        # physics param -> main output stays byte-identical. The future *flip* would
+        # replace the logging here with a real break. docs/dev/transition/pt4/R1_SHADOW_PLAN.md
+        _rCloud = params['rCloud'].value
+        _edot_bal = betadelta_result.Edot_from_balance
+        _blowout, _ebpeak = evaluate_r1_shadow(R2, _rCloud, _edot_bal)
+        shadow_rows.append({
+            't_now': t_now, 'R2': R2, 'rCloud': _rCloud,
+            'R2_over_rCloud': (R2 / _rCloud if _rCloud else float('nan')),
+            'Eb': Eb, 'v2': v2, 'Pb': params['Pb'].value,
+            'Lgain': Lgain, 'Lloss': Lloss,
+            'cooling_ratio': ((Lgain - Lloss) / Lgain if Lgain > 0 else float('nan')),
+            'edot_balance': _edot_bal,
+            'blowout_fired': _blowout, 'ebpeak_fired': _ebpeak,
+        })
+        if _blowout and shadow_blowout_t is None:
+            shadow_blowout_t = t_now
+            logger.info(f"R1 shadow: BLOWOUT (R2>rCloud) would fire at t={t_now:.6e} Myr, "
+                        f"R2={R2:.4g} pc, R2/rCloud={R2 / _rCloud:.3g}")
+        if _ebpeak and shadow_ebpeak_t is None:
+            shadow_ebpeak_t = t_now
+            logger.info(f"R1 shadow: Eb-PEAK (net energy<=0) would fire at t={t_now:.6e} Myr, "
+                        f"R2={R2:.4g} pc, Edot_balance={_edot_bal:.3e}")
+
         if Lgain > 0 and (Lgain - Lloss) / Lgain < threshold:
             termination_reason = "cooling_balance"
             logger.info(f"Cooling balance reached: Lloss/Lgain ratio below {threshold}")
@@ -1207,6 +1255,24 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         betadelta_solve_count, betadelta_converged_count, betadelta_no_root_count)
     (logger.info if _clean else logger.warning)(f"  {_summary}")
     logger.info(terminal_prints.format_state(params, label="implicit phase exit"))
+
+    # R1 transition SHADOW: persist per-segment criteria to a sideline CSV. This is
+    # the ONLY new output -- it never touches dictionary.jsonl, so the main run
+    # output stays byte-identical. docs/dev/transition/pt4/R1_SHADOW_PLAN.md
+    try:
+        import csv as _csv
+        import os as _os
+        _out = params['path2output'].value
+        if _out and shadow_rows:
+            _path = _os.path.join(_out, 'shadow_R1_1b.csv')
+            with open(_path, 'w', newline='') as _f:
+                _w = _csv.DictWriter(_f, fieldnames=list(shadow_rows[0].keys()))
+                _w.writeheader()
+                _w.writerows(shadow_rows)
+            logger.info(f"R1 shadow: wrote {len(shadow_rows)} rows to {_path} "
+                        f"(blowout_t={shadow_blowout_t}, ebpeak_t={shadow_ebpeak_t})")
+    except Exception as _e:
+        logger.warning(f"R1 shadow sideline write failed (non-fatal): {_e}")
 
     return ImplicitPhaseResults(
         t=np.array(t_results),
