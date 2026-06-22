@@ -232,13 +232,27 @@ OMP_NUM_THREADS=1 python docs/dev/transition/cleanroom/c0_consistency.py \
     docs/dev/transition/pt4/sc_<run>.param --stop-t 0.5 \
     --out docs/dev/transition/pt4/h2_sc_<run>.csv
 ```
-Outputs (if present): `h2_sc_baseline.csv`, `h2_sc_bigcloud.csv` + `.log`. **Caveat:** the
-implicit phase is slow by design (the stall is the subject), so these short runs may not
-finish in the container; the committed h0 data in §5 is the primary evidence and already
-spans the regime. Re-run with a larger timeout to extend. *(See the run logs for the epoch
-reached; the experiment's prediction — that the bigger cloud holds Lloss/Lgain near its
-~0.33 in-cloud floor longer but still does not cross 0.05 — follows directly from §5's
-floor being intrinsic, not geometric.)*
+Outputs: `h2_sc_baseline.csv` + `.log` (committed; bigcloud did not finish — see below).
+
+**Baseline run completed cleanly (exit 0, no NaN, no error).** It reached t=0.028 Myr,
+R2=0.93 pc (R2/rCloud=0.55 — still inside the cloud), with phases energy(97 segs) +
+implicit(31 segs); `f_ret` 0.462→0.257 (DOWN, "under-cooled" — exactly the cleanroom
+signature), cooling-ratio minimum so far **0.478** at R2/rCloud=0.55. This is fully
+consistent with the committed h0 run of the *same* config (§5: same simple_cluster, carried
+to t=6, crosses rCloud at t=0.09, ratio_min=0.324). The run is healthy and behaves
+identically to the canonical data — the enlarged-cloud thought-experiment does not break
+anything.
+
+**Caveat — the implicit phase is slow by design (it is the stall under study).** The energy
+phase alone took ~1m43s; each implicit segment is a full betadelta solve. The `sc_bigcloud`
+run (rCloud=8.83 pc) was still grinding through its first implicit segments at t=0.0029 Myr
+when its timeout was reached, so it produced no completed CSV. Reaching its larger rCloud
+(8.83 pc) would require many more slow segments. **The committed h0 data in §5 is therefore
+the primary evidence** and already spans the full regime including the post-blowout
+collapse. The bigcloud prediction — that the larger cloud holds `Lloss/Lgain` near its
+~0.33 in-cloud floor for longer but still does not cross 0.05 — follows directly from §5's
+floor being intrinsic (under-cooling), not geometric. Re-run `sc_bigcloud.param` with a
+multi-hour timeout to confirm directly.
 
 ## 7. Verdict (answers to the maintainer's four sub-questions)
 
