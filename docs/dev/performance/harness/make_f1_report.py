@@ -68,7 +68,7 @@ sha256 matched, run completes).</li>
 <li>Migration output-diffs (98 snapshots × 67 fields, single-threaded): main solve change ≤ <b>1.4e-3</b>
 (<code>dMdt</code>), velocity-residual solve converged <code>dMdt</code> shift ≤ <b>0.28%</b>, <b>0/67</b> fields
 &gt;1%.</li>
-<li>Wall time at the residual-solve migration: <b>222.7 s → 199.6 s (−10.4%)</b>.</li>
+<li>Wall time at the residual-solve migration: <b>222.7 s → 199.6 s (−10.4%)</b> (indicative single-run wall time; not a committed/averaged benchmark).</li>
 <li>"Smoking gun": ~854 internal LSODA steps for ~60&nbsp;000 output radii (≈70× dense-output interpolation).</li>
 </ul>
 <p class="meta">Shipped: <code>a245c29</code> (#659), <code>1eb7f4d</code>, <code>5f4f229</code>,
@@ -159,7 +159,8 @@ reworked in three eras: <b>(A)</b> a nondeterministic <code>odeint</code> crash 
 <code>solve_ivp(dense_output)</code> — which quietly turned the original ~60k integration grid into a
 <i>vestigial output grid</i>; <b>(B)</b> the conduction zone was converged with a $K{=}2000$ dense sample;
 <b>(C)</b> "free win" cleanups (logging, dead gravity, cooling caches). <b>F1</b> finishes the job: it removes
-the now-vestigial 60k resample from the dMdt residual — <b>~1.5&times; per call, ~2.3&times; full-run</b> on the
+the now-vestigial 60k resample from the dMdt residual — <b>~1.5&times; per call</b> (CSV-backed; see §4.3–4.4),
+<b>~2.3&times; full-run</b> (indicative; the full-run A/B harness was bugged — global-state leak, see §4.5 false-alarm box — so treat this as a rough extrapolation, not a committed benchmark) on the
 degenerate config, with full-run physical equivalence to <b>~6&times;10⁻⁶</b>.
 </div>
 
@@ -250,8 +251,10 @@ __FIG_MATCHED__
 <code>_get_velocity_residuals</code> body (drop <code>_create_radius_grid</code> + the
 <code>_solve_bubble_structure</code> dense resample; one <code>solve_ivp(t_eval=linspace(r2Prime,R1,500))</code>).
 Validated at every level: per-call (3.1e-6), 538 unit tests, full-run equivalence (6e-6), and the opt-in stress
-gates (betadelta golden-match + bubble-solver 0-crash). <b>Result: ~1.5&times; per call; ~2.3&times; full-run on
-<code>simple_cluster</code></b> (it spends the most wall-time in bubble calls).</p>
+gates (betadelta golden-match + bubble-solver 0-crash). <b>Result: ~1.5&times; per call</b> (CSV-backed;
+<code>data/master_p0_table.csv</code>); <b>~2.3&times; full-run on <code>simple_cluster</code></b> (indicative
+extrapolation — the full-run A/B harness was bugged due to global-state leakage, see §4.5 false-alarm
+box; no committed wall-time CSV backs this figure).</p>
 <div class="lesson"><b>Why it works (and why the 60k was never needed for accuracy):</b> <code>solve_ivp</code>'s
 adaptive stepping (rtol $10^{-6}$) already resolves the stiff solution; the 60k was <i>output</i>
 over-resolution. 500 points converge the $\min T$/monotonic guards to the same $\dot M$. <br><br>

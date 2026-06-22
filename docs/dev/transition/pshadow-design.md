@@ -25,18 +25,18 @@
 > each artifact.
 
 **About this document**
-- **Status (verified 2026-06-16):** 🔵 **ACTIONABLE** (verified 2026-06-16) — design is sound and entirely unbuilt; awaiting sign-off.
+- **Status (updated 2026-06-22):** ⛔ **SUPERSEDED** by `cleanroom/FINDINGS.md` — the two-criterion F0 ∨ F4 design rests on "flat configs transition by cooling (F0 fires)", which the 6-config clean-room **falsified** (F0 never fires; even flat `simple_cluster` blows out geometrically). Never built, nothing shipped. Kept as a historical design record.
 - **Type:** design — the shadow-first, two-criterion (F0 cooling ∨ F4 blowout) trigger design, awaiting maintainer sign-off; no code changed yet.
 - **Workstream:** `transition/` — the implicit→momentum transition trigger.
 - **Where it sits:** `TRIGGER_PLAN.md` (plan) → `P0.md` (P0/P-sens evidence, G0 = profile-dependent) → **this (design for review)** → implementation (P-shadow → P-promote, not yet written).
 - **Code it concerns:** phase 1b implicit terminator (`run_energy_implicit_phase.py` F0 block + new `transition_trigger` param), the dead/blowout event factories in `phase_events.py`, and 1b→1c→2 routing in `main.py`.
 - **Linked files & data:** plan `TRIGGER_PLAN.md`; evidence `P0.md`; data `docs/dev/data/transition_*.csv`; code `trinity/phase1b_energy_implicit/run_energy_implicit_phase.py`, `trinity/phase_general/phase_events.py`, `trinity/main.py`.
 
-**Status:** DESIGN FOR REVIEW (2026-06-15). No code changed yet. Implements the
-P-shadow phase of `docs/dev/transition/TRIGGER_PLAN.md` using the evidence from
-`docs/dev/transition/P0.md` (P0 + P-sens complete; G0 = profile-dependent
-trigger). **Awaiting maintainer sign-off on the open decisions in §6 before any
-implementation.**
+**Status:** ⛔ SUPERSEDED (2026-06-22) — was DESIGN FOR REVIEW (2026-06-15). The
+P0 evidence this builds on (G0 = profile-dependent trigger) was overturned by the
+6-config clean-room (`cleanroom/FINDINGS.md`): cooling never fires, so the F0 half
+of F0 ∨ F4 is dead. No code was changed and none should be from this design; the
+live direction is the geometric / Eb-peak handoff plus mixing-layer cooling.
 
 ## 1. What the evidence mandates (recap, one line each)
 - **Flat configs transition by cooling** — F0 `(Lgain−Lloss)/Lgain < ε` fires at

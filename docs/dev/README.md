@@ -32,8 +32,18 @@ doc's "About this document" block also carries a verified **Status** line.
 
 **Naming.** Each workstream folder is self-contained (writeups **+** its harnesses
 and figures); the folder name gives the context, so filenames inside drop the
-workstream prefix (`transition/TRIGGER_PLAN.md`, not `TRANSITION_TRIGGER_PLAN.md`).
-`SCREAMING_SNAKE.md` = a major plan/spec/overview, `kebab-case.md` = an audit/results note.
+workstream prefix (e.g. `transition/TRIGGER_PLAN.md`, not `transition/TRANSITION_TRIGGER_PLAN.md`).
+*Case style* (not a filename): `ALL_CAPS_SNAKE` marks a major plan/spec/overview
+(e.g. `HYBR_PLAN.md`, `MIGRATION_PLAN.md`); `kebab-case` marks an audit/results note
+(e.g. `refactor-audit.md`, `pshadow-design.md`).
+
+**Referencing convention (future-proofing).** Because the prefix-drop makes bare basenames
+ambiguous (a `P0.md` or `audit.md` can't be located or machine-checked on its own — this is
+what made the cross-reference audit noisy), **cite another doc by its repo-relative path**
+(`docs/dev/transition/P0.md`), not by bare name. For **code** citations, line numbers drift, so
+pin an **absolute anchor**: a commit SHA (and optionally the branch for context, e.g.
+`feature/grouped-insights@c1b6a15`) rather than relying on the line number alone — the ⚠️ banner
+already warns the reader to re-verify against current source.
 
 ## Layout
 
@@ -41,6 +51,7 @@ workstream prefix (`transition/TRIGGER_PLAN.md`, not `TRANSITION_TRIGGER_PLAN.md
 docs/dev/
 ├── CODEBASE_REVIEW.md + codebase_review/   fresh-clone consistency review (this audit)
 ├── DOC_STATUS.md                           per-doc verified status (shipped / actionable / superseded)
+├── html-insights/                          📖 storyline books — workstream reports merged into chaptered HTML
 ├── data/                                   committed diagnostic CSVs (provenance for writeups)
 ├── transition/   implicit→momentum transition trigger   (🔵 ACTIVE)
 ├── cooling/      cooling-table refactor                 (🔵 ACTIVE)
@@ -83,7 +94,7 @@ The top-level `scratch/` (repo root) is separate, git-ignored, local-only.
 
 Moved under `archive/` once their work landed; kept as historical record (harnesses + data move with them).
 
-- `archive/betadelta/` — β–δ solver repair: `HYBR_PLAN`, `PHASE0_BASELINES`, `PHASE2_ARMS`, `stalling-energy-phase` + `diagnostics/`, `velstruct/`. ✅ shipped (one open tail: the Phase-4 default flip to `hybr`).
+- `archive/betadelta/` — β–δ solver repair: `HYBR_PLAN`, `PHASE0_BASELINES`, `PHASE2_ARMS`, `stalling-energy-phase` + `diagnostics/`, `velstruct/`, and the illustrated report `insights_betadelta_illustrated.html`. ✅ shipped, incl. the Phase-4 default flip — `betadelta_solver` now defaults to `hybr` (`registry.py:307`).
 - `archive/bubble/` — `integrator-robustness` (⛔ superseded by the `solve_ivp` migration), `conduction-convergence` (✅ shipped).
 - `archive/n-consistency/` — `audit`, `implementation-plan` (✅ shipped, pinned by `test_mu_audit_drift.py`), `pressure-terms-audit` (⛔ superseded).
 - `archive/restructure-audit.md`, `archive/sb99-refactor-audit.md` — older completed restructures.

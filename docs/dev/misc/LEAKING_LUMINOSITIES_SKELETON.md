@@ -37,7 +37,7 @@
 > plot-cf, plus the `rosette_cf*` params). The Status line below predates that —
 > re-verify which phases actually shipped before relying on it.
 
-> **Status (v2): Phase A–C drafted on branch `feature/add-Cf`.** The energy leak is wired;
+> **Status (v2, updated 2026-06-22): Phase A–C SHIPPED** (`coverFraction` + `_validate_coverFraction`, `get_leak_luminosity`, `L_leak` wired through the energy + implicit phases; pinned by `test/test_cf_leak.py`). The energy leak is wired;
 > the **mass sink (Phase D) and X-ray/photon work (Phase G) are NOT implemented** and several
 > edge cases are open (§7). Decisions Q1–Q4 are resolved per the leakage spec v2 (its §S5).
 > Line numbers drift — locate edits by function and quoted strings, not by number (spec S6).

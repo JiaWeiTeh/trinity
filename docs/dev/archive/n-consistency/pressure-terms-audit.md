@@ -26,7 +26,7 @@
 >
 > **Audit status (2026-06-08):** this file is **already self-declared SUPERSEDED**
 > (banner below) and remains accurate **as a historical record** — its pointer to
-> `n-consistency-audit.md` / `n-consistency-implementation-plan.md` is valid and
+> `audit.md` / `implementation-plan.md` is valid and
 > its μ constants are correct. No content fix needed.
 
 **About this document**
@@ -41,8 +41,8 @@
 > paper fixed the convention — reached the *opposite* conclusion on the bubble
 > (it treated `mu_ion` as the mass-conversion weight). The paper pins
 > `n ≡ n_H`, so mass uses `mu_convert` (=μ_H) and the bubble factor is `μ_H/μ_p`,
-> not 1. The authoritative record is **`n-consistency-audit.md`** (physics) and
-> **`n-consistency-implementation-plan.md`** (what shipped). Kept only to show
+> not 1. The authoritative record is **`audit.md`** (physics) and
+> **`implementation-plan.md`** (what shipped). Kept only to show
 > the reasoning that led there.
 
 Single source of truth for the hand-wavy pressure conversions in TRINITY —
@@ -56,7 +56,7 @@ and the exact, turnkey patch.
 > The headline item (Finding A, the bubble `P/(2k_BT)`) is **behavior-affecting**:
 > it changes bubble mass, self-gravity, and cooling luminosity. It is therefore
 > **held for model-author sign-off** (same posture as the grid fix in
-> `bubble-integrator-robustness.md`). Part II gives the precise patch so the
+> `../bubble/integrator-robustness.md`). Part II gives the precise patch so the
 > decision is one step.
 
 ## TL;DR
@@ -73,7 +73,7 @@ and the exact, turnkey patch.
   Result: bubble **mass and self-gravity are ≈2× too low**, and the `n` fed
   to cooling is 2× off from `n_tot`.
 - **Finding B:** the non-CIE cooling table's density axis is **`n_H`**
-  (documented in `cooling-refactor-audit.md:521`; the opiate tables even
+  (documented in `../../cooling/refactor-audit.md:521`; the opiate tables even
   carry a separate `nedens` column). The bubble feeds it `≈1.15·n_H`.
 - **Finding C (dead code):** `get_shellParams.py:30` has the μ-ratio
   **inverted** vs. the live formula in `shell_structure.py:115`. The function
