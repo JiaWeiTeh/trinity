@@ -49,6 +49,7 @@ FIGURES = {
     "__FIG_LEGHYBREXTRA__": ("legacy_vs_hybr_extra.png", "legacy vs hybr: delta, beta+delta, Eb, Pb through the dip"),
     "__FIG_CAUSAL__": ("dip_causalorder.png", "causal ordering of the dip turnovers: v2, Lloss, ratio, Pb, T0"),
     "__FIG_BLOWCHAIN__": ("blowout_chain.png", "blowout chain: v2 re-accel, Pb collapse, Lloss turnover, ratio recovery"),
+    "__FIG_FROZEN__": ("frozen_feedback.png", "frozen vs real cooling ratio (top) and constant vs surging Lmech (bottom), all six configs"),
 }
 
 
@@ -634,6 +635,45 @@ because the β-clamp decides whether \(P_b\) may collapse (hybr → recover) or 
 mechanistic core of why the transition is geometric, not thermal (§5, §7.2) and why legacy &ldquo;transitioned&rdquo;
 while hybr stalls (§7.5). <span class="muted">Scope: the sharp blowout→recovery is the early-crossing compact-flat
 regime; for steep/BE/diffuse the dip precedes blowout, and the late SN surge is feedback.</span></div>
+
+<h3>7.9&nbsp; Direct test: is the stall caused by feedback <i>surges</i>? Freeze the feedback and see.</h3>
+<p>§4 and §7.8 argue the cooling ratio is re-pressurised upward by feedback events (the WR bump, the \(\sim\!3\) Myr SN
+onset) <i>and</i> by blowout geometry. A clean way to separate the two: <b>remove the surges entirely</b>. We froze
+<i>all</i> stellar feedback to its \(t=1.0\) Myr value &mdash; \(L_{\text{mech}}\), \(\dot p\), \(v_{\text{mech}}\),
+\(Q_i\), everything held constant for the whole run (so SN onset never happens) &mdash; and ran all six configs to
+6 Myr. If the plateau were <i>surge-sustained</i>, steady injection should let the ratio fall through 0.05. The freeze
+is a runtime monkeypatch of the SPS interpolators in the harness (<code>c0_consistency.py --freeze-feedback-at 1.0</code>);
+production code is untouched, and \(L_{\text{gain}}\) is verified dead-constant across every implicit row (the bottom
+panel below).</p>
+<p><b>The answer is no &mdash; decisively, and across the whole config space.</b> With feedback frozen, the cooling
+ratio still dips early and <b>surges back up</b>, and <b>never approaches 0.05</b> in any config (floor 0.25&ndash;0.50).
+Most telling: the <b>frozen-feedback minimum is within \(\sim\!0.01\)&ndash;0.04 of the real-feedback minimum for every
+config</b> &mdash; removing the surges barely moves the floor. The dip-then-surge happens with the feedback
+<i>dead-constant</i>, so the surge is <b>not</b> a feedback artifact: it is the §7.8 geometry (in-cloud dilution, then
+blowout) collapsing \(L_{\text{loss}}\). Steady feedback cannot rescue a cooling-balance trigger.</p>
+<table><thead><tr><th>config</th><th>\(L_{\text{gain}}\) frozen (const)</th><th>frozen min ratio</th><th>at \(t\) [Myr]</th><th>real min ratio</th><th>frozen blowout</th><th>reaches 0.05?</th></tr></thead><tbody>
+<tr><td>small_dense_highsfe</td><td>\(1.14\times10^{8}\)</td><td>0.245</td><td>0.021</td><td>0.283</td><td>0.017</td><td><b>no</b></td></tr>
+<tr><td>simple_cluster</td><td>\(6.85\times10^{8}\)</td><td>0.327</td><td>0.082</td><td>0.324</td><td>0.087</td><td><b>no</b></td></tr>
+<tr><td>midrange_pl0</td><td>\(2.28\times10^{9}\)</td><td>0.370</td><td>0.430</td><td>0.364</td><td>0.390</td><td><b>no</b></td></tr>
+<tr><td>pl2_steep</td><td>\(2.28\times10^{9}\)</td><td>0.502</td><td>0.040</td><td>0.489</td><td>0.794</td><td><b>no</b></td></tr>
+<tr><td>be_sphere</td><td>\(1.14\times10^{9}\)</td><td>0.472</td><td>0.573</td><td>0.471</td><td>0.823</td><td><b>no</b></td></tr>
+<tr><td>large_diffuse_lowsfe</td><td>\(2.28\times10^{9}\)</td><td>0.496</td><td>4.310</td><td>0.465</td><td>3.660</td><td><b>no</b></td></tr>
+</tbody></table>
+<figure>__FIG_FROZEN__<figcaption><b>Top:</b> cooling ratio \((L_{\text{gain}}-L_{\text{loss}})/L_{\text{gain}}\) with
+feedback frozen at \(t=1.0\) Myr (solid, bold) vs the real time-varying run (dashed, faint), all six configs, against
+the 0.05 threshold; vertical dash-dot lines mark each <i>frozen</i> run's own blowout (\(R_2>r_{\text{cloud}}\)). The
+solid and dashed curves nearly overlap and every one floors far above 0.05. <b>Bottom:</b> \(L_{\text{mech,total}}=
+L_{\text{gain}}\) &mdash; frozen runs are flat horizontal lines (proof of the freeze), real runs surge (WR bump + SN
+onset \(\sim\!3\) Myr). Pure read of <code>data/c0_*_frozen.csv</code> (runs:
+<code>c0_consistency.py --freeze-feedback-at 1.0 --stop-t 6</code>) vs <code>data/c0_*_h0.csv</code>, via
+<code>plot_frozen_feedback.py</code>.</figcaption></figure>
+<div class="box find"><div class="lab">what the frozen-feedback test settles</div>
+The cooling-ratio floor is set by the <b>cloud geometry</b> (in-cloud density fall-off, then the shell venting at
+\(r_{\text{cloud}}\)), <i>not</i> by the feedback time-profile. Killing the WR/SN surges leaves the floor essentially
+unchanged (frozen min \(\approx\) real min, everywhere) and still produces the dip-then-surge. This is the strongest
+form of the §7.8 result: a cooling-balance trigger \((L_{\text{gain}}-L_{\text{loss}})/L_{\text{gain}}<0.05\) cannot
+fire at the physical transition <b>even with perfectly steady feedback</b> &mdash; the geometry drives cooling the wrong
+way (up, away from 0.05) regardless. The transition must be detected geometrically (§5, §7.8), not thermally.</div>
 """
 
 SEC_REPRO = r"""
@@ -641,12 +681,13 @@ SEC_REPRO = r"""
 <p class="small">Everything is committed under <code>docs/dev/transition/cleanroom/</code> &mdash; reproducible
 without re-running the (hours-long) hybr sims. Each figure is a pure read of a committed CSV.</p>
 <table><thead><tr><th>artifact</th><th>what</th></tr></thead><tbody>
-<tr><td><code>c0_consistency.py</code></td><td>substrate certification harness (C0: residuals + \(f_{\text{ret}}\))</td></tr>
+<tr><td><code>c0_consistency.py</code></td><td>substrate certification harness (C0: residuals + \(f_{\text{ret}}\)); also runs the frozen-feedback test (<code>--freeze-feedback-at</code>) and persistent runs (<code>--run-dir</code>)</td></tr>
+<tr><td><code>frozen_supervisor.sh</code></td><td>refresh-robust runner for the §7.9 frozen-feedback experiment: persistent run dirs, live-jsonl→CSV checkpoints pushed to the remote, auto-relaunch on container restart</td></tr>
 <tr><td><code>harvest_h0.py</code></td><td>candidate-trigger firing-epoch harvest (the G0 deliverable)</td></tr>
 <tr><td><code>mixcool_whatif.py</code></td><td>offline mixing-layer (\(\theta\)) calibration for the root fix</td></tr>
 <tr><td><code>blowout_marker.py</code></td><td>reconstructs \(r_{\text{cloud}}\) per config from the <code>.param</code> via TRINITY <code>validate_gmc</code> (not hardcoded) &amp; draws the blowout lines on the time-axis figures</td></tr>
-<tr><td><code>data/c0_*_st6.csv</code> &middot; <code>data/c0_*_h0.csv</code> &middot; <code>data/c0_*_legacy.csv</code> &middot; <code>data/surge_coincidence.csv</code></td><td>per-config hybr captures, legacy (BEFORE) captures, + the surge-coincidence table</td></tr>
-<tr><td><code>plot_{fret,f0path,beta,surge,phaseportrait,dipdrivers,g0,blowout,mixcool,cert,dipmechanism,beforeafter,legacy_vs_hybr,legacy_vs_hybr_extra,pdv,pdv_massspectrum,dip_causalorder,blowout_chain}.py</code> &rarr; <code>figures/*.png</code></td><td>the eighteen figures above (each a pure read of a CSV)</td></tr>
+<tr><td><code>data/c0_*_st6.csv</code> &middot; <code>data/c0_*_h0.csv</code> &middot; <code>data/c0_*_legacy.csv</code> &middot; <code>data/c0_*_frozen.csv</code> &middot; <code>data/surge_coincidence.csv</code></td><td>per-config hybr captures, legacy (BEFORE) captures, frozen-feedback (§7.9) captures, + the surge-coincidence table</td></tr>
+<tr><td><code>plot_{fret,f0path,beta,surge,phaseportrait,dipdrivers,g0,blowout,mixcool,cert,dipmechanism,beforeafter,legacy_vs_hybr,legacy_vs_hybr_extra,pdv,pdv_massspectrum,dip_causalorder,blowout_chain,frozen_feedback}.py</code> &rarr; <code>figures/*.png</code></td><td>the nineteen figures above (each a pure read of a CSV)</td></tr>
 <tr><td><code>PLAN.md</code> &middot; <code>FINDINGS.md</code></td><td>the living plan / pre-registration &amp; the consolidated write-up</td></tr>
 </tbody></table>
 <p class="small muted">Rebuild this report:
