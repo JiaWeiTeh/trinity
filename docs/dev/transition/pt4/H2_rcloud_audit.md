@@ -243,16 +243,28 @@ to t=6, crosses rCloud at t=0.09, ratio_min=0.324). The run is healthy and behav
 identically to the canonical data — the enlarged-cloud thought-experiment does not break
 anything.
 
-**Caveat — the implicit phase is slow by design (it is the stall under study).** The energy
-phase alone took ~1m43s; each implicit segment is a full betadelta solve. The `sc_bigcloud`
-run (rCloud=8.83 pc) was still grinding through its first implicit segments at t=0.0029 Myr
-when its timeout was reached, so it produced no completed CSV. Reaching its larger rCloud
-(8.83 pc) would require many more slow segments. **The committed h0 data in §5 is therefore
-the primary evidence** and already spans the full regime including the post-blowout
-collapse. The bigcloud prediction — that the larger cloud holds `Lloss/Lgain` near its
-~0.33 in-cloud floor for longer but still does not cross 0.05 — follows directly from §5's
-floor being intrinsic (under-cooling), not geometric. Re-run `sc_bigcloud.param` with a
-multi-hour timeout to confirm directly.
+**Big-cloud run ALSO completed cleanly (exit 0, no NaN)** — 139 rows to t=0.0546 Myr,
+R2max=1.33 pc (R2/rCloud=0.15, deep inside the larger cloud), `f_ret` 0.462→0.221 (DOWN,
+under-cooled). Both runs committed: `h2_sc_baseline.csv`, `h2_sc_bigcloud.csv`.
+
+**The decisive matched comparison.** At the *same absolute* shell radius **R2 = 0.894 pc**
+— where the baseline shell is at R2/rCloud=0.53 (halfway to its 1.69-pc edge) but the
+bigcloud shell is at R2/rCloud=0.10 (deep inside its 8.83-pc cloud) — the cooling state is
+**identical**: `Lloss/Lgain = 0.5155`, ratio = `0.4845` in *both* runs. The cooling
+behaviour is set by the **local density the shell sits in** (same `nCore` in both), **not
+by proximity to rCloud**. This empirically proves: (a) the enlarged-rCloud construction is
+clean — at matched R2 inside the cloud the physics is bit-for-bit the same; (b) enlarging
+rCloud only changes *where* the eventual density cliff sits, not the in-cloud cooling floor;
+(c) that floor (~0.48 at this early epoch; ~0.32 at the edge minimum per §5) is **6–10×
+above the 0.05 trigger regardless of cloud size**.
+
+**Caveat — the implicit phase is slow by design (it is the stall under study).** Energy
+phase ~1m43s; each implicit segment is a full betadelta solve. Both runs were capped early
+(reached t≈0.03–0.05 Myr, R2 < rCloud) — they did not run far enough to watch the bigcloud
+shell reach its larger 8.83-pc edge and blow out. **The committed h0 data in §5 (same
+configs to t=6, full blowout)** remains the primary evidence for the post-crossing collapse.
+Re-run `sc_bigcloud.param` with a multi-hour timeout to watch its (delayed) blowout
+directly; the matched comparison above already settles the in-cloud question.
 
 ## 7. Verdict (answers to the maintainer's four sub-questions)
 
@@ -278,7 +290,10 @@ failure.
 fire?** **Continue self-consistently: YES** (it already runs past rCloud today; enlarging
 the cloud just delays the density cliff, with larger but physical self-gravity). **Trigger
 fire: NO, not from geometry alone.** Keeping the shell in dense gas pins `Lloss/Lgain` near
-its in-cloud floor of **0.28–0.49** — still ~6–10× above 0.05. The under-cooling is
+its in-cloud floor of **0.28–0.49** — still ~6–10× above 0.05. The matched-R2 experiment
+(§6: identical cooling state at R2=0.894 pc whether at R2/rCloud=0.53 or 0.10) confirms the
+floor is set by local density, not by rCloud proximity, so enlarging rCloud cannot lower it.
+The under-cooling is
 intrinsic to the energy-conserving Weaver/Rahner interior (cleanroom §3: `f_ret` ≈ 0.25–0.40
 vs observed 0.01–0.1; interior `T0` ~1e6–8e6 K, too hot to radiate). **So H2's mechanism is
 correct (the stall *is* the geometry collapsing `Lloss`), but its remedy is wrong (a bigger
