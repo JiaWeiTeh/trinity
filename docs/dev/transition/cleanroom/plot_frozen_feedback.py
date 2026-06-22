@@ -38,13 +38,10 @@ import matplotlib.pyplot as plt
 
 import blowout_marker as bm
 
-HERE = Path(__file__).resolve().parent
-STYLE = HERE.parents[3] / "paper" / "_lib" / "trinity.mplstyle"  # parents[3]=repo root
-if STYLE.exists():
-    plt.style.use(str(STYLE))
-plt.rcParams["text.usetex"] = False
+bm.apply_style()
 
-WONG = ["#E69F00", "#56B4E9", "#009E73", "#0072B2", "#D55E00", "#CC79A7"]
+HERE = Path(__file__).resolve().parent
+
 CONFIGS = ["small_dense_highsfe", "pl2_steep", "simple_cluster",
            "midrange_pl0", "be_sphere", "large_diffuse_lowsfe"]
 THRESHOLD = 0.05
@@ -99,7 +96,7 @@ def main():
     fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(8.2, 7.6))
     summary = []
     for i, cfg in enumerate(CONFIGS):
-        c = WONG[i % len(WONG)]
+        c = bm.color(cfg)
         tr, rr, lgr, _ = load(HERE / "data" / f"c0_{cfg}_h0.csv")        # REAL
         tf, rf, lgf, r2f = load(HERE / "data" / f"c0_{cfg}_frozen.csv")  # FROZEN
         short = cfg.split("_")[0]

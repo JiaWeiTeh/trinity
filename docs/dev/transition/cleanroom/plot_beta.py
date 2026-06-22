@@ -21,13 +21,11 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from blowout_marker import mark
+from blowout_marker import apply_style, mark
+
+apply_style()
 
 HERE = Path(__file__).resolve().parent
-STYLE = HERE.parents[3] / "paper" / "_lib" / "trinity.mplstyle"  # parents[3]=repo root
-if STYLE.exists():
-    plt.style.use(str(STYLE))
-plt.rcParams["text.usetex"] = False
 
 BPD_TRIGGER = -0.4  # beta+delta inflow trigger (archive: -0.4 hunt .. -0.5 steep)
 

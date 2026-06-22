@@ -17,10 +17,55 @@ import numpy as np
 
 HERE = Path(__file__).resolve().parent
 BLOWOUT_LS = (0, (7, 2, 1, 2))  # distinct dash-dot, reserved for legacy blowout lines
-BLOWOUT_MARKER = "*"            # blowout shown as a star ON the trajectory (cleaner)
+BLOWOUT_MARKER = "o"            # blowout shown as a circle ON the trajectory (cleaner)
 _BLOWOUT_LABEL = r"blowout ($R_2>r_{\rm cloud}$)"
 _rc_cache = {}
 _tb_cache = {}
+
+# --- Canonical cloud-config -> colour --------------------------------------- #
+# Keyed by config NAME so a given cloud keeps ONE colour across EVERY transition
+# figure. Plots previously used WONG[index], which drifted with glob/list order (e.g.
+# simple_cluster differed between frozen_feedback and the rest). These values match the
+# historical glob-sorted assignment, so existing figures keep their colours and only the
+# order-dependent outliers are corrected. Wong colourblind-safe palette.
+CONFIG_COLOR = {
+    "be_sphere":            "#E69F00",
+    "large_diffuse_lowsfe": "#56B4E9",
+    "midrange_pl0":         "#009E73",
+    "pl2_steep":            "#0072B2",
+    "simple_cluster":       "#D55E00",
+    "small_dense_highsfe":  "#CC79A7",
+}
+
+
+def color(config):
+    """Dedicated colour for a cloud config. Raises (asserts) on an unregistered config so a
+    new one cannot silently drift in colour across the storyline."""
+    try:
+        return CONFIG_COLOR[config]
+    except KeyError:
+        raise KeyError(
+            f"{config!r} is not in blowout_marker.CONFIG_COLOR -- add it so its colour "
+            f"stays consistent across every figure in the storyline."
+        )
+
+
+def apply_style():
+    """Shared dev-figure style: trinity.mplstyle (serif Computer Modern) with usetex OFF
+    (no LaTeX in this container) and doc-friendly, smaller axis/tick/legend fonts so the
+    multi-panel figures stop overlapping. Call once at import time in each plot generator."""
+    import matplotlib.pyplot as plt
+    style = HERE.parents[3] / "paper" / "_lib" / "trinity.mplstyle"
+    if style.exists():
+        plt.style.use(str(style))
+    plt.rcParams.update({
+        "text.usetex": False,
+        "axes.labelsize": 11.5,
+        "axes.titlesize": 11,
+        "xtick.labelsize": 9.5,
+        "ytick.labelsize": 9.5,
+        "legend.fontsize": 8.5,
+    })
 
 
 def rcloud(config):

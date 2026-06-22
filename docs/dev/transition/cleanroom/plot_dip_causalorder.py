@@ -60,14 +60,11 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from blowout_marker import mark
+from blowout_marker import apply_style, mark
+
+apply_style()
 
 HERE = Path(__file__).resolve().parent
-# repo-root paper/_lib/trinity.mplstyle (parents[3] == /home/user/trinity)
-STYLE = HERE.parents[3] / "paper" / "_lib" / "trinity.mplstyle"
-if STYLE.exists():
-    plt.style.use(str(STYLE))
-plt.rcParams["text.usetex"] = False  # no LaTeX in this container
 
 DATA = HERE / "data"
 FIGDIR = HERE / "figures"

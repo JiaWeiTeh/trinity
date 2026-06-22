@@ -27,15 +27,12 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from blowout_marker import mark
+from blowout_marker import apply_style, color, mark
+
+apply_style()
 
 HERE = Path(__file__).resolve().parent
-STYLE = HERE.parents[3] / "paper" / "_lib" / "trinity.mplstyle"  # parents[3]=repo root
-if STYLE.exists():
-    plt.style.use(str(STYLE))
-plt.rcParams["text.usetex"] = False
 FOURPI = 4 * math.pi
-WONG = ["#0072B2", "#D55E00", "#009E73", "#CC79A7", "#E69F00", "#56B4E9"]
 
 
 def load(path):
@@ -81,13 +78,13 @@ def main():
     axA.legend(loc="lower center", fontsize=8, framealpha=0.9)
 
     # Panel B: F0 (no PdV) vs F0+PdV (=net) for all configs
-    for i, (name, d) in enumerate(sorted(data.items())):
+    for name, d in sorted(data.items()):
         t = [x["t"] for x in d]
         f0 = [x["f0"] for x in d]
-        axB.plot(t, f0, color=WONG[i % 6], lw=1.4, ls="-")
-        axB.plot(t, [x["net"] for x in d], color=WONG[i % 6], lw=1.4, ls="--", alpha=0.9)
+        axB.plot(t, f0, color=color(name), lw=1.4, ls="-")
+        axB.plot(t, [x["net"] for x in d], color=color(name), lw=1.4, ls="--", alpha=0.9)
         # each config's blowout: star on its F0 (solid, primary) curve, own colour
-        mark(axB, name, t=t, y=f0, color=WONG[i % 6], label=False)
+        mark(axB, name, t=t, y=f0, color=color(name), label=False)
     axB.axhline(0.05, color="k", ls=":", lw=1.1)
     axB.text(axB.get_xlim()[0] if False else 4e-3, 0.075, "trigger 0.05", fontsize=8)
     axB.axhline(0, color="0.6", lw=0.7)

@@ -27,16 +27,13 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from blowout_marker import mark
+from blowout_marker import apply_style, color, mark
+
+apply_style()
 
 HERE = Path(__file__).resolve().parent
 DATA = HERE / "data"
-STYLE = HERE.parents[3] / "paper" / "_lib" / "trinity.mplstyle"
-if STYLE.exists():
-    plt.style.use(str(STYLE))
-plt.rcParams["text.usetex"] = False
 
-WONG = ["#E69F00", "#56B4E9", "#009E73", "#0072B2", "#D55E00", "#CC79A7", "#F0E442", "#000000"]
 THRESH = 0.05
 
 
@@ -70,7 +67,7 @@ def main():
     fig, (axB, axA) = plt.subplots(1, 2, figsize=(12.4, 4.8), sharey=True)
     nlegacy = 0
     for i, name in enumerate(names):
-        col = WONG[i % len(WONG)]
+        col = color(name)
         # AFTER (hybr)
         ta, ra = ratio(DATA / f"c0_{name}_h0.csv")
         if ta:
@@ -104,8 +101,8 @@ def main():
     axB.text(0.97, THRESH + 0.015, "transition threshold 0.05", transform=axB.get_yaxis_transform(),
              ha="right", va="bottom", fontsize=8, color="0.45")
     import matplotlib.lines as mlines
-    handles = [mlines.Line2D([], [], color=WONG[i % len(WONG)], lw=1.6, label=n)
-               for i, n in enumerate(names)]
+    handles = [mlines.Line2D([], [], color=color(n), lw=1.6, label=n)
+               for n in names]
     fig.legend(handles=handles, loc="upper center", ncol=len(names),
                fontsize=8, frameon=False, bbox_to_anchor=(0.5, 1.02))
     fig.suptitle("Cooling-balance trigger over the evolution  "

@@ -54,17 +54,12 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from blowout_marker import mark
+from blowout_marker import apply_style, mark
+
+apply_style()
 
 HERE = Path(__file__).resolve().parent
-# repo-root paper/_lib/trinity.mplstyle (parents[3] == /home/user/trinity)
-STYLE = HERE.parents[3] / "paper" / "_lib" / "trinity.mplstyle"
-if STYLE.exists():
-    plt.style.use(str(STYLE))
-plt.rcParams["text.usetex"] = False  # no LaTeX in this container
 
-# Wong palette (same ordering as the sibling plot_*.py generators).
-WONG = ["#E69F00", "#56B4E9", "#009E73", "#0072B2", "#D55E00", "#CC79A7", "#000000"]
 C_LLOSS = "#D55E00"  # vermilion -- the measured cooling loss
 C_EM = "#0072B2"     # blue      -- the n^2 V emission-measure proxy
 C_T0 = "#009E73"     # green     -- interior temperature

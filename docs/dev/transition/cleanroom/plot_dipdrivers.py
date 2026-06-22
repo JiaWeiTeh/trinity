@@ -32,16 +32,12 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from blowout_marker import mark
+from blowout_marker import apply_style, color, mark
+
+apply_style()
 
 HERE = Path(__file__).resolve().parent
-STYLE = HERE.parents[3] / "paper" / "_lib" / "trinity.mplstyle"
-if STYLE.exists():
-    plt.style.use(str(STYLE))
-plt.rcParams["text.usetex"] = False  # no LaTeX in this container
 
-# Same Wong palette as plot_fret.py — keep per-config colours consistent across figures.
-WONG = ["#E69F00", "#56B4E9", "#009E73", "#0072B2", "#D55E00", "#CC79A7", "#F0E442", "#000000"]
 THRESHOLD = 0.05  # transition trigger threshold
 
 
@@ -113,7 +109,7 @@ def main():
         t, r, lg, ll, lw, lsn = load(p)
         if not t:
             continue
-        c = WONG[i % len(WONG)]
+        c = color(name)
 
         # Panel 1: cooling trigger r(t).
         xr, yr = _xy_signed(t, r)
