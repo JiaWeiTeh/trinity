@@ -1,0 +1,7 @@
+config,min_beta,min_beta_plus_delta,t_at_min,rows_bpd_below_-0.4,inflow_trigger_reached
+be_sphere,-0.165,0.681,0.01,0,no
+large_diffuse_lowsfe,-2.048,-0.812,3.76,10,yes
+midrange_pl0,-0.996,0.336,3.782,0,no
+pl2_steep,-1.071,0.255,3.79,0,no
+simple_cluster,-1.572,-0.315,3.79,0,no
+small_dense_highsfe,-1.597,-0.347,3.795,0,no

@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# One-shot health check of the C0 full (stop_t 6) batch. Run on a ~6 min cadence.
+# Liveness uses dictionary.jsonl mtime (written every accepted segment, INFO or not),
+# so a live-but-quiet implicit phase is not mistaken for a stall.
+cd "$(git rev-parse --show-toplevel)" 2>/dev/null || exit 0
+D=docs/dev/transition/cleanroom/data
+SUF="${1:-st6}"   # run suffix (st6 = C0; h0 = enriched H0 harvest) -- avoids stale-CSV miscount
+ts=$(date '+%H:%M:%S')
+
+done=$(ls "$D"/c0_*_${SUF}.csv 2>/dev/null | wc -l | tr -d ' ')
+crash=$(grep -lE "Traceback|CRITICAL|\[FAIL\]" "$D"/c0_*_${SUF}.log 2>/dev/null | sed "s#.*/c0_##;s/_${SUF}.log//" | tr '\n' ',')
+# 4-min freshness window: hybr stiff segments can exceed 2 min, so a tighter
+# window false-flags a working run as quiet.
+live=$(find /tmp -maxdepth 3 -name dictionary.jsonl -mmin -4 2>/dev/null | wc -l | tr -d ' ')
+
+echo "[$ts] HEARTBEAT [$SUF]: done=$done/6 | live_writers(<4min)=$live | crashed=[${crash:-none}]"
+working=0
+for pid in $(pgrep -f "c0_consistency.py.*stop-t 6" 2>/dev/null); do
+  args=$(ps -o args= -p "$pid" 2>/dev/null)
+  case "$args" in *python*) ;; *) continue ;; esac
+  cfg=$(printf '%s' "$args" | grep -oE "configs/[a-z0-9_]+" | sed 's#configs/##')
+  [ -z "$cfg" ] && continue
+  el=$(ps -o etime= -p "$pid" 2>/dev/null | tr -d ' ')
+  # R/D = actively computing (a stiff hybr segment can run minutes with no jsonl
+  # write, so CPU-state is the reliable liveness signal, not jsonl freshness).
+  state=$(ps -o stat= -p "$pid" 2>/dev/null | cut -c1)
+  case "$state" in R|D) working=$((working + 1)) ;; esac
+  ph=$(grep -oE "PHASE 1[abc][^,]*|momentum-driven|shell.dissolved|Simulation (finished|complete)" \
+       "$D/c0_${cfg}_${SUF}.log" 2>/dev/null | tail -1)
+  echo "   $cfg (el=$el state=$state): ${ph:-init}"
+done
+
+# anomaly flags (for the monitoring loop to act on)
+[ "$done" = 6 ] && echo "   >>> ALL 6 COMPLETE"
+[ -n "$crash" ] && echo "   >>> CRASH in: $crash"
+[ "$working" = 0 ] && [ "$done" != 6 ] && echo "   >>> WARNING: no sims computing (R/D) -- possible stall/crash"
+exit 0
