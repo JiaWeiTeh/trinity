@@ -21,13 +21,11 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from blowout_marker import mark
+from blowout_marker import apply_style, mark
+
+apply_style()
 
 HERE = Path(__file__).resolve().parent
-STYLE = HERE.parents[3] / "paper" / "_lib" / "trinity.mplstyle"  # parents[3]=repo root
-if STYLE.exists():
-    plt.style.use(str(STYLE))
-plt.rcParams["text.usetex"] = False
 
 BPD_TRIGGER = -0.4  # beta+delta inflow trigger (archive: -0.4 hunt .. -0.5 steep)
 
@@ -68,8 +66,9 @@ def main():
         ax.fill_between(t, bpd, BPD_TRIGGER, where=[x < BPD_TRIGGER for x in bpd],
                         color="#b30000", alpha=0.35, interpolate=True)
         ax.set_ylabel(r"$\beta,\ \beta+\delta$")
-        # blowout (R2 exits rCloud) in this panel's compression-curve colour; label only top row
-        mark(ax, name, color="#D55E00", label=(i == 0))
+        # blowout (R2 exits rCloud) as a star ON the beta+delta compression curve, in
+        # that curve's colour; label only top row
+        mark(ax, name, t, bpd, color="#D55E00", label=(i == 0))
         ax.text(0.99, 0.05, f"{name}   β<0: {fneg:.0%}   rows β+δ<−0.4: {ntrig}",
                 transform=ax.transAxes, ha="right", va="bottom", fontsize=8)
         ax2 = ax.twinx()

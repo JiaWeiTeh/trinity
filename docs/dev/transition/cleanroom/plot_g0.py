@@ -16,12 +16,10 @@ import matplotlib.pyplot as plt
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
+from blowout_marker import apply_style  # noqa: E402
 from harvest_h0 import harvest  # noqa: E402
 
-STYLE = HERE.parents[3] / "paper" / "_lib" / "trinity.mplstyle"
-if STYLE.exists():
-    plt.style.use(str(STYLE))
-plt.rcParams["text.usetex"] = False
+apply_style()
 
 # family -> (marker, color, label)
 FAM = {

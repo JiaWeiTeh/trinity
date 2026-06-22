@@ -77,7 +77,7 @@ trigger question landed where it did.</p>
 (<code>transition/pshadow-design.md</code>, with the <code>P0.md</code> harvest) proposed a
 two-criterion trigger &mdash; <b>F0 cooling &or; F4 blowout</b> &mdash; on the premise that
 <i>flat</i> clouds transition by cooling (F0 fires) while <i>steep</i> ones blow out. The
-clean-room redo (Chapter&nbsp;3) <b>falsified the cooling half</b>: across six regime-spanning
+clean-room redo (Chapter&nbsp;2) <b>falsified the cooling half</b>: across six regime-spanning
 configs F0 never fires &mdash; even a flat <code>simple_cluster</code> blows out geometrically
 while its cooling ratio floors at 0.40. So pshadow / P0 are <b>superseded</b>, not vindicated,
 and nothing from them shipped (<code>git grep transition_trigger|blowout|shadow trinity/</code>
@@ -95,14 +95,9 @@ STORYLINES = [
     {
         "slug": "s1",
         "title": "From the β–δ solver to the transition-trigger problem",
-        "subtitle": "Repairing the implicit energy-phase solver, making it fast, "
-        "then discovering it can never leave the energy phase.",
+        "subtitle": "Making the implicit energy-phase solver fast, then discovering "
+        "it can never leave the energy phase.",
         "chapters": [
-            {
-                "title": "The β–δ implicit solver & “Problem 2”",
-                "type": "html",
-                "src": DEV / "archive/betadelta/insights_betadelta_illustrated.html",
-            },
             {
                 "title": "Speed-ups: the bubble-luminosity performance story",
                 "type": "html",

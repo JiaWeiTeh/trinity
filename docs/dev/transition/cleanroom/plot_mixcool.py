@@ -28,13 +28,12 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-HERE = Path(__file__).resolve().parent
-STYLE = HERE.parents[3] / "paper" / "_lib" / "trinity.mplstyle"
-if STYLE.exists():
-    plt.style.use(str(STYLE))
-plt.rcParams["text.usetex"] = False
+from blowout_marker import apply_style, color
 
-WONG = ["#E69F00", "#56B4E9", "#009E73", "#0072B2", "#D55E00", "#CC79A7", "#F0E442", "#000000"]
+apply_style()
+
+HERE = Path(__file__).resolve().parent
+
 BAND = (0.01, 0.10)          # Lancaster+2021 / Geen+2021 observed retained-energy band
 THETA_LIT = 0.25             # literature mixing-layer efficiency
 THETAS = [i / 100 for i in range(0, 51)]   # 0.00 .. 0.50
@@ -77,9 +76,9 @@ def main():
     # --- top: modified retained energy enters the observed band ---
     axT.axhspan(*BAND, color="#009E73", alpha=0.18, zorder=0)
     axT.axvline(THETA_LIT, ls=":", lw=1.2, color="0.45", zorder=1)
-    for i, (name, _rows, fret_end) in enumerate(configs):
+    for name, _rows, fret_end in configs:
         y = [max(fret_end - th, 1e-4) for th in THETAS]
-        axT.plot(THETAS, y, color=WONG[i % len(WONG)], lw=1.6, label=name)
+        axT.plot(THETAS, y, color=color(name), lw=1.6, label=name)
     axT.set_yscale("log")
     axT.set_ylim(BAND[0] * 0.5, 0.6)
     axT.set_ylabel(r"retained energy  $f_{\rm ret}-\theta$")
@@ -93,11 +92,11 @@ def main():
     # --- bottom: modified min cooling ratio crosses 0.05 (F0 would now fire) ---
     axB.axhline(0.05, ls="--", lw=1.2, color="#D55E00", zorder=1)
     axB.axvline(THETA_LIT, ls=":", lw=1.2, color="0.45", zorder=1)
-    for i, (name, rows, _fret_end) in enumerate(configs):
+    for name, rows, _fret_end in configs:
         ymin = []
         for th in THETAS:
             ymin.append(min((Lg - Ll - th * Lg) / Lg for Lg, Ll in rows))
-        axB.plot(THETAS, ymin, color=WONG[i % len(WONG)], lw=1.6)
+        axB.plot(THETAS, ymin, color=color(name), lw=1.6)
     axB.set_ylim(-0.15, 1.0)
     axB.set_xlabel(r"mixing-layer efficiency  $\theta$   ($L_{\rm mix}=\theta\,L_{\rm mech}$)")
     axB.set_ylabel(r"min cooling ratio $\frac{L_{\rm mech}-L_{\rm loss}-\theta L_{\rm mech}}{L_{\rm mech}}$")

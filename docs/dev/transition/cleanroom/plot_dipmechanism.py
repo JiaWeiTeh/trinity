@@ -54,17 +54,12 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from blowout_marker import mark
+from blowout_marker import apply_style, mark
+
+apply_style()
 
 HERE = Path(__file__).resolve().parent
-# repo-root paper/_lib/trinity.mplstyle (parents[3] == /home/user/trinity)
-STYLE = HERE.parents[3] / "paper" / "_lib" / "trinity.mplstyle"
-if STYLE.exists():
-    plt.style.use(str(STYLE))
-plt.rcParams["text.usetex"] = False  # no LaTeX in this container
 
-# Wong palette (same ordering as the sibling plot_*.py generators).
-WONG = ["#E69F00", "#56B4E9", "#009E73", "#0072B2", "#D55E00", "#CC79A7", "#000000"]
 C_LLOSS = "#D55E00"  # vermilion -- the measured cooling loss
 C_EM = "#0072B2"     # blue      -- the n^2 V emission-measure proxy
 C_T0 = "#009E73"     # green     -- interior temperature
@@ -167,9 +162,9 @@ def main():
         ax.plot(t[irm], lln[irm], marker="^", ms=8, color="0.25",
                 mec="k", mew=0.5, ls="none", zorder=5,
                 label="cooling-ratio min")
-        # per-config blowout time (shell exits the cloud); grey so it reads as a
-        # separate annotation against the Lloss/EM curve colours. Label once.
-        mark(ax, name, color="0.35", label=(k == 0))
+        # per-config blowout time (shell exits the cloud); star on the normalized
+        # Lloss curve (the trace the blowout is most relevant to). Label once.
+        mark(ax, name, t=t, y=lln, color="0.35", label=(k == 0))
         ax.set_xscale("log")
         ax.set_ylim(0.0, 1.18)
         ax.set_ylabel("normalized\n(own max)")

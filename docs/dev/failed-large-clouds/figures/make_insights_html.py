@@ -22,7 +22,6 @@ def img(name):
 
 
 FIG1, FIG2, FIG3 = img("fig1_dEbdt_budget.png"), img("fig2_healthy_vs_failing.png"), img("fig3_bug_and_fix.png")
-FIG4 = img("fig4_energy_driven_discriminator.png")
 
 HTML = r"""<!doctype html>
 <html lang="en">
@@ -192,14 +191,6 @@ same self-similar handoff <span class="nowrap">$\text{PdV}/L_{\rm mech}\approx0.
 failing clouds never decelerate, so PdV/$L_{\rm mech}$ rises through 1 within ~7–10% of the phase and
 <span class="nowrap">$E_b$</span> collapses.</p>
 
-<figure>
-  <img src="__FIG4__" alt="were they ever energy-driven">
-  <figcaption><strong>Fig 4 — were the failing clouds ever energy-driven?</strong> Left: reservoir growth
-  $E_b/E_{b,\rm init}$ — healthy (dashed) climb to $\sim$10$^4$, failing (solid) flatline at ~1 then collapse.
-  Right: PdV/$L_{\rm mech}$ — failing rise through break-even, healthy fall and stay below. All start at the
-  same ~0.5 handoff.</figcaption>
-</figure>
-
 <div class="callout">
 <strong>Interpretation.</strong> The failing clouds are "stillborn" energy-driven bubbles: they inherit the
 energy-driven initial condition but never establish the self-similar deceleration that <em>defines</em> the
@@ -324,7 +315,7 @@ This is a point-in-time analysis; line numbers may drift — re-verify against c
 """
 
 HTML = (HTML.replace("__FIG1__", FIG1).replace("__FIG2__", FIG2)
-        .replace("__FIG3__", FIG3).replace("__FIG4__", FIG4))
+        .replace("__FIG3__", FIG3))
 
 with open(OUT, "w") as f:
     f.write(HTML)

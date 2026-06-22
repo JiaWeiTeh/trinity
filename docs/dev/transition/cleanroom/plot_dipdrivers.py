@@ -32,16 +32,12 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from blowout_marker import mark
+from blowout_marker import apply_style, color, mark
+
+apply_style()
 
 HERE = Path(__file__).resolve().parent
-STYLE = HERE.parents[3] / "paper" / "_lib" / "trinity.mplstyle"
-if STYLE.exists():
-    plt.style.use(str(STYLE))
-plt.rcParams["text.usetex"] = False  # no LaTeX in this container
 
-# Same Wong palette as plot_fret.py — keep per-config colours consistent across figures.
-WONG = ["#E69F00", "#56B4E9", "#009E73", "#0072B2", "#D55E00", "#CC79A7", "#F0E442", "#000000"]
 THRESHOLD = 0.05  # transition trigger threshold
 
 
@@ -113,7 +109,7 @@ def main():
         t, r, lg, ll, lw, lsn = load(p)
         if not t:
             continue
-        c = WONG[i % len(WONG)]
+        c = color(name)
 
         # Panel 1: cooling trigger r(t).
         xr, yr = _xy_signed(t, r)
@@ -133,11 +129,11 @@ def main():
         ax3.plot(xw, yw, color=c, lw=1.5, ls="-")
         ax3.plot(xs, ys, color=c, lw=1.3, ls="--")
 
-        # blowout (R2 exits rCloud) in this config's colour, on every time panel;
-        # label only on the top panel (ax1) for the first config to avoid clutter.
-        mark(ax1, name, color=c, label=(i == 0))
-        mark(ax2, name, color=c, label=False)
-        mark(ax3, name, color=c, label=False)
+        # blowout (R2 exits rCloud) in this config's colour, as a star ON each panel's
+        # primary curve; label only on the top panel (ax1) for the first config.
+        mark(ax1, name, xr, yr, color=c, label=(i == 0))
+        mark(ax2, name, xl, yl, color=c, label=False)
+        mark(ax3, name, xw, yw, color=c, label=False)
         n += 1
 
     # Panel 1 cosmetics.

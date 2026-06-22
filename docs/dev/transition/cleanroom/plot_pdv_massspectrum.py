@@ -29,11 +29,11 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+from blowout_marker import apply_style
+
+apply_style()
+
 HERE = Path(__file__).resolve().parent
-STYLE = HERE.parents[3] / "paper" / "_lib" / "trinity.mplstyle"
-if STYLE.exists():
-    plt.style.use(str(STYLE))
-plt.rcParams["text.usetex"] = False
 FOURPI = 4 * math.pi
 ROOT = HERE.parents[3]
 # reliable post-IC-relaxation values from docs/dev/failed-large-clouds/PLAN.md (cited, not recomputed)

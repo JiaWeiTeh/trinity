@@ -60,14 +60,11 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from blowout_marker import mark
+from blowout_marker import apply_style, mark
+
+apply_style()
 
 HERE = Path(__file__).resolve().parent
-# repo-root paper/_lib/trinity.mplstyle (parents[3] == /home/user/trinity)
-STYLE = HERE.parents[3] / "paper" / "_lib" / "trinity.mplstyle"
-if STYLE.exists():
-    plt.style.use(str(STYLE))
-plt.rcParams["text.usetex"] = False  # no LaTeX in this container
 
 DATA = HERE / "data"
 FIGDIR = HERE / "figures"
@@ -156,11 +153,12 @@ def main():
         # Turning-point markers.
         ax.axvline(t_v2min, color=C_V2, lw=1.0, ls="-", alpha=0.7)
         ax.axvline(t_llosspk, color=C_LLOSS, lw=1.0, ls="--", alpha=0.7)
-        # per-config blowout (shell exits cloud), grey dash-dot; label on top panel.
-        # Window is the early dip (t<=win); freeze xlim so an out-of-window line
-        # can't auto-expand the view.
+        # per-config blowout (shell exits cloud): star on the normalized v2 curve
+        # (the panel's primary kinematic trace); label on top panel. Window is the
+        # early dip (t<=win); freeze xlim so an out-of-window marker can't auto-
+        # expand the view (the star is simply skipped if blowout is outside it).
         xl = ax.get_xlim()
-        mark(ax, cfg, color="0.25", label=(pi == 0))
+        mark(ax, cfg, t=t, y=_norm(v2), color="0.25", label=(pi == 0))
         ax.set_xlim(xl)
         ax.annotate(f"$v_2$ min\n{t_v2min:.3f}", (t_v2min, 1.10), color=C_V2,
                     fontsize=8, ha="center", va="top")
