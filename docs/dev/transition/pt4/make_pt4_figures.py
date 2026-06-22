@@ -209,6 +209,74 @@ def fig_h2_matched():
     _save(fig, "h2_matched_r2")
 
 
+def fig_h2_dipgradient():
+    """Why pl2_steep bottoms deep inside while flat configs bottom at the edge:
+    the cooling-ratio minimum sits at the first steep density gradient the shell
+    meets — the cloud edge for flat (alpha=0) clouds, but rCore for the alpha=-2
+    profile. Top: actual production ambient density profile n(r) with the dip
+    location marked. Bottom: the clean correlation (dip location vs in-cloud decline)."""
+    import numpy as np
+    try:
+        from trinity._input.read_param import read_param
+        from trinity.phase0_init.get_InitCloudProp import get_InitCloudProp
+        from trinity.cloud_properties.density_profile import get_density_profile
+        import trinity._functions.unit_conversions as cvt
+    except Exception as e:  # pragma: no cover
+        print(f"skip h2_dip_vs_density_gradient (trinity import failed: {e})")
+        return
+    cfg = HERE.parent / "cleanroom" / "configs"
+    cross = {r["config"]: r for r in csv.DictReader(open(HERE / "h2_crossing_summary.csv"))}
+    edge = {r["config"]: r for r in csv.DictReader(open(HERE / "h2_rcloud_edge.csv"))}
+
+    fig, (a1, a2) = plt.subplots(2, 1, figsize=(7.4, 7.6))
+    for i, name in enumerate(CONFIGS):
+        c = WONG[i % len(WONG)]
+        params = read_param(str(cfg / f"{name}.param"))
+        props = get_InitCloudProp(params)
+        rC = props.rCloud
+        xr = np.logspace(-2, np.log10(1.9), 260)        # r / rCloud
+        n = np.array([get_density_profile(x * rC, params) * cvt.ndens_au2cgs for x in xr])
+        a1.plot(xr, n, color=c, lw=1.3, label=name)
+        loc = float(cross[name]["R2overRc_at_ratio_min"])
+        n_at = get_density_profile(min(loc, 1.85) * rC, params) * cvt.ndens_au2cgs
+        a1.scatter([loc], [n_at], color=c, s=55, zorder=6, edgecolor="0.15", linewidth=0.7)
+    a1.axvline(1.0, ls=":", lw=1.2, color="0.4")
+    a1.text(1.03, a1.get_ylim()[1] * 0.3 if False else 2e5, "cloud edge", rotation=90,
+            fontsize=7.5, color="0.4", va="top")
+    a1.set_xscale("log"); a1.set_yscale("log")
+    a1.set_xlabel(r"$r / r_{\rm Cloud}$")
+    a1.set_ylabel(r"ambient density $n(r)$  [cm$^{-3}$]")
+    a1.set_title("Dot = where the cooling ratio bottoms. It sits at the density 'knee': "
+                 "the EDGE for flat clouds, rCore for pl2_steep", fontsize=8.8)
+    a1.legend(fontsize=7, ncol=2, loc="lower left", framealpha=0.9)
+
+    declines, locs, labels, cols = [], [], [], []
+    for i, name in enumerate(CONFIGS):
+        d = float(edge[name]["nCore_cgs"]) / float(edge[name]["nEdge_cgs"])
+        declines.append(d)
+        locs.append(float(cross[name]["R2overRc_at_ratio_min"]))
+        labels.append(name); cols.append(WONG[i % len(WONG)])
+    a2.scatter(declines, locs, c=cols, s=80, edgecolor="0.15", linewidth=0.7, zorder=5)
+    # the 4 flat (alpha=0) configs all sit at decline=1.0 -> annotate as a group,
+    # label the two gradient configs individually
+    for d, l, name in zip(declines, locs, labels):
+        if name in ("be_sphere", "pl2_steep"):
+            a2.annotate(name, (d, l), textcoords="offset points", xytext=(9, -2), fontsize=8)
+    a2.annotate("4 flat ($\\alpha$=0) configs\n(simple_cluster, small_dense,\n"
+                "midrange, large_diffuse)", (1.0, 1.13), textcoords="offset points",
+                xytext=(14, 6), fontsize=7.5, va="center",
+                arrowprops=dict(arrowstyle="->", color="0.5", lw=0.8))
+    a2.axhline(1.0, ls=":", lw=1.2, color="0.4")
+    a2.text(60, 1.04, "ratio bottoms AT the cloud edge", fontsize=7.5, color="0.4", ha="right")
+    a2.set_xscale("log")
+    a2.set_xlabel(r"in-cloud density decline  $n_{\rm Core}/n_{\rm Edge}$  (profile steepness)")
+    a2.set_ylabel(r"$R_2/r_{\rm Cloud}$ at the cooling-ratio minimum")
+    a2.set_title("Correlation: the steeper the in-cloud density, the deeper inside the dip sits",
+                 fontsize=8.8)
+    a2.set_ylim(-0.05, 1.35)
+    _save(fig, "h2_dip_vs_density_gradient")
+
+
 def _save(fig, stem):
     OUT.mkdir(exist_ok=True)
     fig.tight_layout()
@@ -224,6 +292,7 @@ def main():
     fig_h1_stats()
     fig_h2_vs_rcloud()
     fig_h2_matched()
+    fig_h2_dipgradient()
     print("pt4 H1+H2 figures done. (H3 figures added once h3_*.csv land.)")
 
 
