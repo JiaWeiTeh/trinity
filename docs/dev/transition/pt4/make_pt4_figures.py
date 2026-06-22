@@ -277,6 +277,69 @@ def fig_h2_dipgradient():
     _save(fig, "h2_dip_vs_density_gradient")
 
 
+def fig_h3_ebfloor():
+    """H3: flooring Eb>0 is a clean no-op where Eb never collapses, and does NOT
+    rescue the 5e9 collapse configs (the solver just grinds). Left: fail_repro Eb(t)
+    V0 (collapses through 0 -> ENERGY_COLLAPSED) vs EBFLOOR (pinned >0 but R2 stuck,
+    grind). Right: simple_cluster no-op (V0 and EBFLOOR exactly overlaid)."""
+    T = HERE / "traj"
+    fr0 = load(T / "h3_traj_fail_repro_V0.csv", ["Eb", "R2"], drop_momentum=False)
+    frf = load(T / "h3_traj_fail_repro_EBFLOOR.csv", ["Eb", "R2"], drop_momentum=False)
+    sc0 = load(T / "h3_traj_simple_cluster_V0.csv", ["Eb"], drop_momentum=False)
+    scf = load(T / "h3_traj_simple_cluster_EBFLOOR.csv", ["Eb"], drop_momentum=False)
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(11.6, 4.6))
+    if fr0:
+        a1.plot(fr0["t_now"], fr0["Eb"], color="#0072B2", lw=1.8, label="V0 baseline")
+    if frf:
+        a1.plot(frf["t_now"], frf["Eb"], color="#D55E00", lw=1.8, ls="--",
+                label="EBFLOOR (solver grinds at collapse)")
+    a1.axhline(0, lw=0.9, color="0.5")
+    a1.text(a1.get_xlim()[0], 0, " Eb=0 -> ENERGY_COLLAPSED", fontsize=7.5, color="0.4", va="bottom")
+    a1.set_xlabel("time  [Myr]"); a1.set_ylabel(r"$E_b$  [code units]")
+    a1.set_title("fail_repro (5e9): flooring Eb avoids the collapse stop but the\n"
+                 "implicit solver then GRINDS (R2 stuck) — Eb-floor does not rescue", fontsize=8.8)
+    a1.legend(fontsize=8, loc="upper right")
+    if sc0:
+        a2.plot(sc0["t_now"], sc0["Eb"], color="#0072B2", lw=4.2, alpha=0.55, label="V0 baseline")
+    if scf:
+        a2.plot(scf["t_now"], scf["Eb"], color="#D55E00", lw=1.5, label="EBFLOOR")
+    a2.set_xscale("log"); a2.set_yscale("log")
+    a2.set_xlabel("time  [Myr]"); a2.set_ylabel(r"$E_b$  [code units]")
+    a2.set_title("simple_cluster (control): EBFLOOR overlays V0 exactly\n"
+                 "max rel|dEb| = 0  -> bit-identical no-op (Eb never collapses)", fontsize=8.8)
+    a2.legend(fontsize=8, loc="lower right")
+    _save(fig, "h3_ebfloor_noop_and_grind")
+
+
+def fig_h4_control():
+    """H4 control vs collapse (the requested controlled setting): PdV/Lmech(t) for
+    simple_cluster (control, stays <1 -> cap never bites, byte-identical) vs the 5e9
+    clouds (cross 1 -> Eb collapses). One control parameter sorts the regimes."""
+    T = HERE / "traj"
+    series = [("simple_cluster", "h4_traj_simple_cluster_V0.csv", "#009E73", "simple_cluster (control, doesn't collapse)"),
+              ("fail_repro", "h4_traj_fail_repro_V0.csv", "#D55E00", "fail_repro (5e9, collapses)"),
+              ("fail_helix", "h4_traj_fail_helix_V0.csv", "#0072B2", "fail_helix (5e9, collapses)")]
+    fig, ax = plt.subplots(figsize=(7.4, 4.6))
+    for name, fn, col, lab in series:
+        d = load(T / fn, ["pdv_over_lmech"], drop_momentum=False)
+        if not d:
+            continue
+        ax.plot(d["t_now"], d["pdv_over_lmech"], color=col, lw=1.7, label=lab)
+    ax.axhline(1.0, ls="--", lw=1.4, color="0.3")
+    ax.text(0.02, 1.04, "PdV = Lmech (break-even): above -> Eb collapses",
+            transform=ax.get_yaxis_transform(), fontsize=8, color="0.3")
+    ax.set_xscale("log")
+    # fail_repro's ratio spikes hugely negative AT Eb->0 (numerical artifact of the
+    # collapse); clip to the physically meaningful band so the crossing of 1 is visible
+    ax.set_ylim(-0.1, 3.0)
+    ax.set_xlabel("time  [Myr]")
+    ax.set_ylabel(r"$\mathrm{PdV}/L_{\rm mech} = 4\pi R_2^2 P_b v_2 / L_{\rm mech}$")
+    ax.set_title("H4 control vs collapse: the cap is inert on simple_cluster (PdV/Lmech<1) "
+                 "but the 5e9 clouds cross 1", fontsize=8.8)
+    ax.legend(fontsize=8, loc="upper left")
+    _save(fig, "h4_control_vs_collapse")
+
+
 def _save(fig, stem):
     OUT.mkdir(exist_ok=True)
     fig.tight_layout()
@@ -293,7 +356,9 @@ def main():
     fig_h2_vs_rcloud()
     fig_h2_matched()
     fig_h2_dipgradient()
-    print("pt4 H1+H2 figures done. (H3 figures added once h3_*.csv land.)")
+    fig_h3_ebfloor()
+    fig_h4_control()
+    print("pt4 H1-H4 figures done.")
 
 
 if __name__ == "__main__":
