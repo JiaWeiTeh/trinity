@@ -108,23 +108,28 @@ def main():
         if tr:
             x, y = _clean(tr, rr)
             ax1.plot(x, y, color=c, lw=1.0, ls="--", alpha=0.35)
+        xf1 = yf1 = None
         if tf:
-            x, y = _clean(tf, rf)
-            ax1.plot(x, y, color=c, lw=1.9, ls="-", label=short)
+            xf1, yf1 = _clean(tf, rf)
+            ax1.plot(xf1, yf1, color=c, lw=1.9, ls="-", label=short)
 
         # BOT: Lmech_total (=Lgain) -- proves the freeze
         if tr:
             x, y = _clean(tr, lgr)
             ax2.plot(x, y, color=c, lw=1.0, ls="--", alpha=0.35)
+        xf2 = yf2 = None
         if tf:
-            x, y = _clean(tf, lgf)
-            ax2.plot(x, y, color=c, lw=1.9, ls="-")
+            xf2, yf2 = _clean(tf, lgf)
+            ax2.plot(xf2, yf2, color=c, lw=1.9, ls="-")
 
-        # frozen run's OWN blowout epoch (config colour, dash-dot) on both panels
+        # frozen run's OWN blowout epoch: a star ON each panel's frozen curve (was a
+        # full-height vertical line -- markers read far cleaner with six overlaid configs).
         tb = frozen_blowout(cfg, tf, r2f)
         if tb is not None:
-            for ax in (ax1, ax2):
-                ax.axvline(tb, color=c, ls=bm.BLOWOUT_LS, lw=1.2, alpha=0.85, zorder=1.4)
+            if xf1 is not None:
+                bm.mark_point(ax1, tb, xf1, yf1, color=c, label=(i == 0))
+            if xf2 is not None:
+                bm.mark_point(ax2, tb, xf2, yf2, color=c)
 
         # summary row: does the FROZEN ratio ever reach the threshold?
         rf_fin = [v for v in rf if v is not None]

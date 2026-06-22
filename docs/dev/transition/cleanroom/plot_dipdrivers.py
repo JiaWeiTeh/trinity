@@ -133,11 +133,11 @@ def main():
         ax3.plot(xw, yw, color=c, lw=1.5, ls="-")
         ax3.plot(xs, ys, color=c, lw=1.3, ls="--")
 
-        # blowout (R2 exits rCloud) in this config's colour, on every time panel;
-        # label only on the top panel (ax1) for the first config to avoid clutter.
-        mark(ax1, name, color=c, label=(i == 0))
-        mark(ax2, name, color=c, label=False)
-        mark(ax3, name, color=c, label=False)
+        # blowout (R2 exits rCloud) in this config's colour, as a star ON each panel's
+        # primary curve; label only on the top panel (ax1) for the first config.
+        mark(ax1, name, xr, yr, color=c, label=(i == 0))
+        mark(ax2, name, xl, yl, color=c, label=False)
+        mark(ax3, name, xw, yw, color=c, label=False)
         n += 1
 
     # Panel 1 cosmetics.

@@ -75,23 +75,23 @@ def main():
         ta, ra = ratio(DATA / f"c0_{name}_h0.csv")
         if ta:
             axA.plot(ta, ra, color=col, lw=1.4)
-        # per-config blowout (shell exits cloud), each in its own curve colour;
-        # label on AFTER panel only (the representative axis for this figure)
-        mark(axA, name, color=col, label=(i == 0))
-        mark(axB, name, color=col, label=False)
-        # BEFORE (legacy) if present
+        # BEFORE (legacy) if present -- compute the ratio first so the blowout star
+        # below can sit on the legacy curve
         leg = DATA / f"c0_{name}_legacy.csv"
-        if leg.exists():
-            tb, rb = ratio(leg)
-            if tb:
-                nlegacy += 1
-                axB.plot(tb, rb, color=col, lw=1.4, label=name)
-                x = first_crossing(tb, rb)
-                if x:
-                    axB.scatter([x[0]], [THRESH], color=col, s=45, zorder=5,
-                                edgecolor="0.2", linewidth=0.6)
+        tb, rb = (ratio(leg) if leg.exists() else ([], []))
+        if tb:
+            nlegacy += 1
+            axB.plot(tb, rb, color=col, lw=1.4, label=name)
+            x = first_crossing(tb, rb)
+            if x:
+                axB.scatter([x[0]], [THRESH], color=col, s=45, zorder=5,
+                            edgecolor="0.2", linewidth=0.6)
         else:
             axA.plot([], [], color=col, label=name)  # keep legend complete
+        # per-config blowout (shell exits cloud), as a star ON each panel's ratio curve,
+        # each in its own colour; label on AFTER panel only (the representative axis)
+        mark(axA, name, ta, ra, color=col, label=(i == 0))
+        mark(axB, name, tb, rb, color=col, label=False)
 
     for ax, title in ((axB, "BEFORE (legacy)"), (axA, "AFTER (hybr)")):
         ax.axhline(THRESH, ls="--", lw=1.1, color="0.5")

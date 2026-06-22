@@ -167,9 +167,9 @@ def main():
         ax.plot(t[irm], lln[irm], marker="^", ms=8, color="0.25",
                 mec="k", mew=0.5, ls="none", zorder=5,
                 label="cooling-ratio min")
-        # per-config blowout time (shell exits the cloud); grey so it reads as a
-        # separate annotation against the Lloss/EM curve colours. Label once.
-        mark(ax, name, color="0.35", label=(k == 0))
+        # per-config blowout time (shell exits the cloud); star on the normalized
+        # Lloss curve (the trace the blowout is most relevant to). Label once.
+        mark(ax, name, t=t, y=lln, color="0.35", label=(k == 0))
         ax.set_xscale("log")
         ax.set_ylim(0.0, 1.18)
         ax.set_ylabel("normalized\n(own max)")

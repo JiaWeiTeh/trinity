@@ -62,8 +62,8 @@ def main():
             continue
         c = WONG[i % len(WONG)]
         ax.plot(t, f, color=c, lw=1.6, label=f"{name}  (end {f[-1]:.2f})")
-        # blowout (R2 exits rCloud) in this config's colour; label only the first plotted run
-        mark(ax, name, color=c, label=(n == 0))
+        # blowout (R2 exits rCloud) as a star ON the f_ret curve; label only the first plotted run
+        mark(ax, name, t, f, color=c, label=(n == 0))
         n += 1
 
     ax.set_yscale("log")
