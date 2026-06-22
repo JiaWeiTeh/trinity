@@ -1,0 +1,19 @@
+config                crosses?   cross_t beta@cross pin_frac_all pin_frac_preX hybr_beta_max
+small_dense_highsfe   True       0.02418      0.000         0.97          0.97          3.90
+simple_cluster        True        0.1781      0.500         0.00          0.00          4.20
+midrange_pl0          True        0.8225      0.420         0.00          0.00          4.41
+pl2_steep             True        0.1278      0.000         0.58          0.36          3.99
+be_sphere             True         1.037      0.000         0.67          0.46          4.62
+large_diffuse_lowsfe  False            —          —         0.09          0.09          3.43
+
+INTERPRETATION (2026-06-22):
+- MIXED result. Soft-lock (boundary-pinning) is strong for small_dense (0.97), partial
+  for pl2_steep/be_sphere (0.4-0.7), and ABSENT for simple_cluster & midrange (0.00).
+- simple_cluster & midrange cross 0.05 with beta INTERIOR (0.50, 0.42) and never on the
+  box boundary => the clamp does NOT bind there, so their crossing is NOT a clamp artifact.
+- Pinning, where present, is at the LOWER bound (beta=0), not the upper => Part B must widen
+  the WHOLE box (beta_min down AND beta_max up), not just BETA_MAX.
+- hybr_beta_max (~+4) is the LATE recovery value; at the early crossing the unbounded root
+  is near the box for the non-pinned configs. Part B's per-segment check settles causation.
+=> H5 (clamp-predetermined) is config-dependent: supported for small_dense, refuted for
+   simple_cluster/midrange. Part B (box-width sweep) confirms causally per config.
