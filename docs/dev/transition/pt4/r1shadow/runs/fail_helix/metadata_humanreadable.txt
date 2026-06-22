@@ -1,0 +1,42 @@
+============================================================
+TRINITY run: fail_helix
+============================================================
+Status   : ✗ ERROR  (energy_collapsed)
+Detail   : Energy-driven bubble collapsed: bubble solve degenerate as Eb -> 0 (energy-driven phase no longer self-sustains)
+At       : 2026-06-22 19:06:58
+
+------------------------------------------------------------
+Cloud
+------------------------------------------------------------
+  mCloud        : 4.75e+09  Msun
+  nCore         : 1.00e+02  cm⁻³
+  rCloud        : 689.335  pc
+  rCore         : 0.010  pc
+  dens_profile  : densPL
+  densPL_alpha  : 0.00
+  nISM          : 1.00e-01  cm⁻³
+  sfe           : 0.0500
+  mCluster      : 2.50e+08  Msun
+  ZCloud        : 1.00  Z☉
+
+------------------------------------------------------------
+Final state  [t = 0.003 Myr]
+------------------------------------------------------------
+  R2            : 7.031 pc
+  v2            : 1958.012 km/s    (2.002e+03 pc/Myr)
+  shell_mass    : 5.041e+03 Msun
+  shell_nMax    : 2.302e+06 cm⁻³    (6.764e+61 pc⁻³)
+  Pb            : 2.535e+10 K cm⁻³ (P/k_B)    (5.409e+06 internal)
+  Eb            : 9.668e+40 erg    (5.085e-03 internal)
+  T0            : 2.222e+06 K
+  bubble_Tavg   : 7.585e+06 K
+  phase         : momentum
+  collapsed     : no
+  dissolved     : no
+
+------------------------------------------------------------
+Termination diagnostics
+------------------------------------------------------------
+  reason        : Normal exit / atexit
+  NaN values    : v_neg_frac_thick, bubble_Lgain, bubble_Lloss, residual_Edot1_guess, residual_Edot2_guess, residual_T1_guess, residual_T2_guess, betadelta_total_residual
+============================================================

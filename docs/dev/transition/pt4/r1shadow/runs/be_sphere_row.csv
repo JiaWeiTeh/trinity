@@ -1,0 +1,3 @@
+config,variant,crashed,crash_phase,crash_excpt,end_reason,end_code,reached_phase,final_t,final_R2,final_v2,final_Eb,E0,floor,floor_activated,act_drive,act_state,min_Eb_seen,trigger_fired,ratio_min,n_rows,runtime_s
+be_sphere,V0,False,,SystemExit:143,,,1b,1.2,21.803051085915058,21.56608723277731,243630866.8559566,637.5945938351307,0.001,False,0,0,,False,0.4713777158216262,185,899.6
+be_sphere,V0,False,,,Stopping time reached,1,1b,0.95,17.063999945848156,16.428868262917227,201106285.18300825,637.5945938351307,0.001,False,0,0,,False,0.4713777158216262,181,775.1

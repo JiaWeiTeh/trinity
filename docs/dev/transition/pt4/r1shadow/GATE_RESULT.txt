@@ -1,0 +1,16 @@
+R1 shadow — byte-identical gate (G1) RESULT
+===========================================
+Date: 2026-06-22.  Config: simple_cluster, stop_t=0.005, OMP_NUM_THREADS=1.
+A = run WITH the shadow edit (committed 28611a7).
+B = run with the file reverted to its pre-shadow parent (HEAD~1), then restored.
+
+dictionary.jsonl sha256:
+  A: 830b691aaf8e5d33a0b3cb2eff21e312f960c3dca83c19c309d531118473f1ed
+  B: 830b691aaf8e5d33a0b3cb2eff21e312f960c3dca83c19c309d531118473f1ed
+  => BYTE-IDENTICAL. The shadow is inert; it adds only the sideline shadow_R1_1b.csv (A only).
+
+Reproduce:
+  python docs/dev/transition/pt4/h3_run_variant.py --variant V0 \
+    --param docs/dev/transition/cleanroom/configs/simple_cluster.param \
+    --stop_t 0.005 --out <dirA> --csv <dirA>_row.csv
+  # then revert run_energy_implicit_phase.py to HEAD~1, rerun to <dirB>, restore, cmp.

@@ -1,0 +1,7 @@
+config=midrange_pl0
+param=docs/dev/transition/cleanroom/configs/midrange_pl0.param
+stop_t=0.6
+timeout_s=900
+exit_code=0
+status=completed
+runtime_s=792

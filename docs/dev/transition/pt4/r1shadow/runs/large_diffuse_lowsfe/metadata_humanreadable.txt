@@ -1,0 +1,42 @@
+============================================================
+TRINITY run: large_diffuse_lowsfe
+============================================================
+Status   : ✓ SUCCESS  (stopping_time)
+Detail   : Stopping time reached
+At       : 2026-06-22 20:10:17
+
+------------------------------------------------------------
+Cloud
+------------------------------------------------------------
+  mCloud        : 9.90e+06  Msun
+  nCore         : 1.00e+02  cm⁻³
+  rCloud        : 88.053  pc
+  rCore         : 1.000  pc
+  dens_profile  : densPL
+  densPL_alpha  : 0.00
+  nISM          : 1.00e+00  cm⁻³
+  sfe           : 0.0100
+  mCluster      : 1.00e+05  Msun
+  ZCloud        : 1.00  Z☉
+
+------------------------------------------------------------
+Final state  [t = 3.900 Myr]
+------------------------------------------------------------
+  R2            : 91.452 pc
+  v2            : 13.454 km/s    (1.376e+01 pc/Myr)
+  shell_mass    : 9.912e+06 Msun
+  shell_nMax    : 3.213e+04 cm⁻³    (9.439e+59 pc⁻³)
+  Pb            : 3.427e+06 K cm⁻³ (P/k_B)    (7.312e+02 internal)
+  Eb            : 6.628e+52 erg    (3.486e+09 internal)
+  T0            : 2.848e+06 K
+  bubble_Tavg   : 7.384e+06 K
+  phase         : momentum
+  collapsed     : no
+  dissolved     : no
+
+------------------------------------------------------------
+Termination diagnostics
+------------------------------------------------------------
+  reason        : Normal exit / atexit
+  (no flagged changes, no NaN/Inf, all sanity checks passed)
+============================================================

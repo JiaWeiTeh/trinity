@@ -1,0 +1,7 @@
+config=fail_repro
+param=docs/dev/failed-large-clouds/harness/params/fail_repro.param
+stop_t=0.02
+timeout_s=900
+exit_code=0
+status=completed
+runtime_s=87

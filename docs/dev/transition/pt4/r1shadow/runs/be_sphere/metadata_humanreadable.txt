@@ -1,0 +1,41 @@
+============================================================
+TRINITY run: be_sphere
+============================================================
+Status   : ✓ SUCCESS  (stopping_time)
+Detail   : Stopping time reached
+At       : 2026-06-22 19:32:21
+
+------------------------------------------------------------
+Cloud
+------------------------------------------------------------
+  mCloud        : 9.50e+05  Msun
+  nCore         : 1.00e+04  cm⁻³
+  rCloud        : 15.501  pc
+  rCore         : 1.000  pc
+  dens_profile  : densBE
+  nISM          : 1.00e+00  cm⁻³
+  sfe           : 0.0500
+  mCluster      : 5.00e+04  Msun
+  ZCloud        : 1.00  Z☉
+
+------------------------------------------------------------
+Final state  [t = 0.950 Myr]
+------------------------------------------------------------
+  R2            : 17.064 pc
+  v2            : 16.064 km/s    (1.643e+01 pc/Myr)
+  shell_mass    : 9.502e+05 Msun
+  shell_nMax    : 2.877e+05 cm⁻³    (8.453e+60 pc⁻³)
+  Pb            : 3.033e+07 K cm⁻³ (P/k_B)    (6.472e+03 internal)
+  Eb            : 3.823e+51 erg    (2.011e+08 internal)
+  T0            : 3.137e+06 K
+  bubble_Tavg   : 7.942e+06 K
+  phase         : momentum
+  collapsed     : no
+  dissolved     : no
+
+------------------------------------------------------------
+Termination diagnostics
+------------------------------------------------------------
+  reason        : Normal exit / atexit
+  (no flagged changes, no NaN/Inf, all sanity checks passed)
+============================================================
