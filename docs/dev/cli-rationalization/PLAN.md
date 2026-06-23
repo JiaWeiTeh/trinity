@@ -305,10 +305,17 @@ the scheduler-free harness (C.9.1-3) *before* wiring into `run.py`.
    test matrix; 598-test suite green. Kills the hardcoded `/gpfs/...` line.
 2. ✅ **B — SHIPPED** (commit `feat(metadata): store sps_path repo-relative…`). `portable_path`
    + final_state relativization; 8 metadata.json + fixture scrubbed; 602-test suite green.
-3. ⏳ **C1** (mode flags `--local`/`--submit`/`--emit` + internal-caller lockstep + `--collect`
-   rename + cruft) — outward-facing; own commit. **NEXT.**
-4. ⏳ **C2** (site profile + sbatch generation + `--submit` chunking/feeder/auto-collect) — the
-   largest new surface; build behind the scheduler-free harness (C.9.1-3) first, own commit(s).
+3. ✅ **C2a — SHIPPED** (commit `feat(hpc): site profile + profile-driven sbatch generation`).
+   `cluster_profile.py` (INI) + `_render_sbatch`; emitted sbatch is now Helix-ready (prologue +
+   `--export=NONE`) through the *current* `--emit-jobs`. 10 tests; suite 612.
+4. ✅ **C2b — SHIPPED** (commit `feat(hpc): chunking + feeder + auto-collect orchestration`).
+   `cluster_submit.py`: `compute_chunks`, `feed_and_collect` (QOS-retry, resume, auto-collect),
+   injectable runner/sleep. 15 scheduler-free tests. Inert until wired.
+5. ⏳ **C1 — CLI restructure (NEXT, outward-facing)**: `--local`/`--submit`/`--emit`/`--collect`/
+   `--resume`, internal-caller lockstep (`--local`), wire `--submit` to `cluster_submit`, docs.
+   This is the breaking cutover (bare `run.py x.param` starts erroring; old emitted bundles need
+   regen for the `--local` task line).
+6. ⏳ **C-cruft**: cluster-namespace rename + dangling refs (separate, mechanical).
 
 ## Decisions (2026-06-23)
 - **Output:** `TRINITY_OUTPUT_DIR` is the write-side base; `path2output` may be `def_dir`,
