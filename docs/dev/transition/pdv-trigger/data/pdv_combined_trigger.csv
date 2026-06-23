@@ -1,4 +1,4 @@
-config,regime,n_rows,rrad_fire_row,rrad_fire_t,rrad_sustained,rrad_end_blip,rcomb_fire_row,rcomb_fire_t,rcomb_sustained,rcomb_end_blip,rcomb0_fire_row,rcomb0_fire_t,rcomb0_sustained,rcomb0_end_blip,min_r_comb,min_r_rad,med_r_comb,med_r_rad,med_pdv_over_Lmech,med_Lloss_over_Lmech
+config,regime,n_rows,cool_fire_row,cool_fire_t,cool_sustained,cool_end_blip,coolPdV_fire_row,coolPdV_fire_t,coolPdV_sustained,coolPdV_end_blip,coolPdV0_fire_row,coolPdV0_fire_t,coolPdV0_sustained,coolPdV0_end_blip,min_coolPdV,min_cool,med_coolPdV,med_cool,med_pdv_over_Lmech,med_Lloss_over_Lmech
 be_sphere,normal,182,,,,,,,,,,,,,0.0945,0.4714,0.2597,0.7607,0.4533,0.2393
 large_diffuse_lowsfe,normal,191,,,,,164.0,4.760002,True,False,170.0,5.060002,False,False,-0.019,0.465,0.3434,0.7084,0.4432,0.2916
 midrange_pl0,normal,184,,,,,,,,,,,,,0.0992,0.3645,0.301,0.8311,0.4607,0.1689

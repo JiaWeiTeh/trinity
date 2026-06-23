@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
-"""Regenerate pdv_combined_trigger.csv — the combined-ratio ("reading B") trigger test.
+"""Regenerate pdv_combined_trigger.csv — the cooling-ratio trigger test, with vs. without PdV.
 
 Offline diagnostic, NO simulations. Pure reads of committed per-step CSVs:
   ../../cleanroom/data/c0_*_h0.csv            (6 normal configs, hybr h0 baseline)
   ../../../failed-large-clouds/data/budget_*.csv  (fail_repro = heavy 5e9; small_1e6 = control)
 
-Tests whether the maintainer's "reading B" trigger
-    r_comb = (Lmech - Lloss - PdV)/Lmech < 0.05
-fires meaningfully differently from the shipped cooling_balance trigger
-    r_rad  = (Lmech - Lloss)/Lmech < 0.05
+Tests whether folding PdV into the energy->momentum trigger changes when it fires. Two ratios
+(named so neither looks like a radius):
+    cool    = (Lmech - Lloss)/Lmech          # radiative cooling ratio  (the shipped cooling_balance term)
+    coolPdV = (Lmech - Lloss - PdV)/Lmech     # radiative cooling ratio WITH PdV  (the maintainer's "reading B")
 where  PdV = 4*pi*R2^2*v2*Pb  (trinity code units, same term as get_betadelta.py:434
-Edot_from_balance = Lmech - Lloss - 4*pi*R2^2*v2*Pb).
+Edot_from_balance = Lmech - Lloss - 4*pi*R2^2*v2*Pb).  Note coolPdV = cool - PdV/Lmech, so PdV/Lmech
+is exactly the offset between the two curves. The trigger fires when the ratio < 0.05.
 
 Conventions reused from make_pdv_regime_table.py: drop the first nstart=2 startup rows;
 filter cleanroom rows on betadelta_converged==True (if present) and Eb>0; budget Lloss =
@@ -30,7 +31,7 @@ EBPEAK_THRESH = 0.0  # ebpeak / net-energy-turnover threshold (reading A)
 BLIP_WINDOW = 2  # first-fire within the last BLIP_WINDOW rows = end-of-run blip
 
 ROWS = []
-# per-config series kept for the figure: cfg -> (t, r_rad, r_comb)
+# per-config series kept for the figure: cfg -> (t, cool, coolPdV)
 SERIES = {}
 
 
@@ -59,38 +60,38 @@ def push(config, regime, df, Lmech, Lloss, R2, v2, Pb, Eb, tcol):
 
     pdv_ratio = (PdV / lm).replace([np.inf, -np.inf], np.nan)
     lloss_ratio = (lloss / lm).replace([np.inf, -np.inf], np.nan)
-    r_rad = ((lm - lloss) / lm).replace([np.inf, -np.inf], np.nan)
-    r_comb = ((lm - lloss - PdV) / lm).replace([np.inf, -np.inf], np.nan)
+    cool = ((lm - lloss) / lm).replace([np.inf, -np.inf], np.nan)          # no PdV
+    coolPdV = ((lm - lloss - PdV) / lm).replace([np.inf, -np.inf], np.nan)  # with PdV
 
     frame = pd.DataFrame({
-        "t": d[tcol], "r_rad": r_rad, "r_comb": r_comb,
+        "t": d[tcol], "cool": cool, "coolPdV": coolPdV,
         "pdv_ratio": pdv_ratio, "lloss_ratio": lloss_ratio,
     }).iloc[NSTART:].dropna().reset_index(drop=True)
 
     n = len(frame)
-    SERIES[config] = (frame["t"], frame["r_rad"], frame["r_comb"])
+    SERIES[config] = (frame["t"], frame["cool"], frame["coolPdV"])
 
-    rad_row, rad_t, rad_sus, rad_blip = first_fire(frame["r_rad"], frame["t"], THRESH)
-    comb_row, comb_t, comb_sus, comb_blip = first_fire(frame["r_comb"], frame["t"], THRESH)
-    eb_row, eb_t, eb_sus, eb_blip = first_fire(frame["r_comb"], frame["t"], EBPEAK_THRESH)
+    cool_row, cool_t, cool_sus, cool_blip = first_fire(frame["cool"], frame["t"], THRESH)
+    cp_row, cp_t, cp_sus, cp_blip = first_fire(frame["coolPdV"], frame["t"], THRESH)
+    cp0_row, cp0_t, cp0_sus, cp0_blip = first_fire(frame["coolPdV"], frame["t"], EBPEAK_THRESH)
 
     ROWS.append(dict(
         config=config, regime=regime, n_rows=n,
-        # r_rad < 0.05
-        rrad_fire_row=rad_row, rrad_fire_t=rad_t,
-        rrad_sustained=rad_sus, rrad_end_blip=rad_blip,
-        # r_comb < 0.05  (reading B)
-        rcomb_fire_row=comb_row, rcomb_fire_t=comb_t,
-        rcomb_sustained=comb_sus, rcomb_end_blip=comb_blip,
-        # r_comb <= 0  (ebpeak / reading A)
-        rcomb0_fire_row=eb_row, rcomb0_fire_t=eb_t,
-        rcomb0_sustained=eb_sus, rcomb0_end_blip=eb_blip,
+        # cool < 0.05  (no PdV — the shipped cooling_balance trigger)
+        cool_fire_row=cool_row, cool_fire_t=cool_t,
+        cool_sustained=cool_sus, cool_end_blip=cool_blip,
+        # coolPdV < 0.05  (with PdV — reading B)
+        coolPdV_fire_row=cp_row, coolPdV_fire_t=cp_t,
+        coolPdV_sustained=cp_sus, coolPdV_end_blip=cp_blip,
+        # coolPdV <= 0  (ebpeak / reading A)
+        coolPdV0_fire_row=cp0_row, coolPdV0_fire_t=cp0_t,
+        coolPdV0_sustained=cp0_sus, coolPdV0_end_blip=cp0_blip,
         # how close each gets
-        min_r_comb=round(float(frame["r_comb"].min()), 4),
-        min_r_rad=round(float(frame["r_rad"].min()), 4),
+        min_coolPdV=round(float(frame["coolPdV"].min()), 4),
+        min_cool=round(float(frame["cool"].min()), 4),
         # medians
-        med_r_comb=round(float(frame["r_comb"].median()), 4),
-        med_r_rad=round(float(frame["r_rad"].median()), 4),
+        med_coolPdV=round(float(frame["coolPdV"].median()), 4),
+        med_cool=round(float(frame["cool"].median()), 4),
         med_pdv_over_Lmech=round(float(frame["pdv_ratio"].median()), 4),
         med_Lloss_over_Lmech=round(float(frame["lloss_ratio"].median()), 4),
     ))
@@ -100,26 +101,46 @@ def make_figure(dst):
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
+    from matplotlib.lines import Line2D
+    from matplotlib.patches import Patch
 
-    reps = ["simple_cluster", "large_diffuse_lowsfe", "fail_repro"]
+    # Normal clouds span the behaviour: never-fires -> closest-without-firing -> the one that fires.
+    # (fail_repro plunges < 0 immediately and is a different, super-critical regime; with ymin=0 it
+    # would just hug the floor, so it is excluded here and discussed in the table / PLAN.)
+    reps = ["simple_cluster", "small_dense_highsfe", "large_diffuse_lowsfe"]
     reps = [c for c in reps if c in SERIES]
     colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 
     fig, ax = plt.subplots(figsize=(8, 5))
+
+    # Shade the trigger region: the transition fires when the cooling ratio < 0.05.
+    ax.axhspan(0.0, THRESH, color="tab:red", alpha=0.12, zorder=0)
+    ax.axhline(THRESH, color="tab:red", lw=0.9, ls="--", zorder=1)
+
+    cfg_handles = []
     for i, cfg in enumerate(reps):
-        t, r_rad, r_comb = SERIES[cfg]
+        t, cool, coolPdV = SERIES[cfg]
         c = colors[i % len(colors)]
-        ax.plot(t, r_rad, "-", color=c, label=f"{cfg}  r_rad")
-        ax.plot(t, r_comb, "--", color=c, label=f"{cfg}  r_comb")
-    ax.axhline(0.05, color="k", lw=0.8, ls=":", label="threshold 0.05")
-    ax.axhline(0.0, color="grey", lw=0.8, ls=":", label="threshold 0 (ebpeak)")
-    # Clip to the physical ratio band: the fail_repro post-collapse final row has a
-    # negative Pb/Eb (already-collapsed bubble) that sends r_comb to ~4e11 — off-axis.
-    ax.set_ylim(-0.8, 1.05)
-    ax.set_xlabel("t_now  [Myr]")
-    ax.set_ylabel("ratio  (y clipped to [-0.8, 1.05];\nfail_repro collapse spike off-axis)")
-    ax.set_title("Combined-ratio transition trigger (offline reconstruction)")
-    ax.legend(fontsize=8, loc="best")
+        ax.plot(t, cool, "-", color=c, lw=1.7, zorder=3)      # no PdV
+        ax.plot(t, coolPdV, "--", color=c, lw=1.7, zorder=3)  # with PdV
+        cfg_handles.append(Line2D([0], [0], color=c, lw=1.7, label=cfg))
+
+    style_handles = [
+        Line2D([0], [0], color="0.25", lw=1.7, ls="-",
+               label="no PdV:  (Lmech−Lloss)/Lmech"),
+        Line2D([0], [0], color="0.25", lw=1.7, ls="--",
+               label="with PdV:  (Lmech−Lloss−PdV)/Lmech"),
+        Patch(facecolor="tab:red", alpha=0.12, label="trigger region (ratio < 0.05)"),
+    ]
+
+    leg1 = ax.legend(handles=cfg_handles, title="config (colour)", loc="upper right", fontsize=9)
+    ax.add_artist(leg1)
+    ax.legend(handles=style_handles, title="trigger term (line style)", loc="lower left", fontsize=9)
+
+    ax.set_ylim(0.0, 1.02)  # ymin capped at 0
+    ax.set_xlabel("t  [Myr]")
+    ax.set_ylabel("cooling ratio   (net energy gain / Lmech)")
+    ax.set_title("Energy→momentum trigger: radiative cooling ratio, with vs. without PdV")
     fig.tight_layout()
     fig.savefig(dst, dpi=130)
     plt.close(fig)
@@ -143,11 +164,11 @@ def main():
 
     cols = [
         "config", "regime", "n_rows",
-        "rrad_fire_row", "rrad_fire_t", "rrad_sustained", "rrad_end_blip",
-        "rcomb_fire_row", "rcomb_fire_t", "rcomb_sustained", "rcomb_end_blip",
-        "rcomb0_fire_row", "rcomb0_fire_t", "rcomb0_sustained", "rcomb0_end_blip",
-        "min_r_comb", "min_r_rad",
-        "med_r_comb", "med_r_rad", "med_pdv_over_Lmech", "med_Lloss_over_Lmech",
+        "cool_fire_row", "cool_fire_t", "cool_sustained", "cool_end_blip",
+        "coolPdV_fire_row", "coolPdV_fire_t", "coolPdV_sustained", "coolPdV_end_blip",
+        "coolPdV0_fire_row", "coolPdV0_fire_t", "coolPdV0_sustained", "coolPdV0_end_blip",
+        "min_coolPdV", "min_cool",
+        "med_coolPdV", "med_cool", "med_pdv_over_Lmech", "med_Lloss_over_Lmech",
     ]
     out = pd.DataFrame(ROWS)[cols]
     dst = "docs/dev/transition/pdv-trigger/data/pdv_combined_trigger.csv"

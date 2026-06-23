@@ -118,10 +118,11 @@ diagnostic. Both are answered **offline** from the already-committed per-step CS
 `data/make_combined_trigger_table.py` (→ `data/pdv_combined_trigger.csv`, `pdv_combined_trigger.png`).
 Numbers reproduced by an independent recompute on `large_diffuse_lowsfe`/`simple_cluster`/`small_dense_highsfe`.
 
-**The identity that settles the `PdV/Lmech` question.** The combined ratio is *algebraically* the radiative
-ratio minus `PdV/Lmech`:
+**The identity that settles the `PdV/Lmech` question.** Write `cool = (Lmech−Lloss)/Lmech` (the shipped
+radiative cooling ratio, *no* PdV) and `coolPdV = (Lmech−Lloss−PdV)/Lmech` (the same ratio *with* PdV =
+reading B). The with-PdV ratio is *algebraically* the radiative one minus `PdV/Lmech`:
 
-    r_comb = (Lmech−Lloss−PdV)/Lmech = (Lmech−Lloss)/Lmech − PdV/Lmech = r_rad − PdV/Lmech
+    coolPdV = (Lmech−Lloss−PdV)/Lmech = (Lmech−Lloss)/Lmech − PdV/Lmech = cool − PdV/Lmech
 
 So **`PdV/Lmech` is exactly the offset between the shipped `cooling_balance` trigger and reading B** — its
 only role is to quantify how much folding PdV into the ratio loosens the operating point. It is a
@@ -130,24 +131,24 @@ sufficient-but-not-necessary proxy (the real crossing is `(Lloss+PdV)/Lmech`, an
 is not negligible). Equivalently: **reading B = the shipped trigger run at threshold `0.05 + PdV/Lmech ≈ 0.5`**
 — a ~10× looser, un-recalibrated constant.
 
-**Result — first-fire of `r_comb < 0.05` (sustained), vs the shipped `r_rad < 0.05`:**
+**Result — first-fire of `coolPdV < 0.05` (sustained), vs the shipped `cool < 0.05`:**
 
-| regime | configs | `r_rad<0.05` fires | `r_comb<0.05` fires | where / note |
+| regime | configs | `cool<0.05` fires | `coolPdV<0.05` fires | where / note |
 |---|---|---|---|---|
-| normal | 5/6 cleanroom | 0 | **0** | min `r_comb` only 0.08–0.15 — never reaches 0.05 |
-| normal | large_diffuse_lowsfe | 0 (r_rad≈0.49 there) | **yes, sustained** | t≈4.76 Myr, **86% through** the run — arbitrary epoch |
-| heavy 5e9 | fail_repro | 0 | at birth (row 3, t≈1.5e-3) | `r_comb<0` immediately, stays `<0` for the physical run |
+| normal | 5/6 cleanroom | 0 | **0** | min `coolPdV` only 0.08–0.15 — never reaches 0.05 |
+| normal | large_diffuse_lowsfe | 0 (cool≈0.49 there) | **yes, sustained** | t≈4.76 Myr, **86% through** the run — arbitrary epoch |
+| heavy 5e9 | fail_repro | 0 | at birth (row 3, t≈1.5e-3) | `coolPdV<0` immediately, stays `<0` for the physical run |
 | ctrl | small_1e6 | 0 | row 0 startup blip (not real) | spurious — recovers to ~0.40 |
 
 **Verdict on reading B (threshold 0.05): it does not behave as a usable trigger.** For 5/6 normal clouds it
-is silent (the bubble never stops gaining energy — `r_comb` bottoms at 0.08–0.15 and recovers); for the 6th
-it fires at a late, arbitrary epoch fixed by the mis-set constant, where `r_rad` is still ≈0.49 (no physical
+is silent (the bubble never stops gaining energy — `coolPdV` bottoms at 0.08–0.15 and recovers); for the 6th
+it fires at a late, arbitrary epoch fixed by the mis-set constant, where `cool` is still ≈0.49 (no physical
 handoff). The only physically-grounded threshold for the PdV-inclusive ratio is **0** (= `ebpeak`/reading A,
 net energy stops growing): normal clouds essentially never cross it in-cloud (`large_diffuse` only oscillates
 across 0 at the very end, non-sustained), the 5e9 crosses at birth. **The data confirms reading A over B.**
 
 **Corollary — the real handoff for normal clouds is not energy-budget at all.** Sub-critical clouds fire
-*neither* `r_rad` nor `r_comb`, so what drives their transition is **blowout** (geometric `R2 > rCloud`),
+*neither* `cool` nor `coolPdV`, so what drives their transition is **blowout** (geometric `R2 > rCloud`),
 consistent with the shipped 1b shadow (6/6 blowout, `ebpeak` 0/6). An energy-balance trigger — radiative or
 PdV-inclusive — is the wrong family for them; it is decisive only super-critically (the 5e9 pathology).
 
@@ -167,10 +168,10 @@ The change touches the solver's phase-handoff and the late-time **fate** outputs
 
 ### Step 1 — Decisive new measurement: combined-ratio first-fire across the science grid
 > **2026-06-23 redirect (supersedes the old "map `PdV/Lmech = 1`" framing).** The decision-relevant
-> quantity is the **combined ratio** `r_comb = r_rad − PdV/Lmech`, not `PdV/Lmech` alone (see §Offline test
+> quantity is the **combined ratio** `coolPdV = cool − PdV/Lmech`, not `PdV/Lmech` alone (see §Offline test
 > for why `PdV/Lmech=1` is a sufficient-but-not-necessary proxy). The offline first-cut is **done** above;
 > the open question is the *in-process, authoritative* version. Still record max/median `PdV/Lmech` per cell,
-> but only as the **offset diagnostic** that explains the `r_comb`–`r_rad` gap — not as the boundary to map.
+> but only as the **offset diagnostic** that explains the `coolPdV`–`cool` gap — not as the boundary to map.
 
 The open scientific question behind the maintainer's premise: **does any *realistic* cluster (not just
 the 5e9 pathology) approach super-critical?** If the boundary sits far above the science range, the PdV
