@@ -311,11 +311,14 @@ the scheduler-free harness (C.9.1-3) *before* wiring into `run.py`.
 4. ✅ **C2b — SHIPPED** (commit `feat(hpc): chunking + feeder + auto-collect orchestration`).
    `cluster_submit.py`: `compute_chunks`, `feed_and_collect` (QOS-retry, resume, auto-collect),
    injectable runner/sleep. 15 scheduler-free tests. Inert until wired.
-5. ⏳ **C1 — CLI restructure (NEXT, outward-facing)**: `--local`/`--submit`/`--emit`/`--collect`/
-   `--resume`, internal-caller lockstep (`--local`), wire `--submit` to `cluster_submit`, docs.
-   This is the breaking cutover (bare `run.py x.param` starts erroring; old emitted bundles need
-   regen for the `--local` task line).
-6. ⏳ **C-cruft**: cluster-namespace rename + dangling refs (separate, mechanical).
+5. ✅ **C1 — SHIPPED** (commit `feat(cli): restructure run.py into explicit run modes`).
+   `--local`/`--submit`/`--emit`/`--collect`/`--resume`; hard cutover (bare form errors);
+   internal callers pass `--local`; `--submit` wired to `cluster_submit` with detached feeder +
+   `--resume`; docs (CLAUDE.md/README/running.rst/index.rst) rewritten. Suite 634.
+6. ⏳ **C-cruft (only remaining)**: rename `trinity/_functions/cluster.py` (CPU detection, not
+   stellar) + `tools/cluster/`; document/remove `tools/plot_sweep_heatmap.py`,
+   `param/paperII_grid_sweep*.param`; resolve the phantom `trinity-plot`. Mechanical; the rename
+   touches imports in `run.py` + tests, so do it carefully (rename → update imports → suite green).
 
 ## Decisions (2026-06-23)
 - **Output:** `TRINITY_OUTPUT_DIR` is the write-side base; `path2output` may be `def_dir`,

@@ -24,10 +24,13 @@
 > against the numbers **without re-running**; record the exact config + command
 > that produced each artifact.
 
-**Status: TARGET design — NOT yet implemented.** This is the spec the
-`feature/helix-implementations` work builds toward (design in `PLAN.md`, this
-folder). When a piece ships, port the relevant section into the built docs
-(`docs/source/running.rst`) and update this file. Date: 2026-06-23.
+**Status: IMPLEMENTED** on `feature/helix-implementations` (2026-06-23). The
+`--local`/`--submit`/`--emit`/`--collect`/`--resume` surface, the site profile,
+profile-driven sbatch, and the chunk/feeder/auto-collect orchestration are all
+shipped and tested (full non-stress suite green); the built docs
+(`docs/source/running.rst`, README, CLAUDE.md) describe the new surface. This
+file remains the worked cheat-sheet. Only the cruft cleanup (cluster-namespace
+rename, dangling tool refs) is still pending — see `PLAN.md` §C.7.
 
 ---
 
