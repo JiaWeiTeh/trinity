@@ -49,17 +49,16 @@ intersphinx_disabled_domains = ['std']
 # -- Deprecation banner ------------------------------------------------------
 #
 # This site (trinitysf.readthedocs.io) is a frozen mirror of the in-repo
-# Sphinx sources. The canonical, actively-maintained documentation now lives
-# at https://jiaweiteh.github.io/trinity-web/. ``rst_prolog`` prepends a
-# warning admonition to every page so visitors landing on any URL of the
-# old site see the notice without having to scroll.
-rst_prolog = """
-.. warning::
-
-   **This documentation site is deprecated and no longer maintained.**
-   The current TRINITY documentation lives at
-   `jiaweiteh.github.io/trinity-web <https://jiaweiteh.github.io/trinity-web/>`_.
-"""
+# Sphinx sources; the canonical, maintained docs live at
+# https://jiaweiteh.github.io/trinity-web/.
+#
+# The banner is injected as page *content* via ``.. include:: _deprecation.txt``
+# at the top of every .rst page rather than via ``rst_prolog``: the RTD-served
+# HTML was dropping the rst_prolog admonition while keeping the canonical link,
+# so the prolog never reliably reached the mirror. An explicit include renders
+# identically and does not depend on the prolog hook. ``_deprecation.txt`` uses
+# a non-.rst suffix so Sphinx does not build it as a standalone page. The
+# canonical URL (``html_baseurl`` below) is unaffected and stays here.
 
 
 # -- Options for HTML output -------------------------------------------------

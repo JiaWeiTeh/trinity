@@ -1,3 +1,5 @@
+.. include:: _deprecation.txt
+
 .. _sec-license:
 
 License

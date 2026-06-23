@@ -1,3 +1,5 @@
+.. include:: _deprecation.txt
+
 TRINITY
 =======
 
