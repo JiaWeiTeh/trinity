@@ -47,24 +47,19 @@ DURATION_FILE = '.duration'
 # (parallelism comes from running many tasks, not from threading one sim),
 # mirroring the in-process runner's per-worker environment. Paths are absolute
 # so the task is independent of the directory the array runs in.
-_SBATCH_TEMPLATE = """\
-#!/bin/bash
-#SBATCH --job-name=trinity_sweep
-#SBATCH --array=1-{n}{throttle}
-#SBATCH --cpus-per-task=1
-#SBATCH --time=24:00:00
-#SBATCH --mem=4G
-#SBATCH --output={logs_dir}/%A_%a.out
-# --- EDIT for your cluster (e.g. bwForCluster Helix / bwUniCluster): ---
-# #SBATCH --account=YOUR_ACCOUNT
-# #SBATCH --partition=cpu
-
+#
+# The ``#SBATCH`` header is rendered from the site profile
+# (trinity/_input/cluster_profile.py) so partition / time / mem / account /
+# export and the environment activation (module / conda) are set ONCE by the
+# user instead of hand-edited into every emitted sbatch. An absent profile
+# falls back to the generic defaults below.
+_SBATCH_BODY = """\
 export OMP_NUM_THREADS=1
 export MKL_NUM_THREADS=1
 export OPENBLAS_NUM_THREADS=1
 export NUMEXPR_NUM_THREADS=1
 export MPLBACKEND=Agg
-
+{prologue_block}
 # Optional OFFSET (set via --export=OFFSET=N) shifts the runs.tsv line, so a
 # grid larger than a MaxSubmitJobs cap can be submitted in chunks (each chunk a
 # separate --array with its own OFFSET). Defaults to 0 (plain single submit).
@@ -86,8 +81,45 @@ exit $code
 """
 
 
+def _render_sbatch(profile, *, job_name, n, throttle, logs_dir, runs_tsv,
+                   run_py, exit_code_file, duration_file):
+    """Assemble the full sbatch script: a ``#SBATCH`` header from the site
+    profile (TRINITY defaults for any unset field) + the array-task body.
+
+    ``profile`` is a ``cluster_profile.ClusterProfile`` (an empty one reproduces
+    the generic defaults). ``job_name``/``logs_dir`` are auto-derived by the
+    caller; partition/account/export/prologue come from the profile.
+    """
+    directives = [
+        f"#SBATCH --job-name={job_name}",
+        f"#SBATCH --array=1-{n}{throttle}",
+        "#SBATCH --cpus-per-task=1",
+        f"#SBATCH --time={profile.time or '24:00:00'}",
+        f"#SBATCH --mem={profile.mem or '4G'}",
+        f"#SBATCH --output={logs_dir}/%A_%a.out",
+    ]
+    if profile.partition:
+        directives.append(f"#SBATCH --partition={profile.partition}")
+    if profile.account:
+        directives.append(f"#SBATCH --account={profile.account}")
+    if profile.export:
+        directives.append(f"#SBATCH --export={profile.export}")
+    prologue_block = (
+        f"\n# --- site environment (cluster profile) ---\n{profile.prologue}\n"
+        if profile.prologue else ""
+    )
+    body = _SBATCH_BODY.format(
+        prologue_block=prologue_block,
+        runs_tsv=runs_tsv,
+        run_py=run_py,
+        exit_code_file=exit_code_file,
+        duration_file=duration_file,
+    )
+    return "#!/bin/bash\n" + "\n".join(directives) + "\n\n" + body
+
+
 def emit_jobs(config, base_output_dir, jobs_dir, trinity_root,
-              concurrency=None, dry_run=False, sweep_file=None):
+              concurrency=None, dry_run=False, sweep_file=None, profile=None):
     """Generate a SLURM job-array bundle for a sweep.
 
     Writes ``<jobs_dir>/params/<name>.param`` per combination, ``runs.tsv``
@@ -104,7 +136,12 @@ def emit_jobs(config, base_output_dir, jobs_dir, trinity_root,
     trinity_root : Path
         TRINITY root, used to locate ``run.py`` in the sbatch script.
     concurrency : int or None
-        Array throttle ``%K`` (from ``--workers``); None means no limit.
+        Array throttle ``%K``. None falls back to the profile's ``throttle``
+        (then to no limit).
+    profile : cluster_profile.ClusterProfile or None
+        Site profile for the sbatch header (partition/time/mem/account/export +
+        env prologue). None loads it from the default discovery path; an absent
+        profile yields the generic defaults.
     dry_run : bool
         If True, validate and print a summary but write nothing.
     sweep_file : str or None
@@ -116,6 +153,10 @@ def emit_jobs(config, base_output_dir, jobs_dir, trinity_root,
     """
     jobs_dir = Path(jobs_dir).resolve()
     base_output_dir = str(Path(base_output_dir).resolve())
+
+    if profile is None:
+        from trinity._input.cluster_profile import load_profile
+        profile = load_profile()
 
     combinations = list(generate_combinations_from_config(config))
     n_jobs = len(combinations)
@@ -133,7 +174,8 @@ def emit_jobs(config, base_output_dir, jobs_dir, trinity_root,
             invalid.append((name, result))
     n_invalid = len(invalid)
 
-    throttle = f"%{concurrency}" if concurrency else ""
+    effective_throttle = concurrency if concurrency is not None else profile.throttle
+    throttle = f"%{effective_throttle}" if effective_throttle else ""
 
     if dry_run:
         print(f"\n[dry-run] Would emit {n_jobs} job(s) to {jobs_dir}")
@@ -193,7 +235,10 @@ def emit_jobs(config, base_output_dir, jobs_dir, trinity_root,
     manifest_path.write_text(json.dumps(manifest, indent=2), encoding='utf-8')
 
     sbatch_path = jobs_dir / SBATCH_NAME
-    sbatch_path.write_text(_SBATCH_TEMPLATE.format(
+    job_name = f"trinity_{Path(sweep_file).stem}" if sweep_file else "trinity_sweep"
+    sbatch_path.write_text(_render_sbatch(
+        profile,
+        job_name=job_name,
         n=n_jobs,
         throttle=throttle,
         logs_dir=logs_dir,
@@ -218,9 +263,9 @@ def emit_jobs(config, base_output_dir, jobs_dir, trinity_root,
             for e in result.errors:
                 print(f"    - {e}")
     print(f"\nSubmit with:\n  sbatch {sbatch_path}")
-    if not concurrency:
-        print("Tip: cap concurrent tasks with --workers K "
-              "(adds %K to the array) or edit the sbatch.")
+    if not effective_throttle:
+        print("Tip: cap concurrent tasks with --workers K (adds %K to the "
+              "array), or set [submit] throttle in your cluster profile.")
     return n_jobs, n_invalid
 
 

@@ -24,6 +24,14 @@ from trinity._input.sweep_jobs import emit_jobs, collect_report
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
+@pytest.fixture(autouse=True)
+def _neutralize_user_profile(tmp_path, monkeypatch):
+    """Make emit_jobs' default profile load hermetic: point discovery at a
+    nonexistent file so a real ~/.config/trinity/cluster.ini on the test
+    machine can't change the emitted sbatch under tests."""
+    monkeypatch.setenv("TRINITY_CLUSTER_PROFILE", str(tmp_path / "no_profile.ini"))
+
+
 def _make_sweep(tmp_path):
     """A 2x2 = 4-combo sweep with no density profile."""
     out = tmp_path / 'out'
@@ -81,6 +89,51 @@ def test_emit_manifest_matches_combinations(tmp_path) -> None:
 def test_emit_concurrency_sets_array_throttle(tmp_path) -> None:
     _s, _o, jobs, _n, _i = _emit(tmp_path, concurrency=4)
     assert '#SBATCH --array=1-4%4' in (jobs / 'submit_sweep.sbatch').read_text()
+
+
+def test_emit_sbatch_rendered_from_profile(tmp_path) -> None:
+    """The profile drives the #SBATCH header + env prologue; job-name and the
+    throttle are auto-derived (stem / profile.throttle)."""
+    from trinity._input.cluster_profile import ClusterProfile
+    sweep, out = _make_sweep(tmp_path)
+    cfg = read_sweep_config(str(sweep))
+    jobs = tmp_path / 'jobs'
+    prof = ClusterProfile(
+        partition="cpu-single", time="02:00:00", mem="2G", export="NONE",
+        throttle=150, prologue="module load devel/miniforge\nconda activate trinity",
+    )
+    emit_jobs(cfg, str(out), str(jobs), REPO_ROOT, sweep_file=str(sweep), profile=prof)
+    sbatch = (jobs / 'submit_sweep.sbatch').read_text()
+    assert "#SBATCH --partition=cpu-single" in sbatch
+    assert "#SBATCH --time=02:00:00" in sbatch
+    assert "#SBATCH --mem=2G" in sbatch
+    assert "#SBATCH --export=NONE" in sbatch
+    assert "#SBATCH --array=1-4%150" in sbatch            # throttle from profile
+    assert "#SBATCH --job-name=trinity_sweep" in sbatch   # derived from sweep.param stem
+    assert "conda activate trinity" in sbatch             # prologue injected
+    # explicit concurrency still overrides the profile throttle
+    jobs2 = tmp_path / 'jobs2'
+    emit_jobs(cfg, str(out), str(jobs2), REPO_ROOT, sweep_file=str(sweep),
+              profile=prof, concurrency=8)
+    assert "#SBATCH --array=1-4%8" in (jobs2 / 'submit_sweep.sbatch').read_text()
+
+
+def test_emit_empty_profile_matches_generic_defaults(tmp_path) -> None:
+    """An absent/empty profile reproduces the generic sbatch (no partition/
+    account/export/prologue lines, default time/mem)."""
+    from trinity._input.cluster_profile import ClusterProfile
+    sweep, out = _make_sweep(tmp_path)
+    cfg = read_sweep_config(str(sweep))
+    jobs = tmp_path / 'jobs'
+    emit_jobs(cfg, str(out), str(jobs), REPO_ROOT, sweep_file=str(sweep),
+              profile=ClusterProfile())
+    sbatch = (jobs / 'submit_sweep.sbatch').read_text()
+    assert "#SBATCH --time=24:00:00" in sbatch
+    assert "#SBATCH --mem=4G" in sbatch
+    assert "#SBATCH --partition=" not in sbatch
+    assert "#SBATCH --account=" not in sbatch
+    assert "#SBATCH --export=" not in sbatch
+    assert "site environment (cluster profile)" not in sbatch
 
 
 def test_emit_sbatch_is_offset_aware(tmp_path) -> None:
