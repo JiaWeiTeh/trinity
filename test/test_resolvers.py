@@ -113,6 +113,107 @@ def test_sps_bundle_default_rejects_nonsolar_ZCloud() -> None:
         _resolve_sps_bundle("def_path", params)
 
 
+# ---------------------------------------------------------------------------
+# resolve_output_path — TRINITY_OUTPUT_DIR write side (workstream A)
+#
+# The shared helper behind BOTH the single-run resolver and the sweep base
+# resolver in run.py, so single-run and sweep cannot drift.
+# ---------------------------------------------------------------------------
+from trinity._input.registry import resolve_output_path  # noqa: E402
+
+
+@pytest.fixture
+def _clean_env(monkeypatch):
+    monkeypatch.delenv("TRINITY_OUTPUT_DIR", raising=False)
+    return monkeypatch
+
+
+def test_output_path_defdir_unset_single(tmp_path, _clean_env) -> None:
+    _clean_env.chdir(tmp_path)
+    assert resolve_output_path("def_dir", "m") == os.path.join(str(tmp_path), "outputs", "m")
+
+
+def test_output_path_defdir_unset_sweep_base(tmp_path, _clean_env) -> None:
+    """model_name=None -> sweep base: the outputs root, no per-run segment."""
+    _clean_env.chdir(tmp_path)
+    assert resolve_output_path("def_dir") == os.path.join(str(tmp_path), "outputs")
+
+
+def test_output_path_defdir_env_replaces_cwd_outputs(tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    ws = tmp_path / "ws"
+    monkeypatch.setenv("TRINITY_OUTPUT_DIR", str(ws))
+    assert resolve_output_path("def_dir", "m") == os.path.join(str(ws), "m")
+    assert resolve_output_path("def_dir") == str(ws)
+
+
+def test_output_path_relative_unset_preserves_cwd_anchor(tmp_path, _clean_env) -> None:
+    """Regression guard: a committed 'outputs/sweep_test' must keep resolving to
+    <cwd>/outputs/sweep_test when the env var is unset (no doubled 'outputs/')."""
+    _clean_env.chdir(tmp_path)
+    assert resolve_output_path("outputs/sweep_test") == os.path.join(
+        str(tmp_path), "outputs", "sweep_test"
+    )
+
+
+def test_output_path_relative_env_anchor(tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    ws = tmp_path / "ws"
+    monkeypatch.setenv("TRINITY_OUTPUT_DIR", str(ws))
+    assert resolve_output_path("paperII_grid") == os.path.join(str(ws), "paperII_grid")
+
+
+def test_output_path_absolute_taken_as_is_ignores_env(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("TRINITY_OUTPUT_DIR", str(tmp_path / "ws"))
+    abs_dir = str(tmp_path / "gpfs" / "run")
+    assert resolve_output_path(abs_dir, "m") == abs_dir
+
+
+def test_resolve_path2output_honors_env_and_creates(tmp_path, monkeypatch) -> None:
+    ws = tmp_path / "ws"
+    monkeypatch.setenv("TRINITY_OUTPUT_DIR", str(ws))
+    out = _resolve_path2output("def_dir", _params(model_name="mymodel"))
+    assert out == os.path.join(str(ws), "mymodel")
+    assert Path(out).is_dir()
+
+
+def test_single_and_sweep_share_root(tmp_path, monkeypatch) -> None:
+    """Consistency: single-run def_dir and sweep-base def_dir resolve under the
+    same root, differing only by the per-run segment."""
+    monkeypatch.chdir(tmp_path)
+    ws = tmp_path / "ws"
+    monkeypatch.setenv("TRINITY_OUTPUT_DIR", str(ws))
+    assert resolve_output_path("def_dir", "run1") == os.path.join(
+        resolve_output_path("def_dir"), "run1"
+    )
+
+
+def test_run_sweep_base_wiring(tmp_path, monkeypatch) -> None:
+    """run.resolve_base_output_dir routes through the shared resolver."""
+    import sys
+    import importlib
+    sys.path.insert(0, str(_REPO_ROOT))
+    run = importlib.import_module("run")
+
+    monkeypatch.chdir(tmp_path)
+    ws = tmp_path / "ws"
+    monkeypatch.setenv("TRINITY_OUTPUT_DIR", str(ws))
+
+    class _Cfg:
+        base_params = {"path2output": "def_dir"}
+
+    assert run.resolve_base_output_dir(_Cfg()) == str(Path(ws).resolve())
+
+    monkeypatch.delenv("TRINITY_OUTPUT_DIR", raising=False)
+
+    class _Cfg2:
+        base_params = {"path2output": "outputs/sweep_test"}
+
+    assert run.resolve_base_output_dir(_Cfg2()) == str(
+        (tmp_path / "outputs" / "sweep_test").resolve()
+    )
+
+
 def test_sps_bundle_default_rejects_norot() -> None:
     params = _default_sps_params(SB99_rotation=0)
     with pytest.raises(ValueError, match="SB99_rotation=0 is not supported"):

@@ -137,15 +137,16 @@ def positive_int(value):
 def resolve_base_output_dir(config):
     """Absolute base output directory for a sweep.
 
-    Mirrors the single-run sentinel handling: 'def_dir' (or an unset
-    path2output) -> ``<cwd>/outputs``; a user path is taken as given. Always
-    returns an absolute path so emitted job-array param files and the
-    in-process runner agree regardless of the launch directory.
+    Shares the single-run resolver (``registry.resolve_output_path``) so the
+    two cannot drift: 'def_dir' (or an absent path2output) -> the outputs root
+    (``$TRINITY_OUTPUT_DIR`` if set, else ``<cwd>/outputs``); a relative path
+    is taken under that env/cwd anchor; an absolute path is used as given.
+    Always returns an absolute, resolved path so emitted job-array param files
+    and the in-process runner agree regardless of the launch directory.
     """
-    base = config.base_params.get('path2output', 'outputs')
-    if base == 'def_dir':
-        base = os.path.join(os.getcwd(), 'outputs')
-    return str(Path(base).resolve())
+    from trinity._input.registry import resolve_output_path
+    base = config.base_params.get('path2output', 'def_dir')
+    return str(Path(resolve_output_path(base)).resolve())
 
 
 # =============================================================================

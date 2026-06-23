@@ -190,14 +190,40 @@ def _validate_rCloud_max(value, params) -> None:
 # Logic and error messages are lifted verbatim from the pre-Phase-7
 # inline Step-7 block so behavior is byte-identical.
 # ---------------------------------------------------------------------------
-def _resolve_path2output(value, params) -> str:
-    """Output directory.  Sentinel 'def_dir' resolves to
-    ``<cwd>/outputs/<model_name>``; a user path is taken as-is.  Either
-    way the directory is created."""
+def resolve_output_path(value, model_name=None) -> str:
+    """Resolve a ``path2output`` value to a concrete output directory.
+
+    Single source of truth shared by the single-run resolver below and the
+    sweep base resolver in ``run.py`` so the two cannot drift.  Honors
+    ``TRINITY_OUTPUT_DIR`` — the write-side counterpart of the env var the
+    readers already consume (``_output/trinity_reader.py``):
+
+      * ``'def_dir'`` -> ``<root>/<model_name>`` for a single run, or
+        ``<root>`` for the sweep base (``model_name=None``), where ``root``
+        is ``$TRINITY_OUTPUT_DIR`` if set, else ``<cwd>/outputs``.
+      * a **relative** path -> resolved under ``$TRINITY_OUTPUT_DIR`` if set,
+        else under ``<cwd>`` — preserving the historical cwd-relative meaning,
+        so a committed ``path2output outputs/sweep_test`` still lands at
+        ``<cwd>/outputs/sweep_test`` when the env var is unset (no doubled
+        ``outputs/`` segment).
+      * an **absolute** path -> returned unchanged (escape hatch).
+
+    Pure (no mkdir); callers create the directory.
+    """
+    env = os.environ.get('TRINITY_OUTPUT_DIR')
     if value == 'def_dir':
-        path2output = os.path.join(os.getcwd(), 'outputs', params['model_name'].value)
-    else:
-        path2output = str(value)
+        root = env if env else os.path.join(os.getcwd(), 'outputs')
+        return os.path.join(root, model_name) if model_name else root
+    value = str(value)
+    if os.path.isabs(value):
+        return value
+    return os.path.join(env if env else os.getcwd(), value)
+
+
+def _resolve_path2output(value, params) -> str:
+    """Output directory (see ``resolve_output_path`` for the three-way rule).
+    The resolved directory is created."""
+    path2output = resolve_output_path(value, params['model_name'].value)
     Path(path2output).mkdir(parents=True, exist_ok=True)
     return path2output
 
