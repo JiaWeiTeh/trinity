@@ -1,0 +1,9 @@
+config,regime,n_rows,rrad_fire_row,rrad_fire_t,rrad_sustained,rrad_end_blip,rcomb_fire_row,rcomb_fire_t,rcomb_sustained,rcomb_end_blip,rcomb0_fire_row,rcomb0_fire_t,rcomb0_sustained,rcomb0_end_blip,min_r_comb,min_r_rad,med_r_comb,med_r_rad,med_pdv_over_Lmech,med_Lloss_over_Lmech
+be_sphere,normal,182,,,,,,,,,,,,,0.0945,0.4714,0.2597,0.7607,0.4533,0.2393
+large_diffuse_lowsfe,normal,191,,,,,164.0,4.760002,True,False,170.0,5.060002,False,False,-0.019,0.465,0.3434,0.7084,0.4432,0.2916
+midrange_pl0,normal,184,,,,,,,,,,,,,0.0992,0.3645,0.301,0.8311,0.4607,0.1689
+pl2_steep,normal,171,,,,,,,,,,,,,0.1527,0.4892,0.2361,0.8283,0.4288,0.1717
+simple_cluster,normal,181,,,,,,,,,,,,,0.0885,0.324,0.2836,0.8076,0.4604,0.1924
+small_dense_highsfe,normal,165,,,,,,,,,,,,,0.0809,0.2832,0.2696,0.794,0.4638,0.206
+fail_repro,heavy_5e9,51,,,,,3.0,0.001533,False,False,3.0,0.001533,False,False,-0.5717,0.9863,-0.4354,0.9915,1.4227,0.0085
+small_1e6,normal_ctrl,169,,,,,0.0,8e-05,False,False,0.0,8e-05,False,False,-0.1083,0.7914,0.4052,0.9783,0.5539,0.0217

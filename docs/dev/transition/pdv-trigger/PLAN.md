@@ -24,10 +24,12 @@
 > against the numbers **without re-running**; record the exact config + command
 > that produced each artifact.
 
-**Date:** 2026-06-23. **Branch:** `feature/PdV-trigger-term`. **Status:** scoping + evidence — **no
-production change yet.** This note answers the maintainer's question ("add a PdV term to the
-transition trigger — what was the argument against it, and is it still valid for larger clusters?")
-and lays out how to plan/test it. Sibling priors (re-verify per banner): `../pt4/TRANSITION_FIX_SCOPING.md`
+**Date:** 2026-06-23. **Branch:** `feature/PdV-trigger-term`. **Status:** scoping + evidence + an
+**offline test of reading B** (§Offline test below) — **no production change yet.** This note answers the
+maintainer's question ("add a PdV term to the transition trigger — what was the argument against it, and
+is it still valid for larger clusters?"), then a **2026-06-23 maintainer redirect** ("see if
+`(Lmech−Lloss−PdV)/Lmech < 0.05` works as a trigger; not sure what the standalone `PdV/Lmech` diagnostic
+buys us") which is answered offline in §Offline test, and lays out how to plan/test it. Sibling priors (re-verify per banner): `../pt4/TRANSITION_FIX_SCOPING.md`
 (Route 1), `../pt4/r1shadow/R1_FINDINGS.md`, `../../failed-large-clouds/PLAN.md` §6.
 
 ---
@@ -109,6 +111,46 @@ true only past the unity crossing.
   epoch set by an un-recalibrated constant. **Not recommended** unless re-derived from a model — record
   it only as the literal interpretation of the request, then steer to (A).
 
+## Offline test of reading B — does `(Lmech−Lloss−PdV)/Lmech < 0.05` fire? (2026-06-23 redirect)
+
+The maintainer asked to **test reading B directly** and questioned the point of the standalone `PdV/Lmech`
+diagnostic. Both are answered **offline** from the already-committed per-step CSVs — no sims — by
+`data/make_combined_trigger_table.py` (→ `data/pdv_combined_trigger.csv`, `pdv_combined_trigger.png`).
+Numbers reproduced by an independent recompute on `large_diffuse_lowsfe`/`simple_cluster`/`small_dense_highsfe`.
+
+**The identity that settles the `PdV/Lmech` question.** The combined ratio is *algebraically* the radiative
+ratio minus `PdV/Lmech`:
+
+    r_comb = (Lmech−Lloss−PdV)/Lmech = (Lmech−Lloss)/Lmech − PdV/Lmech = r_rad − PdV/Lmech
+
+So **`PdV/Lmech` is exactly the offset between the shipped `cooling_balance` trigger and reading B** — its
+only role is to quantify how much folding PdV into the ratio loosens the operating point. It is a
+*decomposition* diagnostic, **not** a threshold variable; thresholding it against 1 (old Step 1) chases a
+sufficient-but-not-necessary proxy (the real crossing is `(Lloss+PdV)/Lmech`, and `Lloss/Lmech` ≈ 0.17–0.29
+is not negligible). Equivalently: **reading B = the shipped trigger run at threshold `0.05 + PdV/Lmech ≈ 0.5`**
+— a ~10× looser, un-recalibrated constant.
+
+**Result — first-fire of `r_comb < 0.05` (sustained), vs the shipped `r_rad < 0.05`:**
+
+| regime | configs | `r_rad<0.05` fires | `r_comb<0.05` fires | where / note |
+|---|---|---|---|---|
+| normal | 5/6 cleanroom | 0 | **0** | min `r_comb` only 0.08–0.15 — never reaches 0.05 |
+| normal | large_diffuse_lowsfe | 0 (r_rad≈0.49 there) | **yes, sustained** | t≈4.76 Myr, **86% through** the run — arbitrary epoch |
+| heavy 5e9 | fail_repro | 0 | at birth (row 3, t≈1.5e-3) | `r_comb<0` immediately, stays `<0` for the physical run |
+| ctrl | small_1e6 | 0 | row 0 startup blip (not real) | spurious — recovers to ~0.40 |
+
+**Verdict on reading B (threshold 0.05): it does not behave as a usable trigger.** For 5/6 normal clouds it
+is silent (the bubble never stops gaining energy — `r_comb` bottoms at 0.08–0.15 and recovers); for the 6th
+it fires at a late, arbitrary epoch fixed by the mis-set constant, where `r_rad` is still ≈0.49 (no physical
+handoff). The only physically-grounded threshold for the PdV-inclusive ratio is **0** (= `ebpeak`/reading A,
+net energy stops growing): normal clouds essentially never cross it in-cloud (`large_diffuse` only oscillates
+across 0 at the very end, non-sustained), the 5e9 crosses at birth. **The data confirms reading A over B.**
+
+**Corollary — the real handoff for normal clouds is not energy-budget at all.** Sub-critical clouds fire
+*neither* `r_rad` nor `r_comb`, so what drives their transition is **blowout** (geometric `R2 > rCloud`),
+consistent with the shipped 1b shadow (6/6 blowout, `ebpeak` 0/6). An energy-balance trigger — radiative or
+PdV-inclusive — is the wrong family for them; it is decisive only super-critically (the 5e9 pathology).
+
 ## Plan & test design (rule-5 ladder — this is a risky/iterative/outward-facing change)
 
 The change touches the solver's phase-handoff and the late-time **fate** outputs, and is a
@@ -123,7 +165,13 @@ The change touches the solver's phase-handoff and the late-time **fate** outputs
   case** (reservoir grew only 1.014× → 1c may reject a near-empty bubble).
 - Pass/fail bars + `f_ret` targets written here *before* editing.
 
-### Step 1 — Decisive new measurement: map the `PdV/Lmech = 1` boundary across the science grid
+### Step 1 — Decisive new measurement: combined-ratio first-fire across the science grid
+> **2026-06-23 redirect (supersedes the old "map `PdV/Lmech = 1`" framing).** The decision-relevant
+> quantity is the **combined ratio** `r_comb = r_rad − PdV/Lmech`, not `PdV/Lmech` alone (see §Offline test
+> for why `PdV/Lmech=1` is a sufficient-but-not-necessary proxy). The offline first-cut is **done** above;
+> the open question is the *in-process, authoritative* version. Still record max/median `PdV/Lmech` per cell,
+> but only as the **offset diagnostic** that explains the `r_comb`–`r_rad` gap — not as the boundary to map.
+
 The open scientific question behind the maintainer's premise: **does any *realistic* cluster (not just
 the 5e9 pathology) approach super-critical?** If the boundary sits far above the science range, the PdV
 trigger is an edge-case guard; if real sweeps straddle it, it is a default-relevant correctness fix.
@@ -170,7 +218,20 @@ under `docs/dev/transition/pdv-trigger/` with the exact config + command for eac
 - **Boundary location:** if no realistic cluster reaches `PdV/Lmech > 1`, the PdV trigger is a guard for
   the pathological edge, not a science-sweep correctness fix — that changes the priority of a default flip.
 
+### In-solver shadow insertion point (code map, verified 2026-06-23)
+If/when the authoritative in-process confirmation of reading B is wanted (the offline reconstruction has the
+end-of-run/startup edge sensitivity the §Evidence cross-check warns about), it is a ~5-line **read-only**
+add at `trinity/phase1b_energy_implicit/run_energy_implicit_phase.py:1166`, right after the existing
+`ebpeak` shadow eval — `Lgain` (=`Lmech_total`), `Lloss`, `R2`, `v2`, `params['Pb'].value` and
+`betadelta_result.Edot_from_balance` are all in scope there. Add `combined_ratio = (Lgain − Lloss −
+4πR2²·v2·Pb)/Lgain` (= `edot_balance/Lgain`) and a `combined_ratio` / `combined_ratio_fired` column to the
+`shadow_rows` dict (the same block already logs `cooling_ratio` and `edot_balance` → `shadow_R1_1b.csv`).
+Byte-identical (logging only); extend the `test/test_r1_shadow.py` truth table (14 tests). **Lower priority
+given the offline verdict** — it confirms, it does not change, the reading-B finding.
+
 ## Artifacts
+- `data/pdv_combined_trigger.csv` (+ `data/make_combined_trigger_table.py`, figure `pdv_combined_trigger.png`)
+  — the §Offline-test reading-B first-fire table. Regenerate: `python docs/dev/transition/pdv-trigger/data/make_combined_trigger_table.py`.
 - `data/pdv_regime_budget.csv` (+ `data/make_pdv_regime_table.py`) — the §Evidence table.
 - Upstream (committed): `../cleanroom/data/c0_*_h0.csv`, `../../failed-large-clouds/data/budget_*.csv`,
   `../pt4/r1shadow/r1_shadow_summary.csv`.
