@@ -24,7 +24,7 @@
 > against the numbers **without re-running**; record the exact config + command
 > that produced each artifact.
 
-**Date:** 2026-06-23 · **Branch:** `claude/adoring-volta-3nrcmt` · **Status:** plan only, no code yet (per user)
+**Date:** 2026-06-23 · **Branch:** `feature/helix-implementations` · **Status:** plan only, no code yet (per user)
 
 ---
 
@@ -48,29 +48,48 @@ Three friction points surfaced, all about *the seam between the code and where i
 3. **The `run.py` command surface has accreted cruft.** One overloaded entry point with
    auto-detection, a flag (`--workers`) that means two different things, undocumented
    tools, a dangling reference, and an overloaded "cluster" name.
+4. **The HPC submission path is almost entirely manual** (from the user's real paperII run):
+   the emitted sbatch *can't run as-is* — it has no env activation (`module`/`conda`) and no
+   `--export=NONE`, so the user hand-rewrites it every time (partition, walltime, mem,
+   job-name, log dir). Then a hand-written `submit_loop.sh` with **manually computed** offsets
+   (`OFFSETS="0 880 1760"`), a baked-in `%150` throttle, and a `QOSMaxSubmitJobPerUserLimit`
+   retry loop babysat in tmux. Then a manual `--collect-report`. Nothing is parameterized;
+   everything is hardcoded and re-typed per campaign.
 
-This doc plans all three as **separate reviewable commits**, low-risk first.
+This doc plans these as **separate reviewable commits**, low-risk first.
 
 ---
 
 ## A. Honor `TRINITY_OUTPUT_DIR` on the write side  *(small, safe)*
 
 **Problem.** Read side honors the env var; write side does not. No single switch to
-redirect output to a persistent mount.
+redirect output to a persistent mount — so users hardcode an absolute `path2output` into the
+`.param` (e.g. the real paperII grid pins
+`/gpfs/bwfor/work/ws/hd_cq295-trinity/paperII_grid_sweep_new_trigger/`), which is
+non-portable (breaks on laptop), leaks a machine path, and must be hand-edited per machine.
 
-**Fix.** In the two places that resolve the default output base, prefer
-`os.environ['TRINITY_OUTPUT_DIR']` when set, else today's `<cwd>/outputs`:
-- single run: `_resolve_path2output` (`registry.py:193-202`) — only the `'def_dir'`
-  branch; an explicit user `path2output` is still taken as-is.
-- sweep: `resolve_base_output_dir` (`run.py:137-148`) — same `'def_dir'` branch.
+**Fix — three-way `path2output` resolution.** In the two resolvers
+(`_resolve_path2output` `registry.py:193-202`; `resolve_base_output_dir` `run.py:137-148`):
 
-Committed `.param` files keep `path2output = def_dir`; the user exports the env var once
-(`~/.bashrc`) and nothing absolute is committed. Behavior is unchanged when the var is unset.
+| `path2output` value | resolves to |
+|---|---|
+| `def_dir` (default) | `$TRINITY_OUTPUT_DIR/<model>` if env set, else `<cwd>/outputs/<model>` |
+| **relative** (e.g. `paperII_grid_sweep_new_trigger`) | `$TRINITY_OUTPUT_DIR/<that>` if env set, else `<cwd>/<that>` |
+| **absolute** (e.g. `/gpfs/...`) | taken as-is (escape hatch, unchanged) |
 
-**Test.** `test/` case: with `TRINITY_OUTPUT_DIR` set (monkeypatch), `read_param` on a
-`def_dir` param resolves `path2output` under that base; unset → falls back to `<cwd>/outputs`.
+So the paperII param drops the `/gpfs/...` line to just
+`path2output  paperII_grid_sweep_new_trigger`, and the user sets
+`export TRINITY_OUTPUT_DIR=/gpfs/bwfor/work/ws/hd_cq295-trinity` once. The **same .param now
+runs on the laptop and on Helix** with no edit; nothing absolute is committed. Behavior is
+unchanged when the var is unset *and* the path is `def_dir`/absolute.
 
-**Risk.** Low/local. One sentinel branch in two functions + one test.
+**Test.** `test/` cases (monkeypatch env): `def_dir` and a relative path both resolve under
+`TRINITY_OUTPUT_DIR` when set; fall back to `<cwd>` when unset; an absolute path is untouched
+in all cases.
+
+**Risk.** Low/local. One branch in two functions + tests. (The relative branch is the only
+behavior *change* — today a non-`def_dir`, non-absolute value is rare; verify no committed
+`.param` relies on a relative `path2output` meaning "cwd-relative".)
 
 ---
 
@@ -158,77 +177,157 @@ python run.py --collect DIR        # standalone collect (also what --submit chai
   **User decision: explicit, no default** — also blocks the accidental-big-sweep-on-laptop foot-gun.
 - `--collect DIR` stays a separate no-param action (rename of today's `--collect-report`).
 
-### C.2 `--submit` = one-shot: emit + submit + auto-collect  [user decision]
-Sequence inside `--submit`:
-1. Build the bundle (reuse `emit_jobs`) into an auto dir
-   `<base_output_dir>/_jobs/<sweepname>_<timestamp>/` (or `--jobs-dir DIR` to override) — the
-   user names nothing.
-2. `sbatch <bundle>/submit_sweep.sbatch` → parse `Submitted batch job <ARRAY_ID>`.
-3. `sbatch --dependency=afterany:<ARRAY_ID> --wrap "python run.py --collect <bundle>"` →
-   the report is written automatically when the array finishes (`afterany` = even on partial
-   failure). No second script file needed (`--wrap`).
-4. Print both job IDs.
-- **No sbatch editing.** Drop the `--account`/`--partition` directives from the template;
-  SLURM reads `SBATCH_ACCOUNT` / `SBATCH_PARTITION` / `SBATCH_TIMELIMIT` from the env natively
-  (set once in `~/.bashrc`, like `TRINITY_OUTPUT_DIR`). Keep `--mem`/`--time` defaults overridable.
-  *(verify on Helix — a site can disable env propagation; standard SLURM honors it.)*
-- **Fallback:** `shutil.which('sbatch') is None` (this cloud workspace, a login node without a
-  scheduler) → behave like `--emit` (write bundle + print the manual `sbatch` line) and warn.
-  No crash.
-- **Known ceiling (ponytail):** one-shot assumes the array fits under the site `MaxSubmitJobs`
-  cap. Larger grids keep the documented `OFFSET`-chunking escape hatch (`sweep_jobs.py:68-74`),
-  run manually; auto-chunking is out of scope for v1.
+### C.2 Design north star — what other codes do (and where TRINITY lands)
+The recurring HPC best practice: **separate "what to compute" (the `.param`, scientific) from
+"how/where to run it" (a per-user *site profile*, scheduler).** The user's pain is that
+TRINITY has no place for the second, so everything leaks into a hand-edited sbatch + a
+hand-written submit loop + hardcoded numbers.
 
-### C.3 Required lockstep — internal callers lose the bare form
+| concern | what they hand-roll today | reference tool | TRINITY plan |
+|---|---|---|---|
+| scheduler settings (partition, time, mem, account) | edit each sbatch | Snakemake *profile* `config.yaml`; Nextflow `process{}` | **site profile** (§C.3) |
+| env activation (`module`/`conda`) | edit each sbatch | Nextflow `beforeScript`; submitit `setup` | profile `prologue` (§C.3) |
+| concurrency throttle (`%150`) | bake into the loop | Nextflow `executor.queueSize`; submitit `slurm_array_parallelism` | profile `throttle`, per-run `--throttle` (§C.4) |
+| over-cap chunking + offsets (`0 880 1760`) | hand-compute, hand-loop | Nextflow/Snakemake feed the queue for you | auto from one `chunk` number (§C.4) |
+| retry on QOS-full | bash `case … sleep 300` loop in tmux | client-side scheduler (Nextflow/Snakemake daemon) | built-in feeder, backgrounded (§C.4) |
+| gather/report after | manual `--collect-report` | dependency "reduce" job | `afterany` auto-collect (§C.4) |
+| output location | hardcode `/gpfs/...` | `--directory`/work-dir | `TRINITY_OUTPUT_DIR` + relative path (§A) |
+
+Net: `python run.py x.param --submit` becomes the one command; the profile + env are set once.
+
+### C.3 The site profile — set the cluster bits ONCE (the linchpin)
+Discovery: `$TRINITY_CLUSTER_PROFILE`, else `~/.config/trinity/cluster.ini` (XDG). Stdlib
+`configparser` — **no new dep** (PyYAML is importable but undeclared; py floor is 3.9 so no
+`tomllib`). Everything optional, safe defaults; an absent profile reproduces today's generic
+template *plus* the two hooks it was missing (`--export=NONE`, prologue).
+
+```ini
+[sbatch]
+partition = cpu-single
+time      = 02:00:00
+mem       = 2G
+export    = NONE
+# account = ...        ; Helix usually doesn't need it -> omit (also reads $SBATCH_ACCOUNT)
+
+[submit]
+throttle  = 150        ; %N concurrent array tasks; omit = no cap ("worker 150" lives here, not per-run)
+chunk     = 880        ; max array tasks per submission; offsets auto-computed. "auto" = detect cap
+
+[env]
+prologue_file = ~/.config/trinity/helix_prologue.sh   ; verbatim shell before `python run.py`
+# or inline `prologue = ...` (configparser multi-line)
+```
+
+`helix_prologue.sh` is literally the user's existing three lines
+(`module load devel/miniforge` / `conda activate trinity`). This one file replaces the manual
+sbatch rewrite **every run**.
+
+**Auto-derived per run** (fixes "i need a keyword to set --output/--jobname" — the answer is
+*no keyword*, derive it): `--job-name = trinity_<sweep-file-stem>`,
+`--output = <bundle>/logs/%A_%a.out`. Array size + `runs.tsv`/`run.py` paths come from the
+bundle as today. From the profile: partition/time/mem/account/export + prologue.
+
+### C.4 `--submit` orchestration — chunking + feeder + auto-collect, zero hardcoding
+`python run.py paperII_grid_sweep.param --submit` does:
+1. **Emit** the bundle into an auto dir `<base>/_jobs/<stem>_<timestamp>/` (or `--jobs-dir`);
+   output base from §A env — nothing hardcoded.
+2. **Chunk automatically:** total `N`, `chunk=C` → `n_chunks=ceil(N/C)`, offsets `[0,C,2C,…]`
+   computed for you. No more hand-written `OFFSETS="0 880 1760"`, no manual `1760`.
+3. **Submit with throttle:** per chunk `sbatch --export=OFFSET=<off> --array=1-<size>%<throttle> <sbatch>`,
+   throttle from the profile (no per-run `--workers 150`); parse the returned job id.
+4. **Feed past the QOS cap:** on `QOSMaxSubmitJobPerUserLimit`, wait + retry — exactly the
+   hand-written `submit_loop.sh`, now built-in and parameter-free. *(Honest ceiling, ponytail:
+   the cap is on pending+running jobs, so jobs must LEAVE before more enter — a feeder is
+   intrinsic; we remove the hand-rolling, not the waiting.)* **Disconnect-resilient:** default
+   `setsid`/`nohup` with `<bundle>/submit.log` + printed PID (or `--foreground` to watch) — no
+   tmux ritual.
+5. **Auto-collect:** after the last chunk, `sbatch --dependency=afterany:<last_id> --wrap
+   "python run.py --collect <bundle>"`.
+6. Print every array id + the collect id + the `--resume <bundle>` / progress command.
+
+Escape hatches: `--emit DIR` (write only), `--chunk N` / `--throttle N` (override profile),
+`--no-auto-collect`, `--foreground`. `--resume <bundle>` re-feeds only the not-yet-submitted /
+failed chunks (offsets + per-chunk job ids recorded in the manifest).
+**Fallback:** no `sbatch` on PATH (this workspace / a scheduler-less login node) → behaves like
+`--emit` + prints the manual submit line; never crashes.
+
+### C.5 Required lockstep — internal callers lose the bare form
 "No default" means `python run.py <param>` (no mode) now errors, so **both internal callers
 must move to `--local` in the same commit** or sweeps/HPC break (each runs a single-combo
 `.param`, so `--local` is correct):
 - `trinity/_input/sweep_runner.py:286` → `[python, run.py, param, '--local']`
-- `trinity/_input/sweep_jobs.py:81` (sbatch template) → `python "{run_py}" "$PARAM" --local`
-Also rename `--collect-report` → `--collect` (its callers: the new dependency job + docs).
+- `trinity/_input/sweep_jobs.py:81` (sbatch template body) → `python "{run_py}" "$PARAM" --local`
+Also rename `--collect-report` → `--collect` (callers: the new dependency job + docs).
 
-### C.4 `--workers` — keep one flag, meaning "max concurrent runs"  [recommend]
-With an explicit mode the old overload becomes coherent: `--workers N` = concurrency cap,
-read as the local pool size under `--local` and the array throttle `%N` under
-`--submit`/`--emit`. One flag, one mental model ("how many at once"). *Not* splitting into two
-flags unless the user prefers it — simpler wins.
+### C.6 `--workers`/throttle — one concept, "max concurrent runs"
+Local pool size (`--local`) and array throttle (`--submit`) are the same idea: how many at
+once. Keep one `--workers` for the local pool; the array throttle's default lives in the
+profile (`[submit] throttle`) with a per-run `--throttle` override. No more baking `%150` into
+a script.
 
-### C.5 Cruft cleanup (from the C.0 inventory)
+### C.7 Cruft cleanup (from the C.0 inventory)
 Rename the overloaded `cluster` module (`trinity/_functions/cluster.py` = CPU detection, not
 stellar) + `tools/cluster/`; document or remove `tools/plot_sweep_heatmap.py`,
 `docs/dev/cluster/PLOTTING_WORKFLOW.md`, `param/paperII_grid_sweep*.param`; resolve the phantom
 `trinity-plot`.
 
-### C.6 Docs to update
+### C.8 Docs to update
 CLAUDE.md:13-17, README.md:42-77, docs/source/running.rst (14/133/136/152), index.rst:35 —
-rewrite the bare-form examples to `--local` / `--submit`, document `--emit`/`--collect` and the
-`SBATCH_*` + `TRINITY_OUTPUT_DIR` env setup.
+rewrite bare-form examples to `--local`/`--submit`, document `--emit`/`--collect`, the **site
+profile + `~/.bashrc` env one-time setup**, and a worked Helix example reproducing the paperII
+sweep in a single `--submit`.
 
-### C.7 Gate (outward-facing + scheduler-free CI)
-1. Equivalence: every README/running.rst example reproduces the same run via the new flags.
-2. Baseline: capture the emitted sbatch + manifest for `param/sweep_example.param` before; diff after.
-3. `--submit` is testable without SLURM — unit-test (a) the bundle/sbatch text and (b) the exact
-   `sbatch` + `sbatch --dependency=afterany:…--wrap` command strings via a mocked `subprocess`
-   and a fake `sbatch` on PATH returning a parseable job id; assert the no-`sbatch` fallback.
-4. `pytest` green before/after. Persist the before/after emit diff + the captured command
-   strings as committed artifacts here.
+### C.9 Gate (outward-facing; fully scheduler-free CI)
+1. **Profile parsing:** unit-test an example `cluster.ini` → directives + injected prologue; an
+   absent profile → today's template + `--export=NONE`.
+2. **Chunk math:** `offsets(N, C)` table test, incl. N<C (single submit, no chunking) and exact
+   multiples (the `0/880/1760` case).
+3. **Feeder:** fake `sbatch` on PATH that returns `QOSMaxSubmitJobPerUserLimit` then a parseable
+   job id; assert it retries then succeeds, records ids in the manifest, and `--resume` skips
+   done chunks. (no real SLURM; mock `subprocess` + a tiny stub `sbatch`.)
+4. **Equivalence/baseline:** capture the emitted sbatch + manifest for `param/sweep_example.param`
+   before; diff after. Every README/running.rst example reproduces.
+5. `pytest` green before/after. **Persist** the example profile, the before/after emit diff, and
+   the captured `sbatch` command strings as committed artifacts under `docs/dev/cli-rationalization/`.
 
-**Risk.** Medium, outward-facing + new submit/collect orchestration. Land after A+B, own commit, run C.7.
+**Risk.** Medium–high: outward-facing + new profile/submit/collect orchestration. Land after
+A+B, own commit(s), run C.9. The profile + feeder are the largest new surface — build behind
+the scheduler-free harness (C.9.1-3) *before* wiring into `run.py`.
 
 ---
 
 ## Sequencing
-1. **A** (env var write-side) — small, safe, unblocks the workspace setup.
-2. **B** (portable paths + scrub) — small, safe, fixes the leak the user flagged.
-3. **C** (mode flags + one-shot submit + cruft) — outward-facing; separate commit, run the C.7 gate.
+1. **A** (env-driven output base, incl. relative `path2output`) — small; kills the hardcoded
+   `/gpfs/...` line and makes the paperII param portable.
+2. **B** (portable `sps_path` + scrub) — small, safe, fixes the metadata leak.
+3. **C1** (mode flags `--local`/`--submit`/`--emit` + internal-caller lockstep + `--collect`
+   rename + cruft) — outward-facing; own commit.
+4. **C2** (site profile + sbatch generation + `--submit` chunking/feeder/auto-collect) — the
+   largest new surface; build behind the scheduler-free harness (C.9.1-3) first, own commit(s).
 
 ## Decisions (2026-06-23)
-- **Command surface:** required mode flag, no default — `--local` / `--submit` / `--emit DIR`
-  on the existing `python run.py x.param` spine (§C.1). Bare form errors.
-- **HPC flow:** `--submit` is one-shot — emit + sbatch + dependent auto-collect; `SBATCH_*`
-  env for account/partition/time so the sbatch is never edited (§C.2).
-- **Earlier (workspace/paths):** A honors `TRINITY_OUTPUT_DIR` write-side; B keeps `sps_path`
-  but relative; cleanup scope is the full rationalization incl. these mode flags.
+- **Output:** `TRINITY_OUTPUT_DIR` is the write-side base; `path2output` may be `def_dir`,
+  relative (→ under the env base), or absolute (as-is). PaperII param drops its `/gpfs/...` line.
+- **Command surface:** required mode flag, no default — `--local`/`--submit`/`--emit DIR` on the
+  `python run.py x.param` spine. Bare form errors.
+- **HPC = one command:** `--submit` emits + chunks (auto offsets from one `chunk`) + feeds past
+  the QOS cap (built-in, backgrounded) + auto-collects (`afterany` dep). No hand-edited sbatch,
+  no `submit_loop.sh`, no manual offsets/throttle.
+- **Site profile** (`~/.config/trinity/cluster.ini`, stdlib `configparser`): partition / time /
+  mem / account / `export` / throttle / chunk / env-prologue — set ONCE. job-name + log dir are
+  auto-derived, not configured.
 
 ## Open decisions to confirm before coding
-- §B optional `.sh` `cd /home/user/trinity` fix in dev harnesses: in scope now, or defer?
+1. **Profile format/location:** INI at `~/.config/trinity/cluster.ini` (recommended, stdlib,
+   no dep) vs YAML (nicer, but PyYAML is undeclared) vs reuse the `.param` parser. Default: INI.
+2. **Disconnect default:** `--submit` backgrounds the feeder (`setsid` + `submit.log`, recommended)
+   vs runs foreground and tells you to use tmux. Default: background.
+3. **`account` handling:** rely on profile `account` + `$SBATCH_ACCOUNT` (recommended) — confirm
+   Helix doesn't *require* an explicit `--account` directive.
+4. **§B optional** `.sh` `cd /home/user/trinity` fix in dev harnesses: in scope now, or defer?
+
+## Branch note
+Work continues on **`feature/helix-implementations`** (user-directed). The earlier plan commits
+landed on `claude/adoring-volta-3nrcmt` (the session's auto-assigned branch); this revision and
+all subsequent work go to `feature/helix-implementations`, branched from that HEAD so the prior
+plan history carries over.
