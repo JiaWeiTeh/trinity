@@ -300,12 +300,14 @@ the scheduler-free harness (C.9.1-3) *before* wiring into `run.py`.
 ---
 
 ## Sequencing
-1. **A** (env-driven output base, incl. relative `path2output`) — small; kills the hardcoded
-   `/gpfs/...` line and makes the paperII param portable.
-2. **B** (portable `sps_path` + scrub) — small, safe, fixes the metadata leak.
-3. **C1** (mode flags `--local`/`--submit`/`--emit` + internal-caller lockstep + `--collect`
-   rename + cruft) — outward-facing; own commit.
-4. **C2** (site profile + sbatch generation + `--submit` chunking/feeder/auto-collect) — the
+1. ✅ **A — SHIPPED** (commit `feat(output): honor TRINITY_OUTPUT_DIR…`). Env-driven output
+   base incl. relative `path2output` via the shared `resolve_output_path`; full env×sentinel
+   test matrix; 598-test suite green. Kills the hardcoded `/gpfs/...` line.
+2. ✅ **B — SHIPPED** (commit `feat(metadata): store sps_path repo-relative…`). `portable_path`
+   + final_state relativization; 8 metadata.json + fixture scrubbed; 602-test suite green.
+3. ⏳ **C1** (mode flags `--local`/`--submit`/`--emit` + internal-caller lockstep + `--collect`
+   rename + cruft) — outward-facing; own commit. **NEXT.**
+4. ⏳ **C2** (site profile + sbatch generation + `--submit` chunking/feeder/auto-collect) — the
    largest new surface; build behind the scheduler-free harness (C.9.1-3) first, own commit(s).
 
 ## Decisions (2026-06-23)
