@@ -29,7 +29,7 @@ import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
-DATA = HERE.parents[1] / "analysis" / "data"  # canonical hunt CSVs (was scratch dupes)
+DATA = HERE.parents[2] / "data"  # canonical hunt CSVs in docs/dev/data (was nonexistent archive/analysis/data)
 REAL_FRAC, V_FLOOR = 0.02, 0.01  # real inflow vs inner-BC artifact (analyze_hunt)
 BPD_OLD = -0.5  # the old steep-baseline threshold
 
@@ -47,10 +47,19 @@ COLS = (
     "bubble_dMdt Lmech_W cooling_ratio"
 ).split()
 
-_STYLE = HERE.parents[1] / "paper" / "_lib" / "trinity.mplstyle"
+_STYLE = HERE.parents[4] / "paper" / "_lib" / "trinity.mplstyle"  # was parents[1] (nonexistent -> style never applied)
 if _STYLE.exists():
     plt.style.use(str(_STYLE))
-plt.rcParams["text.usetex"] = False
+plt.rcParams.update(
+    {
+        "text.usetex": False,
+        "axes.labelsize": 11.5,
+        "axes.titlesize": 11,
+        "xtick.labelsize": 9.5,
+        "ytick.labelsize": 9.5,
+        "legend.fontsize": 8.5,
+    }
+)
 
 
 def load(fn):

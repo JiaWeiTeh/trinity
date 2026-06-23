@@ -38,7 +38,7 @@ import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
-DATA = HERE.parents[1] / "analysis" / "data"  # canonical stalling CSVs (was scratch dupes)
+DATA = HERE.parents[2] / "data"  # canonical stalling CSVs in docs/dev/data/ (was archive/analysis/data, nonexistent)
 BPD_THRESH = -0.5  # beta+delta inflow threshold (doc)
 NNEG_REAL = 10  # v_struct_nneg >= this = real inflow (vs inner-BC artifact)
 RUNS = [
@@ -46,10 +46,14 @@ RUNS = [
     ("stalling_mock_4e3.csv", "mock 4e3", "^", "#1f77b4"),
 ]
 
-_STYLE = HERE.parents[1] / "paper" / "_lib" / "trinity.mplstyle"
+_STYLE = HERE.parents[4] / "paper" / "_lib" / "trinity.mplstyle"  # was parents[1] (nonexistent -> style never applied)
 if _STYLE.exists():
     plt.style.use(str(_STYLE))
-plt.rcParams["text.usetex"] = False
+plt.rcParams.update({
+    "text.usetex": False,
+    "axes.labelsize": 11.5, "axes.titlesize": 11,
+    "xtick.labelsize": 9.5, "ytick.labelsize": 9.5, "legend.fontsize": 8.5,
+})
 
 NUM = (
     "t_now cool_beta cool_delta beta_plus_delta Pb bubble_dMdt Lmech_total Lmech_W "
@@ -333,7 +337,7 @@ def plot_causal_ladder(path):
         tw, d["Lmech_W"][m] / 1e8, color="#0072B2", lw=1.3, ls="--", label=r"$L_{\rm mech,W}$ (WR)"
     )
     a1.set_ylabel(r"$L_{\rm mech}$ [$10^8$]")
-    a1.set_title("① CAUSE: feedback power surge (WR wind ramp)", fontsize=10, loc="left")
+    a1.set_title("(1) CAUSE: feedback power surge (WR wind ramp)", fontsize=10, loc="left")
     a1.legend(fontsize=8, loc="upper left")
 
     a2.plot(tw, d["Eb"][m] / 1e8, color="#009E73", lw=2)
@@ -344,7 +348,7 @@ def plot_causal_ladder(path):
     a2b.set_ylabel(r"$P_b$", color="#D55E00")
     a2b.tick_params(axis="y", labelcolor="#D55E00")
     a2.set_title(
-        "② MECHANISM: bubble re-pressurises — Eb climbs, Pb bumps up", fontsize=10, loc="left"
+        "(2) MECHANISM: bubble re-pressurises — Eb climbs, Pb bumps up", fontsize=10, loc="left"
     )
 
     a3.plot(tw, d["cool_beta"][m], color="#0072B2", lw=1.6, label=r"$\beta$ (<0 = Pb rising)")
@@ -361,7 +365,7 @@ def plot_causal_ladder(path):
     a3.text(2.86, -0.45, "inflow trigger ~−0.4", color="k", fontsize=8, va="top")
     a3.set_ylabel(r"$\beta$,  $\delta$,  $\beta+\delta$")
     a3.set_title(
-        "③ TRIGGER: β dive (Pb-rate) outweighs δ (T-rate) → β+δ<−0.4 (formal compression term)",
+        "(3) TRIGGER: β dive (Pb-rate) outweighs δ (T-rate) → β+δ<−0.4 (formal compression term)",
         fontsize=9.5,
         loc="left",
     )
@@ -371,7 +375,7 @@ def plot_causal_ladder(path):
     a4.axhline(0.0, color="k", lw=0.8)
     a4.set_ylabel("v_struct_min\n[pc/Myr]")
     a4.set_title(
-        "④ CONSEQUENCE (ansatz output): inner inflow — subsonic, ~1e-6 of thermal; "
+        "(4) CONSEQUENCE (ansatz output): inner inflow — subsonic, ~1e-6 of thermal; "
         "likely artefact, real-vs-artefact OPEN",
         fontsize=9,
         loc="left",
@@ -384,7 +388,7 @@ def plot_causal_ladder(path):
     a1.set_xlim(2.85, 3.5)
     fig.suptitle(
         "Negative-velocity chain (steep 1e6, α=−2): the measured drivers "
-        "(①–③ Lmech↑→Eb/Pb↑→β+δ↓) are solid;\nthe inflow (④) is a likely-artefact, "
+        "(1–3: Lmech↑→Eb/Pb↑→β+δ↓) are solid;\nthe inflow (4) is a likely-artefact, "
         "energetically negligible structure-ansatz output",
         fontsize=10.5,
     )
