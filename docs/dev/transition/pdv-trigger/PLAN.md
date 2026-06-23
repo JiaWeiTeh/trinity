@@ -84,7 +84,7 @@ rows dropped; ratios in trinity code units (`PdV = 4πR2²·v2·Pb`, same conven
 | pl2_steep | normal | 0.429 | 0.701 | 2171× | yes | **no** |
 | be_sphere | normal | 0.453 | 0.666 | 1715× | yes | **no** |
 | large_diffuse_lowsfe | normal | 0.443 | 0.550 | 1499× | yes | **no** (end-of-run blip only) |
-| small_1e6 (ctrl) | normal | 0.554 | 1.102 | 13617× | yes | **no** |
+| small_1e6 (ctrl) | normal | 0.554 | 1.102 | 13617× | yes | **no** (end-of-run blip only; max>1) |
 | **fail_repro** | **heavy 5e9** | **1.423** | 1.561 | **1.014×** | **no** | **yes (row 5, t≈1.53e-3 Myr)** |
 
 Authoritative cross-check (real shipped shadow, segment-wise, not a CSV reconstruction):
@@ -128,7 +128,7 @@ The open scientific question behind the maintainer's premise: **does any *realis
 the 5e9 pathology) approach super-critical?** If the boundary sits far above the science range, the PdV
 trigger is an edge-case guard; if real sweeps straddle it, it is a default-relevant correctness fix.
 - Sweep `mCloud × sfe × density-profile` (reuse `../../failed-large-clouds/harness/params/` +
-  `../pt4/cleanroom/configs/`), each run in a **separate process**, with the **shadow active** (default
+  `../cleanroom/configs/`), each run in a **separate process**, with the **shadow active** (default
   trigger ⇒ byte-identical), harvesting `shadow_R1_1b.csv` + per-segment `PdV/Lmech`.
 - Record max/median `PdV/Lmech` and first `ebpeak`/`blowout` epoch per cell → a contour of the
   sub→super-critical boundary. Persist as `data/pdv_boundary_grid.csv` + a figure.
