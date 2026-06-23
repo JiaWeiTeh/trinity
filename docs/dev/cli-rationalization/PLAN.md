@@ -129,6 +129,7 @@ Single entry point, auto-detects single vs sweep from `.param` content
 - **`--workers` is overloaded.** In sweep mode it's the local pool size (`run.py:449`).
   In `--emit-jobs` mode the *same* flag is reused as the SLURM array throttle
   (`concurrency=args.workers`, `run.py:871`). Two unrelated meanings on one flag.
+  → **resolved in §C.4** (kept as one "max concurrency" flag — coherent once the mode is explicit).
 - **`"cluster"` namespace clash.** `trinity/_functions/cluster.py` is **HPC CPU-allocation
   detection** (`detect_allocated_cpus`, `get_optimal_workers`), and `tools/cluster/` is HPC
   *plotting env* (matplotlibrc, plot_env.sh) — yet everywhere else in TRINITY "cluster" means
@@ -141,54 +142,93 @@ Single entry point, auto-detects single vs sweep from `.param` content
   documented workflow. `param/paperII_grid_sweep.param` (+ `_test`) are real sweep examples not
   surfaced in docs. Verify each reference resolves; document or remove.
 
-### C.1 Proposed subcommands
+### C.1 Decided design (2026-06-23) — one spine, one *required* execution mode
+The real human choice is *where it runs* (local now vs HPC job), **not** "run vs sweep" —
+the `.param`'s list/tuple syntax already determines single vs sweep (auto-detected,
+`run.py:81-115`), so the user never picks that. Surface:
 ```
-python run.py run     <file.param>                 # single run (explicit)
-python run.py sweep   <file.param> [--workers N] [--yes] [--dry-run]
-python run.py emit    <file.param> <DIR> [--array-throttle K] [--dry-run]
-python run.py collect <DIR>
+python run.py x.param --local      # run now, here (single or sweep, auto-detected)
+python run.py x.param --submit     # emit bundle + sbatch array + dependent auto-collect
+python run.py x.param --emit DIR   # write the bundle only, don't submit (inspect first)
+python run.py --collect DIR        # standalone collect (also what --submit chains)
 ```
-This splits the overloaded `--workers`: pool size stays `--workers` on `sweep`; the SLURM
-array throttle becomes its own `--array-throttle` on `emit`. `--dry-run` keeps a clear
-per-subcommand meaning.
+- Exactly one of `--local` / `--submit` / `--emit DIR` is **required** with a param
+  (argparse mutually-exclusive group, `required=True`). Bare `python run.py x.param` errors:
+  *"specify how to run: --local (here) or --submit (HPC job); --emit DIR to write only."*
+  **User decision: explicit, no default** — also blocks the accidental-big-sweep-on-laptop foot-gun.
+- `--collect DIR` stays a separate no-param action (rename of today's `--collect-report`).
 
-### C.2 OPEN DECISION — backward compatibility (recommend **Option 1**)
-- **Option 1 (recommended): keep the bare form as a deprecated alias.** A shim catches
-  "first positional is a file / not a known subcommand", routes to today's auto-detect, and
-  prints a one-line deprecation nudge. **Nothing breaks.** Slightly more code.
-- **Option 2: hard cutover.** `python run.py x.param` → argparse `invalid choice` (exit 2).
-  Cleaner, less code, but **breaks two internal call sites in lockstep** and every doc:
-  - `trinity/_input/sweep_runner.py:286` — in-process sweep `subprocess.run([python, run.py, param])`
-  - `trinity/_input/sweep_jobs.py:81` — sbatch template `python "{run_py}" "$PARAM"` per array task
-  These must move to `run.py run <param>` at the same time or sweeps + HPC arrays break.
-- **Option 3: add a `trinity` console_script** (`pyproject` entry point) → `trinity run ...`.
-  Most discoverable; bigger packaging surface. Orthogonal to 1 vs 2 (can layer on either).
+### C.2 `--submit` = one-shot: emit + submit + auto-collect  [user decision]
+Sequence inside `--submit`:
+1. Build the bundle (reuse `emit_jobs`) into an auto dir
+   `<base_output_dir>/_jobs/<sweepname>_<timestamp>/` (or `--jobs-dir DIR` to override) — the
+   user names nothing.
+2. `sbatch <bundle>/submit_sweep.sbatch` → parse `Submitted batch job <ARRAY_ID>`.
+3. `sbatch --dependency=afterany:<ARRAY_ID> --wrap "python run.py --collect <bundle>"` →
+   the report is written automatically when the array finishes (`afterany` = even on partial
+   failure). No second script file needed (`--wrap`).
+4. Print both job IDs.
+- **No sbatch editing.** Drop the `--account`/`--partition` directives from the template;
+  SLURM reads `SBATCH_ACCOUNT` / `SBATCH_PARTITION` / `SBATCH_TIMELIMIT` from the env natively
+  (set once in `~/.bashrc`, like `TRINITY_OUTPUT_DIR`). Keep `--mem`/`--time` defaults overridable.
+  *(verify on Helix — a site can disable env propagation; standard SLURM honors it.)*
+- **Fallback:** `shutil.which('sbatch') is None` (this cloud workspace, a login node without a
+  scheduler) → behave like `--emit` (write bundle + print the manual `sbatch` line) and warn.
+  No crash.
+- **Known ceiling (ponytail):** one-shot assumes the array fits under the site `MaxSubmitJobs`
+  cap. Larger grids keep the documented `OFFSET`-chunking escape hatch (`sweep_jobs.py:68-74`),
+  run manually; auto-chunking is out of scope for v1.
 
-Either way, internal call sites should be updated to the explicit `run` subcommand for clarity;
-Option 1 just means they keep working if missed.
+### C.3 Required lockstep — internal callers lose the bare form
+"No default" means `python run.py <param>` (no mode) now errors, so **both internal callers
+must move to `--local` in the same commit** or sweeps/HPC break (each runs a single-combo
+`.param`, so `--local` is correct):
+- `trinity/_input/sweep_runner.py:286` → `[python, run.py, param, '--local']`
+- `trinity/_input/sweep_jobs.py:81` (sbatch template) → `python "{run_py}" "$PARAM" --local`
+Also rename `--collect-report` → `--collect` (its callers: the new dependency job + docs).
 
-### C.3 Docs to update (both options)
-CLAUDE.md:13-17, README.md:42-77, docs/source/running.rst (14/133/136/152), index.rst:35.
-Option 1 can update progressively; Option 2 must update all at once.
+### C.4 `--workers` — keep one flag, meaning "max concurrent runs"  [recommend]
+With an explicit mode the old overload becomes coherent: `--workers N` = concurrency cap,
+read as the local pool size under `--local` and the array throttle `%N` under
+`--submit`/`--emit`. One flag, one mental model ("how many at once"). *Not* splitting into two
+flags unless the user prefers it — simpler wins.
 
-### C.4 Gate (outward-facing CLI change)
-1. Define equivalence: every example in README/running.rst produces the same run as before
-   (single, sweep `--dry-run`, `emit` bundle contents, `collect`).
-2. Baseline: capture `emit` output (sbatch + manifest) on `param/sweep_example.param` *before*
-   the change; diff after — array-task command + manifest must be equivalent.
-3. `pytest` green before and after (sweep_parser / sweep_jobs / sweep_runner tests).
-4. Persist the before/after `emit` bundle diff as a committed note here.
+### C.5 Cruft cleanup (from the C.0 inventory)
+Rename the overloaded `cluster` module (`trinity/_functions/cluster.py` = CPU detection, not
+stellar) + `tools/cluster/`; document or remove `tools/plot_sweep_heatmap.py`,
+`docs/dev/cluster/PLOTTING_WORKFLOW.md`, `param/paperII_grid_sweep*.param`; resolve the phantom
+`trinity-plot`.
 
-**Risk.** Medium, outward-facing. Land C after A+B, as its own commit/review.
+### C.6 Docs to update
+CLAUDE.md:13-17, README.md:42-77, docs/source/running.rst (14/133/136/152), index.rst:35 —
+rewrite the bare-form examples to `--local` / `--submit`, document `--emit`/`--collect` and the
+`SBATCH_*` + `TRINITY_OUTPUT_DIR` env setup.
+
+### C.7 Gate (outward-facing + scheduler-free CI)
+1. Equivalence: every README/running.rst example reproduces the same run via the new flags.
+2. Baseline: capture the emitted sbatch + manifest for `param/sweep_example.param` before; diff after.
+3. `--submit` is testable without SLURM — unit-test (a) the bundle/sbatch text and (b) the exact
+   `sbatch` + `sbatch --dependency=afterany:…--wrap` command strings via a mocked `subprocess`
+   and a fake `sbatch` on PATH returning a parseable job id; assert the no-`sbatch` fallback.
+4. `pytest` green before/after. Persist the before/after emit diff + the captured command
+   strings as committed artifacts here.
+
+**Risk.** Medium, outward-facing + new submit/collect orchestration. Land after A+B, own commit, run C.7.
 
 ---
 
 ## Sequencing
 1. **A** (env var write-side) — small, safe, unblocks the workspace setup.
 2. **B** (portable paths + scrub) — small, safe, fixes the leak the user flagged.
-3. **C** (subcommands + cruft) — outward-facing; separate commit, run the C.4 gate. Needs the
-   §C.2 decision confirmed first (recommend Option 1).
+3. **C** (mode flags + one-shot submit + cruft) — outward-facing; separate commit, run the C.7 gate.
+
+## Decisions (2026-06-23)
+- **Command surface:** required mode flag, no default — `--local` / `--submit` / `--emit DIR`
+  on the existing `python run.py x.param` spine (§C.1). Bare form errors.
+- **HPC flow:** `--submit` is one-shot — emit + sbatch + dependent auto-collect; `SBATCH_*`
+  env for account/partition/time so the sbatch is never edited (§C.2).
+- **Earlier (workspace/paths):** A honors `TRINITY_OUTPUT_DIR` write-side; B keeps `sps_path`
+  but relative; cleanup scope is the full rationalization incl. these mode flags.
 
 ## Open decisions to confirm before coding
-- §C.2 command surface: Option 1 (recommended) / 2 / 3.
-- §B optional `.sh` `cd` fix: in scope now, or defer?
+- §B optional `.sh` `cd /home/user/trinity` fix in dev harnesses: in scope now, or defer?
