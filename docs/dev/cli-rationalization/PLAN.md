@@ -26,6 +26,9 @@
 
 **Date:** 2026-06-23 · **Branch:** `feature/helix-implementations` · **Status:** plan only, no code yet (per user)
 
+**See also:** [`CLI_PREVIEW.md`](CLI_PREVIEW.md) — the target command surface + simulated user
+sessions (the cheat-sheet this plan builds toward).
+
 ---
 
 ## 0. Why
