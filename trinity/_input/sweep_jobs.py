@@ -65,7 +65,15 @@ export OPENBLAS_NUM_THREADS=1
 export NUMEXPR_NUM_THREADS=1
 export MPLBACKEND=Agg
 
-LINE=$(sed -n "${{SLURM_ARRAY_TASK_ID}}p" "{runs_tsv}")
+# Optional OFFSET (set via --export=OFFSET=N) shifts the runs.tsv line, so a
+# grid larger than a MaxSubmitJobs cap can be submitted in chunks (each chunk a
+# separate --array with its own OFFSET). Defaults to 0 (plain single submit).
+N=$(( SLURM_ARRAY_TASK_ID + ${{OFFSET:-0}} ))
+LINE=$(sed -n "${{N}}p" "{runs_tsv}")
+if [ -z "$LINE" ]; then
+    echo "ERROR: no line $N in runs.tsv (TASK=$SLURM_ARRAY_TASK_ID OFFSET=${{OFFSET:-0}})" >&2
+    exit 1
+fi
 PARAM=$(printf '%s' "$LINE" | cut -f1)
 OUTDIR=$(printf '%s' "$LINE" | cut -f2)
 mkdir -p "$OUTDIR"

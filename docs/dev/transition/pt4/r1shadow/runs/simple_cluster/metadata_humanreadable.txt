@@ -1,0 +1,42 @@
+============================================================
+TRINITY run: simple_cluster
+============================================================
+Status   : ✓ SUCCESS  (stopping_time)
+Detail   : Stopping time reached
+At       : 2026-06-22 19:19:01
+
+------------------------------------------------------------
+Cloud
+------------------------------------------------------------
+  mCloud        : 7.00e+04  Msun
+  nCore         : 1.00e+05  cm⁻³
+  rCloud        : 1.690  pc
+  rCore         : 0.010  pc
+  dens_profile  : densPL
+  densPL_alpha  : 0.00
+  nISM          : 1.00e+00  cm⁻³
+  sfe           : 0.3000
+  mCluster      : 3.00e+04  Msun
+  ZCloud        : 1.00  Z☉
+
+------------------------------------------------------------
+Final state  [t = 0.200 Myr]
+------------------------------------------------------------
+  R2            : 3.665 pc
+  v2            : 25.253 km/s    (2.583e+01 pc/Myr)
+  shell_mass    : 7.001e+04 Msun
+  shell_nMax    : 2.683e+06 cm⁻³    (7.882e+61 pc⁻³)
+  Pb            : 2.793e+08 K cm⁻³ (P/k_B)    (5.959e+04 internal)
+  Eb            : 3.483e+50 erg    (1.832e+07 internal)
+  T0            : 3.922e+06 K
+  bubble_Tavg   : 1.015e+07 K
+  phase         : momentum
+  collapsed     : no
+  dissolved     : no
+
+------------------------------------------------------------
+Termination diagnostics
+------------------------------------------------------------
+  reason        : Normal exit / atexit
+  (no flagged changes, no NaN/Inf, all sanity checks passed)
+============================================================

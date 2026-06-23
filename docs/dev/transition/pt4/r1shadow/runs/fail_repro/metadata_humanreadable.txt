@@ -1,0 +1,52 @@
+============================================================
+TRINITY run: fail_repro
+============================================================
+Status   : ✗ ERROR  (energy_collapsed)
+Detail   : Energy-driven bubble collapsed: Eb fell to <= 0 (energy-driven phase no longer self-sustains)
+At       : 2026-06-22 19:07:23
+
+------------------------------------------------------------
+Cloud
+------------------------------------------------------------
+  mCloud        : 4.50e+09  Msun
+  nCore         : 1.00e+02  cm⁻³
+  rCloud        : 677.023  pc
+  rCore         : 0.010  pc
+  dens_profile  : densPL
+  densPL_alpha  : 0.00
+  nISM          : 1.00e-01  cm⁻³
+  sfe           : 0.1000
+  mCluster      : 5.00e+08  Msun
+  ZCloud        : 1.00  Z☉
+
+------------------------------------------------------------
+Final state  [t = 0.003 Myr]
+------------------------------------------------------------
+  R2            : 9.730 pc
+  v2            : 2111.163 km/s    (2.159e+03 pc/Myr)
+  shell_mass    : 9.246e+03 Msun
+  shell_nMax    : -3.365e+17 cm⁻³    (-9.887e+72 pc⁻³)
+  Pb            : -7.404e+21 K cm⁻³ (P/k_B)    (-1.580e+18 internal)
+  Eb            : -1.738e+52 erg    (-9.143e+08 internal)
+  T0            : 2.123e+07 K
+  bubble_Tavg   : 4.196e+07 K
+  phase         : momentum
+  collapsed     : no
+  dissolved     : no
+
+------------------------------------------------------------
+Termination diagnostics
+------------------------------------------------------------
+  reason        : Normal exit / atexit
+  large changes : 8
+    - Bubble energy: -2.64e+52 (+292.4%)
+    - Bubble pressure: -7.40e+21 (×-267475939907.5)
+    - Shell peak density: -3.37e+17 (×-106513251096.4)
+    - Ram force: -1.88e+21 (×-340958204841.7)
+    - Radiation force: +4.55e+103 (×5416652793033008867219134651104841000791625730067112233872851113877953146213850301568015925248.0)
+    ... and 3 more
+  failed checks : 3
+    - R1 < R2: R1=9.73, R2=9.73
+    - Eb > 0: Eb=-9.1428e+08
+    - Pb > 0: Pb=-1.5797e+18
+============================================================

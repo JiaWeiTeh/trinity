@@ -1,0 +1,12 @@
+# H2 enlarged-rCloud experiment: simple_cluster, but the cloud is made 100x
+# more massive at FIXED nCore (homogeneous alpha=0), so the shell sees the SAME
+# dense medium (n = nCore = 1e5 cm^-3) out to a ~5.2x larger rCloud (measured).
+#
+# To isolate rCloud from feedback, sfe is lowered 100x so the CLUSTER mass
+# (and hence Lmech feedback) is unchanged: mCluster = mCloud*sfe = 1e7*0.003
+# = 3e4 = identical to the baseline (1e5*0.3). The ONLY intended change is that
+# the dense cloud extends to a larger radius before density drops to nISM.
+#
+# Expected rCloud ~ 1.69 * 100^(1/3) ~ 7.85 pc (vs baseline 1.69 pc); measured 8.83 pc (5.2x).
+mCloud         1e7
+sfe            0.003

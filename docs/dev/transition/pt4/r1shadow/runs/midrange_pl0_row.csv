@@ -1,0 +1,2 @@
+config,variant,crashed,crash_phase,crash_excpt,end_reason,end_code,reached_phase,final_t,final_R2,final_v2,final_Eb,E0,floor,floor_activated,act_drive,act_state,min_Eb_seen,trigger_fired,ratio_min,n_rows,runtime_s
+midrange_pl0,V0,False,,,Stopping time reached,1,1b,0.6,11.39268603337593,16.782219565910985,236122204.48995662,1803.3898437948135,0.001,False,0,0,,False,0.3644709983761868,176,790.8

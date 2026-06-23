@@ -1,0 +1,7 @@
+config=pl2_steep
+param=docs/dev/transition/cleanroom/configs/pl2_steep.param
+stop_t=0.95
+timeout_s=900
+exit_code=0
+status=completed
+runtime_s=818

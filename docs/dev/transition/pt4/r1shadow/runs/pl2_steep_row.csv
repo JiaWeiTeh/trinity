@@ -1,0 +1,3 @@
+config,variant,crashed,crash_phase,crash_excpt,end_reason,end_code,reached_phase,final_t,final_R2,final_v2,final_Eb,E0,floor,floor_activated,act_drive,act_state,min_Eb_seen,trigger_fired,ratio_min,n_rows,runtime_s
+pl2_steep,V0,False,,SystemExit:143,,,1b,1.1397854410555508,32.779652764669606,40.21177615792281,509514647.3685845,570.2819415606882,0.001,False,0,0,,False,0.4892474725062654,172,899.6
+pl2_steep,V0,False,,,Stopping time reached,1,1b,0.95,25.827545544339852,33.01102168038167,432162518.09435713,570.2819415606882,0.001,False,0,0,,False,0.4892474725062654,171,816.6
