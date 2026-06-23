@@ -315,10 +315,14 @@ the scheduler-free harness (C.9.1-3) *before* wiring into `run.py`.
    `--local`/`--submit`/`--emit`/`--collect`/`--resume`; hard cutover (bare form errors);
    internal callers pass `--local`; `--submit` wired to `cluster_submit` with detached feeder +
    `--resume`; docs (CLAUDE.md/README/running.rst/index.rst) rewritten. Suite 634.
-6. ⏳ **C-cruft (only remaining)**: rename `trinity/_functions/cluster.py` (CPU detection, not
-   stellar) + `tools/cluster/`; document/remove `tools/plot_sweep_heatmap.py`,
-   `param/paperII_grid_sweep*.param`; resolve the phantom `trinity-plot`. Mechanical; the rename
-   touches imports in `run.py` + tests, so do it carefully (rename → update imports → suite green).
+6. ✅ **C-cruft (high-value part) — SHIPPED**: renamed `trinity/_functions/cluster.py` →
+   `cpu_allocation.py` (the import now reads as CPU/allocation, not stellar-cluster physics);
+   updated its 2 importers (`run.py`, `test_sweep_workers.py`); fixed stale `--emit-jobs`/
+   `--collect-report` references in run.py docstring, sweep_jobs error messages, and
+   `tools/plot_sweep_heatmap.py`. Confirmed the phantom `trinity-plot` alias does not exist
+   anywhere (nothing to remove). **Optional leftovers** (cosmetic, deferred): rename
+   `tools/cluster/` (HPC plot-env dir) and surface `tools/plot_sweep_heatmap.py` /
+   `param/paperII_grid_sweep*.param` in the built docs.
 
 ## Decisions (2026-06-23)
 - **Output:** `TRINITY_OUTPUT_DIR` is the write-side base; `path2output` may be `def_dir`,

@@ -245,7 +245,7 @@ def run_sweep(args):
     from datetime import datetime
     from threading import Event
 
-    from trinity._functions.cluster import detect_allocated_cpus, get_optimal_workers
+    from trinity._functions.cpu_allocation import detect_allocated_cpus, get_optimal_workers
     from trinity._input.sweep_parser import (
         read_sweep_config,
         generate_combinations_from_config,

@@ -1,6 +1,6 @@
 """Cluster-aware worker resolution and --workers edge-case tests (Phase 1).
 
-Covers trinity/_functions/cluster.py (allocation detection + the default
+Covers trinity/_functions/cpu_allocation.py (allocation detection + the default
 worker count) and run.py's --workers guardrails / single-run flag handling,
 on both laptop and SLURM-shaped environments.
 
@@ -19,7 +19,7 @@ from pathlib import Path
 import pytest
 
 import run
-from trinity._functions.cluster import detect_allocated_cpus, get_optimal_workers
+from trinity._functions.cpu_allocation import detect_allocated_cpus, get_optimal_workers
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
