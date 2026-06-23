@@ -28,6 +28,13 @@
 **no production change.** Decision deferred to the maintainer; this note exists so the route is
 picked on evidence (rule 5: gate before touching production).
 
+> **Update (2026-06-23):** **Route 1 has since partially shipped.** The blowout + PdV-inclusive
+> **`ebpeak`** events are wired as an **opt-in, default-off** `transition_trigger` keyword
+> (`run_energy_implicit_phase.py`) — an inert shadow plus an opt-in drive, **byte-identical** with the
+> default `cooling_balance` (gate G1 passed). See `r1shadow/R1_FINDINGS.md`. So "no production change"
+> describes the scoping snapshot, **not current state**. Still unbuilt: the default flip and the
+> **heavy-cloud Eb-peak handoff into phase 1c** (the Eb-peak is a phase-1a event; the shadow lives in 1b).
+
 ## Why a fix is needed (not just documentation)
 
 Under `hybr`, the cooling-balance trigger never fires (pt4 H1–H2: 0/6 cross 0.05), so every
