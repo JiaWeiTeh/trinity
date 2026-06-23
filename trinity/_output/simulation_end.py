@@ -264,6 +264,7 @@ def _build_final_state_block(params: Dict[str, Any]) -> Dict[str, Any]:
     momentum phase).
     """
     from trinity._input.dictionary import DescribedItem
+    from trinity._input.registry import portable_path
     from trinity._output.run_constants import (
         RUN_CONST_KEYS, METADATA_EXCLUDE, FINAL_STATE_EXCLUDE_ARRAYS,
     )
@@ -303,6 +304,12 @@ def _build_final_state_block(params: Dict[str, Any]) -> Dict[str, Any]:
             json.dumps(val, allow_nan=True)
         except (TypeError, ValueError):
             continue
+        # Relativize any absolute path under the repo (or cwd) so committed
+        # metadata carries portable paths, not machine-specific ones (e.g.
+        # sps_path -> 'lib/default/sps/...'). No-op on non-path strings and
+        # genuinely external paths.
+        if isinstance(val, str):
+            val = portable_path(val)
         block[key] = val
     return block
 

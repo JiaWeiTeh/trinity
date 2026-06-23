@@ -214,6 +214,26 @@ def test_run_sweep_base_wiring(tmp_path, monkeypatch) -> None:
     )
 
 
+# ---------------------------------------------------------------------------
+# portable_path — relativize machine paths for committed artifacts (workstream B)
+# ---------------------------------------------------------------------------
+from trinity._input.registry import portable_path  # noqa: E402
+
+
+def test_portable_path_under_repo_root_is_relative() -> None:
+    p = str(_REPO_ROOT / "lib" / "default" / "sps" / "x.csv")
+    assert portable_path(p) == "lib/default/sps/x.csv"
+
+
+def test_portable_path_relative_string_unchanged() -> None:
+    assert portable_path("lib/default/x.csv") == "lib/default/x.csv"
+
+
+def test_portable_path_external_absolute_unchanged() -> None:
+    ext = "/opt/nonexistent_external_root/data/custom.csv"
+    assert portable_path(ext) == ext
+
+
 def test_sps_bundle_default_rejects_norot() -> None:
     params = _default_sps_params(SB99_rotation=0)
     with pytest.raises(ValueError, match="SB99_rotation=0 is not supported"):

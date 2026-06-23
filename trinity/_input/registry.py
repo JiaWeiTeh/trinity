@@ -220,6 +220,26 @@ def resolve_output_path(value, model_name=None) -> str:
     return os.path.join(env if env else os.getcwd(), value)
 
 
+def portable_path(p: str) -> str:
+    """Make an absolute path portable for serialization into committed
+    artifacts (e.g. ``metadata.json``): relative to the repo root when it lives
+    under it (-> ``lib/default/sps/...``), else relative to the cwd when under
+    it, else returned unchanged (a genuinely external user path — we cannot
+    relativize it without guessing an anchor, and it is the user's own path).
+    POSIX separators so committed files are stable across platforms.  A
+    non-absolute string is returned unchanged, so this is a safe no-op on
+    ordinary scalars (model_name, dens_profile, ...)."""
+    ap = Path(p)
+    if not ap.is_absolute():
+        return p
+    for anchor in (_REPO_ROOT, Path.cwd()):
+        try:
+            return ap.relative_to(anchor).as_posix()
+        except ValueError:
+            continue
+    return p
+
+
 def _resolve_path2output(value, params) -> str:
     """Output directory (see ``resolve_output_path`` for the three-way rule).
     The resolved directory is created."""

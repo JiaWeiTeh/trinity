@@ -70,7 +70,7 @@
     "simplify_npoints": 100.0,
     "stop_at_rCloud_nSnap": null,
     "sps_refmass": 1000000.0,
-    "sps_path": "/home/user/trinity/lib/default/sps/starburst99/1e6cluster_default.csv",
+    "sps_path": "lib/default/sps/starburst99/1e6cluster_default.csv",
     "sps_col_t": "def_unset",
     "sps_col_Qi": "def_unset",
     "sps_col_fi": "def_unset",

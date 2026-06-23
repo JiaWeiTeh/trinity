@@ -719,6 +719,24 @@ class TestTerminationBlock:
         assert "bubble_T_arr_r_arr" not in fs
         assert "log_shell_n_arr" not in fs
 
+    def test_final_state_relativizes_sps_path(self, tmp_path):
+        """sps_path (the one path field NOT metadata_excluded) is stored
+        repo-relative in final_state, never as an absolute machine path; and no
+        absolute repo path leaks into any other final_state value (workstream B)."""
+        from trinity._output.simulation_end import _build_final_state_block
+        from trinity._input.registry import _REPO_ROOT
+        d = _make_params(tmp_path)
+        abs_sps = str(
+            _REPO_ROOT / "lib" / "default" / "sps" / "starburst99" / "1e6cluster_default.csv"
+        )
+        d["sps_path"] = DescribedItem(abs_sps)
+        block = _build_final_state_block(d)
+        assert block["sps_path"] == "lib/default/sps/starburst99/1e6cluster_default.csv"
+        root = str(_REPO_ROOT)
+        assert not any(
+            isinstance(v, str) and v.startswith(root) for v in block.values()
+        )
+
     def test_final_state_excludes_termination_duplicates(
         self, tmp_path, disable_crash_handlers,
     ):
