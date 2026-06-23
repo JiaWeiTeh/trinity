@@ -10,11 +10,17 @@ This file holds the project facts to load every session, then the behavioral rul
 ## Commands
 
 - Install (dev): `pip install -e ".[dev]"`  — core only: `pip install -r requirements.txt`
-- Run one simulation: `python run.py param/simple_cluster.param`
-- Parameter sweep (auto-detected from list/tuple syntax in the `.param`):
-    - `python run.py param/sweep_example.param --dry-run`    # list combinations, run nothing
-    - `python run.py param/sweep_example.param --workers 4`  # run across N workers
-    - `python run.py param/sweep_example.param --emit-jobs jobs/`  then `sbatch` for SLURM/HPC
+- Run one simulation: `python run.py param/simple_cluster.param --local`  (a run mode is
+  required — bare `run.py x.param` errors; `--local` runs here, `--submit` on HPC)
+- Parameter sweep (single vs sweep auto-detected from list/tuple syntax in the `.param`):
+    - `python run.py param/sweep_example.param --local --dry-run`    # list combinations, run nothing
+    - `python run.py param/sweep_example.param --local --workers 4`  # run locally across N workers
+    - `python run.py param/sweep_example.param --submit`             # emit+submit a SLURM array + auto-collect (HPC)
+    - `python run.py param/sweep_example.param --emit jobs/`         # write the bundle only (no submit)
+    - `python run.py --collect jobs/`                                # aggregate a finished bundle
+  HPC settings (partition/time/mem/throttle/chunk + env prologue) live in a one-time site profile
+  `~/.config/trinity/cluster.ini`; output base in `$TRINITY_OUTPUT_DIR`. See
+  `docs/dev/cli-rationalization/CLI_PREVIEW.md`.
 - Tests: `pytest`  (single: `pytest test/test_unit_conversions.py`; slow set: `pytest -m stress`)
 - Lint/format: `pre-commit run --all-files` (ruff bug-class) · `black .` (line length 100) · `mypy trinity`
 - Docs: `cd docs && make html`

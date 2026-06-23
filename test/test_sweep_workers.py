@@ -127,19 +127,19 @@ def _write_sweep(tmp_path):
 
 
 def test_cli_workers_zero_exits_2(tmp_path) -> None:
-    r = _run_cli([str(_write_sweep(tmp_path)), '--workers', '0'], cwd=tmp_path)
+    r = _run_cli([str(_write_sweep(tmp_path)), '--local', '--workers', '0'], cwd=tmp_path)
     assert r.returncode == 2
     assert 'must be >= 1' in r.stderr
 
 
 def test_cli_workers_noninteger_exits_2(tmp_path) -> None:
-    r = _run_cli([str(_write_sweep(tmp_path)), '--workers', 'abc'], cwd=tmp_path)
+    r = _run_cli([str(_write_sweep(tmp_path)), '--local', '--workers', 'abc'], cwd=tmp_path)
     assert r.returncode == 2
     assert 'expected an integer' in r.stderr
 
 
 def test_cli_over_request_refused_before_prompt(tmp_path) -> None:
-    r = _run_cli([str(_write_sweep(tmp_path)), '--workers', '2'], cwd=tmp_path,
+    r = _run_cli([str(_write_sweep(tmp_path)), '--local', '--workers', '2'], cwd=tmp_path,
                  env_extra={'SLURM_CPUS_PER_TASK': '1'})
     out = r.stdout + r.stderr
     assert r.returncode != 0
@@ -148,7 +148,7 @@ def test_cli_over_request_refused_before_prompt(tmp_path) -> None:
 
 
 def test_cli_dry_run_unaffected_by_over_request(tmp_path) -> None:
-    r = _run_cli([str(_write_sweep(tmp_path)), '--dry-run', '--workers', '9999'],
+    r = _run_cli([str(_write_sweep(tmp_path)), '--local', '--dry-run', '--workers', '9999'],
                  cwd=tmp_path, env_extra={'SLURM_CPUS_PER_TASK': '1'})
     out = r.stdout + r.stderr
     assert r.returncode == 0
@@ -159,7 +159,7 @@ def test_cli_dry_run_unaffected_by_over_request(tmp_path) -> None:
 def test_cli_single_file_dry_run_runs_nothing(tmp_path) -> None:
     single = tmp_path / 'single.param'
     single.write_text('mCloud 1e5\nsfe 0.3\n')
-    r = _run_cli([str(single), '--dry-run'], cwd=tmp_path)
+    r = _run_cli([str(single), '--local', '--dry-run'], cwd=tmp_path)
     assert r.returncode == 0
     assert 'dry run, nothing executed' in r.stdout
     assert not (tmp_path / 'outputs').exists()

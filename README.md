@@ -39,7 +39,7 @@ LaTeX installation, since the plot style renders text with `text.usetex`.
 git clone https://github.com/JiaWeiTeh/trinity
 cd trinity
 pip install -r requirements.txt
-python run.py param/simple_cluster.param
+python run.py param/simple_cluster.param --local
 ```
 
 A run is configured by a `.param` file that overrides only the keys it
@@ -57,29 +57,33 @@ three density profiles, and `sweep_example.param`,
 `sweep_tuple_example.param`, and `sweep_hybrid_example.param` cover the
 sweep syntaxes.
 
-## Parameter sweeps
+## Run modes
 
-A `.param` file that uses list or tuple syntax is auto-detected as a
-sweep and run across an in-process worker pool:
+Every run picks a mode explicitly (bare `run.py x.param` errors so a big
+sweep can't launch by accident). Single vs sweep is still auto-detected
+from the `.param`'s list/tuple syntax.
 
 ```bash
-python run.py param/sweep_example.param --dry-run     # list the combinations, run nothing
-python run.py param/sweep_example.param --workers 4   # run them across 4 workers
+python run.py param/sweep_example.param --local --dry-run    # list the combinations, run nothing
+python run.py param/sweep_example.param --local --workers 4  # run locally across 4 workers
 ```
 
 To scale across nodes on an HPC cluster (e.g. bwForCluster Helix /
-bwUniCluster), emit a SLURM job array instead — one task per combination:
+bwUniCluster), `--submit` emits a SLURM job array, submits it (chunked +
+throttled), and chains an auto-collect job — one command:
 
 ```bash
-python run.py param/sweep_example.param --emit-jobs jobs/
-# edit jobs/submit_sweep.sbatch: set --account / --partition / --time / --mem
-sbatch jobs/submit_sweep.sbatch
-python run.py --collect-report jobs/      # after the array finishes
+python run.py param/sweep_example.param --submit
 ```
 
-Set an absolute `path2output` on a work/scratch filesystem for cluster
-runs. See the [documentation](https://jiaweiteh.github.io/trinity-web/)
-for the full workflow.
+The scheduler settings (partition / time / mem / throttle / chunk) and the
+environment activation (`module` / `conda`) come from a one-time site
+profile at `~/.config/trinity/cluster.ini`, so the emitted sbatch needs no
+hand-editing; the output base is `$TRINITY_OUTPUT_DIR`. `--emit DIR` writes
+the bundle without submitting; `python run.py --collect DIR` aggregates a
+finished bundle. See the
+[documentation](https://jiaweiteh.github.io/trinity-web/) and
+`docs/dev/cli-rationalization/CLI_PREVIEW.md` for the full workflow.
 
 ## Reproducing the figures
 

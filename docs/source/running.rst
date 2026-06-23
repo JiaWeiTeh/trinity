@@ -8,23 +8,26 @@ Running TRINITY
 Running a simulation
 --------------------
 
-A TRINITY run is fully specified by one plain-text parameter file, and
-there is a single command — from the repository root::
+A TRINITY run is fully specified by one plain-text parameter file. From
+the repository root you choose **where** it runs with an explicit mode::
 
-    python run.py param/simple_cluster.param
+    python run.py param/simple_cluster.param --local
 
-The path may be absolute or relative to the repository root.
-``run.py`` scans the file and dispatches automatically: if the file
-contains list (``[...]``) or ``tuple(...)`` syntax it runs a parameter
-sweep across a parallel worker pool, otherwise it runs a single
-simulation. There is no separate command or flag for sweeps. On an HPC
-cluster you can instead generate a SLURM job array with ``--emit-jobs``
-(see *Running on a cluster (SLURM)* below).
+A run mode is required — a bare ``python run.py x.param`` errors, so a
+large sweep cannot launch by accident. ``--local`` runs on this machine;
+``--submit`` submits a SLURM job array (see *Running on a cluster
+(SLURM)* below). The path may be absolute or relative to the repository
+root. Whether the file is a single run or a sweep is still detected
+automatically from its *value* syntax: list (``[...]``) or ``tuple(...)``
+entries make it a sweep, run across a parallel worker pool under
+``--local``; otherwise it is a single simulation.
 
 Output is written to the directory named by the ``path2output``
 parameter; the default sentinel ``def_dir`` resolves to
-``outputs/<model_name>/`` under the current working directory. See
-*Outputs* below for the file layout.
+``<base>/<model_name>/`` where the base is ``$TRINITY_OUTPUT_DIR`` if set,
+else ``outputs/`` under the current working directory. A relative
+``path2output`` is taken under the same base, so a committed ``.param``
+stays portable across machines. See *Outputs* below for the file layout.
 
 
 Parameter-file formats
@@ -81,36 +84,60 @@ The hybrid example therefore runs 2 tuple pairs × 2 ``nCore`` values =
 Command-line flags
 ------------------
 
-All flags are optional. Most take effect only in sweep mode; for a
-single run, ``--dry-run`` prints the resolved file and exits without
-running, while ``--workers`` and ``--yes`` are ignored:
+Exactly one **mode** is required with a parameter file (a bare
+``run.py x.param`` errors). ``--collect`` / ``--resume`` operate on an
+existing bundle and need no parameter file.
 
 .. list-table::
    :widths: 25 75
    :header-rows: 1
 
-   * - Flag
+   * - Mode (pick one)
      - Description
-   * - ``--dry-run``, ``-n``
-     - Preview all combinations (with any GMC warnings) without running.
+   * - ``--local``
+     - Run on this machine — single or sweep (auto-detected).
+   * - ``--submit``
+     - Emit a SLURM job array, submit it (chunked + throttled), and chain
+       an auto-collect job. Requires a sweep file.
+   * - ``--emit DIR``
+     - Write a SLURM job-array bundle to ``DIR`` without submitting.
+   * - ``--collect DIR``
+     - Aggregate a finished bundle into ``sweep_report.txt`` / ``.json``.
+   * - ``--resume DIR``
+     - (Re)submit a bundle's not-yet-submitted chunks.
+
+.. list-table::
+   :widths: 25 75
+   :header-rows: 1
+
+   * - Option
+     - Description
    * - ``--workers N``, ``-w``
-     - Parallel workers for the in-process sweep pool — or the array
-       concurrency cap with ``--emit-jobs``. Default inside a SLURM job:
-       the full allocation (``SLURM_CPUS_PER_TASK``, else
+     - Parallel pool size for a ``--local`` sweep. Default inside a SLURM
+       job: the full allocation (``SLURM_CPUS_PER_TASK``, else
        ``SLURM_CPUS_ON_NODE`` / CPU affinity); on a laptop:
        ``max(1, CPU count // 2 - 1)``. Must be ``>= 1``; refused if it
        exceeds the cores available to this process.
+   * - ``--throttle K``
+     - ``--submit`` / ``--emit``: max concurrent array tasks (``%K``).
+       Default: ``[submit] throttle`` in the site profile.
+   * - ``--chunk C``
+     - ``--submit``: max array tasks per submission for grids over the
+       site cap (offsets auto-computed). Default: ``[submit] chunk``.
+   * - ``--jobs-dir DIR``
+     - ``--submit``: bundle location (default
+       ``<output>/_jobs/<stem>_<timestamp>``).
+   * - ``--foreground``
+     - ``--submit``: run the feeder in the foreground (don't background a
+       multi-chunk submission).
+   * - ``--no-auto-collect``
+     - ``--submit``: don't chain the dependency collect job.
+   * - ``--dry-run``, ``-n``
+     - Preview without running / submitting.
    * - ``--yes``, ``-y``
-     - Skip the interactive confirmation prompt.
+     - Skip the ``--local`` sweep confirmation prompt.
    * - ``--verbose``, ``-v``
      - DEBUG-level logs and the full base-parameter list.
-   * - ``--emit-jobs DIR``
-     - Generate a SLURM job-array bundle in ``DIR`` (one task per
-       combination) instead of running locally; requires a sweep file.
-       Mutually exclusive with ``--collect-report`` (see below).
-   * - ``--collect-report DIR``
-     - Aggregate a finished ``--emit-jobs`` bundle into
-       ``sweep_report.txt`` / ``.json``; needs no parameter file.
 
 Before launching, ``run.py`` runs a GMC-parameter plausibility check
 (cloud mass vs. core/ISM density, cloud radius, …) on every
@@ -124,21 +151,45 @@ output directory.
 Running on a cluster (SLURM)
 ----------------------------
 
-On a laptop or a single multi-core node, a sweep runs across an
-in-process worker pool sized by ``--workers``. To scale across nodes on
-an HPC cluster (e.g. bwForCluster Helix / bwUniCluster), generate a
-SLURM **job array** instead — one array task per combination, so the
-scheduler packs them across nodes and restarts failures independently::
+On a laptop or a single multi-core node, ``--local`` runs a sweep across
+an in-process worker pool sized by ``--workers``. To scale across nodes
+on an HPC cluster (e.g. bwForCluster Helix / bwUniCluster), ``--submit``
+emits a SLURM **job array** (one task per combination), submits it, and
+chains an auto-collect job — one command::
 
-    python run.py param/sweep_example.param --emit-jobs jobs/
-    # edit jobs/submit_sweep.sbatch: --account, --partition, --time, --mem
-    sbatch jobs/submit_sweep.sbatch
-    python run.py --collect-report jobs/      # after the array finishes
+    python run.py param/sweep_example.param --submit
 
-Running the in-process pool on a *login* node is discouraged; ``run.py``
-prints a warning when SLURM is detected without an active job.
+``--submit`` does everything the manual flow used to: it emits the
+bundle, computes the array ``OFFSET`` of each chunk for grids larger than
+the site submit cap, submits each with the ``%throttle``, retries while
+the queue is full, and finally submits
+``sbatch --dependency=afterany:<last> --wrap "python run.py --collect …"``
+so the report writes itself. A multi-chunk grid is fed by a backgrounded
+process (logged to ``<bundle>/submit.log``) so you can disconnect; resume
+an interrupted feed with ``python run.py --resume <bundle>``. Running the
+in-process ``--local`` pool on a *login* node is discouraged; ``run.py``
+warns when SLURM is detected without an active job.
 
-``--emit-jobs DIR`` writes a self-contained, submittable bundle:
+The scheduler settings and environment activation come from a **one-time
+site profile** so the emitted sbatch needs no hand-editing. Discovered at
+``$TRINITY_CLUSTER_PROFILE`` or ``~/.config/trinity/cluster.ini``:
+
+.. code-block:: ini
+
+    [sbatch]
+    partition = cpu-single
+    time      = 02:00:00
+    mem       = 2G
+    export    = NONE
+    [submit]
+    throttle  = 150        ; %N concurrent array tasks
+    chunk     = 880        ; max array tasks per submission (offsets auto-computed)
+    [env]
+    prologue_file = ~/.config/trinity/helix_prologue.sh   ; module load / conda activate
+
+``--emit DIR`` writes the same bundle without submitting (for
+inspection); ``python run.py --collect DIR`` aggregates a finished
+bundle. The bundle is self-contained:
 
 .. code-block:: text
 
@@ -146,20 +197,18 @@ prints a warning when SLURM is detected without an active job.
     ├── params/<run_name>.param   # one per combination, absolute path2output
     ├── runs.tsv                  # param_path <TAB> output_dir; line N = array task N
     ├── manifest.json             # index: names, params, output dirs
-    ├── submit_sweep.sbatch       # #SBATCH --array=1-N[%K]; one sim per task
+    ├── submit_sweep.sbatch       # #SBATCH header from the profile; one sim per task
     └── logs/                     # %A_%a.out per task
 
-Each array task runs ``python run.py <combo>.param`` with one CPU and
-math-library threads pinned to one (``OMP_NUM_THREADS=1`` …,
-``MPLBACKEND=Agg``); parallelism comes from running many tasks, not from
-threading one. Passing ``--workers K`` at emit time caps concurrency as
-``--array=1-N%K``.
+Each array task runs ``python run.py <combo>.param --local`` with one CPU
+and math-library threads pinned to one (``OMP_NUM_THREADS=1`` …,
+``MPLBACKEND=Agg``); parallelism comes from running many tasks. The array
+throttle defaults to ``[submit] throttle`` (override with ``--throttle K``).
 
-When the array finishes, ``--collect-report DIR`` reads each task's
-``.exit_code`` / ``.duration`` sentinels and writes the same
-``sweep_report.txt`` / ``.json`` as a local sweep, then prints a ready
-``sbatch --array=<failed ids> jobs/submit_sweep.sbatch`` to rerun only
-the failures.
+``--collect DIR`` reads each task's ``.exit_code`` / ``.duration``
+sentinels and writes the same ``sweep_report.txt`` / ``.json`` as a local
+sweep, then prints a ready ``sbatch --array=<failed ids>
+jobs/submit_sweep.sbatch`` to rerun only the failures.
 
 Outputs land in the same ``path2output/<run_name>/`` layout as a local
 sweep (see *Outputs* below). Bundled inputs (SPS, cooling tables,

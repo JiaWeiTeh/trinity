@@ -219,7 +219,7 @@ def run_single_simulation(
     """
     Execute a single TRINITY simulation.
 
-    Creates a parameter file and runs `python run.py <param_file>`
+    Creates a parameter file and runs `python run.py <param_file> --local`
 
     Parameters
     ----------
@@ -283,7 +283,7 @@ def run_single_simulation(
     # Run simulation
     try:
         result = subprocess.run(
-            [sys.executable, str(trinity_root / 'run.py'), str(param_path)],
+            [sys.executable, str(trinity_root / 'run.py'), str(param_path), '--local'],
             cwd=str(trinity_root),
             capture_output=True,
             text=True,

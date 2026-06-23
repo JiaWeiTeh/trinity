@@ -103,6 +103,21 @@ def test_chunks_with_queue_full_retry():
     assert waits == [300, 300]                           # two retry waits, chunk 1
 
 
+def test_on_submitted_called_per_chunk_for_resume_progress():
+    runner = _FakeSbatch([
+        _proc("Submitted batch job 1"),
+        _proc("Submitted batch job 2"),
+        _proc("Submitted batch job 9"),   # collect
+    ])
+    recorded = []
+    cs.feed_and_collect(
+        sbatch_path="/b", n_jobs=10, throttle=None, chunk=5, collect_cmd="c",
+        on_submitted=lambda off, size, jid: recorded.append((off, size, jid)),
+        runner=runner, sleep=lambda *_: None, log=lambda *_: None,
+    )
+    assert recorded == [(0, 5, "1"), (5, 5, "2")]
+
+
 def test_no_autocollect_when_disabled():
     runner = _FakeSbatch([_proc("Submitted batch job 5")])
     submitted, collect = cs.feed_and_collect(

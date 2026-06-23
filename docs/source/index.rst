@@ -32,7 +32,7 @@ First run
 
 From the repository root::
 
-    python run.py param/simple_cluster.param
+    python run.py param/simple_cluster.param --local
 
 This integrates a small, pre-shipped example (a 1e5 :math:`M_\odot`
 cloud at 30% star-formation efficiency, with everything else falling

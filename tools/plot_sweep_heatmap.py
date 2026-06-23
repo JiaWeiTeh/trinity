@@ -3,7 +3,7 @@
 
 Reads the ``sweep_report.json`` written by
 
-    python run.py --collect-report <jobs_dir>
+    python run.py --collect <jobs_dir>
 
 and renders a grid of *x* x *y* heatmaps coloured by run wall-clock time, one
 panel per combination of the remaining swept axes (the "facets"). Runs that

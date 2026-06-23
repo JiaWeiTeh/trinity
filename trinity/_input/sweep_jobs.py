@@ -13,9 +13,9 @@ failed tasks independently.
 manifest, and an sbatch script); ``collect_report`` aggregates the per-task
 exit-code sentinels into the same SweepReport the in-process runner produces.
 
-Each array task simply runs ``python run.py <combo>.param`` -- the emitted
-files contain only scalar values, so they route through the single-run path
-(no nested sweep). Inputs are located relative to the package
+Each array task simply runs ``python run.py <combo>.param --local`` -- the
+emitted files contain only scalar values, so they route through the single-run
+path (no nested sweep). Inputs are located relative to the package
 (_REPO_ROOT-anchored) and each combo's path2output is absolute, so tasks are
 independent of the working directory the array runs in.
 """
@@ -73,7 +73,7 @@ PARAM=$(printf '%s' "$LINE" | cut -f1)
 OUTDIR=$(printf '%s' "$LINE" | cut -f2)
 mkdir -p "$OUTDIR"
 SECONDS=0
-python "{run_py}" "$PARAM"
+python "{run_py}" "$PARAM" --local
 code=$?
 echo "$code" > "$OUTDIR/{exit_code_file}"
 echo "$SECONDS" > "$OUTDIR/{duration_file}"
@@ -195,7 +195,7 @@ def emit_jobs(config, base_output_dir, jobs_dir, trinity_root,
         sys.exit(
             f"Error: {manifest_path} already exists. Refusing to overwrite a "
             f"job bundle (a running array reads runs.tsv by index). Use a "
-            f"fresh --emit-jobs directory."
+            f"fresh --emit / --submit directory."
         )
 
     params_dir = jobs_dir / 'params'
@@ -281,7 +281,7 @@ def collect_report(jobs_dir):
     manifest_path = jobs_dir / MANIFEST_NAME
     if not manifest_path.exists():
         sys.exit(f"Error: no {MANIFEST_NAME} in {jobs_dir}. "
-                 f"Pass the directory created by --emit-jobs.")
+                 f"Pass the directory created by --emit / --submit.")
 
     manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
     base_output_dir = Path(manifest['base_output_dir'])

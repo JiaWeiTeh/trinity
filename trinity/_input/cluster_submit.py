@@ -98,6 +98,7 @@ def feed_and_collect(
     chunk: Optional[int],
     collect_cmd: Optional[str],
     skip_offsets=(),
+    on_submitted: Callable = None,
     runner: Callable = _default_runner,
     sleep: Callable[[float], None] = None,
     retry_wait: float = 300.0,
@@ -108,7 +109,9 @@ def feed_and_collect(
 
     Returns ``(submitted, collect_job_id)`` where ``submitted`` is a list of
     ``(offset, size, job_id)``. ``skip_offsets`` lets ``--resume`` skip chunks
-    already submitted. ``max_retries`` caps per-chunk queue-full retries
+    already submitted; ``on_submitted(offset, size, job_id)`` is called as each
+    chunk lands so the caller can persist progress for a later ``--resume``.
+    ``max_retries`` caps per-chunk queue-full retries
     (default 288 ≈ 24 h at 300 s) so a permanently-stuck queue eventually errors
     rather than spinning forever. A non-queue-full ``sbatch`` failure raises.
     """
@@ -135,6 +138,10 @@ def feed_and_collect(
                 log(f"chunk {i}/{len(chunks)} offset {offset} (1-{size}) -> job {job_id}")
                 submitted.append((offset, size, job_id))
                 last_job_id = job_id
+                if on_submitted is not None:
+                    # Persist progress AS each chunk lands so --resume can skip
+                    # it and never double-submit (important under the QOS cap).
+                    on_submitted(offset, size, job_id)
                 break
             if is_queue_full(text):
                 retries += 1

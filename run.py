@@ -7,22 +7,23 @@ Created on Sun Jul 24 22:27:38 2022
 
 This script contains the main file to run TRINITY.
 
-Unified entry point for single runs and parameter sweeps.
-Auto-detects sweep mode when parameters contain list syntax or tuple definitions.
+Unified entry point. A run mode is required (single vs sweep is still
+auto-detected from list/tuple syntax in the .param):
 
-Usage (single run):
-    python run.py param/example.param
+Usage (run here):
+    python run.py param/example.param --local
+    python run.py param/sweep.param --local --workers 4 [--dry-run] [--yes]
 
-Usage (sweep - auto-detected):
-    python run.py param/sweep.param
-    python run.py param/sweep.param --workers 4
-    python run.py param/sweep.param --dry-run
-    python run.py param/sweep.param --yes
+Usage (HPC, one command — emit + submit + auto-collect):
+    python run.py param/sweep.param --submit [--throttle K] [--chunk C]
 
-Usage (cluster job array - SLURM, e.g. bwForCluster Helix):
-    python run.py param/sweep.param --emit-jobs jobs/
-    sbatch jobs/submit_sweep.sbatch
-    python run.py --collect-report jobs/
+Usage (HPC, manual):
+    python run.py param/sweep.param --emit jobs/   # write bundle only
+    python run.py --resume jobs/                   # (re)submit a bundle's chunks
+    python run.py --collect jobs/                  # aggregate a finished bundle
+
+Cluster settings live in a one-time site profile (~/.config/trinity/cluster.ini);
+the output base in $TRINITY_OUTPUT_DIR. See docs/dev/cli-rationalization/.
 """
 
 import argparse
@@ -521,12 +522,12 @@ def run_sweep(args):
     # Nudge toward conventional cluster usage (advisory only).
     if os.environ.get('SLURM_JOB_ID'):
         print("\nNote: the in-process pool inside a SLURM job uses only this "
-              "node's allocation. For multi-node scaling, generate a job array:\n"
-              "  python run.py <param> --emit-jobs jobs/ && sbatch jobs/submit_sweep.sbatch")
+              "node's allocation. For multi-node scaling, submit a job array:\n"
+              "  python run.py <param> --submit")
     elif shutil.which('sbatch') is not None:
         print("\nNote: SLURM detected but no active job - you may be on a login "
-              "node. Running a sweep here is discouraged; submit a batch job or "
-              "use --emit-jobs to generate a job array.")
+              "node. Running a sweep here is discouraged; use --submit to emit "
+              "and submit a job array instead.")
 
     # =================================================================
     # Pre-flight GMC validation
@@ -773,63 +774,227 @@ def run_sweep(args):
 
 
 # =============================================================================
+# HPC bundle helpers (--emit / --submit / --resume)
+# =============================================================================
+
+SUBMIT_PLAN_NAME = 'submit_plan.json'
+SUBMITTED_TSV = 'submitted.tsv'
+
+
+def _require_sweep(path2param, flag):
+    """Exit cleanly unless ``path2param`` is a sweep file. ``--emit``/``--submit``
+    operate on job arrays; a single run belongs to ``--local``."""
+    if not is_sweep_param_file(path2param):
+        sys.exit(f"{flag} requires a sweep param file (list/tuple syntax). "
+                 f"Use --local to run a single .param here.")
+
+
+def run_emit(args):
+    """Write a SLURM job-array bundle to ``args.emit`` without submitting it."""
+    _require_sweep(args.path2param, '--emit')
+    from trinity._input.sweep_parser import read_sweep_config
+    from trinity._input.sweep_jobs import emit_jobs
+    from trinity._input.cluster_profile import load_profile
+
+    config = read_sweep_config(args.path2param)
+    emit_jobs(
+        config, resolve_base_output_dir(config), args.emit, TRINITY_ROOT,
+        concurrency=args.throttle, dry_run=args.dry_run,
+        sweep_file=args.path2param, profile=load_profile(),
+    )
+    sys.exit(0)
+
+
+def _collect_command(jobs_dir):
+    """Shell command (for ``sbatch --wrap``) that aggregates the bundle's report.
+    Uses the absolute interpreter that launched ``--submit`` (the activated
+    conda python), so the dependency job needs no environment activation."""
+    import shlex
+    run_py = str(TRINITY_ROOT / 'run.py')
+    return (f"{shlex.quote(sys.executable)} {shlex.quote(run_py)} "
+            f"--collect {shlex.quote(str(jobs_dir))}")
+
+
+def _feed_bundle(jobs_dir):
+    """Submit (or resume) a bundle's chunks, recording each landed chunk to
+    ``submitted.tsv`` so a later ``--resume`` skips it (never double-submits).
+    Shared by ``--submit`` (foreground / detached) and ``--resume``."""
+    import json
+    from pathlib import Path
+    from trinity._input import cluster_submit
+
+    bundle = Path(jobs_dir)
+    plan = json.loads((bundle / SUBMIT_PLAN_NAME).read_text(encoding='utf-8'))
+    submitted_tsv = bundle / SUBMITTED_TSV
+
+    done = set()
+    if submitted_tsv.exists():
+        for line in submitted_tsv.read_text().splitlines():
+            if line.strip():
+                done.add(int(line.split('\t')[0]))
+
+    def _record(offset, size, job_id):
+        with open(submitted_tsv, 'a', encoding='utf-8') as fh:
+            fh.write(f"{offset}\t{size}\t{job_id}\n")
+
+    submitted, collect_id = cluster_submit.feed_and_collect(
+        sbatch_path=plan['sbatch'], n_jobs=plan['n_jobs'],
+        throttle=plan['throttle'], chunk=plan['chunk'],
+        collect_cmd=plan['collect_cmd'], skip_offsets=done,
+        on_submitted=_record,
+    )
+    if submitted:
+        print(f"\nSubmitted {len(submitted)} chunk(s): "
+              f"{', '.join(j for _o, _s, j in submitted)}")
+    if collect_id:
+        print(f"Auto-collect job: {collect_id} "
+              f"(report -> alongside the run outputs when it finishes)")
+
+
+def run_submit(args):
+    """Emit a bundle then submit it: chunked + throttled + auto-collect. A
+    single-chunk grid submits synchronously; a multi-chunk grid spawns a
+    detached feeder (so the user can disconnect) unless ``--foreground``.
+    Falls back to emit-only when ``sbatch`` is not on PATH."""
+    import json
+    import shutil
+    import subprocess
+    from datetime import datetime
+    from pathlib import Path
+
+    from trinity._input.sweep_parser import read_sweep_config
+    from trinity._input.sweep_jobs import emit_jobs
+    from trinity._input.cluster_profile import load_profile
+    from trinity._input import cluster_submit
+
+    _require_sweep(args.path2param, '--submit')
+    profile = load_profile()
+    config = read_sweep_config(args.path2param)
+    base = resolve_base_output_dir(config)
+
+    if args.jobs_dir:
+        jobs_dir = str(Path(args.jobs_dir).resolve())
+    else:
+        stem = Path(args.path2param).stem
+        ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+        jobs_dir = str(Path(base) / '_jobs' / f'{stem}_{ts}')
+
+    throttle = args.throttle if args.throttle is not None else profile.throttle
+    chunk = args.chunk if args.chunk is not None else profile.chunk
+
+    n_jobs, _n_invalid = emit_jobs(
+        config, base, jobs_dir, TRINITY_ROOT, concurrency=throttle,
+        dry_run=args.dry_run, sweep_file=args.path2param, profile=profile,
+    )
+    if args.dry_run:
+        sys.exit(0)
+
+    collect_cmd = None if args.no_auto_collect else _collect_command(jobs_dir)
+    plan = {
+        'n_jobs': n_jobs, 'throttle': throttle, 'chunk': chunk,
+        'sbatch': str(Path(jobs_dir) / 'submit_sweep.sbatch'),
+        'collect_cmd': collect_cmd,
+    }
+    (Path(jobs_dir) / SUBMIT_PLAN_NAME).write_text(
+        json.dumps(plan, indent=2), encoding='utf-8')
+
+    if shutil.which('sbatch') is None:
+        print(f"\nNo 'sbatch' on PATH - bundle emitted but NOT submitted.\n"
+              f"From a SLURM login node, submit it with:\n"
+              f"  python {TRINITY_ROOT / 'run.py'} --resume {jobs_dir}")
+        sys.exit(0)
+
+    chunks = cluster_submit.compute_chunks(n_jobs, chunk)
+    if args.foreground or len(chunks) <= 1:
+        _feed_bundle(jobs_dir)        # synchronous: one (or few) sbatch calls
+    else:
+        # Multi-chunk -> potentially long QOS-cap waits; detach so the user can
+        # disconnect. The child re-enters via --resume and logs to submit.log.
+        log_path = Path(jobs_dir) / 'submit.log'
+        logf = open(log_path, 'a', encoding='utf-8')
+        proc = subprocess.Popen(
+            [sys.executable, str(TRINITY_ROOT / 'run.py'), '--resume', jobs_dir],
+            stdout=logf, stderr=subprocess.STDOUT, start_new_session=True,
+        )
+        print(f"\n{n_jobs} tasks in {len(chunks)} chunks - feeder running in "
+              f"background (PID {proc.pid}). You can disconnect.\n"
+              f"  log:    {log_path}\n"
+              f"  resume: python {TRINITY_ROOT / 'run.py'} --resume {jobs_dir}\n"
+              f"  report: written under {base} when all chunks finish")
+    sys.exit(0)
+
+
+def run_resume(args):
+    """Resume submitting a bundle's remaining chunks (also the entry the
+    backgrounded ``--submit`` feeder runs)."""
+    _feed_bundle(args.resume)
+    sys.exit(0)
+
+
+# =============================================================================
 # Main entry point
 # =============================================================================
 
-if __name__ == '__main__':
-    # parser
+def build_parser():
+    """Construct the argument parser (factored out so tests can exercise it)."""
     parser = argparse.ArgumentParser(
-        description="Run TRINITY simulation or parameter sweep (auto-detected)",
+        description="Run a TRINITY simulation or sweep, locally or on an HPC scheduler.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    # Positional: path to param file
-    parser.add_argument(
-        'path2param',
-        nargs='?',
-        default=None,
-        help="Path to .param file (single run or sweep with list syntax). "
-             "Optional only with --collect-report."
-    )
-    # Sweep-specific options (ignored for single runs)
-    parser.add_argument(
-        '--workers', '-w',
-        type=positive_int,
-        default=None,
-        help="Number of parallel workers for sweep mode (must be >= 1; "
-             "default: full SLURM allocation in a job, else "
-             "max(1, cpu_count // 2 - 1)). Refused if it exceeds the cores "
-             "available to this process."
+        epilog=(
+            "Modes (choose exactly one):\n"
+            "  --local         run here (single .param or sweep, auto-detected)\n"
+            "  --submit        emit a SLURM bundle, submit it (chunked/throttled), auto-collect\n"
+            "  --emit DIR      write a SLURM bundle to DIR, do not submit\n"
+            "  --collect DIR   aggregate a finished bundle into sweep_report.{txt,json}\n"
+            "  --resume DIR    resume submitting a bundle's remaining chunks\n\n"
+            "Set TRINITY_OUTPUT_DIR (output base) and ~/.config/trinity/cluster.ini\n"
+            "(partition/time/mem/throttle/chunk + env prologue) once.\n"
+            "See docs/dev/cli-rationalization/CLI_PREVIEW.md."
+        ),
     )
     parser.add_argument(
-        '--dry-run', '-n',
-        action='store_true',
-        help="Show sweep combinations without running simulations"
-    )
-    parser.add_argument(
-        '--yes', '-y',
-        action='store_true',
-        help="Skip sweep confirmation prompt"
-    )
-    parser.add_argument(
-        '--verbose', '-v',
-        action='store_true',
-        help="Enable verbose output"
-    )
-    # Cluster job-array options (mutually exclusive).
-    cluster_group = parser.add_mutually_exclusive_group()
-    cluster_group.add_argument(
-        '--emit-jobs', metavar='DIR', default=None,
-        help="Generate a SLURM job-array bundle (one task per sweep "
-             "combination) in DIR instead of running locally. Requires a "
-             "sweep param file."
-    )
-    cluster_group.add_argument(
-        '--collect-report', metavar='DIR', default=None,
-        help="Aggregate results from an --emit-jobs DIR into "
-             "sweep_report.txt/.json (run after the array finishes)."
-    )
-    # grab argument
-    args = parser.parse_args()
+        'path2param', nargs='?', default=None,
+        help="Path to a .param file (required for --local / --submit / --emit).")
+
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument('--local', action='store_true',
+                      help="Run on this machine (single or sweep, auto-detected).")
+    mode.add_argument('--submit', action='store_true',
+                      help="Emit + submit a SLURM job array, then auto-collect.")
+    mode.add_argument('--emit', metavar='DIR', default=None,
+                      help="Write a SLURM job-array bundle to DIR (do not submit).")
+    mode.add_argument('--collect', metavar='DIR', default=None,
+                      help="Aggregate a finished bundle DIR into sweep_report.{txt,json}.")
+    mode.add_argument('--resume', metavar='DIR', default=None,
+                      help="Resume submitting bundle DIR's remaining chunks.")
+
+    parser.add_argument('--workers', '-w', type=positive_int, default=None,
+                        help="Local parallel pool size for --local sweeps (>= 1).")
+    parser.add_argument('--throttle', type=positive_int, default=None,
+                        help="Max concurrent array tasks (%%N) for --submit/--emit "
+                             "(default: [submit] throttle in the cluster profile).")
+    parser.add_argument('--chunk', type=positive_int, default=None,
+                        help="Max array tasks per --submit submission; offsets "
+                             "auto-computed (default: [submit] chunk in the profile).")
+    parser.add_argument('--jobs-dir', metavar='DIR', default=None,
+                        help="Bundle location for --submit "
+                             "(default: <output>/_jobs/<stem>_<timestamp>).")
+    parser.add_argument('--foreground', action='store_true',
+                        help="--submit: run the feeder in the foreground "
+                             "(don't background a multi-chunk submission).")
+    parser.add_argument('--no-auto-collect', action='store_true',
+                        help="--submit: don't chain the dependency collect job.")
+    parser.add_argument('--dry-run', '-n', action='store_true',
+                        help="Show what would happen without running / submitting.")
+    parser.add_argument('--yes', '-y', action='store_true',
+                        help="Skip the --local sweep confirmation prompt.")
+    parser.add_argument('--verbose', '-v', action='store_true',
+                        help="Enable verbose output.")
+    return parser
+
+
+if __name__ == '__main__':
+    args = build_parser().parse_args()
 
     # Configure logging now that we know --verbose. Kept inside __main__ so
     # spawn-based ProcessPoolExecutor workers don't reconfigure on re-import.
@@ -843,56 +1008,41 @@ if __name__ == '__main__':
 
     warn_if_unsupported_deps()
 
-    # Banner first so it shows in both single and sweep modes.
     from trinity._output import header
     header.display()
 
-    # Cluster job-array collection: self-contained from the manifest, so it
-    # needs no param file.
-    if args.collect_report is not None:
+    # No-param modes first (self-contained from the bundle on disk).
+    if args.collect is not None:
         from trinity._input.sweep_jobs import collect_report
-        collect_report(args.collect_report)
+        collect_report(args.collect)
         sys.exit(0)
+    if args.resume is not None:
+        run_resume(args)  # exits
 
     if args.path2param is None:
-        parser.error("path2param is required unless using --collect-report")
+        build_parser().error(
+            "a .param file is required (or use --collect DIR / --resume DIR).")
 
-    # Cluster job-array generation (opt-in; requires a sweep param file).
-    if args.emit_jobs is not None:
-        if not is_sweep_param_file(args.path2param):
-            sys.exit("--emit-jobs requires a sweep param file (list/tuple syntax).")
-        from trinity._input.sweep_parser import read_sweep_config
-        from trinity._input.sweep_jobs import emit_jobs
-        config = read_sweep_config(args.path2param)
-        emit_jobs(
-            config,
-            resolve_base_output_dir(config),
-            args.emit_jobs,
-            TRINITY_ROOT,
-            concurrency=args.workers,
-            dry_run=args.dry_run,
-            sweep_file=args.path2param,
-        )
-        sys.exit(0)
+    # Exactly one run mode is required for a param file (the group already
+    # forbids combining them; here we forbid choosing none — no silent default).
+    if not (args.local or args.submit or args.emit is not None):
+        build_parser().error(
+            "choose how to run: --local (here) or --submit (HPC job); "
+            "--emit DIR to just write the bundle.")
 
-    # Auto-detect mode from parameter file content
-    if is_sweep_param_file(args.path2param):
-        run_sweep(args)
-    else:
-        # Single-run mode. The sweep-only flags have no effect here. Rather
-        # than silently ignore them (a foot-gun, especially for --dry-run,
-        # which a user may expect to suppress the run), handle them explicitly.
-        if args.dry_run:
+    if args.emit is not None:
+        run_emit(args)
+    elif args.submit:
+        run_submit(args)
+    else:  # --local: auto-detect single vs sweep from the file
+        if is_sweep_param_file(args.path2param):
+            run_sweep(args)
+        elif args.dry_run:
             print("Single run - dry run, nothing executed.")
             print(f"Parameter file: {args.path2param}")
             print("-" * 50)
             with open(args.path2param, 'r', encoding='utf-8') as f:
                 print(f.read())
             sys.exit(0)
-        ignored = [flag for flag, used in
-                   (('--workers', args.workers is not None), ('--yes', args.yes))
-                   if used]
-        if ignored:
-            print(f"Note: {', '.join(ignored)} only apply to sweeps; "
-                  f"ignoring for single run.")
-        run_single(args)
+        else:
+            run_single(args)

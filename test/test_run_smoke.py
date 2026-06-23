@@ -36,7 +36,7 @@ def test_quickstart_completes_cleanly(tmp_path):
     )
 
     result = subprocess.run(
-        [sys.executable, str(REPO_ROOT / "run.py"), str(param)],
+        [sys.executable, str(REPO_ROOT / "run.py"), str(param), "--local"],
         cwd=tmp_path,
         capture_output=True,
         text=True,

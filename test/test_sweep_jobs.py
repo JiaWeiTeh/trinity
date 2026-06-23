@@ -68,6 +68,7 @@ def test_emit_writes_full_bundle(tmp_path) -> None:
     assert 'export OMP_NUM_THREADS=1' in sbatch
     assert 'export MPLBACKEND=Agg' in sbatch
     assert str(REPO_ROOT / 'run.py') in sbatch
+    assert '"$PARAM" --local' in sbatch   # array task uses the explicit run mode
 
 
 def test_emit_manifest_matches_combinations(tmp_path) -> None:
