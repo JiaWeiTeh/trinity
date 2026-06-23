@@ -151,6 +151,63 @@ across 0 at the very end, non-sustained), the 5e9 crosses at birth. **The data c
 *neither* `cool` nor `coolPdV`, so what drives their transition is **blowout** (geometric `R2 > rCloud`),
 consistent with the shipped 1b shadow (6/6 blowout, `ebpeak` 0/6). An energy-balance trigger — radiative or
 PdV-inclusive — is the wrong family for them; it is decisive only super-critically (the 5e9 pathology).
+The figure now marks each config's **blowout point** (`R2 = rCloud`, recovered from `r1_shadow_summary.csv`
+since the CSVs export `rCloud` as all-NaN; persisted as `blowout_t`/`cool_at_blowout`/`coolPdV_at_blowout`):
+**at blowout the cooling ratio is still 0.30–0.75 (no PdV) / 0.12–0.58 (with PdV)** — i.e. the clouds hand
+off to momentum while the energy budget is nowhere near the 0.05 band. That gap is the room a cooling-boost
+`θ_cool` would have to close — see next section.
+
+## A more promising direction: PdV **+** a cooling-boost `θ_cool` (2026-06-23 maintainer idea)
+
+> "Maybe a combination of PdV in the cooling **and** a cooling-boost factor `θ_cool`, argued from El-Badry,
+> Lancaster, Gronke: our 1D model has no turbulent mixing layers, so we under-count interface cooling.
+> `θ_cool` could be a constant from those papers — but shouldn't it couple to the bubble physics?"
+
+**Why it's promising (offline screening — frozen-trajectory, see caveat).** Solve for the constant boost that
+makes the PdV-inclusive ratio reach the threshold, `(Lmech − θ_cool·Lloss − PdV)/Lmech = 0.05`, on the
+*committed (unboosted)* trajectories:
+
+| config | θ_cool to fire **at blowout** (w/ PdV) | θ_cool to fire **anywhere** (w/ PdV) | (no PdV, anywhere) |
+|---|---|---|---|
+| small_dense_highsfe | 1.10 | 1.04 | 1.33 |
+| simple_cluster | 1.12 | 1.06 | 1.41 |
+| midrange_pl0 | 1.20 | 1.08 | 1.49 |
+| be_sphere | 1.26 | 1.18 | 1.80 |
+| pl2_steep | 1.49 | 1.24 | 1.86 |
+| large_diffuse_lowsfe | 3.13 | 0.87 (already <1) | 1.78 |
+
+So **PdV + a modest `θ_cool ≈ 1.1–1.5` would fire the energy→momentum handoff right at blowout** for 5/6 normal
+clouds — and that boost is *below* the enhancement the mixing-layer literature argues for (El-Badry+19
+catastrophic cooling; Lancaster+21 near-complete wind-energy cooling; Gronke & Oh mixing layers). This is the
+first candidate that makes a PdV-inclusive trigger physically *and* numerically land where the cloud actually
+transitions, instead of never (reading B) or at an arbitrary epoch.
+
+> ⚠️ **Caveat — these θ are a SCREENING estimate, not the answer (rule 5: per-call ≠ full-run).** `θ_cool` is
+> "we're missing real cooling," so it belongs in the **energy evolution** (`Edot_from_balance = Lmech −
+> θ_cool·Lloss − PdV`), not only in the trigger ratio. Boosting cooling lowers `Pb` → lowers `PdV` (`∝Pb`) →
+> changes `Eb(t), R2(t), v2(t)` → **moves blowout itself**. The table freezes the unboosted trajectory, so it
+> is necessary-but-not-sufficient. The honest test is a **full run with boosted cooling**, separate processes,
+> matched `t`, on the edge configs.
+
+**Constant vs. coupled (the maintainer's question).** Start **constant** — one opt-in float `theta_cool`
+(default `1.0`, byte-identical; ponytail-simplest, calibratable, testable). But constant is physically a
+placeholder: the mixing-layer luminosity is **not** constant — it scales with the contact-discontinuity area
+(`∝R2²`), the shear/turbulent velocity (`∝v2` / hot-gas sound speed), and the mixing-layer cooling function
+(Damköhler number; Tan/Oh/Gronke 21, Lancaster fractal-area scaling). The data already argues coupling is
+needed: **θ_at_blowout spans 1.1 → 3.1** across configs, so no single constant fires them all at blowout.
+Upgrade path: `θ_cool(R2, v2, T)` from the mixing-layer scalings — mark the constant version with a
+`ponytail:` comment naming that ceiling.
+
+**Where it plugs in (code map, verified 2026-06-23).** Cooling is computed in
+`trinity/bubble_structure/bubble_luminosity.py::_bubble_luminosity()` (three-zone trapezoid integral →
+`bubble_LTotal`); **no existing boost knob** (`cool_alpha/beta/delta` are Weaver evolution params, not
+efficiency). Add `theta_cool` like `transition_trigger`: `ParamSpec` in `trinity/_input/registry.py` (~:350)
++ a line in `default.param`, then multiply the cooling integrand at the `_bubble_luminosity` site (R2, v[r],
+T[r], T_avg, n[r], Pb are all in scope there for a coupled form). Default `1.0` ⇒ byte-identical.
+
+**Recommended sequencing:** (1) opt-in constant `theta_cool` (default 1.0); (2) full-run screening on the edge
+configs (`simple_cluster` + `f1edge_{lowdens,hidens}` + a 5e9) to see whether `θ_cool ≈ 1.5–3` makes the
+PdV-inclusive trigger fire near blowout *self-consistently*; (3) only then a coupled `θ_cool(R2,v2,T)`.
 
 ## Plan & test design (rule-5 ladder — this is a risky/iterative/outward-facing change)
 
