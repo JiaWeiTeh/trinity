@@ -41,14 +41,18 @@ import trinity.main as tmain  # noqa: E402
 import trinity.phase1_energy.run_energy_phase as RE  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
-CSV = HERE.parents[1] / "analysis" / "data" / "stalling_steep_1e6_alpha-2.csv"
+CSV = HERE.parents[2] / "data" / "stalling_steep_1e6_alpha-2.csv"  # was parents[1]/analysis/data (nonexistent)
 PARAM = HERE / "probe_cloudPL.param"
 BOX_B, BOX_D = (0.0, 1.0), (-1.0, 0.0)
 
-_STYLE = HERE.parents[1] / "paper" / "_lib" / "trinity.mplstyle"
+_STYLE = HERE.parents[4] / "paper" / "_lib" / "trinity.mplstyle"  # was parents[1] (nonexistent)
 if _STYLE.exists():
     plt.style.use(str(_STYLE))
-plt.rcParams["text.usetex"] = False
+plt.rcParams.update({
+    "text.usetex": False,
+    "axes.labelsize": 11.5, "axes.titlesize": 11,
+    "xtick.labelsize": 9.5, "ytick.labelsize": 9.5, "legend.fontsize": 8.5,
+})
 
 
 class _InitDone(Exception):

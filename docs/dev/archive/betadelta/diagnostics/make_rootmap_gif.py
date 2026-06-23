@@ -73,10 +73,19 @@ NFRAMES = 150  # frames on the uniform (linear) t grid
 FPS = 12
 HYBR_C, CAGE_C = "#0072B2", "0.45"  # no-cage (blue) vs cage (grey)
 
-_STYLE = HERE.parents[1] / "paper" / "_lib" / "trinity.mplstyle"
+_STYLE = HERE.parents[4] / "paper" / "_lib" / "trinity.mplstyle"  # was parents[1] (nonexistent -> style never applied)
 if _STYLE.exists():
     plt.style.use(str(_STYLE))
-plt.rcParams["text.usetex"] = False
+plt.rcParams.update(
+    {
+        "text.usetex": False,
+        "axes.labelsize": 11.5,
+        "axes.titlesize": 11,
+        "xtick.labelsize": 9.5,
+        "ytick.labelsize": 9.5,
+        "legend.fontsize": 8.5,
+    }
+)
 
 
 def load(scalars, profiles, legacy_traj=None, hybr_traj=None):
