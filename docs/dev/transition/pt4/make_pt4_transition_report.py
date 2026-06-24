@@ -458,8 +458,9 @@ identical legacy vs hybr; only the bubble&rsquo;s <i>response</i> differs. The g
 \(L_{\text{mech}}\) overlaps; legacy&rsquo;s \(L_{\text{loss}}\) stays elevated; and legacy&rsquo;s traces
 truncate at its early transition while hybr persists to the cap.</p>
 <figure>__FIG_LEGHYBR_GRID__<figcaption>Legacy (red) vs hybr (blue), six configs (rows) &times; five quantities,
-log&ndash;log. \(L_{\text{mech}}\) is the same (same feedback); the divergence is the bubble response. Pure
-read of <code>c0_*_{legacy,h0}.csv</code> via <code>make_pt4_figures.py</code>.</figcaption></figure>
+log&ndash;log. \(L_{\text{mech}}\) is the same (same feedback); the divergence is the bubble response. Circles
+mark \(R_2>r_{\text{cloud}}\) (blowout). Pure read of <code>c0_*_{legacy,h0}.csv</code> via
+<code>make_pt4_figures.py</code>.</figcaption></figure>
 <p><b>The subtlety (H5).</b> It is <b>not the clamp width.</b> Widening the box \([0,1]\!\to\![-20,20]\) does
 <i>not</i> remove the crossing &mdash; <code>small_dense</code> still crosses at the identical \(t=0.0242\) for
 every box width (<code>h5clamp/H5_FINDINGS.md</code>). The legacy grid + L-BFGS-B simply lands at a low/edge

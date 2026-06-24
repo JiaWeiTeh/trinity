@@ -477,27 +477,38 @@ def fig_legacy_vs_hybr_grid():
     QUANT = [("Eb", "Eb"), ("Lloss", "bubble_Lloss"), ("Lmech", "Lmech_total"),
              ("PdV = 4πR₂²v₂Pb", "PdV"), ("rShell = R2 [pc]", "R2")]
 
-    def series(d, key):
-        if not d:
-            return [], []
-        t = d["t_now"]
+    def yvals(d, key):
         if key == "PdV":
-            y = [4 * math.pi * r * r * v * p for r, v, p in zip(d["R2"], d["v2"], d["Pb"])]
-        else:
-            y = d[key]
-        tt, yy = zip(*[(a, b) for a, b in zip(t, y) if b > 0]) if any(b > 0 for b in y) else ([], [])
-        return list(tt), list(yy)
+            return [4 * math.pi * r * r * v * p for r, v, p in zip(d["R2"], d["v2"], d["Pb"])]
+        return d[key]
 
     nr, nc = len(CONFIGS), len(QUANT)
     fig, axes = plt.subplots(nr, nc, figsize=(15.0, 16.5))
     for ri, name in enumerate(CONFIGS):
         leg = load(CLEAN / f"c0_{name}_legacy.csv", cols)
         hyb = load(CLEAN / f"c0_{name}_h0.csv", cols)
+        rc = RCLOUD.get(name)
+
+        def blow_idx(d):
+            if not d or rc is None:
+                return None
+            return next((k for k, r2 in enumerate(d["R2"]) if r2 > rc), None)
+
+        jl, jh = blow_idx(leg), blow_idx(hyb)
         for ci, (label, key) in enumerate(QUANT):
             ax = axes[ri, ci]
-            tl, yl = series(leg, key); th, yh = series(hyb, key)
-            ax.plot(tl, yl, color=RED, lw=1.6)
-            ax.plot(th, yh, color=BLUE, lw=1.6)
+            for d, j, color in ((leg, jl, RED), (hyb, jh, BLUE)):
+                if not d:
+                    continue
+                t = d["t_now"]; y = yvals(d, key)
+                pts = [(a, b) for a, b in zip(t, y) if b > 0]
+                if pts:
+                    tt, yy = zip(*pts)
+                    ax.plot(tt, yy, color=color, lw=1.6)
+                # blowout marker: circle where R2 first exceeds rCloud
+                if j is not None and y[j] > 0:
+                    ax.scatter([t[j]], [y[j]], color=color, s=30, edgecolor="0.15",
+                               linewidth=0.6, zorder=6)
             ax.set_xscale("log"); ax.set_yscale("log")
             ax.tick_params(labelsize=6.5)
             if ri == 0:
@@ -507,8 +518,9 @@ def fig_legacy_vs_hybr_grid():
             if ri == nr - 1:
                 ax.set_xlabel("t [Myr]", fontsize=7)
     handles = [mlines.Line2D([], [], color=RED, lw=1.8, label="legacy (clamped β)"),
-               mlines.Line2D([], [], color=BLUE, lw=1.8, label="hybr (actual root)")]
-    fig.legend(handles=handles, ncol=2, fontsize=9.5, loc="lower center", bbox_to_anchor=(0.5, -0.005))
+               mlines.Line2D([], [], color=BLUE, lw=1.8, label="hybr (actual root)"),
+               mlines.Line2D([], [], marker="o", color="0.5", mec="0.15", ls="", label="R2 > rCloud (blowout)")]
+    fig.legend(handles=handles, ncol=3, fontsize=9.5, loc="lower center", bbox_to_anchor=(0.5, -0.005))
     fig.suptitle("Legacy vs hybr — Eb · Lloss · Lmech · PdV · rShell across all six configs "
                  "(rows), log–log", fontsize=11)
     fig.tight_layout(rect=[0, 0.02, 1, 0.98])
