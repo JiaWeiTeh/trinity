@@ -388,6 +388,202 @@ def fig_r1_firing_preview():
     _save(fig, "r1_firing_preview")
 
 
+def fig_clamp_vs_solver():
+    """Clamp vs solver (current data): legacy (clamped beta) FIRES the cooling
+    transition while hybr (the actual unbounded root) never does. Per config the
+    OUTCOME ratio(t) [left] + the MECHANISM cool_beta(t) [right], legacy vs hybr.
+    Also writes clamp_vs_solver_summary.csv. The transition is a legacy-solver
+    artifact, not real cooling (docs/dev/transition/pt4/h5clamp/H5_FINDINGS.md)."""
+    import csv as _csv
+    RED, BLUE = "#D55E00", "#0072B2"  # legacy, hybr
+    cols = ["cool_beta", "bubble_Lgain", "bubble_Lloss"]
+
+    def rt(d):
+        ts, rs, bs = [], [], []
+        if d:
+            for t, g, l, b in zip(d["t_now"], d["bubble_Lgain"], d["bubble_Lloss"], d["cool_beta"]):
+                if g > 0:
+                    ts.append(t); rs.append((g - l) / g); bs.append(b)
+        return ts, rs, bs
+
+    fig, axes = plt.subplots(2, 3, figsize=(12.5, 7.2))
+    summary = []
+    for i, name in enumerate(CONFIGS):
+        ax = axes.flat[i]; col = i % 3; ax2 = ax.twinx()
+        tl, rl, bl = rt(load(CLEAN / f"c0_{name}_legacy.csv", cols))
+        th, rh, bh = rt(load(CLEAN / f"c0_{name}_h0.csv", cols))
+        ax.plot(tl, rl, color=RED, lw=1.8)
+        ax.plot(th, rh, color=BLUE, lw=1.8)
+        ax.axhline(THRESH, color="0.4", ls=":", lw=1.0)
+        ax2.axhspan(0, 1, color="0.5", alpha=0.07)  # legacy clamp box [0,1]
+        ax2.plot(tl, bl, color=RED, ls="--", lw=1.2, alpha=0.85)
+        ax2.plot(th, bh, color=BLUE, ls="--", lw=1.2, alpha=0.85)
+        cross_t = next((t for t, r in zip(tl, rl) if r < THRESH), None)
+        if cross_t is not None:
+            ax.axvline(cross_t, color=RED, ls="-.", lw=1.0, alpha=0.7)
+            ax.annotate(f"legacy→mom\nt={cross_t:.3g}", (cross_t, 0.92), fontsize=6.2, color=RED,
+                        ha="left", va="top", xytext=(2, 0), textcoords="offset points")
+        ax.set_xscale("log"); ax.set_ylim(-0.15, 1.05); ax2.set_ylim(-1.6, 5.0)
+        ax.set_title(name, fontsize=8.5); ax.set_xlabel("t [Myr]", fontsize=7)
+        ax.tick_params(labelsize=7); ax2.tick_params(labelsize=7, colors="0.35")
+        if col != 0:
+            ax.set_yticklabels([])
+        else:
+            ax.set_ylabel("cooling ratio", fontsize=7.5)
+        if col != 2:
+            ax2.set_yticklabels([])
+        b_at = next((b for b, r in zip(bl, rl) if r < THRESH), float("nan")) if cross_t else float("nan")
+        summary.append({"config": name, "legacy_crosses": cross_t is not None,
+                        "legacy_cross_t": round(cross_t, 5) if cross_t else "",
+                        "legacy_ratio_min": round(min(rl), 4) if rl else "",
+                        "hybr_ratio_min": round(min(rh), 4) if rh else "",
+                        "legacy_beta_at_cross": round(b_at, 3) if b_at == b_at else "",
+                        "hybr_beta_max": round(max(bh), 3) if bh else ""})
+    fig.text(0.995, 0.5, "cool_beta β  (shaded = legacy clamp box [0,1])", rotation=90,
+             va="center", fontsize=7.5, color="0.35")
+    handles = [mlines.Line2D([], [], color=RED, lw=1.8, label="legacy ratio"),
+               mlines.Line2D([], [], color=BLUE, lw=1.8, label="hybr ratio"),
+               mlines.Line2D([], [], color=RED, ls="--", label="legacy β"),
+               mlines.Line2D([], [], color=BLUE, ls="--", label="hybr β"),
+               mlines.Line2D([], [], color="0.4", ls=":", label="transition threshold 0.05")]
+    fig.legend(handles=handles, ncol=5, fontsize=7.5, loc="lower center", bbox_to_anchor=(0.5, -0.01))
+    fig.suptitle("Clamp vs solver — legacy (clamped β) fires the cooling transition; "
+                 "hybr (actual root) never does", fontsize=10)
+    fig.tight_layout(rect=[0, 0.045, 0.97, 0.96])
+    _save(fig, "clamp_vs_solver")
+    p = HERE / "clamp_vs_solver_summary.csv"
+    with open(p, "w", newline="") as f:
+        w = _csv.DictWriter(f, fieldnames=list(summary[0].keys())); w.writeheader(); w.writerows(summary)
+    print(f"wrote {p}")
+    for s in summary:
+        print(s)
+
+
+def fig_legacy_vs_hybr_grid():
+    """Legacy-vs-hybr comparison GRID (current c0 data): configs x quantities, each
+    panel a quantity(t) for legacy (red) vs hybr (blue), log-log. PdV = 4*pi*R2^2*v2*Pb
+    (code units). Complements the dip-focused legacy_vs_hybr{,_extra} (ratio/Lloss/β/δ/Eb/Pb)
+    with Lmech, PdV, rShell on one sheet across all six configs."""
+    import math
+    RED, BLUE = "#D55E00", "#0072B2"
+    cols = ["Eb", "bubble_Lloss", "Lmech_total", "Pb", "R2", "v2"]
+    QUANT = [("Eb", "Eb"), ("Lloss", "bubble_Lloss"), ("Lmech", "Lmech_total"),
+             ("PdV = 4πR₂²v₂Pb", "PdV"), ("rShell = R2 [pc]", "R2")]
+
+    def series(d, key):
+        if not d:
+            return [], []
+        t = d["t_now"]
+        if key == "PdV":
+            y = [4 * math.pi * r * r * v * p for r, v, p in zip(d["R2"], d["v2"], d["Pb"])]
+        else:
+            y = d[key]
+        tt, yy = zip(*[(a, b) for a, b in zip(t, y) if b > 0]) if any(b > 0 for b in y) else ([], [])
+        return list(tt), list(yy)
+
+    nr, nc = len(CONFIGS), len(QUANT)
+    fig, axes = plt.subplots(nr, nc, figsize=(15.0, 16.5))
+    for ri, name in enumerate(CONFIGS):
+        leg = load(CLEAN / f"c0_{name}_legacy.csv", cols)
+        hyb = load(CLEAN / f"c0_{name}_h0.csv", cols)
+        for ci, (label, key) in enumerate(QUANT):
+            ax = axes[ri, ci]
+            tl, yl = series(leg, key); th, yh = series(hyb, key)
+            ax.plot(tl, yl, color=RED, lw=1.6)
+            ax.plot(th, yh, color=BLUE, lw=1.6)
+            ax.set_xscale("log"); ax.set_yscale("log")
+            ax.tick_params(labelsize=6.5)
+            if ri == 0:
+                ax.set_title(label, fontsize=9)
+            if ci == 0:
+                ax.set_ylabel(name, fontsize=8.5)
+            if ri == nr - 1:
+                ax.set_xlabel("t [Myr]", fontsize=7)
+    handles = [mlines.Line2D([], [], color=RED, lw=1.8, label="legacy (clamped β)"),
+               mlines.Line2D([], [], color=BLUE, lw=1.8, label="hybr (actual root)")]
+    fig.legend(handles=handles, ncol=2, fontsize=9.5, loc="lower center", bbox_to_anchor=(0.5, -0.005))
+    fig.suptitle("Legacy vs hybr — Eb · Lloss · Lmech · PdV · rShell across all six configs "
+                 "(rows), log–log", fontsize=11)
+    fig.tight_layout(rect=[0, 0.02, 1, 0.98])
+    _save(fig, "legacy_vs_hybr_grid")
+
+
+def fig_solver_stats():
+    """Solver statistics, legacy vs hybr (current c0 data, 6 configs). The clamped
+    legacy solver fires a spurious transition (so it logs FEWER implicit segments
+    before exiting) AND is numerically worse: far lower β–δ convergence and
+    comparable/larger residuals. Reads c0_*_{legacy,h0}.csv directly."""
+    import csv as _csv
+    import numpy as np
+    RED, BLUE = "#D55E00", "#0072B2"
+
+    def stats(name, tag):
+        path = CLEAN / f"c0_{name}_{tag}.csv"
+        if not path.exists():
+            return {"n_seg": 0, "conv_frac": float("nan"), "ratio_min": float("nan"), "beta_max": float("nan")}
+        rows = [r for r in _csv.DictReader(open(path)) if r.get("phase") != "momentum"]
+        n = len(rows)
+        conv = sum(1 for r in rows if str(r.get("betadelta_converged")).lower() in ("true", "1"))
+        ratios = [(_f(r, "bubble_Lgain") - _f(r, "bubble_Lloss")) / _f(r, "bubble_Lgain")
+                  for r in rows if _f(r, "bubble_Lgain") > 0]
+        betas = [_f(r, "cool_beta") for r in rows if _f(r, "cool_beta") == _f(r, "cool_beta")]
+        return {"n_seg": n, "conv_frac": conv / n if n else float("nan"),
+                "ratio_min": min(ratios) if ratios else float("nan"),
+                "beta_max": max(betas) if betas else float("nan")}
+
+    L = {c: stats(c, "legacy") for c in CONFIGS}
+    H = {c: stats(c, "h0") for c in CONFIGS}
+    x = np.arange(len(CONFIGS)); w = 0.38
+    short = [c.replace("_highsfe", "").replace("_lowsfe", "").replace("_pl0", "") for c in CONFIGS]
+    # (title, key, hline-or-None, hline-label)
+    panels = [("implicit segments (solver-cost proxy)", "n_seg", None, None),
+              ("β–δ convergence fraction", "conv_frac", None, None),
+              ("cooling-ratio minimum (≤0.05 ⇒ transitions)", "ratio_min", THRESH, "0.05 threshold"),
+              ("peak cool_beta β_max (legacy clamp = 1)", "beta_max", 1.0, "clamp bound β=1")]
+    fig, axes = plt.subplots(2, 2, figsize=(11, 7))
+    for ax, (title, key, hline, hlabel) in zip(axes.flat, panels):
+        ax.bar(x - w / 2, [L[c][key] for c in CONFIGS], w, color=RED, label="legacy (clamped)")
+        ax.bar(x + w / 2, [H[c][key] for c in CONFIGS], w, color=BLUE, label="hybr (actual root)")
+        if hline is not None:
+            ax.axhline(hline, color="0.35", ls="--", lw=1.0, label=hlabel)
+        ax.set_title(title, fontsize=9)
+        ax.set_xticks(x); ax.set_xticklabels(short, rotation=30, ha="right", fontsize=7)
+        ax.tick_params(labelsize=7)
+        if hline is not None:
+            ax.legend(fontsize=6.5)
+    axes[0, 0].legend(fontsize=8)
+    fig.suptitle("Solver statistics — legacy (clamped β) vs hybr, current c0 data", fontsize=11)
+    _save(fig, "solver_stats")
+
+
+def fig_run_cost():
+    """Runtime & segment cost of the CURRENT-version runs (r1shadow/r1_shadow_summary.csv:
+    hybr default, 8 configs incl. the two 5e9). Wall-clock and segment count per config,
+    plus per-segment cost. Caveat: stop_t was set per config (just past each blowout), so
+    wall-clock is to-blowout, not matched-t; per-segment cost factors that out."""
+    import csv as _csv
+    import numpy as np
+    p = HERE / "r1shadow" / "r1_shadow_summary.csv"
+    rows = [r for r in _csv.DictReader(open(p))]
+    names = [r["config"] for r in rows]
+    rt = [_f(r, "runtime_s") for r in rows]
+    nseg = [_f(r, "n_seg") for r in rows]
+    per = [(t / n if n else float("nan")) for t, n in zip(rt, nseg)]
+    short = [n.replace("_highsfe", "").replace("_lowsfe", "").replace("_pl0", "") for n in names]
+    x = np.arange(len(names))
+    fig, axes = plt.subplots(1, 3, figsize=(14, 4.6))
+    for ax, (vals, title, c) in zip(axes, [(rt, "wall-clock runtime [s]", "#0072B2"),
+                                           (nseg, "implicit segments", "#009E73"),
+                                           (per, "runtime / segment [s]", "#CC79A7")]):
+        ax.bar(x, vals, color=c)
+        ax.set_title(title, fontsize=9)
+        ax.set_xticks(x); ax.set_xticklabels(short, rotation=35, ha="right", fontsize=6.5)
+        ax.tick_params(labelsize=7)
+    fig.suptitle("Current-version run cost (hybr) — runtime, segments, per-segment cost "
+                 "[r1_shadow_summary]", fontsize=11)
+    _save(fig, "run_cost")
+
+
 def _save(fig, stem):
     OUT.mkdir(exist_ok=True)
     fig.tight_layout()
@@ -406,7 +602,12 @@ def main():
     fig_h2_dipgradient()
     fig_h3_ebfloor()
     fig_h4_control()
-    print("pt4 H1-H4 figures done.")
+    fig_r1_firing_preview()
+    fig_clamp_vs_solver()
+    fig_legacy_vs_hybr_grid()
+    fig_solver_stats()
+    fig_run_cost()
+    print("pt4 figures done (H1-H4, R1, clamp-vs-solver, legacy-vs-hybr grid, solver stats, run cost).")
 
 
 if __name__ == "__main__":

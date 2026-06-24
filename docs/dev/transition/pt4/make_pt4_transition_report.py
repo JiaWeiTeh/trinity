@@ -47,6 +47,14 @@ FIGURES = {
                             "where the cooling-ratio minimum sits vs the in-cloud density gradient"),
     "__FIG_R1__": ("r1_firing_preview.png",
                    "per config, where R1 would hand off vs the never-firing current trigger"),
+    "__FIG_CLAMP_SOLVER__": ("clamp_vs_solver.png",
+                             "per config: cooling ratio(t) and cool_beta(t), legacy vs hybr; legacy crosses 0.05 and transitions, hybr floors"),
+    "__FIG_SOLVER_STATS__": ("solver_stats.png",
+                             "legacy vs hybr bar stats: implicit segments, beta-delta convergence, cooling-ratio minimum, peak beta"),
+    "__FIG_LEGHYBR_GRID__": ("legacy_vs_hybr_grid.png",
+                             "legacy vs hybr across six configs for Eb, Lloss, Lmech, PdV, rShell (log-log)"),
+    "__FIG_RUN_COST__": ("run_cost.png",
+                         "current-version run cost: wall-clock runtime, implicit segments, per-segment cost per config"),
 }
 
 
@@ -422,6 +430,50 @@ heavy-cloud <b>Eb-peak hand-off into 1c</b> (a phase-1a event the 1b shadow can'
 continuity question that is the remaining make-or-break for using R1 as a <i>default</i>. That is future work.</div>
 """
 
+SEC_CLAMP = r"""
+<h2 id="clamp">4 &middot; Legacy vs hybr, in depth &mdash; the transition is a <em>solver</em> artifact</h2>
+<p>H1 named the legacy&ndash;hybr divergence the &beta;-clamp. With the fix shipped, it is worth showing
+&mdash; on the <b>current</b> version &mdash; exactly what the clamp does, and what it does <i>not</i>. Run
+each config both ways (<code>betadelta_solver=legacy</code> vs <code>hybr</code>):</p>
+<figure>__FIG_CLAMP_SOLVER__<figcaption>Per config, the <b>outcome</b> (cooling ratio, left axis) and the
+<b>mechanism</b> (<code>cool_beta</code> &beta;, right axis; shaded = the legacy clamp box \([0,1]\)),
+legacy (red) vs hybr (blue). Legacy&rsquo;s ratio dives through the 0.05 threshold and the run transitions
+(red marker, 5/6 configs); hybr floors at \(0.28\!-\!0.49\) and never does. The reason is on the right axis:
+legacy &beta; sits at the clamp edge while hybr&rsquo;s climbs to \(\sim\!+4\), out of the box. Pure read of
+<code>c0_*_{legacy,h0}.csv</code> via <code>make_pt4_figures.py</code>.</figcaption></figure>
+<p><b>Mechanism.</b> The clamped &beta; (peak \(\beta_{\max}\!\approx\!0.85\!-\!1.0\), pinned at the bound)
+holds \(L_{\text{loss}}\) artificially high, so \((L_{\text{gain}}-L_{\text{loss}})/L_{\text{gain}}\) falls to
+\(\le 0\); the unbounded root (\(\beta\!\to\!+3.4\!-\!4.6\)) collapses \(L_{\text{loss}}\) and the ratio
+recovers. The clamped solver is also numerically <i>worse</i>: &beta;&ndash;&delta; convergence
+\(0.13\!-\!0.47\) vs hybr&rsquo;s \(\sim\!0.65\), and it logs fewer implicit segments (it exits early).</p>
+<figure>__FIG_SOLVER_STATS__<figcaption>Solver statistics, legacy vs hybr (current <code>c0</code> data):
+implicit segments (legacy fewer &mdash; it exits early), &beta;&ndash;&delta; convergence fraction (legacy far
+lower), cooling-ratio minimum (legacy \(\le\!0.05\) &rArr; transitions; hybr floors above), and peak &beta;
+(legacy pinned at the clamp bound \(1\); hybr escapes to \(\sim\!4\)).</figcaption></figure>
+<p><b>Where it&rsquo;s the same.</b> The mechanical input is solver-independent &mdash; \(L_{\text{mech}}\) is
+identical legacy vs hybr; only the bubble&rsquo;s <i>response</i> differs. The grid confirms it across
+\(E_b\), \(L_{\text{loss}}\), \(L_{\text{mech}}\), PdV \(=4\pi R_2^2 v_2 P_b\), and the shell radius \(R_2\):
+\(L_{\text{mech}}\) overlaps; legacy&rsquo;s \(L_{\text{loss}}\) stays elevated; and legacy&rsquo;s traces
+truncate at its early transition while hybr persists to the cap.</p>
+<figure>__FIG_LEGHYBR_GRID__<figcaption>Legacy (red) vs hybr (blue), six configs (rows) &times; five quantities,
+log&ndash;log. \(L_{\text{mech}}\) is the same (same feedback); the divergence is the bubble response. Pure
+read of <code>c0_*_{legacy,h0}.csv</code> via <code>make_pt4_figures.py</code>.</figcaption></figure>
+<p><b>The subtlety (H5).</b> It is <b>not the clamp width.</b> Widening the box \([0,1]\!\to\![-20,20]\) does
+<i>not</i> remove the crossing &mdash; <code>small_dense</code> still crosses at the identical \(t=0.0242\) for
+every box width (<code>h5clamp/H5_FINDINGS.md</code>). The legacy grid + L-BFGS-B simply lands at a low/edge
+&beta; that holds \(L_{\text{loss}}\) high <i>wherever</i> the box is; the clamp edge merely coincides with
+where the local solver converges. So the artifact is the <b>local solver</b>, not the bound &mdash; only the
+unbounded <b>global</b> root (hybr) escapes it.</p>
+<figure>__FIG_RUN_COST__<figcaption>Current-version run cost (hybr): wall-clock runtime, implicit segments, and
+per-segment cost per config (<code>r1_shadow_summary.csv</code>). <code>large_diffuse</code> dominates the
+wall-clock (it runs furthest before blowout); the \(5\times10^9\) clouds collapse in \(\sim\!1\) min. Caveat:
+<code>stop_t</code> is per config (just past each blowout), so wall-clock is to-blowout, not matched-\(t\); the
+per-segment cost factors that out.</figcaption></figure>
+<p><b>Verdict.</b> Legacy&rsquo;s &ldquo;let cooling decide&rdquo; is not real cooling physics &mdash; it is
+where the clamped local solver lands. The correct solver shows no cooling transition exists for these clouds;
+the only physical end-of-energy-phase is geometric blowout / the \(E_b\)-peak (the R1 criteria).</p>
+"""
+
 SEC_CLOSE = r"""
 <h2 id="close">Closing &mdash; the s1 arc, end to end</h2>
 <p>This is where the storyline lands. The β&ndash;δ implicit solver was <b>repaired</b> (chapter 1); it was
@@ -470,7 +522,7 @@ def main():
             parts.append('<div class="arrow">&#9660;</div>')
     parts.append("</div>")
     parts.append(FLOW_OUTRO)
-    parts += [SEC_RECAP, SEC_H1, SEC_H2, SEC_R1, SEC_CLOSE, SEC_REPRO]
+    parts += [SEC_RECAP, SEC_H1, SEC_H2, SEC_R1, SEC_CLAMP, SEC_CLOSE, SEC_REPRO]
     parts.append("</div></body></html>")
     html = "".join(parts)
 
