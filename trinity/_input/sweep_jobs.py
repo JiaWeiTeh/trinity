@@ -24,6 +24,7 @@ import json
 import os
 import stat
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -250,7 +251,12 @@ def collect_report(jobs_dir):
     successful = []
     failed = []
     failed_indices = []
-    for run in manifest['runs']:
+    n_runs = len(manifest['runs'])
+    t0 = time.monotonic()
+    print(f"Scanning {n_runs} run sentinels (.exit_code/.duration)...", flush=True)
+    for i, run in enumerate(manifest['runs'], start=1):
+        if i % 250 == 0 or i == n_runs:
+            print(f"  {i}/{n_runs}  ({time.monotonic() - t0:.0f}s)", flush=True)
         out_dir = Path(run['output_dir'])
         exit_file = out_dir / EXIT_CODE_FILE
         dur_file = out_dir / DURATION_FILE
@@ -302,8 +308,14 @@ def collect_report(jobs_dir):
         failed=failed,
     )
     base_output_dir.mkdir(parents=True, exist_ok=True)
-    txt = report.write_report(base_output_dir)
+    # JSON first: it needs no extra I/O, so the machine-readable report is
+    # guaranteed even if the (slower) text report's per-run metadata reads stall
+    # or are interrupted on a large sweep.
     js = report.write_json(base_output_dir)
+    print(f"Wrote {js}", flush=True)
+    print("Building text report (reads each run's metadata.json — slower)...",
+          flush=True)
+    txt = report.write_report(base_output_dir)
 
     print(f"\nCollected {len(successful) + len(failed)} task(s): "
           f"{len(successful)} succeeded, {len(failed)} failed.")
