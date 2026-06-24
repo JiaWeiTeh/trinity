@@ -93,6 +93,20 @@ mixing-layer cooling, not a two-criterion cooling test.</p>
 # --------------------------------------------------------------------------- #
 STORYLINES = [
     {
+        "slug": "s0",
+        "title": "The β–δ implicit solver & “Problem 2”",
+        "subtitle": "Repairing the clamped β–δ energy-phase solver — the root-finding "
+        "maps, the cage diagnostic, and the velocity-arms hunt that set up the "
+        "transition-trigger investigation. Kept as its own book so s1 stays light.",
+        "chapters": [
+            {
+                "title": "The β–δ implicit solver & “Problem 2”",
+                "type": "html",
+                "src": DEV / "archive/betadelta/insights_betadelta_illustrated.html",
+            },
+        ],
+    },
+    {
         "slug": "s1",
         "title": "From the β–δ solver to the transition-trigger problem",
         "subtitle": "Making the implicit energy-phase solver fast, then discovering "

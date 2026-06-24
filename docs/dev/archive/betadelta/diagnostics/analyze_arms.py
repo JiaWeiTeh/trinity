@@ -54,10 +54,19 @@ CFG_MARK = {"arms_mock4e3": "o", "arms_simple1e5": "s"}
 # text.usetex=True for paper figures, but scratch diagnostics must render without
 # a LaTeX install, so force usetex off -- mathtext draws the $\beta$/$\delta$
 # labels fine.
-_STYLE = HERE.parents[1] / "paper" / "_lib" / "trinity.mplstyle"
+_STYLE = HERE.parents[4] / "paper" / "_lib" / "trinity.mplstyle"  # was parents[1] (nonexistent -> style never applied)
 if _STYLE.exists():
     plt.style.use(str(_STYLE))
-plt.rcParams["text.usetex"] = False
+plt.rcParams.update(
+    {
+        "text.usetex": False,
+        "axes.labelsize": 11.5,
+        "axes.titlesize": 11,
+        "xtick.labelsize": 9.5,
+        "ytick.labelsize": 9.5,
+        "legend.fontsize": 8.5,
+    }
+)
 
 
 def load(cfg):

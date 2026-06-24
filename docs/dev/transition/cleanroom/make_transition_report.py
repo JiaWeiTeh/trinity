@@ -90,6 +90,8 @@ border-radius:8px;padding:12px 16px;}
 figure{margin:20px 0;} figure img{width:100%;border:1px solid var(--line);border-radius:8px;display:block;}
 figcaption{color:var(--mut);font-size:13.5px;margin-top:7px;text-align:center;}
 table{border-collapse:collapse;width:100%;margin:14px 0;font-size:13.5px;}
+.tablewrap{overflow-x:auto;max-width:100%;}
+.tablewrap table{margin:0;}
 th,td{border:1px solid var(--line);padding:6px 9px;text-align:left;vertical-align:top;}
 th{background:var(--panel);font-weight:600;} tbody tr:nth-child(even){background:#fbfcfe;}
 .win{color:var(--find);font-weight:700;} .loss{color:var(--bad);font-weight:700;}
@@ -772,7 +774,7 @@ SEC_REPRO = r"""
 <h2 id="repro">Artifacts &amp; reproducibility</h2>
 <p class="small">Everything is committed under <code>docs/dev/transition/cleanroom/</code> &mdash; reproducible
 without re-running the (hours-long) hybr sims. Each figure is a pure read of a committed CSV.</p>
-<table><thead><tr><th>artifact</th><th>what</th></tr></thead><tbody>
+<div class="tablewrap"><table><thead><tr><th>artifact</th><th>what</th></tr></thead><tbody>
 <tr><td><code>c0_consistency.py</code></td><td>substrate certification harness (C0: residuals + \(f_{\text{ret}}\)); also runs the frozen-feedback test (<code>--freeze-feedback-at</code>) and persistent runs (<code>--run-dir</code>)</td></tr>
 <tr><td><code>frozen_supervisor.sh</code></td><td>refresh-robust runner for the §7.9 frozen-feedback experiment: persistent run dirs, live-jsonl→CSV checkpoints pushed to the remote, auto-relaunch on container restart</td></tr>
 <tr><td><code>harvest_h0.py</code></td><td>candidate-trigger firing-epoch harvest (the G0 deliverable)</td></tr>
@@ -781,7 +783,7 @@ without re-running the (hours-long) hybr sims. Each figure is a pure read of a c
 <tr><td><code>data/c0_*_st6.csv</code> &middot; <code>data/c0_*_h0.csv</code> &middot; <code>data/c0_*_legacy.csv</code> &middot; <code>data/c0_*_frozen.csv</code> &middot; <code>data/surge_coincidence.csv</code></td><td>per-config hybr captures, legacy (BEFORE) captures, frozen-feedback (§7.9) captures, + the surge-coincidence table</td></tr>
 <tr><td><code>plot_{fret,f0path,beta,surge,phaseportrait,dipdrivers,g0,blowout,mixcool,cert,dipmechanism,beforeafter,legacy_vs_hybr,legacy_vs_hybr_extra,pdv,pdv_massspectrum,dip_causalorder,blowout_chain,frozen_feedback}.py</code> &rarr; <code>figures/*.png</code></td><td>the nineteen figures above (each a pure read of a CSV)</td></tr>
 <tr><td><code>PLAN.md</code> &middot; <code>FINDINGS.md</code></td><td>the living plan / pre-registration &amp; the consolidated write-up</td></tr>
-</tbody></table>
+</tbody></table></div>
 <p class="small muted">Rebuild this report:
 <code>python docs/dev/transition/cleanroom/make_transition_report.py</code>
 (figures regenerate from <code>data/</code> via the <code>plot_*.py</code> generators).</p>
