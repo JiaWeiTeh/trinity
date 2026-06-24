@@ -209,6 +209,65 @@ T[r], T_avg, n[r], Pb are all in scope there for a coupled form). Default `1.0` 
 configs (`simple_cluster` + `f1edge_{lowdens,hidens}` + a 5e9) to see whether `θ_cool ≈ 1.5–3` makes the
 PdV-inclusive trigger fire near blowout *self-consistently*; (3) only then a coupled `θ_cool(R2,v2,T)`.
 
+## Refined plan — unresolved-interface-cooling closure (Paper-II note, 2026-06-24)
+
+Supersedes/sharpens the `θ_cool` sketch above (where my "θ_cool" = the note's **`f_mix`**, a *multiplier*, not a
+*fraction*). Driver: the maintainer methods note *"Adding unresolved interface cooling to TRINITY without
+double-counting"* + an adversarial physics check (double-count algebra **verified**; `max()` closure **proven
+double-count-free** over 5×10⁵ random draws).
+
+**Framework (note §2–6):**
+- Distinguish loss **fraction** `θ ≡ Lloss/Lmech ∈ [0,1]` (a target/output) from loss **multiplier**
+  `f_mix ≡ Lcool_mix/Lcool_smooth ≥ 1` (a knob on the resolved integral). One symbol must not name two operations.
+- **Never double-count.** TRINITY already subtracts the explicit `Lcool`; adding a `(1−θ)Lmech` input-rescale on
+  top removes `2θLmech` at consistency (net drive negative for θ>½). The correction must **add only the missing
+  part**, never rescale `Lmech`.
+- **Boost the LOSS, keep the trigger form.** Note's trigger is `(Lmech − Lloss_eff)/Lmech < 0.05`, with PdV in
+  the **ODE only** (not the trigger). Physics: PdV is *reversible* (recoverable as shell momentum), cooling is
+  *irreversible* — fire on the irreversible channel. ⇒ **This is distinct from reading B** (which put PdV in the
+  trigger); the note instead fixes the cooling *magnitude*.
+
+**Closures under test (default `none` ⇒ byte-identical):**
+- `multiplier`: `Lloss_eff = Lleak + f_mix·Lcool` — sweep probe; does *not* change the T-profile or evaporation
+  (its ceiling — a scalar can't back-react on the evaporative mass flux).
+- `theta_target`: `Lloss_eff = max(Lcool+Lleak, θ_target·Lmech)` — double-count-free **iff** the two terms are
+  estimators of the *same* sink (they are: `θ_target·Lmech` is a target on the resolved-cooling fraction). Tops
+  up to the target, switches OFF where resolved cooling already exceeds it.
+- `kappa_eff` (endgame, out of shadow scope): `κ_eff = max(κ_Spitzer, κ_mix)`, `κ_mix ~ ρ cp D_turb`,
+  `D_turb ~ λ δv ~ R2 v2`. The only honest form — couples cooling↔evaporation and can reproduce El-Badry's 3–30×
+  evaporation suppression; scalar closures cannot. The scalars are calibration probes that point here.
+
+**Consistency contract (note §Code-level):** one helper feeds the β–δ residual, the energy ODE, *and* the
+trigger — the same `Lloss_eff`. Shadow ⇒ reconstruct the trigger ratio only; production ⇒ this is the gate.
+
+**Staged shadow / non-disruptive test — all 8 configs (6 normal + fail_repro + fail_helix):**
+- **Stage 1 — Gate audit** (note's "check the gate first"): per-segment {active triggers, Lcool, Lleak, Lmech,
+  PdV, β, δ, residual, baseline ratios}. Confirm cooling-balance is *active but never trips* (ratio stays high),
+  not a gate bug. Plot: baseline ratio trajectories + blowout markers.
+- **Stage 2 — Closure sweep (FROZEN trajectory):** both closures over `f_mix ∈ {1,1.5,2,3,5,10,30}` and
+  `θ_target ∈ {0.3,0.5,0.7,0.8,0.9,0.95}` (ceiling **θ_max=0.95** at GMC-core n — the El-Badry density scaling is
+  an *extrapolation* there). Per (config × value): does the note `cb` trigger fire? sustained? `t_fire/R2_fire`
+  vs blowout? Plots: (a) per-config ratios under increasing boost; (b) fire-vs-blowout heatmap (config × value),
+  multiplier and theta_target.
+- **Stage 3 — Double-count / consistency check:** instantiate the note's Fig 1 with real per-config `Lcool/Lmech`;
+  show the closures stay on the single-count line and never enter the `2θ` region. Plot: that diagram, 8 configs placed.
+- **Stage 4 — Which is good:** rank by — fires near blowout for normal clouds (not birth, not never), preserves
+  heavy-cloud collapse, double-count-safe, and whether the firing value is ~constant across configs (⇒ a constant
+  knob suffices) or spreads (⇒ needs the Da/κ_eff coupling). Recommend a candidate + the gated **Tier-2 full run**
+  (disruptive: apply `Lloss_eff` in residual+ODE+trigger, separate processes, matched `t`) as the NEXT step.
+
+**Hard caveat (rule 5 + physics-check §5.1): the shadow only SCREENS.** Boosting cooling lowers Pb → lowers PdV →
+moves blowout itself; the unboosted trajectory is *not* the state the boosted ODE visits. Shadow fire-times are a
+screen, **not predictions** — the verdict needs Tier-2.
+
+**Coupled upgrade to record (not implement):** `θ_target(state) = θ_max · Da/(1+Da)`,
+`Da = (λ/δv)·n_int·Λnet(T)/((3/2)kT)` with `λ~R2, δv~v2`, `n_int` the interface/compressed density. Recovers
+El-Badry (high-n, interface-dominated) and Weaver (low-n, energy-driven) limits from one dimensionless ratio.
+
+**Data:** 7/8 offline-reconstructable (6 cleanroom h0 + `budget_fail_repro`); `fail_helix` has only logs (collapses
+in phase 1a) → needs the in-solver shadow run. Artifacts: `data/make_closure_test.py`, `data/closure_test.csv`,
+`closure_stage{1..4}*.png`.
+
 ## Plan & test design (rule-5 ladder — this is a risky/iterative/outward-facing change)
 
 The change touches the solver's phase-handoff and the late-time **fate** outputs, and is a
