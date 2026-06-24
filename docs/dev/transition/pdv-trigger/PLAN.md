@@ -53,10 +53,11 @@ folder) — do **not** re-run the hours-long sims to recover them; reproduce onl
   (`(Lmech−Lloss−PdV)/Lmech<0.05`) → fails as a usable trigger; recommended **reading A** (`ebpeak`).
   All offline from already-committed per-step CSVs.
 
-**Decision pending (asked the maintainer, not yet answered):** start the opt-in `cooling_boost_mode ∈
-{none, multiplier, theta_target}` wiring — gated, **byte-identical when `none`**, the next rung that buys a
-*live* answer vs the frozen screen — or pause here. **Not started; no production edit until the maintainer
-says go.**
+**Decision RESOLVED (maintainer said go, 2026-06-24):** the opt-in `cooling_boost_mode ∈
+{none, multiplier, theta_target}` wiring is **implemented and gated** — byte-identical when `none`
+(confirmed through the active-cooling region), `multiplier f=2` diverges at the first active-cooling step.
+See **§Task B**. **Open next step:** the matched-`t` edge-config **live** runs (boosted vs unboosted,
+separate processes) that replace the frozen screen and settle constant-`f_mix` vs `θ_target(Da)`.
 
 **Re-verify these load-bearing anchors on entry** (last confirmed 2026-06-24):
 1. **PdV at 3 sites** (§Where PdV lives) — ODE `run_energy_implicit_phase.py:846-847`
@@ -348,6 +349,37 @@ in phase 1a) → needs the in-solver shadow run. Artifacts: `data/make_closure_t
 feeding the β–δ residual + ODE + trigger *consistently* (note §Code-level), run ≥2 edge configs **live** (separate
 processes, matched `t`) to test self-consistency vs the frozen screen; add the in-solver 1a/1b shadow to cover
 `fail_helix`. Then decide constant-vs-`θ_target(Da)` from the live spread.
+
+## Task B — opt-in `cooling_boost_mode` wiring (2026-06-24, gated, byte-identical when off)
+
+The maintainer authorised wiring the closure for a **live** test. Built exactly as the note's §Code-level
+rule demands — **one helper, three sites, default off ⇒ byte-identical**.
+
+**Implementation (production):**
+- `effective_Lloss(mode, fmix, theta_target, Lcool, Lleak, Lmech)` + the params wrapper
+  `effective_Lloss_from_params(...)` in `get_betadelta.py` (after `compute_R1_Pb`). Modes: `none` →
+  `Lcool+Lleak` (byte-identical); `multiplier` → `Lleak + fmix·Lcool`; `theta_target` →
+  `max(Lcool+Lleak, θ·Lmech)`. An unrecognised token falls back to the resolved loss (a typo can't
+  perturb a run).
+- Fed **consistently** to all three sites (the note's consistency contract): the β–δ residual
+  (`get_residual_pure`), the `Edot_from_balance` ODE/detail path (`get_residual_detailed`), and the
+  `cooling_balance` trigger (`run_energy_implicit_phase.py` ~:1147). Same `Lloss_eff` everywhere.
+- 3 params (`cooling_boost_mode`/`_fmix`/`_theta`) in `registry.py` + `default.param`, mirroring
+  `transition_trigger`'s `exclude_from_snapshot=True, run_const=True` — drops them from
+  `dictionary.jsonl` (`dictionary.py:254/616`), routes them to `metadata.json` → default run byte-identical.
+
+**Gate (rule 5 — real runs, separate processes; `simple_cluster` mCloud=1e5 sfe=0.3):**
+- **`none` byte-identical to HEAD through the active-cooling region** (snapshots 1–128; resolved cooling
+  activates at snap 98 — `bubble_Lloss` is NaN before that, so the test only bites past 98, and PASSES
+  there). Provable too: the `none` branch is the identical `Lcool+Lleak` float op the original ran.
+- **`multiplier f=2` diverges at snapshot 99** — the *first* active-cooling step — confirming the boost
+  is genuinely live; `metadata.json` confirms the knobs load.
+- ✅ ruff F-rules clean; ✅ 20/20 tests (`test_cooling_boost.py` 6 + `test_r1_shadow.py` 14).
+
+**Still a SCREEN, not a forecast (anchor 4):** the gate proves the wiring is correct and *safe*; it does
+**not** yet replace the frozen screen. NEXT: matched-`t` edge-config live runs (`simple_cluster` +
+`f1edge_{lowdens,hidens}` + a 5e9), boosted vs unboosted in separate processes, to settle
+constant-`f_mix` vs coupled `θ_target(Da)`.
 
 ## Plan & test design (rule-5 ladder — this is a risky/iterative/outward-facing change)
 
