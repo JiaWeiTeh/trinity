@@ -396,33 +396,38 @@ def fig_clamp_vs_solver():
     artifact, not real cooling (docs/dev/transition/pt4/h5clamp/H5_FINDINGS.md)."""
     import csv as _csv
     RED, BLUE = "#D55E00", "#0072B2"  # legacy, hybr
-    cols = ["cool_beta", "bubble_Lgain", "bubble_Lloss"]
+    cols = ["cool_beta", "bubble_Lgain", "bubble_Lloss", "R2"]
 
     def rt(d):
-        ts, rs, bs = [], [], []
+        ts, rs, bs, R2s = [], [], [], []
         if d:
-            for t, g, l, b in zip(d["t_now"], d["bubble_Lgain"], d["bubble_Lloss"], d["cool_beta"]):
+            for t, g, l, b, r2 in zip(d["t_now"], d["bubble_Lgain"], d["bubble_Lloss"],
+                                      d["cool_beta"], d["R2"]):
                 if g > 0:
-                    ts.append(t); rs.append((g - l) / g); bs.append(b)
-        return ts, rs, bs
+                    ts.append(t); rs.append((g - l) / g); bs.append(b); R2s.append(r2)
+        return ts, rs, bs, R2s
 
     fig, axes = plt.subplots(2, 3, figsize=(12.5, 7.2))
     summary = []
     for i, name in enumerate(CONFIGS):
         ax = axes.flat[i]; col = i % 3; ax2 = ax.twinx()
-        tl, rl, bl = rt(load(CLEAN / f"c0_{name}_legacy.csv", cols))
-        th, rh, bh = rt(load(CLEAN / f"c0_{name}_h0.csv", cols))
+        tl, rl, bl, R2l = rt(load(CLEAN / f"c0_{name}_legacy.csv", cols))
+        th, rh, bh, R2h = rt(load(CLEAN / f"c0_{name}_h0.csv", cols))
         ax.plot(tl, rl, color=RED, lw=1.8)
         ax.plot(th, rh, color=BLUE, lw=1.8)
         ax.axhline(THRESH, color="0.4", ls=":", lw=1.0)
         ax2.axhspan(0, 1, color="0.5", alpha=0.07)  # legacy clamp box [0,1]
         ax2.plot(tl, bl, color=RED, ls="--", lw=1.2, alpha=0.85)
         ax2.plot(th, bh, color=BLUE, ls="--", lw=1.2, alpha=0.85)
-        cross_t = next((t for t, r in zip(tl, rl) if r < THRESH), None)
-        if cross_t is not None:
-            ax.axvline(cross_t, color=RED, ls="-.", lw=1.0, alpha=0.7)
-            ax.annotate(f"legacy→mom\nt={cross_t:.3g}", (cross_t, 0.92), fontsize=6.2, color=RED,
-                        ha="left", va="top", xytext=(2, 0), textcoords="offset points")
+        # blowout marker: circle where R2 first exceeds rCloud (the geometric transition)
+        rc = RCLOUD.get(name)
+        bo_t = {}
+        for ts, rs, R2s, c, tag in ((tl, rl, R2l, RED, "legacy"), (th, rh, R2h, BLUE, "hybr")):
+            j = next((k for k, r2 in enumerate(R2s) if rc and r2 > rc), None)
+            bo_t[tag] = ts[j] if j is not None else None
+            if j is not None:
+                ax.scatter([ts[j]], [rs[j]], color=c, s=45, edgecolor="0.15",
+                           linewidth=0.7, zorder=6)
         ax.set_xscale("log"); ax.set_ylim(-0.15, 1.05); ax2.set_ylim(-1.6, 5.0)
         ax.set_title(name, fontsize=8.5); ax.set_xlabel("t [Myr]", fontsize=7)
         ax.tick_params(labelsize=7); ax2.tick_params(labelsize=7, colors="0.35")
@@ -432,12 +437,13 @@ def fig_clamp_vs_solver():
             ax.set_ylabel("cooling ratio", fontsize=7.5)
         if col != 2:
             ax2.set_yticklabels([])
-        b_at = next((b for b, r in zip(bl, rl) if r < THRESH), float("nan")) if cross_t else float("nan")
+        cross_t = next((t for t, r in zip(tl, rl) if r < THRESH), None)
         summary.append({"config": name, "legacy_crosses": cross_t is not None,
                         "legacy_cross_t": round(cross_t, 5) if cross_t else "",
                         "legacy_ratio_min": round(min(rl), 4) if rl else "",
                         "hybr_ratio_min": round(min(rh), 4) if rh else "",
-                        "legacy_beta_at_cross": round(b_at, 3) if b_at == b_at else "",
+                        "legacy_blowout_t": round(bo_t["legacy"], 5) if bo_t["legacy"] else "",
+                        "hybr_blowout_t": round(bo_t["hybr"], 5) if bo_t["hybr"] else "",
                         "hybr_beta_max": round(max(bh), 3) if bh else ""})
     fig.text(0.995, 0.5, "cool_beta β  (shaded = legacy clamp box [0,1])", rotation=90,
              va="center", fontsize=7.5, color="0.35")
@@ -445,8 +451,9 @@ def fig_clamp_vs_solver():
                mlines.Line2D([], [], color=BLUE, lw=1.8, label="hybr ratio"),
                mlines.Line2D([], [], color=RED, ls="--", label="legacy β"),
                mlines.Line2D([], [], color=BLUE, ls="--", label="hybr β"),
-               mlines.Line2D([], [], color="0.4", ls=":", label="transition threshold 0.05")]
-    fig.legend(handles=handles, ncol=5, fontsize=7.5, loc="lower center", bbox_to_anchor=(0.5, -0.01))
+               mlines.Line2D([], [], color="0.4", ls=":", label="ratio threshold 0.05"),
+               mlines.Line2D([], [], marker="o", color="0.5", mec="0.15", ls="", label="R2 > rCloud (blowout)")]
+    fig.legend(handles=handles, ncol=6, fontsize=7, loc="lower center", bbox_to_anchor=(0.5, -0.01))
     fig.suptitle("Clamp vs solver — legacy (clamped β) fires the cooling transition; "
                  "hybr (actual root) never does", fontsize=10)
     fig.tight_layout(rect=[0, 0.045, 0.97, 0.96])

@@ -1,7 +1,7 @@
-config,legacy_crosses,legacy_cross_t,legacy_ratio_min,hybr_ratio_min,legacy_beta_at_cross,hybr_beta_max
-simple_cluster,True,0.17813,-0.0069,0.324,0.5,4.202
-small_dense_highsfe,True,0.02418,0.0235,0.2832,0.0,3.896
-midrange_pl0,True,0.8225,-0.0089,0.3645,0.42,4.41
-pl2_steep,True,0.12783,-0.0008,0.4892,0.0,3.992
-be_sphere,True,1.03743,-0.0201,0.4714,0.0,4.621
-large_diffuse_lowsfe,False,,0.5143,0.465,,3.428
+config,legacy_crosses,legacy_cross_t,legacy_ratio_min,hybr_ratio_min,legacy_blowout_t,hybr_blowout_t,hybr_beta_max
+simple_cluster,True,0.17813,-0.0069,0.324,0.09019,0.09018,4.202
+small_dense_highsfe,True,0.02418,0.0235,0.2832,0.01218,0.01166,3.896
+midrange_pl0,True,0.8225,-0.0089,0.3645,0.39744,0.39216,4.41
+pl2_steep,True,0.12783,-0.0008,0.4892,,0.83979,3.992
+be_sphere,True,1.03743,-0.0201,0.4714,0.85518,0.85612,4.621
+large_diffuse_lowsfe,False,,0.5143,0.465,,3.66,3.428

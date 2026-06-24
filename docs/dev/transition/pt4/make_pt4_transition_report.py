@@ -438,7 +438,9 @@ each config both ways (<code>betadelta_solver=legacy</code> vs <code>hybr</code>
 <figure>__FIG_CLAMP_SOLVER__<figcaption>Per config, the <b>outcome</b> (cooling ratio, left axis) and the
 <b>mechanism</b> (<code>cool_beta</code> &beta;, right axis; shaded = the legacy clamp box \([0,1]\)),
 legacy (red) vs hybr (blue). Legacy&rsquo;s ratio dives through the 0.05 threshold and the run transitions
-(red marker, 5/6 configs); hybr floors at \(0.28\!-\!0.49\) and never does. The reason is on the right axis:
+(5/6 configs); hybr floors at \(0.28\!-\!0.49\) and never does. <b>Circles</b> mark
+\(R_2>r_{\text{cloud}}\) (blowout &mdash; the real geometric transition; legacy and hybr nearly coincident,
+except where legacy has already exited). The reason for the ratio split is on the right axis:
 legacy &beta; sits at the clamp edge while hybr&rsquo;s climbs to \(\sim\!+4\), out of the box. Pure read of
 <code>c0_*_{legacy,h0}.csv</code> via <code>make_pt4_figures.py</code>.</figcaption></figure>
 <p><b>Mechanism.</b> The clamped &beta; (peak \(\beta_{\max}\!\approx\!0.85\!-\!1.0\), pinned at the bound)
