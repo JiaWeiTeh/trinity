@@ -24,13 +24,52 @@
 > against the numbers **without re-running**; record the exact config + command
 > that produced each artifact.
 
-**Date:** 2026-06-23. **Branch:** `feature/PdV-trigger-term`. **Status:** scoping + evidence + an
-**offline test of reading B** (§Offline test below) — **no production change yet.** This note answers the
-maintainer's question ("add a PdV term to the transition trigger — what was the argument against it, and
-is it still valid for larger clusters?"), then a **2026-06-23 maintainer redirect** ("see if
-`(Lmech−Lloss−PdV)/Lmech < 0.05` works as a trigger; not sure what the standalone `PdV/Lmech` diagnostic
-buys us") which is answered offline in §Offline test, and lays out how to plan/test it. Sibling priors (re-verify per banner): `../pt4/TRANSITION_FIX_SCOPING.md`
-(Route 1), `../pt4/r1shadow/R1_FINDINGS.md`, `../../failed-large-clouds/PLAN.md` §6.
+## Re-entry ledger — open this FIRST (the 🔄 banner, operationalized)
+
+The recheck list the banners demand. **Every visit:** re-verify the anchors below, update the ledger,
+*then* read on. All findings here are **already persisted** (CSVs + figures under `data/` and this
+folder) — do **not** re-run the hours-long sims to recover them; reproduce only to extend.
+
+**Status ledger (newest first):**
+- **2026-06-24** — Folded in the maintainer's Paper-II interface-cooling note (`f_mix` *multiplier* vs
+  `θ_target` *fraction*; **boost the loss, not the trigger**; one `Lloss_eff` in three places; `κ_eff`
+  endgame) — §Refined plan. Ran the **8-config staged shadow** (frozen trajectory) → §Stage results.
+  **Verdict so far:** normal clouds want a *cooling boost* (`f_mix≈1.5–2` lands the ratio near the
+  transition); heavy 5e9 wants the *PdV/`ebpeak`* handoff — a clean sub/super-critical split. A *constant*
+  knob can't place the transition at blowout across the density grid (θ_at_blowout spans 1.1→3.1) ⇒ points
+  to the coupled `θ_target(Da)`/`κ_eff` form. **Production still unchanged** (grep-confirmed, anchor 3).
+- **2026-06-23** — Scoped the maintainer's "PdV in the trigger" question. "PdV negligible" is false
+  (`PdV/Lmech` median 0.43–0.55); the real fork is `PdV/Lmech ≷ 1`. Offline-tested **reading B**
+  (`(Lmech−Lloss−PdV)/Lmech<0.05`) → fails as a usable trigger; recommended **reading A** (`ebpeak`).
+  All offline from already-committed per-step CSVs.
+
+**Decision pending (asked the maintainer, not yet answered):** start the opt-in `cooling_boost_mode ∈
+{none, multiplier, theta_target}` wiring — gated, **byte-identical when `none`**, the next rung that buys a
+*live* answer vs the frozen screen — or pause here. **Not started; no production edit until the maintainer
+says go.**
+
+**Re-verify these load-bearing anchors on entry** (last confirmed 2026-06-24):
+1. **PdV at 3 sites** (§Where PdV lives) — ODE `run_energy_implicit_phase.py:846-847`
+   (`residual_Edot2_guess ← betadelta_result.Edot_from_balance`); `cooling_balance` trigger ~`:1200`
+   (radiative, **no** PdV); `ebpeak` shadow `evaluate_r1_shadow():197-210` + drive `:1166`.
+2. **Opt-in is byte-identical** — `transition_trigger` default `cooling_balance` (`registry.py:347`,
+   `default.param:282`); a non-default token only *drives* the R1 handoff, never perturbs a default run.
+3. **Cooling site, still no boost knob** — cooling is `bubble_luminosity.py::_bubble_luminosity`
+   (`:575` → `bubble_LTotal` `:835`); `grep -rn 'cooling_boost_mode\|theta_cool\|f_mix' trinity/` is
+   **empty** ⇒ the whole plan is still shadow/offline, production untouched.
+4. **The Stage numbers are a SCREEN, not a forecast** — `data/closure_test.csv` is a *frozen-trajectory*
+   reconstruction; boosting cooling lowers `Pb`→`PdV`→**moves blowout itself**, so the fire-times need the
+   Tier-2 **live** run (separate processes, matched `t`) before any verdict is trusted (§Hard caveat).
+
+---
+
+**Last updated:** 2026-06-24 (live status in the re-entry ledger above). **Branch:**
+`feature/PdV-trigger-term`. This note answers the maintainer's question ("add a PdV term to the transition
+trigger — what was the argument against it, and is it still valid for larger clusters?"), the **2026-06-23
+redirect** (test reading B directly; what does the standalone `PdV/Lmech` diagnostic buy us), and the
+**2026-06-24 interface-cooling direction** (boost the *loss*, not the trigger — Paper-II note). Sibling
+priors (re-verify per banner): `../pt4/TRANSITION_FIX_SCOPING.md` (Route 1),
+`../pt4/r1shadow/R1_FINDINGS.md`, `../../failed-large-clouds/PLAN.md` §6.
 
 ---
 
@@ -366,6 +405,10 @@ Byte-identical (logging only); extend the `test/test_r1_shadow.py` truth table (
 given the offline verdict** — it confirms, it does not change, the reading-B finding.
 
 ## Artifacts
+- `data/closure_test.csv` (+ builder `data/make_closure_test.py`, figures `data/make_closure_plots.py` →
+  `closure_stage{1..4}*.png`) — the §Refined-plan **8-config staged shadow** (frozen-trajectory screen;
+  §Stage results). Regenerate: `python docs/dev/transition/pdv-trigger/data/make_closure_test.py && python
+  docs/dev/transition/pdv-trigger/data/make_closure_plots.py`.
 - `data/pdv_combined_trigger.csv` (+ `data/make_combined_trigger_table.py`, figure `pdv_combined_trigger.png`)
   — the §Offline-test reading-B first-fire table. Regenerate: `python docs/dev/transition/pdv-trigger/data/make_combined_trigger_table.py`.
 - `data/pdv_regime_budget.csv` (+ `data/make_pdv_regime_table.py`) — the §Evidence table.
