@@ -1,0 +1,7 @@
+config,Lcool_over_Lmech_at_blowout,PdV_over_Lmech_at_blowout,fmix_with_pdv,fmix_no_pdv
+small_dense_highsfe,0.697,0.182,1.1,1.36
+simple_cluster,0.667,0.206,1.12,1.42
+midrange_pl0,0.61,0.219,1.2,1.56
+be_sphere,0.511,0.308,1.26,1.86
+pl2_steep,0.342,0.441,1.49,2.78
+large_diffuse_lowsfe,0.25,0.169,3.13,3.81

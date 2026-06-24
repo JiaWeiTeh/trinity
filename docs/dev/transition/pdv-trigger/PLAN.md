@@ -31,6 +31,16 @@ The recheck list the banners demand. **Every visit:** re-verify the anchors belo
 folder) — do **not** re-run the hours-long sims to recover them; reproduce only to extend.
 
 **Status ledger (newest first):**
+- **2026-06-24 (pm) — Verified the maintainer's revised note line-by-line against source + screen data.**
+  Code anchors all **confirmed** (Eq.1 ODE = `get_betadelta.py:434`; trigger = `(Lgain−Lloss)/Lgain<0.05`
+  radiative-only `:1200`; no boost knob in `trinity/`). My screen numbers **reproduce exactly**. Found and
+  fixed: (a) **trigger-convention bug** — the note's Table 2 headline `f_mix≈1.1–1.5` is the *with-PdV*
+  screen, inconsistent with the note's own *no-PdV* recommended trigger; consistent value is
+  **`f_mix≈1.4–2.8`** (`data/fmix_table.csv`, both conventions); (b) the **5×10⁵-draw** double-count claim
+  had no committed script → added `data/make_doublecount_mc.py`+`doublecount_mc.csv` (0 draws enter the
+  region); (c) Table 2 now script-emitted (`data/make_fmix_table.py`). Literature values farmed out to a
+  web-verify pass (separate). **Then started Task B** — wiring opt-in `cooling_boost_mode` (gated,
+  byte-identical when off) for the live test. See §"Task B".
 - **2026-06-24** — Folded in the maintainer's Paper-II interface-cooling note (`f_mix` *multiplier* vs
   `θ_target` *fraction*; **boost the loss, not the trigger**; one `Lloss_eff` in three places; `κ_eff`
   endgame) — §Refined plan. Ran the **8-config staged shadow** (frozen trajectory) → §Stage results.
@@ -206,16 +216,27 @@ off to momentum while the energy budget is nowhere near the 0.05 band. That gap 
 makes the PdV-inclusive ratio reach the threshold, `(Lmech − θ_cool·Lloss − PdV)/Lmech = 0.05`, on the
 *committed (unboosted)* trajectories:
 
-| config | θ_cool to fire **at blowout** (w/ PdV) | θ_cool to fire **anywhere** (w/ PdV) | (no PdV, anywhere) |
-|---|---|---|---|
-| small_dense_highsfe | 1.10 | 1.04 | 1.33 |
-| simple_cluster | 1.12 | 1.06 | 1.41 |
-| midrange_pl0 | 1.20 | 1.08 | 1.49 |
-| be_sphere | 1.26 | 1.18 | 1.80 |
-| pl2_steep | 1.49 | 1.24 | 1.86 |
-| large_diffuse_lowsfe | 3.13 | 0.87 (already <1) | 1.78 |
+| config | `f_mix` @blowout **(w/ PdV)** | `f_mix` anywhere (w/ PdV) | `f_mix` anywhere (no PdV) | **`f_mix` @blowout (no PdV) — consistent** |
+|---|---|---|---|---|
+| small_dense_highsfe | 1.10 | 1.04 | 1.33 | **1.36** |
+| simple_cluster | 1.12 | 1.06 | 1.41 | **1.42** |
+| midrange_pl0 | 1.20 | 1.08 | 1.49 | **1.56** |
+| be_sphere | 1.26 | 1.18 | 1.80 | **1.86** |
+| pl2_steep | 1.49 | 1.24 | 1.86 | **2.78** |
+| large_diffuse_lowsfe | 3.13 | 0.87 (already <1) | 1.78 | **3.81** |
 
-So **PdV + a modest `θ_cool ≈ 1.1–1.5` would fire the energy→momentum handoff right at blowout** for 5/6 normal
+> ⚠️ **Convention fix (2026-06-24 verification).** The first three columns are the *original 2026-06-23*
+> screen, which put **PdV inside the trigger ratio** (`(Lmech − f·Lcool − PdV)/Lmech = 0.05`). The
+> Paper-II note's recommended trigger keeps **PdV out** (in the ODE only; reversible vs irreversible).
+> The consistent screen is therefore the **last column** (`f = 0.95/(Lcool/Lmech)` at blowout) — and the
+> note's Table 2 imported the *with-PdV* column (1.1–1.5) as its headline, which understates the boost by
+> ~`PdV/Lmech`. The consistent headline is **`f_mix ≈ 1.4–2.8`** (compact five) — matching both my newer
+> §Stage-results `cb` screen (1.5–2) and the literature target (lift `Lcool/Lmech≈0.25–0.7` to `θ≈0.95`).
+> Reproducible now: `data/make_fmix_table.py` → `data/fmix_table.csv` (both conventions, from
+> `pdv_combined_trigger.csv`).
+
+So **a modest cooling boost `f_mix ≈ 1.4–2.8` (no-PdV trigger; 1.1–1.5 if PdV is folded in) would fire the
+energy→momentum handoff right at blowout** for 5/6 normal
 clouds — and that boost is *below* the enhancement the mixing-layer literature argues for (El-Badry+19
 catastrophic cooling; Lancaster+21 near-complete wind-energy cooling; Gronke & Oh mixing layers). This is the
 first candidate that makes a PdV-inclusive trigger physically *and* numerically land where the cloud actually
@@ -252,8 +273,10 @@ PdV-inclusive trigger fire near blowout *self-consistently*; (3) only then a cou
 
 Supersedes/sharpens the `θ_cool` sketch above (where my "θ_cool" = the note's **`f_mix`**, a *multiplier*, not a
 *fraction*). Driver: the maintainer methods note *"Adding unresolved interface cooling to TRINITY without
-double-counting"* + an adversarial physics check (double-count algebra **verified**; `max()` closure **proven
-double-count-free** over 5×10⁵ random draws).
+double-counting"* + an adversarial physics check (double-count algebra **verified**; `max()` closure is
+**single-count by construction** — `Lloss_eff/Lmech = max(Lcool/Lmech, θ)`, never the forbidden
+`Lcool/Lmech + θ` — confirmed empirically by `data/make_doublecount_mc.py` (5×10⁵ draws, **0** enter the
+double-count region; result `data/doublecount_mc.csv`).
 
 **Framework (note §2–6):**
 - Distinguish loss **fraction** `θ ≡ Lloss/Lmech ∈ [0,1]` (a target/output) from loss **multiplier**
@@ -405,6 +428,12 @@ Byte-identical (logging only); extend the `test/test_r1_shadow.py` truth table (
 given the offline verdict** — it confirms, it does not change, the reading-B finding.
 
 ## Artifacts
+- `data/fmix_table.csv` (+ builder `data/make_fmix_table.py`) — the methods-note **Table 2**, now
+  script-emitted from `pdv_combined_trigger.csv`. Both trigger conventions (with-PdV screen vs the
+  consistent no-PdV recommended trigger); headline `f_mix ≈ 1.4–2.8`. Regenerate: `python
+  docs/dev/transition/pdv-trigger/data/make_fmix_table.py`.
+- `data/doublecount_mc.csv` (+ builder `data/make_doublecount_mc.py`) — the 5×10⁵-draw Monte-Carlo that
+  backs the note's double-count-free claim (0 draws enter the `2θ` region; single-count by construction).
 - `data/closure_test.csv` (+ builder `data/make_closure_test.py`, figures `data/make_closure_plots.py` →
   `closure_stage{1..4}*.png`) — the §Refined-plan **8-config staged shadow** (frozen-trajectory screen;
   §Stage results). Regenerate: `python docs/dev/transition/pdv-trigger/data/make_closure_test.py && python
