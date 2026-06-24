@@ -268,6 +268,25 @@ El-Badry (high-n, interface-dominated) and Weaver (low-n, energy-driven) limits 
 in phase 1a) → needs the in-solver shadow run. Artifacts: `data/make_closure_test.py`, `data/closure_test.csv`,
 `closure_stage{1..4}*.png`.
 
+### Stage results (2026-06-24 — FROZEN-TRAJECTORY SCREEN; bounds the knob, does not forecast)
+1. **`cb` trigger (boost loss, no PdV) is the right family for normal clouds:** `f_mix ≈ 1.5–2` brings their cooling
+   ratio into the band near the transition. Supersedes reading B (don't put PdV in the trigger; fix the cooling).
+2. **A constant knob can't place the transition at blowout across the grid (Stage 2 heatmap).** At `f_mix≈2`,
+   compact/dense fire *at* blowout (`simple_cluster −0.02`, `small_dense −0.00` Myr) but diffuse fire *well before*
+   (`pl2_steep −0.81`, `large_diffuse −1.3…−3.65`). Density-ordered (dense already cool: `Lcool/Lmech≈0.7` at
+   blowout; diffuse `≈0.25`) ⇒ **the data argues for the coupled `θ_target(Da)`/`κ_eff` form, not a constant.**
+3. **`theta_target` constant is blunt:** fires nowhere below 0.95, ~at birth at 0.95 — use only via the
+   density-dependent `θ_target(n)` model + ceiling. The **multiplier `f_mix` is the better probe.**
+4. **Heavy clouds are complementary, not covered by cooling:** `fail_repro` never fires `cb` even at `f_mix=30`
+   (`Lcool/Lmech≈0.01`, PdV-dominated) ⇒ heavy clouds need the **PdV/ebpeak handoff**, normal clouds the **cooling
+   boost**. Clean sub-/super-critical regime split.
+5. **Double-count check (Stage 3):** every config sits on the single-count line; the closures never enter `2θ`.
+
+**Next (gated, disruptive — NOT in the shadow):** wire an opt-in `cooling_boost_mode ∈ {none,multiplier,theta_target}`
+feeding the β–δ residual + ODE + trigger *consistently* (note §Code-level), run ≥2 edge configs **live** (separate
+processes, matched `t`) to test self-consistency vs the frozen screen; add the in-solver 1a/1b shadow to cover
+`fail_helix`. Then decide constant-vs-`θ_target(Da)` from the live spread.
+
 ## Plan & test design (rule-5 ladder — this is a risky/iterative/outward-facing change)
 
 The change touches the solver's phase-handoff and the late-time **fate** outputs, and is a
