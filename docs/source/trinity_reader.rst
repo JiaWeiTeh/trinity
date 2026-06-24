@@ -20,7 +20,8 @@ time window, and conversion to a pandas ``DataFrame``. A
 :class:`Snapshot` represents a single time step and behaves like a
 dictionary keyed by parameter name. A companion utility,
 ``find_all_simulations``, walks a directory tree of sweep output and
-returns the path of every ``dictionary.jsonl`` it finds. The plotting
+returns the path of every ``dictionary.jsonl`` (or legacy
+``dictionary.json``) it finds. The plotting
 scripts under ``paper/methods/figures/`` and ``scratch/`` consume their input
 exclusively through these classes.
 
@@ -186,6 +187,16 @@ Filtering
 
     early_energy = output.filter(phase='energy', t_max=1.0)
     print(len(energy_phase))                       # result is a TrinityOutput
+
+.. note::
+
+   ``filter(phase=...)`` matches ``current_phase`` exactly. The phase
+   strings are ``energy``, ``implicit``, ``transition``, and
+   ``momentum``; the energy-driven regime spans **both** ``energy`` and
+   ``implicit``, so ``filter(phase='energy')`` returns only the first
+   sub-phase. To select the whole energy-driven regime, mask on the
+   phase series directly, e.g.
+   ``[p in ('energy', 'implicit') for p in output.get('current_phase', as_array=False)]``.
 
 
 Batch processing utilities

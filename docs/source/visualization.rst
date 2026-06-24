@@ -115,9 +115,11 @@ showing the relative importance of feedback forces as fractions of the
 total:
 
 - **Gravity** (black)
-- **Ram pressure** (blue) with wind/SN decomposition overlay
-- **Photoionised gas** (red)
-- **Radiation** (purple): direct and reprocessed radiation pressure
+- **Driving pressure** ``F_drive`` (blue): the bubble's driving term
+  (the larger of bubble pressure and :math:`P_{\rm HII}`), with the
+  wind, SN, and :math:`P_{\rm HII}` contributions overlaid as hatching
+  inside the band (wind purple, SN tan, :math:`P_{\rm HII}` red)
+- **Radiation** (teal): direct and reprocessed radiation pressure
 - **PISM** (white): external ISM pressure
 
 Configuration
@@ -145,6 +147,7 @@ which provides:
    # Marker overlays
    --show-phase          Energy/transition/momentum phase boundaries
    --show-rcloud         Cloud-edge crossing
+   --show-rcloud-horizontal  Horizontal R_cloud line (on radius-on-y plots)
    --show-collapse       Collapse onset
    --show-noPHII         Overlay the no-PHII companion run
    --show-all-markers    Enable all of the above
