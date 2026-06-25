@@ -1,0 +1,159 @@
+# PdV-trigger workstream — findings (verified, 4/4 live configs)
+
+> ⚠️ **This document may be out of date — verify before trusting it.** It is a
+> point-in-time analysis/audit, not a maintained spec; the code moves faster
+> than these notes (paths, line numbers, and "what shipped" status drift).
+> **Any agent or person reading this: treat it as unverified. Flag that it may
+> be stale and re-check each claim, snippet, and line reference against the
+> current source before relying on it.**
+>
+> 🔄 **Living plan — recheck and refine on every visit.** This is an evolving
+> strategy doc, not a frozen record. Any agent or person who opens this file
+> must, as part of the visit: (1) re-verify the claims and line references above
+> against current source; (2) update anything that has drifted; (3) **rethink the
+> strategy itself** — if a better ordering, gate, candidate, or experiment
+> exists, revise the doc and note what changed and why (date it). Leave it better
+> than you found it. **Keep all banner paragraphs at the top of every plan and
+> analysis doc.**
+>
+> 💾 **Persist diagnostics — commit, don't re-run.** The container is ephemeral
+> and full/hybr runs cost hours, so any diagnostic worth keeping must be saved as
+> a committed artifact under `docs/dev/` (a CSV/table in `docs/dev/<workstream>/data/`, or a
+> harness/figure in the relevant `docs/dev/<workstream>/` folder) — never left in
+> `/tmp`, the local-only `scratch/`, or an untracked `outputs/`. A future visit must be able to reproduce or compare
+> against the numbers **without re-running**; record the exact config + command
+> that produced each artifact.
+
+> **Provenance of this write-up.** Verified rewrite — line-by-line checks against source caught real errors
+> in an earlier draft (listed in §0). Every number was re-checked against the committed CSVs / config files
+> / run logs on 2026-06-25; claims are tagged **[data]** (measured), **[interpretation]**, or
+> **[schematic / to-verify]**.
+
+## 0. What the verification changed (errors caught and fixed)
+1. **§2 gap numbers were wrong.** An earlier draft said "gap ~0.45 (diffuse) → ~0.25 (dense), shrinking."
+   Recomputing the gap from the *actual* plotted band function gives a **non-monotonic** result and a
+   **negative** gap at the diffuse end (TRINITY sits *above* the schematic band there). Only the
+   dense-end ~0.25 was right. The committed figure `theta_vs_density.png` carried the same wrong
+   annotations — **they have been removed and the figure regenerated (this commit)**.
+2. **§1 spread mis-stated.** Earlier "1.1×→3.8×, 3.5× spread" mixed two columns. Corrected below.
+3. **§3 lowdens** runs were truncated at the 1200 s ceiling (run.py `exit=124`), not a natural finish —
+   so the claim is "had not fired *by blowout*," not "never fires."
+4. **Edge configs vary SFE too** (hidens sfe 0.01, lowdens sfe 0.5) — not a clean density-only contrast.
+5. **§6** does not pin the committed live runs to a commit hash (no tracked provenance).
+6. **Blowout time for lowdens was misread.** A first pass eyeballed the diffuse blowout at ~1.3 Myr from
+   the harvest — that was a column miscount. The matched-t comparator (R2 vs rCloud=70.12 pc) gives
+   blowout ≈ **0.61–0.64 Myr** (none 0.611, ×2 0.620, ×3 0.639). Corrected in §3.
+
+**Thesis under test:** TRINITY's resolved cooling-loss fraction `L_cool/L_mech` rises with density but the
+constant boost needed to ignite the energy→momentum transition also rises steeply with *decreasing*
+density — so **no single constant `f_mix` works across the density range**; the boost should track a
+density-dependent target. Support rests on **§1 (boost-to-trigger spread) and §3 (live firing behaviour)**,
+both solid; the literature-`θ_lit(n)` comparison (§2) is currently **schematic** and not yet evidence.
+
+---
+
+## 1. [data] Boost needed to reach the 0.95 trigger rises steeply as density falls
+
+`data/fmix_table.csv` (per config, at blowout). nCore column independently confirmed from
+`docs/dev/transition/cleanroom/configs/<config>.param` (simple_cluster unset → schema default 1e5):
+
+| config | nCore [cm⁻³] | L_cool/L_mech | PdV/L_mech | f_mix (with PdV) | f_mix (no PdV) |
+|---|---:|---:|---:|---:|---:|
+| small_dense_highsfe  | 1e6 | 0.697 | 0.182 | 1.10 | 1.36 |
+| simple_cluster       | 1e5 | 0.667 | 0.206 | 1.12 | 1.42 |
+| midrange_pl0         | 1e4 | 0.610 | 0.219 | 1.20 | 1.56 |
+| be_sphere            | 1e4 | 0.511 | 0.308 | 1.26 | 1.86 |
+| pl2_steep            | 1e5 | 0.342 | 0.441 | 1.49 | 2.78 |
+| large_diffuse_lowsfe | 1e2 | 0.250 | 0.169 | 3.13 | 3.81 |
+
+- The constant boost needed roughly **triples** from dense to diffuse — f_mix(no PdV) **1.36 → 3.81
+  (≈2.8×)**, f_mix(with PdV) **1.10 → 3.13 (≈2.85×)**. **No single `f_mix` fits all densities** — the core
+  of the thesis, and this is real measured data.
+- `pl2_steep` (nCore 1e5) sits low at 0.342 — density is the main driver but **not the only one**
+  (profile shape / SFE scatter it). [interpretation]
+
+## 2. θ_lit(n) figure — `theta_vs_density.png` — SCHEMATIC overlay, gap NOT quantified
+
+TRINITY's resolved `L_cool/L_mech` (= 1 − `cool_at_blowout`) vs ambient nCore is **real [data]** and rises
+**0.250 (1e2) → 0.697 (1e6)**. The literature overlay is **[schematic / to-verify]**: El-Badry+2019
+(arXiv:1902.09547) and Lancaster+2021 (arXiv:2104.07722) PDFs returned HTTP 403, so the band is an
+arbitrary saturating stand-in, NOT digitized θ(n).
+
+**Recomputed gap (band_center − TRINITY) at each nCore — shows the schematic is not a usable comparator:**
+
+| config | nCore | TRINITY | schematic band_c | gap |
+|---|---:|---:|---:|---:|
+| large_diffuse_lowsfe | 1e2 | 0.250 | 0.171 | **−0.079** (TRINITY above band) |
+| be_sphere            | 1e4 | 0.511 | 0.833 | 0.323 |
+| midrange_pl0         | 1e4 | 0.610 | 0.833 | 0.223 |
+| pl2_steep            | 1e5 | 0.342 | 0.936 | 0.594 |
+| simple_cluster       | 1e5 | 0.667 | 0.936 | 0.269 |
+| small_dense_highsfe  | 1e6 | 0.697 | 0.949 | 0.251 |
+
+- The gap is **non-monotonic** and **negative at the diffuse end** — so the earlier "0.45 diffuse → 0.25
+  dense, shrinking" is **wrong** and is retracted. The figure's "gap ~0.45 / ~0.25" arrows **have been
+  removed** (figure regenerated this commit); the script now documents why.
+- The only defensible literature statement right now: at the **dense** end TRINITY (0.70) is below
+  Lancaster's reported retained-cooling fraction (~0.9) — gap ~0.2. The **diffuse** end is **unknown**
+  until real θ(n) is digitized (the schematic's 0.17 there is meaningless). [interpretation]
+- **Open next step:** quote no gap until the El-Badry/Lancaster θ(n) is digitized (the 3 citations in
+  `NOTE_PATCHES.md`); replacing the schematic band with a real one upgrades §2 from corroboration to
+  evidence. The TRINITY trend itself stands.
+- Caveat retained: x-axis is *ambient* nCore; θ_lit(n) tracks the *higher interface* density.
+
+## 3. [data] LIVE matched-t edge runs — does the boost fire cooling before blowout?
+
+`none` vs boosted, matched simulation time, separate processes. `fired_cooling_boost` = handed off via a
+*cooling* trigger (True) vs blew out / never transitioned (False). Committed: `runs/data/live_compare.csv`
+(+ per-arm `runs/data/harvest_f1edge_lowdens__*.csv`). Times in Myr. **The edge configs vary SFE as well as
+density** (hidens 1e6/sfe0.01; lowdens 1e2/sfe0.5; simple_cluster 1e5/default) — a feedback×density edge
+set, not a pure density sweep.
+
+| config (boost) | nCore, sfe | t_trans none→boost | blowout (boost) | fired cooling? | reading |
+|---|---|---|---|---|---|
+| f1edge_hidens (×2)   | 1e6, 0.01 | 0.0314 → 0.0034 (1st step) | none (nan) | **True**  | dense fires cooling at birth, before any blowout |
+| simple_cluster (×2)  | 1e5, dflt | 10.44 → 0.131 | 0.109 | **False** | blows out (0.109) *before* it transitions (0.131); ΔEb up to 47% |
+| f1edge_lowdens (×2)  | 1e2, 0.50 | no transition (trunc.) | 0.620 | **False** | diffuse: doesn't fire by blowout; ΔEb 13%, ΔR2 5% at matched t; blowout +9 kyr vs none |
+| f1edge_lowdens (×3)  | 1e2, 0.50 | no transition (trunc.) | 0.639 | **False** | doesn't fire even at ×3; ΔEb 24%, ΔR2 9%; blowout +28 kyr vs none |
+| fail_repro (×2)      | heavy/path. | 0.0034 → 0.0034 | none (nan) | **False** | pathological config; boost has no effect |
+
+lowdens baseline `none` blew out at **0.611 Myr** and never transitioned; **all three lowdens arms were
+truncated at the 1200 s ceiling** (exit 124) at sim-time t≈3.0–3.3 Myr, so "fires *after* blowout, before
+stop_t?" is unanswered — but "fires *before* blowout?" is a clean **No** for both ×2 and ×3.
+
+**Live trend [interpretation]:** the boost needed to actually ignite cooling rises sharply as density
+falls — dense fires at birth (×2), mid blows out before firing (×2), diffuse hasn't fired by blowout even
+at ×3. Consistent with §1; confirms live that no constant `f_mix` fires cooling across the range.
+(Note: density and SFE move together here, so "density" is shorthand for the dense-weak ↔ diffuse-strong
+edge, not a clean one-variable result.)
+
+## 4. [interpretation] Frozen-screen vs live discrepancy — worth scrutiny
+
+Static table (§1) says simple_cluster needs only f_mix = 1.42 (no PdV) / 1.12 (with PdV) to fire; the live
+boost is ×2.0 (confirmed in the param: `cooling_boost_fmix 2.0`), which exceeds both — yet the live ×2 run
+does **not** fire cooling (it blows out at 0.109 first). The static "at-blowout" snapshot appears to
+**over-predict firing** because blowout intervenes before the boosted cooling integral crosses 0.95 in a
+sustained way. This frozen-vs-live gap is the main open interpretive question.
+
+## 5. Caveats / open items
+- lowdens ×2/×3/none all complete (all truncated at the 1200 s ceiling; blowout ~0.61–0.64 Myr). "Fires
+  after blowout, before stop_t (15 Myr)?" is unanswered (runs cut at t≈3.0–3.3) — only "not before
+  blowout" is established for the diffuse cloud.
+- Edge configs confound density with SFE (§3) — keep that in any density-only claim.
+- θ_lit(n) band schematic (§2) until PDFs digitized; figure gap annotations now removed.
+- `fired_cooling_boost=False` + large t_trans shift (simple_cluster) = "transitioned, but via blowout, not
+  cooling" — read the *mechanism*, not just the time.
+- Diffuse table point (large_diffuse_lowsfe, cleanroom) ≠ live diffuse arm (f1edge_lowdens) — different
+  mCloud/SFE; both nCore 1e2.
+
+## 6. Provenance
+- Commits (`feature/PdV-trigger-term`): `6642ff4` matrix+comparator, `dc1c2fd` note patches, `17f9653`
+  live 3/4 configs, `8bcc6b0` θ_lit plot, `b94689c` plot layout fix, plus this commit (4/4 + figure
+  de-annotated). Branch is also mirrored to `claude/amazing-darwin-pl1kzl`.
+- Data: `data/{fmix_table,pdv_combined_trigger}.csv`, `runs/data/live_compare.csv` (5 rows),
+  `runs/data/harvest_*.csv` (4 configs), `theta_vs_density.png` (+ `data/make_theta_density_plot.py`).
+- Committed live runs hidens/simple_cluster/fail_repro: produced via `run_stamped` (clean-tree + per-run
+  `provenance.json`), but the run dirs aren't tracked, so no commit hash is pinned here.
+- Live lowdens (now committed under `runs/data/`): `harvest_f1edge_lowdens__{none,mult2,mult3}.csv` + the
+  two `f1edge_lowdens_*` rows of `live_compare.csv`; produced via `run.py` under `timeout` in an isolated
+  clean worktree at `17f9653` — these used `run.py` directly, not `run_stamped`, so no `provenance.json`.

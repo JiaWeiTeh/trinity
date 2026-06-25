@@ -8,10 +8,12 @@ ZERO simulation, ZERO physics change. Pure read of committed data:
     when the .param does not set it). The nCore source for every config is recorded in NCORE below.
 
 The point of the figure (the workstream's "first step"): TRINITY's resolved cooling fraction has the
-RIGHT density trend (rises ~0.25 at diffuse n -> ~0.70 at dense n) but sits TOO LOW relative to the
-mixing-layer literature (El-Badry+2019, Lancaster+2021), and because the gap to theta_lit(n) VARIES
-with density, no single constant boost f_mix can bridge it -- motivating a density-dependent
-theta_lit(n) calibration instead of tuning one constant to the 0.95 trigger threshold.
+RIGHT density trend (rises ~0.25 at diffuse n -> ~0.70 at dense n). The literature overlay is SCHEMATIC
+(El-Badry+2019, Lancaster+2021 PDFs not yet digitized -- see below), so this figure does NOT quantify a
+gap to theta_lit(n): recomputing band_center - TRINITY at each nCore gives a non-monotonic, even
+negative-at-diffuse result, an artifact of the stand-in band shape. The case that a single constant boost
+f_mix cannot bridge the shortfall rests on the fmix table (f_mix 1.36 dense -> 3.81 diffuse), motivating a
+density-dependent theta_lit(n) calibration instead of tuning one constant to the 0.95 trigger threshold.
 
 LITERATURE OVERLAY IS SCHEMATIC / TO-VERIFY.  The El-Badry/Lancaster relations are uncertain and
 EXTRAPOLATED at GMC-core density; their exact equation/figure numbers (El-Badry Eq.35 / Fig.7,
@@ -128,21 +130,19 @@ def main():
                     textcoords="offset points", xytext=(6, 6 if dy > 0 else -12),
                     fontsize=7.5, color="tab:blue")
 
-    # --- the gap arrows (TRINITY point -> literature center) at the two density extremes ---
-    for cfg in ("large_diffuse_lowsfe", "small_dense_highsfe"):
-        r = pts[pts["config"] == cfg].iloc[0]
-        cen_n, _, _ = theta_lit_band(r["nCore"])
-        ax.annotate("", xy=(r["nCore"], float(cen_n)), xytext=(r["nCore"], r["Lcool_over_Lmech"]),
-                    arrowprops=dict(arrowstyle="<->", color="0.35", lw=1.2, ls=":"))
-    ax.text(1.3e2, 0.50, "gap ~0.45\n(diffuse)", fontsize=8, color="0.30", ha="left")
-    ax.text(7.0e5, 0.83, "gap ~0.25\n(dense)", fontsize=8, color="0.30", ha="right")
+    # --- gap arrows/labels intentionally OMITTED ---
+    # A schematic band cannot support a quantified gap. Recomputing band_center - TRINITY at each
+    # nCore gives a NON-MONOTONIC, even NEGATIVE-at-diffuse result (the sqrt(n)/sqrt(n+3e3) stand-in
+    # dips below TRINITY at n~1e2: gap=-0.08), so the old "gap ~0.45 diffuse / ~0.25 dense" arrows were
+    # wrong. Quote no gap until the El-Badry/Lancaster theta(n) is digitized (NOTE_PATCHES.md Patch 4);
+    # the constant-f_mix-can't-bridge-it argument lives in the fmix table, not in this band.
 
     ax.set_xscale("log")
     ax.set_xlim(7e1, 5e6)
     ax.set_ylim(0.0, 1.18)  # headroom above the 0.95 threshold so the ceiling note is not clipped
     ax.set_xlabel("ambient core density  nCore  [cm^-3]  (config setting)")
     ax.set_ylabel("loss fraction at blowout   L_cool / L_mech   (= 1 - cool_at_blowout)")
-    ax.set_title("TRINITY resolved cooling vs literature theta_lit(n): right trend, sits too low")
+    ax.set_title("TRINITY resolved cooling vs theta_lit(n): right density trend (overlay SCHEMATIC, gap not quantified)")
     ax.grid(True, which="both", alpha=0.25)
     # legend upper-left (clear region between the rising band and the threshold); takeaway lives
     # BELOW the axes (fig.text) so the two never overlap.
@@ -152,12 +152,14 @@ def main():
     # legend or any data/threshold text.
     takeaway = (
         "Takeaway: TRINITY's L_cool/L_mech rises ~0.25 (diffuse) -> ~0.70 (dense) -- the SAME density trend as "
-        "theta_lit(n) -- but sits LOW.\n"
-        "The density-varying gap (~0.45 diffuse, ~0.25 dense) is what the cooling boost must close; because the "
-        "gap VARIES with n, a\n"
-        "CONSTANT f_mix cannot bridge it -> motivates a density-dependent theta_lit(n) calibration.   "
-        "CAVEAT: x-axis is AMBIENT nCore;\n"
-        "theta_lit(n) is a function of the higher INTERFACE density (so the gap is an upper bound)."
+        "theta_lit(n).\n"
+        "The literature band here is SCHEMATIC (El-Badry/Lancaster PDFs not yet digitized), so NO gap is "
+        "quantified on this figure.\n"
+        "That a CONSTANT cooling boost cannot bridge the density-varying shortfall is shown by the fmix table "
+        "(f_mix 1.36 dense -> 3.81 diffuse),\n"
+        "not by this band -> motivates a density-dependent theta_lit(n) calibration.   "
+        "CAVEAT: x-axis is AMBIENT nCore; theta_lit(n)\n"
+        "depends on the higher INTERFACE density."
     )
     fig.subplots_adjust(bottom=0.27, top=0.93, left=0.09, right=0.97)
     fig.text(0.5, 0.015, takeaway, fontsize=7.3, va="bottom", ha="center", family="monospace",
