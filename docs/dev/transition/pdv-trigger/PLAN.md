@@ -356,6 +356,10 @@ screen, **not predictions** — the verdict needs Tier-2.
 
 ### Next deliverable (PRIMARY, 2026-06-25) — the coupled `θ_target(Da)`, not a constant θ
 
+> **STATUS 2026-06-25: `θ_target(Da)` was TESTED and is REFUTED** — Step A (offline proxy) and Step A′ (the
+> gate-validated real-Da replay) are **both NO-GO**. The rationale below is kept as the motivating argument;
+> the revised forward plan is in **"Outcome & pivot"** at the end of this section.
+
 This was previously filed as a "coupled upgrade to **record (not implement)**". As of 2026-06-25 it is
 promoted to the **primary next deliverable**, because the analysis below shows a *constant* target is not a
 real contribution — only a trajectory-varying `θ_target(Da)` is.
@@ -417,6 +421,38 @@ is revised:
   `θ_target(Da)` is the wrong closure — revisit (the shallow θ(n) may mean the constant target / degeneracy
   is the honest end state, or a different functional form is needed). The replay reuses production code on
   frozen states (CLAUDE.md rule 5) — cheaper and more faithful than the proxy or a full re-run.
+
+#### Step A′ result (2026-06-25) — real-Da replay: gate PASS, verdict **NO-GO** (`θ_target(Da)` refuted)
+
+`data/make_da_replay.py` (+ `data/da_replay.csv`, `da_replay.png`) recomputed the REAL Da by replaying
+trinity's own interface cooling on the 6 cleanroom trajectories. **Validation gate PASSES:** the replay
+reproduces the logged `bubble_Lloss` to ≤3.9e-5 (tol 1e-3) and the interface zone `L3` is **bit-identical**
+(reldiff 0) — so the real Da is trustworthy, not a proxy artifact. Verdict: **NO-GO** — 0/6 valid sustained
+fires under any single `(C, θ_max)`. Three decisive reasons:
+- **`T_int` is ~constant across all configs (~21.4–22.6 kK).** The radiative interface sits where Λ peaks,
+  independent of cloud, so `Da ≈ (R2/v2)·Pb·Λ(T_int)/const ≈ proxy × const` — the offline proxy was a *good*
+  approximation and its NO-GO carries over.
+- **Real `Da`@blowout is still NON-monotonic in nCore** (pl2_steep 1e5 = 4.7e4, *below* large_diffuse 1e2 =
+  5.6e4 and midrange 1e4 = 4.2e5; spread 14×). No monotonic `θ(Da)` can order the configs by density.
+- **`Da ≫ 1` everywhere at blowout (4.7e4–6.6e5)**, so `θ_max·Da/(1+Da)` **saturates to ~θ_max for every
+  config** → collapses to a *constant* target → exactly the degeneracy that adds nothing (density-law
+  exponent p≈0, flat).
+
+#### Outcome & pivot (2026-06-25)
+
+A cooling-magnitude knob — constant **or** `Da`-coupled — is **not** what triggers the energy→momentum
+transition for these clouds. At blowout the resolved loss ratio is only 0.25–0.70 (well short of 0.95), and
+`Da` neither orders by density nor discriminates. Convergent, data-backed conclusion (matches the methods
+note's closing nuance): **for normal clouds the operative handoff is geometric blowout (`R2=rCloud`), not
+cooling balance.** Revised program:
+  1. **Drop `θ_target(Da)` as a trigger mechanism** (refuted by a gate-validated replay).
+  2. **Treat blowout as the transition trigger for normal clouds** — which TRINITY's default already does
+     (cooling_balance rarely fires first; the momentum phase begins at blowout). The "runs never transition"
+     symptom is the *cooling magnitude*, not the trigger.
+  3. **Use the cooling boost (constant `θ`≈0.9–0.99 from literature, via the existing `theta_target` mode)
+     to correct cooling MAGNITUDE** so `Eb, Pb, R2, v2`, and evaporation are right *through* the blowout
+     handoff — not to fire it. (`κ_eff`, the faithful interface re-derivation, stays the long-term endgame.)
+  4. **Confirm with live matched-`t` runs** that the magnitude correction doesn't distort the trajectory.
 
 **Data:** 7/8 offline-reconstructable (6 cleanroom h0 + `budget_fail_repro`); `fail_helix` has only logs (collapses
 in phase 1a) → needs the in-solver shadow run. Artifacts: `data/make_closure_test.py`, `data/closure_test.csv`,

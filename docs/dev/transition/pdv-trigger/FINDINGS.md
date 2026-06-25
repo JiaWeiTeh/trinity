@@ -194,6 +194,14 @@ sustained way. This frozen-vs-live gap is the main open interpretive question.
   (no full re-runs), then re-screen (PLAN.md "Next deliverable" step 2′). θ/(1−θ)@blowout rises only ~6.9×
   over 4 decades — shallower than √n; can't decide √n vs linear. Artifacts: `data/make_da_screen.py`,
   `data/da_screen.csv`, `da_screen.png`. [data]
+- **Da-screen — real-Da replay (gate-validated, 2026-06-25): also NO-GO → `θ_target(Da)` REFUTED.**
+  `make_da_replay.py` re-ran trinity's own interface cooling on the frozen trajectories; the **gate PASSES**
+  (`bubble_Lloss` reproduced to ≤3.9e-5, interface `L3` **bit-identical**), so the real Da is trustworthy.
+  It is *still* non-monotonic in nCore (spread 14×), `T_int` is ~constant (~21–22.6 kK) so real Da ≈ proxy,
+  and `Da≫1` everywhere → `θ_max·Da/(1+Da)` saturates to a constant → degenerate. **Pivot:** the cooling
+  boost corrects cooling *magnitude*; **blowout is the transition trigger** for normal clouds (resolved loss
+  ratio only 0.25–0.70 there). See PLAN.md "Outcome & pivot". Artifacts: `data/make_da_replay.py`,
+  `data/da_replay.csv`, `da_replay.png`. [data]
 
 ## 6. Provenance
 - Commits (`feature/PdV-trigger-term`): `6642ff4` matrix+comparator, `dc1c2fd` note patches, `17f9653`
@@ -202,7 +210,8 @@ sustained way. This frozen-vs-live gap is the main open interpretive question.
 - Data: `data/{fmix_table,pdv_combined_trigger}.csv`, `runs/data/live_compare.csv` (5 rows),
   `runs/data/harvest_*.csv` (4 configs), `theta_vs_density.png` (+ `data/make_theta_density_plot.py`),
   `fmix_vs_density.png` (+ `data/make_fmix_spread_plot.py`), `da_screen.png`
-  (+ `data/make_da_screen.py`, `data/da_screen.csv`).
+  (+ `data/make_da_screen.py`, `data/da_screen.csv`), `da_replay.png`
+  (+ `data/make_da_replay.py`, `data/da_replay.csv`).
 - Committed live runs hidens/simple_cluster/fail_repro: produced via `run_stamped` (clean-tree + per-run
   `provenance.json`), but the run dirs aren't tracked, so no commit hash is pinned here.
 - Live lowdens (now committed under `runs/data/`): `harvest_f1edge_lowdens__{none,mult2,mult3}.csv` + the
