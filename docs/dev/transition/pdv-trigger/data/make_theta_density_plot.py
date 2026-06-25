@@ -106,19 +106,22 @@ def main():
     # --- 0.95 trigger threshold + theta_max ceiling ---
     ax.axhline(THRESH, color="crimson", ls="--", lw=1.6,
                label="energy->momentum trigger threshold (Lloss/Lmech = 0.95)")
-    # ceiling annotation at GMC-core densities (where El-Badry sqrt(rho) is an extrapolation)
-    ax.annotate("theta_max = 0.95 ceiling at GMC-core n\n(El-Badry sqrt(rho) is extrapolated here)",
-                xy=(8e5, THETA_MAX), xytext=(2.0e4, 0.985),
-                fontsize=8.5, color="crimson", ha="left", va="bottom",
+    # ceiling annotation at GMC-core densities (where El-Badry sqrt(rho) is an extrapolation).
+    # Upper-RIGHT (near where the ceiling applies, high n), in the headroom (ylim->1.18) so it is
+    # not clipped and leaves the upper-left clear for the legend.
+    ax.annotate("theta_max = 0.95 ceiling at GMC-core n\n(El-Badry sqrt(rho) extrapolated here)",
+                xy=(8e5, THETA_MAX), xytext=(2.5e4, 1.05),
+                fontsize=8, color="crimson", ha="left", va="bottom",
                 arrowprops=dict(arrowstyle="->", color="crimson", lw=1.0))
 
     # --- TRINITY resolved points ---
+    # SCATTER ONLY -- deliberately NOT connected. These are 6 independent configs
+    # (different mCloud/sfe/profile), not one density sweep; a connecting line would
+    # imply a continuous functional dependence on nCore that does not exist. The
+    # density trend is read from the marker positions, not drawn as a curve.
     ax.scatter(pts["nCore"], pts["Lcool_over_Lmech"], s=95, color="tab:blue",
                zorder=5, edgecolor="k", linewidth=0.6,
-               label="TRINITY resolved L_cool/L_mech at blowout")
-    # connect in density order to show the trend
-    o = pts.sort_values("nCore")
-    ax.plot(o["nCore"], o["Lcool_over_Lmech"], color="tab:blue", lw=1.0, alpha=0.5, zorder=4)
+               label="TRINITY resolved L_cool/L_mech at blowout (one marker per config)")
     for _, r in pts.iterrows():
         dy = 0.028 if r["config"] != "simple_cluster" else -0.05
         ax.annotate(r["config"], (r["nCore"], r["Lcool_over_Lmech"]),
@@ -136,26 +139,29 @@ def main():
 
     ax.set_xscale("log")
     ax.set_xlim(7e1, 5e6)
-    ax.set_ylim(0.0, 1.04)
+    ax.set_ylim(0.0, 1.18)  # headroom above the 0.95 threshold so the ceiling note is not clipped
     ax.set_xlabel("ambient core density  nCore  [cm^-3]  (config setting)")
     ax.set_ylabel("loss fraction at blowout   L_cool / L_mech   (= 1 - cool_at_blowout)")
     ax.set_title("TRINITY resolved cooling vs literature theta_lit(n): right trend, sits too low")
     ax.grid(True, which="both", alpha=0.25)
-    ax.legend(loc="lower right", fontsize=7.6, framealpha=0.9)
+    # legend upper-left (clear region between the rising band and the threshold); takeaway lives
+    # BELOW the axes (fig.text) so the two never overlap.
+    ax.legend(loc="upper left", fontsize=7.4, framealpha=0.92)
 
-    # takeaway box
+    # takeaway box -- placed OUTSIDE the axes (figure bottom margin) so it cannot collide with the
+    # legend or any data/threshold text.
     takeaway = (
-        "Takeaway: TRINITY's L_cool/L_mech rises ~0.25 (diffuse) -> ~0.70 (dense) -- the SAME\n"
-        "density trend as theta_lit(n) -- but sits LOW. The density-varying gap (~0.45 diffuse,\n"
-        "~0.25 dense) is what the cooling boost must close; because the gap VARIES with n,\n"
-        "a CONSTANT f_mix cannot bridge it -> motivates a density-dependent theta_lit(n) calibration.\n"
-        "CAVEAT: x-axis is AMBIENT nCore; theta_lit(n) is a function of the higher INTERFACE density."
+        "Takeaway: TRINITY's L_cool/L_mech rises ~0.25 (diffuse) -> ~0.70 (dense) -- the SAME density trend as "
+        "theta_lit(n) -- but sits LOW.\n"
+        "The density-varying gap (~0.45 diffuse, ~0.25 dense) is what the cooling boost must close; because the "
+        "gap VARIES with n, a\n"
+        "CONSTANT f_mix cannot bridge it -> motivates a density-dependent theta_lit(n) calibration.   "
+        "CAVEAT: x-axis is AMBIENT nCore;\n"
+        "theta_lit(n) is a function of the higher INTERFACE density (so the gap is an upper bound)."
     )
-    ax.text(0.015, 0.015, takeaway, transform=ax.transAxes, fontsize=7.4, va="bottom", ha="left",
-            family="monospace",
-            bbox=dict(boxstyle="round", fc="lightyellow", ec="0.6", alpha=0.95))
-
-    fig.tight_layout()
+    fig.subplots_adjust(bottom=0.27, top=0.93, left=0.09, right=0.97)
+    fig.text(0.5, 0.015, takeaway, fontsize=7.3, va="bottom", ha="center", family="monospace",
+             bbox=dict(boxstyle="round", fc="lightyellow", ec="0.6", alpha=0.95))
     fig.savefig(DST, dpi=150)
     print(f"wrote {DST}\n")
     print("TRINITY points (config, nCore [cm^-3], L_cool/L_mech, nCore source):")
