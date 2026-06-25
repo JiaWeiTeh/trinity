@@ -79,9 +79,18 @@ separate processes) that replace the frozen screen and settle constant-`f_mix` v
    (radiative, **no** PdV); `ebpeak` shadow `evaluate_r1_shadow():197-210` + drive `:1166`.
 2. **Opt-in is byte-identical** — `transition_trigger` default `cooling_balance` (`registry.py:347`,
    `default.param:282`); a non-default token only *drives* the R1 handoff, never perturbs a default run.
-3. **Cooling site, still no boost knob** — cooling is `bubble_luminosity.py::_bubble_luminosity`
-   (`:575` → `bubble_LTotal` `:835`); `grep -rn 'cooling_boost_mode\|theta_cool\|f_mix' trinity/` is
-   **empty** ⇒ the whole plan is still shadow/offline, production untouched.
+3. **Cooling boost knob has LANDED in production (2026-06-25, supersedes the 2026-06-24 "production
+   untouched").** `grep -rn 'cooling_boost_mode' trinity/` is **no longer empty** (re-run 2026-06-25:
+   `get_betadelta.py`, `run_energy_implicit_phase.py`, `registry.py`, `default.param`). Both the
+   `multiplier` AND `theta_target` modes are implemented (`effective_Lloss`/`effective_Lloss_from_params`,
+   `get_betadelta.py:334,360`: `multiplier` → `Lleak + fmix·Lcool`; `theta_target` → `max(Lcool+Lleak,
+   θ·Lmech)`), declared as `cooling_boost_mode/_fmix/_theta` (`registry.py:348-350`, `default.param`), and
+   fed **consistently** to the (β,δ) residual (`get_betadelta.py:473,577`), the `Edot_from_balance` energy
+   ODE (`get_betadelta.py:475`), and the 0.95 trigger (≡ `(Lgain−Lloss)/Lgain<0.05`,
+   `run_energy_implicit_phase.py:1153/1157`) — default `none` ⇒ byte-identical (§Task B). What remains
+   **UNimplemented** is ONLY the density/Da-coupled target `θ_target(Da)` (constant `θ`/`f_mix` only so
+   far) — see §Next deliverable. (docs/dev spirit: this anchor was stale within a day; re-verify the grep
+   each visit.)
 4. **The Stage numbers are a SCREEN, not a forecast** — `data/closure_test.csv` is a *frozen-trajectory*
    reconstruction; boosting cooling lowers `Pb`→`PdV`→**moves blowout itself**, so the fire-times need the
    Tier-2 **live** run (separate processes, matched `t`) before any verdict is trusted (§Hard caveat).
@@ -337,9 +346,41 @@ trigger — the same `Lloss_eff`. Shadow ⇒ reconstruct the trigger ratio only;
 moves blowout itself; the unboosted trajectory is *not* the state the boosted ODE visits. Shadow fire-times are a
 screen, **not predictions** — the verdict needs Tier-2.
 
-**Coupled upgrade to record (not implement):** `θ_target(state) = θ_max · Da/(1+Da)`,
-`Da = (λ/δv)·n_int·Λnet(T)/((3/2)kT)` with `λ~R2, δv~v2`, `n_int` the interface/compressed density. Recovers
-El-Badry (high-n, interface-dominated) and Weaver (low-n, energy-driven) limits from one dimensionless ratio.
+### Next deliverable (PRIMARY, 2026-06-25) — the coupled `θ_target(Da)`, not a constant θ
+
+This was previously filed as a "coupled upgrade to **record (not implement)**". As of 2026-06-25 it is
+promoted to the **primary next deliverable**, because the analysis below shows a *constant* target is not a
+real contribution — only a trajectory-varying `θ_target(Da)` is.
+
+**The constant-θ / `fmix_no_pdv` calibration is DEGENERATE with the existing 0.95 trigger.** The
+"consistent" screen solves `f_mix(n) = 0.95/(L_cool/L_mech)` at blowout (§Cooling-boost table last column)
+— but the 0.95 there is *the trigger threshold itself* (the trigger is `(Lgain−Lloss)/Lgain<0.05` ⇒ fire
+when `Lloss/Lmech` reaches 0.95). So `f_mix(n)=0.95/(L_cool/L_mech)` is **bit-identical to the `fmix_no_pdv`
+column by construction** — it just restates "boost the resolved loss until it hits the threshold." A flat
+literature `θ_lit≈0.95` therefore adds **nothing quantitative**: it lands exactly where the un-boosted
+trigger already would if cooling reached 0.95. **A constant target is not a real contribution.**
+
+**The only non-degenerate upgrade is a target that VARIES along the trajectory:** `θ_target(Da)`,
+`Da = t_turb/t_cool` (Damköhler number) — density- AND time-dependent. Because it moves with the state, it
+absorbs the density/SFE/stage confound that the edge configs cannot separate (recall θ_at_blowout spans
+1.1→3.1 across the grid — no constant fires them all). Functional form to validate:
+`θ_target(state) = θ_max · Da/(1+Da)` — recovers El-Badry (high-Da, interface-dominated) and Weaver
+(low-Da, energy-driven) limits from one dimensionless ratio.
+
+**Honest prerequisite scoping (verified against source 2026-06-25).** Production computes **none** of the Da
+ingredients yet: `grep -rn 't_turb\|Damk' trinity/` is **empty** (2026-06-25), and there is **no standalone
+interface density `n_int`** (only `n_interm`, the intermediate-zone density already used in the cooling
+integral, `bubble_luminosity.py:761`). The closest existing proxy is the **OFFLINE** `F2_tcool_tdyn =
+(Eb/Lloss)/(R2/v2)` in `docs/dev/transition/harness/harvest.py:14,110-112` — diagnostic only, and
+previously judged a **red herring** (it fires ~60× too early). So the deliverable scope is:
+  1. **Build Da from LIVE solver state** — the interface `n,T` already used in the cooling integral
+     (`bubble_luminosity.py`), with `R2/v2` as the turbulent-timescale proxy (`t_turb ~ λ/δv ~ R2/v2`).
+  2. **Choose/validate the `θ_max·Da/(1+Da)` form** against the edge configs (does it fire near blowout
+     self-consistently across the density grid where a constant cannot?).
+  3. **Gate it byte-identical-when-off** exactly like the existing cooling-boost knob (§Task B): a new
+     `theta_target` sub-mode/parameterisation that reduces to the current behaviour when disabled.
+
+(This stays PLAN/scoping prose — it is the *next step*, not an implementation.)
 
 **Data:** 7/8 offline-reconstructable (6 cleanroom h0 + `budget_fail_repro`); `fail_helix` has only logs (collapses
 in phase 1a) → needs the in-solver shadow run. Artifacts: `data/make_closure_test.py`, `data/closure_test.csv`,

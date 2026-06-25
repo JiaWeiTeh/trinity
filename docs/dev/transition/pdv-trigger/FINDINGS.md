@@ -101,6 +101,35 @@ arbitrary saturating stand-in, NOT digitized θ(n).
   evidence. The TRINITY trend itself stands.
 - Caveat retained: x-axis is *ambient* nCore; θ_lit(n) tracks the *higher interface* density.
 
+### 2a. Literature reconciliation (verified 2026-06-25, 3 subagents)
+
+We ran an external literature report past three subagents (codebase / literature / reasoning). All
+bibcodes resolve and the headline physics checks out — **but every arXiv/ADS/publisher endpoint returned
+HTTP 403**, so El-Badry's *specific* numbers (Fig 7 @ 10 Myr; Eq 35 √ρ form; the θ-vs-n anchors) are
+**UNVERIFIED (not refuted)** — they stay **[schematic / to-verify]**.
+
+- **Correction to §2's comparator [interpretation]:** at GMC density (n ~ 1e2–1e6) the right anchor is the
+  **Lancaster+2021a/b θ ≈ 0.90–0.99 plateau** — a derived, 3D-sim-validated result ("generic over >3 dex
+  in density"), **NOT** an El-Badry √ρ extrapolation. El-Badry+2019 is a *supernova-superbubble* paper
+  (ambient n ~ 0.1–10); its θ(n) **must not be pushed to GMC densities**. Best read on shape:
+  **flat-and-high** — the plateau is well-supported, but the exact slope across 1e2–1e6 is **inferred**
+  (no accessible source tabulates θ at 1e2/1e4/1e6). [schematic / to-verify]
+- **If the band is redrawn flat at θ_lit ≈ 0.95**, the gap (θ_lit − TRINITY) is **positive everywhere** and
+  **shrinks 0.70 (diffuse, 1e2) → 0.25 (dense, 1e6)** (0.95 − 0.250 = 0.70; 0.95 − 0.697 = 0.253), with
+  `pl2_steep` an outlier (~0.61, its L/Lm anomalously low at 0.342). This **resolves the negative-gap
+  artifact** the schematic produced and restores the *direction* of the retracted "gap shrinks
+  diffuse→dense" intuition — for the right reason (TRINITY rising toward a flat ceiling). [interpretation;
+  conditional on the plateau holding at the diffuse end — unverified]
+- **Critical degeneracy [data/interpretation]:** if θ_lit ≈ 0.95 and flat, calibrating the boost to
+  θ_lit(n) gives f_mix(n) = 0.95/(L_cool/L_mech) = our existing `fmix_no_pdv` column **bit-identically**,
+  because TRINITY's trigger threshold *is* 0.95. So "calibrate to θ_lit" is the **same arithmetic** as
+  "calibrate to the 0.95 trigger" — the θ_lit framing adds **no quantitative content** over §1 unless θ_lit
+  is *not* flat. This is why the real upgrade is the **θ_target(Da)** form (target varying along the
+  trajectory) — see `PLAN.md`.
+- **Action:** still do **NOT** redraw the figure with a flat band (that is just another schematic); redraw
+  only once Lancaster θ(n) is actually digitized. The TRINITY trend and the §1 boost spread are unaffected
+  by any of this.
+
 ## 3. [data] LIVE matched-t edge runs — does the boost fire cooling before blowout?
 
 `none` vs boosted, matched simulation time, separate processes. `fired_cooling_boost` = handed off via a
