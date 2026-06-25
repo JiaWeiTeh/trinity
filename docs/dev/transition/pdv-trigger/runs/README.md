@@ -87,3 +87,30 @@ python docs/dev/transition/harness/run_stamped.py --check outputs/pdvlive/*
 
 **Open question this answers:** does the live boosted trajectory still hand off near blowout (frozen
 screen ≈ right), or does moving `Pb`/blowout break the constant-`f_mix` story (⇒ `θ_target(Da)`)?
+
+## Live results (2026-06-25) — 3 of 4 configs; constant f=2 over/under-shoots by density
+
+Ran under the contamination contract (separate processes, provenance-stamped). **Provenance note:** the
+run agents' worktrees were mis-forked from `main` (`b40050a`, which lacks this workstream); two agents
+corrected to `6642ff4` via `git checkout` (clean tree, no tracked edits — every `provenance.json`
+confirms `commit=6642ff4, dirty=False, rc=0`), one stood down. **Env constraint:** a hard ~55–60 min
+wall-clock cap SIGTERMs background runs, so `simple_cluster__none` (an energy runaway needing ~90 min
+to reach `stop_t=15 Myr`) cannot complete — but its salvaged partial (to t≈10.4 Myr) fully covers the
+boosted run's 0.003–0.17 Myr span, so the matched-`t` compare is valid over the overlap. `f1edge_lowdens`
+(diffuse) was not run.
+
+A constant `f_mix=2` lands **differently per density** — the headline (`data/live_compare.csv`):
+
+| config | density | `none` | `mult2` (f=2) | reading |
+|---|---|---|---|---|
+| `f1edge_hidens` | dense (nCore 1e6) | fires cooling at t=0.031 Myr | fires cooling **at birth** (t=0.0034), before any blowout | f=2 trips the already-cool dense cloud immediately — over-boost unless θ_lit(dense)→~1 (El-Badry catastrophic cooling) |
+| `simple_cluster` | compact | **never fires** (energy runaway >10 Myr) | fires handoff at t=0.131, **just after** blowout (0.109); blowout moves **+0.019 Myr later**; matched-`t` Eb −47%, v2 −44%, R2 −15% | f=2 ≈ marginal; large live trajectory shift ⇒ frozen screen insufficient |
+| `fail_repro` | heavy 5e9 | ENERGY_COLLAPSED t=0.0034 (phase 1a) | ENERGY_COLLAPSED t=0.0034, ~identical | cooling boost does **not** rescue heavy clouds — control confirmed |
+
+**Verdict:** (1) boosting cooling materially moves the trajectory (Eb −47%) — the frozen screen *bounds*
+but does not *forecast*; (2) a single constant `f_mix` over-boosts the dense end (fires at birth) and
+(by the frozen screen) under-boosts the diffuse end — the spread argues for the density-dependent
+`θ_target(n)=θ_lit(n)` calibration, **not** a constant; (3) heavy clouds collapse regardless of cooling.
+Missing/next: `f1edge_lowdens` (diffuse, expected to NOT fire at f=2 → blowout), and the zero-code
+`L_cool/L_mech`-vs-density diagnostic plot with the literature θ(n) overlay (calibrate to θ_lit, not to
+the 0.95 trigger threshold).

@@ -31,6 +31,20 @@ The recheck list the banners demand. **Every visit:** re-verify the anchors belo
 folder) — do **not** re-run the hours-long sims to recover them; reproduce only to extend.
 
 **Status ledger (newest first):**
+- **2026-06-25 — LIVE matched-t edge runs (3/4 configs) DONE; a constant f=2 over/under-shoots by density.**
+  Ran `none` vs `multiplier f=2` for hidens (dense), simple_cluster (compact), fail_repro (heavy) in
+  separate processes (provenance clean, `commit=6642ff4, dirty=False, rc=0`; persisted `runs/data/live_compare.csv`
+  + 6 harvest trajectories). Findings: hidens f=2 fires cooling **at birth** (t=0.0034, before blowout —
+  over-boost); simple_cluster f=2 fires **just after** blowout (t=0.131 vs blowout 0.109) with a large live
+  trajectory shift (Eb −47%, v2 −44%, R2 −15% → **frozen screen insufficient, confirmed**); fail_repro
+  collapses identically with/without boost (cooling doesn't rescue heavy clouds — control confirmed). ⇒
+  **no constant f_mix fits the density grid** → confirms the coupled `θ_target(n)=θ_lit(n)` direction
+  (calibrate to the literature loss fraction, NOT to the 0.95 trigger threshold — the latter is circular).
+  Diffuse `f1edge_lowdens` NOT run: the Agent `isolation:worktree` mis-forks from `main` (b40050a, no
+  workstream), and a hard ~55–60 min env wall-cap SIGTERMs background runs (so non-firing normal `none`
+  baselines to stop_t=15 Myr can't complete; boosted runs transition early and finish). NEXT: the zero-code
+  `L_cool/L_mech`-vs-density diagnostic plot with literature θ(n) overlaid (the reframe below), then
+  `f1edge_lowdens` + the coupled form. See `runs/README.md` §Live results.
 - **2026-06-24 (pm) — Verified the maintainer's revised note line-by-line against source + screen data.**
   Code anchors all **confirmed** (Eq.1 ODE = `get_betadelta.py:434`; trigger = `(Lgain−Lloss)/Lgain<0.05`
   radiative-only `:1200`; no boost knob in `trinity/`). My screen numbers **reproduce exactly**. Found and

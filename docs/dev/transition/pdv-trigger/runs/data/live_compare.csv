@@ -1,0 +1,4 @@
+label,none_run,boost_run,t_trans_none,t_trans_boost,d_t_trans,blowout_none,blowout_boost,d_blowout,ebpeak_none,ebpeak_boost,fired_cooling_boost,maxrel_R2,maxrel_v2,maxrel_Eb,end_none,end_boost
+f1edge_hidens_mult2,f1edge_hidens__none,f1edge_hidens__mult2,0.0314602401055311,0.0034101956173628882,-0.02805004448816821,nan,nan,nan,0.026632622206924632,0.0034101956173628882,True,,,,?,?
+simple_cluster_mult2,simple_cluster__none,simple_cluster__mult2,10.439521878476494,0.1314589860363156,-10.308062892440178,0.09018283765523401,0.10892324230392328,0.01874040464868927,10.439521878476494,0.11889955387876769,False,0.15290363058948805,0.4359286093957975,0.4726355190941817,?,?
+fail_repro_mult2,fail_repro__none,fail_repro__mult2,0.0034132236381263295,0.0034132236381263295,0.0,nan,nan,nan,0.0034132236381263295,0.0034132236381263295,False,,,,?,?
