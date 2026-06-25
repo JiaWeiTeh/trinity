@@ -451,7 +451,9 @@ cooling balance.** Revised program:
      symptom is the *cooling magnitude*, not the trigger.
   3. **Use the cooling boost (constant `θ`≈0.9–0.99 from literature, via the existing `theta_target` mode)
      to correct cooling MAGNITUDE** so `Eb, Pb, R2, v2`, and evaporation are right *through* the blowout
-     handoff — not to fire it. (`κ_eff`, the faithful interface re-derivation, stays the long-term endgame.)
+     handoff — not to fire it. (`κ_eff`, the faithful interface re-derivation, stays the long-term endgame —
+     feasibility + scope in **`KAPPA_EFF_SCOPING.md`**: possible/bounded, the `(β,δ)` solver survives, crux is
+     the cooling↔evaporation decoupling a naive post-hoc sink already stalled on.)
   4. **Confirm with live matched-`t` runs** that the magnitude correction doesn't distort the trajectory.
 
 **Data:** 7/8 offline-reconstructable (6 cleanroom h0 + `budget_fail_repro`); `fail_helix` has only logs (collapses

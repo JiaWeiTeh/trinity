@@ -1,0 +1,12 @@
+# LIVE pivot validation: f1edge_hidens / theta_target = 0.90 (BELOW the 0.95 trigger threshold).
+# Tests the magnitude-correction-WITHOUT-triggering regime: floor max(Lcool+Lleak, 0.90*Lmech)
+# lifts cooling but stays below 0.95, so it should NOT trip the cooling trigger at birth (blowout stays the trigger).
+model_name      f1edge_hidens__theta90
+path2output     outputs/pdvlive/f1edge_hidens__theta90
+mCloud    1e7
+sfe    0.01
+nCore    1e6
+log_console    False
+log_file    True
+cooling_boost_mode    theta_target
+cooling_boost_theta    0.90
