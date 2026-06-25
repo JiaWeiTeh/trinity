@@ -390,6 +390,34 @@ previously judged a **red herring** (it fires ~60× too early). So the deliverab
 
 (This stays PLAN/scoping prose — it is the *next step*, not an implementation.)
 
+#### Step A result (2026-06-25) — offline Da-screen: NO-GO for the `(R2/v2)·Pb` proxy → the real Da needs a replay
+
+`data/make_da_screen.py` (+ `data/da_screen.csv`, `da_screen.png`) screened the **offline** Da target on the
+6 cleanroom trajectories. Under a fixed characteristic interface T_int, `Da` collapses to
+`Da_shape = (R2/v2)·Pb` (units absorbed by a swept normalization ⇒ a **unit-independent structural test**).
+Result: **no single normalization fires the grid at blowout** — two failure modes:
+- `Da_shape`@blowout is **non-monotonic in nCore and spans ~14×** (`pl2_steep` 1e5 = 4222, *below*
+  `large_diffuse` 1e2 = 4601; `simple_cluster` 1e5 = 54690). The `θ_max·Da/(1+Da)=0.95` crossing is at one
+  fixed Da, so it can coincide with blowout only if `Da_shape`@blowout were ~constant — it is not.
+- `Da_shape` is large early (high Pb at small R2) → any C that pushes the diffuse configs to θ≈0.95 fires the
+  dense configs at **birth** (fmb ≈ −0.85). 0/6 valid sustained fires anywhere on the C×θ_max grid.
+The bulk `Da_bulk = 1/F2` baseline fires far before blowout (confirms the red herring). Empirical θ/(1−θ)@
+blowout rises only ~6.9× over 4 decades (slope ~0.18) — **shallower than √n**; 6 points + confounded SFE
+cannot decide √n (El-Badry) vs linear-n (Da).
+
+**What it rules out / does NOT.** It rules out the *offline shortcut* (Da from frozen `(R2/v2)·Pb`), because
+that combination collapses away the per-config/per-time `T_int` and `Λ` — the very quantities that could
+separate the configs. It does **not** rule out `θ_target(Da)` itself; the proper Da is untested. So step 2
+is revised:
+
+  **2′. Compute the REAL Da by REPLAY (no full re-runs).** For each row of the committed cleanroom
+  trajectories, re-invoke trinity's interface calc (`bubble_luminosity.py` → `T_int(r)`, `Λ(T_int)`,
+  `n_int = Pb/(k_B T_int)` ⇒ `t_cool,int = (3/2)k_B T_int/(n_int Λ)`) to get `Da = (R2/v2)/t_cool,int`, then
+  re-run `make_da_screen.py` on the real Da. **GO** ⇒ implement (step 3). **NO-GO on the real Da** ⇒
+  `θ_target(Da)` is the wrong closure — revisit (the shallow θ(n) may mean the constant target / degeneracy
+  is the honest end state, or a different functional form is needed). The replay reuses production code on
+  frozen states (CLAUDE.md rule 5) — cheaper and more faithful than the proxy or a full re-run.
+
 **Data:** 7/8 offline-reconstructable (6 cleanroom h0 + `budget_fail_repro`); `fail_helix` has only logs (collapses
 in phase 1a) → needs the in-solver shadow run. Artifacts: `data/make_closure_test.py`, `data/closure_test.csv`,
 `closure_stage{1..4}*.png`.

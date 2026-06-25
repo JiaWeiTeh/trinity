@@ -187,6 +187,13 @@ sustained way. This frozen-vs-live gap is the main open interpretive question.
   cooling" — read the *mechanism*, not just the time.
 - Diffuse table point (large_diffuse_lowsfe, cleanroom) ≠ live diffuse arm (f1edge_lowdens) — different
   mCloud/SFE; both nCore 1e2.
+- **Da-screen (offline, 2026-06-25): NO-GO for the `(R2/v2)·Pb` proxy.** It can't separate the configs at
+  blowout under any normalization (Da_shape@blowout non-monotonic, spans ~14×; dense configs fire at birth),
+  so `θ_target(Da)` **can't be validated or refuted offline** — the proper Da needs the solver's interface
+  `t_cool,int`. Next: compute the REAL Da by replaying trinity's interface calc on the frozen trajectories
+  (no full re-runs), then re-screen (PLAN.md "Next deliverable" step 2′). θ/(1−θ)@blowout rises only ~6.9×
+  over 4 decades — shallower than √n; can't decide √n vs linear. Artifacts: `data/make_da_screen.py`,
+  `data/da_screen.csv`, `da_screen.png`. [data]
 
 ## 6. Provenance
 - Commits (`feature/PdV-trigger-term`): `6642ff4` matrix+comparator, `dc1c2fd` note patches, `17f9653`
@@ -194,7 +201,8 @@ sustained way. This frozen-vs-live gap is the main open interpretive question.
   de-annotated). Branch is also mirrored to `claude/amazing-darwin-pl1kzl`.
 - Data: `data/{fmix_table,pdv_combined_trigger}.csv`, `runs/data/live_compare.csv` (5 rows),
   `runs/data/harvest_*.csv` (4 configs), `theta_vs_density.png` (+ `data/make_theta_density_plot.py`),
-  `fmix_vs_density.png` (+ `data/make_fmix_spread_plot.py`).
+  `fmix_vs_density.png` (+ `data/make_fmix_spread_plot.py`), `da_screen.png`
+  (+ `data/make_da_screen.py`, `data/da_screen.csv`).
 - Committed live runs hidens/simple_cluster/fail_repro: produced via `run_stamped` (clean-tree + per-run
   `provenance.json`), but the run dirs aren't tracked, so no commit hash is pinned here.
 - Live lowdens (now committed under `runs/data/`): `harvest_f1edge_lowdens__{none,mult2,mult3}.csv` + the
