@@ -77,9 +77,28 @@ The real obstacle is the **cooling-vs-evaporation decoupling**: a larger scalar 
 
 **This has already been tried the naive way and failed** [`cleanroom/PLAN.md:484–509`, `cleanroom/FINDINGS.md:98–106`]: a post-hoc `θ·L_mech` bulk sink (`mixcool_whatif.py`) was magnitude-validated (θ≈0.25) but **numerically non-viable** — it drove `dMdt < 0` (no physical evaporation root) and stalled the hybr solver. Their recorded conclusion: *"a proper mixing-layer cooling must be integrated INTO the structure solve."* **That is the trap Rung B must thread: keep `dMdt > 0` self-consistent while raising the interface cooling.**
 
-## 5. Why a scalar can't substitute (the 2026-06-25 validation insight)
+## 5. Why a scalar can't substitute (the 2026-06-25 validation — two runs)
 
-The live `theta_target` validation (dense `f1edge_hidens`) showed a constant θ is structurally awkward: **the literature θ plateau (0.9–0.99) straddles the 0.95 trigger threshold.** θ_target ≥ 0.95 trips the cooling trigger *at birth* (the floor = the threshold); θ_target < 0.95 lifts magnitude without triggering. A scalar imposes the cooling fraction **instantaneously** and sits on the trigger boundary. Physically the fraction should **ramp** as the mixing layer develops (dense fast → early transition; diffuse slow → late/blowout). **Only κ_eff makes that timing emerge per cloud** instead of being imposed by a threshold-straddling constant — i.e. the validation is itself an argument for Rung B. [artifact: `runs/params/f1edge_hidens__theta9{0,5}.param`; compare in `scratchpad/pdvlive/` pending persist]
+Two live `theta_target` runs on the dense `f1edge_hidens` (vs its `none` baseline) show a constant θ does
+**not** cleanly separate magnitude-correction from triggering:
+- **θ=0.95** (= the trigger threshold): fires the cooling trigger **at birth** (t≈0.004 Myr) — the floor
+  `0.95·Lmech` *is* the trigger condition. Matched-`t` ΔEb 34%.
+- **θ=0.90** (below threshold): **also** fires, at t≈0.011 Myr (ΔEb 78%) — **NOT** the "magnitude-only"
+  regime a naive reading predicts. Two reasons: (i) the floor removes energy early, *accelerating* the
+  cloud toward the transition; (ii) a **dense** cloud's *resolved* `Lcool/Lmech` rises past 0.95 on its
+  own, so `max(Lcool, 0.90·Lmech)=Lcool` trips the trigger regardless of the floor.
+- `none`: times out (600 s) still energy-driven (its resolved cooling hadn't crossed 0.95 in-window).
+
+**Corrected picture:** the floor value mostly sets *when* a dense cloud cooling-fires (earlier with higher
+θ), not *whether*. The clean "lift magnitude without triggering → blowout triggers" regime exists only for
+**diffuse** clouds, where resolved `Lcool/Lmech` stays ~0.25 (well below 0.95) so a `θ<0.95` floor never
+reaches the trigger [**predicted, not yet run** — needs a diffuse `theta90` vs `none`]. So the cooling
+boost's effect is **density-dependent through the resolved-cooling-vs-0.95 race**, not through the θ value:
+dense → cooling-triggered early; diffuse → blowout-triggered late. That is the right physical
+density-dependence — and exactly what `θ_target(Da)` tried (and failed, refuted) to impose with a scalar.
+**Only κ_eff makes the cooling fraction (and thus the transition timing) emerge per cloud from the
+developing mixing layer** — the validation is itself the argument for Rung B. [artifacts:
+`runs/data/compare_f1edge_hidens_theta9{0,5}.csv`, `runs/params/f1edge_hidens__theta9{0,5}.param`]
 
 ## 6. Proposed plan (if greenlit)
 
