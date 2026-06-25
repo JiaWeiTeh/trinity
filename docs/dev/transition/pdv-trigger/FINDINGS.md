@@ -23,6 +23,14 @@
 > `/tmp`, the local-only `scratch/`, or an untracked `outputs/`. A future visit must be able to reproduce or compare
 > against the numbers **without re-running**; record the exact config + command
 > that produced each artifact.
+>
+> 🔗 **Cross-check the sibling docs — keep the workstream self-consistent.** This file is one of
+> several living docs for its workstream (its `PLAN.md`, `FINDINGS.md`, `runs/README.md`, `NOTE_PATCHES.md`,
+> and any other notes in the same folder). They drift out of sync *with each other* as fast as they drift
+> from the code. Any agent or person editing one MUST, as part of the visit, circle back through the
+> siblings and reconcile: if a number, status, claim, or line reference here contradicts a sibling — or a
+> sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
+> update one in isolation.
 
 > **Provenance of this write-up.** Verified rewrite — line-by-line checks against source caught real errors
 > in an earlier draft (listed in §0). Every number was re-checked against the committed CSVs / config files
@@ -71,6 +79,11 @@ both solid; the literature-`θ_lit(n)` comparison (§2) is currently **schematic
   of the thesis, and this is real measured data.
 - `pl2_steep` (nCore 1e5) sits low at 0.342 — density is the main driver but **not the only one**
   (profile shape / SFE scatter it). [interpretation]
+- **Figure** `fmix_vs_density.png` (data-only scatter; `data/make_fmix_spread_plot.py`) visualizes this
+  spread: no horizontal "constant f_mix" line crosses all six configs. It is scatter (not a curve) on
+  purpose — `pl2_steep` and `simple_cluster` share nCore 1e5 yet need 2.78 vs 1.42, so there is no clean
+  f_mix(n). The figure also states the degeneracy (§2a): `f_mix = 0.95/(L_cool/L_mech)` is exactly what a
+  flat θ_lit≈0.95 would prescribe, because the trigger threshold *is* 0.95.
 
 ## 2. θ_lit(n) figure — `theta_vs_density.png` — SCHEMATIC overlay, gap NOT quantified
 
@@ -180,7 +193,8 @@ sustained way. This frozen-vs-live gap is the main open interpretive question.
   live 3/4 configs, `8bcc6b0` θ_lit plot, `b94689c` plot layout fix, plus this commit (4/4 + figure
   de-annotated). Branch is also mirrored to `claude/amazing-darwin-pl1kzl`.
 - Data: `data/{fmix_table,pdv_combined_trigger}.csv`, `runs/data/live_compare.csv` (5 rows),
-  `runs/data/harvest_*.csv` (4 configs), `theta_vs_density.png` (+ `data/make_theta_density_plot.py`).
+  `runs/data/harvest_*.csv` (4 configs), `theta_vs_density.png` (+ `data/make_theta_density_plot.py`),
+  `fmix_vs_density.png` (+ `data/make_fmix_spread_plot.py`).
 - Committed live runs hidens/simple_cluster/fail_repro: produced via `run_stamped` (clean-tree + per-run
   `provenance.json`), but the run dirs aren't tracked, so no commit hash is pinned here.
 - Live lowdens (now committed under `runs/data/`): `harvest_f1edge_lowdens__{none,mult2,mult3}.csv` + the

@@ -146,12 +146,15 @@ The plan, audit, and write-up docs under `docs/dev/` (the old top-level `analysi
 folded in here) are point-in-time audits/plans, not a maintained spec. They go stale fast — paths, line numbers, and "what shipped"
 status drift as the code moves. When reading one: do not treat it as ground truth — flag that it may
 be outdated and re-verify every claim, snippet, and line reference against current source. Every such
-doc must carry **all three** banner paragraphs below at the top, right under the H1, and any new
+doc must carry **all four** banner paragraphs below at the top, right under the H1, and any new
 `docs/dev/` doc must include them. The 🔄 paragraph makes these docs *living* —
 whoever opens one rechecks it, updates drift, and rethinks the strategy before relying on or
 extending it. The 💾 paragraph makes them *durable* — diagnostics worth keeping are committed as
 CSV/tables (`docs/dev/data/`) or harnesses/figures in the relevant `docs/dev/<workstream>/` folder, so a future session reproduces or compares
-without re-running the expensive sims; leave it better than you found it:
+without re-running the expensive sims; leave it better than you found it. The 🔗 paragraph keeps a
+multi-doc workstream *mutually consistent* — editing one doc means circling back through its siblings
+(PLAN / FINDINGS / README / notes) and reconciling any number, status, or claim that disagrees, so the
+docs never silently drift apart from one another:
 
 ```markdown
 > ⚠️ **This document may be out of date — verify before trusting it.** It is a
@@ -177,6 +180,14 @@ without re-running the expensive sims; leave it better than you found it:
 > `/tmp`, the local-only `scratch/`, or an untracked `outputs/`. A future visit must be able to reproduce or compare
 > against the numbers **without re-running**; record the exact config + command
 > that produced each artifact.
+>
+> 🔗 **Cross-check the sibling docs — keep the workstream self-consistent.** This file is one of
+> several living docs for its workstream (its `PLAN.md`, `FINDINGS.md`, `runs/README.md`, `NOTE_PATCHES.md`,
+> and any other notes in the same folder). They drift out of sync *with each other* as fast as they drift
+> from the code. Any agent or person editing one MUST, as part of the visit, circle back through the
+> siblings and reconcile: if a number, status, claim, or line reference here contradicts a sibling — or a
+> sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
+> update one in isolation.
 ```
 
 ---
