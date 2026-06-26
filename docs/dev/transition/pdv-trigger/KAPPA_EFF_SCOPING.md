@@ -113,7 +113,9 @@ Two separate-process runs on the stiff dense edge `f1edge_hidens` (`mCloud 1e7`,
 `nCore 1e6`), `f_κ=2` vs the `f_κ=1` baseline, compared at **matched simulation time** (the
 `f_κ=2` trajectory interpolated onto the `f_κ=1` time grid). Artifacts:
 `data/make_kappa_backreaction.py`, `data/kappa_backreaction.csv` (79 matched rows),
-`kappa_backreaction.png`.
+`kappa_backreaction.png`. The whole-workstream comparison (all ideas + this result) is
+`data/make_ideas_comparison.py` → `ideas_comparison.png`, also embedded in the storyline report
+(`pdvtrigger_report.html` §11).
 
 | quantity | `f_κ=2 / f_κ=1` (early→late) | reading |
 |---|---|---|

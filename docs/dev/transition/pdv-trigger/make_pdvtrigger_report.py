@@ -76,6 +76,14 @@ FIGURES = {
         "da_replay.png",
         "gate-validated real-Da replay at blowout: still non-monotonic, Da>>1 everywhere so theta_max*Da/(1+Da) saturates to a constant -> NO-GO",
     ),
+    "__FIG_IDEAS__": (
+        "ideas_comparison.png",
+        "scoreboard of every transition-fix idea (constant f_mix, constant theta, theta_target(Da), live multiplier, kappa_eff Rung A probe, kappa_eff Rung B endgame) with verdict badges, plus three real-data evidence panels",
+    ),
+    "__FIG_KAPPA__": (
+        "kappa_backreaction.png",
+        "kappa_eff Rung A back-reaction on f1edge_hidens at matched t: f_kappa=2 raises L_cool x1.23-1.38 but dMdt x1.08-1.17 rides along, and a 2x kappa moves the loss ratio only +0.05-0.10 toward the 0.95 trigger",
+    ),
 }
 
 
@@ -170,8 +178,20 @@ everywhere, so \(\theta_{\max}\mathrm{Da}/(1+\mathrm{Da})\) saturates back to a 
 normal clouds the trigger is <b>geometric blowout</b> (TRINITY&rsquo;s default already does this); the cooling
 boost corrects cooling <b>magnitude</b> through the handoff, it does not fire it. Live matched-\(t\) runs
 confirm: no constant fires cooling across density. The heavy 5e9 cloud is super-critical and hands off via the
-PdV / \(E_b\)-peak turnover.</p>
+PdV / \(E_b\)-peak turnover. <b>Latest (2026-06-26):</b> the structural \(\kappa_{\text{eff}}\) endgame&rsquo;s
+first rung is built and gated (&sect;11) &mdash; it confirms a faithful, state-coupled \(\kappa_{\text{eff}}\)
+is required, not a scalar.</p>
 </div>
+
+<figure>__FIG_IDEAS__<figcaption><b>The whole storyline at a glance.</b> Every transition-fix idea tried,
+left&rarr;right, with its verdict: the three scalar knobs (constant \(f_{\text{mix}}\), constant \(\theta\),
+\(\theta_{\text{target}}(\mathrm{Da})\)) are <span style="color:#b3392f"><b>refuted</b></span>, the live
+multiplier is <span style="color:#b3801f"><b>partial</b></span> (magnitude-only, mistimes by density), the
+\(\kappa_{\text{eff}}\) Rung-A structural probe is <span style="color:#2a8aa8"><b>this work</b></span>
+(gated/byte-identical-off), and the faithful Rung-B \(\kappa_{\text{eff}}\) is the
+<span style="color:#3a8a3f"><b>endgame</b></span>. The three lower panels are the real-data evidence for the
+key verdicts (\(f_{\text{mix}}\) spread, \(\mathrm{Da}\) saturation, and the Rung-A cooling-vs-evaporation
+coupling). Built by <code>data/make_ideas_comparison.py</code> from the committed CSVs.</figcaption></figure>
 """
 
 SEC_SETUP = r"""
@@ -501,7 +521,37 @@ right but cannot couple cooling to evaporation (it can&rsquo;t reproduce El-Badr
 evaporation suppression). The faithful form is a <b>\(\kappa_{\text{eff}}=\max(\kappa_{\text{Spitzer}},\,
 \kappa_{\text{mix}})\)</b> re-derivation, \(\kappa_{\text{mix}}\sim\rho\,c_p\,D_{\text{turb}}\),
 \(D_{\text{turb}}\sim\lambda\,\delta v\sim R_2 v_2\) &mdash; a re-derivation, not a coefficient swap. That is the
-endgame; the constant-magnitude correction is the right step now.</div>
+endgame; the constant-magnitude correction is the right step now. <b>Its first rung is now built and gated
+&mdash; see &sect;11.</b></div>
+"""
+
+SEC_KAPPA = r"""
+<h2 id="kappa">11 &middot; \(\kappa_{\text{eff}}\) Rung A &mdash; the endgame&rsquo;s first rung, built &amp; gated</h2>
+<p>The endgame (&sect;10) is a faithful, state-coupled \(\kappa_{\text{eff}}\) <i>inside</i> the structure
+solve. Before that multi-day re-derivation, this session built <b>Rung A</b>: a structural <b>probe</b> that
+inflates the Spitzer prefactor \(C_{\text{thermal}}\!\to\!f_\kappa\,C_{\text{thermal}}\) at all three sites it
+enters <code>bubble_luminosity.py</code> (the \(\dot M\) seed, the backward-ODE initial conditions, and the
+temperature-ODE conduction term). Unlike the scalar boost on \(L_{\text{cool}}\), this raises cooling
+<i>through</i> the structure, so the loss fraction \(\theta\) emerges as an <b>output</b>. It is gated by a new
+<code>cooling_boost_kappa</code> param (default \(f_\kappa\!=\!1.0\)): <b>byte-identical when off</b> (the
+\(f_\kappa\!=\!1\) run reproduces the <code>f1edge_hidens</code> <code>dictionary.jsonl</code> bit-for-bit), full
+<code>pytest</code> 595 green, ruff F-rules clean. <b>Production is unchanged by default.</b></p>
+<figure>__FIG_KAPPA__<figcaption>Rung-A back-reaction on the stiff dense edge <code>f1edge_hidens</code>,
+\(f_\kappa\!=\!2\) vs the \(f_\kappa\!=\!1\) baseline, compared at <b>matched simulation time</b>. <b>Left:</b>
+cooling rises through the structure (\(L_{\text{cool}}\times1.23\!-\!1.38\)) &mdash; the intended effect &mdash;
+<b>but the evaporative mass flux rides along</b> (\(\dot M\times1.08\!-\!1.17\)), exactly the El-Badry coupling a
+faithful \(\kappa_{\text{eff}}\) must instead <i>suppress</i>; \(E_b\) is drained \(\sim\!4\!-\!11\%\).
+<b>Right:</b> even a \(2\times\) \(\kappa\) moves the loss-ratio proxy only \(+0.05\!-\!0.10\), staying far below
+the \(0.95\) trigger. From <code>data/make_kappa_backreaction.py</code> &rarr;
+<code>data/kappa_backreaction.csv</code>.</figcaption></figure>
+<p><b>What Rung A settles.</b> (i) The plumbing takes a \(\kappa\) knob cleanly &mdash; cooling genuinely rises
+through the structure, vindicating the structural approach over a scalar \(L_{\text{cool}}\) rescale. (ii) The
+crux is real and <b>quantified</b>: a flat \(f_\kappa\) raises \(\dot M\) too (\(\approx\) half the fractional
+rise of \(L_{\text{cool}}\)) &mdash; wrong sign vs El-Badry. (iii) Headroom is small and the back-reaction grows
+with \(f_\kappa\), so <b>brute-forcing \(f_\kappa\) toward the trigger is non-viable</b>. Net: Rung A
+<b>confirms Rung B is required, not optional</b> &mdash; only a state-coupled \(\kappa_{\text{eff}}\) that
+decouples cooling-up from evaporation-down reaches the transition. Full scope &amp; the measured table:
+<code>KAPPA_EFF_SCOPING.md</code> &sect;6a.</p>
 """
 
 SEC_REPRO = r"""
@@ -519,6 +569,9 @@ the same files.</p>
 <tr><td><code>da_screen.png</code> (+ <code>data/make_da_screen.py</code>, <code>data/da_screen.csv</code>)</td><td>&sect;6 Step A &mdash; offline Da-shape proxy at blowout (NO-GO: non-monotonic, fires dense at birth)</td></tr>
 <tr><td><code>da_replay.png</code> (+ <code>data/make_da_replay.py</code>, <code>data/da_replay.csv</code>)</td><td>&sect;6 Step A&prime; &mdash; gate-validated real-Da replay (gate PASS; verdict NO-GO, \(\theta_{\text{target}}(\mathrm{Da})\) refuted)</td></tr>
 <tr><td><code>runs/data/live_compare.csv</code> (+ per-arm <code>runs/data/harvest_*.csv</code>)</td><td>&sect;9 live matched-\(t\) edge runs (4 configs, separate processes): no constant fires cooling across density</td></tr>
+<tr><td><code>data/kappa_backreaction.csv</code> (+ <code>make_kappa_backreaction.py</code>, <code>kappa_backreaction.png</code>)</td><td>&sect;11 \(\kappa_{\text{eff}}\) Rung-A back-reaction (\(f_\kappa{=}2\) vs \(1\), matched \(t\)): \(L_{\text{cool}}\!\uparrow\) but \(\dot M\!\uparrow\) rides along; the probe param is <code>runs/params/f1edge_hidens__kappa2.param</code></td></tr>
+<tr><td><code>ideas_comparison.png</code> (+ <code>data/make_ideas_comparison.py</code>)</td><td>the at-a-glance scoreboard of all ideas + three real-data evidence panels (reads <code>fmix_table</code>, <code>da_replay</code>, <code>kappa_backreaction</code> CSVs)</td></tr>
+<tr><td><code>KAPPA_EFF_SCOPING.md</code></td><td>&sect;11 endgame feasibility map + the &sect;6a Rung-A result table; the two-rung ladder and the \(\dot M>0\) crux</td></tr>
 <tr><td><code>storyline_figs/*.png</code> (+ <code>make_storyline_figs.py</code>)</td><td>the four storyline figures (&sect;2 double-count, &sect;3 convention, &sect;4 regime, &sect;5 heatmap), each a pure read of the CSVs</td></tr>
 <tr><td><code>PLAN.md</code> / <code>FINDINGS.md</code></td><td>the living plan (&ldquo;Outcome &amp; pivot&rdquo;) and the verified findings &mdash; the source of truth this report is a sibling of</td></tr>
 </tbody></table></div>
@@ -536,7 +589,7 @@ def main():
     parts = [
         HEAD, HERO,
         SEC_SETUP, SEC_DOUBLE, SEC_CONVENTION, SEC_REGIME, SEC_CLOSURE,
-        SEC_DA, SEC_LIT, SEC_WIRING, SEC_LIVE, SEC_BOTTOM, SEC_REPRO,
+        SEC_DA, SEC_LIT, SEC_WIRING, SEC_LIVE, SEC_BOTTOM, SEC_KAPPA, SEC_REPRO,
     ]
     parts.append("</div></body></html>")
     html = "".join(parts)
