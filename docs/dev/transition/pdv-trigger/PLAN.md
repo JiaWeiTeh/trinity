@@ -39,6 +39,17 @@ The recheck list the banners demand. **Every visit:** re-verify the anchors belo
 folder) — do **not** re-run the hours-long sims to recover them; reproduce only to extend.
 
 **Status ledger (newest first):**
+- **2026-06-26 — `κ_eff` Rung A executed (back-reaction probe, gated/byte-identical-off).** Added
+  `cooling_boost_kappa` (`f_κ`, default 1.0) multiplying the Spitzer coefficient `C_thermal` at all 3
+  bubble-structure sites (`bubble_luminosity.py:291/:370/:406`). **Gate passed:** byte-identical when
+  `f_κ=1` (sha `acbad31b`, 79 rows of `f1edge_hidens`), diverges when `f_κ=2`; full `pytest` 595 green
+  (the `test_dR2min_magic_number.py::_scalar_params` minimal fixture patched to carry the neutral key),
+  ruff F-rules clean. **Crux measured** (`data/make_kappa_backreaction.py`, `data/kappa_backreaction.csv`,
+  `kappa_backreaction.png`): at matched `t`, `f_κ=2` raises `Lcool` ×1.23–1.38 (cooling rises *through the
+  structure*, θ as an output) **but `dMdt` ×1.08–1.17 rides along** — the El-Badry coupling a faithful
+  `κ_eff` must instead suppress. A `2×` κ buys only **+0.05–0.10** loss-ratio toward the 0.95 trigger ⇒
+  brute-`f_κ` is non-viable, **confirming Rung B is required, not optional**. Details: `KAPPA_EFF_SCOPING.md`
+  §6a. **Production unchanged** — `cooling_boost_kappa` defaults to 1.0 (opt-in, byte-identical off).
 - **2026-06-25 (late) — Cooling-boost program CONCLUDED; PLAN re-validated line-by-line.** Completed the
   diffuse arm (`f1edge_lowdens` ×2/×3 → **4/4 live configs**; `runs/data/live_compare.csv`) — no constant
   fires across density. Put the coupled `θ_target(Da)` on trial: offline Da-screen **NO-GO** + a

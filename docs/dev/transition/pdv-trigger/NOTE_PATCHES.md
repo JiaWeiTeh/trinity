@@ -223,6 +223,16 @@ implementable — the note can say so:
 > cooling rises; the change must live \emph{inside} the structure solve, where it can decouple enhanced
 > cooling from suppressed evaporation.
 
+**Update 2026-06-26 — Rung A (the structural probe) is built and the crux is measured.** A gated
+`cooling_boost_kappa` ($f_\kappa$, default 1.0, byte-identical off) that inflates the Spitzer prefactor
+$C\to f_\kappa C$ at all three sites confirms, on the stiff `f1edge_hidens` edge at matched $t$, exactly the
+predicted obstacle: $f_\kappa{=}2$ raises $L_\mathrm{cool}$ ($\times1.23$–$1.38$) **and** $\dot M$
+($\times1.08$–$1.17$) together — cooling and evaporation rise *with the same sign*, and a $2\times\kappa$
+moves the loss ratio only $+0.05$–$0.10$ toward the 0.95 trigger. So the flat-prefactor knob cannot reach
+the transition without runaway evaporation; only the state-coupled $\kappa_\mathrm{eff}$ (Rung B) can. The
+probe thus **confirms Rung B is required, not optional**. Artifacts + table: `KAPPA_EFF_SCOPING.md` §6a,
+`data/kappa_backreaction.csv`, `kappa_backreaction.png`.
+
 ---
 
 ### Provenance
@@ -232,6 +242,7 @@ python docs/dev/transition/pdv-trigger/data/make_fmix_table.py        # -> data/
 python docs/dev/transition/pdv-trigger/data/make_doublecount_mc.py    # -> data/doublecount_mc.csv
 python docs/dev/transition/pdv-trigger/data/make_da_screen.py         # -> data/da_screen.csv
 python docs/dev/transition/pdv-trigger/data/make_da_replay.py         # -> data/da_replay.csv  (slow; real solver)
+python docs/dev/transition/pdv-trigger/data/make_kappa_backreaction.py  # -> data/kappa_backreaction.csv + ../kappa_backreaction.png
 ```
 The `f_mix` table (frozen screen) is now confirmed by the matched-`t` live runs in
 `runs/data/live_compare.csv` (4/4 configs). Full conclusion + the κ_eff scope: `FINDINGS.md`,

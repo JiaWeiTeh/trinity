@@ -33,15 +33,16 @@
 > update one in isolation.
 
 > **Provenance.** Feasibility mapped against current source 2026-06-25 (file:line below all spot-verified).
-> This is the scoping doc for the "endgame" `PLAN.md` ("Outcome & pivot") points at after the cooling-boost
-> program concluded that *a scalar magnitude knob cannot fix the transition* (see `FINDINGS.md`: constant-θ
-> degenerate with the 0.95 trigger; `θ_target(Da)` refuted by the gate-validated replay).
+> **2026-06-26: Rung A executed** — `cooling_boost_kappa` landed gated/byte-identical-off, the crux measured
+> (§6a). This is the scoping doc for the "endgame" `PLAN.md` ("Outcome & pivot") points at after the
+> cooling-boost program concluded that *a scalar magnitude knob cannot fix the transition* (see `FINDINGS.md`:
+> constant-θ degenerate with the 0.95 trigger; `θ_target(Da)` refuted by the gate-validated replay).
 
 ## 0. Verdict (TL;DR)
 
 **Is Option C possible? Yes — bounded, no hard showstoppers — and *more tractable than the methods note implied.*** It is a 2-rung ladder, not one thing:
 
-- **Rung A — Spitzer-prefactor inflation (`C_thermal → f_κ·C_thermal`, keeping `T^(5/2)`): possible, ~hours.** 1 param + 3 one-line edits. Preserves the `T^(5/2)` form so the ICs and `(β,δ)` solver just re-converge. **Physically incomplete** — it raises evaporation *with* cooling (wrong sign vs El-Badry), so it is a back-reaction *probe*, not the faithful model.
+- **Rung A — Spitzer-prefactor inflation (`C_thermal → f_κ·C_thermal`, keeping `T^(5/2)`): DONE 2026-06-26.** 1 param (`cooling_boost_kappa`, default 1.0) + 3 one-line edits; byte-identical when off, 595 tests pass. Preserves the `T^(5/2)` form so the ICs and `(β,δ)` solver just re-converge. **Physically incomplete** — measured (§6a) it raises evaporation *with* cooling (`dMdt` ×1.08–1.17 alongside `Lcool` ×1.23–1.38; wrong sign vs El-Badry), so it is a back-reaction *probe*, not the faithful model.
 - **Rung B — faithful mixing-layer `κ_eff`: possible, but a genuine re-derivation of ~3 functions in `bubble_luminosity.py` + a new `κ_mix` model + full re-validation.** Multi-day workstream with its own writeup. **No showstoppers**, but the crux (decoupling cooling-up from evaporation-down) must live *inside* the structure solve — and a naive post-hoc version has already been tried and **failed** (see §4).
 
 ## 1. Where Spitzer `κ_S = C·T^(5/2)` enters (3 sites, all `trinity/bubble_structure/bubble_luminosity.py`)
@@ -63,13 +64,13 @@ The **`L_conduction` integral** (`:702–747`) is already κ-independent — it 
 
 | | Rung A — prefactor inflation | Rung B — faithful mixing-layer κ_eff |
 |---|---|---|
-| change | `C_thermal → f_κ·C_thermal` (1 param + edits at `:294/:373/:406`) | `T^(5/2)` factor → `κ_eff(T)`; re-derive ICs (`:364–383`, numerical) + `dMdt` seed (`:292–295`); new `κ_mix ~ ρ c_p D_turb`, `D_turb ~ R2·v2` |
+| change | `C_thermal → f_κ·C_thermal` (1 param + edits at `:291/:370/:406`) — **DONE** | `T^(5/2)` factor → `κ_eff(T)`; re-derive ICs (`:364–383`, numerical) + `dMdt` seed (`_get_init_dMdt`, `:291–294`); new `κ_mix ~ ρ c_p D_turb`, `D_turb ~ R2·v2` |
 | `(β,δ)` solver | unchanged (re-converges) | unchanged (re-converges) — see §2 |
 | ICs | preserved (`T^(5/2)` intact) | **re-derived** (numerical near-front) |
 | physics | raises cooling **and** evaporation (wrong sign) | decouples cooling-up / evaporation-down (the goal) |
-| validation | test string-pins (`test_dR2min_magic_number.py`, `test_metadata.py:118`, `test_mu_audit_drift.py`) | rule-5 ladder + redo cleanroom C0 certification |
-| effort | ~hours | multi-day workstream |
-| status | **probe only** | **the endgame** |
+| validation | test string-pins (`test_dR2min_magic_number.py` `_scalar_params` patched, `test_metadata.py`, `test_mu_audit_drift.py`) — 595 pass | rule-5 ladder + redo cleanroom C0 certification |
+| effort | ~hours (done 2026-06-26) | multi-day workstream |
+| status | **probe — DONE, gate passed** | **the endgame — not started** |
 
 ## 4. The crux — and a documented prior failure
 
@@ -102,9 +103,35 @@ developing mixing layer** — the validation is itself the argument for Rung B. 
 
 ## 6. Proposed plan (if greenlit)
 
-1. **Rung A first as a back-reaction probe** (~hours): add `cooling_boost_kappa` (`f_κ`), apply at `:294/:373/:406`, gate byte-identical when `f_κ=1`. Run the stiff edge configs; confirm it raises conduction-zone cooling through the structure (θ as an *output*) and observe the evaporation back-reaction (expect wrong sign). This de-risks the ODE/IC plumbing without the hard re-derivation.
+1. **Rung A first as a back-reaction probe** (~hours) — **DONE 2026-06-26.** Added `cooling_boost_kappa` (`f_κ`, default 1.0), applied at `:291/:370/:406`; gated **byte-identical when `f_κ=1`** (sha `acbad31b` over 79 rows of `f1edge_hidens`, diverges when `f_κ=2`), full `pytest` 595 green, ruff F-rules clean. See **§6a** for the measured back-reaction. This de-risked the ODE/IC plumbing without the hard re-derivation.
 2. **Rung B (the workstream):** (a) derive a numerical near-front IC for `κ_eff = max(κ_Spitzer, κ_mix)` keeping `dMdt > 0`; (b) replace the ODE RHS factor + `dMdt` seed; (c) build the `κ_mix ~ ρ c_p D_turb` model; (d) full rule-5 ladder — per-call → full-run equivalence on `param/simple_cluster.param` + `f1edge_{lowdens,hidens}` + a 5e9, separate processes, matched `t`; redo the cleanroom C0 substrate certification; (e) its own `docs/dev/` FINDINGS with the three-banner set.
 3. **Gate before B:** if Rung A's back-reaction probe shows the structure plumbing can't take a non-Spitzer κ without the IC re-derivation (expected), that confirms B is required, not optional.
+
+## 6a. Rung A result — the crux, measured (2026-06-26)
+
+Two separate-process runs on the stiff dense edge `f1edge_hidens` (`mCloud 1e7`, `sfe 0.01`,
+`nCore 1e6`), `f_κ=2` vs the `f_κ=1` baseline, compared at **matched simulation time** (the
+`f_κ=2` trajectory interpolated onto the `f_κ=1` time grid). Artifacts:
+`data/make_kappa_backreaction.py`, `data/kappa_backreaction.csv` (79 matched rows),
+`kappa_backreaction.png`.
+
+| quantity | `f_κ=2 / f_κ=1` (early→late) | reading |
+|---|---|---|
+| `Lcool` (`bubble_LTotal`) | **1.38 → 1.23** | conduction-zone cooling rises *through the structure* — θ as an output ✓ |
+| `dMdt` (`bubble_dMdt`) | **1.17 → 1.08** | the El-Badry **coupling crux**: evaporation rises *with* cooling (wrong sign) ✓ confirmed |
+| `Lmech` (`Lmech_total`) | 1.000 | sanity — mechanical input untouched |
+| `Eb` | 0.96 → 0.90 | bubble energy drained by the extra cooling |
+| `Pb`, `v2` | 0.97→0.91, 1.00→0.96 | mild softening; `R2` essentially unmoved (≤0.4%) |
+| loss-ratio proxy `Lcool/Lmech` | **+0.05 → +0.10** (0.41→0.51 vs 0.41 at end) | a **2× κ buys only ~0.05–0.10** toward the 0.95 trigger |
+
+**Conclusions.** (i) The plumbing takes `f_κ` cleanly — cooling genuinely rises through the
+structure, vindicating the structural-knob approach over a scalar `Lcool` rescale. (ii) **The crux
+is real and quantified:** a flat `f_κ` raises `dMdt` too (≈half the fractional rise of `Lcool`),
+exactly the coupling a faithful `κ_eff` must *suppress* (El-Badry: evaporation ÷3–30 while cooling
+rises). (iii) **Headroom is small:** even `f_κ=2` moves the loss ratio by only ~0.05–0.10, and the
+`dMdt` back-reaction grows with `f_κ` — so brute-forcing `f_κ` toward the 0.95 trigger is not viable.
+**This confirms Rung B is required, not optional** (the §6.3 gate): only a state-coupled `κ_eff` that
+decouples cooling-up from evaporation-down can reach the transition without the runaway evaporation.
 
 ## 7. Open questions / risks
 - Closed-form vs numerical near-front IC for a `max()` κ — the `dMdt > 0` constraint (the cleanroom failure mode) is the gating risk; solve it first.
