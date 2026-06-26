@@ -124,22 +124,47 @@ def main(k1_path, k2_path):
         print(f"(skipping figure: {e})")
         return
 
-    fig, (axL, axR) = plt.subplots(1, 2, figsize=(11, 4.2))
-    axL.axhline(1.0, color="0.6", lw=0.8, ls=":")
-    axL.plot(t1, data["Lcool_ratio"], label=r"$L_{\rm cool}$ (intended $\uparrow$)", lw=2)
-    axL.plot(t1, data["dMdt_ratio"], label=r"$\dot M$ evap (coupling crux $\uparrow$)", lw=2)
-    axL.plot(t1, data["Eb_ratio"], label=r"$E_b$ (drained $\downarrow$)", lw=1.5, ls="--")
+    fig, (ax0, axL, axR) = plt.subplots(1, 3, figsize=(16, 4.5))
+
+    # Panel 0 -- ABSOLUTE cooling luminosity, both runs. The direct "more cooling"
+    # view: the f_kappa=2 (red) curve sits ABOVE the f_kappa=1 (blue) curve at every
+    # t. Both fall over time because the bubble expands -- that decline is the
+    # physics, NOT the effect of the knob (the knob is the red-above-blue gap).
+    ax0.plot(t1, data["Lcool_k1"], lw=2, color="#1f77b4", label=r"$f_\kappa{=}1$ (baseline)")
+    ax0.plot(t1, data["Lcool_k2"], lw=2, color="#d62728", label=r"$f_\kappa{=}2$ (more conduction)")
+    ax0.set_yscale("log")
+    ax0.set_xlabel("t [Myr]")
+    ax0.set_ylabel(r"$L_{\rm cool}$  [code units]")
+    ax0.set_title("Cooling IS higher with more $\\kappa$\n(red sits above blue at every $t$)", fontsize=10)
+    ax0.legend(fontsize=8)
+
+    # Panel 1 -- the RATIOS (f_kappa=2 / f_kappa=1). These lines are NOT the
+    # quantities themselves: a value ABOVE 1.0 means the knob RAISED that quantity,
+    # BELOW 1.0 means it lowered it. The downward slope = the boost shrinks over time
+    # but stays > 1 (cooling always enhanced). dMdt riding above 1 too is the crux.
+    axL.axhspan(1.0, 1.62, color="#2ca02c", alpha=0.06)   # "raised" band
+    axL.axhspan(0.84, 1.0, color="#d62728", alpha=0.06)   # "lowered" band
+    axL.axhline(1.0, color="0.35", lw=1.0, ls=":")
+    axL.plot(t1, data["Lcool_ratio"], lw=2.2, color="#1f77b4",
+             label=r"$L_{\rm cool}$: raised $1.2$–$1.5\times$")
+    axL.plot(t1, data["dMdt_ratio"], lw=2.2, color="#ff7f0e",
+             label=r"$\dot M$ evap: raised $1.08$–$1.17\times$ (unwanted)")
+    axL.plot(t1, data["Eb_ratio"], lw=1.8, ls="--", color="#2ca02c",
+             label=r"$E_b$: drained to $0.90$–$0.96\times$")
+    axL.set_ylim(0.84, 1.62)
+    axL.text(0.97, 0.96, "above 1.0  =  more $\\kappa$ RAISED it", transform=axL.transAxes,
+             ha="right", va="top", fontsize=7.5, color="#1c6b1c")
     axL.set_xlabel("t [Myr]")
-    axL.set_ylabel(r"$f_\kappa{=}2$ / $f_\kappa{=}1$ (matched $t$)")
-    axL.set_title("Rung-A back-reaction: cooling up, but $\\dot M$ rides along")
-    axL.legend(fontsize=8)
+    axL.set_ylabel(r"ratio at matched $t$:  $f_\kappa{=}2 \,\div\, f_\kappa{=}1$")
+    axL.set_title("Both cooling AND evaporation rise\n(the crux: $\\dot M$ rides along, wrong sign)", fontsize=10)
+    axL.legend(fontsize=7.5, loc="lower left")
 
     axR.plot(t1, lr1, label=r"$f_\kappa{=}1$ (baseline)", lw=2)
     axR.plot(t1, lr2, label=r"$f_\kappa{=}2$", lw=2)
     axR.axhline(0.95, color="crimson", lw=1.0, ls="--", label="0.95 trigger")
     axR.set_xlabel("t [Myr]")
     axR.set_ylabel(r"loss-ratio proxy $L_{\rm cool}/L_{\rm mech}$")
-    axR.set_title(r"$2\times\kappa$ buys only $+0.05$–$0.10$ toward the trigger")
+    axR.set_title(r"$2\times\kappa$ buys only $+0.05$–$0.10$ toward the trigger", fontsize=10)
     axR.legend(fontsize=8)
 
     fig.tight_layout()

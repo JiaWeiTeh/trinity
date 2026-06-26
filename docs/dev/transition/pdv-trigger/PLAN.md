@@ -49,8 +49,15 @@ folder) — do **not** re-run the hours-long sims to recover them; reproduce onl
   q=−1` is not front-regular); `κ_mix`'s magnitude needs an entrainment efficiency `α_mix≪1` (literal
   `D_turb=R2·v2` ⇒ `T_cross~10¹²` K, absurd) — *that factor is the model*. `dMdt>0` safety threads the
   cleanroom §6.6 trap because `dMdt` becomes an input, not a root. `(β,δ)` solver untouched (no
-  conduction-law dependence; its `dMdt>0` gate + `bubble_LTotal` use are the coupling surfaces). Next
-  concrete step is on-paper risk #1 (what `v(R1)=0` solves for) — still no production edit.
+  conduction-law dependence; its `dMdt>0` gate + `bubble_LTotal` use are the coupling surfaces).
+  **Risk #1 now worked on paper (`RUNGB_SCOPING.md` §3a):** fixing `dMdt` over-determines the BCs, so
+  **demote `dMdt` to an entrainment-set input and shoot `v(R1)=0` on the front gradient `dTdr_front`** — the
+  conduction layer absorbs the boundary mismatch by radiating more/less instead of by changing evaporation
+  (the decoupling, in the closure). Make-or-break is **FM1** (does that closure admit a `v(R1)=0` root? — a
+  §9 failure-mode ledger records FM1–FM6), to prove OFFLINE on a captured state before any code. Also
+  clarified the Rung-A figure (`kappa_backreaction.png`): added an absolute-`Lcool` panel (both runs rise;
+  `f_κ=2` sits above `f_κ=1`) so the ratio panel's downward slope isn't misread as "cooling falling." Still
+  no production edit.
 - **2026-06-26 — `κ_eff` Rung A executed (back-reaction probe, gated/byte-identical-off).** Added
   `cooling_boost_kappa` (`f_κ`, default 1.0) multiplying the Spitzer coefficient `C_thermal` at all 3
   bubble-structure sites (`bubble_luminosity.py:291/:370/:406`). **Gate passed:** byte-identical when

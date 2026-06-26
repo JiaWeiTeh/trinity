@@ -140,14 +140,18 @@ def _panel_kappa(ax):
     lcool = [float(r["Lcool_ratio"]) for r in rows]
     dmdt = [float(r["dMdt_ratio"]) for r in rows]
     eb = [float(r["Eb_ratio"]) for r in rows]
-    ax.axhline(1.0, color="0.6", lw=0.8, ls=":")
-    ax.plot(t, lcool, lw=2, color="#1f77b4", label="Lcool (intended ↑)")
-    ax.plot(t, dmdt, lw=2, color="#ff7f0e", label="ṁ evap (crux ↑)")
-    ax.plot(t, eb, lw=1.5, ls="--", color="#2ca02c", label="Eb (drained ↓)")
+    ax.axhspan(1.0, 1.62, color="#2ca02c", alpha=0.06)   # "raised" band
+    ax.axhspan(0.84, 1.0, color="#d62728", alpha=0.06)   # "lowered" band
+    ax.axhline(1.0, color="0.35", lw=1.0, ls=":")
+    ax.plot(t, lcool, lw=2, color="#1f77b4", label="Lcool: raised 1.2–1.5×")
+    ax.plot(t, dmdt, lw=2, color="#ff7f0e", label="ṁ evap: raised ~1.1× (unwanted)")
+    ax.plot(t, eb, lw=1.5, ls="--", color="#2ca02c", label="Eb: drained to ~0.9×")
+    ax.set_ylim(0.84, 1.62)
     ax.set_xlabel("t [Myr]", fontsize=8)
-    ax.set_ylabel("f_κ=2 / f_κ=1 (matched t)", fontsize=8)
-    ax.set_title("C. κ_eff Rung A: cooling up,\nbut evaporation rides along", fontsize=9.5, fontweight="bold")
-    ax.legend(fontsize=7, loc="upper right")
+    ax.set_ylabel("ratio  f_κ=2 ÷ f_κ=1   (>1 ⇒ raised)", fontsize=7.4)
+    ax.set_title("C. lines are RATIOS, not values:\nabove 1 = κ raised it (cooling AND evap)",
+                 fontsize=8.4, fontweight="bold")
+    ax.legend(fontsize=6.6, loc="lower left")
 
 
 def main():

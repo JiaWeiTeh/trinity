@@ -149,6 +149,49 @@ Sever `dMdt` from the front conductive balance:
   (e.g. the front anchor `T_init`/`r2′`, or a `Pb`-consistency variable). Resolving *what `v(R1)=0` now
   determines* is the first thing to settle on paper (§7 risk #1).
 
+## 3a. Risk #1 worked on paper — the closure re-count (what `v(R1)=0` solves for)
+
+*This is the §7 risk #1 resolution — a **design proposal to validate in the offline prototype (§8)**, not yet
+proven by a run. It is written down here so a future visit can see the reasoning and check it.*
+
+**The current closure (verified from code).** `get_bubbleproperties_pure` calls
+`scipy.optimize.fsolve(velocity_residuals_wrapper, bubble_dMdt, …)` — i.e. **one shooting variable,
+`dMdt`** — against the residual `(v[R1] − 0)/(v[front] + ε)` returned by `_get_velocity_residuals` — i.e.
+**one target, `v(R1)=0`**. `_get_bubble_ODE_initial_conditions(dMdt, …)` builds the front IC *from* `dMdt`:
+the anchor `T(front)=T_init=3e4 K` is **fixed**, and the Spitzer front balance slaves the layer thickness
+`dR2 ∝ 1/(C·dMdt)` and the gradient `dTdr = −2/5·T/dR2` to `dMdt`. So the count is **1 eigenvalue (`dMdt`) ↔
+2 boundary conditions (`T(front)=T_init`, `v(R1)=0`)**, with the Spitzer balance as the third (algebraic)
+relation that closes it. In classical Weaver terms, **`dMdt` is the eigenvalue** that makes the conduction
+solution match both ends — evaporation is whatever conduction self-consistency demands.
+
+**Why fixing `dMdt` breaks the count.** Prescribing `dMdt` by entrainment removes the only shooting
+variable, leaving `v(R1)=0` with nothing to satisfy it → the two BCs are **over-determined**. A new
+eigenvalue is required. Candidates (free **exactly one**; physical meaning; failure mode → §9):
+
+| new eigenvalue | physical meaning | why / why not |
+|---|---|---|
+| **`dTdr_front` (front T-gradient)** ✅ recommended | local conduction strength at the cold edge | the numerical near-front IC (§2, needed for the κ_mix branch anyway) **already** starts from `(T_init, dTdr_front)`, so this slots straight in; preserves the physically-meaningful `T_init=3e4` anchor and the layer-thinness; isolates `dMdt` to the entrainment law + the recoil term in `v_front` |
+| `dR2` / `r2′` (layer thickness) | the conduction layer thickens/thins | viable, but reintroduces the `dR2→0` cancellation regime `test_dR2min_magic_number.py` guards (FM6) |
+| `T_init` (anchor temperature) | the cold-edge temperature floats | least physical — `3e4 K` is the recombination/shell edge; letting it drift risks leaving the radiating band |
+
+**The structural reading (and why it is exactly the decoupling).** Rung B **demotes `dMdt` from eigenvalue to
+input** (evaporation set by turbulence, not conduction self-consistency) and **promotes the front gradient to
+eigenvalue** (the conduction layer absorbs the boundary mismatch by steepening/flattening, i.e. by radiating
+more or less — not by changing the evaporation). The free thing (`dTdr_front` → the radiative-loss profile)
+and the fixed thing (`dMdt` → evaporation) are now **separate dials** — which is the cooling↑/evaporation↓
+decoupling of §0–§3 expressed directly in the closure. The recommended reformulation:
+
+```
+dMdt        := dMdt_entrain(ρ_shell, v_entrain)      # INPUT, > 0 by construction
+front IC    := numerically integrate from (T_init, dTdr_front)   # T_init fixed = 3e4 K
+shoot on    := dTdr_front   such that   v(R1) = 0    # dTdr_front is the new eigenvalue
+v_front      = cool_alpha·R2/t_now − dMdt/(4πR2²)·k_B·T/(μ·Pb)   # recoil term keeps dMdt, now exogenous
+```
+
+`_get_velocity_residuals` keeps its shape (still integrates front→R1, still returns the `v(R1)=0` residual);
+only the **fsolve variable changes from `dMdt` to `dTdr_front`**, and `_get_bubble_ODE_initial_conditions`
+takes `(dMdt_exogenous, dTdr_front)` instead of deriving `dTdr` from the Spitzer balance.
+
 ## 4. `dMdt>0` safety — how this threads the cleanroom trap
 
 The cleanroom §6.6 stall: a post-hoc `L_mix = θ·Lmech` subtracted from `dEb/dt` **after** the `(β,δ)` solve
@@ -193,8 +236,9 @@ solve"). **Necessary condition:** the entrainment law is evaluated inside the st
 ## 7. Open questions / risks (ranked — solve top-down, on paper, before any production edit)
 
 1. **The `fsolve` re-think — what does `v(R1)=0` determine once `dMdt` is exogenous?** The gating numerical
-   risk. Removing the front conductive balance removes one equation; the inner BC must be dropped or
-   repurposed. Settle this analytically *first*.
+   risk. **Worked on paper — §3a:** demote `dMdt` to an entrainment-set input and **shoot on `dTdr_front`**
+   instead. Still a *proposal* — its make-or-break is **FM1** (does that closure admit a `v(R1)=0` root?),
+   to be proven OFFLINE on a captured state before any code.
 2. **`v_entrain` prescription + `α_mix` calibration.** This *is* the model (§2). Validate the form against
    El-Badry+2019 / Lancaster+2021 — do **not** assume `D_turb = R2·v2`; that is a ceiling giving absurd
    `T_cross`.
@@ -210,11 +254,32 @@ solve"). **Necessary condition:** the entrainment law is evaluated inside the st
 
 ## 8. Recommended first concrete step (no production edit)
 
-A paper/notebook derivation that **resolves risk #1** (the `fsolve` target) and **#2** (`v_entrain` + `α_mix`
-form), plus a **numerical near-front IC prototype tested OFFLINE** on a captured stiff state — the same
+Risk #1 (the `fsolve` target) is now **worked on paper — §3a** (recommendation: shoot on `dTdr_front`, with
+`dMdt` demoted to an entrainment-set input). What remains before any code: **#2** (`v_entrain` + `α_mix`
+form, calibrated to El-Badry/Lancaster) and a **numerical near-front IC prototype tested OFFLINE** on a
+captured stiff state that confirms the §3a closure actually admits a `v(R1)=0` root (FM1) — the same
 capture/replay-with-explicit-gates discipline that de-risked Rung A. Persist it as a `data/` harness +
 figure. **Only then** touch `bubble_luminosity.py`. This keeps Rung B in the dev/exploration realm and
 production byte-identical until the gated knobs are proven off.
+
+## 9. Failure-mode ledger — what could go wrong (and how we'd catch it)
+
+*Written down so a future visit can look back and see where this could have broken. Each row: the failure,
+how it would show up, and the mitigation/guard. FM1 is the gating one.*
+
+| # | failure mode | how it surfaces | mitigation / guard |
+|---|---|---|---|
+| **FM1** | **No `v(R1)=0` root in the new eigenvalue** (`dTdr_front`) for some `(dMdt_entrain, Pb)` — the cleanroom `dMdt<0` stall reincarnated in gradient-space. | the new `fsolve` residual never crosses zero; segments stall. | the entrainment `dMdt` is **smaller** than the Spitzer self-consistent `dMdt` (El-Badry suppression 3–30×), so the recoil `v`-term `∝ dMdt` is **weaker** — the `v(R1)=0` crossing should be *easier* to find, not harder (the cleanroom stall came from a *too-large* recoil at depressed `Pb`). **Verify this sign argument in the OFFLINE prototype before trusting it.** Keep a deterministic no-root guard (like the existing `_SOLVER_FAIL_RESIDUAL`) — flag, don't fabricate. |
+| **FM2** | **Over/under-determination** — freeing more than one of `{dTdr_front, dR2, T_init}` (under-determined) or none (over-determined). | non-unique / ill-conditioned `fsolve`; Jacobian near-singular. | free **exactly** `dTdr_front`; keep `T_init=3e4` and the `dR2` regularization offset fixed (§3a). |
+| **FM3** | **`(β,δ)` non-convergence with the entrainment-set `bubble_LTotal`** — `dMdt>0` gate now passes by construction, but the self-similar solve must still converge with the enhanced cooling. | `get_betadelta` hybr fails / oscillates; `no_physical_root` for a different reason than `dMdt`. | re-run the **cleanroom C0 certification** on the new structure; evaluate the entrainment law **inside** the structure solve so `Pb,β,δ,dMdt` are mutually consistent (the §4 necessary condition). |
+| **FM4** | **Entrainment-law coupling oscillation** — `dMdt_entrain ∝ ρ_shell·v_entrain` depends on shell state; a lagged/inconsistent shell snapshot makes the structure↔shell coupling wobble. | non-monotone segment-to-segment convergence; trajectory ripples absent in baseline. | evaluate the entrainment law from the **same** state snapshot the structure solve uses; freeze it within a segment. |
+| **FM5** | **`α_mix` mis-set** — too large ⇒ `κ_mix` swamps Spitzer everywhere (the `T_cross~10¹²` K absurdity, §2), turning the whole structure turbulent-diffusion-dominated; too small ⇒ no cooling boost (back to baseline). | loss ratio either jumps to ~1 instantly (too large) or never moves (too small). | calibrate `α_mix` to El-Badry/Lancaster; expose it as a **gated knob, default-off byte-identical**; bracket the physical range with a sweep before believing any single value. |
+| **FM6** | **Regression of the `dR2` magic-number guarantees** — `test_dR2min_magic_number.py` pins the *Spitzer* `dR2 ∝ 1/dMdt` law and the no-floor conditioning; Rung B no longer sets `dR2` from the Spitzer balance. | that suite breaks once the entrainment IC is wired in. | the Spitzer test stays valid only for the **`α_mix=0` / κ_mix-off** path (which must remain byte-identical); Rung B needs its **own** coverage for the entrainment-IC conditioning. |
+
+**The one-line risk story:** the whole design lives or dies on **FM1** — does the demoted-`dMdt`/promoted-`dTdr_front`
+closure admit a `v(R1)=0` root across the stiff regimes? The sign argument says *yes* (weaker recoil), but that is
+a hypothesis to **prove offline on a captured state before any production edit**, exactly as Rung A's gate was
+proven before its knob shipped.
 
 ---
 

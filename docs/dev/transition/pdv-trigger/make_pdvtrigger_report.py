@@ -537,13 +537,17 @@ temperature-ODE conduction term). Unlike the scalar boost on \(L_{\text{cool}}\)
 \(f_\kappa\!=\!1\) run reproduces the <code>f1edge_hidens</code> <code>dictionary.jsonl</code> bit-for-bit), full
 <code>pytest</code> 595 green, ruff F-rules clean. <b>Production is unchanged by default.</b></p>
 <figure>__FIG_KAPPA__<figcaption>Rung-A back-reaction on the stiff dense edge <code>f1edge_hidens</code>,
-\(f_\kappa\!=\!2\) vs the \(f_\kappa\!=\!1\) baseline, compared at <b>matched simulation time</b>. <b>Left:</b>
-cooling rises through the structure (\(L_{\text{cool}}\times1.23\!-\!1.38\)) &mdash; the intended effect &mdash;
-<b>but the evaporative mass flux rides along</b> (\(\dot M\times1.08\!-\!1.17\)), exactly the El-Badry coupling a
-faithful \(\kappa_{\text{eff}}\) must instead <i>suppress</i>; \(E_b\) is drained \(\sim\!4\!-\!11\%\).
-<b>Right:</b> even a \(2\times\) \(\kappa\) moves the loss-ratio proxy only \(+0.05\!-\!0.10\), staying far below
-the \(0.95\) trigger. From <code>data/make_kappa_backreaction.py</code> &rarr;
-<code>data/kappa_backreaction.csv</code>.</figcaption></figure>
+\(f_\kappa\!=\!2\) vs the \(f_\kappa\!=\!1\) baseline, compared at <b>matched simulation time</b>. <b>Left
+(absolute):</b> the cooling luminosity itself &mdash; both runs rise as the bubble develops, and the
+\(f_\kappa\!=\!2\) (red) curve sits <b>above</b> the baseline (blue) at every \(t\): more conduction = more
+cooling. <b>Middle (ratios):</b> the same comparison as \(f_\kappa\!=\!2\div f_\kappa\!=\!1\) &mdash; a value
+<i>above 1.0 means the knob raised it</i>; the downward slope is the boost <i>shrinking</i> over time (from
+\(\sim\!1.5\times\) to \(\sim\!1.23\times\)), not cooling falling. Cooling is raised \(1.2\!-\!1.5\times\)
+&mdash; the intended effect &mdash; <b>but the evaporative mass flux \(\dot M\) rides along</b>
+(\(1.08\!-\!1.17\times\)), exactly the El-Badry coupling a faithful \(\kappa_{\text{eff}}\) must instead
+<i>suppress</i>; \(E_b\) is drained to \(0.90\!-\!0.96\times\). <b>Right:</b> even a \(2\times\) \(\kappa\)
+moves the loss-ratio proxy only \(+0.05\!-\!0.10\), staying far below the \(0.95\) trigger. From
+<code>data/make_kappa_backreaction.py</code> &rarr; <code>data/kappa_backreaction.csv</code>.</figcaption></figure>
 <p><b>What Rung A settles.</b> (i) The plumbing takes a \(\kappa\) knob cleanly &mdash; cooling genuinely rises
 through the structure, vindicating the structural approach over a scalar \(L_{\text{cool}}\) rescale. (ii) The
 crux is real and <b>quantified</b>: a flat \(f_\kappa\) raises \(\dot M\) too (\(\approx\) half the fractional
