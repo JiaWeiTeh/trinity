@@ -39,6 +39,15 @@ The recheck list the banners demand. **Every visit:** re-verify the anchors belo
 folder) — do **not** re-run the hours-long sims to recover them; reproduce only to extend.
 
 **Status ledger (newest first):**
+- **2026-06-26 (literature anchor) — θ / λδv / f_mix / 0.95 roles pinned vs El-Badry & Lancaster
+  (`RUNGB_SCOPING.md` §2a, verified).** θ (loss fraction) is **measured** in both papers; **λδv** (= `κ_eff`
+  mixing diffusivity = our `κ_mix`) is the **set** knob, only in 1D (El-Badry "arbitrary parameter, range
+  explored"; Lancaster's 3D needs none); **0.95** is a **threshold on measured θ**. So the genuine El-Badry
+  analog is the **structural `κ_mix` (Rung B)**, not the scalar `f_mix` (degenerate) — and the calibration
+  target is **density-dependent θ(n_H)**, not a flat 0.9–0.99 (which would over-cool diffuse clouds). **Payoff:**
+  El-Badry's own mechanism (interface cooling *reduces* the evaporative mass flux) is an **independent
+  prediction that FM1b should show `ΔdMdt < 0`** — a clean falsification test for the next prototype. Sources:
+  arXiv:1902.09547 (El-Badry 2019), arXiv:2104.07720/22 (Lancaster 2021).
 - **2026-06-26 (latest) — Rung B risk #1 PROTOTYPED OFFLINE → §3a plan REFUTED, redirected. No code touched.**
   `data/make_fm1_rootcheck.py` replays the §3a closure (fix `dMdt`, shoot `v(R1)=0` on `dTdr_front`) on two
   **real captured stiff states**, sweeping `dTdr_front` over 6 decades for suppression `s ∈ {1,3,10,30}`.

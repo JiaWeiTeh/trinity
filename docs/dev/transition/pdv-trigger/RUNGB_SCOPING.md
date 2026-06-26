@@ -140,6 +140,36 @@ Spitzer closed form only where the front anchor genuinely stays in the `p>0` Spi
 form fails the moment `T_cross` lands *inside* the front/IC region (so `κ_eff` is non-power-law across the
 anchor — the exponent switches between `2/5` and `−1`): there, integrate numerically.
 
+## 2a. Literature anchor — θ vs λδv vs f_mix vs the 0.95 trigger (verified 2026-06-26)
+
+The three symbols floating around this workstream are **distinct objects**, and conflating them is the notation
+cleanup the docs kept flagging. Checked against the sources (search-corroborated; arXiv PDFs 403 through the
+proxy, so this is from the abstracts/indexed text, not a direct page read):
+
+| symbol | what it is | set or measured? | TRINITY analog |
+|---|---|---|---|
+| **θ** (≡ `L_int/Ė` in El-Badry, `Ė_cool/L_w` in Lancaster) | the **loss fraction** | **measured — an OUTPUT** in *both* papers | TRINITY's resolved `L_cool/L_mech` |
+| **λδv** (= `κ_eff`, the mixing diffusivity) | the **mixing efficiency** | **set — an INPUT, only in 1D** (El-Badry "treated as an arbitrary parameter, a range of values explored"); Lancaster's 3D resolves the fractal interface and needs **no** such knob | **`κ_mix = ρ c_p D_turb`, `D_turb = λδv`** — i.e. **Rung B's added turbulent conductivity**, NOT the scalar `f_mix` and NOT exactly Rung A's `cooling_boost_kappa` (which *scales Spitzer*, hence couples cooling+evaporation) |
+| **0.95** | the energy→momentum trigger | a **threshold on the measured θ** (`(Lgain−Lloss)/Lgain<0.05 ≡ θ>0.95`), not a physics parameter | TRINITY's transition test |
+
+**Consequences for the design.** (i) θ is never something to *impose*; you set the conductivity knob and θ
+emerges — which is exactly why the constant-`θ`/`f_mix` knobs were degenerate (`FINDINGS.md`) and why the
+genuine El-Badry analog is the **structural `κ_mix` (Rung B)**, not the scalar. (ii) The calibration target is
+**density-dependent** — El-Badry's measured `θ(n_H, λδv)` scaling, and Lancaster's parameter-free
+`θ ≈ 0.9–0.99` *in their dense-cluster regime* — **not** a flat 0.95 (which would over-cool the diffuse clouds
+whose resolved θ at blowout is only ~0.25, and re-introduce the trigger degeneracy). (iii) **El-Badry states
+the mechanism our FM1b test measures:** *"most of the energy conducted into the interface is immediately lost to
+cooling, **reducing the evaporative mass flux** required to balance conduction"* — i.e. interface cooling and
+evaporation **compete for the same conductive-flux budget**, so adding in-structure cooling should drive `dMdt`
+**down** (the El-Badry sign). That is an **independent literature prediction of the FM1b sign** (§8), and a clean
+falsification: if the prototype shows `dMdt` *up*, the in-structure injection is wrong.
+
+*Caveat:* the claim that El-Badry *prescribe* calibrating `λδv` by matching a **3D** simulation is mildly
+anachronistic — El-Badry (2019) predates Lancaster's 3D (2021); confirm their exact wording (likely "calibrate
+against more detailed calculations/observations"). The substance — `λδv` is an externally-calibrated free
+parameter — holds either way. Sources: El-Badry et al. 2019 (MNRAS 490, 1961; arXiv:1902.09547); Lancaster et
+al. 2021 (ApJ 914, 89/90; arXiv:2104.07720 / 2104.07722).
+
 ## 3. The `dMdt` closure — the decoupling
 
 Sever `dMdt` from the front conductive balance:
@@ -293,9 +323,12 @@ loss-integrand path**: keep `dMdt` as the Weaver eigenvalue, add an explicit mix
 inject a parametrized `L_mix(T)` (peaked at ~10⁵ K, amplitude swept) into the loss integrand *inside* a
 replayed structure solve, re-find the Weaver `dMdt` (`v(R1)=0`), and plot **ΔL_cool vs ΔdMdt** as the
 amplitude grows. The decisive question: does the in-structure `L_mix` **lower** `dMdt` (El-Badry's sign — the
-decoupling we want) or **raise** it (Rung-A's sign — re-coupled)? Persist as a `data/` harness + figure. Only
-if it shows the right sign do we proceed to risk #2 (`v_entrain`/`α_mix` calibration) and, last, a gated
-production edit. This keeps Rung B in the dev/exploration realm and production byte-identical throughout.
+decoupling we want) or **raise** it (Rung-A's sign — re-coupled)? **The literature predicts the answer:**
+El-Badry's mechanism (§2a — interface cooling and evaporation share the conductive-flux budget) says adding
+interface cooling should drive `dMdt` **down**, so a passing prototype shows `ΔdMdt < 0`; `ΔdMdt > 0` falsifies
+the in-structure injection. Persist as a `data/` harness + figure. Only if it shows the right sign do we proceed
+to risk #2 (`v_entrain`/`α_mix` calibration) and, last, a gated production edit. This keeps Rung B in the
+dev/exploration realm and production byte-identical throughout.
 
 ## 9. Failure-mode ledger — what could go wrong (and how we'd catch it)
 
