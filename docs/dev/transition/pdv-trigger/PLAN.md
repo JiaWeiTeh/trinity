@@ -39,6 +39,18 @@ The recheck list the banners demand. **Every visit:** re-verify the anchors belo
 folder) — do **not** re-run the hours-long sims to recover them; reproduce only to extend.
 
 **Status ledger (newest first):**
+- **2026-06-25 (late) — Cooling-boost program CONCLUDED; PLAN re-validated line-by-line.** Completed the
+  diffuse arm (`f1edge_lowdens` ×2/×3 → **4/4 live configs**; `runs/data/live_compare.csv`) — no constant
+  fires across density. Put the coupled `θ_target(Da)` on trial: offline Da-screen **NO-GO** + a
+  **gate-validated real-Da replay** (`data/make_da_replay.py`; reproduces logged `bubble_Lloss` to ≤3.9e-5,
+  interface L3 bit-identical) → **`θ_target(Da)` REFUTED** (T_int ~const ⇒ real Da ≈ proxy; Da≫1 everywhere ⇒
+  `θmax·Da/(1+Da)` saturates to a constant; non-monotonic in nCore). Live `theta_target` validation: the
+  literature θ (0.9–0.99) **straddles** the 0.95 trigger threshold ⇒ a scalar can't separate magnitude from
+  triggering. **Pivot (§Outcome & pivot):** for normal clouds **blowout is the transition trigger**; the
+  cooling boost corrects *magnitude*; `κ_eff` is the scoped endgame (`KAPPA_EFF_SCOPING.md`, feasible/bounded).
+  **Re-validation:** all 8 offline screens re-ran **byte-identical**, the real-Da replay re-passed its gate,
+  20/20 tests green; code line-refs corrected (`Edot_from_balance :434→:475`; trigger `:1200→:1206`;
+  shadow/drive drifts) and the stale `f1edge_lowdens "NOT run"` reconciled. See `FINDINGS.md`.
 - **2026-06-25 — LIVE matched-t edge runs (3/4 configs) DONE; a constant f=2 over/under-shoots by density.**
   Ran `none` vs `multiplier f=2` for hidens (dense), simple_cluster (compact), fail_repro (heavy) in
   separate processes (provenance clean, `commit=6642ff4, dirty=False, rc=0`; persisted `runs/data/live_compare.csv`
@@ -48,14 +60,12 @@ folder) — do **not** re-run the hours-long sims to recover them; reproduce onl
   collapses identically with/without boost (cooling doesn't rescue heavy clouds — control confirmed). ⇒
   **no constant f_mix fits the density grid** → confirms the coupled `θ_target(n)=θ_lit(n)` direction
   (calibrate to the literature loss fraction, NOT to the 0.95 trigger threshold — the latter is circular).
-  Diffuse `f1edge_lowdens` NOT run: the Agent `isolation:worktree` mis-forks from `main` (b40050a, no
-  workstream), and a hard ~55–60 min env wall-cap SIGTERMs background runs (so non-firing normal `none`
-  baselines to stop_t=15 Myr can't complete; boosted runs transition early and finish). NEXT: the zero-code
-  `L_cool/L_mech`-vs-density diagnostic plot with literature θ(n) overlaid (the reframe below), then
-  `f1edge_lowdens` + the coupled form. See `runs/README.md` §Live results.
+  Diffuse `f1edge_lowdens` was not run *in this batch* (worktree mis-fork from `main` + a ~55–60 min env
+  wall-cap on background runs) — **but was run later the same day (×2/×3; 4/4 configs total); see the top
+  ledger entry and `runs/data/live_compare.csv`.** See `runs/README.md` §Live results.
 - **2026-06-24 (pm) — Verified the maintainer's revised note line-by-line against source + screen data.**
-  Code anchors all **confirmed** (Eq.1 ODE = `get_betadelta.py:434`; trigger = `(Lgain−Lloss)/Lgain<0.05`
-  radiative-only `:1200`; no boost knob in `trinity/`). My screen numbers **reproduce exactly**. Found and
+  Code anchors all **confirmed** (Eq.1 ODE = `get_betadelta.py:475`; trigger = `(Lgain−Lloss)/Lgain<0.05`
+  radiative-only `:1206`; no boost knob in `trinity/`). My screen numbers **reproduce exactly**. Found and
   fixed: (a) **trigger-convention bug** — the note's Table 2 headline `f_mix≈1.1–1.5` is the *with-PdV*
   screen, inconsistent with the note's own *no-PdV* recommended trigger; consistent value is
   **`f_mix≈1.4–2.8`** (`data/fmix_table.csv`, both conventions); (b) the **5×10⁵-draw** double-count claim
@@ -81,10 +91,11 @@ folder) — do **not** re-run the hours-long sims to recover them; reproduce onl
 See **§Task B**. **Open next step:** the matched-`t` edge-config **live** runs (boosted vs unboosted,
 separate processes) that replace the frozen screen and settle constant-`f_mix` vs `θ_target(Da)`.
 
-**Re-verify these load-bearing anchors on entry** (last confirmed 2026-06-24):
-1. **PdV at 3 sites** (§Where PdV lives) — ODE `run_energy_implicit_phase.py:846-847`
-   (`residual_Edot2_guess ← betadelta_result.Edot_from_balance`); `cooling_balance` trigger ~`:1200`
-   (radiative, **no** PdV); `ebpeak` shadow `evaluate_r1_shadow():197-210` + drive `:1166`.
+**Re-verify these load-bearing anchors on entry** (re-validated line-by-line 2026-06-25 — all 8 offline
+screens reproduce byte-identical, real-Da replay re-passed its gate, 20/20 tests green; line-refs below corrected):
+1. **PdV at 3 sites** (§Where PdV lives) — ODE `run_energy_implicit_phase.py:847-848`
+   (`residual_Edot2_guess ← betadelta_result.Edot_from_balance`); `cooling_balance` trigger `:1206`
+   (radiative, **no** PdV); `ebpeak` shadow `evaluate_r1_shadow():198-211` + drive `:1198-1204`.
 2. **Opt-in is byte-identical** — `transition_trigger` default `cooling_balance` (`registry.py:347`,
    `default.param:282`); a non-default token only *drives* the R1 handoff, never perturbs a default run.
 3. **Cooling boost knob has LANDED in production (2026-06-25, supersedes the 2026-06-24 "production
@@ -127,7 +138,7 @@ priors (re-verify per banner): `../pt4/TRANSITION_FIX_SCOPING.md` (Route 1),
    median **0.43–0.55** for *every* normal cloud (table below), not "way too small." So the premise's
    *stated* reason is false: PdV is not negligible.
 2. **The actual argument is two-fold:** (a) PdV is **already in the energy evolution** — `Eb(t)` is
-   integrated from `Edot_from_balance = Lmech − Lloss − 4πR2²·v2·Pb` (`get_betadelta.py:434`), which
+   integrated from `Edot_from_balance = Lmech − Lloss − 4πR2²·v2·Pb` (`get_betadelta.py:475`), which
    *includes* the PdV work term; the `cooling_balance` *trigger* deliberately watches only the
    **radiative** ratio `(Lmech − Lloss)/Lmech` because the modelled transition was hypothesised to be
    cooling-driven. (b) Putting PdV *into the trigger* (= the `ebpeak` criterion `Edot_from_balance ≤ 0`)
@@ -146,9 +157,9 @@ priors (re-verify per banner): `../pt4/TRANSITION_FIX_SCOPING.md` (Route 1),
 
 | site | formula | PdV included? | role |
 |---|---|---|---|
-| **Energy evolution** `get_betadelta.py:434` (`Edot_from_balance`), stored `residual_Edot2_guess` (`run_energy_implicit_phase.py:846-847`) | `Lmech − Lloss − 4πR2²·v2·Pb` | **yes** | how `Eb` actually evolves — PdV already drains the reservoir |
-| **`cooling_balance` trigger** `run_energy_implicit_phase.py:1200` | `(Lmech − Lloss)/Lmech < 0.05`, `Lloss = bubble_LTotal (+leak)` | **no** | the default energy→momentum handoff; pure radiative |
-| **`ebpeak` trigger** (opt-in) `evaluate_r1_shadow` `:208-209`, shadow `:1166-1184`, drive `:1192-1198` | `Edot_from_balance ≤ 0` | **yes** | "PdV in the trigger" — the net-energy turnover; default-off |
+| **Energy evolution** `get_betadelta.py:475` (`Edot_from_balance`), stored `residual_Edot2_guess` (`run_energy_implicit_phase.py:847-848`) | `Lmech − Lloss − 4πR2²·v2·Pb` | **yes** | how `Eb` actually evolves — PdV already drains the reservoir |
+| **`cooling_balance` trigger** `run_energy_implicit_phase.py:1206` | `(Lmech − Lloss)/Lmech < 0.05`, `Lloss = bubble_LTotal (+leak)` | **no** | the default energy→momentum handoff; pure radiative |
+| **`ebpeak` trigger** (opt-in) `evaluate_r1_shadow` `:208-210`, shadow `:1166-1190`, drive `:1192-1204` | `Edot_from_balance ≤ 0` | **yes** | "PdV in the trigger" — the net-energy turnover; default-off |
 
 ⇒ The maintainer's "add PdV to the trigger" **is** the existing `ebpeak` criterion. It is *not* the same
 as "add PdV to the 0.05 cooling ratio" — see §Two readings.
@@ -464,7 +475,7 @@ in phase 1a) → needs the in-solver shadow run. Artifacts: `data/make_closure_t
 1. **`cb` trigger (boost loss, no PdV) is the right family for normal clouds:** `f_mix ≈ 1.5–2` brings their cooling
    ratio into the band near the transition. Supersedes reading B (don't put PdV in the trigger; fix the cooling).
 2. **A constant knob can't place the transition at blowout across the grid (Stage 2 heatmap).** At `f_mix≈2`,
-   compact/dense fire *at* blowout (`simple_cluster −0.02`, `small_dense −0.00` Myr) but diffuse fire *well before*
+   compact/dense fire *at* blowout (`simple_cluster −0.07`, `small_dense −0.01` Myr, at `f_mix=2`) but diffuse fire *well before*
    (`pl2_steep −0.81`, `large_diffuse −1.3…−3.65`). Density-ordered (dense already cool: `Lcool/Lmech≈0.7` at
    blowout; diffuse `≈0.25`) ⇒ **the data argues for the coupled `θ_target(Da)`/`κ_eff` form, not a constant.**
 3. **`theta_target` constant is blunt:** fires nowhere below 0.95, ~at birth at 0.95 — use only via the
