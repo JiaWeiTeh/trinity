@@ -70,7 +70,7 @@ The **`L_conduction` integral** (`:702–747`) is already κ-independent — it 
 | physics | raises cooling **and** evaporation (wrong sign) | decouples cooling-up / evaporation-down (the goal) |
 | validation | test string-pins (`test_dR2min_magic_number.py` `_scalar_params` patched, `test_metadata.py`, `test_mu_audit_drift.py`) — 595 pass | rule-5 ladder + redo cleanroom C0 certification |
 | effort | ~hours (done 2026-06-26) | multi-day workstream |
-| status | **probe — DONE, gate passed** | **the endgame — not started** |
+| status | **probe — DONE, gate passed** | **the endgame — scoped (`RUNGB_SCOPING.md`), not started** |
 
 ## 4. The crux — and a documented prior failure
 
@@ -104,7 +104,7 @@ developing mixing layer** — the validation is itself the argument for Rung B. 
 ## 6. Proposed plan (if greenlit)
 
 1. **Rung A first as a back-reaction probe** (~hours) — **DONE 2026-06-26.** Added `cooling_boost_kappa` (`f_κ`, default 1.0), applied at `:291/:370/:406`; gated **byte-identical when `f_κ=1`** (sha `acbad31b` over 79 rows of `f1edge_hidens`, diverges when `f_κ=2`), full `pytest` 595 green, ruff F-rules clean. See **§6a** for the measured back-reaction. This de-risked the ODE/IC plumbing without the hard re-derivation.
-2. **Rung B (the workstream):** (a) derive a numerical near-front IC for `κ_eff = max(κ_Spitzer, κ_mix)` keeping `dMdt > 0`; (b) replace the ODE RHS factor + `dMdt` seed; (c) build the `κ_mix ~ ρ c_p D_turb` model; (d) full rule-5 ladder — per-call → full-run equivalence on `param/simple_cluster.param` + `f1edge_{lowdens,hidens}` + a 5e9, separate processes, matched `t`; redo the cleanroom C0 substrate certification; (e) its own `docs/dev/` FINDINGS with the three-banner set.
+2. **Rung B (the workstream)** — **now scoped in full: `RUNGB_SCOPING.md`** (design + IC re-derivation, two independent verifications). Headline: the decoupling, not the κ swap, is the heart — sever `dMdt` from the front conductive balance (entrainment-set, positive by construction) while a mixing-layer `κ_eff` raises cooling localized to the ~10⁵ K band; the mix-branch near-front IC is **numerical** (`p=−1` is not front-regular); `κ_mix`'s magnitude needs an entrainment efficiency `α_mix≪1` (literal `R2·v2` gives `T_cross~10¹²` K). Steps: (a) settle on paper what `v(R1)=0` solves for once `dMdt` is exogenous; (b) the entrainment + `α_mix` model (calibrate to El-Badry/Lancaster); (c) numerical near-front IC prototype OFFLINE; (d) full rule-5 ladder — per-call → full-run equivalence on `param/simple_cluster.param` + `f1edge_{lowdens,hidens}` + a 5e9, separate processes, matched `t`; redo the cleanroom C0 substrate certification; (e) its own `docs/dev/` FINDINGS with the four-banner set.
 3. **Gate before B:** if Rung A's back-reaction probe shows the structure plumbing can't take a non-Spitzer κ without the IC re-derivation (expected), that confirms B is required, not optional.
 
 ## 6a. Rung A result — the crux, measured (2026-06-26)

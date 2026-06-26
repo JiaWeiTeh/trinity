@@ -39,6 +39,18 @@ The recheck list the banners demand. **Every visit:** re-verify the anchors belo
 folder) — do **not** re-run the hours-long sims to recover them; reproduce only to extend.
 
 **Status ledger (newest first):**
+- **2026-06-26 (later) — `κ_eff` Rung B scoped on paper (`RUNGB_SCOPING.md`), no code touched.** Two
+  independent verifications (IC algebra + cooling/evaporation decoupling, both adversarially checked vs
+  current source; the front-balance identity confirmed to machine precision). Headline finding: in the
+  Weaver solve the conductive flux `q=κ·dT/dr` at the front is **one quantity read twice** (fixes `dMdt`
+  via the enthalpy balance *and* sets the radiating profile) — which is *why* Rung A raised both together,
+  and why a faithful `κ_eff` must **sever `dMdt` from the front balance** (entrainment-set, `>0` by
+  construction) rather than swap `κ`. The mix-branch near-front IC is **numerical** (`κ_mix∝1/T ⇒ p=−1 ⇒
+  q=−1` is not front-regular); `κ_mix`'s magnitude needs an entrainment efficiency `α_mix≪1` (literal
+  `D_turb=R2·v2` ⇒ `T_cross~10¹²` K, absurd) — *that factor is the model*. `dMdt>0` safety threads the
+  cleanroom §6.6 trap because `dMdt` becomes an input, not a root. `(β,δ)` solver untouched (no
+  conduction-law dependence; its `dMdt>0` gate + `bubble_LTotal` use are the coupling surfaces). Next
+  concrete step is on-paper risk #1 (what `v(R1)=0` solves for) — still no production edit.
 - **2026-06-26 — `κ_eff` Rung A executed (back-reaction probe, gated/byte-identical-off).** Added
   `cooling_boost_kappa` (`f_κ`, default 1.0) multiplying the Spitzer coefficient `C_thermal` at all 3
   bubble-structure sites (`bubble_luminosity.py:291/:370/:406`). **Gate passed:** byte-identical when

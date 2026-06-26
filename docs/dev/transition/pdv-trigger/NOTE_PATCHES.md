@@ -233,6 +233,14 @@ the transition without runaway evaporation; only the state-coupled $\kappa_\math
 probe thus **confirms Rung B is required, not optional**. Artifacts + table: `KAPPA_EFF_SCOPING.md` §6a,
 `data/kappa_backreaction.csv`, `kappa_backreaction.png`.
 
+**Rung B is now scoped on paper (`RUNGB_SCOPING.md`, 2026-06-26).** Two independent (adversarial)
+verifications establish the design: the conductive flux at the front is *one quantity read twice*, so a
+faithful $\kappa_\mathrm{eff}$ must **sever $\dot M$ from the front balance** (entrainment-set, $>0$ by
+construction) while a mixing-layer $\kappa_\mathrm{eff}$ raises cooling localized to the $\sim10^5$ K band; the
+mix-branch near-front IC is **numerical** ($\kappa_\mathrm{mix}\propto1/T$ is not front-regular) and
+$\kappa_\mathrm{mix}$'s magnitude is the real model (an entrainment efficiency $\alpha_\mathrm{mix}\ll1$, since
+literal $D_\mathrm{turb}=R_2v_2$ gives an absurd $T_\mathrm{cross}\sim10^{12}$ K). No production code touched.
+
 ---
 
 ### Provenance

@@ -551,7 +551,11 @@ rise of \(L_{\text{cool}}\)) &mdash; wrong sign vs El-Badry. (iii) Headroom is s
 with \(f_\kappa\), so <b>brute-forcing \(f_\kappa\) toward the trigger is non-viable</b>. Net: Rung A
 <b>confirms Rung B is required, not optional</b> &mdash; only a state-coupled \(\kappa_{\text{eff}}\) that
 decouples cooling-up from evaporation-down reaches the transition. Full scope &amp; the measured table:
-<code>KAPPA_EFF_SCOPING.md</code> &sect;6a.</p>
+<code>KAPPA_EFF_SCOPING.md</code> &sect;6a. <b>Rung B is now scoped on paper</b> (two independent verifications)
+in <code>RUNGB_SCOPING.md</code>: the conductive flux at the front is <i>one quantity read twice</i>, so the
+faithful \(\kappa_{\text{eff}}\) must <b>sever \(\dot M\) from the front balance</b> (entrainment-set,
+\(>0\) by construction) &mdash; not swap \(\kappa\) &mdash; with a <b>numerical</b> mix-branch near-front IC
+and an entrainment efficiency \(\alpha_{\text{mix}}\!\ll\!1\) as the real model. No production code touched.</p>
 """
 
 SEC_REPRO = r"""
