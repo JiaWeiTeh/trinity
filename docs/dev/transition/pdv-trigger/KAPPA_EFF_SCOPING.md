@@ -104,7 +104,18 @@ developing mixing layer** — the validation is itself the argument for Rung B. 
 ## 6. Proposed plan (if greenlit)
 
 1. **Rung A first as a back-reaction probe** (~hours) — **DONE 2026-06-26.** Added `cooling_boost_kappa` (`f_κ`, default 1.0), applied at `:291/:370/:406`; gated **byte-identical when `f_κ=1`** (sha `acbad31b` over 79 rows of `f1edge_hidens`, diverges when `f_κ=2`), full `pytest` 595 green, ruff F-rules clean. See **§6a** for the measured back-reaction. This de-risked the ODE/IC plumbing without the hard re-derivation.
-2. **Rung B (the workstream)** — **now scoped in full: `RUNGB_SCOPING.md`** (design + IC re-derivation, two independent verifications). Headline: the decoupling, not the κ swap, is the heart — sever `dMdt` from the front conductive balance (entrainment-set, positive by construction) while a mixing-layer `κ_eff` raises cooling localized to the ~10⁵ K band; the mix-branch near-front IC is **numerical** (`p=−1` is not front-regular); `κ_mix`'s magnitude needs an entrainment efficiency `α_mix≪1` (literal `R2·v2` gives `T_cross~10¹²` K). Steps: (a) settle on paper what `v(R1)=0` solves for once `dMdt` is exogenous; (b) the entrainment + `α_mix` model (calibrate to El-Badry/Lancaster); (c) numerical near-front IC prototype OFFLINE; (d) full rule-5 ladder — per-call → full-run equivalence on `param/simple_cluster.param` + `f1edge_{lowdens,hidens}` + a 5e9, separate processes, matched `t`; redo the cleanroom C0 substrate certification; (e) its own `docs/dev/` FINDINGS with the four-banner set.
+2. **Rung B (the workstream)** — **scoped in full: `RUNGB_SCOPING.md`**, and **risk #1 already prototyped
+   offline.** The first design (sever `dMdt` from the front balance — make it an entrainment-set *input* — and
+   shoot `v(R1)=0` on the front gradient `dTdr_front`) was **REFUTED by `make_fm1_rootcheck.py`** (FM1 fired):
+   on real captured stiff states, `dMdt` is pinned by `v(R1)=0` and has no replacement eigenvalue — `dTdr_front`
+   has no leverage. **Redirect:** keep `dMdt` as the Weaver eigenvalue, add mixing-layer `L_mix` only to the
+   **in-structure loss integrand** (~10⁵ K band, κ unchanged), and **measure ΔL_cool vs ΔdMdt** (the new
+   make-or-break). Still standing: the mix-branch near-front IC is **numerical** (`p=−1` not front-regular), and
+   `κ_mix`'s magnitude needs an efficiency `α_mix≪1` (literal `R2·v2` gives `T_cross~10¹²` K). Remaining steps:
+   (a) the second offline prototype (in-structure `L_mix` → ΔdMdt sign); (b) the `v_entrain`/`α_mix` model
+   (calibrate to El-Badry/Lancaster); (c) full rule-5 ladder — per-call → full-run equivalence on
+   `param/simple_cluster.param` + `f1edge_{lowdens,hidens}` + a 5e9, separate processes, matched `t`; redo the
+   cleanroom C0 substrate certification; (d) its own `docs/dev/` FINDINGS with the four-banner set.
 3. **Gate before B:** if Rung A's back-reaction probe shows the structure plumbing can't take a non-Spitzer κ without the IC re-derivation (expected), that confirms B is required, not optional.
 
 ## 6a. Rung A result — the crux, measured (2026-06-26)

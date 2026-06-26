@@ -233,13 +233,16 @@ the transition without runaway evaporation; only the state-coupled $\kappa_\math
 probe thus **confirms Rung B is required, not optional**. Artifacts + table: `KAPPA_EFF_SCOPING.md` §6a,
 `data/kappa_backreaction.csv`, `kappa_backreaction.png`.
 
-**Rung B is now scoped on paper (`RUNGB_SCOPING.md`, 2026-06-26).** Two independent (adversarial)
-verifications establish the design: the conductive flux at the front is *one quantity read twice*, so a
-faithful $\kappa_\mathrm{eff}$ must **sever $\dot M$ from the front balance** (entrainment-set, $>0$ by
-construction) while a mixing-layer $\kappa_\mathrm{eff}$ raises cooling localized to the $\sim10^5$ K band; the
-mix-branch near-front IC is **numerical** ($\kappa_\mathrm{mix}\propto1/T$ is not front-regular) and
-$\kappa_\mathrm{mix}$'s magnitude is the real model (an entrainment efficiency $\alpha_\mathrm{mix}\ll1$, since
-literal $D_\mathrm{turb}=R_2v_2$ gives an absurd $T_\mathrm{cross}\sim10^{12}$ K). No production code touched.
+**Rung B scoped + risk #1 prototyped (`RUNGB_SCOPING.md`, 2026-06-26).** Two independent (adversarial)
+verifications established the design; the conductive flux at the front is *one quantity read twice*. The first
+plan — **sever $\dot M$ from the front balance** (make it an entrainment *input*) and shoot $v(R_1){=}0$ on the
+front gradient — was then **prototyped offline (`make_fm1_rootcheck.py`) and REFUTED (FM1 fired):** on real
+captured stiff states $\dot M$ is pinned by $v(R_1){=}0$ and the gradient has no leverage. **Redirect:** keep
+$\dot M$ as the Weaver eigenvalue and add mixing-layer cooling only to the **in-structure loss integrand**
+($\sim10^5$ K band, $\kappa$ unchanged), then **measure** whether $\dot M$ falls (El-Badry) or rises (Rung-A).
+Still standing: the mix-branch near-front IC is **numerical** ($\kappa_\mathrm{mix}\propto1/T$ not front-regular)
+and $\kappa_\mathrm{mix}$'s magnitude needs an efficiency $\alpha_\mathrm{mix}\ll1$ (literal $R_2v_2 \Rightarrow
+T_\mathrm{cross}\sim10^{12}$ K). No production code touched.
 
 ---
 

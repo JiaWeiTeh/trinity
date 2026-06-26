@@ -32,9 +32,11 @@
 > here contradicts a sibling — or a sibling has gone stale — fix it (or flag it, dated) so no two docs in
 > the workstream disagree. Never update one in isolation.
 
-> **Provenance.** Written 2026-06-26. The IC algebra and the cooling/evaporation-decoupling argument below
-> were each **independently re-derived and adversarially checked by a separate verification pass** against
-> current source (the front-balance ratio was confirmed numerically to machine precision). This is the
+> **Provenance.** Written 2026-06-26; **risk #1 prototyped offline the same day → the §3a "shoot on
+> `dTdr_front`" plan was REFUTED (FM1 fired) and redirected** (`make_fm1_rootcheck.py`). The IC algebra and the
+> cooling/evaporation-decoupling argument below were each **independently re-derived and adversarially checked
+> by a separate verification pass** against current source (the front-balance ratio was confirmed numerically
+> to machine precision); the *eigenvalue-swap recommendation* was then overturned by the prototype. This is the
 > design doc the `KAPPA_EFF_SCOPING.md` §6.2 ("Rung B, the workstream") and §6.3 gate point at, now that
 > Rung A is built and its back-reaction measured (`KAPPA_EFF_SCOPING.md` §6a). All file:line refs below were
 > spot-verified 2026-06-26 but **cite function names first** — line numbers drift, the structure does not.
@@ -54,8 +56,12 @@ Concretely, Rung B is **two structurally separate changes**, both inside `bubble
 
 1. **Cooling-up** — a mixing-layer/`κ_eff` enhancement **localized to the ~10⁵ K radiating band** (the
    cooling-curve peak), living *inside* the structure solve so it raises `bubble_LTotal` consistently.
-2. **Evaporation-down** — `dMdt` set by a **turbulent entrainment** prescription (`≈ ρ_shell·v_entrain·4πR2²`,
-   positive by construction), an **input** to the structure, **not** the root of a front balance.
+2. **Evaporation-down** — *originally* proposed as `dMdt` set by entrainment as an **input**. **⚠️ Update
+   (2026-06-26): the offline FM1 prototype REFUTED imposing `dMdt`** — it is pinned by the `v(R1)=0` boundary
+   condition and has no free eigenvalue to replace it (§3a). **Redirect:** keep `dMdt` as the Weaver eigenvalue,
+   add the mixing-layer cooling only to the **in-structure loss integrand**, and let any evaporation change
+   *emerge* and be **measured** (§3a, §8). The "two separate changes" framing survives; the mechanism for
+   change #2 does not — read §3 and change #2 below through this redirect.
 
 Three results from the verification that shape the plan:
 
@@ -174,23 +180,46 @@ eigenvalue is required. Candidates (free **exactly one**; physical meaning; fail
 | `dR2` / `r2′` (layer thickness) | the conduction layer thickens/thins | viable, but reintroduces the `dR2→0` cancellation regime `test_dR2min_magic_number.py` guards (FM6) |
 | `T_init` (anchor temperature) | the cold-edge temperature floats | least physical — `3e4 K` is the recombination/shell edge; letting it drift risks leaving the radiating band |
 
-**The structural reading (and why it is exactly the decoupling).** Rung B **demotes `dMdt` from eigenvalue to
-input** (evaporation set by turbulence, not conduction self-consistency) and **promotes the front gradient to
-eigenvalue** (the conduction layer absorbs the boundary mismatch by steepening/flattening, i.e. by radiating
-more or less — not by changing the evaporation). The free thing (`dTdr_front` → the radiative-loss profile)
-and the fixed thing (`dMdt` → evaporation) are now **separate dials** — which is the cooling↑/evaporation↓
-decoupling of §0–§3 expressed directly in the closure. The recommended reformulation:
+**The hypothesis I first wrote here** was: demote `dMdt` to an entrainment input and **promote the front
+gradient `dTdr_front` to the eigenvalue** `v(R1)=0` shoots on, so the conduction layer absorbs the boundary
+mismatch by radiating more/less instead of by changing evaporation — the decoupling expressed in the closure.
+The sign argument was: a suppressed (smaller) `dMdt` weakens the recoil term in `v_front`, so the root should be
+*easier* to find.
+
+> ### ❌ REFUTED by the offline prototype (FM1 fired) — 2026-06-26
+>
+> `data/make_fm1_rootcheck.py` replays this exact closure on two **real captured stiff states** (the 5e9/sfe0.01
+> flood regime + a mild cluster), sweeping `dTdr_front` over **6 decades** for each suppression
+> `s ∈ {1,3,10,30}` (`dMdt := dMdt_Spitzer/s`). Result (`data/fm1_rootcheck.csv`, `fm1_rootcheck.png`):
+> - **`s=1` finds the root at `f*≈1.0`, physical** — the built-in correctness check passes (with the full
+>   Spitzer `dMdt`, shooting `dTdr_front` recovers the Spitzer solution). So the harness is sound.
+> - **`s=3, 10, 30` find NO root, in either state, anywhere in 6 decades of `dTdr_front`.**
+>
+> **Why** (the diagnostic): the recoil term is numerically tiny — it shifts `v_front` by only ~0.5 out of a
+> streaming velocity `cool_alpha·R2/t_now ≈ 2243` — **but the stiff BVP exponentially amplifies `v_front`**:
+> that ~0.5 shift moves `v(R1)` by ~2000, while sweeping `dTdr_front` across 6 decades barely moves `v(R1)` at
+> all. So **`v(R1)=0` is controlled by `dMdt` (through the recoil in `v_front`), NOT by the conduction
+> gradient.** Only `s=1` — where the recoil is exactly the self-consistent Spitzer value — reaches the BC.
+> `dTdr_front` has no leverage; promoting it to eigenvalue cannot work. **The sign argument was wrong, in the
+> opposite direction.**
+
+**What this teaches (the real redirect).** `dMdt` is **not a free dial** — it is pinned by `v(R1)=0` and the
+structure. You therefore **cannot *impose* "evaporation down"**; an El-Badry suppression has to **emerge** from a
+*structure change*. So the decoupling must **not** live at the `dMdt` / inner-BC level at all. The viable path:
 
 ```
-dMdt        := dMdt_entrain(ρ_shell, v_entrain)      # INPUT, > 0 by construction
-front IC    := numerically integrate from (T_init, dTdr_front)   # T_init fixed = 3e4 K
-shoot on    := dTdr_front   such that   v(R1) = 0    # dTdr_front is the new eigenvalue
-v_front      = cool_alpha·R2/t_now − dMdt/(4πR2²)·k_B·T/(μ·Pb)   # recoil term keeps dMdt, now exogenous
+keep dMdt as the Weaver eigenvalue            # v(R1)=0 stays well-posed, dMdt > 0 by the existing root
+add mixing-layer cooling to the IN-STRUCTURE  # an explicit L_mix in the dudt / L_conduction integrand,
+  radiative-loss integrand (~10^5 K band)     #   localized to the cooling-curve peak, kappa UNCHANGED
+re-solve for dMdt (v(R1)=0) WITH it present   # integrated into the solve (threads the cleanroom trap)
+MEASURE  Delta L_cool  and  Delta dMdt        # does L_cool rise while dMdt FALLS? that is the real test
 ```
 
-`_get_velocity_residuals` keeps its shape (still integrates front→R1, still returns the `v(R1)=0` residual);
-only the **fsolve variable changes from `dMdt` to `dTdr_front`**, and `_get_bubble_ODE_initial_conditions`
-takes `(dMdt_exogenous, dTdr_front)` instead of deriving `dTdr` from the Spitzer balance.
+This keeps the well-posed Weaver closure (so no FM1 stall), puts the cooling exactly where the cleanroom §6.6
+said it must go (*inside* the structure solve, not a post-hoc `Eb` sink), and makes the evaporation response an
+**output to be measured**, not an input to be imposed. Whether the in-structure `L_mix` actually *lowers* `dMdt`
+(El-Badry's sign) or *raises* it (Rung-A's sign) is **the next offline prototype** — see §8. The `(β,δ)` solver
+and its `dMdt>0` gate are untouched by either path.
 
 ## 4. `dMdt>0` safety — how this threads the cleanroom trap
 
@@ -235,10 +264,10 @@ solve"). **Necessary condition:** the entrainment law is evaluated inside the st
 
 ## 7. Open questions / risks (ranked — solve top-down, on paper, before any production edit)
 
-1. **The `fsolve` re-think — what does `v(R1)=0` determine once `dMdt` is exogenous?** The gating numerical
-   risk. **Worked on paper — §3a:** demote `dMdt` to an entrainment-set input and **shoot on `dTdr_front`**
-   instead. Still a *proposal* — its make-or-break is **FM1** (does that closure admit a `v(R1)=0` root?),
-   to be proven OFFLINE on a captured state before any code.
+1. **The `fsolve` re-think — what does `v(R1)=0` determine once `dMdt` is exogenous?** **RESOLVED — §3a:**
+   the "shoot on `dTdr_front`" proposal was **prototyped offline and REFUTED** (FM1 fired — `dMdt` is pinned by
+   `v(R1)=0`, the gradient has no leverage). **Redirect:** keep `dMdt` as the Weaver eigenvalue and decouple at
+   the in-structure loss integrand instead; the *new* make-or-break is **FM1b** (the ΔdMdt sign), §8.
 2. **`v_entrain` prescription + `α_mix` calibration.** This *is* the model (§2). Validate the form against
    El-Badry+2019 / Lancaster+2021 — do **not** assume `D_turb = R2·v2`; that is a ceiling giving absurd
    `T_cross`.
@@ -252,36 +281,48 @@ solve"). **Necessary condition:** the entrainment law is evaluated inside the st
 5. **Re-validation cost** — cleanroom C0 re-certification + full-run equivalence on the stiff regimes is real;
    budget for it.
 
-## 8. Recommended first concrete step (no production edit)
+## 8. Where we are, and the next concrete step (no production edit)
 
-Risk #1 (the `fsolve` target) is now **worked on paper — §3a** (recommendation: shoot on `dTdr_front`, with
-`dMdt` demoted to an entrainment-set input). What remains before any code: **#2** (`v_entrain` + `α_mix`
-form, calibrated to El-Badry/Lancaster) and a **numerical near-front IC prototype tested OFFLINE** on a
-captured stiff state that confirms the §3a closure actually admits a `v(R1)=0` root (FM1) — the same
-capture/replay-with-explicit-gates discipline that de-risked Rung A. Persist it as a `data/` harness +
-figure. **Only then** touch `bubble_luminosity.py`. This keeps Rung B in the dev/exploration realm and
-production byte-identical until the gated knobs are proven off.
+Risk #1 (the `fsolve` target) was worked on paper (§3a) **and then tested offline (`make_fm1_rootcheck.py`) —
+which REFUTED the "shoot on `dTdr_front`" reformulation**: `dMdt` is pinned by `v(R1)=0`, not a free dial, so
+evaporation suppression cannot be imposed (FM1 fired; §3a, §9). That redirects Rung B to the **in-structure
+loss-integrand path**: keep `dMdt` as the Weaver eigenvalue, add an explicit mixing-layer `L_mix` to the
+`dudt`/`L_conduction` integrand in the ~10⁵ K band (κ unchanged), re-solve, and **measure ΔL_cool and ΔdMdt**.
+
+**Next concrete step (the second offline prototype, no production edit):** on the same captured stiff states,
+inject a parametrized `L_mix(T)` (peaked at ~10⁵ K, amplitude swept) into the loss integrand *inside* a
+replayed structure solve, re-find the Weaver `dMdt` (`v(R1)=0`), and plot **ΔL_cool vs ΔdMdt** as the
+amplitude grows. The decisive question: does the in-structure `L_mix` **lower** `dMdt` (El-Badry's sign — the
+decoupling we want) or **raise** it (Rung-A's sign — re-coupled)? Persist as a `data/` harness + figure. Only
+if it shows the right sign do we proceed to risk #2 (`v_entrain`/`α_mix` calibration) and, last, a gated
+production edit. This keeps Rung B in the dev/exploration realm and production byte-identical throughout.
 
 ## 9. Failure-mode ledger — what could go wrong (and how we'd catch it)
 
 *Written down so a future visit can look back and see where this could have broken. Each row: the failure,
-how it would show up, and the mitigation/guard. FM1 is the gating one.*
+how it would show up, and the mitigation/guard. **FM1 was the gating one — and it FIRED** (see below).*
 
 | # | failure mode | how it surfaces | mitigation / guard |
 |---|---|---|---|
-| **FM1** | **No `v(R1)=0` root in the new eigenvalue** (`dTdr_front`) for some `(dMdt_entrain, Pb)` — the cleanroom `dMdt<0` stall reincarnated in gradient-space. | the new `fsolve` residual never crosses zero; segments stall. | the entrainment `dMdt` is **smaller** than the Spitzer self-consistent `dMdt` (El-Badry suppression 3–30×), so the recoil `v`-term `∝ dMdt` is **weaker** — the `v(R1)=0` crossing should be *easier* to find, not harder (the cleanroom stall came from a *too-large* recoil at depressed `Pb`). **Verify this sign argument in the OFFLINE prototype before trusting it.** Keep a deterministic no-root guard (like the existing `_SOLVER_FAIL_RESIDUAL`) — flag, don't fabricate. |
-| **FM2** | **Over/under-determination** — freeing more than one of `{dTdr_front, dR2, T_init}` (under-determined) or none (over-determined). | non-unique / ill-conditioned `fsolve`; Jacobian near-singular. | free **exactly** `dTdr_front`; keep `T_init=3e4` and the `dR2` regularization offset fixed (§3a). |
+| **FM1 — 🔴 FIRED** | **The "shoot on `dTdr_front`" closure (§3a) admits NO `v(R1)=0` root once `dMdt` is fixed below Spitzer.** Proven offline (`make_fm1_rootcheck.py`): `s=1` finds the root (correctness check), `s=3/10/30` find none across 6 decades of `dTdr_front`, on both captured states. | the would-be `fsolve` never crosses zero — exactly what the prototype shows. | **the sign argument was WRONG** (the recoil is tiny but exponentially amplified; `v(R1)=0` is set by `dMdt`, not `dTdr_front`). **Resolution: abandon the eigenvalue-swap; keep `dMdt` as the Weaver eigenvalue and decouple at the in-structure loss integrand instead (§3a redirect, §8).** This is why we prototyped offline before touching code. |
+| **FM2 — moot** | Over/under-determination of the eigenvalue swap. | — | **superseded:** the redirect (§3a, §8) abandons the eigenvalue swap entirely and keeps the original Spitzer `dMdt` closure, so there is nothing to over/under-determine. |
+| **FM1b — the NEW make-or-break** | **The in-structure `L_mix` raises `dMdt` (Rung-A sign) instead of lowering it (El-Badry sign)** — i.e. the loss-integrand path re-couples cooling to evaporation after all. | the next prototype's ΔL_cool-vs-ΔdMdt plot slopes the wrong way. | this is precisely what the **next offline prototype (§8) measures**, before any code — if the sign is wrong, the whole `κ_eff`/mixing-cooling premise for *raising the loss ratio without runaway evaporation* needs rethinking, not just re-coding. |
 | **FM3** | **`(β,δ)` non-convergence with the entrainment-set `bubble_LTotal`** — `dMdt>0` gate now passes by construction, but the self-similar solve must still converge with the enhanced cooling. | `get_betadelta` hybr fails / oscillates; `no_physical_root` for a different reason than `dMdt`. | re-run the **cleanroom C0 certification** on the new structure; evaluate the entrainment law **inside** the structure solve so `Pb,β,δ,dMdt` are mutually consistent (the §4 necessary condition). |
 | **FM4** | **Entrainment-law coupling oscillation** — `dMdt_entrain ∝ ρ_shell·v_entrain` depends on shell state; a lagged/inconsistent shell snapshot makes the structure↔shell coupling wobble. | non-monotone segment-to-segment convergence; trajectory ripples absent in baseline. | evaluate the entrainment law from the **same** state snapshot the structure solve uses; freeze it within a segment. |
 | **FM5** | **`α_mix` mis-set** — too large ⇒ `κ_mix` swamps Spitzer everywhere (the `T_cross~10¹²` K absurdity, §2), turning the whole structure turbulent-diffusion-dominated; too small ⇒ no cooling boost (back to baseline). | loss ratio either jumps to ~1 instantly (too large) or never moves (too small). | calibrate `α_mix` to El-Badry/Lancaster; expose it as a **gated knob, default-off byte-identical**; bracket the physical range with a sweep before believing any single value. |
-| **FM6** | **Regression of the `dR2` magic-number guarantees** — `test_dR2min_magic_number.py` pins the *Spitzer* `dR2 ∝ 1/dMdt` law and the no-floor conditioning; Rung B no longer sets `dR2` from the Spitzer balance. | that suite breaks once the entrainment IC is wired in. | the Spitzer test stays valid only for the **`α_mix=0` / κ_mix-off** path (which must remain byte-identical); Rung B needs its **own** coverage for the entrainment-IC conditioning. |
+| **FM6 — relaxed** | Regression of the `dR2` magic-number guarantees (`test_dR2min_magic_number.py` pins the Spitzer `dR2 ∝ 1/dMdt`). | — | the loss-integrand redirect **keeps** the Spitzer `dMdt` closure (and its `dR2` law), so this test stays valid as-is; the added `L_mix` is in the loss integrand, not the front IC. Still gated default-off ⇒ byte-identical. |
 
-**The one-line risk story:** the whole design lives or dies on **FM1** — does the demoted-`dMdt`/promoted-`dTdr_front`
-closure admit a `v(R1)=0` root across the stiff regimes? The sign argument says *yes* (weaker recoil), but that is
-a hypothesis to **prove offline on a captured state before any production edit**, exactly as Rung A's gate was
-proven before its knob shipped.
+**The one-line risk story (updated):** the design's *first* make-or-break, **FM1**, **fired** — `dMdt` is pinned by
+`v(R1)=0` and cannot be imposed, so the eigenvalue-swap is dead. The *new* make-or-break is **FM1b**: does an
+in-structure `L_mix` lower `dMdt` (the El-Badry sign we need) or raise it (the Rung-A sign)? That is a question to
+**measure offline on a captured state before any production edit**, exactly as Rung A's gate and this FM1 test were.
+The discipline worked: a wrong design hypothesis cost a 2-fixture offline harness, not a production regression.
 
 ---
+
+**Artifacts.** FM1 prototype: `data/make_fm1_rootcheck.py` → `data/fm1_rootcheck.csv` + `fm1_rootcheck.png`
+(reproduce: `python docs/dev/transition/pdv-trigger/data/make_fm1_rootcheck.py`; reads the captured states
+`test/data/{dR2_stiff_state,residual_resample}_fixture.json`; no production edit, no full run).
 
 **Cross-refs.** `KAPPA_EFF_SCOPING.md` (§3 two-rung ladder, §6.2–6.3 plan/gate, §6a Rung A result),
 `PLAN.md` (status ledger; "Outcome & pivot"), `NOTE_PATCHES.md` Patch 7, the cleanroom `PLAN.md` §6.6

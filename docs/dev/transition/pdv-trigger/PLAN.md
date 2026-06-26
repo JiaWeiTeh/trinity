@@ -39,6 +39,18 @@ The recheck list the banners demand. **Every visit:** re-verify the anchors belo
 folder) — do **not** re-run the hours-long sims to recover them; reproduce only to extend.
 
 **Status ledger (newest first):**
+- **2026-06-26 (latest) — Rung B risk #1 PROTOTYPED OFFLINE → §3a plan REFUTED, redirected. No code touched.**
+  `data/make_fm1_rootcheck.py` replays the §3a closure (fix `dMdt`, shoot `v(R1)=0` on `dTdr_front`) on two
+  **real captured stiff states**, sweeping `dTdr_front` over 6 decades for suppression `s ∈ {1,3,10,30}`.
+  **Result** (`data/fm1_rootcheck.csv`, `fm1_rootcheck.png`): `s=1` finds the root (built-in correctness
+  check — recovers Spitzer), **`s=3/10/30` find NO root in either state, anywhere** — so **FM1 fired**. Why:
+  the recoil term is tiny (shifts `v_front` by ~0.5 of a ~2243 streaming velocity) but the stiff BVP
+  **exponentially amplifies `v_front`** (that ~0.5 moves `v(R1)` by ~2000), while `dTdr_front` barely moves
+  `v(R1)`. So **`v(R1)=0` is set by `dMdt` (the recoil), not the conduction gradient** — the sign argument was
+  backwards, and `dMdt` is **not a free dial**. **Redirect:** keep `dMdt` as the Weaver eigenvalue, add
+  mixing-layer `L_mix` only to the **in-structure loss integrand** (~10⁵ K band, κ unchanged), re-solve, and
+  **measure ΔL_cool vs ΔdMdt** (the new make-or-break, FM1b) — next offline prototype, still before any code.
+  The capture/replay discipline worked: a wrong design hypothesis cost a 2-fixture harness, not a regression.
 - **2026-06-26 (later) — `κ_eff` Rung B scoped on paper (`RUNGB_SCOPING.md`), no code touched.** Two
   independent verifications (IC algebra + cooling/evaporation decoupling, both adversarially checked vs
   current source; the front-balance identity confirmed to machine precision). Headline finding: in the
