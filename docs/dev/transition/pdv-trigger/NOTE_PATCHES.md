@@ -243,15 +243,17 @@ implementable — the note can say so:
 > cooling rises; the change must live \emph{inside} the structure solve, where it can decouple enhanced
 > cooling from suppressed evaporation.
 
-**Update 2026-06-26 — Rung A (the structural probe) is built and the crux is measured.** A gated
+**Update 2026-06-26 — Rung A (the cooling mechanism) is built and measured.** A gated
 `cooling_boost_kappa` ($f_\kappa$, default 1.0, byte-identical off) that inflates the Spitzer prefactor
 $C\to f_\kappa C$ at all three sites confirms, on the stiff `f1edge_hidens` edge at matched $t$, exactly the
 predicted obstacle: $f_\kappa{=}2$ raises $L_\mathrm{cool}$ ($\times1.23$–$1.38$) **and** $\dot M$
 ($\times1.08$–$1.17$) together — cooling and evaporation rise *with the same sign*, and a $2\times\kappa$
-moves the loss ratio only $+0.05$–$0.10$ toward the 0.95 trigger. So the flat-prefactor knob cannot reach
-the transition without runaway evaporation; only the state-coupled $\kappa_\mathrm{eff}$ (Rung B) can. The
-probe thus **confirms Rung B is required, not optional**. Artifacts + table: `KAPPA_EFF_SCOPING.md` §6a,
-`data/kappa_backreaction.csv`, `kappa_backreaction.png`.
+moves the loss ratio $+0.05$–$0.10$, so reaching the obs/3D target needs a larger **calibrated** $f_\kappa$
+(the remaining work). The *cooling* enhancement — the goal — is delivered; the evaporation rising with it is a
+**tolerated side effect**. Only a state-coupled $\kappa_\mathrm{eff}$ (Rung B) could make evaporation *fall*
+instead, but that is the **optional fidelity bonus**, not the goal (and the 1D front-anchored $\dot M$ resists
+it — FM1/FM1b). Artifacts + table: `KAPPA_EFF_SCOPING.md` §6a, `data/kappa_backreaction.csv`,
+`kappa_backreaction.png`.
 
 **Rung B scoped + risk #1 prototyped (`RUNGB_SCOPING.md`, 2026-06-26).** Two independent (adversarial)
 verifications established the design; the conductive flux at the front is *one quantity read twice*. The first

@@ -78,7 +78,7 @@ FIGURES = {
     ),
     "__FIG_IDEAS__": (
         "ideas_comparison.png",
-        "scoreboard of every transition-fix idea (constant f_mix, constant theta, theta_target(Da), live multiplier, kappa_eff Rung A probe, kappa_eff Rung B endgame) with verdict badges, plus three real-data evidence panels",
+        "scoreboard of every transition-fix idea (constant f_mix, constant theta, theta_target(Da), live multiplier, kappa_eff Rung A = the cooling mechanism (this work), kappa_eff Rung B = optional fidelity bonus) with verdict badges, plus three real-data evidence panels",
     ),
     "__FIG_KAPPA__": (
         "kappa_backreaction.png",
@@ -200,10 +200,10 @@ SEC_SETUP = r"""
 <h2 id="setup">1 &middot; The setup &mdash; where s1 left off</h2>
 <p>TRINITY integrates the bubble interior energy with
 \[ \frac{dE_b}{dt} = L_{\text{mech}} - L_{\text{cool}} - \underbrace{4\pi R_2^2\,v_2\,P_b}_{\text{PdV}} - L_{\text{leak}} \]
-(<code>get_betadelta.py:434</code>), so the PdV work term is <b>already</b> in the energy evolution. The default
+(<code>get_betadelta.py:475</code>), so the PdV work term is <b>already</b> in the energy evolution. The default
 energy&rarr;momentum handoff, though, watches only the <b>radiative</b> ratio
 \[ \frac{L_{\text{mech}}-L_{\text{cool}}}{L_{\text{mech}}} < 0.05 \qquad\text{(cooling }\ge 95\%\text{)} \]
-(<code>run_energy_implicit_phase.py:1200</code>) &mdash; <b>no PdV</b>. The clean-room investigation (s1) showed
+(<code>run_energy_implicit_phase.py:1206</code>) &mdash; <b>no PdV</b>. The clean-room investigation (s1) showed
 this ratio never reaches \(0.05\) for normal clouds; they hand off by <b>geometric blowout</b> instead, and the
 retained-energy fraction plateaus at \(0.25\!-\!0.40\), far above the observed \(0.01\!-\!0.1\) band. s1 named
 the cause but did not fix it: a 1D model has no <b>turbulent mixing layers</b>, so it under-counts the
@@ -589,7 +589,7 @@ the same files.</p>
 <tr><td><code>runs/data/live_compare.csv</code> (+ per-arm <code>runs/data/harvest_*.csv</code>)</td><td>&sect;9 live matched-\(t\) edge runs (4 configs, separate processes): no constant fires cooling across density</td></tr>
 <tr><td><code>data/kappa_backreaction.csv</code> (+ <code>make_kappa_backreaction.py</code>, <code>kappa_backreaction.png</code>)</td><td>&sect;11 \(\kappa_{\text{eff}}\) Rung-A back-reaction (\(f_\kappa{=}2\) vs \(1\), matched \(t\)): \(L_{\text{cool}}\!\uparrow\) but \(\dot M\!\uparrow\) rides along; the probe param is <code>runs/params/f1edge_hidens__kappa2.param</code></td></tr>
 <tr><td><code>ideas_comparison.png</code> (+ <code>data/make_ideas_comparison.py</code>)</td><td>the at-a-glance scoreboard of all ideas + three real-data evidence panels (reads <code>fmix_table</code>, <code>da_replay</code>, <code>kappa_backreaction</code> CSVs)</td></tr>
-<tr><td><code>KAPPA_EFF_SCOPING.md</code></td><td>&sect;11 endgame feasibility map + the &sect;6a Rung-A result table; the two-rung ladder and the \(\dot M>0\) crux</td></tr>
+<tr><td><code>KAPPA_EFF_SCOPING.md</code></td><td>&sect;11 the κ_eff cooling-mechanism feasibility map + the &sect;6a Rung-A result table; the mechanism vs the optional evaporation-decoupling bonus</td></tr>
 <tr><td><code>storyline_figs/*.png</code> (+ <code>make_storyline_figs.py</code>)</td><td>the four storyline figures (&sect;2 double-count, &sect;3 convention, &sect;4 regime, &sect;5 heatmap), each a pure read of the CSVs</td></tr>
 <tr><td><code>PLAN.md</code> / <code>FINDINGS.md</code></td><td>the living plan (&ldquo;Outcome &amp; pivot&rdquo;) and the verified findings &mdash; the source of truth this report is a sibling of</td></tr>
 </tbody></table></div>

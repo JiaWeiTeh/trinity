@@ -1,4 +1,4 @@
-# κ_eff / mixing-layer interface — feasibility & scoping (the "Option C" endgame)
+# κ_eff / mixing-layer interface — feasibility & scoping (the cooling MECHANISM + its optional fidelity bonus)
 
 > ⚠️ **This document may be out of date — verify before trusting it.** It is a
 > point-in-time analysis/audit, not a maintained spec; the code moves faster
@@ -124,7 +124,7 @@ developing mixing layer** — the validation is itself the argument for Rung B. 
    (calibrate to El-Badry/Lancaster); (c) full rule-5 ladder — per-call → full-run equivalence on
    `param/simple_cluster.param` + `f1edge_{lowdens,hidens}` + a 5e9, separate processes, matched `t`; redo the
    cleanroom C0 substrate certification; (d) its own `docs/dev/` FINDINGS with the four-banner set.
-3. **Gate before B:** if Rung A's back-reaction probe shows the structure plumbing can't take a non-Spitzer κ without the IC re-derivation (expected), that confirms B is required, not optional.
+3. **On the optional bonus:** Rung A confirmed the structure takes a `κ` knob cleanly and raises emergent cooling — so the **goal** (calibrate `f_κ` to `θ(n_H)`) needs **no** IC re-derivation. The faithful re-derivation is only for the *optional* evaporation-suppression bonus (Rung B), which `FM1`/`FM1b` show the 1D `dMdt` resists.
 
 ## 6a. Rung A result — the crux, measured (2026-06-26)
 
@@ -149,10 +149,12 @@ Two separate-process runs on the stiff dense edge `f1edge_hidens` (`mCloud 1e7`,
 structure, vindicating the structural-knob approach over a scalar `Lcool` rescale. (ii) **The crux
 is real and quantified:** a flat `f_κ` raises `dMdt` too (≈half the fractional rise of `Lcool`),
 exactly the coupling a faithful `κ_eff` must *suppress* (El-Badry: evaporation ÷3–30 while cooling
-rises). (iii) **Headroom is small:** even `f_κ=2` moves the loss ratio by only ~0.05–0.10, and the
-`dMdt` back-reaction grows with `f_κ` — so brute-forcing `f_κ` toward the 0.95 trigger is not viable.
-**This confirms Rung B is required, not optional** (the §6.3 gate): only a state-coupled `κ_eff` that
-decouples cooling-up from evaporation-down can reach the transition without the runaway evaporation.
+rises). (iii) `f_κ=2` moves the loss ratio by ~0.05–0.10, so reaching the obs/3D **target** needs a larger,
+**calibrated** `f_κ` (the remaining work) — *not* a brute-force toward the 0.95 *trigger* (reaching the
+trigger is not the goal; the goal is the cooling magnitude, which Rung A already delivers).
+**On the optional bonus:** a *flat* `f_κ` cannot make evaporation *fall* while cooling rises — only a
+state-coupled `κ_eff` could (Rung B). But that evaporation suppression is the **fidelity bonus, not the
+goal**, and the 1D front-anchored `dMdt` resists it (`FM1`/`FM1b` in `RUNGB_SCOPING.md`).
 
 ## 7. Open questions / risks
 - Closed-form vs numerical near-front IC for a `max()` κ — the `dMdt > 0` constraint (the cleanroom failure mode) is the gating risk; solve it first.

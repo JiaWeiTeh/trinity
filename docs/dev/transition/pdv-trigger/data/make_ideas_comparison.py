@@ -4,8 +4,8 @@
 Renders ../ideas_comparison.png from the committed CSVs (no sim re-run):
   * top   — a 6-rung "scoreboard" ladder: each idea, its mechanism, the one number
             that killed/limited it, and a verdict badge. The progression is the
-            storyline (constant knobs -> coupled scalar -> structural kappa probe ->
-            faithful kappa_eff endgame).
+            storyline (constant knobs -> coupled scalar -> the kappa_eff cooling mechanism ->
+            optional evaporation-decoupling fidelity bonus).
   * bottom — three real-data evidence panels that back the three key verdicts:
         A  constant f_mix can't span density   (data/fmix_table.csv)
         B  theta_target(Da) saturates / non-monotonic in n   (data/da_replay.csv)
@@ -32,8 +32,8 @@ _PDV = os.path.dirname(_HERE)
 # Verdict palette.
 _RED = "#d9534f"     # refuted
 _AMBER = "#f0ad4e"   # partial / magnitude-only
-_BLUE = "#5bc0de"    # probe (this work)
-_GREEN = "#5cb85c"   # endgame candidate (not started)
+_BLUE = "#5bc0de"    # the cooling mechanism (this work)
+_GREEN = "#5cb85c"   # optional fidelity bonus
 
 # The 6-rung ladder. (title, mechanism, killer metric, verdict label, colour, highlight)
 _LADDER = [

@@ -136,7 +136,9 @@ framing):**
   `kappa_backreaction.png`): at matched `t`, `f_κ=2` raises `Lcool` ×1.23–1.38 (cooling rises *through the
   structure*, θ as an output) **but `dMdt` ×1.08–1.17 rides along** — the El-Badry coupling a faithful
   `κ_eff` must instead suppress. A `2×` κ buys only **+0.05–0.10** loss-ratio toward the 0.95 trigger ⇒
-  brute-`f_κ` is non-viable, **confirming Rung B is required, not optional**. Details: `KAPPA_EFF_SCOPING.md`
+  brute-`f_κ` is non-viable *as a way to reach the trigger* ~~confirming Rung B is required, not optional~~
+  **[superseded same-day by the merge: reaching the trigger is not the goal; Rung A already delivers the
+  cooling magnitude, and Rung B is an optional bonus]**. Details: `KAPPA_EFF_SCOPING.md`
   §6a. **Production unchanged** — `cooling_boost_kappa` defaults to 1.0 (opt-in, byte-identical off).
 - **2026-06-25 (late) — Cooling-boost program CONCLUDED; PLAN re-validated line-by-line.** Completed the
   diffuse arm (`f1edge_lowdens` ×2/×3 → **4/4 live configs**; `runs/data/live_compare.csv`) — no constant

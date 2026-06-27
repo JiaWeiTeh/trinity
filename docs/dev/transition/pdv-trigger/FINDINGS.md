@@ -47,7 +47,7 @@
 3. **§3 lowdens** runs were truncated at the 1200 s ceiling (run.py `exit=124`), not a natural finish —
    so the claim is "had not fired *by blowout*," not "never fires."
 4. **Edge configs vary SFE too** (hidens sfe 0.01, lowdens sfe 0.5) — not a clean density-only contrast.
-5. **§6** does not pin the committed live runs to a commit hash (no tracked provenance).
+5. **§7 (Provenance)** does not pin the committed live runs to a commit hash (no tracked provenance).
 6. **Blowout time for lowdens was misread.** A first pass eyeballed the diffuse blowout at ~1.3 Myr from
    the harvest — that was a column miscount. The matched-t comparator (R2 vs rCloud=70.12 pc) gives
    blowout ≈ **0.61–0.64 Myr** (none 0.611, ×2 0.620, ×3 0.639). Corrected in §3.
@@ -60,7 +60,7 @@ both solid; the literature-`θ_lit(n)` comparison (§2) is currently **schematic
 
 > **Update (the merge, 2026-06-26):** the "density-dependent target" is now concrete — the **mechanism** is
 > **κ_eff** (`cooling_boost_kappa`, **Rung A, built/gated**), which raises the *emergent* cooling in-structure
-> (§7 — measured `bubble_LTotal` ×1.23–1.38); the **target** is `θ(n_H)` (El-Badry `λδv`=κ_eff + Lancaster);
+> (§6 — measured `bubble_LTotal` ×1.23–1.38); the **target** is `θ(n_H)` (El-Badry `λδv`=κ_eff + Lancaster);
 > the **knob** is `f_κ(properties)`. So the goal is **enhanced, density-dependent cooling matched to obs/3D**,
 > delivered by *calibrating* f_κ — not by a scalar floor and not by chasing evaporation suppression. See
 > `PLAN.md` ⭐ synthesis and `RUNGB_SCOPING.md` §2a (the canonical θ/`λδv`/`f_κ`/0.95 reconciliation).
@@ -150,7 +150,7 @@ HTTP 403**, so El-Badry's *specific* numbers (Fig 7 @ 10 Myr; Eq 35 √ρ form; 
   because TRINITY's trigger threshold *is* 0.95. So a **flat** "calibrate to θ_lit" is the **same arithmetic**
   as "calibrate to the 0.95 trigger" — it adds **no content** over §1. The escape is therefore a **non-flat,
   density-dependent target** that the cooling fraction is calibrated to. **Update (the merge, 2026-06-26):**
-  the way to deliver that is the **κ_eff mechanism** — `cooling_boost_kappa` makes θ *emerge* per cloud (§7),
+  the way to deliver that is the **κ_eff mechanism** — `cooling_boost_kappa` makes θ *emerge* per cloud (§6),
   and `f_κ(properties)` is calibrated so emergent θ tracks `θ(n_H)` (El-Badry `λδv`=κ_eff + Lancaster). This
   **supersedes** the earlier pointer to `θ_target(Da)` (now **refuted** — §5; Da≫1, non-monotonic, saturates):
   the density-dependence must come from `f_κ(n_H)`, not from a `Da`-coupled scalar floor.
