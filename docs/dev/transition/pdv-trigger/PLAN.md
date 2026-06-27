@@ -39,6 +39,18 @@ The recheck list the banners demand. **Every visit:** re-verify the anchors belo
 folder) — do **not** re-run the hours-long sims to recover them; reproduce only to extend.
 
 **Status ledger (newest first):**
+- **2026-06-26 (FM1b) — second offline prototype: in-structure interface cooling lowers `dMdt` (El-Badry sign
+  ✓) but negligibly. No code touched.** `data/make_fm1b_evapsign.py` monkeypatches `net_coolingcurve.get_dudt`
+  to add localized ~10⁵ K cooling (`×(1+A·gaussian)`) and runs the **full** `get_bubbleproperties_pure` on the
+  two captured stiff states (`A=0` recovers the converged `dMdt` — correctness check). Result
+  (`data/fm1b_evapsign.csv`, `fm1b_evapsign.png`): `dMdt` decreases **monotonically** with injected cooling in
+  both states (above the fsolve noise floor) — the **El-Badry sign**, *not* Rung-A re-coupling — **but the
+  magnitude is negligible**: `−0.10%` (stiff) / `−0.03%` (mild) at a 5× cooling boost, vs the El-Badry target of
+  `−67…−97%` (3–30×). Reason: `dMdt` is anchored at the 3×10⁴ K **front**, so 10⁵ K **interior** cooling barely
+  couples to it (the FM1 lesson again). **Convergent narrowing:** FM1 (impose `dMdt`) and FM1b (interior cooling)
+  both fail because `dMdt` is a *front* quantity ⇒ the next prototype must perturb the **front conduction**
+  itself (a faithful `κ_eff`/`λδv` acting at the front, not an interior loss term). Risk #2 + any gated code come
+  only after a path clears that. Details: `RUNGB_SCOPING.md` §8/§9 (FM1b ◐).
 - **2026-06-26 (literature anchor) — θ / λδv / f_mix / 0.95 roles pinned vs El-Badry & Lancaster
   (`RUNGB_SCOPING.md` §2a, verified).** θ (loss fraction) is **measured** in both papers; **λδv** (= `κ_eff`
   mixing diffusivity = our `κ_mix`) is the **set** knob, only in 1D (El-Badry "arbitrary parameter, range
