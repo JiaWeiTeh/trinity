@@ -40,10 +40,14 @@ are drop-in snippets + a precise change list). Every number traces to a committe
 > drafted builds toward `θ_target(Da)` as the recommended closure. The live matched-`t` runs (now done, 4/4)
 > plus a gate-validated real-Da replay **refute** that closure: a cooling-magnitude knob — constant *or*
 > `Da`-coupled — is **not** the energy→momentum trigger for normal clouds; **blowout is**, and the boost's
-> job is to fix cooling *magnitude*. The faithful `κ_eff` interface re-derivation is the principled endgame.
-> **Patches 5–7 carry this redirect; Patches 1–4 stay valid** (the `f_mix` screen, the double-count algebra,
-> the literature) but must be read through Patch 6. Sources: `FINDINGS.md`, `KAPPA_EFF_SCOPING.md`,
-> `runs/data/live_compare.csv`, `data/da_{screen,replay}.csv`.
+> job is to fix cooling *magnitude*. **Update (the merge, 2026-06-26):** that magnitude fix has a concrete
+> mechanism that is **already built** — **κ_eff** = `cooling_boost_kappa` (Rung A) raises the *emergent*
+> cooling in-structure; the calibration **target** is `θ(n_H)` (El-Badry `λδv`=κ_eff + Lancaster), the **knob**
+> is `f_κ(properties)`. The faithful *evaporation-decoupling* re-derivation is now an **optional high-fidelity
+> bonus**, not the endgame the goal requires. **Patches 5–7 carry the redirect; Patches 1–4 stay valid** (the
+> `f_mix` screen, the double-count algebra, the literature) but read through Patch 6 **and** this merge update.
+> Sources: `PLAN.md` ⭐ synthesis, `FINDINGS.md` §6, `KAPPA_EFF_SCOPING.md` §0/§6a, `RUNGB_SCOPING.md` §2a,
+> `runs/data/live_compare.csv`, `data/da_{screen,replay}.csv`, `data/kappa_backreaction.csv`.
 
 ---
 
@@ -143,6 +147,14 @@ use the flat Lancaster value with a $\theta_\mathrm{max}<1$ ceiling and label it
 digitized. (Caveat: our session could not open the PDFs — the El-Badry specifics rest on the maintainer's
 PDF check; verify `Lancaster 2021` vs `2025` Eq. 39 key.)
 
+**Reconciliation with the merge / `RUNGB_SCOPING.md` §2a.** "Don't extrapolate El-Badry's $\sqrt{\rho}$ *curve*
+to GMC density" stands. But El-Badry's **framework** is exactly TRINITY's: $\theta$ *emerges* from
+$\kappa_\mathrm{eff}=\lambda\delta v$, an adjustable 1D knob (their $\theta\approx0.61$ at $\lambda\delta v=1$,
+surveyed over a range). That knob **is** `cooling_boost_kappa` (`f_κ`). So El-Badry supplies the **mechanism**
+($\theta$ from $\kappa_\mathrm{eff}$) and **Lancaster supplies the GMC magnitude** ($\theta\approx0.9$–$0.99$);
+the calibration target is the two together, hit by tuning $f_\kappa(\text{properties})$ — not a flat scalar
+floor. Under this reading Patch 4 and `RUNGB_SCOPING.md` §2a agree.
+
 ---
 
 ## Patch 5 — the frozen screen is now backed by LIVE matched-$t$ runs (4/4 configs)
@@ -208,7 +220,15 @@ on trial and **does not work**:
 
 ---
 
-## Patch 7 — $\kappa_\mathrm{eff}$ is the principled endgame, and it is feasible (not just aspirational)
+## Patch 7 — $\kappa_\mathrm{eff}$ is the cooling MECHANISM (built); evaporation-decoupling is an optional bonus
+
+> **⭐ The merge (2026-06-26):** read this patch with the goal in front: *enhanced, density-dependent cooling
+> matched to obs/3D*. $\kappa_\mathrm{eff}$ (`cooling_boost_kappa`, Rung A) **is the mechanism that delivers it**
+> (raises emergent $L_\mathrm{cool}$ ×1.23–1.38, already built/gated); the remaining work is **calibrating
+> $f_\kappa(\text{properties})$** to the target $\theta(n_H)$ (El-Badry $\lambda\delta v=\kappa_\mathrm{eff}$ +
+> Lancaster). The *evaporation-decoupling* re-derivation discussed below is an **optional high-fidelity bonus**
+> (the 1D front-anchored $\dot M$ resists it — FM1/FM1b). The original "principled endgame" framing of this
+> patch is superseded by this mechanism/target/calibration split.
 
 The note lists $\kappa_\mathrm{eff}=\max(\kappa_\mathrm{Spitzer},\kappa_\mathrm{mix})$ as an out-of-scope
 ideal. A feasibility map (`KAPPA_EFF_SCOPING.md`, verified against source) shows it is bounded and

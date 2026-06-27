@@ -40,10 +40,18 @@
 
 ## 0. Verdict (TL;DR)
 
+> **⭐ Reframed by "the merge" (2026-06-26) — read this first.** The goal is **enhanced, density-dependent
+> cooling matched to obs/3D**, *not* evaporation suppression. **Rung A IS that mechanism** (κ_eff =
+> `cooling_boost_kappa` raises the emergent cooling, ×1.23–1.38) — not a mere "probe." The remaining work is
+> **calibrating `f_κ(properties)`** so the emergent θ tracks the target `θ(n_H)` (El-Badry `λδv`=κ_eff +
+> Lancaster). **Rung B (the faithful evaporation-decoupling re-derivation) is DEMOTED to an optional
+> high-fidelity bonus** — the 1D `dMdt` is front-anchored and resists it (`FM1`/`FM1b` in `RUNGB_SCOPING.md`),
+> and that suppression is not in the goal. Below, read "the goal/endgame = decoupling" through this demotion.
+
 **Is Option C possible? Yes — bounded, no hard showstoppers — and *more tractable than the methods note implied.*** It is a 2-rung ladder, not one thing:
 
-- **Rung A — Spitzer-prefactor inflation (`C_thermal → f_κ·C_thermal`, keeping `T^(5/2)`): DONE 2026-06-26.** 1 param (`cooling_boost_kappa`, default 1.0) + 3 one-line edits; byte-identical when off, 595 tests pass. Preserves the `T^(5/2)` form so the ICs and `(β,δ)` solver just re-converge. **Physically incomplete** — measured (§6a) it raises evaporation *with* cooling (`dMdt` ×1.08–1.17 alongside `Lcool` ×1.23–1.38; wrong sign vs El-Badry), so it is a back-reaction *probe*, not the faithful model.
-- **Rung B — faithful mixing-layer `κ_eff`: possible, but a genuine re-derivation of ~3 functions in `bubble_luminosity.py` + a new `κ_mix` model + full re-validation.** Multi-day workstream with its own writeup. **No showstoppers**, but the crux (decoupling cooling-up from evaporation-down) must live *inside* the structure solve — and a naive post-hoc version has already been tried and **failed** (see §4).
+- **Rung A — Spitzer-prefactor inflation (`C_thermal → f_κ·C_thermal`, keeping `T^(5/2)`): DONE 2026-06-26 — and it IS the cooling mechanism.** 1 param (`cooling_boost_kappa`, default 1.0) + 3 one-line edits; byte-identical when off, 595 tests pass. Preserves the `T^(5/2)` form so the ICs and `(β,δ)` solver just re-converge. Measured (§6a) it **raises the emergent cooling `Lcool` ×1.23–1.38** — the deliverable for the goal. It *also* nudges evaporation up (`dMdt` ×1.08–1.17), a **tolerated side effect** (stays positive/viable; the El-Badry evaporation-*down* coupling is a fidelity bonus, not the goal). Remaining work: **calibrate `f_κ(properties)` to `θ(n_H)`.**
+- **Rung B — faithful mixing-layer `κ_eff` (OPTIONAL high-fidelity bonus): possible, but a genuine re-derivation of ~3 functions in `bubble_luminosity.py` + a new `κ_mix` model + full re-validation.** Would make evaporation fall *with* cooling rising (El-Badry fidelity). **Not required for the goal**, and `FM1`/`FM1b` show the 1D front-anchored `dMdt` resists it. Multi-day workstream with its own writeup (`RUNGB_SCOPING.md`); a naive post-hoc version already **failed** (see §4).
 
 ## 1. Where Spitzer `κ_S = C·T^(5/2)` enters (3 sites, all `trinity/bubble_structure/bubble_luminosity.py`)
 
@@ -67,10 +75,10 @@ The **`L_conduction` integral** (`:702–747`) is already κ-independent — it 
 | change | `C_thermal → f_κ·C_thermal` (1 param + edits at `:291/:370/:406`) — **DONE** | `T^(5/2)` factor → `κ_eff(T)`; re-derive ICs (`:364–383`, numerical) + `dMdt` seed (`_get_init_dMdt`, `:291–294`); new `κ_mix ~ ρ c_p D_turb`, `D_turb ~ R2·v2` |
 | `(β,δ)` solver | unchanged (re-converges) | unchanged (re-converges) — see §2 |
 | ICs | preserved (`T^(5/2)` intact) | **re-derived** (numerical near-front) |
-| physics | raises cooling **and** evaporation (wrong sign) | decouples cooling-up / evaporation-down (the goal) |
+| physics | raises cooling (**the mechanism**); evaporation side-effect tolerated | decouples cooling-up / evaporation-down (fidelity bonus, *not* the goal) |
 | validation | test string-pins (`test_dR2min_magic_number.py` `_scalar_params` patched, `test_metadata.py`, `test_mu_audit_drift.py`) — 595 pass | rule-5 ladder + redo cleanroom C0 certification |
 | effort | ~hours (done 2026-06-26) | multi-day workstream |
-| status | **probe — DONE, gate passed** | **the endgame — scoped (`RUNGB_SCOPING.md`), not started** |
+| status | **the cooling mechanism — DONE, gated; next = f_κ calibration** | **optional bonus — scoped + prototyped offline (`RUNGB_SCOPING.md`): FM1 refuted, FM1b half-pass** |
 
 ## 4. The crux — and a documented prior failure
 
@@ -131,7 +139,7 @@ Two separate-process runs on the stiff dense edge `f1edge_hidens` (`mCloud 1e7`,
 | quantity | `f_κ=2 / f_κ=1` (early→late) | reading |
 |---|---|---|
 | `Lcool` (`bubble_LTotal`) | **1.38 → 1.23** | conduction-zone cooling rises *through the structure* — θ as an output ✓ |
-| `dMdt` (`bubble_dMdt`) | **1.17 → 1.08** | the El-Badry **coupling crux**: evaporation rises *with* cooling (wrong sign) ✓ confirmed |
+| `dMdt` (`bubble_dMdt`) | **1.17 → 1.08** | evaporation rises *with* cooling — a **tolerated side effect** (stays >0/viable; only the *optional* Rung-B bonus would suppress it) |
 | `Lmech` (`Lmech_total`) | 1.000 | sanity — mechanical input untouched |
 | `Eb` | 0.96 → 0.90 | bubble energy drained by the extra cooling |
 | `Pb`, `v2` | 0.97→0.91, 1.00→0.96 | mild softening; `R2` essentially unmoved (≤0.4%) |
@@ -150,4 +158,4 @@ decouples cooling-up from evaporation-down can reach the transition without the 
 - Closed-form vs numerical near-front IC for a `max()` κ — the `dMdt > 0` constraint (the cleanroom failure mode) is the gating risk; solve it first.
 - `κ_mix ~ ρ c_p D_turb` with `D_turb ~ λ δv ~ R2·v2` is a *model choice* — validate the form, don't assume it.
 - Re-validation cost is real (cleanroom C0 certification + full-run equivalence on stiff regimes). Budget for it.
-- Honesty: El-Badry's 3–30× evaporation suppression is the *target*; reproducing it is the success criterion, and a scalar/Spitzer-rescale provably cannot (§4–5).
+- Honesty: El-Badry's 3–30× evaporation suppression is the success criterion **for the optional Rung-B fidelity bonus**, not for the goal (which is enhanced density-dependent cooling, delivered by Rung-A κ_eff + `f_κ(properties)` calibration). A scalar/Spitzer-rescale provably cannot reproduce the *evaporation* suppression (§4–5) — but it *does* deliver the *cooling* enhancement the goal needs.

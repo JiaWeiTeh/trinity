@@ -1,4 +1,15 @@
-# Rung B — faithful `κ_eff` / mixing-layer interface: design & IC re-derivation scoping
+# Rung B — faithful `κ_eff` / mixing-layer interface (OPTIONAL high-fidelity bonus)
+
+> **⭐ DEMOTED by "the merge" (2026-06-26).** This whole doc is about making evaporation fall *while* cooling
+> rises (El-Badry fidelity). **That is no longer the main line.** The **goal** is enhanced, density-dependent
+> cooling matched to obs/3D, and the **mechanism for it is already built** — κ_eff = `cooling_boost_kappa`
+> (Rung A) raises the emergent cooling; the remaining work is **calibrating `f_κ(properties)`** to the target
+> `θ(n_H)` (see `KAPPA_EFF_SCOPING.md` §0 + `PLAN.md` ⭐ synthesis). The evaporation-decoupling re-derivation
+> below is an **optional bonus**: the 1D `dMdt` is anchored at the 3×10⁴ K front and **resists** it, which the
+> prototypes here (**FM1** — imposing `dMdt`, refuted; **FM1b** — interior cooling, right sign but negligible
+> magnitude) *prove*. Read FM1/FM1b as **useful negative results that confirm κ_eff is the mechanism**, not as
+> a path that must succeed. **§2a below is the canonical θ / `λδv` / `f_κ` / 0.95 reconciliation** — cited by
+> `PLAN.md`, `FINDINGS.md`, and `NOTE_PATCHES.md`.
 
 > ⚠️ **This document may be out of date — verify before trusting it.** It is a
 > point-in-time analysis/audit, not a maintained spec; the code moves faster
@@ -37,7 +48,7 @@
 > cooling/evaporation-decoupling argument below were each **independently re-derived and adversarially checked
 > by a separate verification pass** against current source (the front-balance ratio was confirmed numerically
 > to machine precision); the *eigenvalue-swap recommendation* was then overturned by the prototype. This is the
-> design doc the `KAPPA_EFF_SCOPING.md` §6.2 ("Rung B, the workstream") and §6.3 gate point at, now that
+> design doc the `KAPPA_EFF_SCOPING.md` §6 (Rung B plan + the "gate before B") point at, now that
 > Rung A is built and its back-reaction measured (`KAPPA_EFF_SCOPING.md` §6a). All file:line refs below were
 > spot-verified 2026-06-26 but **cite function names first** — line numbers drift, the structure does not.
 
@@ -380,6 +391,6 @@ design hypotheses cost two offline harnesses, not a production regression.
 Both reproduce from repo root (`python docs/dev/transition/pdv-trigger/data/make_fm1{,b}_*.py`), read the
 captured states `test/data/{dR2_stiff_state,residual_resample}_fixture.json`; no production edit, no full run.
 
-**Cross-refs.** `KAPPA_EFF_SCOPING.md` (§3 two-rung ladder, §6.2–6.3 plan/gate, §6a Rung A result),
+**Cross-refs.** `KAPPA_EFF_SCOPING.md` (§3 two-rung ladder, §6 plan/gate, §6a Rung A result),
 `PLAN.md` (status ledger; "Outcome & pivot"), `NOTE_PATCHES.md` Patch 7, the cleanroom `PLAN.md` §6.6
 (`dMdt<0` failure record), and `data/kappa_backreaction.csv` (the Rung A measurement this design responds to).

@@ -178,20 +178,22 @@ everywhere, so \(\theta_{\max}\mathrm{Da}/(1+\mathrm{Da})\) saturates back to a 
 normal clouds the trigger is <b>geometric blowout</b> (TRINITY&rsquo;s default already does this); the cooling
 boost corrects cooling <b>magnitude</b> through the handoff, it does not fire it. Live matched-\(t\) runs
 confirm: no constant fires cooling across density. The heavy 5e9 cloud is super-critical and hands off via the
-PdV / \(E_b\)-peak turnover. <b>Latest (2026-06-26):</b> the structural \(\kappa_{\text{eff}}\) endgame&rsquo;s
-first rung is built and gated (&sect;11) &mdash; it confirms a faithful, state-coupled \(\kappa_{\text{eff}}\)
-is required, not a scalar.</p>
+PdV / \(E_b\)-peak turnover. <b>Latest &mdash; the merge (2026-06-26):</b> the cooling-magnitude fix has a
+mechanism that is <b>already built</b> &mdash; \(\kappa_{\text{eff}}\) (<code>cooling_boost_kappa</code>, Rung A)
+raises the <i>emergent</i> cooling in-structure (&sect;11). The remaining work is <b>calibrating
+\(f_\kappa(\text{properties})\)</b> to the target \(\theta(n_H)\) (El-Badry \(\lambda\delta v{=}\kappa_{\text{eff}}\)
++ Lancaster). The evaporation-decoupling re-derivation is an <b>optional fidelity bonus</b>, not the goal.</p>
 </div>
 
 <figure>__FIG_IDEAS__<figcaption><b>The whole storyline at a glance.</b> Every transition-fix idea tried,
 left&rarr;right, with its verdict: the three scalar knobs (constant \(f_{\text{mix}}\), constant \(\theta\),
 \(\theta_{\text{target}}(\mathrm{Da})\)) are <span style="color:#b3392f"><b>refuted</b></span>, the live
-multiplier is <span style="color:#b3801f"><b>partial</b></span> (magnitude-only, mistimes by density), the
-\(\kappa_{\text{eff}}\) Rung-A structural probe is <span style="color:#2a8aa8"><b>this work</b></span>
-(gated/byte-identical-off), and the faithful Rung-B \(\kappa_{\text{eff}}\) is the
-<span style="color:#3a8a3f"><b>endgame</b></span>. The three lower panels are the real-data evidence for the
-key verdicts (\(f_{\text{mix}}\) spread, \(\mathrm{Da}\) saturation, and the Rung-A cooling-vs-evaporation
-coupling). Built by <code>data/make_ideas_comparison.py</code> from the committed CSVs.</figcaption></figure>
+multiplier is <span style="color:#b3801f"><b>partial</b></span> (magnitude-only, mistimes by density),
+\(\kappa_{\text{eff}}\) Rung A is the <span style="color:#2a8aa8"><b>cooling mechanism</b></span> (this work,
+gated/byte-identical-off), and the faithful Rung-B evaporation-decoupling is an <span style="color:#3a8a3f">
+<b>optional bonus</b></span>. The three lower panels are the real-data evidence for the key verdicts
+(\(f_{\text{mix}}\) spread, \(\mathrm{Da}\) saturation, and the Rung-A cooling enhancement). Built by
+<code>data/make_ideas_comparison.py</code> from the committed CSVs.</figcaption></figure>
 """
 
 SEC_SETUP = r"""
@@ -507,35 +509,45 @@ replay (&sect;6).</li>
 <li><b>The trigger for normal clouds is geometric blowout (\(R_2=r_{\text{Cloud}}\))</b> &mdash; which
 TRINITY&rsquo;s default already does. The &ldquo;runs never transition&rdquo; symptom is the cooling
 <i>magnitude</i>, not the trigger.</li>
-<li><b>Use the cooling boost to correct cooling MAGNITUDE</b> &mdash; a constant \(\theta\approx0.9\!-\!0.99\) (from
-the literature plateau, via the existing <code>theta_target</code> mode) so \(E_b,P_b,R_2,v_2\), and evaporation
-are right <i>through</i> the blowout handoff, <b>not</b> to fire it. The live runs confirm the magnitude correction
-is well-behaved (it does not distort the trajectory pathologically).</li>
+<li><b>Correct cooling MAGNITUDE with \(\kappa_{\text{eff}}\), calibrated to a density-dependent target</b>
+&mdash; <b>the merge:</b> \(\kappa_{\text{eff}}\) (<code>cooling_boost_kappa</code>, Rung A, <b>built</b>) is the
+in-structure <i>mechanism</i> that raises the emergent cooling; the calibration <i>target</i> is \(\theta(n_H)\)
+(El-Badry \(\lambda\delta v{=}\kappa_{\text{eff}}\) + Lancaster), the knob is \(f_\kappa(\text{properties})\). A
+<i>constant</i> \(\theta\) via <code>theta_target</code> is the degenerate special case (\(\approx0.95\) = the
+trigger); the real upgrade is the <b>density-dependent \(f_\kappa\) calibration</b>. So \(\theta,E_b,P_b,R_2,v_2\)
+come out right <i>through</i> the blowout handoff because the cooling fraction emerges per cloud.</li>
 <li><b>Heavy clouds</b> (super-critical, \(\text{PdV}/L_{\text{mech}}>1\)) &rarr; the <b>PdV / \(E_b\)-peak
 handoff</b>; cooling never fires for them.</li>
 <li><b>Never double-count</b> &mdash; the boosted loss <i>replaces</i> the explicit \(L_{\text{cool}}\) via the
 \(\max(\cdot)\) closure; it never stacks.</li>
 </ul>
-<div class="box hyp"><div class="lab">the long-term endgame</div>A constant \(\theta\) gets the magnitude
-right but cannot couple cooling to evaporation (it can&rsquo;t reproduce El-Badry&rsquo;s \(3\!-\!30\times\)
-evaporation suppression). The faithful form is a <b>\(\kappa_{\text{eff}}=\max(\kappa_{\text{Spitzer}},\,
-\kappa_{\text{mix}})\)</b> re-derivation, \(\kappa_{\text{mix}}\sim\rho\,c_p\,D_{\text{turb}}\),
-\(D_{\text{turb}}\sim\lambda\,\delta v\sim R_2 v_2\) &mdash; a re-derivation, not a coefficient swap. That is the
-endgame; the constant-magnitude correction is the right step now. <b>Its first rung is now built and gated
-&mdash; see &sect;11.</b></div>
+<div class="box hyp"><div class="lab">the optional high-fidelity bonus</div>\(\kappa_{\text{eff}}\) (Rung A)
+already delivers the <i>cooling</i> enhancement the goal needs. A separate, <b>optional</b> step would also make
+evaporation <i>fall</i> while cooling rises (El-Badry&rsquo;s \(3\!-\!30\times\) suppression) &mdash; a faithful
+\(\kappa_{\text{eff}}=\max(\kappa_{\text{Spitzer}},\,\kappa_{\text{mix}})\) re-derivation with
+\(\kappa_{\text{mix}}\sim\rho\,c_p\,\lambda\delta v\). But two offline prototypes (FM1/FM1b, &sect;11) show the
+1D \(\dot M\) is <b>front-anchored and resists it</b>, and the suppression is <b>not in the goal</b>. So it is a
+fidelity bonus, not a blocker. <b>The main line is \(f_\kappa(\text{properties})\) calibration &mdash; see
+&sect;11.</b></div>
 """
 
 SEC_KAPPA = r"""
-<h2 id="kappa">11 &middot; \(\kappa_{\text{eff}}\) Rung A &mdash; the endgame&rsquo;s first rung, built &amp; gated</h2>
-<p>The endgame (&sect;10) is a faithful, state-coupled \(\kappa_{\text{eff}}\) <i>inside</i> the structure
-solve. Before that multi-day re-derivation, this session built <b>Rung A</b>: a structural <b>probe</b> that
-inflates the Spitzer prefactor \(C_{\text{thermal}}\!\to\!f_\kappa\,C_{\text{thermal}}\) at all three sites it
-enters <code>bubble_luminosity.py</code> (the \(\dot M\) seed, the backward-ODE initial conditions, and the
-temperature-ODE conduction term). Unlike the scalar boost on \(L_{\text{cool}}\), this raises cooling
-<i>through</i> the structure, so the loss fraction \(\theta\) emerges as an <b>output</b>. It is gated by a new
-<code>cooling_boost_kappa</code> param (default \(f_\kappa\!=\!1.0\)): <b>byte-identical when off</b> (the
-\(f_\kappa\!=\!1\) run reproduces the <code>f1edge_hidens</code> <code>dictionary.jsonl</code> bit-for-bit), full
-<code>pytest</code> 595 green, ruff F-rules clean. <b>Production is unchanged by default.</b></p>
+<h2 id="kappa">11 &middot; \(\kappa_{\text{eff}}\) Rung A &mdash; the cooling MECHANISM, built &amp; gated</h2>
+<div class="box" style="border-left:4px solid #2a8aa8"><b>The merge (2026-06-26).</b> The goal is
+<b>enhanced, density-dependent cooling matched to obs/3D</b> &mdash; and \(\kappa_{\text{eff}}\) is the
+<b>mechanism that delivers it</b>, already built. The remaining work is <b>calibrating
+\(f_\kappa(\text{properties})\)</b> so the emergent \(\theta\) tracks the target \(\theta(n_H)\) (El-Badry
+\(\lambda\delta v{=}\kappa_{\text{eff}}\) + Lancaster). The faithful evaporation-<i>decoupling</i>
+(&ldquo;Rung B&rdquo;) is an <b>optional high-fidelity bonus</b> &mdash; the 1D \(\dot M\) is front-anchored and
+resists it (FM1/FM1b, <code>RUNGB_SCOPING.md</code>); that suppression is not in the goal.</div>
+<p>This session built <b>Rung A</b> = a new gated param <code>cooling_boost_kappa</code> that inflates the
+Spitzer prefactor \(C_{\text{thermal}}\!\to\!f_\kappa\,C_{\text{thermal}}\) at all three sites it enters
+<code>bubble_luminosity.py</code> (the \(\dot M\) seed, the backward-ODE initial conditions, and the
+temperature-ODE conduction term). Unlike a scalar boost on \(L_{\text{cool}}\), this raises cooling
+<i>through</i> the structure, so the loss fraction \(\theta\) <b>emerges as an output</b> (El-Badry&rsquo;s own
+approach). Default \(f_\kappa\!=\!1.0\) is <b>byte-identical</b> (the \(f_\kappa\!=\!1\) run reproduces the
+<code>f1edge_hidens</code> <code>dictionary.jsonl</code> bit-for-bit), full <code>pytest</code> 595 green, ruff
+clean. <b>Production is unchanged by default.</b></p>
 <figure>__FIG_KAPPA__<figcaption>Rung-A back-reaction on the stiff dense edge <code>f1edge_hidens</code>,
 \(f_\kappa\!=\!2\) vs the \(f_\kappa\!=\!1\) baseline, compared at <b>matched simulation time</b>. <b>Left
 (absolute):</b> the cooling luminosity itself &mdash; both runs rise as the bubble develops, and the
@@ -543,23 +555,21 @@ temperature-ODE conduction term). Unlike the scalar boost on \(L_{\text{cool}}\)
 cooling. <b>Middle (ratios):</b> the same comparison as \(f_\kappa\!=\!2\div f_\kappa\!=\!1\) &mdash; a value
 <i>above 1.0 means the knob raised it</i>; the downward slope is the boost <i>shrinking</i> over time (from
 \(\sim\!1.5\times\) to \(\sim\!1.23\times\)), not cooling falling. Cooling is raised \(1.2\!-\!1.5\times\)
-&mdash; the intended effect &mdash; <b>but the evaporative mass flux \(\dot M\) rides along</b>
-(\(1.08\!-\!1.17\times\)), exactly the El-Badry coupling a faithful \(\kappa_{\text{eff}}\) must instead
-<i>suppress</i>; \(E_b\) is drained to \(0.90\!-\!0.96\times\). <b>Right:</b> even a \(2\times\) \(\kappa\)
-moves the loss-ratio proxy only \(+0.05\!-\!0.10\), staying far below the \(0.95\) trigger. From
+&mdash; the intended effect (the goal) &mdash; while the evaporative mass flux \(\dot M\) rises only mildly
+(\(1.08\!-\!1.17\times\), a <b>tolerated side effect</b>; an optional fidelity bonus would suppress it instead);
+\(E_b\) is drained to \(0.90\!-\!0.96\times\). <b>Right:</b> at \(f_\kappa\!=\!2\) the loss-ratio proxy moves
+\(+0.05\!-\!0.10\) &mdash; so reaching the obs/3D target needs a larger, <b>calibrated</b> \(f_\kappa\). From
 <code>data/make_kappa_backreaction.py</code> &rarr; <code>data/kappa_backreaction.csv</code>.</figcaption></figure>
-<p><b>What Rung A settles.</b> (i) The plumbing takes a \(\kappa\) knob cleanly &mdash; cooling genuinely rises
-through the structure, vindicating the structural approach over a scalar \(L_{\text{cool}}\) rescale. (ii) The
-crux is real and <b>quantified</b>: a flat \(f_\kappa\) raises \(\dot M\) too (\(\approx\) half the fractional
-rise of \(L_{\text{cool}}\)) &mdash; wrong sign vs El-Badry. (iii) Headroom is small and the back-reaction grows
-with \(f_\kappa\), so <b>brute-forcing \(f_\kappa\) toward the trigger is non-viable</b>. Net: Rung A
-<b>confirms Rung B is required, not optional</b> &mdash; only a state-coupled \(\kappa_{\text{eff}}\) that
-decouples cooling-up from evaporation-down reaches the transition. Full scope &amp; the measured table:
-<code>KAPPA_EFF_SCOPING.md</code> &sect;6a. <b>Rung B is now scoped on paper</b> (two independent verifications)
-in <code>RUNGB_SCOPING.md</code>: the conductive flux at the front is <i>one quantity read twice</i>, so the
-faithful \(\kappa_{\text{eff}}\) must <b>sever \(\dot M\) from the front balance</b> (entrainment-set,
-\(>0\) by construction) &mdash; not swap \(\kappa\) &mdash; with a <b>numerical</b> mix-branch near-front IC
-and an entrainment efficiency \(\alpha_{\text{mix}}\!\ll\!1\) as the real model. No production code touched.</p>
+<p><b>What Rung A settles.</b> (i) \(\kappa_{\text{eff}}\) genuinely <b>raises the emergent cooling</b> through
+the structure (\(\times1.23\!-\!1.38\)) &mdash; it <b>is the mechanism</b> the goal needs, vindicated over a
+scalar \(L_{\text{cool}}\) rescale. (ii) It also nudges \(\dot M\) up (\(\approx\) half the fractional rise of
+\(L_{\text{cool}}\)) &mdash; a <b>tolerated side effect</b> (\(\dot M\) stays positive/viable), <i>not</i> a
+problem for the goal. (iii) <b>Remaining work = calibrate \(f_\kappa(\text{properties})\)</b> so the emergent
+\(\theta\) tracks the target \(\theta(n_H)\) &mdash; reusing this knob, no new production code. The faithful
+evaporation-<i>decoupling</i> (make \(\dot M\) <i>fall</i> while cooling rises) is an <b>optional bonus</b>:
+two offline prototypes (<code>RUNGB_SCOPING.md</code> &mdash; <b>FM1</b>: imposing \(\dot M\) refuted;
+<b>FM1b</b>: an interior loss term gives the El-Badry sign but negligible magnitude) show the 1D front-anchored
+\(\dot M\) resists it. Full table: <code>KAPPA_EFF_SCOPING.md</code> &sect;6a. No production code touched.</p>
 """
 
 SEC_REPRO = r"""

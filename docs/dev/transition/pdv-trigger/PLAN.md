@@ -38,7 +38,43 @@ The recheck list the banners demand. **Every visit:** re-verify the anchors belo
 *then* read on. All findings here are **already persisted** (CSVs + figures under `data/` and this
 folder) — do **not** re-run the hours-long sims to recover them; reproduce only to extend.
 
+### ⭐ Current synthesis — the GOAL and "the merge" (read this first; 2026-06-26)
+
+**The goal (north star, maintainer-stated):** modify the cooling so this 1D sim has **enhanced cooling
+comparable to observations and 3D simulations**, and **somewhat dependent on cloud/cluster/bubble
+properties** — i.e. raise the loss fraction `θ = L_cool/L_mech` from the 1D-resolved **0.25 (diffuse) → 0.70
+(dense)** at blowout toward the obs/3D values (Lancaster ≈ **0.9–0.99**; El-Badry `θ(n_H, λδv)`), **density-
+dependently**.
+
+**The merge (current understanding — supersedes the earlier "κ_eff endgame / evaporation-decoupling"
+framing):**
+| role | what | status |
+|---|---|---|
+| **Mechanism** | **κ_eff** = `cooling_boost_kappa` (Rung A) — enhances conduction ⇒ more ~10⁵ K radiating gas ⇒ raises **emergent** cooling in-structure (θ comes out, not imposed) | **built, gated, byte-identical-off**; measured `bubble_LTotal` ×1.23–1.38 at f_κ=2 |
+| **Target** | **θ(n_H)** from El-Badry (`λδv`=κ_eff, a *set* 1D knob) + Lancaster (3D, parameter-free ≈0.9–0.99) | the calibration data |
+| **Knob** | **f_κ(properties)** tuned so emergent θ → target, density-dependently | the remaining work = **calibration** |
+
+- **`θ_target` vs κ_eff was a FALSE dichotomy** — `θ(n_H)` is the *target*, κ_eff is the *mechanism* of the
+  same knob. (`RUNGB_SCOPING.md` §2a is the canonical θ/`λδv`/`f_κ`/0.95 reconciliation.)
+- **Evaporation-decoupling (the old "Rung B endgame") is DEMOTED to an optional high-fidelity bonus.** The
+  1D `dMdt` is anchored at the 3×10⁴ K front, so it *resists* El-Badry-style evaporation suppression — but
+  that suppression is **not in the goal**. `FM1`/`FM1b` (`data/fm1*_*.py`) are **useful negative results**
+  that ruled out the wrong knobs (imposing `dMdt`; an interior loss-integrand term) and point **back to
+  κ_eff** as the mechanism.
+- **Remaining work = calibration of f_κ(properties) to obs/3D θ(n_H), reusing the existing knob — no new
+  production code required for the calibration itself.** Next concrete step: an offline sweep of
+  `cooling_boost_kappa` on captured states / a density grid → the f_κ→emergent-θ response + viability.
+
 **Status ledger (newest first):**
+- **2026-06-26 (the merge) — reframed around the GOAL; κ_eff recognized as the cooling MECHANISM, evaporation-
+  decoupling demoted to a fidelity bonus.** Critical re-think (maintainer steer): the goal is *enhanced,
+  density-dependent cooling matched to obs/3D*, **not** evaporation suppression. κ_eff (`cooling_boost_kappa`,
+  Rung A, already built) **is** the in-structure cooling mechanism — it raised `bubble_LTotal` ×1.23–1.38. The
+  `θ_target`-vs-κ_eff split was a false dichotomy: `θ(n_H)` (El-Badry `λδv`=κ_eff + Lancaster) is the *target*,
+  κ_eff is the *mechanism*, `f_κ(properties)` is the knob to calibrate. `FM1`/`FM1b` are negative results that
+  ruled out the wrong knobs and point back to κ_eff. **Remaining work = f_κ calibration** (reuses the existing
+  knob; no new production code). All workstream docs + the storyline reframed to lead with this (see
+  ⭐ synthesis block above). Next: offline `cooling_boost_kappa` sweep → emergent-θ response + viability.
 - **2026-06-26 (FM1b) — second offline prototype: in-structure interface cooling lowers `dMdt` (El-Badry sign
   ✓) but negligibly. No code touched.** `data/make_fm1b_evapsign.py` monkeypatches `net_coolingcurve.get_dudt`
   to add localized ~10⁵ K cooling (`×(1+A·gaussian)`) and runs the **full** `get_bubbleproperties_pure` on the
@@ -141,7 +177,7 @@ folder) — do **not** re-run the hours-long sims to recover them; reproduce onl
   endgame) — §Refined plan. Ran the **8-config staged shadow** (frozen trajectory) → §Stage results.
   **Verdict so far:** normal clouds want a *cooling boost* (`f_mix≈1.5–2` lands the ratio near the
   transition); heavy 5e9 wants the *PdV/`ebpeak`* handoff — a clean sub/super-critical split. A *constant*
-  knob can't place the transition at blowout across the density grid (θ_at_blowout spans 1.1→3.1) ⇒ points
+  knob can't place the transition at blowout across the density grid (the firing f_mix spans 1.1→3.1) ⇒ points
   to the coupled `θ_target(Da)`/`κ_eff` form. **Production still unchanged** (grep-confirmed, anchor 3).
 - **2026-06-23** — Scoped the maintainer's "PdV in the trigger" question. "PdV negligible" is false
   (`PdV/Lmech` median 0.43–0.55); the real fork is `PdV/Lmech ≷ 1`. Offline-tested **reading B**
@@ -179,7 +215,7 @@ screens reproduce byte-identical, real-Da replay re-passed its gate, 20/20 tests
 
 ---
 
-**Last updated:** 2026-06-24 (live status in the re-entry ledger above). **Branch:**
+**Last updated:** 2026-06-26 (live status in the re-entry ledger above). **Branch:**
 `feature/PdV-trigger-term`. This note answers the maintainer's question ("add a PdV term to the transition
 trigger — what was the argument against it, and is it still valid for larger clusters?"), the **2026-06-23
 redirect** (test reading B directly; what does the standalone `PdV/Lmech` diagnostic buy us), and the
@@ -360,7 +396,7 @@ transitions, instead of never (reading B) or at an arbitrary epoch.
 placeholder: the mixing-layer luminosity is **not** constant — it scales with the contact-discontinuity area
 (`∝R2²`), the shear/turbulent velocity (`∝v2` / hot-gas sound speed), and the mixing-layer cooling function
 (Damköhler number; Tan/Oh/Gronke 21, Lancaster fractal-area scaling). The data already argues coupling is
-needed: **θ_at_blowout spans 1.1 → 3.1** across configs, so no single constant fires them all at blowout.
+needed: **the firing f_mix spans 1.1 → 3.1** (with-PdV) across configs, so no single constant fires them all at blowout.
 Upgrade path: `θ_cool(R2, v2, T)` from the mixing-layer scalings — mark the constant version with a
 `ponytail:` comment naming that ceiling.
 
@@ -428,7 +464,11 @@ trigger — the same `Lloss_eff`. Shadow ⇒ reconstruct the trigger ratio only;
 moves blowout itself; the unboosted trajectory is *not* the state the boosted ODE visits. Shadow fire-times are a
 screen, **not predictions** — the verdict needs Tier-2.
 
-### Next deliverable (PRIMARY, 2026-06-25) — the coupled `θ_target(Da)`, not a constant θ
+### (HISTORICAL, superseded by the merge) Next deliverable that *was* PRIMARY (2026-06-25) — the coupled `θ_target(Da)`
+
+> **⭐ SUPERSEDED (2026-06-26):** `θ_target(Da)` was both **REFUTED** (below) *and* the framing is obsolete — the
+> primary next deliverable is now **`f_κ(properties)` calibration** via the κ_eff mechanism (⭐ synthesis at
+> top). Kept as the motivating analysis for *why* a constant fails and a density-dependent target is needed.
 
 > **STATUS 2026-06-25: `θ_target(Da)` was TESTED and is REFUTED** — Step A (offline proxy) and Step A′ (the
 > gate-validated real-Da replay) are **both NO-GO**. The rationale below is kept as the motivating argument;
@@ -448,7 +488,7 @@ trigger already would if cooling reached 0.95. **A constant target is not a real
 
 **The only non-degenerate upgrade is a target that VARIES along the trajectory:** `θ_target(Da)`,
 `Da = t_turb/t_cool` (Damköhler number) — density- AND time-dependent. Because it moves with the state, it
-absorbs the density/SFE/stage confound that the edge configs cannot separate (recall θ_at_blowout spans
+absorbs the density/SFE/stage confound that the edge configs cannot separate (recall the firing f_mix spans
 1.1→3.1 across the grid — no constant fires them all). Functional form to validate:
 `θ_target(state) = θ_max · Da/(1+Da)` — recovers El-Badry (high-Da, interface-dominated) and Weaver
 (low-Da, energy-driven) limits from one dimensionless ratio.
@@ -523,11 +563,15 @@ cooling balance.** Revised program:
   2. **Treat blowout as the transition trigger for normal clouds** — which TRINITY's default already does
      (cooling_balance rarely fires first; the momentum phase begins at blowout). The "runs never transition"
      symptom is the *cooling magnitude*, not the trigger.
-  3. **Use the cooling boost (constant `θ`≈0.9–0.99 from literature, via the existing `theta_target` mode)
-     to correct cooling MAGNITUDE** so `Eb, Pb, R2, v2`, and evaporation are right *through* the blowout
-     handoff — not to fire it. (`κ_eff`, the faithful interface re-derivation, stays the long-term endgame —
-     feasibility + scope in **`KAPPA_EFF_SCOPING.md`**: possible/bounded, the `(β,δ)` solver survives, crux is
-     the cooling↔evaporation decoupling a naive post-hoc sink already stalled on.)
+  3. **Correct the cooling MAGNITUDE with the κ_eff mechanism, calibrated to a density-dependent target.**
+     **Update (the merge, 2026-06-26):** κ_eff = `cooling_boost_kappa` (Rung A, **already built/gated**) is the
+     in-structure mechanism that raises emergent cooling (`bubble_LTotal` ×1.23–1.38); the calibration *target*
+     is `θ(n_H)` (El-Badry `λδv`=κ_eff + Lancaster ≈0.9–0.99), and the knob is `f_κ(properties)`. A *constant*
+     `θ` via `theta_target` is the degenerate special case (≈0.95 = the trigger); the real upgrade is the
+     **density-dependent f_κ calibration**, not a scalar floor. So `θ, Eb, Pb, R2, v2` come out right *through*
+     the blowout handoff because the cooling fraction emerges per cloud. (The faithful evaporation-decoupling
+     re-derivation in **`KAPPA_EFF_SCOPING.md`** / **`RUNGB_SCOPING.md`** is an *optional high-fidelity bonus*,
+     not required for the goal — the 1D front-anchored `dMdt` resists it; see `FM1`/`FM1b`.)
   4. **Confirm with live matched-`t` runs** that the magnitude correction doesn't distort the trajectory.
 
 **Data:** 7/8 offline-reconstructable (6 cleanroom h0 + `budget_fail_repro`); `fail_helix` has only logs (collapses
@@ -676,7 +720,15 @@ given the offline verdict** — it confirms, it does not change, the reading-B f
 - `data/pdv_combined_trigger.csv` (+ `data/make_combined_trigger_table.py`, figure `pdv_combined_trigger.png`)
   — the §Offline-test reading-B first-fire table. Regenerate: `python docs/dev/transition/pdv-trigger/data/make_combined_trigger_table.py`.
 - `data/pdv_regime_budget.csv` (+ `data/make_pdv_regime_table.py`) — the §Evidence table.
+- `data/da_screen.csv` / `data/da_replay.csv` (+ `make_da_screen.py` / `make_da_replay.py`, figs
+  `da_screen.png` / `da_replay.png`) — the offline Da-shape screen + the gate-validated real-Da replay that
+  **refuted `θ_target(Da)`**.
+- **κ_eff / the merge:** `data/kappa_backreaction.csv` (+ `make_kappa_backreaction.py`, fig
+  `kappa_backreaction.png`) — Rung A back-reaction (`bubble_LTotal` ×1.23–1.38, the **cooling mechanism** at
+  work); `ideas_comparison.png` (+ `make_ideas_comparison.py`) — the all-ideas scoreboard.
+- **Rung-B negative results (offline, optional-bonus line):** `data/fm1_rootcheck.csv` (+ `make_fm1_rootcheck.py`,
+  fig `fm1_rootcheck.png`) — FM1 (imposing `dMdt` refuted); `data/fm1b_evapsign.csv` (+ `make_fm1b_evapsign.py`,
+  fig `fm1b_evapsign.png`) — FM1b (interior cooling: El-Badry sign, negligible magnitude).
+- Storyline report: `make_pdvtrigger_report.py` → `pdvtrigger_report.html`.
 - Upstream (committed): `../cleanroom/data/c0_*_h0.csv`, `../../failed-large-clouds/data/budget_*.csv`,
   `../pt4/r1shadow/r1_shadow_summary.csv`.
-</content>
-</invoke>

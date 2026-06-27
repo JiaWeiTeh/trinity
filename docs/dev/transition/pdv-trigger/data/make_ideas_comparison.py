@@ -41,8 +41,8 @@ _LADDER = [
     ("constant θ", "max(Lcool, θ·Lmech)", "θ=0.95 IS the\ntrigger → degenerate", "REFUTED", _RED, False),
     ("θ_target(Da)", "θmax·Da/(1+Da)", "Da≫1 everywhere\n→ saturates; n-nonmono", "REFUTED", _RED, False),
     ("multiplier f=2\n(live runs)", "scalar boost on Lcool", "dense fires at birth;\ncompact/diffuse miss", "PARTIAL", _AMBER, False),
-    ("κ_eff Rung A\n(this work)", "C_thermal → f_κ·C\n(structural)", "Lcool×1.3 but\ndMdt×1.1 rides along", "PROBE", _BLUE, True),
-    ("κ_eff Rung B", "state-coupled κ_eff\ninside structure solve", "decouples cooling↑\n/ evaporation↓", "ENDGAME", _GREEN, False),
+    ("κ_eff Rung A\n(this work)", "C_thermal → f_κ·C\n(structural)", "Lcool ×1.3:\nthe cooling mechanism", "MECHANISM", _BLUE, True),
+    ("κ_eff Rung B", "evaporation\ndecoupling", "optional fidelity;\n1D dMdt resists it", "BONUS", _GREEN, False),
 ]
 
 
@@ -82,10 +82,9 @@ def _ladder(ax):
     ax.text(0.0, 0.96, "Transition-fix ideas — what was tried, and the verdict",
             ha="left", va="top", fontsize=12.5, fontweight="bold", transform=ax.transAxes)
     ax.text(0.0, 0.05,
-            "scalar knobs (red) cannot put the loss fraction at the 0.95 trigger across density; "
-            "a constant multiplier (amber) only fixes magnitude and mistimes by density; "
-            "the κ_eff structural probe (blue, gated/byte-identical-off) confirms a faithful, "
-            "state-coupled κ_eff (green) is the endgame.",
+            "scalar knobs (red) can't span density; a constant multiplier (amber) only fixes "
+            "magnitude, mistimes by density; κ_eff Rung A (blue, gated) IS the cooling mechanism "
+            "— calibrate f_κ(properties) to θ(n_H); evaporation-decoupling (green) is an optional bonus.",
             ha="left", va="bottom", fontsize=7.8, color="0.3", transform=ax.transAxes)
 
 

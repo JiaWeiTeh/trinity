@@ -25,7 +25,8 @@
 > that produced each artifact.
 >
 > 🔗 **Cross-check the sibling docs — keep the workstream self-consistent.** This file is one of
-> several living docs for its workstream (its `PLAN.md`, `FINDINGS.md`, `runs/README.md`, `NOTE_PATCHES.md`,
+> several living docs for its workstream (its `PLAN.md`, `FINDINGS.md`, `KAPPA_EFF_SCOPING.md`,
+> `RUNGB_SCOPING.md`, `NOTE_PATCHES.md`,
 > and any other notes in the same folder). They drift out of sync *with each other* as fast as they drift
 > from the code. Any agent or person editing one MUST, as part of the visit, circle back through the
 > siblings and reconcile: if a number, status, claim, or line reference here contradicts a sibling — or a
@@ -38,7 +39,9 @@ bounded the knob (`f_mix ≈ 1.4–2.8`) but cannot forecast, because boosting c
 `Pb → PdV → Eb(t),R2(t),v2(t)` and so **moves blowout itself**. Only a live boosted run, compared
 to its `none` baseline at matched simulation time in a **separate process**, settles whether a
 **constant** `f_mix` fires the handoff near blowout across the density grid, or whether the spread
-demands the coupled `θ_target(Da)` / `κ_eff` form.
+demands a **density-dependent** enhancement. **Outcome (the merge, 2026-06-26):** no constant fires across
+density; the `Da`-coupled form was **refuted**; the answer is **κ_eff** (`cooling_boost_kappa`) as the cooling
+*mechanism* with `f_κ(properties)` calibrated to the `θ(n_H)` target (`PLAN.md` ⭐ synthesis).
 
 ## Zero-contamination contract (why this is trustworthy)
 
@@ -99,7 +102,8 @@ python docs/dev/transition/harness/run_stamped.py --check outputs/pdvlive/*
   committed; only the distilled CSV is.
 
 **Open question this answers:** does the live boosted trajectory still hand off near blowout (frozen
-screen ≈ right), or does moving `Pb`/blowout break the constant-`f_mix` story (⇒ `θ_target(Da)`)?
+screen ≈ right), or does moving `Pb`/blowout break the constant-`f_mix` story (⇒ a density-dependent
+enhancement)? *(Answered: yes — the merge's `f_κ(n_H)` calibration, not the refuted `θ_target(Da)`.)*
 
 ## Live results (2026-06-25) — 4 of 4 configs; constant f=2 over/under-shoots by density
 
@@ -126,8 +130,10 @@ A constant `f_mix=2` lands **differently per density** — the headline (`data/l
 **Verdict:** (1) boosting cooling materially moves the trajectory (Eb −47% compact, −24% diffuse at f=3) —
 the frozen screen *bounds* but does not *forecast*; (2) a single constant `f_mix` over-boosts the dense end
 (fires at birth) and — now confirmed **live** — under-boosts the diffuse end (does not fire even at f=3;
-blowout intervenes at ~0.61 Myr) — the spread argues for the density-dependent `θ_target(n)=θ_lit(n)`
-calibration, **not** a constant; (3) heavy clouds collapse regardless of cooling. The zero-code
+blowout intervenes at ~0.61 Myr) — the spread argues for a **density-dependent** enhancement, **not** a
+constant. **Per the merge:** deliver that via **κ_eff** (`cooling_boost_kappa`) as the cooling *mechanism*,
+calibrating `f_κ(properties)` to the `θ(n_H)` target (El-Badry `λδv`=κ_eff + Lancaster) — *not* the refuted
+`θ_target(Da)`; (3) heavy clouds collapse regardless of cooling. The zero-code
 `L_cool/L_mech`-vs-n diagnostic figure (`../theta_vs_density.png`) and the verified write-up
 (`../FINDINGS.md`) close the loop — calibrate to θ_lit(n). **Caveat:** the figure's literature band is still
 SCHEMATIC pending a PDF digitize (`NOTE_PATCHES.md` Patch 4), so it quantifies **no** gap; the

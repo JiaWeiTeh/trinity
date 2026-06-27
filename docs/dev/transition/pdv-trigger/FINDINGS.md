@@ -58,6 +58,13 @@ density — so **no single constant `f_mix` works across the density range**; th
 density-dependent target. Support rests on **§1 (boost-to-trigger spread) and §3 (live firing behaviour)**,
 both solid; the literature-`θ_lit(n)` comparison (§2) is currently **schematic** and not yet evidence.
 
+> **Update (the merge, 2026-06-26):** the "density-dependent target" is now concrete — the **mechanism** is
+> **κ_eff** (`cooling_boost_kappa`, **Rung A, built/gated**), which raises the *emergent* cooling in-structure
+> (§7 — measured `bubble_LTotal` ×1.23–1.38); the **target** is `θ(n_H)` (El-Badry `λδv`=κ_eff + Lancaster);
+> the **knob** is `f_κ(properties)`. So the goal is **enhanced, density-dependent cooling matched to obs/3D**,
+> delivered by *calibrating* f_κ — not by a scalar floor and not by chasing evaporation suppression. See
+> `PLAN.md` ⭐ synthesis and `RUNGB_SCOPING.md` §2a (the canonical θ/`λδv`/`f_κ`/0.95 reconciliation).
+
 ---
 
 ## 1. [data] Boost needed to reach the 0.95 trigger rises steeply as density falls
@@ -127,6 +134,11 @@ HTTP 403**, so El-Badry's *specific* numbers (Fig 7 @ 10 Myr; Eq 35 √ρ form; 
   (ambient n ~ 0.1–10); its θ(n) **must not be pushed to GMC densities**. Best read on shape:
   **flat-and-high** — the plateau is well-supported, but the exact slope across 1e2–1e6 is **inferred**
   (no accessible source tabulates θ at 1e2/1e4/1e6). [schematic / to-verify]
+  - **Reconciliation with `RUNGB_SCOPING.md` §2a (the merge):** "don't push El-Badry's √ρ *curve* to GMC
+    density" stands — but El-Badry's *framework* (θ emerges from `κ_eff = λδv`, a set 1D knob) is exactly the
+    mechanism TRINITY uses (`cooling_boost_kappa`). So El-Badry supplies the **mechanism/parametrization** and
+    **Lancaster supplies the GMC magnitude** (θ ≈ 0.9–0.99); the calibration target is the two together, hit by
+    tuning `f_κ`. The two docs are consistent under this reading.
 - **If the band is redrawn flat at θ_lit ≈ 0.95**, the gap (θ_lit − TRINITY) is **positive everywhere** and
   **shrinks 0.70 (diffuse, 1e2) → 0.25 (dense, 1e6)** (0.95 − 0.250 = 0.70; 0.95 − 0.697 = 0.253), with
   `pl2_steep` an outlier (~0.61, its L/Lm anomalously low at 0.342). This **resolves the negative-gap
@@ -135,10 +147,13 @@ HTTP 403**, so El-Badry's *specific* numbers (Fig 7 @ 10 Myr; Eq 35 √ρ form; 
   conditional on the plateau holding at the diffuse end — unverified]
 - **Critical degeneracy [data/interpretation]:** if θ_lit ≈ 0.95 and flat, calibrating the boost to
   θ_lit(n) gives f_mix(n) = 0.95/(L_cool/L_mech) = our existing `fmix_no_pdv` column **bit-identically**,
-  because TRINITY's trigger threshold *is* 0.95. So "calibrate to θ_lit" is the **same arithmetic** as
-  "calibrate to the 0.95 trigger" — the θ_lit framing adds **no quantitative content** over §1 unless θ_lit
-  is *not* flat. This is why the real upgrade is the **θ_target(Da)** form (target varying along the
-  trajectory) — see `PLAN.md`.
+  because TRINITY's trigger threshold *is* 0.95. So a **flat** "calibrate to θ_lit" is the **same arithmetic**
+  as "calibrate to the 0.95 trigger" — it adds **no content** over §1. The escape is therefore a **non-flat,
+  density-dependent target** that the cooling fraction is calibrated to. **Update (the merge, 2026-06-26):**
+  the way to deliver that is the **κ_eff mechanism** — `cooling_boost_kappa` makes θ *emerge* per cloud (§7),
+  and `f_κ(properties)` is calibrated so emergent θ tracks `θ(n_H)` (El-Badry `λδv`=κ_eff + Lancaster). This
+  **supersedes** the earlier pointer to `θ_target(Da)` (now **refuted** — §5; Da≫1, non-monotonic, saturates):
+  the density-dependence must come from `f_κ(n_H)`, not from a `Da`-coupled scalar floor.
 - **Action:** still do **NOT** redraw the figure with a flat band (that is just another schematic); redraw
   only once Lancaster θ(n) is actually digitized. The TRINITY trend and the §1 boost spread are unaffected
   by any of this.
@@ -203,7 +218,28 @@ sustained way. This frozen-vs-live gap is the main open interpretive question.
   ratio only 0.25–0.70 there). See PLAN.md "Outcome & pivot". Artifacts: `data/make_da_replay.py`,
   `data/da_replay.csv`, `da_replay.png`. [data]
 
-## 6. Provenance
+## 6. [data] κ_eff IS the cooling mechanism — Rung A (the merge, 2026-06-26)
+
+The pivot's "cooling boost corrects *magnitude*" (§5) now has a concrete, **in-structure** mechanism, and it
+is **already built**: `cooling_boost_kappa` (`f_κ`, default 1.0, gated/byte-identical-off) multiplies the
+Spitzer conduction coefficient `C_thermal` at all three sites in `bubble_luminosity.py` (`:291/:370/:406`).
+Enhancing conduction puts **more gas in the ~10⁵ K radiating band**, so the cooling **emerges** higher (θ is an
+*output*, El-Badry's approach — not a post-hoc floor).
+
+- **Measured [data]:** at matched `t` on the stiff dense edge (`f1edge_hidens`), `f_κ=2` raises the resolved
+  cooling `bubble_LTotal` **×1.23–1.38**, moving the loss-ratio proxy **+0.05–0.10** toward the trigger.
+  Artifacts: `data/kappa_backreaction.csv` + `kappa_backreaction.png` (full table in `KAPPA_EFF_SCOPING.md` §6a).
+- **The merge:** κ_eff is the **mechanism**; `θ(n_H)` (El-Badry `λδv`=κ_eff + Lancaster ≈0.9–0.99) is the
+  **target**; `f_κ(properties)` is the knob. The earlier "`θ_target` vs κ_eff" split was a false dichotomy
+  (target vs mechanism). The remaining work is **calibrating f_κ(properties)** so emergent θ → target — *no new
+  production code*, reusing this knob.
+- **Negative results that confirm the mechanism [data]:** `FM1` (imposing `dMdt` — refuted; `dMdt` pinned by
+  `v(R1)=0`) and `FM1b` (an interior loss-integrand term — El-Badry *sign* but negligible magnitude, because
+  `dMdt` is front-anchored) ruled out the two *wrong* knobs and point back to κ_eff. They also show the
+  full El-Badry **evaporation-suppression is an optional high-fidelity bonus** the 1D structure resists — not
+  in the goal. Artifacts: `data/fm1_rootcheck.*`, `data/fm1b_evapsign.*`; design in `RUNGB_SCOPING.md`.
+
+## 7. Provenance
 - Commits (`feature/PdV-trigger-term`): `6642ff4` matrix+comparator, `dc1c2fd` note patches, `17f9653`
   live 3/4 configs, `8bcc6b0` θ_lit plot, `b94689c` plot layout fix, plus this commit (4/4 + figure
   de-annotated). Branch is also mirrored to `claude/amazing-darwin-pl1kzl`.
