@@ -62,10 +62,23 @@ framing):**
   that ruled out the wrong knobs (imposing `dMdt`; an interior loss-integrand term) and point **back to
   κ_eff** as the mechanism.
 - **Remaining work = calibration of f_κ(properties) to obs/3D θ(n_H), reusing the existing knob — no new
-  production code required for the calibration itself.** Next concrete step: an offline sweep of
-  `cooling_boost_kappa` on captured states / a density grid → the f_κ→emergent-θ response + viability.
+  production code required for the calibration itself.** First cut **DONE** (`make_fkappa_leverage.py`): κ_eff
+  has the leverage (`L_cool ∝ f_κ^0.6`, target ×1.3–3.6 reached at f_κ≈2–8) and stays viable to f_κ=64. Next:
+  **full-run blowout-θ calibration across a density grid** → pin `f_κ(n_H)` against the `θ(n_H)` target.
 
 **Status ledger (newest first):**
+- **2026-06-26 (f_κ calibration — first cut) — κ_eff has the leverage AND stays viable; the merge path is
+  feasible. No production edit (uses the gated knob).** `data/make_fkappa_leverage.py` sweeps the real
+  `cooling_boost_kappa` (`f_κ ∈ {1..64}`) through the full `get_bubbleproperties_pure` on the two captured
+  states (f_κ=1 recovers the converged `dMdt` — correctness check). Result (`data/fkappa_leverage.csv`,
+  `fkappa_leverage.png`): **`L_cool` scales ∝ f_κ^0.6** (×1.5 at f_κ=2, ×2.3 at 4, ×3.4–4.0 at 8, ×11–16 at
+  64), so the **target enhancement ×1.3–3.6** (lift blowout θ 0.25–0.70 → ~0.9) is reached at **f_κ ≈ 2–8**;
+  the solve stays **healthy to f_κ=64** (no viability ceiling found) with `dMdt` rising only ∝ f_κ^0.28 (×3.3 at
+  64) — so `L_cool` *outpaces* evaporation (the ratio improves with f_κ). Both states behave near-identically.
+  **Caveat (honest):** this is the SNAPSHOT leverage on early bubbles (θ_snap ~0.01), not the absolute
+  blowout-θ. **Next:** full-run blowout-θ calibration across a density grid (vary `cooling_boost_kappa`, measure
+  θ at blowout) to pin `f_κ(n_H)` against the `θ(n_H)` target — the leverage shape + viability here say it is
+  feasible.
 - **2026-06-26 (the merge) — reframed around the GOAL; κ_eff recognized as the cooling MECHANISM, evaporation-
   decoupling demoted to a fidelity bonus.** Critical re-think (maintainer steer): the goal is *enhanced,
   density-dependent cooling matched to obs/3D*, **not** evaporation suppression. κ_eff (`cooling_boost_kappa`,
@@ -727,7 +740,9 @@ given the offline verdict** — it confirms, it does not change, the reading-B f
   **refuted `θ_target(Da)`**.
 - **κ_eff / the merge:** `data/kappa_backreaction.csv` (+ `make_kappa_backreaction.py`, fig
   `kappa_backreaction.png`) — Rung A back-reaction (`bubble_LTotal` ×1.23–1.38, the **cooling mechanism** at
-  work); `ideas_comparison.png` (+ `make_ideas_comparison.py`) — the all-ideas scoreboard.
+  work); `data/fkappa_leverage.csv` (+ `make_fkappa_leverage.py`, fig `fkappa_leverage.png`) — the **f_κ
+  calibration first cut** (leverage `∝ f_κ^0.6`, target ×1.3–3.6 at f_κ≈2–8, viable to f_κ=64);
+  `ideas_comparison.png` (+ `make_ideas_comparison.py`) — the all-ideas scoreboard.
 - **Rung-B negative results (offline, optional-bonus line):** `data/fm1_rootcheck.csv` (+ `make_fm1_rootcheck.py`,
   fig `fm1_rootcheck.png`) — FM1 (imposing `dMdt` refuted); `data/fm1b_evapsign.csv` (+ `make_fm1b_evapsign.py`,
   fig `fm1b_evapsign.png`) — FM1b (interior cooling: El-Badry sign, negligible magnitude).
