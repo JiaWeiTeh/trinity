@@ -70,6 +70,24 @@ framing):**
   density-dependent `f_κ(n_H)` mode (gated, default-off byte-identical).
 
 **Status ledger (newest first):**
+- **2026-06-26 (f_κ calibration — MEASURED, full runs) + a trigger-framing CORRECTION.** Ran the 6-sim
+  grid (compact `simple_cluster` + diffuse `f1edge_lowdens` × f_κ∈{1,2,4}, ~24 min parallel;
+  `data/make_kappa_blowout_calibration.py` → `kappa_blowout_calibration.csv/png`). **Correctness ✓:**
+  `θ_blowout(f_κ=1)` reproduces the baselines exactly (compact 0.667, diffuse 0.169). **Result:** compact
+  `θ_blowout` 0.667→0.74→**1.024** (f_κ 1,2,4) — at **f_κ=4 it crosses the 0.95 `cooling_balance` trigger →
+  the run enters the momentum phase via COOLING (no geometric blowout)**; diffuse stays 0.17→0.23→0.30
+  (needs `f_κ≈60`, extrapolated, at the viability edge). The **snapshot estimate was optimistic** — the
+  developed-epoch leverage is weaker (exponent ~0.3–0.4 vs the snapshot 0.63), so true f_κ is 2–8× higher
+  (compact ~3–4 not 1.75; diffuse ~60 not 8). Metric fix: θ peaks at cloud dispersal then DROPS in the ISM,
+  so the developed value is `θ_blowout`/`θ_max`, not the last row.
+  **⚠️ FRAMING CORRECTION (verified in code, propagate to FINDINGS/report):** the DEFAULT energy→momentum
+  trigger is **`cooling_balance`** (Lloss/Lgain>0.95, `run_energy_implicit_phase.py:1206`; `transition_trigger`
+  default `cooling_balance`, `default.param:282`) — a **cooling-driven** transition, same intent as the
+  literature. `blowout` (R2>rCloud) is **opt-in, default OFF**. So the earlier "blowout is the transition
+  trigger for normal clouds" was a **mischaracterization**: blowout/cloud-dispersal is the *fallback symptom*
+  when the 1D cooling is too weak for `cooling_balance` to fire. **The real job of κ_eff is to make the
+  cooling-driven `cooling_balance` transition fire** (θ→0.95) for under-cooled clouds — exactly the
+  Lancaster/El-Badry/Gronke "cooling creeps up → momentum naturally" picture.
 - **2026-06-26 (f_κ(n_H) calibration — the estimate; full-run grid is HPC-only) — the merge's payoff curve.**
   Attempted the full-run blowout-θ grid but a single sim to blowout is **~90 min (compact) → ~hours (diffuse)**
   — the energy phase runs a fine time grid (smoke run reached only t=0.0027/0.109 Myr in 139 s). So the full
