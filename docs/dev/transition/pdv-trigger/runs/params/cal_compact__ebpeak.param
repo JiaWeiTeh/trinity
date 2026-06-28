@@ -1,0 +1,16 @@
+# ebpeak-trigger confirmation: compact (simple_cluster) / f_kappa=1 / PdV-inclusive trigger ACTIVE.
+# Tests the ACTUAL code path (not just the passive shadow CSV): with transition_trigger including
+# 'ebpeak', the energy phase ends the first segment edot_balance<=0 i.e. (Lloss+PdV)/Lgain>=1.
+# PREDICTION (from cal_compact__k1 shadow): does NOT fire -- the PdV-inclusive ratio peaks ~0.91 just
+# after dispersal (t~0.12) then DECLINES in the ISM, so it never reaches 1.0. The run should instead
+# go to stop_t, confirming compact at f_kappa=1 transitions on NEITHER trigger ("1D cooling not enough").
+# Opt-in dev run: no production behaviour change (default trigger stays cooling_balance).
+model_name      cal_compact__ebpeak
+path2output     outputs/kcal/cal_compact__ebpeak
+mCloud    1e5
+sfe    0.3
+log_console    False
+log_file    True
+stop_t    0.5
+cooling_boost_kappa    1.0
+transition_trigger    cooling_balance,ebpeak

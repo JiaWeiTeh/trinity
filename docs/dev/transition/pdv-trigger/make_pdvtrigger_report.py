@@ -84,6 +84,10 @@ FIGURES = {
         "kappa_backreaction.png",
         "kappa_eff Rung A back-reaction on f1edge_hidens at matched t: f_kappa=2 raises L_cool x1.23-1.38 but dMdt x1.08-1.17 rides along, and a 2x kappa moves the loss ratio only +0.05-0.10 toward the 0.95 trigger",
     ),
+    "__FIG_EBPEAK__": (
+        "ebpeak_trigger_test.png",
+        "does PdV alone trigger the transition? PdV-inclusive ratio (Lloss+PdV)/Lgain vs t for compact and diffuse: it peaks BELOW the 1.0 ebpeak threshold (compact 0.91 at t=0.12, diffuse 0.86 at t=1.06) then declines, so ebpeak never fires at f_kappa=1; the cooling<->PdV trade-off keeps diffuse PdV-incl flat ~0.85 across f_kappa=1,2,4",
+    ),
 }
 
 
@@ -148,7 +152,7 @@ HEAD = (
 
 HERO = r"""
 <span class="tag">TRINITY &middot; PdV-in-the-trigger &rarr; unresolved interface cooling</span>
-<h1>Boost the loss, not the trigger &mdash; and the trigger is blowout, not cooling</h1>
+<h1>Boost the cooling <i>magnitude</i>, not the trigger &mdash; the default trigger <i>is</i> cooling-driven</h1>
 <p class="sub">The sequel to the clean-room transition study. That investigation ended on a single open
 question &mdash; the geometric / \(E_b\)-peak handoff and the <i>missing mixing-layer cooling</i>. This
 report answers the cooling half &mdash; what the maintainer&rsquo;s Paper-II note (&ldquo;adding unresolved
@@ -174,9 +178,12 @@ degenerate, and the coupled one is refuted.</b> A flat \(\theta\!\approx\!0.95\)
 to the 0.95 trigger TRINITY already has, so it adds nothing; and
 \(\theta_{\text{target}}(\mathrm{Da})\) &mdash; tested this session offline <i>and</i> by a gate-validated
 real-Da replay &mdash; is <b>NO-GO</b> (real \(\mathrm{Da}\) is non-monotonic in density and \(\gg\!1\)
-everywhere, so \(\theta_{\max}\mathrm{Da}/(1+\mathrm{Da})\) saturates back to a constant). <b>The pivot:</b> for
-normal clouds the trigger is <b>geometric blowout</b> (TRINITY&rsquo;s default already does this); the cooling
-boost corrects cooling <b>magnitude</b> through the handoff, it does not fire it. Live matched-\(t\) runs
+everywhere, so \(\theta_{\max}\mathrm{Da}/(1+\mathrm{Da})\) saturates back to a constant). <b>The pivot:</b> the cooling
+boost corrects cooling <b>magnitude</b>, it does not change the trigger. <span class="small muted">[framing
+corrected 06-26: TRINITY&rsquo;s <i>default</i> trigger is the cooling-driven <code>cooling_balance</code>
+(\(L_{\text{loss}}/L_{\text{gain}}\!>\!0.95\)); geometric blowout is <b>opt-in, default OFF</b> and is only the
+<i>fallback symptom</i> when 1D cooling is too weak for <code>cooling_balance</code> to fire &mdash; so the job
+of \(\kappa_{\text{eff}}\) is precisely to make that cooling-driven trigger fire (&sect;10&ndash;12).]</span> Live matched-\(t\) runs
 confirm: no constant fires cooling across density. The heavy 5e9 cloud is super-critical and hands off via the
 PdV / \(E_b\)-peak turnover. <b>Latest &mdash; the merge (2026-06-26):</b> the cooling-magnitude fix has a
 mechanism that is <b>already built</b> &mdash; \(\kappa_{\text{eff}}\) (<code>cooling_boost_kappa</code>, Rung A)
@@ -506,9 +513,13 @@ methods note&rsquo;s closing nuance:</p>
 <ul>
 <li><b>Drop \(\theta_{\text{target}}(\mathrm{Da})\) as a trigger mechanism</b> &mdash; refuted by a gate-validated
 replay (&sect;6).</li>
-<li><b>The trigger for normal clouds is geometric blowout (\(R_2=r_{\text{Cloud}}\))</b> &mdash; which
-TRINITY&rsquo;s default already does. The &ldquo;runs never transition&rdquo; symptom is the cooling
-<i>magnitude</i>, not the trigger.</li>
+<li><b>The default trigger is the cooling-driven <code>cooling_balance</code> (\(L_{\text{loss}}/L_{\text{gain}}\!>\!0.95\))</b>
+&mdash; a <i>cooling</i>-driven transition, the same intent as the literature; geometric blowout
+(\(R_2=r_{\text{Cloud}}\)) is <b>opt-in (default OFF)</b> and acts only as the <i>fallback symptom</i> when 1D
+cooling is too weak for <code>cooling_balance</code> to fire. So the &ldquo;runs never transition&rdquo;
+problem is the cooling <i>magnitude</i>, not the trigger family: the job of \(\kappa_{\text{eff}}\) is to make
+the cooling-driven trigger fire (&sect;11). <span class="small muted">[framing corrected 06-26: see
+<code>PLAN.md</code> ledger; <code>run_energy_implicit_phase.py:1206</code>, <code>default.param:282</code>.]</span></li>
 <li><b>Correct cooling MAGNITUDE with \(\kappa_{\text{eff}}\), calibrated to a density-dependent target</b>
 &mdash; <b>the merge:</b> \(\kappa_{\text{eff}}\) (<code>cooling_boost_kappa</code>, Rung A, <b>built</b>) is the
 in-structure <i>mechanism</i> that raises the emergent cooling; the calibration <i>target</i> is \(\theta(n_H)\)
@@ -572,6 +583,44 @@ two offline prototypes (<code>RUNGB_SCOPING.md</code> &mdash; <b>FM1</b>: imposi
 \(\dot M\) resists it. Full table: <code>KAPPA_EFF_SCOPING.md</code> &sect;6a. No production code touched.</p>
 """
 
+SEC_EBPEAK = r"""
+<h2 id="ebpeak">12 &middot; Does PdV <i>alone</i> trigger the transition? &mdash; the founding question, measured</h2>
+<div class="box" style="border-left:4px solid #2a8aa8"><b>The question (2026-06-28).</b> The workstream is
+named &ldquo;PdV-in-the-trigger.&rdquo; TRINITY&rsquo;s default <code>cooling_balance</code> trigger watches the
+<i>radiative</i> ratio \(L_{\text{loss}}/L_{\text{gain}}\!\ge\!0.95\); the opt-in <code>ebpeak</code> trigger
+watches the <b>PdV-inclusive</b> balance \(\dot E_b = L_{\text{gain}}-L_{\text{loss}}-\text{PdV}\le 0\), i.e.
+\((L_{\text{loss}}+\text{PdV})/L_{\text{gain}}\!\ge\!1\) &mdash; the bubble&rsquo;s net energy stops growing, so
+it rolls into momentum <i>naturally</i>. Since PdV is the dominant sink, does adding it tip the transition
+<b>without</b> a cooling boost?</p></div>
+<p>Tested on the actual code path: two runs with <code>transition_trigger=cooling_balance,ebpeak</code>
+<b>active</b> at \(f_\kappa\!=\!1\) (<code>runs/params/cal_&#123;compact,diffuse&#125;__ebpeak.param</code>). Both
+ran to <code>stop_t</code> and ended on <code>STOPPING_TIME</code> with shadow <code>ebpeak_t=None</code> &mdash;
+<b>ebpeak never fired.</b> The PdV-inclusive ratio <b>peaks below the 1.0 threshold, then declines:</b> compact
+peaks \(0.91\) at \(t\!\approx\!0.12\) (just past dispersal); diffuse peaks \(0.86\) at \(t\!\approx\!1.06\),
+then falls as the bubble <b>re-accelerates in the low-density ISM</b> (the diffuse run reached \(t\!=\!1.5\),
+\(R_2\!=\!191\) pc, \(v_2\!=\!168\) km/s, \(E_b\) still <i>growing</i> &mdash; the net energy never turns over).</p>
+<figure>__FIG_EBPEAK__<figcaption>The PdV-inclusive ratio \((L_{\text{loss}}+\text{PdV})/L_{\text{gain}}\) (solid
+blue, \(f_\kappa{=}1\), run to <code>stop_t</code>) sits far above radiative-only (dotted) &mdash; PdV is the
+dominant sink &mdash; but <b>peaks below the green \(1.0\) <code>ebpeak</code> line and declines</b>, for
+<b>both</b> configs. The \(f_\kappa{=}2,4\) curves expose the <b>cooling\(\leftrightarrow\)PdV trade-off</b>:
+boosting cooling drains \(E_b\!\to\!\) lowers \(P_b\!\to\!\) lowers PdV, so for <b>diffuse</b> the PdV-inclusive
+peak is nearly \(f_\kappa\)-<i>insensitive</i> (\(0.848\!\to\!0.849\!\to\!0.853\), flat) while the radiative
+ratio nearly doubles (\(0.165\!\to\!0.297\)). From <code>data/make_ebpeak_trigger_test.py</code> &rarr;
+<code>data/ebpeak_trigger_test.csv</code>.</figcaption></figure>
+<p><b>What this settles.</b> (i) Including PdV (<code>ebpeak</code>) is a genuine <b>assist</b> &mdash; it lifts
+the transition balance from radiative-only (\(0.66\) compact / \(0.17\) diffuse) up to \(\sim\!0.86\!-\!0.91\),
+much closer to firing &mdash; but it <b>does not close the gap</b>; a cooling boost is still required. (ii) For
+<b>diffuse</b> the trade-off makes the PdV path a near dead-end: you cannot push the PdV-inclusive peak to
+\(1.0\) by boosting \(f_\kappa\); the only route to fire is the <i>radiative</i> <code>cooling_balance</code>
+(\(f_\kappa\!\sim\!60\)). PdV helps the <b>compact</b> case (fires by \(f_\kappa\!\sim\!2\!-\!4\), where
+<code>cooling_balance</code> also fires &mdash; <code>ebpeak</code> a hair earlier). (iii) So the
+<b>complementary split stands but is downgraded:</b> PdV addresses transition <i>timing</i>,
+\(\kappa_{\text{eff}}\) the cooling <i>magnitude</i> &mdash; PdV is an assist, <b>not a substitute</b> for the
+calibrated boost. This <b>corrects</b> an earlier (06-26) optimistic extrapolation that diffuse would fire
+\(\sim\!1.2\!-\!1.3\) Myr; the measured ratio is non-monotone and turns over below \(1.0\). Opt-in dev runs;
+<b>no production code touched.</b></p>
+"""
+
 SEC_REPRO = r"""
 <h2 id="repro">Artifacts &amp; reproducibility</h2>
 <p class="small">Everything is committed under <code>docs/dev/transition/pdv-trigger/</code> &mdash; reproducible
@@ -588,6 +637,7 @@ the same files.</p>
 <tr><td><code>da_replay.png</code> (+ <code>data/make_da_replay.py</code>, <code>data/da_replay.csv</code>)</td><td>&sect;6 Step A&prime; &mdash; gate-validated real-Da replay (gate PASS; verdict NO-GO, \(\theta_{\text{target}}(\mathrm{Da})\) refuted)</td></tr>
 <tr><td><code>runs/data/live_compare.csv</code> (+ per-arm <code>runs/data/harvest_*.csv</code>)</td><td>&sect;9 live matched-\(t\) edge runs (4 configs, separate processes): no constant fires cooling across density</td></tr>
 <tr><td><code>data/kappa_backreaction.csv</code> (+ <code>make_kappa_backreaction.py</code>, <code>kappa_backreaction.png</code>)</td><td>&sect;11 \(\kappa_{\text{eff}}\) Rung-A back-reaction (\(f_\kappa{=}2\) vs \(1\), matched \(t\)): \(L_{\text{cool}}\!\uparrow\) but \(\dot M\!\uparrow\) rides along; the probe param is <code>runs/params/f1edge_hidens__kappa2.param</code></td></tr>
+<tr><td><code>data/ebpeak_trigger_test.csv</code> (+ <code>make_ebpeak_trigger_test.py</code>, <code>ebpeak_trigger_test.png</code>)</td><td>&sect;12 does PdV alone trigger? Two <code>cooling_balance,ebpeak</code>-active runs (<code>runs/params/cal_&#123;compact,diffuse&#125;__ebpeak.param</code>): ebpeak never fires at \(f_\kappa{=}1\) (PdV-incl peaks \(0.91\)/\(0.86\) then declines); the trade-off keeps diffuse PdV-incl flat across \(f_\kappa\)</td></tr>
 <tr><td><code>ideas_comparison.png</code> (+ <code>data/make_ideas_comparison.py</code>)</td><td>the at-a-glance scoreboard of all ideas + three real-data evidence panels (reads <code>fmix_table</code>, <code>da_replay</code>, <code>kappa_backreaction</code> CSVs)</td></tr>
 <tr><td><code>KAPPA_EFF_SCOPING.md</code></td><td>&sect;11 the κ_eff cooling-mechanism feasibility map + the &sect;6a Rung-A result table; the mechanism vs the optional evaporation-decoupling bonus</td></tr>
 <tr><td><code>storyline_figs/*.png</code> (+ <code>make_storyline_figs.py</code>)</td><td>the four storyline figures (&sect;2 double-count, &sect;3 convention, &sect;4 regime, &sect;5 heatmap), each a pure read of the CSVs</td></tr>
@@ -597,9 +647,11 @@ the same files.</p>
 <code>python docs/dev/transition/pdv-trigger/make_pdvtrigger_report.py</code> (figures are committed PNGs, not
 regenerated here). Then rebuild the storyline book:
 <code>python docs/dev/html-insights/build_storylines.py</code>.</p>
-<footer>TRINITY PdV-in-the-trigger &rarr; unresolved-interface-cooling closure &middot; boost the loss, not the
-trigger &mdash; and the trigger is blowout &middot; every number traces to a committed CSV in
-<code>docs/dev/transition/pdv-trigger/{data,runs/data}/</code> &middot; light-mode, MathJax-rendered.</footer>
+<footer>TRINITY PdV-in-the-trigger &rarr; unresolved-interface-cooling closure &middot; boost the cooling
+<i>magnitude</i> (\(\kappa_{\text{eff}}\)), so the cooling-driven <code>cooling_balance</code> trigger fires;
+including PdV (<code>ebpeak</code>) is an assist for timing, not a substitute &middot; every number traces to a
+committed CSV in <code>docs/dev/transition/pdv-trigger/{data,runs/data}/</code> &middot; light-mode,
+MathJax-rendered.</footer>
 """
 
 
@@ -607,7 +659,7 @@ def main():
     parts = [
         HEAD, HERO,
         SEC_SETUP, SEC_DOUBLE, SEC_CONVENTION, SEC_REGIME, SEC_CLOSURE,
-        SEC_DA, SEC_LIT, SEC_WIRING, SEC_LIVE, SEC_BOTTOM, SEC_KAPPA, SEC_REPRO,
+        SEC_DA, SEC_LIT, SEC_WIRING, SEC_LIVE, SEC_BOTTOM, SEC_KAPPA, SEC_EBPEAK, SEC_REPRO,
     ]
     parts.append("</div></body></html>")
     html = "".join(parts)

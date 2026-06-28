@@ -65,11 +65,36 @@ framing):**
   production code required for the calibration itself.** First cut **DONE** (`make_fkappa_leverage.py`): κ_eff
   has the leverage (`L_cool ∝ f_κ^0.63`, viable to f_κ=64). Calibration **estimate DONE**
   (`make_kappa_calibration_estimate.py`): `f_κ(n_H)` density-dependent — diffuse ≈8, dense ≈1.6 (for θ≈0.95).
-  Next: the **full-run blowout-θ grid** (HPC; params + harvester committed) to replace the estimate with a
-  measurement (it saturates near θ→1 ⇒ true f_κ ≥ estimate), then wire `cooling_boost_kappa` as an optional
-  density-dependent `f_κ(n_H)` mode (gated, default-off byte-identical).
+  Two-anchor full-run grid **DONE** (`make_kappa_blowout_calibration.py`, 06-26 ledger): the estimate was
+  **optimistic** — compact fires cooling at **f_κ≈4**, diffuse needs **≈60** (the developed-epoch leverage is
+  weaker than the snapshot, exponent ~0.3–0.4). PdV-in-the-trigger probed (`make_ebpeak_trigger_test.py`,
+  06-28 ledger): `ebpeak` is an assist, not a substitute — it does not remove the need for the boost. Next: a
+  denser n_H full-run grid to pin `f_κ(n_H)`, then wire `cooling_boost_kappa` as an optional density-dependent
+  `f_κ(n_H)` mode (gated, default-off byte-identical).
 
 **Status ledger (newest first):**
+- **2026-06-28 (does PdV ALONE trigger the transition? — MEASURED on the actual code path; corrects the
+  2026-06-26 optimism).** Ran the concrete test the prior entry's caveat (ii) demanded: two dedicated runs
+  with `transition_trigger=cooling_balance,ebpeak` ACTIVE at f_κ=1 (`runs/params/cal_{compact,diffuse}__ebpeak.param`,
+  harvested by `data/make_ebpeak_trigger_test.py` → `data/ebpeak_trigger_test.csv` + `ebpeak_trigger_test.png`).
+  **Result: ebpeak does NOT fire at f_κ=1 for EITHER config** — both ran to `stop_t` and ended on
+  `STOPPING_TIME` with shadow `ebpeak_t=None`. The PdV-inclusive ratio `(Lloss+PdV)/Lgain` **peaks BELOW the
+  1.0 threshold, then DECLINES:** compact peaks **0.912 @t=0.12** (just past dispersal); diffuse peaks **0.862
+  @t=1.06** (well past dispersal) then falls as the bubble RE-ACCELERATES in the low-density ISM (the
+  diffuse__ebpeak run reached t=1.5, R2=191 pc, v2=168 km/s, **Eb still growing** → net energy never turns
+  over). **This REFUTES the linear extrapolation in the prior entry that diffuse would fire ~1.2–1.3 Myr** —
+  the ratio is non-monotone (both sinks shrink vs Lmech in the deep ISM). **What survives:** PdV is the
+  dominant sink (PdV/Lgain = 0.20 compact / 0.46 diffuse) and lifts the balance from radiative-only (0.66 /
+  0.17) up to ~0.86–0.91 — it NARROWS the gap but does not close it; a cooling boost is still required to
+  trigger. **New, sharper finding — the cooling↔PdV trade-off CAPS the PdV path:** the PdV-inclusive **peak**
+  is nearly f_κ-INSENSITIVE for diffuse (**0.848→0.849→0.853** across f_κ 1,2,4 — flat) while the radiative
+  ratio nearly doubles (0.165→0.297). ⇒ **for diffuse the only path to fire is radiative `cooling_balance`
+  (f_κ~60), NOT `ebpeak`**; PdV helps the COMPACT case (peak 0.91 at f_κ=1; `ebpeak` fires by f_κ~2–4, where
+  `cooling_balance` also fires — `ebpeak` ~5 ms earlier at f_κ=4: 0.0772 vs 0.082). **Net:** "include PdV"
+  (`ebpeak`) is a real ASSIST for transition TIMING (raises the diffuse floor 0.17→0.85) but is **NOT a
+  substitute** for `κ_eff`; the complementary split (PdV=timing, κ_eff=cooling magnitude) stands, downgraded
+  from the optimistic "PdV alone fixes the f_κ~60 problem." Opt-in dev runs; **no production code touched**
+  (default `transition_trigger=cooling_balance` unchanged).
 - **2026-06-26 (include PdV in the trigger? — the founding question, with fresh data).** `data/make_pdv_trigger_compare.py`
   (→ `pdv_trigger_compare.csv/png`) measures, on the cal runs at cloud dispersal, the radiative-only ratio
   (`Lcool/Lmech`, the `cooling_balance` criterion) vs the **PdV-inclusive** ratio (`(Lcool+leak+PdV)/Lmech`, the
@@ -84,8 +109,12 @@ framing):**
   radiative-only trigger); it does NOT make cooling efficient (θ stays 0.14–0.30 vs the literature 0.9), which is
   a SEPARATE goal κ_eff still owns. So **ebpeak (PdV) for the trigger + κ_eff for the cooling magnitude are
   COMPLEMENTARY** — a cleaner split than "boost cooling until it triggers at 0.95." (This is the workstream's
-  founding `PdV-trigger` question, reopened for *normal* clouds with measured data.) NEXT: run diffuse with
-  `transition_trigger=cooling_balance,ebpeak` at f_κ=1, longer, to see if ebpeak fires naturally.
+  founding `PdV-trigger` question, reopened for *normal* clouds with measured data.)
+  **➤ RESOLVED 2026-06-28 (see top entry):** the "continue the run to confirm it fires" of caveat (ii) was run —
+  `ebpeak` does **NOT** fire at f_κ=1 for either config; the PdV-inclusive ratio peaks **below** 1.0 (compact
+  0.912, diffuse 0.862) and then declines. The optimistic "diffuse is already ~0.85, nearly triggers" reading
+  here is **superseded**: PdV narrows but does not close the gap, and the trade-off keeps the diffuse PdV-incl
+  peak ~flat across f_κ — so PdV is an assist, not a substitute for κ_eff.
 - **2026-06-26 (f_κ calibration — MEASURED, full runs) + a trigger-framing CORRECTION.** Ran the 6-sim
   grid (compact `simple_cluster` + diffuse `f1edge_lowdens` × f_κ∈{1,2,4}, ~24 min parallel;
   `data/make_kappa_blowout_calibration.py` → `kappa_blowout_calibration.csv/png`). **Correctness ✓:**
@@ -795,8 +824,13 @@ given the offline verdict** — it confirms, it does not change, the reading-B f
   calibration first cut** (leverage `∝ f_κ^0.63`, viable to f_κ=64); `data/kappa_calibration_estimate.csv`
   (+ `make_kappa_calibration_estimate.py`, fig `kappa_calibration_estimate.png`) — the **f_κ(n_H) calibration
   estimate** (diffuse ≈8, dense ≈1.6); `runs/params/cal_{compact,diffuse}__k{1,2,4}.param` +
-  `data/make_kappa_blowout_calibration.py` — the **HPC full-run grid** (ready, not yet run);
-  `ideas_comparison.png` (+ `make_ideas_comparison.py`) — the all-ideas scoreboard.
+  `data/make_kappa_blowout_calibration.py` — the **HPC full-run grid** (run; compact fires cooling at f_κ≈4,
+  diffuse needs ≈60); `ideas_comparison.png` (+ `make_ideas_comparison.py`) — the all-ideas scoreboard.
+- **PdV-in-the-trigger (the founding question, measured):** `data/pdv_trigger_compare.csv` (+
+  `make_pdv_trigger_compare.py`, fig `pdv_trigger_compare.png`) — PdV is the dominant sink, PdV-inclusive ratio
+  0.65–0.91 at f_κ=1; `runs/params/cal_{compact,diffuse}__ebpeak.param` + `data/make_ebpeak_trigger_test.py`
+  (→ `data/ebpeak_trigger_test.csv`, fig `ebpeak_trigger_test.png`) — the **code-path test**: `ebpeak` does NOT
+  fire at f_κ=1 (peaks 0.91/0.86 then declines); the cooling↔PdV trade-off keeps diffuse PdV-incl flat across f_κ.
 - **Rung-B negative results (offline, optional-bonus line):** `data/fm1_rootcheck.csv` (+ `make_fm1_rootcheck.py`,
   fig `fm1_rootcheck.png`) — FM1 (imposing `dMdt` refuted); `data/fm1b_evapsign.csv` (+ `make_fm1b_evapsign.py`,
   fig `fm1b_evapsign.png`) — FM1b (interior cooling: El-Badry sign, negligible magnitude).

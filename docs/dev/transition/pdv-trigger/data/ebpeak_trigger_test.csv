@@ -1,0 +1,9 @@
+run,t_end,ebpeak_fired_t,dispersal_t,radiative_ratio_disp,pdv_incl_ratio_disp,pdv_incl_ratio_peak,pdv_incl_peak_t,pdv_over_lgain_disp
+cal_compact__k1,0.3,,0.0902,0.6634,0.8631,0.9115,0.1206,0.1997
+cal_compact__k2,0.3,,0.0958,0.7434,0.8937,0.9617,0.1341,0.1503
+cal_compact__k4,0.0822,0.0772,,1.0244,1.1411,1.1411,0.0822,0.1167
+cal_compact__ebpeak,0.5,,0.0902,0.6634,0.8631,0.9115,0.1206,0.1997
+cal_diffuse__k1,0.9,,0.6111,0.1648,0.6244,0.8476,0.9,0.4596
+cal_diffuse__k2,0.9,,0.6111,0.2201,0.6494,0.8487,0.9,0.4294
+cal_diffuse__k4,0.9,,0.6249,0.2971,0.6922,0.8532,0.9,0.3952
+cal_diffuse__ebpeak,2.0,,0.6111,0.1648,0.6244,0.862,1.0611,0.4596

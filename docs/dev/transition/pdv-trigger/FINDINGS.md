@@ -214,9 +214,13 @@ sustained way. This frozen-vs-live gap is the main open interpretive question.
   (`bubble_Lloss` reproduced to ≤3.9e-5, interface `L3` **bit-identical**), so the real Da is trustworthy.
   It is *still* non-monotonic in nCore (spread 14×), `T_int` is ~constant (~21–22.6 kK) so real Da ≈ proxy,
   and `Da≫1` everywhere → `θ_max·Da/(1+Da)` saturates to a constant → degenerate. **Pivot:** the cooling
-  boost corrects cooling *magnitude*; **blowout is the transition trigger** for normal clouds (resolved loss
-  ratio only 0.25–0.70 there). See PLAN.md "Outcome & pivot". Artifacts: `data/make_da_replay.py`,
-  `data/da_replay.csv`, `da_replay.png`. [data]
+  boost corrects cooling *magnitude*, not the trigger. **⚠️ FRAMING CORRECTED (06-26, verified in code):** the
+  *default* energy→momentum trigger is the cooling-driven **`cooling_balance`** (`Lloss/Lgain>0.95`,
+  `run_energy_implicit_phase.py:1206`; `transition_trigger` default `cooling_balance`, `default.param:282`);
+  **geometric blowout (`R2>rCloud`) is opt-in, default OFF** and is only the *fallback symptom* when 1D cooling
+  is too weak (resolved loss ratio only 0.25–0.70) for `cooling_balance` to fire. So the job of `κ_eff` is to
+  make that cooling-driven trigger fire — the earlier "blowout is the trigger" was a mischaracterization. See
+  PLAN.md ledger (06-26 + 06-28). Artifacts: `data/make_da_replay.py`, `data/da_replay.csv`, `da_replay.png`. [data]
 
 ## 6. [data] κ_eff IS the cooling mechanism — Rung A (the merge, 2026-06-26)
 
@@ -238,6 +242,29 @@ Enhancing conduction puts **more gas in the ~10⁵ K radiating band**, so the co
   `dMdt` is front-anchored) ruled out the two *wrong* knobs and point back to κ_eff. They also show the
   full El-Badry **evaporation-suppression is an optional high-fidelity bonus** the 1D structure resists — not
   in the goal. Artifacts: `data/fm1_rootcheck.*`, `data/fm1b_evapsign.*`; design in `RUNGB_SCOPING.md`.
+
+## 6a. [data] Does PdV ALONE trigger the transition? — `ebpeak` measured (2026-06-28)
+
+The workstream's founding question, settled on the actual code path. Two runs with
+`transition_trigger=cooling_balance,ebpeak` **active** at `f_κ=1`
+(`runs/params/cal_{compact,diffuse}__ebpeak.param`) both ran to `stop_t` and ended on `STOPPING_TIME` with
+shadow `ebpeak_t=None` — **`ebpeak` never fired**.
+
+- **The PdV-inclusive ratio `(Lloss+PdV)/Lgain` peaks BELOW the 1.0 threshold, then declines:** compact peaks
+  **0.912 @t=0.12** (just past dispersal); diffuse peaks **0.862 @t=1.06** then falls as the bubble
+  **re-accelerates** in the low-density ISM (the diffuse run reached t=1.5, R2=191 pc, v2=168 km/s, Eb still
+  *growing* — net energy never turns over). This **corrects** an earlier linear extrapolation that wrongly
+  predicted diffuse would fire ~1.2–1.3 Myr (the ratio is non-monotone).
+- **PdV is the dominant sink** (PdV/Lgain = 0.20 compact / 0.46 diffuse) and lifts the balance from
+  radiative-only (0.66 / 0.17) to ~0.86–0.91 — it **narrows** the gap but does not close it; a cooling boost is
+  still required to fire.
+- **Cooling↔PdV trade-off caps the PdV path:** the PdV-inclusive peak is nearly `f_κ`-insensitive for diffuse
+  (0.848→0.849→0.853 across f_κ 1,2,4 — flat) while the radiative ratio nearly doubles (0.165→0.297). ⇒ for
+  diffuse, the only path to fire is radiative `cooling_balance` (f_κ~60), **not** `ebpeak`; PdV helps the
+  *compact* case (fires by f_κ~2–4). **Net:** PdV (`ebpeak`) is an assist for transition *timing*, **not a
+  substitute** for `κ_eff` (cooling *magnitude*) — complementary, downgraded from "PdV alone fixes f_κ~60."
+  Artifacts: `data/ebpeak_trigger_test.csv` + `ebpeak_trigger_test.png` (+ `data/make_ebpeak_trigger_test.py`).
+  No production code touched (default `transition_trigger=cooling_balance` unchanged).
 
 ## 7. Provenance
 - Commits (`feature/PdV-trigger-term`): `6642ff4` matrix+comparator, `dc1c2fd` note patches, `17f9653`
