@@ -73,6 +73,18 @@ framing):**
   `f_κ(n_H)` mode (gated, default-off byte-identical).
 
 **Status ledger (newest first):**
+- **2026-06-28 (controlled f_κ(n_H) calibration sweep — built, HPC-ready, not yet run).** The clean
+  replacement for the conflated 3-anchor estimate (compact/mid/diffuse vary mCloud+sfe+nCore together): a
+  single-variable sweep `runs/params/sweep_fkappa_nH.param` that **fixes mCloud=1e6, sfe=0.1 and varies only
+  nCore [1e2,1e3,1e4,1e5] × cooling_boost_kappa [1,2,4,8,16,32,64]** = 28 combos (f_κ swept wide so θ→0.95
+  firing is BRACKETED at every density, not extrapolated). Verified: sweep syntax expands to 28 (`--dry-run`),
+  `--emit-jobs` produces a working SLURM array (`--array=1-28`), and the diffuse extreme (nCore 1e2) is
+  physically valid (rCloud 39.6 pc < the 200 pc `rCloud_max`). nCore capped at 1e5 (1e6 is the stiff corner,
+  result #15). Harvest+fit harness `data/make_fkappa_nH_sweep.py` written (reuses the proven `harvest()`;
+  run-name parser self-tested; graceful "no data yet" until the grid runs) → `fkappa_nH_sweep.csv` +
+  `fkappa_nH_sweep.png` (fits θ∝f_κ^p per density → f_κ_fire(nCore)). Registered in `REPRODUCE.md` (#18 /
+  Block C). **NEXT: run the 28-combo grid on HPC** (not the ephemeral container) → first clean f_κ(n_H). No
+  production code touched.
 - **2026-06-28 (paper reproducibility manifest — `REPRODUCE.md`).** Created `REPRODUCE.md` at the maintainer's
   request: a single map from **every storyline result** (the figures/numbers in `pdvtrigger_report.html`) to
   **the exact `.param` + run command + derived artifact**, tagged 🟢 cheap (re-reads a committed CSV in seconds)

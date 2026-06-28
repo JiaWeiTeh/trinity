@@ -78,6 +78,7 @@ Legend — **Sims?**: 🟢 none (reads committed CSV, seconds) · 🟡 a few ful
 | 15 | Dense-edge stiffness is **not** f_κ (it's extreme density) | PLAN ledger 06-28 | `diag_dense_hybr.param`, `diag_dense_legacy.param` | run both, observe (does not finish at nCore 1e6) | `data/dense_stiffness_diag.csv` | 🟡 |
 | 16 | FM1 / FM1b — wrong knobs ruled out (κ_eff confirmed) | §11 | — (offline prototypes) | `python data/make_fm1_rootcheck.py`; `python data/make_fm1b_evapsign.py` | `data/fm1*.csv`, `fm1*.png` | 🟢 |
 | 17 | All-ideas scoreboard | hero | — (reads CSVs above) | `python data/make_ideas_comparison.py` | `ideas_comparison.png` | 🟢 |
+| 18 | **Controlled f_κ(n_H) calibration** (clean single-variable, *ready/not-yet-run*) | (next) | `runs/params/sweep_fkappa_nH.param` (sweep → 28 combos) | `--emit-jobs` → `sbatch` → `make_fkappa_nH_sweep.py` | `data/fkappa_nH_sweep.csv`, `fkappa_nH_sweep.png` | 🔴 |
 
 ¹ #12 reads the same `cal_*__k{1,2,4}` runs as #11 — once those exist in `outputs/kcal/`, #12 is a 🟢 re-read.
 
@@ -118,6 +119,23 @@ python docs/dev/transition/pdv-trigger/data/make_kappa_backreaction.py \
 ```
 
 ---
+
+### Block C — controlled f_κ(n_H) calibration sweep (result #18; HPC, ready, not yet run)
+The clean replacement for the conflated 3-anchor estimate: **fix mCloud + sfe, vary only nCore** × a wide
+f_κ grid that brackets the firing point at every density. 28 combos; emit as a SLURM array, then harvest.
+```bash
+# 1. inspect / emit the grid (the .param uses TRINITY's list sweep syntax: nCore [..] x cooling_boost_kappa [..])
+python run.py docs/dev/transition/pdv-trigger/runs/params/sweep_fkappa_nH.param --dry-run     # lists 28 combos
+python run.py docs/dev/transition/pdv-trigger/runs/params/sweep_fkappa_nH.param --emit-jobs jobs/
+# 2. on the cluster: edit jobs/submit_sweep.sbatch (#SBATCH --account/--partition), then
+sbatch jobs/submit_sweep.sbatch               # -> outputs/sweep_fkappa_nH/<run>/
+# 3. harvest theta_blowout(nCore, f_kappa), fit f_kappa_fire(nCore):
+python docs/dev/transition/pdv-trigger/data/make_fkappa_nH_sweep.py
+# (parser self-test only, no data needed: ... make_fkappa_nH_sweep.py --selftest)
+```
+Validated: the diffuse extreme (nCore 1e2) gives rCloud ≈ 39.6 pc (< the 200 pc `rCloud_max` ceiling), so all
+28 configs are physically plausible. nCore is **capped at 1e5** on purpose — 1e6 is pathologically stiff/slow
+(result #15), not f_κ-driven.
 
 ## Rebuild all figures (no sims) {#rebuild-all-figures-no-sims}
 Every figure is a pure read of a committed CSV, so after a fresh clone you can regenerate the **whole

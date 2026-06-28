@@ -1,0 +1,33 @@
+# Controlled f_kappa(n_H) calibration sweep — the clean single-variable density experiment.
+# ============================================================================================
+# WHY: the existing 3 calibration anchors (compact/mid/diffuse) vary mCloud AND sfe AND nCore
+# together, so "f_kappa(n_H)" is conflated. This sweep FIXES mCloud + sfe and varies ONLY nCore,
+# so the measured f_kappa-to-fire is a clean function of ambient (core) density.
+#
+# DESIGN: f_kappa is swept WIDE so the theta->0.95 cooling_balance firing point is BRACKETED at
+# every density (dense fires ~f_kappa=4, diffuse ~60 -- see PLAN.md / kappa_blowout_calibration).
+# Over-boosted runs are cheap: they hit the default cooling_balance trigger and stop early.
+# nCore is capped at 1e5 ON PURPOSE -- nCore=1e6 is pathologically stiff/slow for the implicit
+# solve (see data/dense_stiffness_diag.csv; NOT f_kappa-driven), so it is excluded here.
+#
+# RUN (HPC-friendly; do NOT run the full 28-combo grid in an ephemeral container):
+#   python run.py docs/dev/transition/pdv-trigger/runs/params/sweep_fkappa_nH.param --dry-run   # list combos
+#   python run.py docs/dev/transition/pdv-trigger/runs/params/sweep_fkappa_nH.param --emit-jobs jobs/
+#   sbatch jobs/submit_sweep.sbatch
+# Then harvest theta_blowout(nCore, f_kappa) and fit f_kappa_fire(nCore) (see REPRODUCE.md / a
+# follow-up harness extending make_kappa_blowout_calibration.py to read outputs/sweep_fkappa_nH/).
+
+# --- swept (Cartesian product = 4 densities x 7 boosts = 28 runs) ---
+nCore                  [1e2, 1e3, 1e4, 1e5]
+cooling_boost_kappa    [1.0, 2.0, 4.0, 8.0, 16.0, 32.0, 64.0]
+
+# --- fixed (held constant so the only variable is nCore x f_kappa) ---
+mCloud                 1e6
+sfe                    0.1
+dens_profile           densPL
+densPL_alpha           0
+nISM                   0.1
+stop_t                 3.0
+log_console            False
+log_file               True
+path2output            outputs/sweep_fkappa_nH
