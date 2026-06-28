@@ -1,0 +1,11 @@
+# f_kappa blowout-theta calibration: diffuse (f1edge_lowdens) / cooling_boost_kappa = 4.0
+# HPC-only: diffuse blows out ~0.62 Myr -> a full run to blowout is ~hours (energy-phase fine grid).
+model_name      cal_diffuse__k4
+path2output     outputs/kcal/cal_diffuse__k4
+mCloud    1e7
+sfe    0.5
+nCore    1e2
+log_console    False
+log_file    True
+stop_t    0.9
+cooling_boost_kappa    4.0

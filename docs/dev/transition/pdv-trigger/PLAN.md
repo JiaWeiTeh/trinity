@@ -63,10 +63,27 @@ framing):**
   κ_eff** as the mechanism.
 - **Remaining work = calibration of f_κ(properties) to obs/3D θ(n_H), reusing the existing knob — no new
   production code required for the calibration itself.** First cut **DONE** (`make_fkappa_leverage.py`): κ_eff
-  has the leverage (`L_cool ∝ f_κ^0.6`, target ×1.3–3.6 reached at f_κ≈2–8) and stays viable to f_κ=64. Next:
-  **full-run blowout-θ calibration across a density grid** → pin `f_κ(n_H)` against the `θ(n_H)` target.
+  has the leverage (`L_cool ∝ f_κ^0.63`, viable to f_κ=64). Calibration **estimate DONE**
+  (`make_kappa_calibration_estimate.py`): `f_κ(n_H)` density-dependent — diffuse ≈8, dense ≈1.6 (for θ≈0.95).
+  Next: the **full-run blowout-θ grid** (HPC; params + harvester committed) to replace the estimate with a
+  measurement (it saturates near θ→1 ⇒ true f_κ ≥ estimate), then wire `cooling_boost_kappa` as an optional
+  density-dependent `f_κ(n_H)` mode (gated, default-off byte-identical).
 
 **Status ledger (newest first):**
+- **2026-06-26 (f_κ(n_H) calibration — the estimate; full-run grid is HPC-only) — the merge's payoff curve.**
+  Attempted the full-run blowout-θ grid but a single sim to blowout is **~90 min (compact) → ~hours (diffuse)**
+  — the energy phase runs a fine time grid (smoke run reached only t=0.0027/0.109 Myr in 139 s). So the full
+  grid is **HPC-only**; the params (`runs/params/cal_{compact,diffuse}__k{1,2,4}.param`) + harvester
+  (`data/make_kappa_blowout_calibration.py`) are committed and ready for it. In-session, combined the two
+  verified ingredients — the leverage `L_cool ∝ f_κ^0.63` (`fkappa_leverage.csv`) and the resolved baseline
+  `θ(n_H)` at blowout (`fmix_table.csv` + `da_replay.csv` nCore) — into the calibration **estimate**
+  `θ(f_κ,n_H) ≈ min(0.99, θ_base·f_κ^0.63)` ⇒ `f_κ_needed = (θ_target/θ_base)^{1/0.63}`. Result
+  (`data/make_kappa_calibration_estimate.py`, `kappa_calibration_estimate.csv/png`): **f_κ(n_H) is
+  density-dependent — diffuse (θ_base 0.25) needs `f_κ≈8`, dense (θ_base 0.70) needs `f_κ≈1.6`** to reach
+  θ≈0.95 (well inside the viable range, ≤64). **Caveat (kept):** the leverage was measured on early snapshots
+  (θ≈0.01) far from the θ→1 ceiling, so near the target it **saturates** — the true `f_κ` is ≥ this estimate
+  (optimistic). The full-run grid would replace the estimate with a measurement. **This is the merge delivered:
+  a density-dependent cooling enhancement via the existing gated knob, calibrated (estimated) to obs/3D.**
 - **2026-06-26 (f_κ calibration — first cut) — κ_eff has the leverage AND stays viable; the merge path is
   feasible. No production edit (uses the gated knob).** `data/make_fkappa_leverage.py` sweeps the real
   `cooling_boost_kappa` (`f_κ ∈ {1..64}`) through the full `get_bubbleproperties_pure` on the two captured
@@ -741,7 +758,10 @@ given the offline verdict** — it confirms, it does not change, the reading-B f
 - **κ_eff / the merge:** `data/kappa_backreaction.csv` (+ `make_kappa_backreaction.py`, fig
   `kappa_backreaction.png`) — Rung A back-reaction (`bubble_LTotal` ×1.23–1.38, the **cooling mechanism** at
   work); `data/fkappa_leverage.csv` (+ `make_fkappa_leverage.py`, fig `fkappa_leverage.png`) — the **f_κ
-  calibration first cut** (leverage `∝ f_κ^0.6`, target ×1.3–3.6 at f_κ≈2–8, viable to f_κ=64);
+  calibration first cut** (leverage `∝ f_κ^0.63`, viable to f_κ=64); `data/kappa_calibration_estimate.csv`
+  (+ `make_kappa_calibration_estimate.py`, fig `kappa_calibration_estimate.png`) — the **f_κ(n_H) calibration
+  estimate** (diffuse ≈8, dense ≈1.6); `runs/params/cal_{compact,diffuse}__k{1,2,4}.param` +
+  `data/make_kappa_blowout_calibration.py` — the **HPC full-run grid** (ready, not yet run);
   `ideas_comparison.png` (+ `make_ideas_comparison.py`) — the all-ideas scoreboard.
 - **Rung-B negative results (offline, optional-bonus line):** `data/fm1_rootcheck.csv` (+ `make_fm1_rootcheck.py`,
   fig `fm1_rootcheck.png`) — FM1 (imposing `dMdt` refuted); `data/fm1b_evapsign.csv` (+ `make_fm1b_evapsign.py`,

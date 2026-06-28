@@ -1,0 +1,7 @@
+config,nCore,theta_base,exponent_p,fkappa_for_theta90,fkappa_for_theta95,fkappa_for_theta99
+large_diffuse_lowsfe,100.0,0.25,0.6269,7.716,8.411,8.983
+midrange_pl0,10000.0,0.61,0.6269,1.86,2.027,2.165
+be_sphere,10000.0,0.511,0.6269,2.467,2.689,2.872
+simple_cluster,100000.0,0.667,0.6269,1.613,1.758,1.878
+pl2_steep,100000.0,0.342,0.6269,4.681,5.103,5.45
+small_dense_highsfe,1000000.0,0.697,0.6269,1.503,1.639,1.75
