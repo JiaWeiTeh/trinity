@@ -73,6 +73,13 @@ framing):**
   `f_κ(n_H)` mode (gated, default-off byte-identical).
 
 **Status ledger (newest first):**
+- **2026-06-28 (paper reproducibility manifest — `REPRODUCE.md`).** Created `REPRODUCE.md` at the maintainer's
+  request: a single map from **every storyline result** (the figures/numbers in `pdvtrigger_report.html`) to
+  **the exact `.param` + run command + derived artifact**, tagged 🟢 cheap (re-reads a committed CSV in seconds)
+  / 🟡 a few full runs / 🔴 grid-HPC. Includes the two expensive blocks' exact commands, a "rebuild all figures
+  with no sims" loop (every figure is a pure read of a committed CSV, since `outputs/` is git-ignored), and the
+  gated-knob table. Verified every referenced harness + `.param` resolves. So a future paper write-up can
+  re-run any piece and prove the storyline is reproducible. No production code touched.
 - **2026-06-28 (dense-edge stiffness diagnosed — NOT f_κ; it's an extreme-density solver-stiffness cost).**
   Ran the #1 de-risk experiment: `small_dense_highsfe` (nCore 1e6) at **f_κ=1 BASELINE** (default everything),
   hybr vs legacy head-to-head (`runs/params/diag_dense_{hybr,legacy}.param`, `data/dense_stiffness_diag.csv`).

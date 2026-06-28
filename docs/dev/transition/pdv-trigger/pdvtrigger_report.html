@@ -644,6 +644,10 @@ density-dependent target, with <b>C</b> (PdV) as an optional timing assist.</p>
 <p class="small">Everything is committed under <code>docs/dev/transition/pdv-trigger/</code> &mdash; reproducible
 without re-running the (hours-long) sims. Each figure is a pure read of a committed CSV; the prose numbers trace to
 the same files.</p>
+<div class="box" style="border-left:4px solid #2a8aa8"><b>Paper reproducibility manifest:</b>
+<code>docs/dev/transition/pdv-trigger/REPRODUCE.md</code> &mdash; the single map from <b>every result in this
+report</b> to <b>the exact <code>.param</code> + command + artifact</b>, tagged cheap (re-reads a committed CSV)
+vs expensive (a full sim). Use it to re-run any piece for a paper and to prove the storyline is reproducible.</div>
 <div class="tablewrap"><table><thead><tr><th>artifact</th><th>what</th></tr></thead><tbody>
 <tr><td><code>data/fmix_table.csv</code> (+ <code>make_fmix_table.py</code>)</td><td>the note&rsquo;s Table 2, both trigger conventions; the &sect;3 headline \(f_{\text{mix}}\!\approx\!1.4\!-\!2.8\)</td></tr>
 <tr><td><code>fmix_vs_density.png</code> (+ <code>data/make_fmix_spread_plot.py</code>)</td><td>&sect;3 data-only scatter of the firing \(f_{\text{mix}}\) (\(1.36\to3.81\)); states the constant-\(\theta\) degeneracy</td></tr>

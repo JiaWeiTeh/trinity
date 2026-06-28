@@ -1,5 +1,8 @@
 # LIVE cooling-boost edge runs — matched-t, boosted vs `none`, separate processes
 
+> **This file covers only the §9 live edge runs.** For the *whole-storyline* reproducibility map (every result
+> → its `.param` + command + artifact), see [`../REPRODUCE.md`](../REPRODUCE.md).
+
 > ⚠️ **This document may be out of date — verify before trusting it.** It is a
 > point-in-time analysis/audit, not a maintained spec; the code moves faster
 > than these notes (paths, line numbers, and "what shipped" status drift).
