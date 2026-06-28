@@ -61,7 +61,9 @@ _REPO = os.path.abspath(os.path.join(_HERE, *([os.pardir] * 5)))
 _OUT = os.path.join(_REPO, "outputs", "kcal")
 
 # (label, run_dir, config). The k1/k2/k4 are cooling_balance-only (shadow logs ebpeak passively);
-# the __ebpeak runs have transition_trigger=cooling_balance,ebpeak so they test the ACTUAL code path.
+# the __ebpeak / __ek{1,2,4} runs have transition_trigger=cooling_balance,ebpeak (ACTUAL code path).
+# compact=simple_cluster, diffuse=f1edge_lowdens (2 density edges); mid=midrange_pl0, dense=
+# small_dense_highsfe extend the f_κ trade-off test to 2 more of the 8-config universe (2026-06-28).
 _RUNS = [
     ("compact f_κ=1", "cal_compact__k1", "compact"),
     ("compact f_κ=2", "cal_compact__k2", "compact"),
@@ -71,6 +73,12 @@ _RUNS = [
     ("diffuse f_κ=2", "cal_diffuse__k2", "diffuse"),
     ("diffuse f_κ=4", "cal_diffuse__k4", "diffuse"),
     ("diffuse f_κ=1 [ebpeak ACTIVE]", "cal_diffuse__ebpeak", "diffuse"),
+    ("mid f_κ=1", "cal_mid__ek1", "mid"),
+    ("mid f_κ=2", "cal_mid__ek2", "mid"),
+    ("mid f_κ=4", "cal_mid__ek4", "mid"),
+    ("dense f_κ=1", "cal_dense__ek1", "dense"),
+    ("dense f_κ=2", "cal_dense__ek2", "dense"),
+    ("dense f_κ=4", "cal_dense__ek4", "dense"),
 ]
 
 
@@ -161,15 +169,23 @@ def main():
         print(f"(skipping figure: {e})")
         return
 
-    # Two panels: compact and diffuse. Plot the PdV-inclusive ratio (ebpeak watches this) and the
-    # radiative ratio (cooling_balance watches this) vs time, with the firing line at 1.0. For the
-    # f_κ=1 curve use the LONGEST run available (the ebpeak-ACTIVE run, which ran to stop_t without
-    # firing) so the peak-and-decline turnover is visible; f_κ=2,4 (the plain k-runs) show the
-    # cooling<->PdV trade-off (diffuse PdV-incl stays flat ~0.85; compact climbs toward 1.0).
-    fig, axes = plt.subplots(1, 2, figsize=(13.5, 5.4))
-    cfgs = [("compact", axes[0]), ("diffuse", axes[1])]
+    # One panel per config that HAS data (so the committed figure is always self-consistent as the
+    # live runs land one by one). Plot the PdV-inclusive ratio (ebpeak watches this) and the radiative
+    # ratio (cooling_balance watches this) vs time, firing line at 1.0. For the f_κ=1 curve use the
+    # LONGEST run available (the ebpeak-ACTIVE run, run to stop_t without firing) so the peak-and-
+    # decline turnover is visible; f_κ=2,4 show the cooling<->PdV trade-off (PdV-incl ~flat across f_κ).
+    cfg_sub = {"compact": "simple_cluster", "diffuse": "f1edge_lowdens",
+               "mid": "midrange_pl0", "dense": "small_dense_highsfe"}
+    present = [c for c in ("compact", "diffuse", "mid", "dense")
+               if any(cc == c for (cc, _) in traj.values())]
+    ncol = 2 if len(present) > 1 else 1
+    nrow = (len(present) + ncol - 1) // ncol
+    fig, axflat = plt.subplots(nrow, ncol, figsize=(6.75 * ncol, 5.1 * nrow), squeeze=False)
+    axlist = [ax for row in axflat for ax in row]
+    for extra in axlist[len(present):]:
+        extra.axis("off")
     colors = {1: "#1f77b4", 2: "#9467bd", 4: "#d62728"}
-    for cfg, ax in cfgs:
+    for cfg, ax in zip(present, axlist):
         # f_κ=1 trajectory: prefer the ebpeak-ACTIVE (longest) run so the turnover shows.
         long1 = traj.get(f"{cfg} f_κ=1 [ebpeak ACTIVE]") or traj.get(f"{cfg} f_κ=1")
         for label, (c, h) in traj.items():
@@ -199,18 +215,19 @@ def main():
                         label=f"PdV-incl, f_κ={fk}")
         ax.axhline(1.0, color="#2ca02c", lw=1.8, label="ebpeak fires (ratio=1.0)")
         ax.axhline(0.95, color="crimson", ls="--", lw=1.2, label="cooling_balance fires (0.95, radiative)")
-        ax.set_title(f"{cfg}", fontsize=11, fontweight="bold")
+        ax.set_title(f"{cfg}  ({cfg_sub.get(cfg, '')})", fontsize=11, fontweight="bold")
         ax.set_xlabel("t  [Myr]")
         ax.set_ylabel("loss / Lgain")
         ax.set_ylim(0, 1.2)
         ax.legend(fontsize=7.0, loc="lower right")
-    fig.suptitle("Include PdV in the trigger? PdV is the dominant sink, so the PdV-inclusive ratio "
-                 "(solid blue) sits far above radiative-only\n(dotted) — but it PEAKS BELOW 1.0 and "
-                 "declines: ebpeak does NOT fire at f_κ=1 for EITHER config. The cooling<->PdV trade-off "
-                 "keeps\ndiffuse PdV-incl ~flat (0.85) across f_κ; boosting cooling helps the radiative "
-                 "path, not the PdV-inclusive one.",
-                 fontsize=9.8, fontweight="bold")
-    fig.tight_layout(rect=(0, 0, 1, 0.93))
+    regimes = ", ".join(f"{c} ({cfg_sub.get(c, '')})" for c in present)
+    fig.suptitle(f"Include PdV in the trigger? Live full runs — {len(present)} regime(s): {regimes}. PdV is the "
+                 "dominant sink, so\nthe PdV-inclusive ratio (solid blue) sits far above radiative-only (dotted) "
+                 "— but it PEAKS BELOW 1.0 and declines:\nebpeak does NOT fire at f_κ=1 for any of them. The "
+                 "cooling<->PdV trade-off keeps PdV-incl nearly f_κ-flat (f_κ=2,4\ncurves hug f_κ=1), so boosting "
+                 "cooling helps the radiative path, not the PdV-inclusive one.",
+                 fontsize=9.6, fontweight="bold")
+    fig.tight_layout(rect=(0, 0, 1, 0.92 if nrow == 1 else 0.95))
     png = os.path.join(_PDV, "ebpeak_trigger_test.png")
     fig.savefig(png, dpi=130)
     print(f"wrote {png}")
