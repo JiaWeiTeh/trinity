@@ -37,6 +37,30 @@
 > / run logs on 2026-06-25; claims are tagged **[data]** (measured), **[interpretation]**, or
 > **[schematic / to-verify]**.
 
+## Taxonomy of the approaches (read first; 2026-06-28)
+
+What looks like "three ways to boost cooling" is really **two cooling-magnitude approaches on opposite sides
+of the structure solve, plus a separate trigger axis**. The key disambiguation: **"modify cooling like
+El-Badry with κ" and "modify the conduction front k_f" are the *same* knob** (`cooling_boost_kappa`) — raising
+the conduction coefficient *is* the 1D stand-in for more radiating surface / mixing. Every row is read from
+source (knob `registry.py`, equation file:line); no assumptions.
+
+| axis / approach | knob | what it changes (from source) | θ: imposed or **emergent**? | literature | status / verdict |
+|---|---|---|---|---|---|
+| **A. Outcome-side** — operate on `L_loss` *after* the structure solve (`effective_Lloss`, `get_betadelta.py:334`) | | | | | |
+| · scalar multiplier | `cooling_boost_mode=multiplier`, f_mix | `L_loss = L_leak + f_mix·L_cool` (`:354`) | scaled (semi-imposed) | — | no single f_mix fires across density (1.4–3.8) |
+| · **θ-target floor** ("sum like Lancaster θ") | `cooling_boost_mode=theta_target`, θ | `L_loss = max(L_cool+L_leak, θ·L_mech)` (`:356`) | **imposed** (top-down) | **Lancaster** θ≈0.9 | degenerate: constant θ=0.95 *is* the 0.95 trigger; θ(Da) refuted |
+| **B. Mechanism-side** — operate on the conduction *inside* the structure; θ comes out | | | | | |
+| · **κ_eff conduction multiplier** ("El-Badry κ" **=** "modify k_f / conduction front" — same knob) | `cooling_boost_kappa`, f_κ | `κ_eff = f_κ·C_th·T^(5/2)` at 3 sites (`bubble_luminosity.py:291/370/406`) → thicker front → more 10⁵–10⁶ K gas (more surface/mixing) | **emergent** (bottom-up) | **El-Badry** mixing (λδv↔κ_eff) | built/gated; f_κ≈4 (compact)…~60 (diffuse); side-effect: dMdt↑ |
+| **C. Trigger-side** — *when* to transition, not *how much* it cools | | | | | |
+| · PdV-inclusive trigger | `transition_trigger=ebpeak` | fire when `L_gain−L_loss−PdV ≤ 0` (`run_energy_implicit_phase.py:198,1206`) | n/a (timing) | El-Badry/Lancaster "cooling creeps up" | doesn't fire alone at f_κ=1; assist not substitute |
+
+**A** imposes the result (Lancaster's θ lives here); **B** changes what *produces* the cooling so θ emerges
+(El-Badry lives here, and it is the *same* knob as "modify the conduction front"); **C** is a different axis
+(the transition criterion). **A and B must never be stacked** — the `max(·)` closure (§2 of the report) keeps
+the loss single-count. Current direction = **B** (κ_eff), calibrated to a density-dependent target, with **C**
+(PdV) as an optional timing assist.
+
 ## 0. What the verification changed (errors caught and fixed)
 1. **§2 gap numbers were wrong.** An earlier draft said "gap ~0.45 (diffuse) → ~0.25 (dense), shrinking."
    Recomputing the gap from the *actual* plotted band function gives a **non-monotonic** result and a

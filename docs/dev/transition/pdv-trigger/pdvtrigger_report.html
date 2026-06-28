@@ -596,6 +596,50 @@ both sit below their thresholds for normal clouds; \(f_\kappa\) lifts the radiat
 lifts the other (&sect;12). They are the two independent axes of the same &ldquo;1D cooling is too weak&rdquo;
 problem.</p>
 
+<h2 id="taxonomy">14 &middot; Taxonomy &mdash; the approaches, disambiguated</h2>
+<div class="box" style="border-left:4px solid #2a8aa8"><b>The point.</b> What looks like &ldquo;three ways to
+boost cooling&rdquo; is really <b>two cooling-magnitude approaches on different sides of the solve, plus a
+separate trigger axis</b>. The key disambiguation: <b>&ldquo;modify cooling like El-Badry with \(\kappa\)&rdquo;
+and &ldquo;modify the conduction front \(k_f\)&rdquo; are the <i>same</i> knob</b> (<code>cooling_boost_kappa</code>)
+&mdash; raising the conduction coefficient <i>is</i> the 1D stand-in for more radiating surface / mixing.</div>
+<p>Every row is read from source &mdash; knob (<code>registry.py</code>), equation (file:line), no assumptions.</p>
+<div class="tablewrap"><table><thead><tr>
+<th>axis / approach</th><th>knob</th><th>what it changes (from source)</th>
+<th>\(\theta\): imposed or <b>emergent</b>?</th><th>literature</th><th>status / verdict</th></tr></thead><tbody>
+<tr><td colspan="6" style="background:#eef5f8"><b>A &middot; Outcome-side</b> &mdash; operate on \(L_{\rm loss}\)
+<i>after</i> the structure solve; you impose the answer (<code>effective_Lloss</code>, <code>get_betadelta.py:334</code>)</td></tr>
+<tr><td>scalar multiplier</td><td><code>cooling_boost_mode=multiplier</code>, \(f_{\rm mix}\)</td>
+<td>\(L_{\rm loss} = L_{\rm leak} + f_{\rm mix}\,L_{\rm cool}\) &nbsp;(<code>:354</code>)</td>
+<td>scaled (semi-imposed)</td><td>&mdash;</td>
+<td>no single \(f_{\rm mix}\) fires across density (spans \(1.4\!-\!3.8\), &sect;3)</td></tr>
+<tr><td><b>\(\theta\)-target floor</b> <span class="small">(&ldquo;sum like Lancaster \(\theta\)&rdquo;)</span></td>
+<td><code>cooling_boost_mode=theta_target</code>, \(\theta\)</td>
+<td>\(L_{\rm loss} = \max\!\big(L_{\rm cool}+L_{\rm leak},\ \theta\,L_{\rm mech}\big)\) &nbsp;(<code>:356</code>)</td>
+<td><b>imposed</b> (top-down)</td><td><b>Lancaster</b> \(\theta\!\approx\!0.9\) (parameter-free loss fraction)</td>
+<td>degenerate: constant \(\theta{=}0.95\) <i>is</i> the \(0.95\) trigger; \(\theta(\mathrm{Da})\) refuted (&sect;6)</td></tr>
+<tr><td colspan="6" style="background:#eef5f8"><b>B &middot; Mechanism-side</b> &mdash; operate on the conduction
+<i>inside</i> the structure solve; \(\theta\) comes out of the physics</td></tr>
+<tr><td><b>\(\kappa_{\rm eff}\) conduction multiplier</b>
+<span class="small">(&ldquo;El-Badry \(\kappa\)&rdquo; <b>=</b> &ldquo;modify \(k_f\) / conduction front&rdquo; &mdash; same knob)</span></td>
+<td><code>cooling_boost_kappa</code>, \(f_\kappa\)</td>
+<td>\(\kappa_{\rm eff}=f_\kappa\,C_{\rm th}\,T^{5/2}\) at 3 sites (<code>bubble_luminosity.py:291/370/406</code>)
+&rarr; thicker conduction/evaporation front &rarr; more \(10^5\!-\!10^6\,\)K gas (more radiating <b>surface / mixing</b>)</td>
+<td><b>emergent</b> (bottom-up)</td><td><b>El-Badry</b> mixing layer (\(\lambda\delta v \leftrightarrow \kappa_{\rm eff}\))</td>
+<td>built/gated; measured \(f_\kappa\!\approx\!4\) (compact) &hellip; \(\sim\!60\) (diffuse) (&sect;13); side-effect: \(\dot M\!\uparrow\)</td></tr>
+<tr><td colspan="6" style="background:#eef5f8"><b>C &middot; Trigger-side</b> &mdash; <i>when</i> to transition, not <i>how much</i> it cools</td></tr>
+<tr><td>PdV-inclusive trigger</td><td><code>transition_trigger=ebpeak</code></td>
+<td>fire when \(L_{\rm gain}-L_{\rm loss}-P\mathrm{d}V \le 0\) (<code>run_energy_implicit_phase.py:198,1206</code>)</td>
+<td>n/a (timing only)</td><td>El-Badry/Lancaster &ldquo;cooling creeps up&rdquo;</td>
+<td>does not fire alone at \(f_\kappa{=}1\); an assist, not a substitute (&sect;12)</td></tr>
+</tbody></table></div>
+<p><b>How to read it.</b> <b>A</b> imposes the result (a scaled cooling, or a floor on the loss fraction
+&mdash; Lancaster&rsquo;s \(\theta\) lives here); <b>B</b> changes what <i>produces</i> the cooling, so \(\theta\)
+emerges (El-Badry lives here, and it is the <i>same</i> knob as &ldquo;modify the conduction front&rdquo;);
+<b>C</b> is a different axis entirely (the transition criterion). <b>A</b> and <b>B</b> must never be stacked
+&mdash; the \(\max(\cdot)\) closure (&sect;2) keeps the loss single-count. The current direction is <b>B</b>
+(\(\kappa_{\rm eff}\), &sect;11&ndash;13): the cooling-magnitude <i>mechanism</i>, calibrated to a
+density-dependent target, with <b>C</b> (PdV) as an optional timing assist.</p>
+
 <h2 id="repro">Artifacts &amp; reproducibility</h2>
 <p class="small">Everything is committed under <code>docs/dev/transition/pdv-trigger/</code> &mdash; reproducible
 without re-running the (hours-long) sims. Each figure is a pure read of a committed CSV; the prose numbers trace to

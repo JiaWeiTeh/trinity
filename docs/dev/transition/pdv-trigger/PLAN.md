@@ -73,6 +73,15 @@ framing):**
   `f_κ(n_H)` mode (gated, default-off byte-identical).
 
 **Status ledger (newest first):**
+- **2026-06-28 (taxonomy table — disambiguating the approaches).** Added a physics taxonomy (report §14 +
+  `FINDINGS.md` "Taxonomy" section) after a maintainer asked what is what. Resolves a real conflation: the
+  "three things" are really **2 cooling-magnitude approaches on opposite sides of the structure solve + 1
+  trigger axis**. **A (outcome-side):** `cooling_boost_mode` = `multiplier` (L_loss=L_leak+f_mix·L_cool) or
+  `theta_target` (L_loss=max(L_cool+L_leak, θ·L_mech) — the **Lancaster-θ floor**, imposed), at
+  `get_betadelta.py:354/356`. **B (mechanism-side):** `cooling_boost_kappa`=f_κ (κ_eff=f_κ·C_th·T^(5/2), 3
+  sites — the **El-Badry conduction/mixing** way, θ emerges). **Key:** "El-Badry-κ" and "modify the conduction
+  front k_f" are the **SAME** knob (B), not two things. **C (trigger):** `transition_trigger=ebpeak`. A and B
+  must not be stacked (the max() closure keeps it single-count). No production code touched.
 - **2026-06-28 (what IS f_κ? — equation-grounded definition + mid live runs + a consistent plot style).**
   Wrote the precise, code-grounded definition of `f_κ` (no assumptions; report §13 + `make_fkappa_definition.py`
   → `fkappa_definition.png`). **f_κ = `cooling_boost_kappa`** is a dimensionless multiplier on the
