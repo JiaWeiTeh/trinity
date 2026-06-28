@@ -265,6 +265,13 @@ shadow `ebpeak_t=None` — **`ebpeak` never fired**.
   substitute** for `κ_eff` (cooling *magnitude*) — complementary, downgraded from "PdV alone fixes f_κ~60."
   Artifacts: `data/ebpeak_trigger_test.csv` + `ebpeak_trigger_test.png` (+ `data/make_ebpeak_trigger_test.py`).
   No production code touched (default `transition_trigger=cooling_balance` unchanged).
+- **8-config coverage [data]:** the f_κ=1 conclusion above is **2 live configs**, but it **generalizes to all 8**
+  via the earlier frozen-trajectory screen (`make_ebpeak_8config_xcheck.py` → `ebpeak_8config_xcheck.csv/png`):
+  all **6 normal** configs peak at PdV-inclusive **0.85–0.92** and never fire (only heavy-5e9 `fail_repro` 1.57
+  and the `small_1e6` control 1.11 do; `large_diffuse_lowsfe` 1.02 barely, post-blowout). **Live-vs-frozen
+  agrees to the digit** (simple_cluster live 0.911 == frozen 0.911). The f_κ-*dependence* (trade-off) is
+  live-only and extended to `mid`=midrange_pl0 (running) + `dense`=small_dense_highsfe (stalled — nCore 1e6 is
+  numerically stiff; frozen point used). HPC-deferred for the remaining configs.
 
 ## 7. Provenance
 - Commits (`feature/PdV-trigger-term`): `6642ff4` matrix+comparator, `dc1c2fd` note patches, `17f9653`

@@ -1,0 +1,16 @@
+# 8-config generalization of the ebpeak / f_kappa trade-off test: DENSE edge (small_dense_highsfe).
+# mCloud 1e4 / nCore 1e6 / rCore 0.1 / sfe 0.5 / densPL alpha 0; frozen blowout ~0.012 Myr, peak ~0.919.
+# transition_trigger includes ebpeak so the run self-terminates if it fires (dense edge may fire under boost).
+model_name      cal_dense__ek4
+path2output     outputs/kcal/cal_dense__ek4
+mCloud    1e4
+nCore    1e6
+rCore    0.1
+sfe    0.5
+dens_profile    densPL
+densPL_alpha    0
+log_console    False
+log_file    True
+stop_t    0.3
+cooling_boost_kappa    4.0
+transition_trigger    cooling_balance,ebpeak

@@ -73,6 +73,22 @@ framing):**
   `f_κ(n_H)` mode (gated, default-off byte-identical).
 
 **Status ledger (newest first):**
+- **2026-06-28 (does the ebpeak finding hold on the 8 configs? — frozen-screen cross-check + live validation).**
+  Honest coverage answer: the recent full-run κ_eff/ebpeak work ran on **2 density-edge configs**
+  (compact=`simple_cluster`, diffuse=`f1edge_lowdens`), NOT all 8. But the **f_κ=1 ebpeak conclusion
+  generalizes** to the full 8-config universe via the *earlier* frozen-trajectory screen
+  (`data/pdv_combined_trigger.csv` + `pdv_regime_budget.csv`), reconciled here by
+  `data/make_ebpeak_8config_xcheck.py` (→ `data/ebpeak_8config_xcheck.csv` + `ebpeak_8config_xcheck.png`).
+  **All 6 "normal" configs peak at PdV-inclusive 0.85–0.92 and do NOT fire** (be_sphere 0.905, midrange_pl0
+  0.901, pl2_steep 0.847, simple_cluster 0.911, small_dense_highsfe 0.919, large_diffuse_lowsfe 1.019 — the
+  last barely, **post-blowout**); only the **heavy 5e9** (`fail_repro`, super-critical PdV/Lmech>1, peak 1.57)
+  and the **small_1e6 control** (birth blip, 1.11) fire. **Live-vs-frozen validation:** my live full-run peak
+  for `simple_cluster` (0.911) matches the frozen peak (0.911) **to the digit** ⇒ the frozen screen is
+  trustworthy for the other configs. **Remaining gap (live-only, can't be frozen):** the f_κ-DEPENDENCE (the
+  cooling↔PdV trade-off / calibration) — freezing the trajectory hides the Eb/Pb/PdV drainage that *is* the
+  trade-off. Extending it live: `runs/params/cal_{mid,dense}__ek{1,2,4}.param` (midrange_pl0 + small_dense_highsfe
+  × f_κ∈{1,2,4}, ebpeak-active). `mid` running; **`dense` (nCore 1e6) stalled — pathologically stiff
+  integrator**, killed, relying on its frozen point. No production code touched.
 - **2026-06-28 (does PdV ALONE trigger the transition? — MEASURED on the actual code path; corrects the
   2026-06-26 optimism).** Ran the concrete test the prior entry's caveat (ii) demanded: two dedicated runs
   with `transition_trigger=cooling_balance,ebpeak` ACTIVE at f_κ=1 (`runs/params/cal_{compact,diffuse}__ebpeak.param`,
@@ -831,6 +847,9 @@ given the offline verdict** — it confirms, it does not change, the reading-B f
   0.65–0.91 at f_κ=1; `runs/params/cal_{compact,diffuse}__ebpeak.param` + `data/make_ebpeak_trigger_test.py`
   (→ `data/ebpeak_trigger_test.csv`, fig `ebpeak_trigger_test.png`) — the **code-path test**: `ebpeak` does NOT
   fire at f_κ=1 (peaks 0.91/0.86 then declines); the cooling↔PdV trade-off keeps diffuse PdV-incl flat across f_κ.
+  `data/make_ebpeak_8config_xcheck.py` (→ `data/ebpeak_8config_xcheck.csv`, fig `ebpeak_8config_xcheck.png`) —
+  the **8-config coverage cross-check**: frozen-screen peak ratio per config + live overlay (simple_cluster
+  live 0.911 == frozen 0.911); 6 normal configs peak 0.85–0.92 / no fire, only heavy-5e9 + control fire.
 - **Rung-B negative results (offline, optional-bonus line):** `data/fm1_rootcheck.csv` (+ `make_fm1_rootcheck.py`,
   fig `fm1_rootcheck.png`) — FM1 (imposing `dMdt` refuted); `data/fm1b_evapsign.csv` (+ `make_fm1b_evapsign.py`,
   fig `fm1b_evapsign.png`) — FM1b (interior cooling: El-Badry sign, negligible magnitude).
