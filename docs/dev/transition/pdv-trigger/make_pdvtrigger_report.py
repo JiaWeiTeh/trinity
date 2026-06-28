@@ -86,7 +86,19 @@ FIGURES = {
     ),
     "__FIG_EBPEAK__": (
         "ebpeak_trigger_test.png",
-        "does PdV alone trigger the transition? PdV-inclusive ratio (Lloss+PdV)/Lgain vs t for compact and diffuse: it peaks BELOW the 1.0 ebpeak threshold (compact 0.91 at t=0.12, diffuse 0.86 at t=1.06) then declines, so ebpeak never fires at f_kappa=1; the cooling<->PdV trade-off keeps diffuse PdV-incl flat ~0.85 across f_kappa=1,2,4",
+        "does PdV alone trigger the transition? PdV-inclusive ratio (Lloss+PdV)/Lgain vs t for compact, diffuse and mid: it peaks BELOW the 1.0 ebpeak threshold at f_kappa=1 (compact 0.91, diffuse 0.86, mid 0.90) then declines, so ebpeak never fires at f_kappa=1; under boost compact and mid climb and fire by f_kappa~4 while diffuse stays flat ~0.85",
+    ),
+    "__FIG_EB8__": (
+        "ebpeak_8config_xcheck.png",
+        "does the ebpeak finding hold across the 8 configs? frozen-trajectory screen peak PdV-inclusive ratio per config: 6 normal clouds peak 0.85-0.92 and never fire, only heavy-5e9 and the control fire; live full-run peaks (black diamonds) for simple_cluster and midrange_pl0 match the frozen bars to the digit (0.91, 0.90)",
+    ),
+    "__FIG_FKDEF__": (
+        "fkappa_definition.png",
+        "what is f_kappa? left: the Spitzer conductivity kappa_eff(T)=f_kappa*C_thermal*T^(5/2) that f_kappa multiplies, for f_kappa=1,2,4; right: the analytic seed scaling dMdt~f_kappa^(2/7) verified against the measured f_kappa=2 back-reaction (measured 1.2175 vs analytic 1.219 at the seed, <0.1%)",
+    ),
+    "__FIG_FKCAL__": (
+        "kappa_blowout_calibration.png",
+        "f_kappa calibration on full runs: developed theta=Lcool/Lmech at cloud dispersal vs f_kappa for compact/mid/diffuse, with the 0.95 cooling_balance trigger; compact crosses at f_kappa~4 (red ring=cooling fired), mid ~5, diffuse far higher (~60); right panel is the cumulative radiated fraction",
     ),
 }
 
@@ -619,6 +631,119 @@ much closer to firing &mdash; but it <b>does not close the gap</b>; a cooling bo
 calibrated boost. This <b>corrects</b> an earlier (06-26) optimistic extrapolation that diffuse would fire
 \(\sim\!1.2\!-\!1.3\) Myr; the measured ratio is non-monotone and turns over below \(1.0\). Opt-in dev runs;
 <b>no production code touched.</b></p>
+<p><b>Does it hold across the 8 configs?</b> The four live full runs are density edges; the \(f_\kappa=1\)
+conclusion <b>generalizes to the full 8-config universe</b> via the earlier frozen-trajectory screen. All
+<b>6 normal</b> clouds peak at PdV-inclusive \(0.85\!-\!0.92\) and never fire; only the heavy \(5\times10^9\)
+(super-critical, \(\mathrm{PdV}/L_{\rm mech}>1\)) and the \(10^6\,M_\odot\) control (a birth blip) fire. Two
+of the live runs (<code>simple_cluster</code>, <code>midrange_pl0</code>) sit inside the frozen set and the
+live peaks match the frozen bars <b>to the digit</b> (\(0.91\), \(0.90\)) &mdash; validating the screen for
+the rest.</p>
+<figure>__FIG_EB8__<figcaption>Peak PdV-inclusive ratio per config from the frozen screen (bars; blue = never
+fires, green = fires), with the live full-run peaks overlaid as black diamonds for the two configs in both
+sets. The six normal clouds cluster at \(0.85\!-\!0.92\), below the green \(1.0\) <code>ebpeak</code> line;
+the live diamonds land on the bars. From <code>data/make_ebpeak_8config_xcheck.py</code>.</figcaption></figure>
+"""
+
+SEC_FKDEF = r"""
+<h2 id="fkdef">13 &middot; What is \(f_\kappa\), precisely? &mdash; the conduction multiplier, with equations</h2>
+<div class="box" style="border-left:4px solid #2a8aa8"><b>One line.</b> \(f_\kappa\) (the param
+<code>cooling_boost_kappa</code>) is a dimensionless multiplier on TRINITY&rsquo;s <b>thermal-conduction
+coefficient</b>. It does <i>not</i> multiply the cooling luminosity; it thickens the conduction layer so
+more gas radiates, and the loss fraction \(\theta\) comes out as a result. Every equation below is read
+straight from <code>bubble_luminosity.py</code> &mdash; line numbers given, no assumptions.</div>
+
+<h3>The conductivity it scales</h3>
+<p>The bubble interior is a Weaver conduction structure. TRINITY carries the classical
+Spitzer&ndash;H&auml;rm thermal conductivity</p>
+\[ \kappa_{\rm SP}(T) \;=\; C_{\rm th}\,T^{5/2}, \qquad
+   C_{\rm th} = 6\times10^{-7}\ \mathrm{erg\,s^{-1}\,cm^{-1}\,K^{-7/2}} \quad(\text{the standard Spitzer value, }\ln\Lambda\!\sim\!30), \]
+<p>(<code>C_thermal</code>, <code>registry.py:341</code>), with conductive heat flux
+\(q = -\kappa_{\rm SP}\,\mathrm{d}T/\mathrm{d}r\). The knob is simply</p>
+\[ \boxed{\;\kappa_{\rm eff}(T) \;=\; f_\kappa\,C_{\rm th}\,T^{5/2} \;=\; f_\kappa\,\kappa_{\rm SP}(T)\;},
+   \qquad f_\kappa \equiv \texttt{cooling\_boost\_kappa}\ (\text{default }1,\ \ge 1;\ \texttt{registry.py:351}). \]
+<p>Physically \(f_\kappa>1\) is <b>thermal transport above classical Spitzer</b> &mdash; the unresolved
+sub-grid mixing / magnetically-modified conduction a 1D Spitzer model cannot see. It enters at exactly the
+<b>three</b> places \(C_{\rm th}\) appears in <code>bubble_luminosity.py</code>:</p>
+
+<p><b>(1) The evaporative mass-flux seed</b> (Weaver&#8197;+77 Eq.&nbsp;33; <code>bubble_luminosity.py:291&ndash;295</code>):</p>
+\[ \dot M_{\rm init} = \frac{12}{75}\,(1.646)^{5/2}\,\frac{4\pi R_2^{3}}{t}\,\frac{\mu}{k_B}
+   \left(\frac{t\,f_\kappa C_{\rm th}}{R_2^{2}}\right)^{\!2/7} P_b^{5/7}
+   \;\;\Longrightarrow\;\; \boxed{\;\dot M \propto f_\kappa^{\,2/7}\;}. \]
+
+<p><b>(2) The conduction-layer initial conditions</b> (Eq.&nbsp;44; <code>:370&ndash;381</code>): with
+\(A \equiv \tfrac{25}{4}\,k_B/(\mu\,f_\kappa C_{\rm th}) \propto f_\kappa^{-1}\),</p>
+\[ \Delta R_2 = \frac{T_{\rm init}^{5/2}}{A\,\dot M/(4\pi R_2^{2})} \;\propto\; f_\kappa,
+   \qquad T=\Big(A\,\dot M\,\Delta R_2/4\pi R_2^2\Big)^{2/5}, \qquad \frac{\mathrm{d}T}{\mathrm{d}r}=-\frac{2}{5}\frac{T}{\Delta R_2}. \]
+<p>i.e. the conduction/evaporation layer <b>thickens</b> with \(f_\kappa\). <span class="small muted">[Precisely:
+\(\Delta R_2 \propto f_\kappa\) <i>at fixed</i> \(\dot M\) (this function takes \(\dot M\) as an argument);
+folding in the seed \(\dot M \propto f_\kappa^{2/7}\) gives \(\Delta R_2 \propto f_\kappa^{5/7}\).]</span></p>
+
+<p><b>(3) The temperature-curvature ODE</b> (Eq.&nbsp;42&ndash;43; <code>:406&ndash;409</code>):</p>
+\[ \frac{\mathrm{d}^2T}{\mathrm{d}r^2}
+   = \frac{P_b}{f_\kappa C_{\rm th}\,T^{5/2}}
+     \!\left[\frac{\beta+\tfrac52\delta}{t} + \tfrac52\,(v-v_a)\frac{1}{T}\frac{\mathrm{d}T}{\mathrm{d}r}
+            - \frac{1}{P_b}\frac{\mathrm{d}u}{\mathrm{d}t}\right]
+     - \tfrac52\frac{1}{T}\!\left(\frac{\mathrm{d}T}{\mathrm{d}r}\right)^{2} - \frac{2}{r}\frac{\mathrm{d}T}{\mathrm{d}r}. \]
+<p class="small muted">(\(v_a = \alpha\,r/t\) is the self-similar advection velocity, \(\alpha=\) <code>cool_alpha</code>;
+\(\beta=\) <code>cool_beta</code>, \(\delta=\) <code>cool_delta</code> are the Weaver similarity exponents;
+\(\mathrm{d}u/\mathrm{d}t\) is the local net cooling. The conduction term &mdash; the only one carrying
+\(C_{\rm th}\) &mdash; scales as \(1/(f_\kappa C_{\rm th})\).)</p>
+
+<h3>Why this is <i>not</i> a cooling multiplier (\(\theta\) emerges)</h3>
+<p>The loss term is never multiplied by \(f_\kappa\). The local volumetric cooling
+\(\mathrm{d}u/\mathrm{d}t = \texttt{net\_coolingcurve.get\_dudt}(t,n,T,\phi)\) is evaluated at the
+<i>local</i> density \(n = P_b/[(\mu/\mu_{\rm ion})\,k_B T]\) and temperature inside the structure, and the
+bubble cooling luminosity is the integral over that structure,</p>
+\[ L_{\rm cool} = \int \frac{\mathrm{d}u}{\mathrm{d}t}\,\mathrm{d}V,
+   \qquad \theta \equiv \frac{L_{\rm cool}}{L_{\rm mech}}. \]
+<p>\(f_\kappa\) acts <b>only through the structure</b>: a larger \(\kappa_{\rm eff}\) makes the layer thicker
+(\(\Delta R_2\propto f_\kappa\)), putting more gas in the \(10^5\!-\!10^6\,\)K band where the cooling
+function \(\Lambda(T)\) peaks, so \(L_{\rm cool}\) (hence \(\theta\)) <b>emerges</b> higher &mdash; an
+<i>output</i>, the way El-Badry obtains \(\theta\), not a post-hoc floor on \(L_{\rm cool}\).</p>
+<figure>__FIG_FKDEF__<figcaption><b>Left:</b> what \(f_\kappa\) multiplies &mdash; the Spitzer conductivity
+\(\kappa_{\rm eff}(T)=f_\kappa C_{\rm th}T^{5/2}\) for \(f_\kappa=1,2,4\). <b>Right:</b> the analytic seed
+scaling \(\dot M\propto f_\kappa^{2/7}\) <b>verified against measurement</b> &mdash; the measured matched-\(t\)
+ratio \(\dot M(f_\kappa{=}2)/\dot M(f_\kappa{=}1)\) equals \(1.2175\) at the seed vs analytic \(2^{2/7}=1.219\)
+(\(\approx\!0.1\%\)); it softens as the run develops because \(P_b\) drains \(\sim3\%\) (the genuine
+back-reaction). From <code>data/make_fkappa_definition.py</code> (Panel B reads
+<code>data/kappa_backreaction.csv</code>).</figcaption></figure>
+
+<h3>The side effect &mdash; why \(f_\kappa\) is a <i>probe</i>, not the final model</h3>
+<p>Eq.&nbsp;(1) shows the same knob <b>raises the evaporative mass flux</b>, \(\dot M\propto f_\kappa^{2/7}\).
+A faithful \(\kappa_{\rm eff}\) (El-Badry) would instead <b>suppress</b> evaporation while cooling rises; here
+both rise together. So \(f_\kappa\) is a <b>structural probe</b> of the cooling-magnitude axis (the
+<code>registry.py:351</code> note says exactly this), and the optional &ldquo;Rung B&rdquo; evaporation-
+decoupling (&sect;11) is what would make \(\dot M\) fall instead.</p>
+
+<h3>What \(f_\kappa\) buys &mdash; the calibration (does it answer the user&rsquo;s question?)</h3>
+<p><b>Yes:</b> at \(f_\kappa=1\) some clouds never fire and sit well below \(\theta\sim0.9\), and they need a
+<b>much larger</b> \(f_\kappa\). At \(f_\kappa=1\) the developed \(\theta\) (at cloud dispersal) is only</p>
+\[ \theta(f_\kappa{=}1) \approx 0.17\ (\text{diffuse}),\quad 0.61\ (\text{mid}),\quad 0.67\ (\text{compact}), \]
+<p>all below both the obs/3D \(\theta\!\sim\!0.9\) and the \(0.95\) <code>cooling_balance</code> trigger &mdash;
+so the cooling-driven transition never fires and the cloud runs past dispersal under-cooled. Raising
+\(f_\kappa\) raises \(\theta\); the <b>measured</b> full-run grid shows a steep density dependence:</p>
+<div class="tablewrap"><table><thead><tr><th>config</th><th>\(n_{\rm core}\)</th>
+<th>\(\theta(f_\kappa{=}1)\)</th><th>\(\theta(f_\kappa{=}4)\)</th><th>\(f_\kappa\) to fire (\(\theta\!\to\!0.95\))</th></tr></thead><tbody>
+<tr><td>compact (simple_cluster)</td><td>\(10^5\)</td><td>0.667</td><td><b>1.024</b> (fired)</td><td>\(\approx 4\) <span class="small">(bracketed: fires at \(f_\kappa{=}4\))</span></td></tr>
+<tr><td>mid (midrange_pl0)</td><td>\(10^4\)</td><td>0.610</td><td>0.814</td><td>\(\approx 5\!-\!6\) <span class="small">(extrapolated)</span></td></tr>
+<tr><td>diffuse (f1edge_lowdens)</td><td>\(10^2\)</td><td>0.169</td><td>0.303</td><td>\(\approx 60\) <span class="small">(extrapolated)</span></td></tr>
+</tbody></table></div>
+<p class="small muted">\(\theta(f_\kappa{=}1)\) and \(\theta(f_\kappa{=}4)\) are <b>measured</b> full runs; only compact
+reaches \(0.95\) within the measured \(f_\kappa\le4\) grid (it fires at \(f_\kappa{=}4\)), so the &ldquo;to fire&rdquo;
+values for mid and diffuse are <b>extrapolations</b> beyond the grid, not measurements.</p>
+<figure>__FIG_FKCAL__<figcaption><b>Left:</b> developed \(\theta=L_{\rm cool}/L_{\rm mech}\) (at cloud
+dispersal) vs \(f_\kappa\) for the three measured configs, with the \(0.95\) <code>cooling_balance</code>
+trigger. Compact crosses near \(f_\kappa\!\approx\!4\) (red ring = the cooling-driven transition fired &rarr;
+momentum); mid is close behind; diffuse climbs far too slowly (needs \(f_\kappa\!\sim\!60\)). Dotted grey =
+the old \(f_\kappa^{0.63}\) snapshot estimate, now known optimistic. <b>Right:</b> the cumulative radiated
+fraction \(\int L_{\rm cool}\mathrm{d}t/\int L_{\rm mech}\mathrm{d}t\). From
+<code>data/make_kappa_blowout_calibration.py</code>.</figcaption></figure>
+<p class="small muted">Consistency note: the \(\theta\) here (the radiative loss fraction the
+<code>cooling_balance</code> trigger watches) is a <i>different</i> ratio from the PdV-inclusive
+\((L_{\rm loss}+P\mathrm{d}V)/L_{\rm gain}\) of &sect;12 (the <code>ebpeak</code> trigger). At \(f_\kappa=1\)
+both sit below their thresholds for normal clouds; \(f_\kappa\) lifts the radiative one (this section), PdV
+lifts the other (&sect;12). They are the two independent axes of the same &ldquo;1D cooling is too weak&rdquo;
+problem.</p>
 """
 
 SEC_REPRO = r"""
@@ -637,6 +762,11 @@ the same files.</p>
 <tr><td><code>da_replay.png</code> (+ <code>data/make_da_replay.py</code>, <code>data/da_replay.csv</code>)</td><td>&sect;6 Step A&prime; &mdash; gate-validated real-Da replay (gate PASS; verdict NO-GO, \(\theta_{\text{target}}(\mathrm{Da})\) refuted)</td></tr>
 <tr><td><code>runs/data/live_compare.csv</code> (+ per-arm <code>runs/data/harvest_*.csv</code>)</td><td>&sect;9 live matched-\(t\) edge runs (4 configs, separate processes): no constant fires cooling across density</td></tr>
 <tr><td><code>data/kappa_backreaction.csv</code> (+ <code>make_kappa_backreaction.py</code>, <code>kappa_backreaction.png</code>)</td><td>&sect;11 \(\kappa_{\text{eff}}\) Rung-A back-reaction (\(f_\kappa{=}2\) vs \(1\), matched \(t\)): \(L_{\text{cool}}\!\uparrow\) but \(\dot M\!\uparrow\) rides along; the probe param is <code>runs/params/f1edge_hidens__kappa2.param</code></td></tr>
+<tr><td><code>fkappa_definition.png</code> (+ <code>data/make_fkappa_definition.py</code>)</td><td>&sect;13 the \(f_\kappa\) definition figure: the Spitzer conductivity it multiplies, and the analytic seed law \(\dot M\propto f_\kappa^{2/7}\) verified vs the measured back-reaction (1.2175 vs 1.219)</td></tr>
+<tr><td><code>data/kappa_blowout_calibration.csv</code> (+ <code>make_kappa_blowout_calibration.py</code>, <code>kappa_blowout_calibration.png</code>)</td><td>&sect;13 the measured \(f_\kappa\) calibration: developed \(\theta\) vs \(f_\kappa\) for compact/mid/diffuse (full runs <code>cal_{compact,diffuse}__k*</code> + <code>cal_mid__ek*</code>); compact fires \(\theta\!\to\!0.95\) at \(f_\kappa\!\approx\!4\), diffuse needs \(\sim\!60\)</td></tr>
+<tr><td><code>data/ebpeak_trigger_test.csv</code> (+ <code>make_ebpeak_trigger_test.py</code>, <code>ebpeak_trigger_test.png</code>)</td><td>&sect;12 the live ebpeak code-path test (compact/diffuse/mid, <code>cal_*__ebpeak</code> / <code>cal_mid__ek*</code>): ebpeak never fires at \(f_\kappa{=}1\) (peaks below 1.0 then declines)</td></tr>
+<tr><td><code>data/ebpeak_8config_xcheck.csv</code> (+ <code>make_ebpeak_8config_xcheck.py</code>, <code>ebpeak_8config_xcheck.png</code>)</td><td>&sect;12 the 8-config frozen-screen cross-check + live overlay: 6 normal clouds peak 0.85&ndash;0.92, live matches frozen to the digit</td></tr>
+<tr><td><code>data/_trinity_style.py</code></td><td>the shared TRINITY plot style (loads <code>paper/_lib/trinity.mplstyle</code>, LaTeX-free fallback) so every storyline figure is visually consistent</td></tr>
 <tr><td><code>data/ebpeak_trigger_test.csv</code> (+ <code>make_ebpeak_trigger_test.py</code>, <code>ebpeak_trigger_test.png</code>)</td><td>&sect;12 does PdV alone trigger? Two <code>cooling_balance,ebpeak</code>-active runs (<code>runs/params/cal_&#123;compact,diffuse&#125;__ebpeak.param</code>): ebpeak never fires at \(f_\kappa{=}1\) (PdV-incl peaks \(0.91\)/\(0.86\) then declines); the trade-off keeps diffuse PdV-incl flat across \(f_\kappa\)</td></tr>
 <tr><td><code>ideas_comparison.png</code> (+ <code>data/make_ideas_comparison.py</code>)</td><td>the at-a-glance scoreboard of all ideas + three real-data evidence panels (reads <code>fmix_table</code>, <code>da_replay</code>, <code>kappa_backreaction</code> CSVs)</td></tr>
 <tr><td><code>KAPPA_EFF_SCOPING.md</code></td><td>&sect;11 the κ_eff cooling-mechanism feasibility map + the &sect;6a Rung-A result table; the mechanism vs the optional evaporation-decoupling bonus</td></tr>
@@ -659,7 +789,7 @@ def main():
     parts = [
         HEAD, HERO,
         SEC_SETUP, SEC_DOUBLE, SEC_CONVENTION, SEC_REGIME, SEC_CLOSURE,
-        SEC_DA, SEC_LIT, SEC_WIRING, SEC_LIVE, SEC_BOTTOM, SEC_KAPPA, SEC_EBPEAK, SEC_REPRO,
+        SEC_DA, SEC_LIT, SEC_WIRING, SEC_LIVE, SEC_BOTTOM, SEC_KAPPA, SEC_EBPEAK, SEC_FKDEF, SEC_REPRO,
     ]
     parts.append("</div></body></html>")
     html = "".join(parts)

@@ -43,11 +43,15 @@ _REPO = os.path.abspath(os.path.join(_HERE, *([os.pardir] * 5)))
 _OUT = os.path.join(_REPO, "outputs", "kcal")
 
 _CONFIGS = [
-    # (cfg, label, baseline θ_blowout for the f_κ=1 correctness check). The compact ref is
-    # simple_cluster's fmix_table value (0.667). The diffuse ref is f1edge_lowdens's OWN
-    # resolved θ (~0.17) -- NOT fmix_table's large_diffuse_lowsfe (0.25, a different cloud).
-    ("compact", "simple_cluster (mCloud 1e5, sfe 0.3)", 0.667),
-    ("diffuse", "f1edge_lowdens (mCloud 1e7, sfe 0.5, nCore 1e2)", 0.169),
+    # (cfg, label, baseline θ_blowout for the f_κ=1 correctness check, run_dir format). The compact
+    # ref is simple_cluster's fmix_table value (0.667). The diffuse ref is f1edge_lowdens's OWN
+    # resolved θ (~0.17) -- NOT fmix_table's large_diffuse_lowsfe (0.25, a different cloud). The mid
+    # config (midrange_pl0) was added 2026-06-28 from the cal_mid__ek{1,2,4} ebpeak-active runs
+    # (cooling_boost_kappa=1,2,4); its f_κ=1 θ_blowout is self-referential here (no separate baseline
+    # ground truth -- the OK/CHECK tag just flags gross drift), so ref = its own measured f_κ=1 value.
+    ("compact", "simple_cluster (mCloud 1e5, sfe 0.3)", 0.667, "cal_compact__k{fk}"),
+    ("diffuse", "f1edge_lowdens (mCloud 1e7, sfe 0.5, nCore 1e2)", 0.169, "cal_diffuse__k{fk}"),
+    ("mid", "midrange_pl0 (mCloud 1e6, sfe 0.1, nCore 1e4)", 0.610, "cal_mid__ek{fk}"),
 ]
 _FK = [1, 2, 4]
 _TRIGGER = 0.95  # the cooling_balance trigger: Lloss/Lgain > 0.95 fires the cooling-driven transition
@@ -139,11 +143,11 @@ def main():
     # of the bubble running past cloud dispersal under-cooled.
     rows = []
     series = {}  # label -> (fk[], theta_blowout[], cum_frac[], cooling_fired[])
-    for cfg, label, theta_ref in _CONFIGS:
+    for cfg, label, theta_ref, rundir_fmt in _CONFIGS:
         fk_l, tb_l, cf_l, fired_l = [], [], [], []
         base = None
         for fk in _FK:
-            h = harvest(os.path.join(_OUT, f"cal_{cfg}__k{fk}"))
+            h = harvest(os.path.join(_OUT, rundir_fmt.format(fk=fk)))
             if fk == 1:
                 base = h["theta_blowout"]
                 tag = ("OK" if (np.isfinite(base) and abs(base - theta_ref) / theta_ref < 0.10)
@@ -178,10 +182,14 @@ def main():
         import matplotlib
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
+        import sys
+        sys.path.insert(0, _HERE)
+        from _trinity_style import use_trinity_style
+        use_trinity_style()
     except Exception as e:  # pragma: no cover
         print(f"(skipping figure: {e})")
         return
-    fig, (axL, axR) = plt.subplots(1, 2, figsize=(13, 5.2))
+    fig, (axL, axR) = plt.subplots(1, 2, figsize=(12, 4.8))
     markers = ["o-", "s--", "^:"]
     # LEFT: developed θ (at cloud dispersal) vs f_κ, with the 0.95 cooling-fire threshold
     axL.axhline(_TRIGGER, color="crimson", lw=1.5, ls="--", label="0.95 cooling_balance trigger")
@@ -194,11 +202,9 @@ def main():
                 axL.plot(x, y, "o", ms=15, mfc="none", mec="crimson", mew=2, zorder=5)
     axL.set_xscale("log", base=2)
     axL.set_xlabel(r"$f_\kappa$  (cooling_boost_kappa)")
-    axL.set_ylabel(r"developed $\theta = L_{\rm cool}/L_{\rm mech}$ (at cloud dispersal)")
-    axL.set_title("Does κ_eff push θ to the 0.95 cooling-fire trigger?\n"
-                  "(red ring = cooling_balance FIRED → momentum; dotted = f_κ^0.63 snapshot estimate)",
-                  fontsize=9.5, fontweight="bold")
-    axL.legend(fontsize=8, loc="upper left")
+    axL.set_ylabel(r"developed $\theta = L_{\rm cool}/L_{\rm mech}$  (at dispersal)")
+    axL.set_title(r"Does $f_\kappa$ push $\theta$ to the 0.95 trigger?", fontsize=11.5)
+    axL.legend(fontsize=8.5, loc="upper left")
     # RIGHT: cumulative radiated fraction (the 'efficiently cooled' metric) vs f_κ
     for (label, (fk, tb, cf, fired)), m in zip(series.items(), markers):
         axR.plot(fk, cf, m, lw=2.2, ms=7, label=label)
@@ -208,8 +214,8 @@ def main():
     axR.set_title("Cumulative cooling efficiency\n(El-Badry/Lancaster 'efficiently cooled' metric)",
                   fontsize=9.5, fontweight="bold")
     axR.legend(fontsize=8.5, loc="best")
-    fig.suptitle("f_κ calibration (MEASURED, full runs): compact fires the cooling transition at f_κ≈4; "
-                 "diffuse needs far more — the snapshot estimate was optimistic", fontsize=10.5, fontweight="bold")
+    fig.suptitle(r"$f_\kappa$ calibration (measured, full runs): denser clouds fire near $f_\kappa\!\approx\!4$ "
+                 r"(compact), diffuse needs $\sim\!60$", fontsize=13)
     fig.tight_layout(rect=(0, 0, 1, 0.95))
     png = os.path.join(_PDV, "kappa_blowout_calibration.png")
     fig.savefig(png, dpi=130)

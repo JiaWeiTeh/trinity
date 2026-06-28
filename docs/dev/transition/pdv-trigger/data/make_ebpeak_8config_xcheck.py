@@ -94,6 +94,10 @@ def main():
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
         import numpy as np
+        import sys
+        sys.path.insert(0, _HERE)
+        from _trinity_style import use_trinity_style
+        use_trinity_style()
     except Exception as e:  # pragma: no cover
         print(f"(skipping figure: {e})")
         return
@@ -128,9 +132,8 @@ def main():
                Line2D([0], [0], color="#2ca02c", lw=2, label="ebpeak threshold 1.0"),
                Line2D([0], [0], color="crimson", ls="--", lw=1.3, label="cooling_balance 0.95")]
     ax.legend(handles=handles, fontsize=8.5, loc="upper left")
-    ax.set_title("Does the ebpeak finding hold on all 8 configs? Frozen-trajectory screen (bars) — 6 normal "
-                 "clouds peak at 0.85–0.92\nand never fire; only heavy-5e9 / control do. Live full runs (black "
-                 "diamonds) agree to the digit where they overlap.", fontsize=10.3, fontweight="bold")
+    ax.set_title("Does the ebpeak finding hold across the 8 configs? Frozen screen (bars): "
+                 "6 normal clouds peak 0.85–0.92, never fire", fontsize=12)
     fig.tight_layout()
     png = os.path.join(_PDV, "ebpeak_8config_xcheck.png")
     fig.savefig(png, dpi=130)

@@ -230,9 +230,26 @@ Spitzer conduction coefficient `C_thermal` at all three sites in `bubble_luminos
 Enhancing conduction puts **more gas in the ~10⁵ K radiating band**, so the cooling **emerges** higher (θ is an
 *output*, El-Badry's approach — not a post-hoc floor).
 
-- **Measured [data]:** at matched `t` on the stiff dense edge (`f1edge_hidens`), `f_κ=2` raises the resolved
-  cooling `bubble_LTotal` **×1.23–1.38**, moving the loss-ratio proxy **+0.05–0.10** toward the trigger.
+- **What f_κ IS (equation-grounded, no assumptions; report §13) [data]:** `f_κ` = `cooling_boost_kappa` is a
+  dimensionless multiplier on the **Spitzer–Härm conduction coefficient** `C_thermal = 6e-7 erg s⁻¹ cm⁻¹
+  K⁻⁷ᐟ²` (`registry.py:341`): **κ_eff(T) = f_κ·C_th·T^(5/2)**. It enters the 3 sites in `bubble_luminosity.py`
+  — dMdt seed (`:291`, ⇒ **dMdt ∝ f_κ^(2/7)**), conduction-layer ICs (`:370`, ⇒ layer thickness **ΔR₂ ∝ f_κ
+  at fixed dMdt**; folding in the seed ⇒ f_κ^(5/7)), T-curvature ODE (`:406`, ∝ 1/(f_κ·C_th·T^(5/2))). It does
+  **not** multiply `L_cool`: `get_dudt(t,n,T,φ)` is integrated over the (now thicker) structure, so **θ =
+  L_cool/L_mech emerges**. The seed law is **verified vs measurement**: dMdt(f_κ=2)/dMdt(f_κ=1) = 1.2175 at
+  the seed vs 2^(2/7)=1.219 (≈0.1%). Side effect: dMdt
+  rises too (a faithful El-Badry κ_eff would *suppress* evaporation) ⇒ f_κ is a **structural probe**.
+  Artifacts: `fkappa_definition.png` (+ `data/make_fkappa_definition.py`).
+- **Measured back-reaction [data]:** at matched `t` on the stiff dense edge (`f1edge_hidens`), `f_κ=2` raises the
+  resolved cooling `bubble_LTotal` **×1.23–1.38**, moving the loss-ratio proxy **+0.05–0.10** toward the trigger.
   Artifacts: `data/kappa_backreaction.csv` + `kappa_backreaction.png` (full table in `KAPPA_EFF_SCOPING.md` §6a).
+- **Calibration — how much f_κ, measured on full runs (3 configs) [data]:** developed θ at cloud dispersal vs
+  f_κ for compact (`simple_cluster`) / mid (`midrange_pl0`) / diffuse (`f1edge_lowdens`): **θ(f_κ=1) =
+  0.67 / 0.61 / 0.17** (all **measured**), all below the obs/3D ~0.9 and the 0.95 `cooling_balance` trigger.
+  **f_κ to fire (θ→0.95): ≈4 (compact — bracketed, it fires at f_κ=4) / ≈5–6 (mid, extrapolated) / ≈60
+  (diffuse, extrapolated)** — steeply density-dependent (only compact reaches 0.95 within the measured f_κ≤4
+  grid). So **at f_κ=1 the under-cooled clouds stay below ~0.9 and never fire; they need much higher f_κ.** Artifacts:
+  `data/kappa_blowout_calibration.csv` + `kappa_blowout_calibration.png`.
 - **The merge:** κ_eff is the **mechanism**; `θ(n_H)` (El-Badry `λδv`=κ_eff + Lancaster ≈0.9–0.99) is the
   **target**; `f_κ(properties)` is the knob. The earlier "`θ_target` vs κ_eff" split was a false dichotomy
   (target vs mechanism). The remaining work is **calibrating f_κ(properties)** so emergent θ → target — *no new

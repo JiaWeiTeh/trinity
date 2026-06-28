@@ -73,6 +73,25 @@ framing):**
   `f_κ(n_H)` mode (gated, default-off byte-identical).
 
 **Status ledger (newest first):**
+- **2026-06-28 (what IS f_κ? — equation-grounded definition + mid live runs + a consistent plot style).**
+  Wrote the precise, code-grounded definition of `f_κ` (no assumptions; report §13 + `make_fkappa_definition.py`
+  → `fkappa_definition.png`). **f_κ = `cooling_boost_kappa`** is a dimensionless multiplier on the
+  **Spitzer–Härm conduction coefficient** `C_thermal = 6e-7 erg s⁻¹ cm⁻¹ K⁻⁷ᐟ²` (`registry.py:341`):
+  κ_eff(T) = f_κ·C_th·T^(5/2). It enters the 3 sites in `bubble_luminosity.py` — the dMdt seed (Eq 33,
+  `:291`, ⇒ **dMdt ∝ f_κ^(2/7)**), the conduction-layer ICs (Eq 44, `:370`, ⇒ layer thickness **ΔR₂ ∝ f_κ at fixed dMdt**;
+  folding in the seed dMdt∝f_κ^(2/7) ⇒ ΔR₂∝f_κ^(5/7)), and the T-curvature ODE (Eq 42-43, `:406`, term ∝ 1/(f_κ·C_th·T^(5/2))). **It does NOT multiply L_cool**:
+  the local `get_dudt(t,n,T,φ)` is integrated over the (thicker) structure, so θ=L_cool/L_mech EMERGES.
+  **Analytic seed scaling VERIFIED vs measurement:** dMdt(f_κ=2)/dMdt(f_κ=1) = 1.2175 at the seed vs
+  2^(2/7)=1.219 (≈0.1%; softens later as Pb drains ~3%). **Side effect (why it's a probe):** dMdt rises too
+  (El-Badry would suppress it). **mid live runs done** (`cal_mid__ek{1,2,4}`, midrange_pl0): θ_blowout
+  0.610→0.711→0.814, ebpeak fires at f_κ=4 (peak 1.027) — a 3rd calibration config, and mid live PdV-incl
+  peak 0.901 == frozen 0.901 (2nd digit-perfect validation). **Calibration now 3 configs** (compact/mid/diffuse,
+  `make_kappa_blowout_calibration.py`): θ(f_κ=1)=0.17/0.61/0.67, f_κ-to-fire ≈ 4 (compact, bracketed — fires
+  at f_κ=4) / ~5-6 (mid, extrap.) / ~60 (diffuse, extrap.) — answering the
+  user's question: **at f_κ=1 the under-cooled clouds stay below ~0.9 and never fire; they need much higher
+  f_κ, steeply density-dependent.** **Plot style:** added `data/_trinity_style.py` (loads `paper/_lib/trinity.mplstyle`,
+  LaTeX-free fallback — container has no system LaTeX) and applied it to all recent storyline figures for
+  consistency. No production code touched.
 - **2026-06-28 (does the ebpeak finding hold on the 8 configs? — frozen-screen cross-check + live validation).**
   Honest coverage answer: the recent full-run κ_eff/ebpeak work ran on **2 density-edge configs**
   (compact=`simple_cluster`, diffuse=`f1edge_lowdens`), NOT all 8. But the **f_κ=1 ebpeak conclusion
@@ -839,9 +858,13 @@ given the offline verdict** — it confirms, it does not change, the reading-B f
   work); `data/fkappa_leverage.csv` (+ `make_fkappa_leverage.py`, fig `fkappa_leverage.png`) — the **f_κ
   calibration first cut** (leverage `∝ f_κ^0.63`, viable to f_κ=64); `data/kappa_calibration_estimate.csv`
   (+ `make_kappa_calibration_estimate.py`, fig `kappa_calibration_estimate.png`) — the **f_κ(n_H) calibration
-  estimate** (diffuse ≈8, dense ≈1.6); `runs/params/cal_{compact,diffuse}__k{1,2,4}.param` +
-  `data/make_kappa_blowout_calibration.py` — the **HPC full-run grid** (run; compact fires cooling at f_κ≈4,
-  diffuse needs ≈60); `ideas_comparison.png` (+ `make_ideas_comparison.py`) — the all-ideas scoreboard.
+  estimate** (diffuse ≈8, dense ≈1.6); `fkappa_definition.png` (+ `data/make_fkappa_definition.py`) — the
+  **equation-grounded f_κ definition** (Spitzer law κ_eff=f_κ·C_th·T^(5/2); seed dMdt∝f_κ^(2/7) verified
+  1.2175 vs 1.219); `runs/params/cal_{compact,diffuse}__k{1,2,4}.param` + `runs/params/cal_mid__ek{1,2,4}.param`
+  + `data/make_kappa_blowout_calibration.py` (→ `kappa_blowout_calibration.png`) — the **measured full-run
+  calibration (3 configs)**: θ(f_κ=1)=0.67/0.61/0.17, f_κ-to-fire ≈4/~5-6/~60 (compact measured/mid & diffuse extrap.);
+  `ideas_comparison.png` (+ `make_ideas_comparison.py`) — the all-ideas scoreboard; `data/_trinity_style.py` —
+  the **shared TRINITY plot style** (loads `paper/_lib/trinity.mplstyle`, LaTeX-free) for storyline consistency.
 - **PdV-in-the-trigger (the founding question, measured):** `data/pdv_trigger_compare.csv` (+
   `make_pdv_trigger_compare.py`, fig `pdv_trigger_compare.png`) — PdV is the dominant sink, PdV-inclusive ratio
   0.65–0.91 at f_κ=1; `runs/params/cal_{compact,diffuse}__ebpeak.param` + `data/make_ebpeak_trigger_test.py`

@@ -165,6 +165,10 @@ def main():
         import matplotlib
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
+        import sys
+        sys.path.insert(0, _HERE)
+        from _trinity_style import use_trinity_style
+        use_trinity_style()
     except Exception as e:  # pragma: no cover
         print(f"(skipping figure: {e})")
         return
@@ -220,14 +224,10 @@ def main():
         ax.set_ylabel("loss / Lgain")
         ax.set_ylim(0, 1.2)
         ax.legend(fontsize=7.0, loc="lower right")
-    regimes = ", ".join(f"{c} ({cfg_sub.get(c, '')})" for c in present)
-    fig.suptitle(f"Include PdV in the trigger? Live full runs — {len(present)} regime(s): {regimes}. PdV is the "
-                 "dominant sink, so\nthe PdV-inclusive ratio (solid blue) sits far above radiative-only (dotted) "
-                 "— but it PEAKS BELOW 1.0 and declines:\nebpeak does NOT fire at f_κ=1 for any of them. The "
-                 "cooling<->PdV trade-off keeps PdV-incl nearly f_κ-flat (f_κ=2,4\ncurves hug f_κ=1), so boosting "
-                 "cooling helps the radiative path, not the PdV-inclusive one.",
-                 fontsize=9.6, fontweight="bold")
-    fig.tight_layout(rect=(0, 0, 1, 0.92 if nrow == 1 else 0.95))
+    fig.suptitle(r"Does PdV alone trigger the transition? The PdV-inclusive ratio $(L_{\rm loss}+P\mathrm{d}V)/"
+                 r"L_{\rm gain}$ peaks below 1.0 at $f_\kappa\!=\!1$",
+                 fontsize=12.5)
+    fig.tight_layout(rect=(0, 0, 1, 0.96 if nrow == 1 else 0.97))
     png = os.path.join(_PDV, "ebpeak_trigger_test.png")
     fig.savefig(png, dpi=130)
     print(f"wrote {png}")
