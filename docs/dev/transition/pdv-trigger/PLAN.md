@@ -70,6 +70,22 @@ framing):**
   density-dependent `f_κ(n_H)` mode (gated, default-off byte-identical).
 
 **Status ledger (newest first):**
+- **2026-06-26 (include PdV in the trigger? — the founding question, with fresh data).** `data/make_pdv_trigger_compare.py`
+  (→ `pdv_trigger_compare.csv/png`) measures, on the cal runs at cloud dispersal, the radiative-only ratio
+  (`Lcool/Lmech`, the `cooling_balance` criterion) vs the **PdV-inclusive** ratio (`(Lcool+leak+PdV)/Lmech`, the
+  `ebpeak` criterion `edot_balance≤0`). **PdV is the DOMINANT sink:** PdV/Lmech = 0.21 (compact) / **0.48
+  (diffuse)** vs Lcool/Lmech 0.67 / 0.17. So the **PdV-inclusive ratio is 0.65–0.91 at f_κ=1**, vs radiative-only
+  0.17–0.67 — i.e. **the diffuse cloud that needs f_κ~60 on the radiative-only trigger is already ~0.65–0.85 on
+  the PdV-inclusive (ebpeak) trigger with NO boost.** Two honest caveats: (i) **cooling↔PdV trade-off** — boosting
+  cooling drains Eb→lowers Pb→lowers PdV, so the PdV-incl ratio rises only slowly with f_κ (diffuse 0.65→0.71),
+  you can't crank cooling to push it to 1.0; (ii) the capped runs reach ~0.85–0.91 max, not quite the 1.0 ebpeak
+  threshold — need to continue the run / a small extra to confirm it fires. **Reframing:** including PdV addresses
+  the TRANSITION-TIMING goal (bubble goes momentum naturally — the diffuse-f_κ~60 problem was an artifact of the
+  radiative-only trigger); it does NOT make cooling efficient (θ stays 0.14–0.30 vs the literature 0.9), which is
+  a SEPARATE goal κ_eff still owns. So **ebpeak (PdV) for the trigger + κ_eff for the cooling magnitude are
+  COMPLEMENTARY** — a cleaner split than "boost cooling until it triggers at 0.95." (This is the workstream's
+  founding `PdV-trigger` question, reopened for *normal* clouds with measured data.) NEXT: run diffuse with
+  `transition_trigger=cooling_balance,ebpeak` at f_κ=1, longer, to see if ebpeak fires naturally.
 - **2026-06-26 (f_κ calibration — MEASURED, full runs) + a trigger-framing CORRECTION.** Ran the 6-sim
   grid (compact `simple_cluster` + diffuse `f1edge_lowdens` × f_κ∈{1,2,4}, ~24 min parallel;
   `data/make_kappa_blowout_calibration.py` → `kappa_blowout_calibration.csv/png`). **Correctness ✓:**
