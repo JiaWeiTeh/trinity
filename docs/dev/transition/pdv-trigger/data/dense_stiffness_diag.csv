@@ -1,0 +1,4 @@
+solver,f_kappa,config,nCore,Pb_at_implicit_entry,wall_min,reached_t_Myr,n_impl_rows,completed,note
+hybr,1.0,small_dense_highsfe,1e6,9.87e9,~11,0.0499,22,False,"f_kappa=1 BASELINE; impractically slow (minutes per stiff segment past dispersal), NOT a hard hang (broke through t=0.0132 wall after ~4.5min to t=0.05)"
+legacy,1.0,small_dense_highsfe,1e6,9.87e9,~11,0.0042,4,False,"f_kappa=1 BASELINE; also impractically slow, even behind hybr in this window"
+legacy_committed_0621,1.0,small_dense_highsfe,1e6,9.87e9,unknown(batch),6.0,265,True,"committed cleanroom frozen data (docs/dev/transition/cleanroom/data/c0_small_dense_highsfe_h0.csv); completed t=0->6 Myr a week ago -> live current-code legacy is far slower => POSSIBLE slowdown regression since 2026-06-21, UNVERIFIED"

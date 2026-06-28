@@ -73,6 +73,21 @@ framing):**
   `f_κ(n_H)` mode (gated, default-off byte-identical).
 
 **Status ledger (newest first):**
+- **2026-06-28 (dense-edge stiffness diagnosed — NOT f_κ; it's an extreme-density solver-stiffness cost).**
+  Ran the #1 de-risk experiment: `small_dense_highsfe` (nCore 1e6) at **f_κ=1 BASELINE** (default everything),
+  hybr vs legacy head-to-head (`runs/params/diag_dense_{hybr,legacy}.param`, `data/dense_stiffness_diag.csv`).
+  **Answer to "is the dense-edge hang f_κ-driven?": NO** — f_κ=1 baseline is just as slow, so the cooling boost
+  is NOT the cause; the f_κ(n_H) calibration is not blocked by κ_eff. **What it actually is:** at this extreme
+  density the implicit bubble-structure solve is **pathologically slow** (Pb≈10¹⁰; minutes per stiff segment
+  past cloud dispersal) for **both** solvers — hybr reached t=0.050 / legacy t=0.004 in ~11 min wall, neither
+  finishing. **Honest correction:** mid-experiment I hypothesized "hybr HARD-stalls" — wrong; hybr broke through
+  the t=0.0132 wall after ~4.5 min and was actually *ahead* of legacy. So it is **slowness, not a hard hang,
+  and not clearly solver-specific.** Oddity: the committed cleanroom legacy data (2026-06-21) *completed* this
+  config to t=6 Myr (265 rows) — far faster than live legacy now ⇒ **possible slowdown regression since then,
+  UNVERIFIED.** **Actionable:** the calibration doesn't need the nCore 1e6 corner (extreme/borderline-unphysical,
+  rCore 0.1 pc); hybr runs fine at nCore≤1e5 (compact 1e5, mid 1e4 both completed quickly), so pin f_κ(n_H)
+  over the physical range and flag the extreme-density slowness as a **separate perf/solver item** (chase the
+  possible regression only if that corner is ever needed). No production code touched.
 - **2026-06-28 (taxonomy table — disambiguating the approaches).** Added a physics taxonomy (report §14 +
   `FINDINGS.md` "Taxonomy" section) after a maintainer asked what is what. Resolves a real conflation: the
   "three things" are really **2 cooling-magnitude approaches on opposite sides of the structure solve + 1
