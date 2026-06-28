@@ -1,0 +1,9 @@
+config,regime,frozen_peak_ratio,frozen_fires_in_cloud,blowout_t,live_peak_ratio,pdv_over_lmech_med
+be_sphere,normal,0.905,False,0.856116,,0.4533
+large_diffuse_lowsfe,normal,1.019,True,3.660002,,0.4432
+midrange_pl0,normal,0.901,False,0.392158,0.901,0.4607
+pl2_steep,normal,0.847,False,0.839785,,0.4288
+simple_cluster,normal,0.911,False,0.090183,0.911,0.4604
+small_dense_highsfe,normal,0.919,False,0.011658,,0.4638
+fail_repro,heavy_5e9,1.572,True,,,1.4227
+small_1e6,normal_ctrl,1.108,True,,,0.5539

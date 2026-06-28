@@ -1,0 +1,16 @@
+# 8-config generalization of the ebpeak / f_kappa trade-off test: MID-density (midrange_pl0).
+# mCloud 1e6 / nCore 1e4 / sfe 0.1 / densPL alpha 0; frozen blowout ~0.39 Myr, frozen PdV-incl peak ~0.901.
+# transition_trigger includes ebpeak (PdV-inclusive) so the run self-terminates if it fires.
+# Tests whether the cooling<->PdV trade-off (2-config finding) holds on a 3rd, mid-density regime.
+model_name      cal_mid__ek4
+path2output     outputs/kcal/cal_mid__ek4
+mCloud    1e6
+nCore    1e4
+sfe    0.1
+dens_profile    densPL
+densPL_alpha    0
+log_console    False
+log_file    True
+stop_t    1.0
+cooling_boost_kappa    4.0
+transition_trigger    cooling_balance,ebpeak

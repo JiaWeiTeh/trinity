@@ -288,7 +288,7 @@ def _get_init_dMdt(params, Pb: float) -> float:
     t_now = params['t_now'].value
     mu_ion = params['mu_ion'].value
     k_B = params['k_B'].value
-    C_thermal = params['C_thermal'].value
+    C_thermal = params['cooling_boost_kappa'].value * params['C_thermal'].value
     return (12 / 75 * dMdt_factor**(5/2) * 4 * np.pi * R2**3 / t_now
             * mu_ion / k_B
             * (t_now * C_thermal / R2**2)**(2/7)
@@ -367,7 +367,7 @@ def _get_bubble_ODE_initial_conditions(dMdt, params, Pb: float, R1: float):
 
     k_B = params['k_B'].value
     mu_ion = params['mu_ion'].value
-    C_thermal = params['C_thermal'].value
+    C_thermal = params['cooling_boost_kappa'].value * params['C_thermal'].value
     R2 = params['R2'].value
 
     constant = (25/4 * k_B / mu_ion / C_thermal)
@@ -403,7 +403,7 @@ def _get_bubble_ODE(r_arr, initial_ODEs, params, Pb: float):
 
     v_term = params['cool_alpha'].value * r_arr / params['t_now'].value
 
-    dTdrr = (Pb / (params['C_thermal'].value * T**(5/2)) * (
+    dTdrr = (Pb / (params['cooling_boost_kappa'].value * params['C_thermal'].value * T**(5/2)) * (
         (params['cool_beta'].value + 2.5 * params['cool_delta'].value) / params['t_now'].value
         + 2.5 * (v - v_term) * dTdr / T - dudt / Pb
     ) - 2.5 * dTdr**2 / T - 2 * dTdr / r_arr)

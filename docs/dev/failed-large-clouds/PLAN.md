@@ -42,6 +42,16 @@ check — `solve_R1`→`get_r1` `sqrt(<0)` at an overshot `R2<0`, then the cooli
 is wrapped so any degenerate-collapse exception → `ENERGY_COLLAPSED`. Production diff total: ~93 lines
 across 4 files + `test/test_energy_collapse_guard.py` (6 cases).
 
+> **Update (2026-06-23):** the **"family T"** handoff this plan defers (the PdV-inclusive `Eb`-peak →
+> momentum transition, §6) has since **partially shipped** in the sibling transition workstream as an
+> **opt-in, default-off** `transition_trigger` keyword (`run_energy_implicit_phase.py`; values
+> `cooling_balance` (default) / `blowout` / **`ebpeak`**). The `ebpeak` option **is** the net-energy
+> zero-crossing `(Lgain − Lloss − 4πR2²·v2·Pb) ≤ 0` named below. The production **default is unchanged**,
+> so these clouds still terminate `ENERGY_COLLAPSED` and this plan's verdict holds — but the
+> "family T not wired / no production code changed yet" framing is **no longer literally true**. See
+> `docs/dev/transition/pt4/r1shadow/R1_FINDINGS.md`. Still unbuilt: the heavy-cloud Eb-peak is a
+> **phase-1a** event, whereas the shipped shadow/drive lives in **phase 1b** only.
+
 **Corrections log (claims revised mid-analysis — do not re-trust the originals).** Each was settled by a
 specific source/measurement, not opinion:
 1. *"The failure is catastrophic cooling"* → **PdV expansion work**, not cooling. Settled by the `dEb/dt`

@@ -1,0 +1,2 @@
+label,none_run,boost_run,t_trans_none,t_trans_boost,d_t_trans,blowout_none,blowout_boost,d_blowout,ebpeak_none,ebpeak_boost,fired_cooling_boost,maxrel_R2,maxrel_v2,maxrel_Eb,end_none,end_boost
+f1edge_hidens_theta90,f1edge_hidens__none,f1edge_hidens__theta90,0.02862315805969212,0.01124021634979432,-0.0173829417098978,nan,nan,nan,0.026632622206924632,0.0034101956173628882,True,0.1262942928829495,0.9468324272921016,0.7798013824427151,?,?

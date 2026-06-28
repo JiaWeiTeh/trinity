@@ -1,0 +1,9 @@
+config,regime,PdV_over_Lmech_median,PdV_over_Lmech_max,Lloss_over_Lmech_median,Eb_growth_factor,Eb_monotonic,ebpeak_fires_in_cloud,Eb_peak_row,Eb_n_rows,n
+be_sphere,normal,0.453,0.666,0.2393,1714.7201,True,False,183,183,184
+large_diffuse_lowsfe,normal,0.443,0.55,0.2916,1499.3538,True,True,191,192,193
+midrange_pl0,normal,0.461,0.702,0.1689,2009.347,True,False,185,185,186
+pl2_steep,normal,0.429,0.701,0.1717,2171.1443,True,False,172,172,173
+simple_cluster,normal,0.46,0.646,0.1924,2404.9713,True,False,182,182,183
+small_dense_highsfe,normal,0.464,0.658,0.206,1950.7939,True,False,166,166,167
+fail_repro,heavy_5e9,1.423,1.561,0.0085,1.014,False,True,5,52,53
+small_1e6,normal_ctrl,0.554,1.102,0.0217,13617.1051,True,True,170,170,171

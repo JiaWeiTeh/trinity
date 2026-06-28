@@ -331,6 +331,46 @@ def compute_R1_Pb(
     return R1, Pb
 
 
+def effective_Lloss(mode, fmix, theta_target, Lcool, Lleak, Lmech):
+    """Effective radiative loss fed CONSISTENTLY to the beta-delta residual, the energy ODE
+    (``Edot_from_balance``), and the energy->momentum trigger -- the single point where the opt-in
+    unresolved-interface-cooling boost is applied (Paper-II interface-cooling note).
+
+    TRINITY's resolved 1D conduction front under-counts the interface cooling that turbulent
+    mixing layers produce (El-Badry+19, Lancaster+21, Tan/Oh/Gronke 21). These closures top the
+    loss up WITHOUT double-counting: the correction is ADDED to the resolved integral, never a
+    ``(1-theta)*Lmech`` rescale of the input on top of subtracting ``Lcool`` (that would remove the
+    same energy twice).
+
+      none          Lcool + Lleak                       (default -> byte-identical)
+      multiplier    Lleak + fmix * Lcool                (fmix >= 1; boosts only the resolved cool)
+      theta_target  max(Lcool + Lleak, theta * Lmech)   (top-up to a target loss fraction; the max
+                                                          keeps it single-count -- switches OFF where
+                                                          the resolved loss already exceeds target)
+
+    Any unrecognised ``mode`` falls back to the resolved loss, so a typo cannot perturb a run.
+    """
+    if mode == 'multiplier':
+        return Lleak + fmix * Lcool
+    if mode == 'theta_target':
+        return max(Lcool + Lleak, theta_target * Lmech)
+    return Lcool + Lleak  # 'none' (default) and any unrecognised token -> resolved loss
+
+
+def effective_Lloss_from_params(params, Lcool, Lleak, Lmech):
+    """Read the ``cooling_boost_*`` knobs off ``params`` and apply :func:`effective_Lloss`.
+
+    Thin wrapper so the three call sites stay one line and identical. Default mode 'none' makes
+    this return ``Lcool + Lleak`` unchanged.
+    """
+    mode = getattr(params.get('cooling_boost_mode', None), 'value', 'none') or 'none'
+    if mode == 'none':
+        return Lcool + Lleak
+    fmix = float(getattr(params.get('cooling_boost_fmix', None), 'value', 1.0))
+    theta_target = float(getattr(params.get('cooling_boost_theta', None), 'value', 0.0))
+    return effective_Lloss(mode, fmix, theta_target, Lcool, Lleak, Lmech)
+
+
 def _usable_dMdt(props: Optional[BubbleProperties]) -> Optional[float]:
     """The solved dMdt from a bubble result, or None when unusable.
 
@@ -424,12 +464,13 @@ def get_residual_pure(
 
     # Method 2: Edot from energy balance (gain - loss - work)
     L_gain = Lmech_total
-    L_loss = bubble_props.bubble_LTotal
+    Lcool = bubble_props.bubble_LTotal
     # Add leak if available
     bubble_Leak = getattr(params.get('bubble_Leak', None), 'value', 0.0)
     if bubble_Leak is None:
         bubble_Leak = 0.0
-    L_loss += bubble_Leak
+    # opt-in unresolved-interface-cooling boost (default 'none' -> Lcool + leak, byte-identical)
+    L_loss = effective_Lloss_from_params(params, Lcool, bubble_Leak, Lmech_total)
 
     Edot_from_balance = L_gain - L_loss - 4 * np.pi * R2**2 * v2 * Pb
 
@@ -528,11 +569,12 @@ def get_residual_detailed(
     )
 
     L_gain = Lmech_total
-    L_loss = bubble_props.bubble_LTotal
+    Lcool = bubble_props.bubble_LTotal
     bubble_Leak = getattr(params.get('bubble_Leak', None), 'value', 0.0)
     if bubble_Leak is None:
         bubble_Leak = 0.0
-    L_loss += bubble_Leak
+    # opt-in unresolved-interface-cooling boost (default 'none' -> Lcool + leak, byte-identical)
+    L_loss = effective_Lloss_from_params(params, Lcool, bubble_Leak, Lmech_total)
 
     Edot_from_balance = L_gain - L_loss - 4 * np.pi * R2**2 * v2 * Pb
 

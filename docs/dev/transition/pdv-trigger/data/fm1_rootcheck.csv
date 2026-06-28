@@ -1,0 +1,9 @@
+state,fixture,s,dMdt_entrain,root_found,f_root,dTdr_root,dR2_over_R2_root,physical,vR1_at_root
+stiff 5e9/sfe0.01,dR2_stiff_state_fixture.json,1,938048.6360349662,True,0.99455962981471,-61587900402573.44,1.1912695136454854e-10,True,-1.6689741693180925e-06
+stiff 5e9/sfe0.01,dR2_stiff_state_fixture.json,3,312682.8786783221,False,nan,nan,nan,False,nan
+stiff 5e9/sfe0.01,dR2_stiff_state_fixture.json,10,93804.86360349662,False,nan,nan,nan,False,nan
+stiff 5e9/sfe0.01,dR2_stiff_state_fixture.json,30,31268.28786783221,False,nan,nan,nan,False,nan
+mild cluster,residual_resample_fixture.json,1,3.860059892659629,True,1.0002988716772683,-1874235369879162.8,1.0614800661018748e-08,True,1.5064994545219395e-05
+mild cluster,residual_resample_fixture.json,3,1.286686630886543,False,nan,nan,nan,False,nan
+mild cluster,residual_resample_fixture.json,10,0.3860059892659629,False,nan,nan,nan,False,nan
+mild cluster,residual_resample_fixture.json,30,0.1286686630886543,False,nan,nan,nan,False,nan

@@ -1,0 +1,19 @@
+# ebpeak-trigger confirmation: diffuse (f1edge_lowdens) / f_kappa=1 / PdV-inclusive trigger ACTIVE.
+# Tests the ACTUAL code path: with 'ebpeak' active the energy phase ends the first segment
+# edot_balance<=0 i.e. (Lloss+PdV)/Lgain>=1.  Cf. cal_diffuse__k1 (shadow only, stop_t=0.9): the
+# PdV-inclusive ratio climbs 0.62 (at dispersal t~0.61) -> 0.85 (t=0.9), still rising, with
+# edot_balance dropping monotonically post-dispersal -> extrapolates to cross 0 ~t=1.2-1.3 Myr.
+# PREDICTION: ebpeak fires ~1.2-1.3 Myr (POST cloud dispersal), at f_kappa=1 -- i.e. PdV gives the
+# natural energy->momentum transition WITHOUT the f_kappa~60 boost that radiative cooling_balance needs.
+# stop_t=2.0 is a safety cap; with ebpeak active the run self-terminates at firing well before 2.0.
+# HPC-ish: diffuse integrates slowly; expect tens of minutes. Opt-in dev run, no production change.
+model_name      cal_diffuse__ebpeak
+path2output     outputs/kcal/cal_diffuse__ebpeak
+mCloud    1e7
+sfe    0.5
+nCore    1e2
+log_console    False
+log_file    True
+stop_t    2.0
+cooling_boost_kappa    1.0
+transition_trigger    cooling_balance,ebpeak
