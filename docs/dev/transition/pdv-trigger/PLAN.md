@@ -73,18 +73,20 @@ framing):**
   `f_κ(n_H)` mode (gated, default-off byte-identical).
 
 **Status ledger (newest first):**
-- **2026-06-28 (controlled f_κ(n_H) calibration sweep — built, HPC-ready, not yet run).** The clean
-  replacement for the conflated 3-anchor estimate (compact/mid/diffuse vary mCloud+sfe+nCore together): a
-  single-variable sweep `runs/params/sweep_fkappa_nH.param` that **fixes mCloud=1e6, sfe=0.1 and varies only
-  nCore [1e2,1e3,1e4,1e5] × cooling_boost_kappa [1,2,4,8,16,32,64]** = 28 combos (f_κ swept wide so θ→0.95
-  firing is BRACKETED at every density, not extrapolated). Verified: sweep syntax expands to 28 (`--dry-run`),
-  `--emit-jobs` produces a working SLURM array (`--array=1-28`), and the diffuse extreme (nCore 1e2) is
-  physically valid (rCloud 39.6 pc < the 200 pc `rCloud_max`). nCore capped at 1e5 (1e6 is the stiff corner,
-  result #15). Harvest+fit harness `data/make_fkappa_nH_sweep.py` written (reuses the proven `harvest()`;
-  run-name parser self-tested; graceful "no data yet" until the grid runs) → `fkappa_nH_sweep.csv` +
-  `fkappa_nH_sweep.png` (fits θ∝f_κ^p per density → f_κ_fire(nCore)). Registered in `REPRODUCE.md` (#18 /
-  Block C). **NEXT: run the 28-combo grid on HPC** (not the ephemeral container) → first clean f_κ(n_H). No
-  production code touched.
+- **2026-06-28 (controlled f_κ(n_H) calibration sweep — built, HPC-ready, not yet run; broadened to 819).**
+  The clean replacement for the conflated 3-anchor estimate (compact/mid/diffuse vary mCloud+sfe+nCore
+  together). `runs/params/sweep_fkappa_nH.param` sweeps **nCore [1e2,3e2,1e3,3e3,1e4,3e4,1e5] (primary, fine) ×
+  cooling_boost_kappa [1,1.5,2,3,4,6,8,12,16,24,32,48,64] (fine — brackets θ→0.95 firing precisely, not
+  extrapolated) × mCloud [1e5,1e6,1e7] × sfe [0.03,0.1,0.3] = 819 combos** (HPC; under the maintainer's 1000
+  ceiling). The mCloud/sfe axes are a **de-conflation test**: do the series collapse onto one n_H curve
+  (⇒ clean f_κ(n_H)) or spread (⇒ multi-dimensional)? Verified: `--dry-run` expands to 819, `--emit-jobs`
+  gives a working SLURM array (`--array=1-819`), and the whole grid stays < the 200 pc `rCloud_max` (max
+  mCloud 1e7 × nCore 1e2 ≈ 70–85 pc; diffuse extreme nCore 1e2 = 39.6 pc). nCore capped at 1e5 (1e6 is the
+  stiff corner, result #15). Harvest+fit harness `data/make_fkappa_nH_sweep.py` (reuses proven `harvest()`;
+  4-axis run-name parser self-tested; groups by (mCloud,sfe,nCore) cell, fits θ∝f_κ^p → f_κ_fire, overlays the
+  M_cl/sfe series; graceful "no data yet") → `fkappa_nH_sweep.csv` + `.png`. Registered in `REPRODUCE.md`
+  (#18 / Block C). **NEXT: run the 819-combo grid on HPC** → first clean f_κ(n_H) + de-conflation verdict.
+  No production code touched.
 - **2026-06-28 (paper reproducibility manifest — `REPRODUCE.md`).** Created `REPRODUCE.md` at the maintainer's
   request: a single map from **every storyline result** (the figures/numbers in `pdvtrigger_report.html`) to
   **the exact `.param` + run command + derived artifact**, tagged 🟢 cheap (re-reads a committed CSV in seconds)
