@@ -16,16 +16,15 @@
 #SBATCH --partition=cpu-single             # Helix single-node partition (matches your other jobs)
 #SBATCH --account=bw22J006
 #SBATCH --export=NONE                       # clean env (login shell below re-loads modules)
-#SBATCH --array=1-819%64                    # 819 combos; %64 caps concurrency. Override: sbatch --array=1-819%32 ...
-#SBATCH --cpus-per-task=1                   # one sim per task (parallelism = many tasks, not threads)
-#SBATCH --mem=4G                            # one bubble integration is light on memory
-#SBATCH --time=24:00:00                     # generous per task; most finish in minutes, diffuse/dense slower
+#SBATCH --array=1-819                       # 819 combos, one task per run (fair-share throttles; no %cap by default).
+                                            # Cap concurrency only if you want to: sbatch --array=1-819%32 ... (or ARRAY=1-819%32 via sync.sh)
+#SBATCH --cpus-per-task=1                   # one sim per task (parallelism = many independent tasks, not threads)
+#SBATCH --mem=2G                            # one bubble integration is light on memory (matches your Paper II sweep)
+#SBATCH --time=02:00:00                     # each run is ~1h max; 2h ceiling (matches your Paper II sweep)
 #SBATCH --output=/gpfs/bwfor/work/ws/hd_cq295-trinity/jobs_fkappa/logs/%A_%a.out
-set -euo pipefail
 
-# ponytail: the array body is the emit-jobs _SBATCH_TEMPLATE (trinity/_input/sweep_jobs.py)
-# pre-patched with the Helix header above. If that template's sentinels (.exit_code/.duration)
-# ever change, mirror them here so `run.py --collect-report` still reads this array's results.
+# Body mirrors your Paper II sweep sbatch (the emit-jobs _SBATCH_TEMPLATE + patch_sbatch): NO `set -e` —
+# capture the sim's own exit code into the .exit_code/.duration sentinels that run.py --collect-report reads.
 
 module load devel/miniforge                                   # your `condatrinity`
 source "$(conda info --base)/etc/profile.d/conda.sh" 2>/dev/null || true
@@ -38,26 +37,20 @@ JOBS="$WS/jobs_fkappa"                                        # emit bundle: par
 # single-thread the math libs: parallelism comes from running many array tasks
 export OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 MPLBACKEND=Agg
 
-# Optional OFFSET (sbatch --export=ALL,OFFSET=N) shifts the runs.tsv line so a grid
-# larger than a MaxSubmitJobs cap can be submitted in chunks. Defaults to 0.
-if [ ! -f "$JOBS/runs.tsv" ]; then
-    echo "ERROR: $JOBS/runs.tsv not found — emit the bundle first (sync.sh submit, or run.py --emit-jobs $JOBS from \$WS)." >&2
-    exit 1
-fi
+# Optional OFFSET (sbatch --export=ALL,OFFSET=N) shifts the runs.tsv line so a grid larger than a
+# MaxSubmitJobs cap can be submitted in chunks. Defaults to 0.
 N=$(( SLURM_ARRAY_TASK_ID + ${OFFSET:-0} ))
 LINE=$(sed -n "${N}p" "$JOBS/runs.tsv")
 if [ -z "$LINE" ]; then
-    echo "ERROR: no line $N in $JOBS/runs.tsv (TASK=$SLURM_ARRAY_TASK_ID OFFSET=${OFFSET:-0}). Array size vs runs.tsv mismatch?" >&2
+    echo "ERROR: no line $N in $JOBS/runs.tsv (TASK=$SLURM_ARRAY_TASK_ID OFFSET=${OFFSET:-0}) — emit first? (sync.sh submit)" >&2
     exit 1
 fi
 PARAM=$(printf '%s' "$LINE" | cut -f1)
 OUTDIR=$(printf '%s' "$LINE" | cut -f2)
 mkdir -p "$OUTDIR"
 SECONDS=0
-set +e                       # capture the sim's OWN exit code for the sentinel
 python "$REPO/run.py" "$PARAM"
 code=$?
-set -e
 echo "$code" > "$OUTDIR/.exit_code"     # run.py --collect-report aggregates these
 echo "$SECONDS" > "$OUTDIR/.duration"
 exit $code
