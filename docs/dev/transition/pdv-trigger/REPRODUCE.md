@@ -78,7 +78,7 @@ Legend — **Sims?**: 🟢 none (reads committed CSV, seconds) · 🟡 a few ful
 | 15 | Dense-edge stiffness is **not** f_κ (it's extreme density) | PLAN ledger 06-28 | `diag_dense_hybr.param`, `diag_dense_legacy.param` | run both, observe (does not finish at nCore 1e6) | `data/dense_stiffness_diag.csv` | 🟡 |
 | 16 | FM1 / FM1b — wrong knobs ruled out (κ_eff confirmed) | §11 | — (offline prototypes) | `python data/make_fm1_rootcheck.py`; `python data/make_fm1b_evapsign.py` | `data/fm1*.csv`, `fm1*.png` | 🟢 |
 | 17 | All-ideas scoreboard | hero | — (reads CSVs above) | `python data/make_ideas_comparison.py` | `ideas_comparison.png` | 🟢 |
-| 18 | **Controlled f_κ(n_H) calibration** (+ de-conflation test, *ready/not-yet-run*) | (next) | `runs/params/sweep_fkappa_nH.param` (sweep → **819** combos) | `runs/sync.sh submit` → `… collect` → `… harvest` (Helix; see Block C) | `data/fkappa_nH_sweep.csv`, `fkappa_nH_sweep.png` | 🔴 |
+| 18 | **Controlled f_κ(n_H) calibration** (+ de-conflation test, *ready/not-yet-run*) | (next) | `runs/params/sweep_fkappa_nH.param` (sweep → **819** combos) | `sync.sh submit`→`collect`→`reduce`→`down`, then `make_fkappa_nH_sweep.py` (Block C) | `data/summary.csv` → `data/fkappa_nH_sweep.csv`, `fkappa_nH_sweep.png` | 🔴 |
 
 ¹ #12 reads the same `cal_*__k{1,2,4}` runs as #11 — once those exist in `outputs/kcal/`, #12 is a 🟢 re-read.
 
@@ -125,10 +125,12 @@ The clean replacement for the conflated 3-anchor estimate. Sweeps **nCore finely
 grid** that brackets the firing point at every density, **and also varies mCloud + sfe** so we can test whether
 `f_κ_fire` is a clean function of n_H alone or also depends on cloud mass / SFE.
 **Grid = 7 nCore × 13 f_κ × 3 mCloud × 3 sfe = 819 combos** (HPC; under the 1000 ceiling).
-Run it with the committed, **pre-patched-for-Helix** array sbatch + laptop driver (`runs/run_fkappa.sbatch`,
-`runs/sync.sh`) — mirrors `paper/shellSSC6` but as an `--emit-jobs` array because 819 runs outgrow one node.
-The driver emits the bundle from `/gpfs` so the run outputs land on the **writable** workspace, not the
-read-only `/home` repo checkout (the failure mode a bare `sbatch jobs/submit_sweep.sbatch` from the repo hits).
+Run it **reduce-then-plot** (the II-survey pattern): a committed, **pre-patched-for-Helix** array sbatch +
+laptop driver (`runs/run_fkappa.sbatch`, `runs/sync.sh`) launch the grid; a **stdlib-only** reducer
+(`data/reduce_fkappa_sweep.py`) walks the multi-GB jsonl ONCE on the cluster into a tiny `summary.csv`; only
+that CSV crosses the wire, and the figure is fit/drawn on the laptop. The driver emits the bundle from
+`/gpfs` so outputs land on the **writable** workspace, not the read-only `/home` repo checkout (the failure
+mode a bare `sbatch jobs/submit_sweep.sbatch` from the repo hits).
 ```bash
 # inspect anywhere (no cluster needed):
 python run.py docs/dev/transition/pdv-trigger/runs/params/sweep_fkappa_nH.param --dry-run     # lists 819 combos
@@ -137,9 +139,12 @@ python run.py docs/dev/transition/pdv-trigger/runs/params/sweep_fkappa_nH.param 
 ./docs/dev/transition/pdv-trigger/runs/sync.sh submit    # git pull + emit to $WS/jobs_fkappa + sbatch array 1-819
 ./docs/dev/transition/pdv-trigger/runs/sync.sh watch     # tail the running array (+ squeue)
 ./docs/dev/transition/pdv-trigger/runs/sync.sh collect   # run.py --collect-report -> sweep_report.{txt,json}
-./docs/dev/transition/pdv-trigger/runs/sync.sh harvest   # make_fkappa_nH_sweep.py vs /gpfs (sets FKAPPA_SWEEP_OUT)
-./docs/dev/transition/pdv-trigger/runs/sync.sh down      # pull fkappa_nH_sweep.csv/.png back to commit
-# (parser self-test only, no data needed: python .../make_fkappa_nH_sweep.py --selftest)
+./docs/dev/transition/pdv-trigger/runs/sync.sh reduce    # jsonl -> summary.csv  (ON HPC, stdlib-only, ~minutes)
+./docs/dev/transition/pdv-trigger/runs/sync.sh down      # rsync summary.csv -> data/  (the tiny table, not jsonl)
+
+# then on the laptop (no cluster): fit + de-conflation figure from summary.csv
+python docs/dev/transition/pdv-trigger/data/make_fkappa_nH_sweep.py        # reads data/summary.csv
+# (self-tests, no data: reduce_fkappa_sweep.py --selftest  · make_fkappa_nH_sweep.py --selftest)
 ```
 Helix conventions baked in (same as II-survey / shellSSC6): `--partition=cpu-single --account=bw22J006
 --export=NONE`, `module load devel/miniforge && conda activate trinity`, REPO `/home/hd/hd_hd/hd_cq295/trinity`,

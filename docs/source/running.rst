@@ -25,8 +25,9 @@ cluster you can instead generate a SLURM job array with ``--emit-jobs``
 
 Output is written to the directory named by the ``path2output``
 parameter; the default sentinel ``def_dir`` resolves to
-``outputs/<model_name>/`` under the current working directory. See
-*Outputs* below for the file layout.
+``outputs/<model_name>/`` for a single run, or one ``outputs/<run_name>/``
+subfolder per combination for a sweep. See *Outputs* below for the file
+layout.
 
 
 Parameter-file formats
@@ -183,6 +184,7 @@ A single run writes these files into ``path2output``:
     path2output/
     ├── dictionary.jsonl            # simulation state, one JSON object per snapshot
     ├── metadata.json               # run constants + termination + final-state blocks
+    ├── metadata_humanreadable.txt  # pretty-printed show_run summary
     └── trinity.log                 # log file (written when log_file = True)
 
 A sweep writes those same files into one subdirectory per combination,
@@ -196,6 +198,7 @@ top-level reports:
     │   ├── 1e5_sfe001_n1e3.param   # full resolved params for this run
     │   ├── dictionary.jsonl
     │   ├── metadata.json
+    │   ├── metadata_humanreadable.txt
     │   └── trinity.log
     ├── 1e5_sfe001_n1e4/
     │   └── ...
@@ -209,9 +212,9 @@ Each sweep combination is named automatically::
 
     {mCloud}_sfe{sfe*100:03d}_n{nCore}[_density-profile][_PHII][_other-swept-keys]
 
-The optional suffixes appear only when the relevant parameter is set
-explicitly in the sweep file (not when left at its ``default.param``
-value):
+The optional suffixes appear only for parameters set explicitly in the
+sweep file — a key you leave out gets no suffix (nothing is compared
+against ``default.param``):
 
 - ``_PL{alpha}`` for ``dens_profile = densPL`` (e.g. ``_PL0``,
   ``_PL-2``), or ``_BE{Omega}`` for ``densBE`` (e.g. ``_BE14``).
@@ -393,7 +396,8 @@ Each level includes itself and all more severe levels:
      - Unrecoverable failures, fatal errors.
      - When only simulation-stopping errors should print.
 
-With ``log_level = INFO``, console output looks like:
+Console logging is off by default (``log_console = False``); with it
+enabled at ``log_level = INFO``, output looks like:
 
 .. code-block:: text
 

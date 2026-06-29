@@ -78,11 +78,16 @@ framing):**
   Helix**: outputs resolve under the read-only `/home` repo checkout, and the emitted sbatch leaves
   account/partition/`--export=NONE`/conda unset (the maintainer's per-cluster `patch_sbatch` step, which
   `sweep_fkappa_nH.param` didn't mention). Added committed, pre-patched `runs/run_fkappa.sbatch` (array
-  1-819, cpu-single/bw22J006/`--export=NONE`/conda, reads the emit `runs.tsv`) + `runs/sync.sh`
-  (submit/watch/collect/harvest/down), mirroring `paper/shellSSC6` but as an array; the driver emits the
-  bundle from `/gpfs` so `path2output` lands on the writable workspace. Harvester `_OUT` now honours
-  `FKAPPA_SWEEP_OUT` (the /gpfs outputs) and its "28 combos" docstring → 819. `REPRODUCE.md` #18/Block C
-  reconciled. No production code touched. **NEXT unchanged: run the grid** (`runs/sync.sh submit`).
+  1-819, cpu-single/bw22J006/`--export=NONE`/conda, reads the emit `runs.tsv`) + `runs/sync.sh` driver,
+  mirroring `paper/shellSSC6` but as an array; the driver emits the bundle from `/gpfs` so `path2output`
+  lands on the writable workspace. **Adopted the II-survey reduce-then-plot split** (merging the parallel
+  `2dcfc9e` work): stdlib-only `data/reduce_fkappa_sweep.py` walks the multi-GB jsonl once on the cluster →
+  tiny `summary.csv`; `data/make_fkappa_nH_sweep.py` now reads ONLY that CSV (fit + de-conflation figure on
+  the laptop). `sync.sh` = submit/watch/collect/**reduce**/down; reducer selftests streaming θ vs the proven
+  `harvest()`, plotter selftests `fit_fire`. Reconciled the collision the two parallel efforts left in the
+  plotter — removed an undefined-`_DEFAULT_SUMMARY` crash (no-arg run) and a dead jsonl/`FKAPPA_SWEEP_OUT`
+  guard that aborted the laptop step even with a valid `summary.csv`. `REPRODUCE.md` #18/Block C +
+  `sweep_fkappa_nH.param` header reconciled. No production code touched. **NEXT: run the grid** (`sync.sh submit`).
 - **2026-06-28 (controlled f_κ(n_H) calibration sweep — built, HPC-ready, not yet run; broadened to 819).**
   The clean replacement for the conflated 3-anchor estimate (compact/mid/diffuse vary mCloud+sfe+nCore
   together). `runs/params/sweep_fkappa_nH.param` sweeps **nCore [1e2,3e2,1e3,3e3,1e4,3e4,1e5] (primary, fine) ×

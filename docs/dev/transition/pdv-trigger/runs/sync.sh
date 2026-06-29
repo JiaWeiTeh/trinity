@@ -6,8 +6,10 @@
 #   ./sync.sh submit    # git pull + emit the 819-combo bundle (if absent) + sbatch the array
 #   ./sync.sh watch     # show your queue + tail the newest array task log
 #   ./sync.sh collect   # run.py --collect-report -> sweep_report.{txt,json} in the output dir
-#   ./sync.sh harvest   # make_fkappa_nH_sweep.py against the /gpfs outputs -> CSV + PNG
-#   ./sync.sh down      # rsync the harvested CSV/PNG (+ sweep_report) back to this repo
+#   ./sync.sh reduce    # reduce_fkappa_sweep.py: the multi-GB jsonl -> one small summary.csv (ON HPC)
+#   ./sync.sh down      # rsync summary.csv (+ sweep_report) back to data/; then plot on the laptop
+# Plot (laptop, no cluster):  python docs/dev/transition/pdv-trigger/data/make_fkappa_nH_sweep.py
+#   (reads data/summary.csv; writes fkappa_nH_sweep.csv + .png — the committed deliverables)
 #
 # Override the ssh host with HELIX=myalias ./sync.sh ...
 # Re-run from scratch: ssh in and `rm -rf $WS/jobs_fkappa` first (emit refuses to clobber a live bundle).
@@ -21,7 +23,7 @@ JOBS=$WS/jobs_fkappa                                          # emit bundle: par
 SWEEP_OUT=$WS/outputs/sweep_fkappa_nH                         # run outputs (relative path2output, resolved from $WS)
 PARAM=$REPO/docs/dev/transition/pdv-trigger/runs/params/sweep_fkappa_nH.param
 SBATCH=$REPO/docs/dev/transition/pdv-trigger/runs/run_fkappa.sbatch
-HARVEST=$REPO/docs/dev/transition/pdv-trigger/data/make_fkappa_nH_sweep.py
+REDUCE=$REPO/docs/dev/transition/pdv-trigger/data/reduce_fkappa_sweep.py
 ENV_SETUP=${ENV_SETUP:-"module load devel/miniforge && conda activate trinity"}  # your `condatrinity`
 
 # this repo on the laptop (where `down` drops the committed artifacts)
@@ -45,14 +47,14 @@ case "${1:-}" in
   collect) echo ">> collect per-task exit codes -> sweep_report.{txt,json} on $HOST"
            ssh "$HOST" "bash -lc 'cd $REPO && $ENV_SETUP && python $REPO/run.py --collect-report $JOBS'" ;;
 
-  harvest) echo ">> harvest theta_blowout + fit f_kappa_fire(nCore) on $HOST"
-           ssh "$HOST" "bash -lc 'cd $REPO && $ENV_SETUP && FKAPPA_SWEEP_OUT=$SWEEP_OUT python $HARVEST'" ;;
+  reduce)  echo ">> reduce the sweep jsonl -> summary.csv on $HOST  (workers=${WORKERS:-8}, stdlib-only)"
+           ssh "$HOST" "bash -lc 'cd $REPO && $ENV_SETUP && python $REDUCE $SWEEP_OUT --workers ${WORKERS:-8}'" ;;
 
-  down)    echo ">> rsync harvested artifacts <- $HOST"
-           rsync -av "$HOST:$REPO/docs/dev/transition/pdv-trigger/data/fkappa_nH_sweep.csv" "$LAPTOP_PDV/data/" 2>/dev/null \
-             || echo ">> no fkappa_nH_sweep.csv yet — run './sync.sh harvest' first"
-           rsync -av "$HOST:$REPO/docs/dev/transition/pdv-trigger/fkappa_nH_sweep.png" "$LAPTOP_PDV/" 2>/dev/null || true
-           rsync -av "$HOST:$SWEEP_OUT/sweep_report.txt" "$LAPTOP_PDV/data/" 2>/dev/null || true ;;
+  down)    echo ">> rsync summary.csv (+ sweep_report) <- $HOST  -> data/  (then plot locally)"
+           rsync -av "$HOST:$SWEEP_OUT/summary.csv" "$LAPTOP_PDV/data/" 2>/dev/null \
+             || echo ">> no summary.csv yet — run './sync.sh reduce' first"
+           rsync -av "$HOST:$SWEEP_OUT/sweep_report.txt" "$LAPTOP_PDV/data/" 2>/dev/null || true
+           echo ">> now plot:  python $LAPTOP_PDV/data/make_fkappa_nH_sweep.py" ;;
 
-  *)       echo "usage: $0 submit|watch|collect|harvest|down   (HELIX=alias  ARRAY=1-819%32  ENV_SETUP=...)"; exit 1 ;;
+  *)       echo "usage: $0 submit|watch|collect|reduce|down   (HELIX=alias  ARRAY=1-819%32  WORKERS=8  ENV_SETUP=...)"; exit 1 ;;
 esac

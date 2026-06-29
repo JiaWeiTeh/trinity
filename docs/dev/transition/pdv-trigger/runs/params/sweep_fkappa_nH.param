@@ -19,8 +19,9 @@
 #   ./docs/dev/transition/pdv-trigger/runs/sync.sh submit    # git pull + emit to /gpfs + sbatch the array
 #   ./docs/dev/transition/pdv-trigger/runs/sync.sh watch     # tail the running array
 #   ./docs/dev/transition/pdv-trigger/runs/sync.sh collect   # sweep_report.{txt,json}
-#   ./docs/dev/transition/pdv-trigger/runs/sync.sh harvest   # make_fkappa_nH_sweep.py -> CSV + PNG
-#   ./docs/dev/transition/pdv-trigger/runs/sync.sh down      # pull the CSV/PNG back to commit
+#   ./docs/dev/transition/pdv-trigger/runs/sync.sh reduce    # jsonl -> summary.csv (ON HPC, stdlib-only)
+#   ./docs/dev/transition/pdv-trigger/runs/sync.sh down      # pull summary.csv -> data/
+#   python .../data/make_fkappa_nH_sweep.py                  # laptop: fit + de-conflation figure
 # Why the driver (not a bare `--emit-jobs jobs/` + `sbatch`): outputs MUST land on writable
 # /gpfs (the repo's /home is read-only at runtime), and the array sbatch needs the Helix
 # account/partition/--export=NONE/conda. runs/run_fkappa.sbatch is pre-patched for that;
