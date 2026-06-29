@@ -61,6 +61,15 @@ framing):**
   that suppression is **not in the goal**. `FM1`/`FM1b` (`data/fm1*_*.py`) are **useful negative results**
   that ruled out the wrong knobs (imposing `dMdt`; an interior loss-integrand term) and point **back to
   κ_eff** as the mechanism.
+- **REFINED GOAL (2026-06-29): a *physically-bounded* f_κ(n) prescription, not f_κ tuned to force every cloud
+  to fire.** The 819-sweep showed f_κ-to-fire ∝ n^−0.6 (falls) and a diffuse/high-sfe corner that never fires
+  even at f_κ=64. But f_κ=64 is unphysical (it over-conducts the hot interior), and the *physical* enhancement
+  (El-Badry κ_mix ∝ n) **rises** with density — opposite sign. So the honest target is: set f_κ(n) to a
+  physically-motivated, capped value, and **accept that clouds which can't reach θ=0.95 stay energy-driven**
+  ("not meant to be"). That predicts a falsifiable **critical column** for the energy→momentum split
+  (N_crit≈1–4×10²³ at f_max≈2–8), to test against obs — vs the alternative of adding the structural κ_mix
+  (Rung B) if Lancaster's 3D "diffuse clouds also cool" is the truth. Full treatment: `F_KAPPA_FUNCTIONAL_FORM.md`
+  §11–§12. The calibration history below stands as the road to this reframing.
 - **Remaining work = calibration of f_κ(properties) to obs/3D θ(n_H), reusing the existing knob — no new
   production code required for the calibration itself.** First cut **DONE** (`make_fkappa_leverage.py`): κ_eff
   has the leverage (`L_cool ∝ f_κ^0.63`, viable to f_κ=64). Calibration **estimate DONE**
@@ -73,6 +82,23 @@ framing):**
   `f_κ(n_H)` mode (gated, default-off byte-identical).
 
 **Status ledger (newest first):**
+- **2026-06-29 (STRATEGY REFINEMENT — physically-bounded f_κ, accept non-transition; the "don't force it"
+  reframing).** Prompted by the maintainer: searching f_κ up to 64 to force every cloud to fire assumes every
+  cloud must be momentum-driven, which isn't physical. Two facts (new doc sections `F_KAPPA_FUNCTIONAL_FORM.md`
+  §11–§12; builder `data/make_fkappa_physical_cap.py` → `data/fkappa_physical_cap.csv` + `fkappa_physical_cap.png`):
+  **(1) the sign flip** — El-Badry's κ_mix=(λδv)·n·k_B/(μm_p) ∝ n while κ_Spitzer ∝ T^(5/2), so the *physical*
+  f_κ **rises** with density (∝ n^+1), OPPOSITE to the empirical fire-threshold (∝ n^−0.6). Using the −0.6 as a
+  prescription gives diffuse clouds the *most* boost = the forcing we want to avoid; the physical (rising)
+  prescription gives diffuse the *least* → dense transition, diffuse stay energy-driven. **(2) the physical-cap
+  experiment** (pure re-analysis of `summary.csv`, no sims): cap the enhancement at f_max; a cloud is
+  momentum-driven iff f_κ_fire ≤ f_max, else energy-driven. f_max≈2–8 ⇒ a **falsifiable critical column
+  N_crit≈1–4×10²³ cm⁻²** (soft boundary; 6/63 never fire under any cap). **Open tension kept:** Lancaster 3D says
+  even diffuse clouds cool (so non-transition might be 1D under-cooling, not truth) — route (a) accept
+  non-transition vs (b) add κ_mix (Rung B) settled against obs, not asserted. **Sweep design (answered):** most
+  prescriptions are testable by re-analysis of the existing grid (free); a new sweep is only needed for f_κ<1
+  (suppression) or to verify a chosen prescription as real runs (a 63-run generator that sets
+  cooling_boost_kappa=clamp(A·nCore^q, fmin, f_max), vs the 819 of the free scan). This **refines** the
+  ⭐ synthesis: the goal is a *physically-bounded* f_κ(n) prescription, not f_κ cranked to fire every cloud.
 - **2026-06-29 (sweep follow-up — the fan-out's anatomy + the metric, documented).** Merged main's 3-panel
   faceted `fkappa_nH_sweep.png` (by sfe) + raw `summary.csv` into the branch. Then dissected the fan-out
   (`data/make_fkappa_cliff_metric.py` → `data/fkappa_cliff_metric.csv` + `fkappa_cliff_metric.png`):

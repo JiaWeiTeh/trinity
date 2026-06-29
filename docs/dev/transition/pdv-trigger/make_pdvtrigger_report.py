@@ -116,6 +116,10 @@ FIGURES = {
         "fkappa_cliff_metric.png",
         "anatomy of the fan-out: baseline theta at f_kappa=1 vs density (left) cliffs at DIFFERENT nCore per cloud mass, but vs column N_H=nCore*rCloud (right) the cliffs roughly align at ~constant column, so the massive-cloud early firing is a swept-column catastrophic-cooling threshold",
     ),
+    "__FIG_CAP__": (
+        "fkappa_physical_cap.png",
+        "the physical-cap reframing: left = f_kappa needed to fire vs column with physical cap lines (f_max=2/4/8); below a cap a cloud is momentum-driven, above it stays energy-driven, and 6 cells never fire under any cap; right = the momentum-vs-energy-driven split as a function of the assumed physical max enhancement f_max, crossing near f_max=8, with the 6 never-fire cells as the floor",
+    ),
 }
 
 
@@ -223,7 +227,10 @@ raises the <i>emergent</i> cooling in-structure (&sect;11). The remaining work i
 and the controlled <b>819-combo sweep</b> ran: the measured calibration is \(f_\kappa^{\text{fire}}\!\approx\!10^{3}n^{-0.60}\),
 but \(f_\kappa\) is <b>multi-dimensional</b> (a \(\times2\!-\!32\) \(M_{\text{cl}}\)/sfe fan-out), the diffuse/high-sfe
 corner <b>never fires</b> even at \(f_\kappa{=}64\) (needs the structural \(\kappa_{\text{mix}}\)), and the
-&ldquo;1e7 breaks the power law&rdquo; cliff is a <b>constant-column catastrophic-cooling threshold</b>.</p>
+&ldquo;1e7 breaks the power law&rdquo; cliff is a <b>constant-column catastrophic-cooling threshold</b>. <b>The
+reframing (&sect;15.6):</b> don&rsquo;t force it &mdash; the <i>physical</i> \(f_\kappa\) <i>rises</i> with density
+(opposite the fire-threshold), so a physically-bounded \(f_\kappa\) leaves the diffuse corner <b>energy-driven by
+choice</b>, predicting a falsifiable <b>critical column</b> for the energy\(\to\)momentum split.</p>
 </div>
 
 <figure>__FIG_IDEAS__<figcaption><b>The whole storyline at a glance.</b> Every transition-fix idea tried,
@@ -922,8 +929,40 @@ phase, not capped at <code>blowout_t</code>, so a post-escape peak could falsely
 (\(\sim\)5 cells); capping it in the reducer is the clean fix. Alternatives answering different questions: \(\theta\) at
 matched physical time (apples-to-apples leverage), or time-integrated \(\int L_{\text{cool}}\,dt/\int L_{\text{mech}}\,dt\)
 (the total budget).]</span></div>
+<h3>15.6 &middot; Don&rsquo;t force it &mdash; a physically-bounded \(f_\kappa\) and a critical column</h3>
+<p>Searching \(f_\kappa\) up to 64 to make <i>every</i> cloud fire quietly assumes every cloud <b>must</b> become
+momentum-driven. It shouldn&rsquo;t. A large constant \(f_\kappa\) is not &ldquo;enhanced conduction&rdquo; &mdash; it
+multiplies the Spitzer \(T^{5/2}\) prefactor <i>everywhere</i>, over-conducting the hot interior; the physical
+enhancement is El-Badry&rsquo;s temperature-independent \(\kappa_{\text{mix}}{=}(\lambda\delta v)\,n\,k_B\) (Eq 21),
+which dominates only in the cool mixing layer.</p>
+<div class="box find"><span class="lab">The sign flip &mdash; the crux</span> Because \(\kappa_{\text{mix}}\!\propto\!n\)
+and \(\kappa_{\text{Spitzer}}\!\propto\!T^{5/2}\) (\(n\)-independent), the <b>physical</b> \(f_\kappa\) <b>rises</b>
+with density (\(\propto n^{+1}\)), while the measured fire-threshold <b>falls</b> (\(\propto n^{-0.6}\)) &mdash;
+<b>opposite signs</b>. So using the empirical \(-0.6\) as a prescription gives the <i>diffuse</i> clouds the
+<i>most</i> boost &mdash; precisely the &ldquo;forcing&rdquo; that feels wrong. The physical (rising) prescription
+gives diffuse the <i>least</i>: dense clouds transition, diffuse stay energy-driven and blow out. That is the honest
+reading.</p></div>
+<p><b>The experiment</b> (pure re-analysis of <code>summary.csv</code>, no new sims): cap the enhancement at a
+physical \(f_{\max}\); a cloud is momentum-driven iff \(f_\kappa^{\text{fire}}\!\le\!f_{\max}\), else energy-driven.
+A physically plausible \(f_{\max}\!\approx\!2\!-\!8\) predicts a <b>critical column</b>
+\(N_{\text{crit}}\!\approx\!1\!-\!4{\times}10^{23}\,\text{cm}^{-2}\): above it momentum-driven, below it energy-driven;
+<b>6/63 cells never fire under any cap</b> (genuinely energy-driven in 1D). This is a <b>falsifiable prediction</b>
+to compare with Lancaster/PHANGS, not a knob tuned to force a transition.</p>
+<figure>__FIG_CAP__<figcaption><b>The physical-cap reframing.</b> Left: \(f_\kappa\) to fire vs column with physical
+cap lines &mdash; below a line the cloud is momentum-driven, above it stays energy-driven (the boundary is soft, as
+column is only a partial predictor). Right: the momentum/energy split as a function of the assumed physical
+\(f_{\max}\), with the 6 never-fire cells as the floor. From <code>data/make_fkappa_physical_cap.py</code>.</figcaption></figure>
+<div class="box over"><span class="lab">The tension to keep honest</span> Lancaster&rsquo;s 3D finds catastrophic
+cooling &ldquo;generic over &gt;3 dex in density&rdquo;, so a non-transitioning <i>1D</i> cloud is <b>either</b>
+genuinely energy-driven <b>or</b> 1D-under-cooled (missing the \(\kappa_{\text{mix}}\) it cannot resolve). The
+critical-column prediction is the dividing line; which side is right is settled against observations. Two routes
+follow: <b>(a)</b> accept non-transition (a physical \(f_{\max}\)) &mdash; simple and honest about the 1D limit; or
+<b>(b)</b> add the structural \(\kappa_{\text{mix}}\) (Rung B) if you trust the 3D result. Either way the deliverable
+is a <i>physically-bounded</i> prescription, not \(f_\kappa\) cranked to 64. <span class="small">Testing it needs no
+new grid &mdash; any \(f_\kappa(n){=}\text{clamp}(A n^{q},1,f_{\max})\) is read off the existing
+<code>summary.csv</code>; a small 63-run generator sweep only confirms a chosen prescription as real runs.</span></div>
 <p class="small muted">All numbers in this section trace to <code>data/summary.csv</code> (the reduced 819-run table)
-and the builders named above; see <code>F_KAPPA_FUNCTIONAL_FORM.md</code> &sect;0&ndash;&sect;10 for the full
+and the builders named above; see <code>F_KAPPA_FUNCTIONAL_FORM.md</code> &sect;0&ndash;&sect;12 for the full
 treatment.</p>
 """
 
@@ -961,6 +1000,7 @@ vs expensive (a full sim). Use it to re-run any piece for a paper and to prove t
 <tr><td><code>data/fkappa_nH_sweep.csv</code> + <code>fkappa_nH_sweep.png</code> (+ <code>data/make_fkappa_nH_sweep.py</code>)</td><td>&sect;15.3 the per-cell \(\theta{\sim}f_\kappa^{p}\) fit + the 3-panel faceted de-conflation figure (fan-out; 1e7 cliffs; never-fire triangles)</td></tr>
 <tr><td><code>data/fkappa_sweep_scorecard.csv</code> + <code>fkappa_sweep_analysis.png</code> (+ <code>data/make_fkappa_sweep_analysis.py</code>)</td><td>&sect;15.3 the pre-registered prediction scorecard (slope \(n^{-0.60}\) vs predicted \(n^{-0.30}\); fan-out; never-fire; \(M_\star\)-independence) + predicted-vs-measured</td></tr>
 <tr><td><code>data/fkappa_cliff_metric.csv</code> + <code>fkappa_cliff_metric.png</code> (+ <code>data/make_fkappa_cliff_metric.py</code>)</td><td>&sect;15.4&ndash;15.5 the catastrophic-cooling cliff (constant-column threshold), the multi-dimensional fan-out (\(R^2\) of \(n_{\text{core}}\)/column/2-var, \(M_\star\)-independence), and the metric sanity (\(\theta_{\max}{-}\theta_{\text{blowout}}\) median 0.004)</td></tr>
+<tr><td><code>data/fkappa_physical_cap.csv</code> + <code>fkappa_physical_cap.png</code> (+ <code>data/make_fkappa_physical_cap.py</code>)</td><td>&sect;15.6 the physical-cap reframing: the sign flip (physical \(f_\kappa\!\propto\!n^{+1}\) vs fire-threshold \(n^{-0.6}\)), the momentum/energy split per \(f_{\max}\), and the falsifiable critical column \(N_{\text{crit}}\!\approx\!1\!-\!4{\times}10^{23}\)</td></tr>
 <tr><td><code>KAPPA_EFF_SCOPING.md</code></td><td>&sect;11 the κ_eff cooling-mechanism feasibility map + the &sect;6a Rung-A result table; the mechanism vs the optional evaporation-decoupling bonus</td></tr>
 <tr><td><code>storyline_figs/*.png</code> (+ <code>make_storyline_figs.py</code>)</td><td>the four storyline figures (&sect;2 double-count, &sect;3 convention, &sect;4 regime, &sect;5 heatmap), each a pure read of the CSVs</td></tr>
 <tr><td><code>PLAN.md</code> / <code>FINDINGS.md</code></td><td>the living plan (&ldquo;Outcome &amp; pivot&rdquo;) and the verified findings &mdash; the source of truth this report is a sibling of</td></tr>

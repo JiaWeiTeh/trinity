@@ -375,6 +375,73 @@ to stop_t (the total energy budget, not the transition).
 
 ---
 
+## 11. Don't force it — physically-bounded f_κ and a critical-column prediction (2026-06-29)
+
+A reframing prompted by the never-fire corner and the f_κ=64 magnitudes. Searching f_κ up to 64 to make
+*every* cloud fire quietly assumes every cloud **must** become momentum-driven. It shouldn't: if a cloud cannot
+reach θ=0.95 with a *physically-bounded* enhancement, the honest answer is that it stays **energy-driven and
+blows out** — not that it "needs more boost." Builder: `data/make_fkappa_physical_cap.py` →
+`data/fkappa_physical_cap.csv` + `fkappa_physical_cap.png`.
+
+**Why f_κ=64 is not "enhanced conduction."** A large *constant* f_κ multiplies the Spitzer T^(5/2) prefactor
+**everywhere**, over-conducting in the hot interior where Spitzer genuinely rules. The physically-motivated
+enhancement is El-Badry's **temperature-independent** mixing term (Eq 21, verified §7):
+`κ_mix = (λδv)·n·k_B`, applied as `κ = max(κ_mix, κ_Spitzer)` — it dominates only in the cool mixing layer.
+
+**The sign flip — the crux.** Because `κ_mix ∝ n` and `κ_Spitzer ∝ T^(5/2)` (n-independent), the *physical*
+enhancement **rises** with density: `f_κ_physical ∝ n^(+1)` at fixed interface T. The measured *fire-threshold*
+**falls**: `f_κ_fire ∝ n^(−0.6)`. **Opposite signs.** So using the empirical −0.6 as a prescription gives the
+*diffuse* clouds the *most* boost — which is exactly the "forcing" we want to avoid. The physical (rising)
+prescription gives diffuse the *least* → dense clouds transition, diffuse stay energy-driven. That is the honest
+reading, and it matches the maintainer's instinct that forcing cooling to fire "doesn't feel right."
+
+**The experiment (pure re-analysis of `summary.csv`, no new sims).** Cap the enhancement at a physical `f_max`.
+A cloud is momentum-driven iff its measured `f_κ_fire ≤ f_max`, else energy-driven. The split:
+
+| physical f_max | momentum | energy-driven | (soft) critical column N_crit |
+|---:|---:|---:|---:|
+| 2 | 18/63 | 45 | ≈ 3.7×10²³ |
+| 4 | 24/63 | 39 | ≈ 1.7×10²³ |
+| 8 | 31/63 | 32 | ≈ 1.2×10²³ |
+| 64 | 57/63 | 6 | ≈ 1.7×10²² |
+
+**6/63 cells never fire even at f_κ=64** — energy-driven under *any* cap (all low-n / high-sfe). A physically
+plausible `f_max ≈ 2–8` predicts a **critical column N_crit ≈ 1–4×10²³ cm⁻²**: clouds above it are momentum-
+driven, below it blow out energy-driven. This is a **falsifiable prediction** to compare against Lancaster/PHANGS,
+*not* a knob tuned to force the transition. (The boundary is *soft* — column is only a partial predictor, §9 —
+so N_crit has real scatter; nCore and cloud size both enter.)
+
+**The open tension to keep honest.** Lancaster's 3D finds catastrophic cooling "generic over >3 dex in density"
+— even diffuse clouds may cool via turbulent mixing a 1D model cannot resolve. So a non-transitioning 1D cloud is
+**either** genuinely energy-driven **or** 1D-under-cooled (missing the El-Badry κ_mix). The critical-column
+prediction is the *dividing line*; which side is physically right is settled against observations, not asserted.
+The two routes are: **(a) accept non-transition** (physical f_max, this section) — simple, honest about the 1D
+limit; **(b) add κ_mix** (Rung B) — if you trust Lancaster that diffuse clouds *should* cool. Either way the
+deliverable is the same: a physically-bounded prescription, not f_κ cranked to 64.
+
+**What sets f_max / the prescription (the next input).** `f_max` and the rising exponent are physics, not free
+fit parameters: they follow from El-Badry's `λδv` (1–10 pc·km/s), the saturation ceiling (Cowie & McKee,
+q_sat ∝ n), and magnetic suppression (f<1 for pure Spitzer). Pinning a physically-motivated `f_κ(n)` (normalised
+by λδv, capped by saturation) is the remaining derivation — see §12 for how to test it.
+
+## 12. How to test a physically-motivated f_κ(n) prescription — the sweep design
+
+The good news: **most of this needs no new sims.** The 819-run `summary.csv` already holds θ(f_κ) for
+f_κ ∈ [1, 64] at every cell, so *any* prescription `f_κ(n) = clamp(A·n^q, 1, f_max)` is testable by
+**re-analysis** (interpolate θ at the prescribed f_κ; §11 did exactly this for the flat-cap case). Scan (A, q,
+f_max) offline to find the prescription whose transition map matches obs — free.
+
+A **new sweep is only needed** to (i) probe **f_κ < 1** (magnetic suppression at the diffuse end — the existing
+grid starts at f_κ=1), or (ii) **verify a chosen prescription as real production runs** rather than interpolation.
+For (ii) the cleanest design, no code change required: since `cooling_boost_kappa` is a scalar and `nCore` is
+fixed per run, a small **generator** (extend `runs/make_params.py`) emits one run per cloud with
+`cooling_boost_kappa = clamp(A·nCore^q, fmin, f_max)` for a handful of physically-motivated (A, q, f_max). That
+is **63 runs per prescription** (vs the 819 of the free f_κ scan) — cheap. The eventual production form is a
+gated `cooling_boost_kappa_mode = "density"` that computes f_κ(n) in-code (default-off byte-identical), but the
+generator sweep validates the prescription first.
+
+---
+
 ## 7. Provenance / caveats (read before citing a number)
 
 - **El-Badry now VERIFIED (2026-06-29):** the maintainer supplied the El-Badry+2019 PDF (pp. 5–6, 13, 15). Its

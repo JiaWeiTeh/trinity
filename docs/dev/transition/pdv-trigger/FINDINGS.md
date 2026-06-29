@@ -63,6 +63,13 @@
 > + rCloud/cloud-size secondary (2-var 0.75), **independent of cluster mass** (f_κ_fire vs M★ R²=0.002). The
 > metric (θ=L_cool/L_mech at blowout R2>rCloud; fire on theta_max≥0.95) is robust — snapshot-vs-peak median
 > 0.004 — with one fixable imprecision (theta_max not capped at blowout_t). Builder `data/make_fkappa_cliff_metric.py`.
+>
+> **→ Don't-force-it reframing (2026-06-29, §11–§12):** the *physical* f_κ (El-Badry κ_mix∝n) **rises** with
+> density, OPPOSITE the empirical fire-threshold (∝n^−0.6) — so a physically-bounded f_κ leaves the diffuse corner
+> **energy-driven by choice** rather than cranking f_κ to 64 to force it. A physical cap f_max≈2–8 predicts a
+> falsifiable **critical column** N_crit≈1–4×10²³ cm⁻² for the energy→momentum split (6/63 never fire under any
+> cap). Tension: Lancaster 3D says diffuse clouds also cool → accept-non-transition vs add-κ_mix, settled vs obs.
+> Builder `data/make_fkappa_physical_cap.py`; prescriptions are testable by re-analysis of `summary.csv` (no sims).
 
 What looks like "three ways to boost cooling" is really **two cooling-magnitude approaches on opposite sides
 of the structure solve, plus a separate trigger axis**. The key disambiguation: **"modify cooling like

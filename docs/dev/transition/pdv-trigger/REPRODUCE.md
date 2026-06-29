@@ -82,6 +82,7 @@ Legend — **Sims?**: 🟢 none (reads committed CSV, seconds) · 🟡 a few ful
 | 19 | **Sweep prediction scorecard** (measured vs pre-registered form) | `F_KAPPA_FUNCTIONAL_FORM.md` §8 | — (reads #18) | `python data/make_fkappa_sweep_analysis.py` | `data/fkappa_sweep_scorecard.csv`, `fkappa_sweep_analysis.png` | 🟢 |
 | 20 | **Fan-out anatomy** — catastrophic-cooling cliff + column collapse + metric sanity | `F_KAPPA_FUNCTIONAL_FORM.md` §9–§10 | — (reads `data/summary.csv`) | `python data/make_fkappa_cliff_metric.py` | `data/fkappa_cliff_metric.csv`, `fkappa_cliff_metric.png` | 🟢 |
 | 21 | **De-conflation figure** (3-panel, faceted by sfe) | `F_KAPPA_FUNCTIONAL_FORM.md` §8–§9 | `data/summary.csv` (reduced sweep) | `python data/make_fkappa_nH_sweep.py` | `data/fkappa_nH_sweep.csv`, `fkappa_nH_sweep.png` | 🟢 |
+| 22 | **Physical-cap reframing** — sign flip + critical column + momentum/energy split | `F_KAPPA_FUNCTIONAL_FORM.md` §11–§12 | — (reads `data/summary.csv`) | `python data/make_fkappa_physical_cap.py` | `data/fkappa_physical_cap.csv`, `fkappa_physical_cap.png` | 🟢 |
 
 ¹ #12 reads the same `cal_*__k{1,2,4}` runs as #11 — once those exist in `outputs/kcal/`, #12 is a 🟢 re-read.
 
