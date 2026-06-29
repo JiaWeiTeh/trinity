@@ -70,6 +70,20 @@ PR-1&ndash;PR-4 to decouple these.</p>
 <code>refactor-audit.md</code> have drifted 5&ndash;45 lines; the current positions are above.</p>
 """
 
+PDV_BRIDGE_HTML = """
+<p class="chlede">The sequel to s1. That book closed on one open question &mdash; the geometric /
+E<sub>b</sub>-peak handoff and the <i>missing mixing-layer cooling</i>. This chapter answers the
+cooling half.</p>
+<p>s1 falsified the cooling trigger as the normal-cloud handoff: the radiative ratio
+\\((L_\\text{mech}-L_\\text{cool})/L_\\text{mech}\\) never reaches 0.05, so normal clouds blow out
+geometrically while their bubbles under-cool. The named-but-unfixed cause was the <b>turbulent
+mixing-layer cooling</b> a 1D model cannot see &mdash; the interface cooling El&nbsp;Badry, Lancaster
+and Gronke argue dominates real wind bubbles. The report below adds that loss <i>correctly</i>: boost
+the loss, not the trigger; never double-count; and let the existing handoff fire on its own. The
+through-line from s1 is direct &mdash; same six configs, same blowout physics, now with the missing
+sink restored.</p>
+"""
+
 PSHADOW_EPILOGUE_HTML = """
 <p class="chlede">A path we explored and dropped &mdash; recorded so the arc shows why the
 trigger question landed where it did.</p>
@@ -181,6 +195,26 @@ STORYLINES = [
                 "title": "The cooling-table refactor (planned)",
                 "type": "inline",
                 "html": COOLING_BRIDGE_HTML,
+            },
+        ],
+    },
+    {
+        "slug": "s5",
+        "title": "Interface cooling without double-counting — boosting the loss, not the trigger",
+        "subtitle": "The sequel to s1: the under-cooled bubble never trips the cooling trigger, so "
+        "add the missing turbulent-mixing-layer cooling — once, consistently — and let the existing "
+        "handoff fire. The convention fix, the regime split, and why a constant knob is not enough.",
+        "chapters": [
+            {
+                "title": "From the missing mixing-layer cooling to the closure",
+                "type": "inline",
+                "unnumbered": True,
+                "html": PDV_BRIDGE_HTML,
+            },
+            {
+                "title": "Interface cooling without double-counting — boost the loss, not the trigger",
+                "type": "html",
+                "src": DEV / "transition/pdv-trigger/pdvtrigger_report.html",
             },
         ],
     },

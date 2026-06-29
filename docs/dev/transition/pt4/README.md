@@ -25,8 +25,14 @@
 > command that produced each artifact.
 
 **Date:** 2026-06-22. **Branch:** `fix/transition-trigger-problem-pt4`.
-**Scope:** read-only investigation — **no production code changed** (every experiment is a
-monkeypatch / config / committed CSV under this folder). `pytest test/test_unit_conversions.py` green.
+**Scope:** read-only investigation of H1–H4 — those four experiments changed **no production code**
+(each is a monkeypatch / config / committed CSV under this folder). `pytest test/test_unit_conversions.py` green.
+
+> **Update (2026-06-23):** the **R1** follow-up *did* ship production code — an **opt-in, default-off**
+> `transition_trigger` keyword (`run_energy_implicit_phase.py`) wiring a blowout + PdV-inclusive
+> **`ebpeak`** event as an inert shadow plus an opt-in drive, **byte-identical** with the default
+> `cooling_balance`. The "no production code changed" scope above covers **H1–H4 only**; see
+> `r1shadow/R1_FINDINGS.md`. The default flip and the heavy-cloud (phase-1a) Eb-peak handoff remain unbuilt.
 
 This is the entry point tying together four hypotheses (H1–H4). Each has its own detailed doc;
 this README is the synthesis + figure index. The sibling priors (`../cleanroom/FINDINGS.md`,

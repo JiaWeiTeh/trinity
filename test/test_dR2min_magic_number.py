@@ -86,13 +86,16 @@ class _Scalar:
 def _scalar_params(pv, R2):
     """A tiny params holding only the scalars the IC formula reads.
 
-    ``_get_bubble_ODE_initial_conditions`` touches k_B, mu_ion, C_thermal, R2,
-    cool_alpha and t_now -- nothing else, no cooling cubes. Building a fresh dict
-    per call lets the regime sweep vary R2 without mutating the shared (cooling-
-    bearing) ``state`` params.
+    ``_get_bubble_ODE_initial_conditions`` touches k_B, mu_ion, C_thermal,
+    cooling_boost_kappa, R2, cool_alpha and t_now -- nothing else, no cooling
+    cubes. Building a fresh dict per call lets the regime sweep vary R2 without
+    mutating the shared (cooling-bearing) ``state`` params. ``cooling_boost_kappa``
+    defaults to 1.0 (the byte-identical neutral value) when a pre-knob fixture
+    lacks it.
     """
     p = {k: _Scalar(pv[k]) for k in ("k_B", "mu_ion", "C_thermal", "cool_alpha", "t_now")}
     p["R2"] = _Scalar(R2)
+    p["cooling_boost_kappa"] = _Scalar(pv.get("cooling_boost_kappa", 1.0))
     return p
 
 

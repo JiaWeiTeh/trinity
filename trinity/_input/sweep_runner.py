@@ -569,7 +569,12 @@ class SweepReport:
         def _num(v, fmt: str) -> str:
             return format(v, fmt) if isinstance(v, (int, float)) and v == v else "—"
 
-        rows = [_row(r) for r in self.successful]
+        n_ok = len(self.successful)
+        rows = []
+        for i, r in enumerate(self.successful, start=1):
+            rows.append(_row(r))
+            if i % 250 == 0 or i == n_ok:
+                print(f"  physics table: {i}/{n_ok} runs read", flush=True)
         name_w = max([len(r["name"]) for r in rows] + [len("run")])
 
         f.write("-" * 80 + "\n")
@@ -614,7 +619,7 @@ class SweepReport:
         }
 
         with open(report_path, 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=2)
+            json.dump(data, f, indent=2, default=str)
 
         return report_path
 

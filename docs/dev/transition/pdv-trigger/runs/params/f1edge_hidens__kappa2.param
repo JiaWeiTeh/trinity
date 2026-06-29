@@ -1,0 +1,9 @@
+# Rung-A kappa probe: f1edge_hidens / cooling_boost_kappa = 2.0 (inflate Spitzer C by 2x).
+model_name      f1edge_hidens__kappa2
+path2output     outputs/pdvlive/f1edge_hidens__kappa2
+mCloud    1e7
+sfe    0.01
+nCore    1e6
+log_console    False
+log_file    True
+cooling_boost_kappa    2.0

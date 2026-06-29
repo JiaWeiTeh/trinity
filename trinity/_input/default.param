@@ -281,6 +281,18 @@ phaseSwitch_LlossLgain    0.05
 # INFO: Energy->momentum transition criteria, COMMA-SEPARATED (fires on whichever occurs first). Tokens: 'cooling_balance' (default = current behavior), 'blowout' (R2>rCloud), 'ebpeak' (net energy Edot_from_balance<=0); 'r1' aliases 'blowout,ebpeak'. e.g. 'cooling_balance,blowout'. Non-default sets DRIVE the R1 transition (docs/dev/transition/pt4/R1_SHADOW_PLAN.md).
 transition_trigger    cooling_balance
 
+# INFO: Opt-in unresolved-interface-cooling boost (Paper-II note, docs/dev/transition/pdv-trigger/PLAN.md). 'none' (default) = resolved cooling unchanged, BYTE-IDENTICAL. 'multiplier' = Lleak + cooling_boost_fmix*Lcool. 'theta_target' = max(Lcool+Lleak, cooling_boost_theta*Lmech) (tops up to a target loss fraction, single-count). The boosted loss feeds the beta-delta residual, the energy ODE, AND the transition trigger consistently. Never a (1-theta)*Lmech input rescale on top of Lcool -- that double-counts.
+cooling_boost_mode    none
+
+# INFO: Multiplier on the resolved cooling integral when cooling_boost_mode=multiplier (f_mix >= 1). Default 1.0 = no boost.
+cooling_boost_fmix    1.0
+
+# INFO: Target loss fraction theta = Lloss/Lmech when cooling_boost_mode=theta_target (0..1, with a ceiling theta_max<1 at GMC-core density). Default 0.0 = off.
+cooling_boost_theta    0.0
+
+# INFO: Rung-A probe (docs/dev/transition/pdv-trigger/KAPPA_EFF_SCOPING.md): multiplier f_kappa on the Spitzer conduction coefficient C_thermal in the bubble-structure solve (f_kappa >= 1). Inflates conduction-zone cooling THROUGH the structure (theta emerges as an output), unlike the scalar cooling_boost on Lcool. Default 1.0 = byte-identical. NOTE it also RAISES the evaporative mass flux -- the El-Badry coupling a faithful kappa_eff must instead suppress -- so it is a structural probe, not the final model.
+cooling_boost_kappa    1.0
+
 # INFO: Cooling related values. alpha = v2*t_now/R2
 cool_alpha    0.6
 

@@ -1,0 +1,17 @@
+# Dense-edge stiffness diagnostic: is the hang f_kappa-driven, or a solver issue at extreme density?
+# small_dense_highsfe (nCore 1e6) -- the config whose live ebpeak runs HUNG (cal_dense__ek*). All knobs
+# DEFAULT (cooling_boost_kappa=1.0, transition_trigger=cooling_balance), so this is the pure baseline;
+# the ONLY variable across the pair is betadelta_solver. The committed cleanroom frozen data (165 rows,
+# completed) was a LEGACY rerun -- hypothesis: hybr (the new default) is the one that stalls here.
+model_name      diag_dense_hybr
+path2output     outputs/kcal/diag_dense_hybr
+mCloud    1e4
+nCore    1e6
+rCore    0.1
+sfe    0.5
+dens_profile    densPL
+densPL_alpha    0
+betadelta_solver    hybr
+log_console    False
+log_file    True
+stop_t    0.1

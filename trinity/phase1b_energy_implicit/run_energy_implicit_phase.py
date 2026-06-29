@@ -82,6 +82,7 @@ from trinity.phase1b_energy_implicit.get_betadelta import (
     cool_beta_to_Ebdot_pure,
     delta2dTdt_pure,
     compute_R1_Pb,
+    effective_Lloss_from_params,
     BetaDeltaResult,
 )
 from trinity.shell_structure.shell_structure import (
@@ -1140,15 +1141,20 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         Lgain = feedback_post.Lmech_total
 
         # Lloss from pre-ODE bubble properties (cannot cheaply recompute
-        # without the betadelta solver; acceptable since Lloss changes slowly)
+        # without the betadelta solver; acceptable since Lloss changes slowly).
+        # Routed through effective_Lloss_from_params so the opt-in cooling boost
+        # feeds the trigger the SAME effective loss as the residual + ODE
+        # (default 'none' -> Lcool + leak, byte-identical).
         if bubble_props is not None:
-            Lloss = bubble_props.bubble_LTotal
+            _Lcool = bubble_props.bubble_LTotal
             bubble_Leak = params.get('bubble_Leak', None)
-            if bubble_Leak is not None and hasattr(bubble_Leak, 'value'):
-                Lloss += bubble_Leak.value
+            _leak = (bubble_Leak.value
+                     if (bubble_Leak is not None and hasattr(bubble_Leak, 'value')) else 0.0)
+            Lloss = effective_Lloss_from_params(params, _Lcool, _leak, Lgain)
         else:
             Lloss_param = params.get('bubble_Lloss', None)
-            Lloss = Lloss_param.value if Lloss_param and hasattr(Lloss_param, 'value') else 0.0
+            _Lcool = Lloss_param.value if Lloss_param and hasattr(Lloss_param, 'value') else 0.0
+            Lloss = effective_Lloss_from_params(params, _Lcool, 0.0, Lgain)
 
         # Get threshold from params (default 0.05)
         phase_switch_threshold = params.get('phaseSwitch_LlossLgain', None)

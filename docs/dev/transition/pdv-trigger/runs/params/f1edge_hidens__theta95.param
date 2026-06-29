@@ -1,0 +1,12 @@
+# LIVE pivot validation: f1edge_hidens / theta_target = 0.95 (constant-theta MAGNITUDE correction).
+# Floors the loss at max(Lcool+Lleak, 0.95*Lmech); dense config (nCore 1e6) blows out fast so it completes.
+# Compared matched-t vs f1edge_hidens__none to check the magnitude correction is well-behaved through blowout.
+model_name      f1edge_hidens__theta95
+path2output     outputs/pdvlive/f1edge_hidens__theta95
+mCloud    1e7
+sfe    0.01
+nCore    1e6
+log_console    False
+log_file    True
+cooling_boost_mode    theta_target
+cooling_boost_theta    0.95

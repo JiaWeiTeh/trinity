@@ -1,0 +1,11 @@
+# LIVE cooling-boost run: simple_cluster / mult2
+# matched-t boosted-vs-none edge test (PLAN.md Task B).
+# Run ONLY via run_stamped.py (separate process + provenance).
+model_name      simple_cluster__mult2
+path2output     outputs/pdvlive/simple_cluster__mult2
+mCloud    1e5
+sfe    0.3
+log_console    False
+log_file    True
+cooling_boost_mode    multiplier
+cooling_boost_fmix    2.0

@@ -1,0 +1,11 @@
+# LIVE cooling-boost run: f1edge_hidens / none
+# matched-t boosted-vs-none edge test (PLAN.md Task B).
+# Run ONLY via run_stamped.py (separate process + provenance).
+model_name      f1edge_hidens__none
+path2output     outputs/pdvlive/f1edge_hidens__none
+mCloud    1e7
+sfe    0.01
+nCore    1e6
+log_console    False
+log_file    True
+cooling_boost_mode    none

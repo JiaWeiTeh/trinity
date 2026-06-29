@@ -1,0 +1,10 @@
+# f_kappa blowout-theta calibration: compact (simple_cluster) / cooling_boost_kappa = 1.0
+# stop_t capped just past blowout (~0.109 Myr) to keep the run cheap.
+model_name      cal_compact__k1
+path2output     outputs/kcal/cal_compact__k1
+mCloud    1e5
+sfe    0.3
+log_console    False
+log_file    True
+stop_t    0.3
+cooling_boost_kappa    1.0
