@@ -80,6 +80,8 @@ Legend — **Sims?**: 🟢 none (reads committed CSV, seconds) · 🟡 a few ful
 | 17 | All-ideas scoreboard | hero | — (reads CSVs above) | `python data/make_ideas_comparison.py` | `ideas_comparison.png` | 🟢 |
 | 18 | **Controlled f_κ(n_H) calibration** (+ de-conflation test, **RAN 2026-06-29**) | `F_KAPPA_FUNCTIONAL_FORM.md` §8 | `runs/params/sweep_fkappa_nH.param` (sweep → **819** combos) | `sync.sh submit`→`collect`→`reduce`→`down`, then `make_fkappa_nH_sweep.py` (Block C) | `data/fkappa_nH_sweep.csv` (committed result), `fkappa_nH_sweep.png` | 🔴 done |
 | 19 | **Sweep prediction scorecard** (measured vs pre-registered form) | `F_KAPPA_FUNCTIONAL_FORM.md` §8 | — (reads #18) | `python data/make_fkappa_sweep_analysis.py` | `data/fkappa_sweep_scorecard.csv`, `fkappa_sweep_analysis.png` | 🟢 |
+| 20 | **Fan-out anatomy** — catastrophic-cooling cliff + column collapse + metric sanity | `F_KAPPA_FUNCTIONAL_FORM.md` §9–§10 | — (reads `data/summary.csv`) | `python data/make_fkappa_cliff_metric.py` | `data/fkappa_cliff_metric.csv`, `fkappa_cliff_metric.png` | 🟢 |
+| 21 | **De-conflation figure** (3-panel, faceted by sfe) | `F_KAPPA_FUNCTIONAL_FORM.md` §8–§9 | `data/summary.csv` (reduced sweep) | `python data/make_fkappa_nH_sweep.py` | `data/fkappa_nH_sweep.csv`, `fkappa_nH_sweep.png` | 🟢 |
 
 ¹ #12 reads the same `cal_*__k{1,2,4}` runs as #11 — once those exist in `outputs/kcal/`, #12 is a 🟢 re-read.
 

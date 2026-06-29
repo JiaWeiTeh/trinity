@@ -73,6 +73,21 @@ framing):**
   `f_κ(n_H)` mode (gated, default-off byte-identical).
 
 **Status ledger (newest first):**
+- **2026-06-29 (sweep follow-up — the fan-out's anatomy + the metric, documented).** Merged main's 3-panel
+  faceted `fkappa_nH_sweep.png` (by sfe) + raw `summary.csv` into the branch. Then dissected the fan-out
+  (`data/make_fkappa_cliff_metric.py` → `data/fkappa_cliff_metric.csv` + `fkappa_cliff_metric.png`):
+  **(A) the 1e7 "broken power law" = a catastrophic-cooling CLIFF** — θ@f_κ=1 jumps past 0.95 (fires with no
+  boost) at lower density for more massive clouds (1e7 at n≈3e3 vs 1e5 at n≈2e4), because a bigger cloud sweeps
+  the same **column** at lower density; the cliff is ≈ a constant-column threshold (nCore spread ×11 → column
+  spread ×5.7; median cliff column ≈8×10²³). **(B) the fan-out is genuinely multi-dimensional** — nCore is the
+  best single predictor of θ@f_κ=1 (R²=0.73), column slightly worse globally (0.71) though it nails the cliff,
+  2-var(nCore,rCloud)=0.75 (coef ratio 2:1, not pure column); f_κ_fire is **independent of cluster mass**
+  M★=sfe·mCloud (R²=0.002, as expected since θ is L_mech-normalised). **(C) the metric is sound** — θ=
+  L_cool/L_mech sampled at blowout (R2>rCloud), firing on theta_max≥0.95; snapshot-vs-peak barely matters
+  (median theta_max−theta_blowout=0.004, >0.05 in 5/63); regimes split 403 cooled-before-escape / 416 escaped.
+  One fixable imprecision: theta_max isn't capped at blowout_t (post-escape peak can falsely tag "fired
+  in-cloud", ~5 cells; needs the jsonl to fix). Documented in `F_KAPPA_FUNCTIONAL_FORM.md` §9–§10 + the HTML
+  storyline. NOT confirmed: PdV as the cliff driver (the firing metric is radiative θ; would need PdV-logged runs).
 - **2026-06-29 (819-combo f_κ(n_H) SWEEP RAN ON HELIX — results in, predictions scored).** The controlled grid
   (7 nCore × 3 mCloud × 3 sfe = 63 cells × 13 f_κ) ran; reduced to `data/fkappa_nH_sweep.csv`. Scored against
   the form's pre-registered predictions (`data/make_fkappa_sweep_analysis.py` → `data/fkappa_sweep_scorecard.csv`,

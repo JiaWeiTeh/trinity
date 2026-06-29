@@ -56,6 +56,13 @@
 > fire even at f_κ=64** (the diffuse corner needs the structural κ_mix). The pre-registered scorecard (2 ✅
 > qualitative, slope ❌ 2× too shallow from an undersampled 6-anchor baseline) is in `F_KAPPA_FUNCTIONAL_FORM.md`
 > §8 (`data/fkappa_nH_sweep.csv`, `data/make_fkappa_sweep_analysis.py`).
+>
+> **→ Fan-out anatomy + metric (2026-06-29, §9–§10):** the 1e7 "broken power law" = a **catastrophic-cooling
+> cliff** — θ@f_κ=1 fires with no boost above a ≈constant **column** N_H≈8×10²³ (massive clouds fire at lower
+> density because they sweep that column at lower n). The fan-out is multi-dimensional: nCore primary (R²=0.73),
+> + rCloud/cloud-size secondary (2-var 0.75), **independent of cluster mass** (f_κ_fire vs M★ R²=0.002). The
+> metric (θ=L_cool/L_mech at blowout R2>rCloud; fire on theta_max≥0.95) is robust — snapshot-vs-peak median
+> 0.004 — with one fixable imprecision (theta_max not capped at blowout_t). Builder `data/make_fkappa_cliff_metric.py`.
 
 What looks like "three ways to boost cooling" is really **two cooling-magnitude approaches on opposite sides
 of the structure solve, plus a separate trigger axis**. The key disambiguation: **"modify cooling like

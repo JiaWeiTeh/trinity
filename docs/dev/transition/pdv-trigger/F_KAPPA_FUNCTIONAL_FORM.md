@@ -301,9 +301,77 @@ this doc pre-registered **before** the data existed (`data/make_fkappa_sweep_ana
   parametrization** — a usable calibration needs (n_core, mCloud, sfe), or a switch to the structural κ_mix.
 
 **Next (post-sweep):** the de-conflation says calibrate on more than n_H. Two clean follow-ups — (a) regress
-the measured f_κ_fire on (n_core, mCloud, sfe) to find the second axis; (b) given the never-fire corner, spec
-the gated El-Badry **κ_mix = (λδv)ρk_B/μm_p** mode (Eq 21, verified §7) for the diffuse end, default-off
-byte-identical. Both are dev-only.
+the measured f_κ_fire on (n_core, mCloud, sfe) to find the second axis (started in §9); (b) given the never-fire
+corner, spec the gated El-Badry **κ_mix = (λδv)ρk_B/μm_p** mode (Eq 21, verified §7) for the diffuse end,
+default-off byte-identical. Both are dev-only.
+
+---
+
+## 9. Anatomy of the fan-out — the catastrophic-cooling cliff (2026-06-29)
+
+Inspecting the faceted figure (`fkappa_nH_sweep.png`, three panels by sfe), the **1e7 series visibly "breaks
+the power law"**: it stays high then drops abruptly to f_κ=1. That cliff is the key to the fan-out, and it is
+*physics*, not a plotting artifact. Builder: `data/make_fkappa_cliff_metric.py` →
+`data/fkappa_cliff_metric.csv` + `fkappa_cliff_metric.png` (reads only `data/summary.csv`, no sims).
+
+**The cliff.** For each cloud, the baseline θ@f_κ=1 (no boost) rises with density and then **jumps past 0.95**
+— above that threshold the cloud fires the cooling transition with **zero boost**, so f_κ_fire collapses to 1.
+The cliff sits at *lower density* for *more massive* clouds:
+
+| cloud | θ@f_κ=1 crosses 0.95 at nCore |
+|---|---|
+| M=1e5 | ≈ 2×10⁴ |
+| M=1e6 | ≈ 1×10⁴ |
+| M=1e7 | ≈ 3×10³ |
+
+**Why — and the partial collapse variable.** At fixed density a 1e7 cloud is ~4.6× larger (rCloud ∝
+(M/n)^{1/3}), so it sweeps the same **column** `N_H = nCore·rCloud` at lower density. Re-plotting θ@f_κ=1 vs
+column instead of density **roughly halves the cliff spread** (×11 in nCore → **×5.7** in column; median cliff
+column ≈ **8×10²³ cm⁻²**, range ~2×10²³–10²⁴). So the cliff is approximately a **constant-column catastrophic-
+cooling threshold**: the bubble cools to completion *before escaping the cloud* once it has swept enough column.
+Physically this is "does catastrophic cooling beat cloud crossing" — for massive clouds (large rCloud) cooling
+wins at lower ambient density. *(This is also why your earlier intuition that the 1e7 cloud "needs less boost"
+is correct — but the driver the data supports is the swept column, not PdV directly; the firing metric here is
+the radiative θ=L_cool/L_mech, and f_κ_fire is independent of cluster mass M★=sfe·mCloud, R²=0.002.)*
+
+**It does NOT fully collapse — the fan-out is genuinely multi-dimensional.** Across all 63 cells, the *single*
+best predictor of the baseline θ@f_κ=1 is **nCore** (R²=0.73); column is slightly worse globally (R²=0.71) even
+though it nails the cliff onset; rCloud alone is poor (R²=0.33). A 2-variable fit
+`θ ∝ +0.11·ln(nCore) + 0.06·ln(rCloud)` reaches R²=0.75 — a modest lift, with the nCore coefficient ~2× the
+rCloud one (so it is *not* pure column). **Reading:** nCore is the primary axis; cloud size (via rCloud/column)
+is a real but secondary axis whose effect is **concentrated at the cliff**, where it controls whether a cloud
+fires with no boost at all. sfe shifts the curves too (compare the three panels). A clean calibration therefore
+needs `f_κ(nCore, rCloud[, sfe])`, or the structural κ_mix for the corner that never fires.
+
+## 10. The measurement metric — θ at blowout (is it a good choice?)
+
+**What is measured.** θ = `bubble_LTotal`/`Lmech_total` (the radiative loss fraction L_cool/L_mech), sampled
+**per timestep during the energy-driven (implicit) phase** — *not* at a fixed t, *not* integrated to stop_t.
+Per run the reducer (`reduce_fkappa_sweep.py`) keeps two scalars: **`theta_blowout`** = θ at the first timestep
+where **R2 > rCloud** (the bubble reaches the cloud edge — "blowout"; falls back to the peak if it cools before
+escaping), and **`theta_max`** = the peak θ over the implicit phase. **"Fires"** = reached the transition/
+momentum phase **AND** (never blew out **OR** `theta_max ≥ 0.95`). So `f_κ_fire_measured` is `theta_max`-based;
+`f_κ_fire_fit` extrapolates `theta_blowout`.
+
+**Why blowout.** The science question is *does the cluster transition to momentum-driven while still inside the
+GMC?* Blowout (R2=rCloud) is the natural end of the in-cloud phase — past it the bubble is in the ambient
+medium and the in-cloud feedback question is settled. Measuring to a fixed time or to stop_t would fold in
+post-escape ambient evolution that is irrelevant to that question. The runs split cleanly into the two regimes
+the metric is meant to separate: **403/819 cooled before escaping** (fire in-cloud) vs **416/819 reached
+blowout** (energy-driven escape unless θ hit 0.95 first).
+
+**Is it a good metric? Yes — and it's robust.** Empirically the snapshot-vs-peak distinction barely matters:
+`theta_max − theta_blowout` has **median 0.004** (>0.05 in only **5/63** cells), so the calibration is
+insensitive to that choice. The cliff/fan-out is genuine physics, not a metric artifact.
+
+**One precision caveat (a fixable imprecision, not a fatal flaw).** `theta_max` is taken over the *whole*
+implicit phase, **not capped at `blowout_t`**. So a cell that blew out at θ=0.6 and only later peaked at
+θ=0.96 *in the ambient medium* would be tagged "fired" — but that firing is post-escape, not in-cloud. This
+touches only the ~5 cells where `theta_max ≫ theta_blowout`. For a strict "fired **in-cloud**" criterion,
+`theta_max` should be capped at `blowout_t` in the reducer (needs the per-run jsonl, cluster-side). Two
+alternative metrics answer *different* questions and could be added if wanted: **θ at matched physical time**
+(apples-to-apples leverage, removes the variable-epoch confound) and **time-integrated** ∫L_cool dt / ∫L_mech dt
+to stop_t (the total energy budget, not the transition).
 
 ---
 
