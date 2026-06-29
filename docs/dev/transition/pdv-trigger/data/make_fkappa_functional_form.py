@@ -91,11 +91,20 @@ def _read_baselines():
 
 
 def _measure_leverage():
-    """Per-config odds-space leverage q AND raw power-law p, from the full-run grid.
+    """Per-config leverage from the full-run grid, TWO ways — and why we use the second.
 
-    logit(θ) = logit(θ0) + q*ln(f_κ)      (bounded, stable)
-    ln(θ)    = ln(θ0)    + p*ln(f_κ)      (the docs' form — unstable as θ->1)
-    Only θ<0.99 points are usable in logit space (θ>=1 -> odds blows up / fires).
+    (a) q_lowfk : logit-space slope fit on the LOW points (θ<0.99). Theoretically nice
+        (bounded by θ->1) BUT mis-calibrated here: the bubble FIRES before θ saturates,
+        so the real θ(f_κ) is CONVEX (accelerates toward firing), not concave. Fitting q
+        on f_κ∈{1,2} and extrapolating a saturating logit OVERSHOOTS f_κ by ~10-30x at the
+        measured anchor (compact fires at f_κ≈3.4, a logit extrap gives ~90). Kept only as
+        a diagnostic / cautionary number.
+    (b) p_full : raw power-law exponent  ln θ = ln θ0 + p*ln f_κ  fit over the FULL measured
+        range INCLUDING the firing point (θ may exceed 1 at fire — that is the acceleration
+        we must capture). This is the exponent that reproduces the measured firing anchor
+        and matches the independent El-Badry-back-reaction estimate (q≈0.33-0.45). USE THIS.
+
+    Measured-interpolated firing anchor (where θ crosses 0.95) is also returned per config.
     """
     rows = list(csv.DictReader(open(os.path.join(_HERE, "kappa_blowout_calibration.csv"))))
     by_cfg = {}
@@ -105,12 +114,21 @@ def _measure_leverage():
     res = {}
     for cfg, pts in by_cfg.items():
         pts = sorted(pts)
-        good = [(fk, th) for fk, th in pts if 0.0 < th < 0.99]
-        lnfk = np.array([math.log(fk) for fk, _ in good])
-        q = float(np.polyfit(lnfk, [_logit(th) for _, th in good], 1)[0]) if len(good) >= 2 else float("nan")
-        p = float(np.polyfit(lnfk, [math.log(th) for _, th in good], 1)[0]) if len(good) >= 2 else float("nan")
-        res[cfg] = {"q": q, "p_raw": p, "n_used": len(good),
-                    "theta0": dict(pts).get(1.0)}
+        lnfk_all = np.array([math.log(fk) for fk, _ in pts])
+        p_full = float(np.polyfit(lnfk_all, [math.log(th) for _, th in pts], 1)[0])
+        low = [(fk, th) for fk, th in pts if 0.0 < th < 0.99]
+        q_low = float(np.polyfit([math.log(fk) for fk, _ in low],
+                                 [_logit(th) for _, th in low], 1)[0]) if len(low) >= 2 else float("nan")
+        # measured f_κ where θ crosses 0.95 (ln-ln interpolation between bracketing points)
+        fk_at = None
+        for i in range(len(pts) - 1):
+            (a, ta), (b, tb) = pts[i], pts[i + 1]
+            if (ta - 0.95) * (tb - 0.95) <= 0:
+                lf = (math.log(a) + (math.log(0.95) - math.log(ta))
+                      / (math.log(tb) - math.log(ta)) * (math.log(b) - math.log(a)))
+                fk_at = math.exp(lf)
+        res[cfg] = {"p_full": p_full, "q_low": q_low, "theta0": dict(pts).get(1.0),
+                    "fk_meas_095": fk_at}
     return res
 
 
@@ -126,56 +144,67 @@ def main():
     rms = float(np.sqrt(np.mean(resid ** 2)))
     print(f"baseline fit: logit(θ0) = {a:+.3f} {b:+.3f}*log10(n_H)   (RMS in logit = {rms:.3f})")
 
-    # --- leverage summary ---
-    qs = [v["q"] for v in lev.values() if v["q"] == v["q"]]
-    q_med = float(np.median(qs))
-    print("leverage (odds-space q vs raw power p):")
+    # --- leverage summary: raw-range p_full is the one we USE (matches measured firing) ---
+    ps = [v["p_full"] for v in lev.values() if v["p_full"] == v["p_full"]]
+    p_med = float(np.median(ps))
+    print("leverage (raw full-range p_full [USED] vs low-f_κ logit q [diagnostic only]):")
     for cfg, v in sorted(lev.items()):
-        print(f"  {cfg:8s} θ0={v['theta0']:.3f}  q={v['q']:.3f}  p_raw={v['p_raw']:.3f}  (n={v['n_used']})")
-    print(f"  -> median q = {q_med:.3f}  (use as the single-value leverage; q RISES with n_H -> sweep refines)")
+        fkm = f"{v['fk_meas_095']:.2f}" if v["fk_meas_095"] else ">4 (unmeas)"
+        print(f"  {cfg:8s} θ0={v['theta0']:.3f}  p_full={v['p_full']:.3f}  q_low={v['q_low']:.3f}"
+              f"  measured f_κ(θ=0.95)={fkm}")
+    print(f"  -> median p_full = {p_med:.3f}  (matches the El-Badry back-reaction estimate q≈0.33-0.45;"
+          " p RISES->varies with config -> sweep de-conflates)")
 
-    def fkappa(n_H, theta_star, q):
-        l0 = a + b * math.log10(n_H)
-        return math.exp((_logit(theta_star) - l0) / q)
+    # RAW-POWER inversion: theta = theta0 * f_κ^p  =>  f_κ = (theta*/theta0)^(1/p).
+    # theta0(n_H) from the logit baseline fit (smooth interpolant); p from the measured range.
+    def theta0_of(n_H):
+        return _inv_logit(a + b * math.log10(n_H))
+
+    def fkappa(n_H, theta_star, p):
+        th0 = theta0_of(n_H)
+        return (theta_star / th0) ** (1.0 / p) if th0 < theta_star else 1.0
 
     # --- the functional form on a grid + fit f_κ ≈ A * n_H^(-s) ---
     grid = np.logspace(2, 6, 25)
-    rows_out = []
     for tgt in TARGETS:
-        fk_grid = np.array([fkappa(n, tgt, q_med) for n in grid])
-        s, lnA = -np.polyfit(np.log(grid), np.log(fk_grid), 1)[0], np.polyfit(np.log(grid), np.log(fk_grid), 1)[1]
-        A = math.exp(lnA)
+        fk_grid = np.array([fkappa(n, tgt, p_med) for n in grid])
+        coef = np.polyfit(np.log(grid), np.log(fk_grid), 1)
+        s, A = -coef[0], math.exp(coef[1])
         print(f"θ*={tgt}: f_κ(n_H) ≈ {A:.3g} * n_H^(-{s:.3f})   "
-              f"[f_κ(1e2)={fkappa(1e2,tgt,q_med):.1f}, f_κ(1e4)={fkappa(1e4,tgt,q_med):.2f}, "
-              f"f_κ(1e6)={fkappa(1e6,tgt,q_med):.2f}]")
+              f"[f_κ(1e2)={fkappa(1e2,tgt,p_med):.1f}, f_κ(1e4)={fkappa(1e4,tgt,p_med):.2f}, "
+              f"f_κ(1e6)={fkappa(1e6,tgt,p_med):.2f}]")
 
-    # per-anchor table (csv): both targets, single-q and per-config-q where available
-    cfg_q = {cfg: v["q"] for cfg, v in lev.items()}
-    # map the 6 fmix configs onto the nearest measured-leverage config by density tier
-    tier_q = {1e2: cfg_q.get("diffuse"), 1e4: cfg_q.get("mid"),
-              1e5: cfg_q.get("compact"), 1e6: cfg_q.get("compact")}
+    # per-anchor table: median-p and per-config-p (tier) where measured, + measured anchor
+    cfg_p = {cfg: v["p_full"] for cfg, v in lev.items()}
+    cfg_meas = {cfg: v["fk_meas_095"] for cfg, v in lev.items()}
+    tier_p = {100.0: cfg_p.get("diffuse"), 10000.0: cfg_p.get("mid"),
+              100000.0: cfg_p.get("compact"), 1000000.0: cfg_p.get("compact")}
+    tier_meas = {100000.0: cfg_meas.get("compact")}   # only compact's θ=0.95 is bracketed by f_κ≤4
+    rows_out = []
     for cfg, n_H, th0 in base:
         rec = {"config": cfg, "nCore": f"{n_H:.0f}", "theta0": round(th0, 4)}
         for tgt in TARGETS:
-            rec[f"fkappa_q{int(tgt*100)}_medq"] = round(fkappa(n_H, tgt, q_med), 3)
-            tq = tier_q.get(n_H)
-            rec[f"fkappa_q{int(tgt*100)}_tierq"] = round(fkappa(n_H, tgt, tq), 3) if tq else ""
+            rec[f"fkappa{int(tgt*100)}_medp"] = round(fkappa(n_H, tgt, p_med), 3)
+            tp = tier_p.get(n_H)
+            rec[f"fkappa{int(tgt*100)}_tierp"] = round(fkappa(n_H, tgt, tp), 3) if tp else ""
+        fm = tier_meas.get(n_H)
+        rec["fkappa95_measured"] = round(fm, 3) if fm else ""
         rows_out.append(rec)
 
     csv_path = os.path.join(_HERE, "fkappa_functional_form.csv")
     cols = ["config", "nCore", "theta0",
-            "fkappa_q90_medq", "fkappa_q90_tierq", "fkappa_q95_medq", "fkappa_q95_tierq"]
+            "fkappa90_medp", "fkappa90_tierp", "fkappa95_medp", "fkappa95_tierp", "fkappa95_measured"]
     with open(csv_path, "w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=cols)
         w.writeheader()
         w.writerows(rows_out)
-    # append the fitted parameters as a trailer comment block (machine + human readable)
     with open(csv_path, "a") as fh:
-        fh.write(f"# fit: logit(theta0) = {a:+.4f} {b:+.4f}*log10(nH); RMS_logit={rms:.4f}\n")
-        fh.write("# leverage q (odds-space): " +
-                 ", ".join(f"{c}={v['q']:.3f}" for c, v in sorted(lev.items())) +
-                 f"; median={q_med:.3f}\n")
-        fh.write("# form: f_kappa(nH) = exp([logit(theta*) - (a + b*log10 nH)] / q)\n")
+        fh.write(f"# baseline fit: logit(theta0) = {a:+.4f} {b:+.4f}*log10(nH); RMS_logit={rms:.4f}\n")
+        fh.write("# leverage p_full (raw, full-range-to-firing): " +
+                 ", ".join(f"{c}={v['p_full']:.3f}" for c, v in sorted(lev.items())) +
+                 f"; median={p_med:.3f}\n")
+        fh.write("# form: f_kappa(nH) = (theta* / theta0(nH))^(1/p_full)   [raw power; matches measured firing]\n")
+        fh.write("# NOTE low-f_κ logit-slope extrapolation OVERSHOOTS ~10-30x (theta fires before it saturates) -- not used\n")
         fh.write("# target theta* = 0.90 (Lancaster 2021 plateau, density-independent); 0.95 == shipped trigger\n")
     print(f"wrote {csv_path}")
 
@@ -195,7 +224,7 @@ def main():
 
     fig, (axL, axM, axR) = plt.subplots(1, 3, figsize=(16.5, 5.0))
 
-    # LEFT: leverage in odds space vs raw — why the docs' power law is wrong
+    # LEFT: measured θ(f_κ) — it ACCELERATES toward firing (convex), not saturating
     fks = np.array([1, 2, 4])
     cal = {}
     for r in csv.DictReader(open(os.path.join(_HERE, "kappa_blowout_calibration.csv"))):
@@ -204,13 +233,14 @@ def main():
         th = np.array([cal[cfg][f] for f in fks])
         c = COLORS.get(cfg, "0.3")
         axL.plot(fks, th, "o-", color=c, lw=1.8, ms=6, label=f"{cfg} (θ0={th[0]:.2f})")
-    axL.axhline(0.90, ls="--", color="#2ca02c", lw=1.2)
-    axL.text(1.05, 0.905, "Lancaster θ*≈0.90", fontsize=8, color="#2ca02c")
+    axL.axhline(0.95, ls="--", color="#2ca02c", lw=1.2)
+    axL.text(1.05, 0.96, "θ*≈0.95 (fires)", fontsize=8, color="#2ca02c")
     axL.set_xscale("log", base=2)
     axL.set_xlabel(r"$f_\kappa$ (cooling_boost_kappa)")
     axL.set_ylabel(r"emergent $\theta = L_{\rm cool}/L_{\rm mech}$ at blowout")
-    axL.set_ylim(0, 1.05)
-    axL.set_title("Measured leverage: θ saturates toward 1\n(odds-space q stable; raw power p is not)",
+    axL.set_ylim(0, 1.1)
+    axL.set_title("Measured θ(f_κ): compact ACCELERATES past 1 by f_κ=4\n"
+                  "(fires before saturating -> raw power, not logistic)",
                   fontsize=10, fontweight="bold")
     axL.legend(fontsize=8.5, loc="lower right")
 
@@ -231,28 +261,29 @@ def main():
                   fontsize=10, fontweight="bold")
     axM.legend(fontsize=8.5, loc="lower right")
 
-    # RIGHT: the functional form f_κ(n_H) + power-law fit + saturation ceiling direction
+    # RIGHT: the functional form f_κ(n_H) (raw-power) + measured anchor + saturation ceiling
     for tgt, col in zip(TARGETS, ("#2ca02c", "#d62728")):
-        fk = np.array([fkappa(n, tgt, q_med) for n in nn])
+        fk = np.array([fkappa(n, tgt, p_med) for n in nn])
         s = -np.polyfit(np.log(nn), np.log(fk), 1)[0]
         axR.plot(nn, fk, "-", color=col, lw=2, label=fr"$\theta^*$={tgt}:  $f_\kappa\propto n_H^{{-{s:.2f}}}$")
-    # the old optimistic estimate for contrast
-    est = {float(r["nCore"]): float(r["fkappa_for_theta95"])
-           for r in csv.DictReader(open(os.path.join(_HERE, "kappa_calibration_estimate.csv")))}
-    axR.plot(sorted(est), [est[k] for k in sorted(est)], "x:", color="0.55", lw=1.2, ms=7,
-             label="old power-law estimate (θ*=0.95, optimistic)")
+    # measured firing anchor (compact, θ=0.95) — ground truth the curve must pass near
+    fkm = lev.get("compact", {}).get("fk_meas_095")
+    if fkm:
+        axR.plot([1e5], [fkm], "*", color="k", ms=15, zorder=5,
+                 label=f"MEASURED (compact fires): f_κ≈{fkm:.1f}")
     axR.annotate("saturation ceiling rises\n"r"($\kappa_{\rm sat}\propto n_H^{+1}$): diffuse end"
                  "\nunreachable by Spitzer boost\n-> needs El-Badry κ_mix",
-                 xy=(1.3e2, 30), fontsize=7.2, color="0.35")
+                 xy=(1.3e2, 12), fontsize=7.2, color="0.35")
     axR.set_xscale("log")
     axR.set_yscale("log")
     axR.set_xlabel(r"$n_{\rm Core}$ [cm$^{-3}$]")
     axR.set_ylabel(r"$f_\kappa(n_H)$ needed")
-    axR.set_title("The functional form: f_κ(n_H) ≈ A·n_H^(-s)\n(logistic leverage, median q; sweep refines q(n_H))",
+    axR.set_title("The functional form: f_κ(n_H) ≈ A·n_H^(-s)\n"
+                  "(raw power, full-range p; matches measured firing; sweep de-conflates)",
                   fontsize=10, fontweight="bold")
     axR.legend(fontsize=8, loc="upper right")
 
-    fig.suptitle("f_κ(n_H) functional form — composed from Lancaster target + TRINITY baseline + measured logistic leverage",
+    fig.suptitle("f_κ(n_H) functional form — composed from Lancaster target + TRINITY baseline + measured full-range leverage",
                  fontsize=12, fontweight="bold")
     fig.tight_layout(rect=(0, 0, 1, 0.94))
     png = os.path.join(_PDV, "fkappa_functional_form.png")

@@ -37,28 +37,36 @@
 ## 0. TL;DR — the form you can use now
 
 ```
-   f_κ(n_H)  =  exp{ [ logit(θ*) − logit(θ₀(n_H)) ] / q }
+   f_κ(n_H)  =  ( θ* / θ₀(n_H) )^(1/p)          [raw power; matches the measured firing anchor]
 
-   with   logit(p)      ≡ ln(p/(1−p))
-          θ*            = 0.90            target loss fraction  (Lancaster 2021 plateau, density-independent)
+   with   θ*            = 0.90            target loss fraction  (Lancaster 2021 plateau, density-independent)
           logit θ₀(n_H) = −1.73 + 0.41·log₁₀(n_H)   TRINITY emergent baseline at f_κ=1 (fit, 6 anchors)
-          q             ≈ 0.55            odds-space leverage of θ on f_κ (measured; rises with n_H — sweep refines)
+          p             ≈ 0.31            leverage of θ on f_κ, measured over the FULL range to firing
+                                          (NOT the low-f_κ logit slope — see §3; range 0.21–0.42 by config)
 
-   ≈ power law:   f_κ(n_H) ≈ 1.3×10³ · n_H^(−0.32)         (θ*=0.90)
-                  f_κ(n_H) ≈ 5.1×10³ · n_H^(−0.32)         (θ*=0.95 = the shipped trigger)
+   ≈ power law:   f_κ(n_H) ≈ 1.4×10² · n_H^(−0.30)         (θ*=0.90)
+                  f_κ(n_H) ≈ 1.6×10² · n_H^(−0.30)         (θ*=0.95 = the shipped trigger)
 ```
 
-| n_Core [cm⁻³] | baseline θ₀ (f_κ=1) | f_κ for θ\*=0.90 | f_κ for θ\*=0.95 |
-|---:|---:|---:|---:|
-| 1e2 (diffuse) | 0.25 | **≈ 291** | ≈ 1137 |
-| 1e4 (mid)     | 0.61 | **≈ 65**  | ≈ 256 |
-| 1e6 (dense)   | 0.70 | **≈ 15**  | ≈ 57 |
+| n_Core [cm⁻³] | baseline θ₀ (f_κ=1) | f_κ for θ\*=0.90 | f_κ for θ\*=0.95 | measured anchor |
+|---:|---:|---:|---:|---:|
+| 1e2 (diffuse) | 0.25 | **≈ 40** | ≈ 48 | >4 (unmeasured) |
+| 1e4 (mid)     | 0.61 | **≈ 8**  | ≈ 9  | >4 (unmeasured) |
+| 1e5 (compact) | 0.67 | **≈ 4**  | ≈ 5  | **≈ 3.4 (fires at f_κ=4)** |
+| 1e6 (dense)   | 0.70 | **≈ 2.5**| ≈ 3  | — |
 
-> ⚠️ The **direction and form are robust**; the **absolute magnitude at the diffuse end is uncertain by ~10×**
-> (it is extrapolated from f_κ≤4 data — see §4). The diffuse value being in the hundreds is itself the result:
-> a pure Spitzer-conduction boost almost certainly **cannot** reach the Lancaster plateau for diffuse clouds
-> (§5, the saturation ceiling). The 819-combo HPC sweep (`runs/params/sweep_fkappa_nH.param`) is what turns
-> the extrapolation into a measurement and pins `q(n_H)`.
+> ⚠️ The **slope (−0.30) is robust**; the **diffuse-end magnitude is uncertain by ~2–3×** (extrapolated from
+> f_κ≤4 data where diffuse only reaches θ=0.30 — see §4). The diffuse value being in the **tens** is the
+> result: a pure Spitzer-conduction boost of ~50× **cannot** physically reach the Lancaster plateau for diffuse
+> clouds (§5, the saturation ceiling) — that regime needs El-Badry's κ_mix. The 819-combo HPC sweep pins `p(n_H)`.
+>
+> 🛠 **Correction (2026-06-29, same day):** the first cut of this doc inverted the leverage in **logit/odds
+> space** (`q≈0.55`) and got f_κ ≈ 291 (diffuse) … 121 (compact) — **wrong by ~10–30×** at the one *measured*
+> anchor (compact **fires at f_κ≈3.4**, not ~120). Cause: θ(f_κ) **accelerates toward firing** (convex:
+> compact 0.667→0.739→**1.024**), because the bubble *transitions before θ saturates* — so a saturating
+> (concave) logit extrapolated from the f_κ∈{1,2} segment overshoots. The fix is the **raw power-law exponent
+> measured over the full range to firing** (p≈0.31), which reproduces the measured anchor and agrees with the
+> independent El-Badry-back-reaction estimate (q≈0.33–0.45). Only the *amplitude* changed; the slope did not.
 
 This is **not** a literature formula — there is **no published `f_κ ∝ n_H^p` law** (§3). It is *composed* from
 three separable, independently-checkable pieces: a verified literature **target**, a measured TRINITY
@@ -118,20 +126,24 @@ target** — this is what dissolves the FINDINGS §2a worry that "flat target ==
 that equivalence only holds for a *linear* L_cool multiplier (`f_mix`), not for the *structural* f_κ knob whose
 leverage is sub-linear and saturating (piece 3).
 
-### (3) LEVERAGE q — how θ responds to f_κ  *(measured)*
-Full-run grid `data/kappa_blowout_calibration.csv` (f_κ = 1,2,4 on compact/mid/diffuse). The docs' single power
-law **θ ∝ f_κ^0.63 is unstable**: the measured raw exponent collapses **0.42 (diffuse) → 0.21 (mid) → 0.15
-(compact)** as θ₀ rises — a **saturation artifact** (θ can't exceed 1), and the reason
-`kappa_calibration_estimate.csv` self-labels "optimistic". The fix is to fit leverage in **odds/logit space**,
-which is bounded by θ→1:
+### (3) LEVERAGE p — how θ responds to f_κ  *(measured; this is the piece I first got wrong)*
+Full-run grid `data/kappa_blowout_calibration.csv` (f_κ = 1,2,4 on compact/mid/diffuse). Two ways to read the
+exponent, and the choice matters by ~10–30×:
 
-```
-   logit θ(f_κ; n_H) = logit θ₀(n_H) + q·ln f_κ
-```
+- **The existing `kappa_calibration_estimate.csv` uses θ ∝ f_κ^0.63** — but that 0.63 was measured on *early*
+  snapshots (θ≈0.01); at blowout the effective exponent is weaker, so that estimate self-labels "optimistic".
+- **A logit/odds-space slope fit on the low points (f_κ∈{1,2})** looks attractive (bounded by θ→1) but is
+  **wrong here** — it overshoots the measured firing anchor by ~10–30× (the 🛠 correction in §0). θ(f_κ) does
+  **not** saturate: the bubble **fires** (transitions) before it does, so the curve is *convex* (compact
+  0.667→0.739→**1.024** at f_κ=1,2,4), and a concave logit extrapolated from the bottom segment under-reads the
+  acceleration.
+- **What works: the raw power-law exponent fit over the FULL measured range, including the firing point**
+  `ln θ = ln θ₀ + p·ln f_κ`. Measured **p = 0.31 (compact) / 0.21 (mid) / 0.42 (diffuse)**, median **0.31**.
+  This reproduces the measured anchor (compact crosses θ=0.95 at **f_κ≈3.4**) and matches the independent
+  El-Badry-back-reaction estimate (`f_mix = f_κ^q`, q = ln1.3/ln2 ≈ 0.4). It is **non-monotonic in n_H** (mid
+  is the lowest), i.e. leverage depends on more than density — the de-conflation the 819-sweep resolves.
 
-Measured q is far more stable: **0.55 (diffuse) / 0.74 (mid) / 0.50 (compact)**, median **0.55**. It still
-*rises* with density (compact/dense fire faster than the median predicts — compact reaches θ>0.95 already at
-f_κ=4), so a single q is a **lower bound on the steepness** of f_κ(n_H). The sweep maps q(n_H).
+The functional form is then the raw-power inversion of θ = θ₀·f_κ^p:  **f_κ(n_H) = (θ\*/θ₀(n_H))^(1/p).**
 
 ---
 
@@ -156,7 +168,7 @@ conduction/mixing enhancement factor as `f ∝ n_H^p`.** The density-powers that
 **Reading:** the only clean density power for *effective conduction* is the **saturated branch κ_sat ∝ n_H¹**
 (rising) — which is the **ceiling**, not the target (§5). The *target* (Lancaster Θ) is **density-independent**.
 So the n_H-dependence of f_κ is **not** inherited from any single literature scaling; it **emerges** from
-inverting TRINITY's rising baseline against a flat target. Our composed result `f_κ ∝ n_H^(−0.32)` is therefore
+inverting TRINITY's rising baseline against a flat target. Our composed result `f_κ ∝ n_H^(−0.30)` is therefore
 a **TRINITY-specific calibration curve**, with the literature supplying the *target value* and the *ceiling*,
 not the slope.
 
@@ -168,15 +180,18 @@ Fielding+2020 fractal D=5/2. These feed a future temperature-independent κ_mix(
 
 ## 4. Honest uncertainty — what the sweep is for
 
-- **Magnitude at the diffuse end is extrapolated.** The leverage is measured only at f_κ∈{1,2,4} where θ≤0.30
-  (diffuse). f_κ≈291 (θ\*=0.9, n=1e2) is the logistic extrapolation; the old raw-power estimate gives ≈60 for
-  θ\*=0.95; the truth is bracketed and **only the sweep measures it**. What is *not* in doubt: diffuse needs
-  **far** more boost than dense, and probably more than conduction can physically supply (§5).
-- **q is treated as constant but rises with n_H.** Median q=0.55 under-predicts the dense/compact fire (they hit
-  θ>0.95 by f_κ=4). A density-dependent q(n_H) **steepens** the curve beyond n_H^(−0.32). De-conflating
-  q(n_H, mCloud, SFE) is the sweep's job (`data/reduce_fkappa_sweep.py` → `data/make_fkappa_nH_sweep.py`).
-- **θ₀(n_H) has real scatter** (RMS 0.49 in logit) from profile steepness + SFE at fixed n_H. If the scatter is
-  structured (not noise), f_κ is a function of *more than* n_H — the central de-conflation result.
+- **Magnitude at the diffuse end is extrapolated.** The leverage is measured only at f_κ∈{1,2,4}, and only the
+  *compact* run actually reaches the target there (it fires at f_κ≈3.4); diffuse only reaches θ=0.30 at f_κ=4.
+  So f_κ≈48 (θ\*=0.95, n=1e2) is a raw-power extrapolation, uncertain ~2–3× (the docs' older estimate gives
+  ≈60). What is *not* in doubt: diffuse needs **tens×** the boost dense needs, and probably more than conduction
+  can physically supply (§5).
+- **p is treated as constant but varies with config.** Measured p = 0.21 (mid) … 0.42 (diffuse), non-monotonic
+  in n_H — so leverage depends on more than density (SFE/profile). A p(n_H, mCloud, SFE) changes the amplitude
+  (not much the slope). De-conflating it is the sweep's job (`data/reduce_fkappa_sweep.py` →
+  `data/make_fkappa_nH_sweep.py`).
+- **θ₀(n_H) has real scatter** (RMS 0.49 in logit) from profile steepness + SFE at fixed n_H (e.g. `pl2_steep`
+  vs `simple_cluster`, both 1e5, θ₀=0.34 vs 0.67). If the scatter is structured (not noise), f_κ is a function
+  of *more than* n_H — the central de-conflation result.
 
 ---
 
@@ -184,10 +199,10 @@ Fielding+2020 fractal D=5/2. These feed a future temperature-independent κ_mix(
 
 A real Spitzer-conduction boost **saturates**: the heat flux cannot exceed q_sat = 5φ_s ρ c_s³ (Cowie & McKee
 1977), so the effective conductivity ceiling scales as **κ_sat ∝ n_H¹** — it **rises** with density. The
-*required* f_κ **falls** with density (∝ n_H^(−0.32)). These run in **opposite directions**, so they cross:
+*required* f_κ **falls** with density (∝ n_H^(−0.30)). These run in **opposite directions**, so they cross:
 
-- **Dense clouds:** required f_κ is small (~15) and the ceiling is high → reachable by conduction boost. ✓
-- **Diffuse clouds:** required f_κ is large (hundreds) but the ceiling is **low** → a pure f_κ·Spitzer boost is
+- **Dense clouds:** required f_κ is small (~3) and the ceiling is high → reachable by conduction boost. ✓
+- **Diffuse clouds:** required f_κ is large (~tens) but the ceiling is **low** → a pure f_κ·Spitzer boost is
   **unphysical** there. Reaching the Lancaster plateau in diffuse gas needs the **temperature-INDEPENDENT
   turbulent-mixing diffusivity κ_mix** (El-Badry's actual prescription), *not* more Spitzer. ✗
 
@@ -201,14 +216,22 @@ the real q(n_H) and a front-temperature/scale-length estimate fixes the ceiling 
 
 ## 6. How to use / extend
 
-- **Use now:** plug `f_κ(n_H) = exp{[logit(0.9) − (−1.73 + 0.41·log₁₀ n_H)]/0.55}` (or the n_H^(−0.32) power
-  law) as the provisional calibration target for the dense/compact regime; treat the diffuse end as a lower
-  bound that likely needs κ_mix.
-- **Refine after the sweep:** replace the single q with the measured q(n_H[, mCloud, SFE]); re-fit θ₀ on the
+- **Use now:** plug `f_κ(n_H) = (0.90 / θ₀(n_H))^(1/0.31)` with `θ₀(n_H) = logistic(−1.73 + 0.41·log₁₀ n_H)`
+  (or the `≈140·n_H^(−0.30)` power law) as the provisional calibration target for the dense/compact regime;
+  treat the diffuse end as a lower bound that likely needs κ_mix.
+- **Refine after the sweep:** replace the single p with the measured p(n_H[, mCloud, SFE]); re-fit θ₀ on the
   819-grid baselines; re-emit this curve. The builder reads only committed CSVs, so swapping in
   `summary.csv`-derived anchors is a one-function edit (`_read_baselines`, `_measure_leverage`).
 - **Do NOT ship it.** Per the workstream's hard constraint, θ/El-Badry/Lancaster/κ knobs are **dev-only paper
   diagnostics**; production stays byte-identical with the modes off (default trigger `cooling_balance` @ 0.95).
+
+**Strategy note (degeneracy escape).** Because θ\* is ~flat where GMCs live (§2.1), calibrating "to θ\*(n_H)"
+does **not** break the trigger degeneracy *through the target's density shape* — the density dependence comes
+almost entirely from the rising **θ₀(n_H)**. The cleaner escape is to **calibrate f_κ once to the physical
+θ\* (via κ_mix/λδv) and let the transition *time* emerge**: the falsifiable, degeneracy-free output is then the
+**ordering** — which clouds transition before blowout (dense) vs blow out energy-driven first (diffuse) — which
+is comparable to PHANGS. That θ\*≈0.95 coincides with the shipped trigger is then a *physical fact about GMC
+densities*, not circular tuning. (Credit: external review, 2026-06-29.)
 
 ---
 
