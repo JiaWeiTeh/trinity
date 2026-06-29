@@ -77,6 +77,16 @@ def _inv_logit(x):
     return 1.0 / (1.0 + math.exp(-x))
 
 
+def _elbadry_theta(n_H, ldv=1.0, A_mix=3.5):
+    """El-Badry+2019 cooling efficiency θ(n_H, λδv) — VERIFIED against the PDF (2026-06-29).
+    Eq 37: ψ ≡ L_int/Ė_th = A_mix·(λδv)^½·n_H^½ (A_mix≈3.5 fit, 1.7 analytic; λδv in pc·km/s).
+    Eq 38: θ = ψ/(11/5 + ψ).  Fiducial λδv=n_H=1 -> ψ=3.5, θ=0.61 (matches paper).
+    NOTE n_H,0 is AMBIENT density; El-Badry's domain is 0.1-10 cm⁻³, so GMC use is extrapolated —
+    but θ saturates to ~0.94-0.999 there (nearly λδv-independent), matching Lancaster's flat plateau."""
+    psi = A_mix * math.sqrt(ldv * n_H)
+    return psi / (2.2 + psi)
+
+
 def _read_baselines():
     """6 anchors: nCore -> θ0 at blowout (f_κ=1), from fmix_table.csv."""
     rows = list(csv.DictReader(open(os.path.join(_HERE, "fmix_table.csv"))))
@@ -181,6 +191,7 @@ def main():
               100000.0: cfg_p.get("compact"), 1000000.0: cfg_p.get("compact")}
     tier_meas = {100000.0: cfg_meas.get("compact")}   # only compact's θ=0.95 is bracketed by f_κ≤4
     rows_out = []
+    print("El-Badry Eq37/38 target θ_EB(n_H, λδv=1) [VERIFIED] vs the flat Lancaster anchor:")
     for cfg, n_H, th0 in base:
         rec = {"config": cfg, "nCore": f"{n_H:.0f}", "theta0": round(th0, 4)}
         for tgt in TARGETS:
@@ -189,11 +200,17 @@ def main():
             rec[f"fkappa{int(tgt*100)}_tierp"] = round(fkappa(n_H, tgt, tp), 3) if tp else ""
         fm = tier_meas.get(n_H)
         rec["fkappa95_measured"] = round(fm, 3) if fm else ""
+        th_eb = _elbadry_theta(n_H, ldv=1.0)
+        rec["theta_EB_ldv1"] = round(th_eb, 4)
+        rec["fkappa_EB_medp"] = round(fkappa(n_H, th_eb, p_med), 3)
         rows_out.append(rec)
+        print(f"  n={n_H:.0e}  θ_EB={th_eb:.3f}  ->  f_κ={rec['fkappa_EB_medp']:.2f}   "
+              f"(Lancaster θ*=0.95 -> f_κ={rec['fkappa95_medp']:.2f})")
 
     csv_path = os.path.join(_HERE, "fkappa_functional_form.csv")
     cols = ["config", "nCore", "theta0",
-            "fkappa90_medp", "fkappa90_tierp", "fkappa95_medp", "fkappa95_tierp", "fkappa95_measured"]
+            "fkappa90_medp", "fkappa90_tierp", "fkappa95_medp", "fkappa95_tierp", "fkappa95_measured",
+            "theta_EB_ldv1", "fkappa_EB_medp"]
     with open(csv_path, "w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=cols)
         w.writeheader()
@@ -253,6 +270,8 @@ def main():
         axM.annotate(cfg.replace("_", " "), (n_H, th0), fontsize=6.5,
                      xytext=(0, 6), textcoords="offset points", ha="center", color="0.4")
     axM.axhspan(0.90, 0.99, color="#2ca02c", alpha=0.10, label="Lancaster target θ* (flat)")
+    axM.plot(nn, [_elbadry_theta(n, 1.0) for n in nn], "--", color="#2ca02c", lw=1.6,
+             label=r"El-Badry $\theta(n_H,\lambda\delta v{=}1)$ [verified]")
     axM.set_xscale("log")
     axM.set_xlabel(r"$n_{\rm Core}$ [cm$^{-3}$]")
     axM.set_ylabel(r"baseline $\theta_0$ at $f_\kappa=1$")

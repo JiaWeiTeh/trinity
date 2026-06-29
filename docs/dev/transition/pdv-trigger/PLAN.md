@@ -73,6 +73,18 @@ framing):**
   `f_κ(n_H)` mode (gated, default-off byte-identical).
 
 **Status ledger (newest first):**
+- **2026-06-29 (El-Badry+2019 §3.1/§5.2 VERIFIED from the maintainer-supplied PDF).** The PDF (pp.5–6,13,15)
+  confirms line-by-line: Eq 16 (Spitzer C=6e-7·T^(5/2), density-weak), Eq 17 (Parker), Spitzer↔Parker cross at
+  6.6×10⁴ K, Eq 19/20 (saturation, q_sat=(3/2)ρc_s,iso³ = 5φρc³ with φ=0.3), **Eq 21 κ_mix=(λδv)ρk_B/μm_p**
+  (temperature-INDEPENDENT; κ=max(κ_mix,κ_Spitzer); κ_mix dominates T≲2×10⁵K, n_H≳0.2), **Eq 35 (11/5)θ/(1−θ)**,
+  **Eq 37 ψ=A_mix√(λδv·n_H), A_mix≈1.7 analytic / 3.5 fit**, **Eq 38 θ=ψ/(11/5+ψ)** (θ time-independent, depends
+  on ρ₀ not Δt_SNe). El-Badry **themselves** propose calibrating λδv to 3D cooling rates (p6) = this workstream's
+  strategy. ⇒ The earlier in-container `[unverified]`/`[schematic/to-verify]` hedges on El-Badry's algebra are
+  **RETRACTED** (a 403 access gap, not an error; the prior room's transcription was right). Folded the verified
+  θ_EB(n_H,λδv) into `make_fkappa_functional_form.py` as a target cross-check: it saturates to 0.94–0.999 in the
+  GMC range (matching Lancaster's plateau), giving f_κ≈46/11/3.6 (diffuse/mid/dense), within ~15% of the
+  Lancaster-θ*=0.95 numbers — so the functional form is robust to the target choice. Updated FINDINGS §-pointer,
+  this ledger, and `F_KAPPA_FUNCTIONAL_FORM.md` §0/§2.1/§3/§5/§7.
 - **2026-06-29 (f_κ(n_H) FUNCTIONAL FORM — composed closed form, while the 819-sweep is pending; new doc
   `F_KAPPA_FUNCTIONAL_FORM.md`).** Answered the maintainer's "give me a usable f_κ(n_H) from literature/other
   quantities, don't wait for the sweep to fit one cold." Result: **f_κ(n_H) = (θ*/θ₀(n_H))^(1/p) ≈

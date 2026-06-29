@@ -72,6 +72,11 @@ This is **not** a literature formula — there is **no published `f_κ ∝ n_H^p
 three separable, independently-checkable pieces: a verified literature **target**, a measured TRINITY
 **baseline**, and a measured **leverage**. Each can be replaced/refined without touching the others.
 
+> ✅ **Target cross-check (2026-06-29):** El-Badry's `θ(n_H,λδv)` (Eq 37/38, **now verified from the PDF** —
+> §2.1) saturates to 0.94–0.999 across the GMC range, so using it as the target gives f_κ ≈ 46/11/3.6
+> (diffuse/mid/dense) — **within ~15% of the flat-Lancaster numbers above.** Both verified anchors agree; the
+> form is robust to the target choice.
+
 Artifact: `data/make_fkappa_functional_form.py` → `data/fkappa_functional_form.csv` + `fkappa_functional_form.png`.
 Reproduce (no sims): `python docs/dev/transition/pdv-trigger/data/make_fkappa_functional_form.py`.
 
@@ -107,14 +112,28 @@ wind energy — retained fraction **1−Θ ~ 0.1–0.01, decreasing with time** 
 *"generic ... over more than three orders of magnitude in density."* So over the GMC range θ\* is **flat-and-high
 ≈ 0.9** (we report 0.95 too, = the shipped trigger). Momentum boost α_p ~ 1.2–4.
 
-**Why flat, not a rising El-Badry √n curve.** El-Badry et al. 2019 (MNRAS **490, 1961**; arXiv:1902.09547 —
-note: author **Weisz**, *not* Weinberg; *not* "ApJ 879") is a **supernova-superbubble** paper for ambient
-n ~ 0.1–10 cm⁻³; its θ(n) must not be extrapolated to GMC densities, and its specific ψ/θ algebra
-(ψ=A_mix√(λδv·n_H), θ=ψ/(11/5+ψ), A_mix≈3.5) **could not be verified** in-container (every arXiv/ADS/journal
-host returns HTTP 403) — treat it as **[unverified]**. What *is* corroborated about El-Badry by multiple citing
-papers: mixing is modelled as an **effective, temperature-INDEPENDENT diffusivity κ_mix = λδv** (their one free
-mixing parameter), and θ depends on n_H **and** Λ(T_pk) **and** λδv — not n_H alone. The GMC-regime magnitude
-therefore comes from **Lancaster** (flat ≈0.9), with El-Badry supplying the *mechanism/parametrization*.
+**El-Badry's θ(n_H, λδv) — now VERIFIED from the PDF (2026-06-29), and it AGREES with Lancaster.** El-Badry
+et al. 2019 (MNRAS **490, 1961**; arXiv:1902.09547 — author **Weisz**, *not* Weinberg; *not* "ApJ 879"). The
+specific algebra, confirmed against the paper's §3.1/§5.2 (PDF supplied by the maintainer; earlier `[unverified]`
+hedge **retracted** — it was a 403 access gap, not an error, and the prior room's transcription was correct):
+- **Eq 37**: `ψ ≡ L_int/Ė_th = A_mix·(λδv)^½·(n_H,0)^½`, with **A_mix ≈ 1.7 analytic (α=1, T_pk=2×10⁴ K), ≈ 3.5
+  fit to their sims**; λδv in pc·km/s, n_H,0 the **ambient** density.
+- **Eq 35/38**: `L_int/Ė_th = (11/5)·θ/(1−θ)` ⇒ `θ = ψ/(11/5 + ψ)`. Fiducial λδv=n_H=1 → ψ=3.5, θ=0.61 ✓.
+- **Eq 21**: the mixing term is `κ_mix = (λδv)·ρ k_B/(μ m_p)` — a **temperature-INDEPENDENT** conductivity, with
+  `κ = max(κ_mix, κ_Spitzer)`; κ_mix dominates where T ≲ 2×10⁵ K and n_H ≳ 0.2 cm⁻³. (This is the genuine
+  "Rung-B" κ_mix; λδv is varied 1–10 pc·km/s.)
+- **θ is independent of time** and depends on ambient ρ₀ but not Δt_SNe (their §5.2).
+
+The one real caveat stands: n_H,0 is the **ambient** density and El-Badry's domain is **0.1–10 cm⁻³**, so GMC use
+(1e2–1e6) is **extrapolated**. But the √n form **saturates**: θ_EB(λδv=1) = 0.94 (1e2) → 0.99 (1e4) → 0.999
+(1e6), nearly λδv-independent there — i.e. **flat-and-high, matching Lancaster's plateau**. Using θ_EB as the
+target gives f_κ ≈ **46 / 11 / 3.6** (diffuse/mid/dense), within ~15% of the Lancaster-θ\*=0.95 values (48/9/3).
+So **both verified anchors give the same f_κ(n_H)** — the form is robust to the target choice. The density-shape
+of the *target* is essentially flat where GMCs live; the density dependence of f_κ comes from θ₀(n_H) rising
+(piece 2), exactly as El-Badry would predict (their θ flat, ours rising → the gap closes density-dependently).
+**Bonus (verified, p6):** El-Badry *themselves* propose "use the cooling rates from 3D simulations as a
+calibration point and adjust λδv to match their energetics" — i.e. they prescribe **this workstream's exact
+strategy**.
 
 ### (2) BASELINE θ₀(n_H) — TRINITY's emergent loss fraction at f_κ=1  *(measured)*
 Resolved L_cool/L_mech at blowout for 6 reference configs (`data/fmix_table.csv`), **rising** 0.25 (n=1e2) →
@@ -149,14 +168,17 @@ The functional form is then the raw-power inversion of θ = θ₀·f_κ^p:  **f_
 
 ## 3. The literature answer to "is there a functional form?" — **no off-the-shelf one**
 
-The survey (10 sub-agents; **all primary PDFs 403-blocked in-container**, so equations are from search snippets
-and citing papers — equation *numbers* unverified, flagged below) is unambiguous: **no paper writes a
-conduction/mixing enhancement factor as `f ∝ n_H^p`.** The density-powers that *do* exist in the literature:
+The survey (10 sub-agents; most primary PDFs were 403-blocked in-container so those rows are from search snippets
++ citing papers with equation *numbers* flagged — **except El-Badry, whose PDF the maintainer supplied, so its
+rows are now PDF-verified**) is unambiguous: **no paper writes a conduction/mixing enhancement factor as
+`f ∝ n_H^p`.** The density-powers that *do* exist in the literature:
 
 | relation | density power | source | status |
 |---|---:|---|---|
-| classical Spitzer κ = 6e-7·T^(5/2) | **n_H⁰** (none) | Spitzer 1962; Weaver+77; matches `C_thermal` | verified (multi-source) |
-| saturated heat flux q_sat = 5φ_s ρ c_s³ (φ_s≈0.3) | **n_H¹** | Cowie & McKee 1977 | form verified; eq.# not |
+| classical Spitzer κ = 6e-7·T^(5/2) | **n_H⁰** (none) | Spitzer 1962; Weaver+77; El-Badry Eq 16 | **verified (PDF + multi-source)** |
+| El-Badry mixing κ_mix = (λδv)ρk_B/μm_p | **n_H¹** (T-independent) | El-Badry+2019 Eq 21 | **verified (PDF)** |
+| El-Badry cooling efficiency θ(n_H,λδv) | √n_H, **saturates** | El-Badry+2019 Eq 37/38 (A_mix=3.5) | **verified (PDF)** |
+| saturated heat flux q_sat = 5φ_s ρ c_s³ (φ_s≈0.3) | **n_H¹** | Cowie & McKee 1977; El-Badry ftn 4/Eq 19-20 | **verified (PDF)** |
 | ⇒ effective κ in saturated limit | **n_H¹** | (from q_sat·ℓ_T/T) | derived |
 | saturation parameter σ₀ = q_cl/q_sat | **n_H⁻¹** | Cowie & McKee 1977 / Balbus & McKee 1982 | def. verified; eq.# not |
 | conduction-modified Weaver shell density ρ_sw | **n_H^(19/35)≈0.54** | Gupta, Nath & Sharma 2018 (MNRAS 473,1537) | verbatim snippet; eq.# not |
@@ -198,13 +220,18 @@ Fielding+2020 fractal D=5/2. These feed a future temperature-independent κ_mix(
 ## 5. The physical bracket — why diffuse may be unreachable by f_κ at all
 
 A real Spitzer-conduction boost **saturates**: the heat flux cannot exceed q_sat = 5φ_s ρ c_s³ (Cowie & McKee
-1977), so the effective conductivity ceiling scales as **κ_sat ∝ n_H¹** — it **rises** with density. The
-*required* f_κ **falls** with density (∝ n_H^(−0.30)). These run in **opposite directions**, so they cross:
+1977 — adopted by El-Badry as q_sat = (3/2)ρc_s,iso³ with φ_s=0.3, Eq 19/20), so the effective conductivity
+ceiling scales as **κ_sat ∝ n_H¹** — it **rises** with density. The *required* f_κ **falls** with density
+(∝ n_H^(−0.30)). These run in **opposite directions**, so they cross:
 
 - **Dense clouds:** required f_κ is small (~3) and the ceiling is high → reachable by conduction boost. ✓
 - **Diffuse clouds:** required f_κ is large (~tens) but the ceiling is **low** → a pure f_κ·Spitzer boost is
-  **unphysical** there. Reaching the Lancaster plateau in diffuse gas needs the **temperature-INDEPENDENT
-  turbulent-mixing diffusivity κ_mix** (El-Badry's actual prescription), *not* more Spitzer. ✗
+  **unphysical** there. Reaching the plateau in diffuse gas needs the **temperature-INDEPENDENT turbulent-mixing
+  conductivity κ_mix = (λδv)ρk_B/μm_p** (El-Badry Eq 21, now verified), implemented as `κ = max(κ_mix, κ_Spitzer)`
+  — *not* a multiple of Spitzer. ✗ Note El-Badry's own κ_mix ∝ n_H¹ **rises** with density (it is a diffusivity
+  ×ρ), the opposite sense to the *required-f_κ-vs-n_H* curve — because the two answer different questions
+  (κ_mix matches a *conductivity*; f_κ(n_H) matches a *target θ*). The crossover where f_κ exceeds the ceiling is
+  where TRINITY must switch from the f_κ knob to a κ_mix term.
 
 This is consistent with the workstream's earlier Rung-A/Rung-B framing (`RUNGB_SCOPING.md`, `KAPPA_EFF_SCOPING.md`):
 f_κ (Rung A) is the right *mechanism* and a usable calibration knob in the dense/compact regime; the diffuse end
@@ -237,15 +264,15 @@ densities*, not circular tuning. (Credit: external review, 2026-06-29.)
 
 ## 7. Provenance / caveats (read before citing a number)
 
-- **Branch note (2026-06-29):** this branch (`feature/PdV-trigger-term-pt2`, from `feature/fervent-carson-ohpjm7`
-  @ `3809f8e`) does **not** contain the previous room's commit `3e68143` ("El-Badry verification + overlay") — it
-  is not in this history and not findable locally. So any "El-Badry §5.2 verified from the PDF" claim in an
-  external handoff does **not** apply here; in this branch El-Badry's specific algebra is **[unverified]**
-  (consistent with `FINDINGS.md` §2/§2a). There is no `elbadry_overlay.png` here.
-- **Literature access:** every arXiv/ADS/MNRAS/ApJ/A&A host 403s through the container proxy. All equations in
-  §2–§3 are from WebSearch snippets + citing papers; **equation numbers are unverified** and flagged. Verbatim-
-  confirmed items: Lancaster 1−Θ~0.1–0.01 and "more than three orders of magnitude in density"; Narayan &
-  Medvedev "factor of ~5 below Spitzer"; Spitzer/Weaver 6e-7·T^(5/2); q_sat = 5φ_s ρ c_s³.
+- **El-Badry now VERIFIED (2026-06-29):** the maintainer supplied the El-Badry+2019 PDF (pp. 5–6, 13, 15). Its
+  §3.1/§5.2 equations are confirmed line-by-line — Eq 16 (Spitzer C=6e-7·T^(5/2)), Eq 19/20 (saturation), Eq 21
+  (κ_mix=(λδv)ρk_B/μm_p), Eq 35/37/38 (θ=ψ/(11/5+ψ), ψ=A_mix√(λδv·n_H), A_mix≈1.7 analytic / **3.5 fit**). The
+  earlier in-container `[unverified]` hedge (a 403 access gap, *not* an error) is **retracted**: the prior room's
+  transcription was correct. Branch note retained for the record: this branch lacks the prior room's commit
+  `3e68143`/`elbadry_overlay.png`, but the equations are verified independently of that commit.
+- **Other literature access:** the non-El-Badry rows of §3 still come from WebSearch snippets + citing papers
+  (every other arXiv/ADS host 403s in-container); their **equation numbers remain unverified** and are flagged.
+  Verbatim-confirmed: Lancaster 1−Θ~0.1–0.01 and ">3 dex in density"; Narayan & Medvedev "~5× below Spitzer".
 - **Citation corrections rippled into the siblings:** El-Badry = MNRAS 490, 1961 (2019), author Weisz, arXiv
   1902.09547 (not ApJ 879 / not Weinberg); Lancaster Paper I = 2104.07691, Paper II = 2104.07722.
 

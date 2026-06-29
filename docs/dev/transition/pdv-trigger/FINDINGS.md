@@ -44,8 +44,11 @@
 > `logit θ₀ = −1.73+0.41 log₁₀ n_H` · raw full-range leverage p≈0.31). f_κ≈48(diffuse)/9(mid)/3(dense) for
 > θ*=0.95 — matches the measured firing anchor (compact fires at f_κ≈3.4). It supersedes the §2-area schematic
 > for *how to set f_κ* and confirms there is **no literature `f_κ ∝ n_H^p`** to borrow. (A logit/odds-space first
-> cut overshot ~10–30× — θ fires before it saturates; see the doc's §0 🛠 correction.) El-Badry citation
-> corrected there (MNRAS 490,1961 / Weisz / arXiv:1902.09547 — *not* ApJ 879).
+> cut overshot ~10–30× — θ fires before it saturates; see the doc's §0 🛠 correction.) **El-Badry §3.1/§5.2 now
+> VERIFIED from the maintainer-supplied PDF** (Eq 16/19/20/21/35/37/38; A_mix≈3.5) — the earlier `[unverified]`
+> hedge is retracted, and El-Badry's θ(n_H,λδv) target agrees with Lancaster to ~15% in f_κ. Citation: MNRAS
+> 490,1961 / Weisz / arXiv:1902.09547 (*not* ApJ 879). This supersedes the §2/§2a "[schematic/to-verify]" flags
+> for El-Badry's specific algebra.
 
 What looks like "three ways to boost cooling" is really **two cooling-magnitude approaches on opposite sides
 of the structure solve, plus a separate trigger axis**. The key disambiguation: **"modify cooling like
