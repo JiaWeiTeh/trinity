@@ -73,6 +73,16 @@ framing):**
   `f_κ(n_H)` mode (gated, default-off byte-identical).
 
 **Status ledger (newest first):**
+- **2026-06-29 (Helix run scaffolding for the 819-combo sweep — committed).** The sweep was "HPC-ready"
+  only via a bare `--emit-jobs jobs/` + `sbatch jobs/submit_sweep.sbatch`, which would have **failed on
+  Helix**: outputs resolve under the read-only `/home` repo checkout, and the emitted sbatch leaves
+  account/partition/`--export=NONE`/conda unset (the maintainer's per-cluster `patch_sbatch` step, which
+  `sweep_fkappa_nH.param` didn't mention). Added committed, pre-patched `runs/run_fkappa.sbatch` (array
+  1-819, cpu-single/bw22J006/`--export=NONE`/conda, reads the emit `runs.tsv`) + `runs/sync.sh`
+  (submit/watch/collect/harvest/down), mirroring `paper/shellSSC6` but as an array; the driver emits the
+  bundle from `/gpfs` so `path2output` lands on the writable workspace. Harvester `_OUT` now honours
+  `FKAPPA_SWEEP_OUT` (the /gpfs outputs) and its "28 combos" docstring → 819. `REPRODUCE.md` #18/Block C
+  reconciled. No production code touched. **NEXT unchanged: run the grid** (`runs/sync.sh submit`).
 - **2026-06-28 (controlled f_κ(n_H) calibration sweep — built, HPC-ready, not yet run; broadened to 819).**
   The clean replacement for the conflated 3-anchor estimate (compact/mid/diffuse vary mCloud+sfe+nCore
   together). `runs/params/sweep_fkappa_nH.param` sweeps **nCore [1e2,3e2,1e3,3e3,1e4,3e4,1e5] (primary, fine) ×

@@ -78,7 +78,7 @@ Legend — **Sims?**: 🟢 none (reads committed CSV, seconds) · 🟡 a few ful
 | 15 | Dense-edge stiffness is **not** f_κ (it's extreme density) | PLAN ledger 06-28 | `diag_dense_hybr.param`, `diag_dense_legacy.param` | run both, observe (does not finish at nCore 1e6) | `data/dense_stiffness_diag.csv` | 🟡 |
 | 16 | FM1 / FM1b — wrong knobs ruled out (κ_eff confirmed) | §11 | — (offline prototypes) | `python data/make_fm1_rootcheck.py`; `python data/make_fm1b_evapsign.py` | `data/fm1*.csv`, `fm1*.png` | 🟢 |
 | 17 | All-ideas scoreboard | hero | — (reads CSVs above) | `python data/make_ideas_comparison.py` | `ideas_comparison.png` | 🟢 |
-| 18 | **Controlled f_κ(n_H) calibration** (+ de-conflation test, *ready/not-yet-run*) | (next) | `runs/params/sweep_fkappa_nH.param` (sweep → **819** combos) | `--emit-jobs` → `sbatch` → `make_fkappa_nH_sweep.py` | `data/fkappa_nH_sweep.csv`, `fkappa_nH_sweep.png` | 🔴 |
+| 18 | **Controlled f_κ(n_H) calibration** (+ de-conflation test, *ready/not-yet-run*) | (next) | `runs/params/sweep_fkappa_nH.param` (sweep → **819** combos) | `runs/sync.sh submit` → `… collect` → `… harvest` (Helix; see Block C) | `data/fkappa_nH_sweep.csv`, `fkappa_nH_sweep.png` | 🔴 |
 
 ¹ #12 reads the same `cal_*__k{1,2,4}` runs as #11 — once those exist in `outputs/kcal/`, #12 is a 🟢 re-read.
 
@@ -106,7 +106,7 @@ python docs/dev/transition/pdv-trigger/data/make_ebpeak_trigger_test.py
 ```
 Each `cal_*` run lands in `outputs/kcal/<model_name>/`. Compact/mid finish in minutes; **diffuse is slow**
 (the `cal_diffuse__ebpeak` run goes to `stop_t=2.0`). For a clean single-variable density sweep on HPC, prefer
-`run.py <sweep.param> --emit-jobs jobs/` then `sbatch` (see `python run.py -h`).
+the array path — see **Block C** below (`runs/sync.sh` + `runs/run_fkappa.sbatch`), the worked Helix example.
 
 ### Block B — κ_eff back-reaction (result #9)
 ```bash
@@ -125,21 +125,30 @@ The clean replacement for the conflated 3-anchor estimate. Sweeps **nCore finely
 grid** that brackets the firing point at every density, **and also varies mCloud + sfe** so we can test whether
 `f_κ_fire` is a clean function of n_H alone or also depends on cloud mass / SFE.
 **Grid = 7 nCore × 13 f_κ × 3 mCloud × 3 sfe = 819 combos** (HPC; under the 1000 ceiling).
+Run it with the committed, **pre-patched-for-Helix** array sbatch + laptop driver (`runs/run_fkappa.sbatch`,
+`runs/sync.sh`) — mirrors `paper/shellSSC6` but as an `--emit-jobs` array because 819 runs outgrow one node.
+The driver emits the bundle from `/gpfs` so the run outputs land on the **writable** workspace, not the
+read-only `/home` repo checkout (the failure mode a bare `sbatch jobs/submit_sweep.sbatch` from the repo hits).
 ```bash
-# 1. inspect / emit the grid (TRINITY list sweep syntax: nCore [..] x cooling_boost_kappa [..] x mCloud [..] x sfe [..])
+# inspect anywhere (no cluster needed):
 python run.py docs/dev/transition/pdv-trigger/runs/params/sweep_fkappa_nH.param --dry-run     # lists 819 combos
-python run.py docs/dev/transition/pdv-trigger/runs/params/sweep_fkappa_nH.param --emit-jobs jobs/
-# 2. on the cluster: edit jobs/submit_sweep.sbatch (#SBATCH --account/--partition; cap with --workers K), then
-sbatch jobs/submit_sweep.sbatch               # SLURM array 1-819 -> outputs/sweep_fkappa_nH/<run>/
-# 3. harvest theta_blowout per (mCloud,sfe,nCore) cell, fit f_kappa_fire(nCore), test the M_cl/sfe collapse:
-python docs/dev/transition/pdv-trigger/data/make_fkappa_nH_sweep.py
-# (parser self-test only, no data needed: ... make_fkappa_nH_sweep.py --selftest)
+
+# on Helix, driven from the laptop (code travels by git pull; this folder is TRACKED):
+./docs/dev/transition/pdv-trigger/runs/sync.sh submit    # git pull + emit to $WS/jobs_fkappa + sbatch array 1-819
+./docs/dev/transition/pdv-trigger/runs/sync.sh watch     # tail the running array (+ squeue)
+./docs/dev/transition/pdv-trigger/runs/sync.sh collect   # run.py --collect-report -> sweep_report.{txt,json}
+./docs/dev/transition/pdv-trigger/runs/sync.sh harvest   # make_fkappa_nH_sweep.py vs /gpfs (sets FKAPPA_SWEEP_OUT)
+./docs/dev/transition/pdv-trigger/runs/sync.sh down      # pull fkappa_nH_sweep.csv/.png back to commit
+# (parser self-test only, no data needed: python .../make_fkappa_nH_sweep.py --selftest)
 ```
-Validated: `--dry-run` expands to exactly 819; `--emit-jobs` produces a working SLURM array; the diffuse
-extreme (nCore 1e2) gives rCloud ≈ 39.6 pc and the whole grid stays < the 200 pc `rCloud_max` ceiling (max is
-mCloud 1e7 × nCore 1e2 ≈ 70–85 pc). nCore is **capped at 1e5** on purpose — 1e6 is pathologically stiff/slow
-(result #15), not f_κ-driven. The harness output figure overlays the (mCloud, sfe) series: **collapse onto one
-curve ⇒ f_κ(n_H) is clean; spread ⇒ the calibration is multi-dimensional.**
+Helix conventions baked in (same as II-survey / shellSSC6): `--partition=cpu-single --account=bw22J006
+--export=NONE`, `module load devel/miniforge && conda activate trinity`, REPO `/home/hd/hd_hd/hd_cq295/trinity`,
+WS `/gpfs/bwfor/work/ws/hd_cq295-trinity`. Validated: `--dry-run` expands to exactly 819 (zero plausibility
+warnings); `--emit-jobs` produces a working SLURM array; the diffuse extreme (nCore 1e2) gives rCloud ≈ 39.6 pc
+and the whole grid stays < the 200 pc `rCloud_max` ceiling (max is mCloud 1e7 × nCore 1e2 ≈ 70–85 pc). nCore is
+**capped at 1e5** on purpose — 1e6 is pathologically stiff/slow (result #15), not f_κ-driven. The harness output
+figure overlays the (mCloud, sfe) series: **collapse onto one curve ⇒ f_κ(n_H) is clean; spread ⇒ the
+calibration is multi-dimensional.**
 
 ## Rebuild all figures (no sims) {#rebuild-all-figures-no-sims}
 Every figure is a pure read of a committed CSV, so after a fresh clone you can regenerate the **whole
