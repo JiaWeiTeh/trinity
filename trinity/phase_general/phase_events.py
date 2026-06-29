@@ -21,6 +21,8 @@ Events are categorized by their consequence:
    - cloud_boundary: R2 > rCloud (energy phase -> implicit)
    - cooling_balance: L_cool ~ L_gain (implicit -> transition)
    - energy_floor: Eb < threshold (transition -> momentum)
+
+3. **Monitoring Events** (non-terminal; record a crossing only):
    - velocity_sign: v2 crosses zero (collapse onset detection)
 
 Usage

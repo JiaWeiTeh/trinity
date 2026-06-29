@@ -12,7 +12,7 @@ Three writers touch ``metadata.json`` over the lifetime of a run:
 * ``write_termination_debug_report()`` merges the ``termination_debug``
   block at emergency-flush time.
 
-This module exposes the small helpers both writers share so the write
+This module exposes the small helpers these writers share so the write
 path is uniform — atomic temp-file + rename, identical JSON formatting
 (pretty-printed, key order preserved), defensive serialization, and
 a read-modify-write helper for end-of-run merges.

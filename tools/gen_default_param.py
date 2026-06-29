@@ -2,20 +2,17 @@
 """Generate ``trinity/_input/default.param`` from the ParamSpec registry.
 
 The registry (``trinity._input.registry.SPECS``) is the single source of
-truth for TRINITY's parameters.  ``default.param`` is, as of Phase 4,
-a *generated artifact*: the schema + defaults file that ``read_param``
-reads.  This module renders it.
+truth for TRINITY's parameters.  ``default.param`` is a *generated
+artifact*: the schema + defaults file that ``read_param`` reads.  This
+module renders it.
 
-Phase 3 (this commit) adds the renderer + a CI gate
-(``test/test_gen_default_param.py``) that asserts the committed
-``default.param`` is *semantically* equivalent to ``render(SPECS)``
-(same keys → parsed values, units, and INFO/DEPRECATED text).  The
-source-of-truth flip — making the committed file byte-identical to the
-render and relocating the decorative prose to ``docs/`` — happens in
-Phase 4.  Until then nothing here is wired into production.
+A CI gate (``test/test_gen_default_param.py``) asserts the committed
+``default.param`` is byte-identical to ``render(SPECS)``, so the registry
+and the file cannot drift; regenerate with ``--write`` after changing a
+spec.
 
 Only *file-backed* specs are emitted: those whose ``category`` starts
-with ``input_`` or equals ``deprecated`` (the 68 keys that live in
+with ``input_`` or equals ``deprecated`` (the 79 keys that live in
 ``default.param``).  Runtime / derived specs are created in
 ``read_param`` Steps 6/8/10 and never appear in the file.
 
