@@ -1,10 +1,11 @@
 """Conduction-zone luminosity convergence audit (analysis only; no behavior change).
 
-Quantifies how under-resolved the production ``odeint`` conduction-zone integral
+Quantifies how under-resolved the production conduction-zone integral
 is, and what the *converged* value is, at real Phase-1a bubble states.
 
-Background: the bubble structure is integrated with ``scipy.integrate.odeint``
-on a ~60k-point legacy grid. That grid fuses two concerns the physics wants
+Background: the bubble structure is integrated with ``scipy.integrate.solve_ivp``
+(LSODA); the conduction-zone trapezoid is evaluated on the output radius grid.
+That grid fuses two concerns the physics wants
 separate -- the *integration* step control and the *output* sampling used for
 the conduction-zone trapezoid integral. Refining the output sampling means
 asking LSODA for near-duplicate output radii, which both (a) stresses the
@@ -15,7 +16,7 @@ is set by ``rtol`` independently of output sampling -- and converges the
 conduction integral by refining the (cheap) dense-output sampling ``K`` alone.
 
 For each Phase-1a state it reports:
-  * the production odeint ``bubble_L2Conduction``,
+  * the production ``bubble_L2Conduction``,
   * the converged ``L_conduction`` (solve_ivp + dense-output K-sweep, using the
     same ``T < 10**5.5`` non-CIE mask the production code applies),
   * the relative bias of the production value vs the converged value,
@@ -63,7 +64,7 @@ _RTOLS = (1e-6, 1e-8, 1e-10)
 def _L_conduction(sol_fn, r_lo, r_hi, params, Pb, K):
     """Conduction-zone luminosity from a continuous solution, sampled at K
     points. Mirrors bubble_luminosity._bubble_luminosity's non-CIE
-    integral, including the production ``T < 10**5.5`` mask (line ~568)."""
+    integral, including the production ``T < 10**5.5`` mask."""
     r = np.linspace(r_hi, r_lo, K)
     T = sol_fn(r)[1]
     m = T < _CIE

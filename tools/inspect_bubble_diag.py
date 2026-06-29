@@ -220,7 +220,7 @@ for e in detail:
         ax[1, 0].set_ylabel("dr [pc]"); ax[1, 0].legend(fontsize=7, loc='lower right')
 
         if e["info_hu"] is not None and e["info_hu"].size:
-            # odeint integrates over decreasing r, so hu < 0; plot the magnitude
+            # the integrator runs over decreasing r, so hu < 0; plot the magnitude
             hu = np.abs(e["info_hu"])
             ax[1, 1].semilogy(np.arange(hu.size), np.where(hu > 0, hu, np.nan), lw=0.8)
             if e["od_lo"] >= 0:

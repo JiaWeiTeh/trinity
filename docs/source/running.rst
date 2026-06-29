@@ -1,3 +1,5 @@
+.. include:: _deprecation.txt
+
 .. highlight:: rest
 
 .. _sec-running:
@@ -82,8 +84,8 @@ Command-line flags
 ------------------
 
 All flags are optional. Most take effect only in sweep mode; for a
-single run, ``--dry-run`` prints the resolved file and exits without
-running, while ``--workers`` and ``--yes`` are ignored:
+single run, ``--dry-run`` prints the raw parameter file and exits
+without running, while ``--workers`` and ``--yes`` are ignored:
 
 .. list-table::
    :widths: 25 75
@@ -375,11 +377,11 @@ Each level includes itself and all more severe levels:
    * - ``DEBUG``
      - Variable values, loop iterations, intermediate calculations,
        function entry/exit.
-     - Development; debugging specific issues (default).
+     - Development; debugging specific issues.
    * - ``INFO``
      - Phase transitions, major events (bubble burst, cloud edge
        reached), initialisation and completion markers.
-     - Normal simulation runs.
+     - Normal simulation runs (default).
    * - ``WARNING``
      - Values clamped to limits, fallback behaviour, unusual but
        non-critical conditions.

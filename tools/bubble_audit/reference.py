@@ -56,7 +56,7 @@ def reference_bubble_luminosity(params, R1, Pb, r2Prime, initial_conditions,
     cooling_nonCIE = params['cStruc_cooling_nonCIE'].value
     heating_nonCIE = params['cStruc_heating_nonCIE'].value
 
-    # --- 1.1 structure solve (replaces odeint 358-376): dense output + event
+    # --- 1.1 structure solve (solve_ivp): dense output + event
     def g_CIE(r, y):
         return y[1] - _CIEswitch
     g_CIE.direction = 0.0
@@ -86,7 +86,7 @@ def reference_bubble_luminosity(params, R1, Pb, r2Prime, initial_conditions,
             val, _ = scipy.integrate.quad(integrand, a, b, limit=quad_limit, epsrel=epsrel)
         return abs(val)
 
-    # --- 1.2 L1 Bubble (CIE, T>3.16e5) over [R1, r_CIEswitch]  (prod 460-474)
+    # --- 1.2 L1 Bubble (CIE, T>3.16e5) over [R1, r_CIEswitch]
     def f_bubble(r):
         T = T_at(r)
         n = Pb / (2 * kB * T)
@@ -95,7 +95,7 @@ def reference_bubble_luminosity(params, R1, Pb, r2Prime, initial_conditions,
     L_bubble = quad_abs(f_bubble, R1, r_CIEswitch)
     Tavg_bubble = quad_abs(lambda r: r ** 2 * T_at(r), R1, r_CIEswitch)
 
-    # --- 1.3 L2 Conduction (non-CIE) over [r_CIEswitch, r2Prime]  (prod 476-543)
+    # --- 1.3 L2 Conduction (non-CIE) over [r_CIEswitch, r2Prime]
     def f_cond(r):
         T = min(T_at(r), _CIEswitch)   # clamp: cube log_T axis max is 5.5
         n = Pb / (2 * kB * T)
@@ -108,7 +108,7 @@ def reference_bubble_luminosity(params, R1, Pb, r2Prime, initial_conditions,
     L_conduction = quad_abs(f_cond, r_CIEswitch, r2Prime)
     Tavg_conduction = quad_abs(lambda r: r ** 2 * T_at(r), r_CIEswitch, r2Prime)
 
-    # --- 1.4 L3 Intermediate (T in [1e4,3e4], extrapolated)  (prod 545-583) ---
+    # --- 1.4 L3 Intermediate (T in [1e4,3e4], extrapolated) ---
     T_r2p = float(initial_conditions[1])
     dTdR_coolingswitch = float(initial_conditions[2])
     R2_coolingswitch = (_coolingswitch - T_r2p) / dTdR_coolingswitch + r2Prime
@@ -148,13 +148,13 @@ def reference_bubble_luminosity(params, R1, Pb, r2Prime, initial_conditions,
     total_vol = vol_bubble + vol_cond + vol_interm
     Tavg = 3 * total_Tr2 / total_vol
 
-    # --- 1.7 T_rgoal (prod 602-615; exact sol for in-domain points) ---
+    # --- 1.7 T_rgoal (exact sol for in-domain points) ---
     if bubble_r_Tb > r2Prime:
         T_rgoal = float(fT_interm(bubble_r_Tb))
     else:
         T_rgoal = T_at(bubble_r_Tb)
 
-    # --- 1.5 mBubble = 4*pi * int n*mu_ion*r^2 dr over [R1, r2Prime] (prod 621)
+    # --- 1.5 mBubble = 4*pi * int n*mu_ion*r^2 dr over [R1, r2Prime]
     mBubble = 4 * np.pi * quad_abs(
         lambda r: (Pb / (2 * kB * T_at(r))) * mu_ion * r ** 2, R1, r2Prime)
 

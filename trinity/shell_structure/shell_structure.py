@@ -231,7 +231,7 @@ def shell_structure_pure(params) -> ShellProperties:
     # ------------------------------------------------------------------
     # Strömgren ionization balance density (Lancaster+2025, generalised)
     #
-    # n_IF_Str = sqrt(3 (1 - f_esc_ion) Qi / (4π αB ΔV))
+    # n_IF_Str = sqrt(3 (1 - f_esc_ion) Qi / (4π χ_e αB ΔV))
     #
     # Continuous across regimes:
     #   is_phiDepleted=True  → ΔV = R_IF³ - R2³,  f_esc_ion ≈ 0
@@ -394,7 +394,7 @@ def shell_structure_pure(params) -> ShellProperties:
             nShell_max = np.max(nShell_arr_ion)
             tau_kappa_IR = params['mu_convert'].value * np.sum(nShell_arr_ion[:-1] * dr_ion_arr)
 
-        # Absorption fractions (f_esc_ion computed at line 217)
+        # Absorption fractions (f_esc_ion computed above)
         f_absorbed_ion = 1.0 - f_esc_ion
         f_absorbed_neu = 1 - np.exp(-tau_rEnd)
         f_absorbed = (f_absorbed_ion * Li + f_absorbed_neu * Ln) / (Li + Ln)

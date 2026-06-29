@@ -1,3 +1,5 @@
+.. include:: _deprecation.txt
+
 .. highlight:: rest
 
 .. _sec-parameters:
@@ -103,9 +105,10 @@ Administrative parameters
        higher-fidelity snapshots at the cost of larger files. Clamped to
        ``>= 20``.
    * - ``log_level``
-     - ``DEBUG``
+     - ``INFO``
      - Verbosity: ``DEBUG``, ``INFO``, ``WARNING``, ``ERROR``,
-       ``CRITICAL``. See :ref:`sec-running`.
+       ``CRITICAL``. ``INFO`` is the default; ``DEBUG`` is opt-in for
+       diagnostics. See :ref:`sec-running`.
    * - ``log_console``
      - ``False``
      - Enable terminal output for log messages.
@@ -115,6 +118,11 @@ Administrative parameters
    * - ``log_colors``
      - ``True``
      - Colour-code terminal output by severity.
+   * - ``betadelta_solver``
+     - ``hybr``
+     - Energy-implicit :math:`(\beta, \delta)` solver: ``hybr`` (unbounded
+       SciPy root-finder with a physical :math:`\dot{M} > 0` acceptance
+       gate) or ``legacy`` (bounded grid + L-BFGS-B).
 
 
 Physical parameters
@@ -254,11 +262,11 @@ self-gravitating Bonnor-Ebert sphere (`Ebert 1955
 .. note::
 
    ``densPL_alpha`` is ignored when using ``densBE``, and
-   ``densBE_Omega`` is ignored when using ``densPL``. If you set
-   ``dens_profile`` explicitly in a ``.param`` file, you must also set
-   the matching companion (``densPL_alpha`` or ``densBE_Omega``) — the
-   defaults are only assumed when ``dens_profile`` is left at its
-   default too.
+   ``densBE_Omega`` is ignored when using ``densPL``. The companion check
+   fires whenever ``dens_profile`` appears in your ``.param`` file at all
+   — even when you set it to ``densPL`` (its default value) — so you must
+   also set the matching companion (``densPL_alpha`` or ``densBE_Omega``).
+   Omit ``dens_profile`` entirely to accept the profile defaults.
 
 
 Termination parameters
@@ -519,6 +527,13 @@ Solver parameters
    * - ``cool_delta``
      - ``-6/35``
      - Cooling parameter :math:`\delta = dT/dt`.
+   * - ``transition_trigger``
+     - ``cooling_balance``
+     - Energy→momentum transition criteria, comma-separated (fires on
+       whichever occurs first): ``cooling_balance`` (default),
+       ``blowout`` (:math:`R_2 > r_{\rm cloud}`), ``ebpeak``
+       (net energy :math:`\dot{E} \le 0`); ``r1`` aliases
+       ``blowout,ebpeak``.
 
 
 Cooling tables

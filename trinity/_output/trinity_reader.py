@@ -144,7 +144,7 @@ PARAM_DOCS = {
     'rCloud': 'Initial cloud radius [pc]',
 
     # Simulation state
-    'current_phase': 'Current simulation phase (energy/implicit)',
+    'current_phase': 'Current simulation phase (energy/implicit/transition/momentum)',
     't_now': 'Current simulation time [Myr]',
     't_next': 'Next timestep target [Myr]',
     'tSF': 'Star formation timescale [Myr]',
@@ -186,7 +186,7 @@ PARAM_DOCS = {
     'pdot_SN': 'Momentum injection rate from supernovae',
     'pdot_total': 'Total momentum injection rate',
     'pdotdot_total': 'Second derivative of momentum injection',
-    'v_mech_total': 'Mechanical velocity [km/s]',
+    'v_mech_total': 'Effective total mechanical velocity [pc/Myr] (internal)',
 
     # Forces
     'F_grav': 'Gravitational force',
@@ -527,8 +527,8 @@ class TrinityOutput:
         Three-valued success flag derived from
         ``output.termination['exit_code']``:
 
-        * ``True``  — exit code in [0, 9] (clean termination per the
-          convention in ``paper_v2R2.py``);
+        * ``True``  — exit code in [0, 9] (clean termination per
+          ``SimulationEndCode.is_clean()``);
         * ``False`` — exit code outside that range;
         * ``None``  — no ``termination`` block (legacy run, crash before
           ``write_simulation_end`` fired).

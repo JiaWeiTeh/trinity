@@ -1,0 +1,5 @@
+.. warning::
+
+   **This documentation site is deprecated and no longer maintained.**
+   The current TRINITY documentation lives at
+   `jiaweiteh.github.io/trinity-web <https://jiaweiteh.github.io/trinity-web/>`_.

@@ -66,17 +66,17 @@ def read_sps(f_mass, params):
         Qi : ndarray
             Ionizing photon rate [1/Myr] (AU; × s2Myr → 1/s)
         Li : ndarray
-            Ionizing luminosity (>13.6 eV) [erg/s] (AU)
+            Ionizing luminosity (>13.6 eV) [Msun*pc^2/Myr^3] (AU)
         Ln : ndarray
-            Non-ionizing luminosity (<13.6 eV) [erg/s] (AU)
+            Non-ionizing luminosity (<13.6 eV) [Msun*pc^2/Myr^3] (AU)
         Lbol : ndarray
-            Bolometric luminosity [erg/s] (AU)
+            Bolometric luminosity [Msun*pc^2/Myr^3] (AU)
         Lmech_W : ndarray
-            Wind mechanical luminosity [erg/s] (AU)
+            Wind mechanical luminosity [Msun*pc^2/Myr^3] (AU)
         Lmech_SN : ndarray
-            SN mechanical luminosity [erg/s] (AU)
+            SN mechanical luminosity [Msun*pc^2/Myr^3] (AU)
         Lmech_total : ndarray
-            Total mechanical luminosity (winds + SN) [erg/s] (AU)
+            Total mechanical luminosity (winds + SN) [Msun*pc^2/Myr^3] (AU)
         pdot_W : ndarray
             Wind momentum rate [M_sun·pc/Myr²] (AU)
         pdot_SN : ndarray

@@ -5,15 +5,16 @@ Momentum Phase Runner for TRINITY
 ==========================================
 
 This module implements the momentum-driven phase using scipy.integrate.solve_ivp.
-In this phase, thermal pressure is negligible and expansion is driven purely by
-ram pressure from stellar winds and supernovae.
+In this phase, bubble thermal pressure is negligible; the drive comes from ram
+pressure (P_ram) with HII pressure (P_HII), radiation (F_rad), and gravity also
+acting in the equation of motion.
 
 Overview
 --------
 The momentum phase is the final expansion phase where:
 - Bubble thermal energy Eb ≈ 0 (thermal pressure negligible)
 - Only radius and velocity (R2, v2) are evolved
-- Expansion driven by ram pressure only
+- Bubble thermal pressure negligible; drive from ram pressure (plus P_HII, F_rad, gravity)
 
 Key Features
 ------------
@@ -767,7 +768,7 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
 
         # Shell mass update for adaptive stepping comparison.
         # Apply the same collapse-freeze and never-decrease guards as the
-        # primary shell mass block (lines 580-609).
+        # primary shell mass block above.
         prev_mShell_post = params['shell_mass'].value
         is_collapse_post = params.get('isCollapse', None)
         is_collapse_post_val = is_collapse_post.value if is_collapse_post and hasattr(is_collapse_post, 'value') else False

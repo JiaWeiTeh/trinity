@@ -161,9 +161,9 @@ def find_nearest_higher(array, value):
     idx = find_nearest(array, value)
     #---
     #---
-    if array[idx] - value < 0: # then this element is the closest, but it is larger than value
+    if array[idx] - value < 0: # then this element is the closest, but it is smaller than value
         if mon_incr:
-            idx += 1 # take the element before, it will be smaller than value (if array is monotonically increasing)
+            idx += 1 # take the next element, it will be larger than value (if array is monotonically increasing)
         else:
             idx += -1
     # Notes: boundary conditions, just in case. Although when these happen, it means that

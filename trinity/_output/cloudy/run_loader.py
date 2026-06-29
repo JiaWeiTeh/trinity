@@ -32,7 +32,7 @@ from trinity._output.trinity_reader import TrinityOutput, find_data_path
 from trinity._output.run_constants import metadata_keys_to_rehydrate
 
 
-# Canonical TRINITY density-profile enum (mirrors trinity/_input/read_param.py:286).
+# Canonical TRINITY density-profile enum (mirrors _validate_dens_profile in trinity/_input/registry.py).
 VALID_DENS_PROFILES = frozenset({"densBE", "densPL"})
 
 
