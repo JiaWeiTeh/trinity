@@ -148,3 +148,22 @@ def test_collect_report_missing_sentinel_is_failure(tmp_path) -> None:
 def test_collect_report_requires_manifest(tmp_path) -> None:
     with pytest.raises(SystemExit):
         collect_report(str(tmp_path / 'empty'))
+
+
+def test_collect_report_breakdown_surfaces_failing_regime(tmp_path, capsys) -> None:
+    """Failures should be reported by swept-parameter value (not just array indices), so a
+    regime stands out. Grid = mCloud[1e5,1e7] x sfe[0.01,0.10] (manifest order: sfe fastest).
+    Fail exactly the two sfe=0.10 runs -> the breakdown must show sfe 0.1: 2 and the -2 note."""
+    _s, out, jobs, _n, _i = _emit(tmp_path)
+    manifest = json.loads((jobs / 'manifest.json').read_text())
+    codes = [None if r['params'].get('sfe') == 0.10 else 0 for r in manifest['runs']]
+    _seed(jobs, codes)
+    collect_report(str(jobs))
+
+    o = capsys.readouterr().out
+    assert 'Failed runs by parameter' in o
+    assert 'sfe: 0.1: 2' in o                       # both failures share sfe=0.10
+    assert 'no sentinel' in o                       # return-code -2 is explained, not raw
+    assert 'mCloud: ' in o                          # mCloud (the other swept axis) is broken out too
+    # path2output is per-run (n distinct) -> must NOT be treated as a swept axis
+    assert 'path2output:' not in o

@@ -25,6 +25,7 @@ import os
 import stat
 import sys
 import time
+from collections import Counter
 from datetime import datetime
 from pathlib import Path
 
@@ -225,6 +226,44 @@ def emit_jobs(config, base_output_dir, jobs_dir, trinity_root,
     return n_jobs, n_invalid
 
 
+def _fmt(v):
+    """Float-with-no-fraction -> int for tidy printing (100000.0 -> 100000); else as-is."""
+    return int(v) if isinstance(v, float) and v.is_integer() else v
+
+
+def failure_breakdown(failed, manifest_runs):
+    """Tally failed runs by each *swept* parameter (and by return code) so a regime-shaped
+    failure -- e.g. 'small clouds + high sfe + high cooling_boost_kappa' -- is visible at a
+    glance instead of only a flat list of array indices. Returns the printable block ('' if none).
+
+    A 'swept' axis is a param that takes >1 but <n_runs distinct values (so per-run identifiers
+    like path2output/model_name are excluded). Return code -2 = no sentinel (the task was killed,
+    e.g. wall-time/OOM, or was still running at collect time), not a sim-level crash.
+    """
+    if not failed:
+        return ""
+    n = len(manifest_runs)
+    valuesets = {}
+    for run in manifest_runs:
+        for k, v in (run.get('params') or {}).items():
+            valuesets.setdefault(k, set()).add(tuple(v) if isinstance(v, list) else v)
+    axes = [k for k, vs in valuesets.items() if 1 < len(vs) < n]
+
+    rc_note = {-2: "no sentinel: wall-time/OOM kill, or still running",
+               -1: "unreadable sentinel"}
+    rc = Counter(r.return_code for r in failed)
+    out = ["\nFailed runs by parameter (look for a regime, not just indices):",
+           "  return code: " + ", ".join(
+               f"{code}x{cnt}" + (f" [{rc_note[code]}]" if code in rc_note else " [sim exited nonzero]")
+               for code, cnt in sorted(rc.items()))]
+    for k in axes:
+        c = Counter(r.params.get(k) for r in failed)
+        body = ", ".join(f"{_fmt(val)}: {cnt}" for val, cnt
+                         in sorted(c.items(), key=lambda kv: (-kv[1], str(kv[0]))))
+        out.append(f"  {k}: {body}")
+    return "\n".join(out)
+
+
 def collect_report(jobs_dir):
     """Aggregate per-task results into a SweepReport.
 
@@ -321,6 +360,7 @@ def collect_report(jobs_dir):
           f"{len(successful)} succeeded, {len(failed)} failed.")
     print(f"Reports written to:\n  {txt}\n  {js}")
     if failed_indices:
+        print(failure_breakdown(failed, manifest['runs']))
         ids = ",".join(str(i) for i in sorted(failed_indices))
         print(f"\nRe-run only the failed tasks:\n"
               f"  sbatch --array={ids} {jobs_dir / SBATCH_NAME}")
