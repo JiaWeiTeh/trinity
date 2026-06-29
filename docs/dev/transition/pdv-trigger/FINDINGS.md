@@ -39,6 +39,12 @@
 
 ## Taxonomy of the approaches (read first; 2026-06-28)
 
+> **→ Calibration target (2026-06-29):** the composed closed-form **f_κ(n_H) ≈ 1.3×10³·n_H^(−0.32)** now lives
+> in **`F_KAPPA_FUNCTIONAL_FORM.md`** (target = Lancaster flat θ*≈0.90 · baseline `logit θ₀ = −1.73+0.41 log₁₀ n_H`
+> · odds-space leverage q≈0.55). It supersedes the §2-area schematic for *how to set f_κ*, replaces the unstable
+> `θ∝f_κ^0.63` power law with a bounded logit-space leverage, and confirms there is **no literature `f_κ ∝ n_H^p`**
+> to borrow. The El-Badry citation is corrected there (MNRAS 490,1961 / Weisz / arXiv:1902.09547 — *not* ApJ 879).
+
 What looks like "three ways to boost cooling" is really **two cooling-magnitude approaches on opposite sides
 of the structure solve, plus a separate trigger axis**. The key disambiguation: **"modify cooling like
 El-Badry with κ" and "modify the conduction front k_f" are the *same* knob** (`cooling_boost_kappa`) — raising

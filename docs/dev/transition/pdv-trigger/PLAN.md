@@ -73,6 +73,28 @@ framing):**
   `f_κ(n_H)` mode (gated, default-off byte-identical).
 
 **Status ledger (newest first):**
+- **2026-06-29 (f_κ(n_H) FUNCTIONAL FORM — composed closed form, while the 819-sweep is pending; new doc
+  `F_KAPPA_FUNCTIONAL_FORM.md`).** Answered the maintainer's "give me a usable f_κ(n_H) from literature/other
+  quantities, don't wait for the sweep to fit one cold." Result: **f_κ(n_H) = exp{[logit θ* − logit θ₀(n_H)]/q}
+  ≈ 1.3×10³·n_H^(−0.32)** (θ*=0.90). Composed from three separable, independently-checkable pieces:
+  **(1) target** θ*≈0.90 = the **Lancaster 2021 plateau** (verbatim: "generic over more than three orders of
+  magnitude in density" ⇒ density-INDEPENDENT target — *not* a rising El-Badry √n curve, which is unverified
+  and an n~0.1–10 SN-superbubble regime anyway); **(2) baseline** `logit θ₀ = −1.73 + 0.41 log₁₀ n_H` (fit, 6
+  anchors; the density structure of f_κ comes from THIS rising baseline under a flat target — which dissolves
+  the §2a "flat target == 0.95 trigger" worry, because that equivalence only holds for the *linear* f_mix knob,
+  not the *structural* f_κ); **(3) leverage** q≈0.55 measured in **odds/logit space** — the key methodological
+  fix: the docs' single power law θ∝f_κ^0.63 is a **saturation artifact** (raw exponent collapses 0.42→0.21→0.15
+  as θ₀→1), which is why `kappa_calibration_estimate` self-labels "optimistic"; logit-space q (0.55/0.74/0.50,
+  bounded by θ→1) is stable. **Literature verdict: there is NO published `f_κ ∝ n_H^p` law** (10-subagent survey;
+  all PDFs 403-blocked, so eq.#s unverified) — classical Spitzer is n_H⁰, the only effective-κ density power is
+  the *saturated* branch κ_sat∝n_H¹ (the CEILING, rising), and Lancaster Θ is density-independent. The
+  **physical bracket**: required f_κ falls (∝n_H^−0.32) while the saturation ceiling rises (∝n_H¹) → they cross;
+  the **diffuse end (f_κ~hundreds) is likely unreachable by Spitzer boost** and needs El-Badry's temperature-
+  independent κ_mix — quantifies the Rung-A/Rung-B boundary. Artifacts: `data/make_fkappa_functional_form.py`
+  → `data/fkappa_functional_form.csv` + `fkappa_functional_form.png` (reads committed CSVs, no sims). The
+  819-sweep now has a concrete job: **measure q(n_H[,mCloud,SFE]) and re-fit θ₀** to confirm/refine this curve.
+  Also corrected the El-Badry citation everywhere it was wrong (MNRAS 490,1961 / Weisz / 1902.09547 — not ApJ
+  879 / not Weinberg) and flagged that this branch lacks the external handoff's `3e68143` El-Badry-overlay work.
 - **2026-06-29 (Helix run scaffolding for the 819-combo sweep — committed).** The sweep was "HPC-ready"
   only via a bare `--emit-jobs jobs/` + `sbatch jobs/submit_sweep.sbatch`, which would have **failed on
   Helix**: outputs resolve under the read-only `/home` repo checkout, and the emitted sbatch leaves

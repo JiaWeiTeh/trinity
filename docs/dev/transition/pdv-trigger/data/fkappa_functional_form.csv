@@ -1,0 +1,11 @@
+config,nCore,theta0,fkappa_q90_medq,fkappa_q90_tierq,fkappa_q95_medq,fkappa_q95_tierq
+large_diffuse_lowsfe,100,0.25,290.61,290.61,1137.09,1137.09
+midrange_pl0,10000,0.61,65.33,21.923,255.62,60.06
+be_sphere,10000,0.511,65.33,21.923,255.62,60.06
+simple_cluster,100000,0.667,30.975,44.075,121.198,198.399
+pl2_steep,100000,0.342,30.975,44.075,121.198,198.399
+small_dense_highsfe,1000000,0.697,14.686,19.355,57.464,87.125
+# fit: logit(theta0) = -1.7269 +0.4087*log10(nH); RMS_logit=0.4903
+# leverage q (odds-space): compact=0.497, diffuse=0.548, mid=0.741; median=0.548
+# form: f_kappa(nH) = exp([logit(theta*) - (a + b*log10 nH)] / q)
+# target theta* = 0.90 (Lancaster 2021 plateau, density-independent); 0.95 == shipped trigger
