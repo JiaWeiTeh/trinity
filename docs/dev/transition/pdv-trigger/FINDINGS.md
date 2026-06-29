@@ -63,11 +63,16 @@ the loss single-count. Current direction = **B** (κ_eff), calibrated to a densi
 
 **f_κ vs f_mix (row B vs row A — not the same knob; report §14).** f_mix scales the *output* L_cool
 (`L_loss=L_leak+f_mix·L_cool`); f_κ scales the *conduction coefficient* (`κ_eff=f_κ·C_th·T^(5/2)`, L_cool
-emerges). Magnitude: measured `f_κ=2 ≈ f_mix 1.2–1.5` (matched-t back-reaction); as a power law `θ∝f_κ^p`
-(p≈0.2–0.4 measured), so `f_mix≈f_κ^p` and inverting `f_κ≈f_mix^(1/p) ≫ f_mix` — which is why §3's firing
-f_mix (1.4–3.8) and §13's firing f_κ (~4–60) look so different (same physics, two parametrisations). **But
-the deeper difference:** f_mix touches only L_cool (bubble unchanged); f_κ self-consistently raises dMdt∝f_κ^(2/7),
-drains Eb, lowers Pb (θ emerges) — so even at matched L_cool the trajectories differ. **Not interchangeable.**
+emerges). **(i) Exact by definition:** f_mix IS the L_cool multiplier, so `f_mix_equiv(f_κ) ≡
+L_cool(f_κ)/L_cool(f_κ=1)` at matched-t — measured `f_κ=2 ⇒ f_mix_equiv 1.23–1.50` (developed→seed).
+**(ii) The exponent is bracketed, not derived:** L_cool's effective exponent q (f_mix_equiv=f_κ^q) runs
+~0.58 (seed)→~0.30 (developed), and the θ_blowout leverage (noisier — different t per f_κ) scatters 0.21–0.42.
+The one *exact* anchor is `dMdt∝f_κ^(2/7)` (Weaver Eq 33), and the developed L_cool boost lands on it
+(1.228≈2^(2/7)=1.219) — the mixing-layer relation `L~ṁ·enthalpy` (El-Badry/Fielding/Tan-Oh-Gronke). So
+`f_mix_equiv≈f_κ^q`, q~0.3–0.6 bracketed below by 2/7, ⇒ `f_κ≈f_mix^(1/q) ≫ f_mix` (why §3's firing f_mix
+1.4–3.8 and §13's firing f_κ ~4–60 look so different). **It is a heuristic magnitude map, NOT a closed-form
+law.** **(iii) Deeper:** f_mix touches only L_cool; f_κ self-consistently raises dMdt∝f_κ^(2/7), drains Eb,
+lowers Pb (θ emerges) — so even at matched L_cool the trajectories differ. **Magnitude-only; not interchangeable.**
 
 ## 0. What the verification changed (errors caught and fixed)
 1. **§2 gap numbers were wrong.** An earlier draft said "gap ~0.45 (diffuse) → ~0.25 (dense), shrinking."

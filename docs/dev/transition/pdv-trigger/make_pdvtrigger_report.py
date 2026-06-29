@@ -797,19 +797,29 @@ row-B distinction made concrete:</p>
 \[ \underbrace{L_{\rm loss} = L_{\rm leak} + f_{\rm mix}\,L_{\rm cool}}_{\textbf{A: } f_{\rm mix}\ \text{scales the OUTPUT } L_{\rm cool}}
    \qquad\text{vs}\qquad
    \underbrace{\kappa_{\rm eff} = f_\kappa\,C_{\rm th}\,T^{5/2}\ \Rightarrow\ L_{\rm cool}\ \text{emerges}}_{\textbf{B: } f_\kappa\ \text{scales the CONDUCTION COEFFICIENT}}. \]
-<p><b>Magnitude conversion (measured).</b> The matched-\(t\) back-reaction (&sect;11) gives the cleanest
-anchor: \(f_\kappa=2\) raises \(L_{\rm cool}\) by \(\times1.2\!-\!1.5\), i.e.</p>
-\[ f_\kappa = 2 \;\;\approx\;\; f_{\rm mix} \in [1.2,\,1.5]. \]
-<p>As a power law, the developed loss fraction scales \(\theta \propto f_\kappa^{\,p}\) with a <b>measured,
-density-dependent</b> exponent \(p \approx 0.2\!-\!0.4\) (compact \(0.31\), diffuse \(0.42\), mid \(0.21\);
-&sect;13). So an \(f_{\rm mix}\) boost maps to</p>
-\[ f_{\rm mix} \;\approx\; f_\kappa^{\,p}, \qquad\text{inverting}\qquad
-   f_\kappa \;\approx\; f_{\rm mix}^{\,1/p}\ \ (\gg f_{\rm mix},\ \text{since } p<1). \]
-<p>i.e. because the exponent is well below 1, you need a <b>much larger</b> \(f_\kappa\) than \(f_{\rm mix}\)
-for the same cooling boost (e.g. \(f_{\rm mix}\!=\!2\) needs \(f_\kappa\!\sim\!6\!-\!10\)). That is also why
-the &sect;3 firing-\(f_{\rm mix}\) values (\(1.4\!-\!3.8\)) and the &sect;13 firing-\(f_\kappa\) values
-(\(\sim\!4\!-\!60\)) look so different &mdash; they are the <i>same physics</i> in the two parametrisations,
-related by \(f_\kappa \approx f_{\rm mix}^{1/p}\).</p>
+<p><b>(i) The equivalence is exact by definition.</b> Since \(f_{\rm mix}\) is <i>defined</i> as the multiplier
+on \(L_{\rm cool}\), the \(f_{\rm mix}\) that reproduces a given \(f_\kappa\) is, with no model assumed, just the
+\(L_{\rm cool}\) boost ratio at matched conditions:</p>
+\[ f_{\rm mix}^{\rm equiv}(f_\kappa) \;\equiv\; \frac{L_{\rm cool}(f_\kappa)}{L_{\rm cool}(f_\kappa{=}1)}\Big|_{\rm matched\ }t. \]
+<p>The matched-\(t\) back-reaction (&sect;11) <b>measures</b> it: \(f_\kappa=2 \Rightarrow f_{\rm mix}^{\rm equiv}
+\in[1.23,\,1.50]\) (developed \(\to\) seed). That much is unimpeachable.</p>
+<p><b>(ii) The exponent is bracketed by one exact scaling, not derived.</b> \(L_{\rm cool}\) is <i>not</i> a clean
+power of \(f_\kappa\): its effective exponent \(q\) (where \(f_{\rm mix}^{\rm equiv}=f_\kappa^{q}\)) runs from
+\(q\!\approx\!0.58\) (seed) to \(q\!\approx\!0.30\) (developed), and the \(\theta_{\rm blowout}\) leverage (a
+noisier proxy &mdash; measured at a <i>different</i> \(t\) per \(f_\kappa\)) scatters \(0.21\!-\!0.42\) across
+configs (&sect;13). The one <b>exactly-derived</b> anchor is the evaporation rate
+\(\dot M\propto f_\kappa^{2/7}\) (Weaver+77 Eq.&nbsp;33, verified at <code>bubble_luminosity.py:291</code>), and
+the <i>developed</i> \(L_{\rm cool}\) boost lands on it: \(1.228\approx 2^{2/7}=1.219\). That is the
+turbulent-mixing-layer relation \(L\sim\dot m\,\times\,\)enthalpy (El-Badry / Fielding / Tan-Oh-Gronke), with
+\(\dot m\propto f_\kappa^{2/7}\). So the <b>low end</b> of the exponent (\(\sim\!2/7\)) is physically grounded;
+the higher seed value is a transient. Net:</p>
+\[ f_{\rm mix}^{\rm equiv} \;\approx\; f_\kappa^{\,q}, \quad q\sim 0.3\!-\!0.6\ (\text{bracketed below by } 2/7),
+   \qquad\Rightarrow\qquad f_\kappa \;\approx\; (f_{\rm mix})^{1/q}\ \gg f_{\rm mix}. \]
+<p>Because \(q<1\) you need a <b>much larger</b> \(f_\kappa\) than \(f_{\rm mix}\) (e.g. \(f_{\rm mix}\!=\!2\)
+needs \(f_\kappa\!\sim\!6\!-\!10\)) &mdash; which is why the &sect;3 firing-\(f_{\rm mix}\) values (\(1.4\!-\!3.8\))
+and the &sect;13 firing-\(f_\kappa\) values (\(\sim\!4\!-\!60\)) look so different: same physics, two
+parametrisations. <b>But this is a heuristic magnitude map, not a closed-form law</b> &mdash; \(q\) is
+epoch- and config-dependent, pinned only at the exact \(2/7\) evaporation floor.</p>
 <div class="box" style="border-left:4px solid #b8860b"><b>But the magnitude is the lesser difference.</b>
 \(f_{\rm mix}\) is a <b>pure rescale of one number</b> &mdash; it multiplies \(L_{\rm cool}\) and nothing else;
 \(\dot M\), \(E_b\), \(P_b\), the shell dynamics are untouched (the bubble never &ldquo;knows&rdquo; the
