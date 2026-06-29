@@ -12,11 +12,19 @@
 # (data/dense_stiffness_diag.csv; NOT f_kappa-driven). rCloud stays < the 200 pc rCloud_max
 # ceiling across the whole grid (max is mCloud 1e7 x nCore 1e2 ~ 70-85 pc).
 #
-# RUN (HPC only -- do NOT run 819 combos in an ephemeral container):
+# RUN (HPC only -- do NOT run 819 combos in an ephemeral container).
+# Inspect anywhere:
 #   python run.py docs/dev/transition/pdv-trigger/runs/params/sweep_fkappa_nH.param --dry-run   # lists 819
-#   python run.py docs/dev/transition/pdv-trigger/runs/params/sweep_fkappa_nH.param --emit-jobs jobs/
-#   sbatch jobs/submit_sweep.sbatch        # SLURM array 1-819; cap concurrency with --workers K
-#   python docs/dev/transition/pdv-trigger/data/make_fkappa_nH_sweep.py   # harvest + fit f_kappa_fire
+# On Helix, drive it from your laptop (committed scripts travel by git pull):
+#   ./docs/dev/transition/pdv-trigger/runs/sync.sh submit    # git pull + emit to /gpfs + sbatch the array
+#   ./docs/dev/transition/pdv-trigger/runs/sync.sh watch     # tail the running array
+#   ./docs/dev/transition/pdv-trigger/runs/sync.sh collect   # sweep_report.{txt,json}
+#   ./docs/dev/transition/pdv-trigger/runs/sync.sh harvest   # make_fkappa_nH_sweep.py -> CSV + PNG
+#   ./docs/dev/transition/pdv-trigger/runs/sync.sh down      # pull the CSV/PNG back to commit
+# Why the driver (not a bare `--emit-jobs jobs/` + `sbatch`): outputs MUST land on writable
+# /gpfs (the repo's /home is read-only at runtime), and the array sbatch needs the Helix
+# account/partition/--export=NONE/conda. runs/run_fkappa.sbatch is pre-patched for that;
+# sync.sh emits the bundle from $WS (/gpfs) so path2output below resolves there. See REPRODUCE.md Block C.
 
 # --- swept (Cartesian: 7 x 13 x 3 x 3 = 819) ---
 nCore                  [1e2, 3e2, 1e3, 3e3, 1e4, 3e4, 1e5]
@@ -31,4 +39,5 @@ nISM                   0.1
 stop_t                 2.0
 log_console            False
 log_file               True
+# relative on purpose: sync.sh emits from /gpfs ($WS) so this resolves to $WS/outputs/sweep_fkappa_nH (writable).
 path2output            outputs/sweep_fkappa_nH

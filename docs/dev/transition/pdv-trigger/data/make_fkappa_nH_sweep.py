@@ -1,18 +1,26 @@
 #!/usr/bin/env python3
 r"""Controlled f_kappa(n_H) calibration — fit + plot from the reduced summary.csv (laptop step).
 
-The reduce-then-plot split (cf. paper/II-survey): the heavy walk over the 819 dictionary.jsonl trajectories
-happens ONCE on HPC via reduce_fkappa_sweep.py -> a small summary.csv (one row per run). THIS script reads
-only that tiny CSV (a few hundred KB; rsync'd to the laptop), groups by (mCloud, sfe, nCore) cell, fits
-theta = a*f_kappa^p per cell, solves f_kappa_fire (theta -> 0.95 cooling_balance trigger), and draws the
-de-conflation figure (one f_kappa_fire(nCore) series per mCloud/sfe -- collapse => clean f_kappa(n_H),
-spread => multi-dimensional). NO jsonl, no numpy-on-the-cluster, no trinity import for the data step.
+Closes the loop on the controlled sweep `runs/params/sweep_fkappa_nH.param` (sweeps nCore x
+cooling_boost_kappa x mCloud x sfe). After the HPC grid runs (819 combos -> <out>/sweep_fkappa_nH/<run>/), this:
+  1. parses (nCore, f_kappa) from each run-name (e.g. `1e6_sfe010_n1e3_PL0_coolingBoostKappa8p0`),
+  2. harvests the developed theta_blowout per run (REUSES the proven harvest() from
+     make_kappa_blowout_calibration.py -- same definition, theta at first R2>rCloud),
+  3. per density fits theta = a * f_kappa^p and solves f_kappa_fire (theta -> 0.95 cooling_balance trigger),
+  4. fits f_kappa_fire(nCore) as a power law and writes the calibration CSV + figure.
 
-REPRODUCE (after the HPC sweep + reduce -- see REPRODUCE.md / sweep_fkappa_nH.param):
-    python run.py docs/dev/transition/pdv-trigger/runs/params/sweep_fkappa_nH.param --emit-jobs jobs/
-    sbatch jobs/submit_sweep.sbatch                                  # -> outputs/sweep_fkappa_nH/<run>/
-    python docs/dev/transition/pdv-trigger/data/reduce_fkappa_sweep.py outputs/sweep_fkappa_nH  # -> summary.csv
-    python docs/dev/transition/pdv-trigger/data/make_fkappa_nH_sweep.py outputs/sweep_fkappa_nH/summary.csv
+This REPLACES the conflated 3-anchor estimate (compact/mid/diffuse vary mCloud+sfe+nCore together) with a
+clean single-variable f_kappa(n_H). Until the sweep runs, this prints a clear "no outputs yet" message.
+
+REPRODUCE (after the HPC sweep -- see REPRODUCE.md Block C / sweep_fkappa_nH.param):
+    ./docs/dev/transition/pdv-trigger/runs/sync.sh submit    # emit to /gpfs + sbatch the 819-task array
+    ./docs/dev/transition/pdv-trigger/runs/sync.sh harvest   # runs THIS script on Helix against /gpfs
+On Helix the run outputs live on /gpfs, not under the repo, so point this script at them with
+FKAPPA_SWEEP_OUT (sync.sh harvest sets it for you):
+    FKAPPA_SWEEP_OUT=/gpfs/bwfor/work/ws/hd_cq295-trinity/outputs/sweep_fkappa_nH \
+        python docs/dev/transition/pdv-trigger/data/make_fkappa_nH_sweep.py
+Default (unset) reads <repo>/outputs/sweep_fkappa_nH -- for outputs already pulled to the laptop.
+Self-test only (no sweep data needed):  python .../make_fkappa_nH_sweep.py --selftest
 Deliverables:
     docs/dev/transition/pdv-trigger/data/fkappa_nH_sweep.csv   (one row per mCloud,sfe,nCore cell + fit)
     docs/dev/transition/pdv-trigger/fkappa_nH_sweep.png
@@ -26,7 +34,9 @@ import sys
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _PDV = os.path.dirname(_HERE)
 _REPO = os.path.abspath(os.path.join(_HERE, *([os.pardir] * 5)))
-_DEFAULT_SUMMARY = os.path.join(_REPO, "outputs", "sweep_fkappa_nH", "summary.csv")
+# On Helix the sweep outputs land on /gpfs (the repo's /home is read-only at runtime), so allow an
+# override; default to <repo>/outputs/sweep_fkappa_nH for outputs run/pulled locally.
+_OUT = os.environ.get("FKAPPA_SWEEP_OUT", os.path.join(_REPO, "outputs", "sweep_fkappa_nH"))
 _TRIGGER = 0.95
 
 
@@ -67,6 +77,14 @@ def main():
               "Then re-run this with the summary.csv path.")
         return
 
+    if not os.path.isdir(_OUT):
+        print(f"No sweep outputs at {_OUT}.\n"
+              "Run the HPC grid first (see REPRODUCE.md Block C / runs/run_fkappa.sbatch):\n"
+              "  ./docs/dev/transition/pdv-trigger/runs/sync.sh submit\n"
+              "  ./docs/dev/transition/pdv-trigger/runs/sync.sh harvest   # or set FKAPPA_SWEEP_OUT and re-run this")
+        return
+
+    # harvest theta_blowout for every run, grouped by (mCloud, sfe, nCore) cell
     by_cell = {}
     for r in csv.DictReader(open(summary)):
         mCloud, sfe, nCore = _f(r.get("mCloud")), _f(r.get("sfe")), _f(r.get("nCore"))
