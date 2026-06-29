@@ -1,0 +1,7 @@
+config,nCore,theta_1D,elbadry_theta_lamdv1,elbadry_theta_lamdv0.1,elbadry_theta_lamdv10
+large_diffuse_lowsfe,100.0,0.2496,0.9409,0.8342,0.9805
+be_sphere,10000.0,0.5106,0.9938,0.9805,0.998
+midrange_pl0,10000.0,0.6103,0.9938,0.9805,0.998
+pl2_steep,100000.0,0.3423,0.998,0.9938,0.9994
+simple_cluster,100000.0,0.6672,0.998,0.9938,0.9994
+small_dense_highsfe,1000000.0,0.6974,0.9994,0.998,0.9998

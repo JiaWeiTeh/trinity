@@ -129,12 +129,19 @@ both solid; the literature-`θ_lit(n)` comparison (§2) is currently **schematic
   f_mix(n). The figure also states the degeneracy (§2a): `f_mix = 0.95/(L_cool/L_mech)` is exactly what a
   flat θ_lit≈0.95 would prescribe, because the trigger threshold *is* 0.95.
 
-## 2. θ_lit(n) figure — `theta_vs_density.png` — SCHEMATIC overlay, gap NOT quantified
+## 2. θ_lit(n) figure — `theta_vs_density.png` (schematic) → `elbadry_overlay.png` (VERIFIED, 2026-06-29)
 
 TRINITY's resolved `L_cool/L_mech` (= 1 − `cool_at_blowout`) vs ambient nCore is **real [data]** and rises
-**0.250 (1e2) → 0.697 (1e6)**. The literature overlay is **[schematic / to-verify]**: El-Badry+2019
-(arXiv:1902.09547) and Lancaster+2021 (arXiv:2104.07722) PDFs returned HTTP 403, so the band is an
-arbitrary saturating stand-in, NOT digitized θ(n).
+**0.250 (1e2) → 0.697 (1e6)**. The original literature overlay (`theta_vs_density.png`) was **schematic** —
+El-Badry+2019 / Lancaster+2021 PDFs 403'd, so the band was an arbitrary saturating stand-in.
+
+**UPDATE 2026-06-29 — El-Badry PDF obtained, equations VERIFIED [data]:** `elbadry_overlay.png`
+(+ `data/make_elbadry_overlay.py`) replaces the schematic band with the **real El-Badry §5.2 model**:
+`θ = ψ/(11/5+ψ)`, `ψ = A_mix·(λδv)^½·n_H^½`, **A_mix=3.5** (Eqs 37–38, verified line-by-line). Our resolved
+θ_1D points sit **far below** that target across the GMC range. **Crucial caveat:** El-Badry calibrated this
+at **n_H,0 = 0.1–10 cm⁻³** (Figs 6–7); our clouds at n=1e2–1e6 are 1–5 decades beyond, where θ_target is
+saturated to ≈0.94–0.999 by **extrapolation**, not measurement. (The earlier in-session doubt that those
+equations were confabulated is **retracted** — they are genuine; only the GMC extrapolation is the open issue.)
 
 **Recomputed gap (band_center − TRINITY) at each nCore — shows the schematic is not a usable comparator:**
 

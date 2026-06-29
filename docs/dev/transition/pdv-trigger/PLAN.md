@@ -73,6 +73,19 @@ framing):**
   `f_κ(n_H)` mode (gated, default-off byte-identical).
 
 **Status ledger (newest first):**
+- **2026-06-29 (El-Badry+2019 PDF obtained — equations VERIFIED, overlay figure built).** The El-Badry PDF
+  (1902.09547) was finally provided (earlier it 403'd, so `θ(n)` was a schematic stand-in — see FINDINGS §2).
+  Read §5.2 and **verified the cooling-efficiency model line-by-line**: Eq 35 `L_int/Ė_th = (11/5)·θ/(1−θ)`
+  ⇔ Eq 38 **`θ = ψ/(11/5+ψ)`** (ψ≡L_int/Ė_th); Eq 37 **`ψ = A_mix·(λδv)^½·n_H^½`**, **A_mix=3.5** (fit;
+  1.7 first-principles); √n scaling REAL; θ time-independent (L_int∝t). **This retracts the earlier in-session
+  skepticism that those equations might be confabulated — they are genuine.** **The real caveat is DOMAIN:**
+  El-Badry calibrated this at **n_H,0 = 0.1–10 cm⁻³ and λδv = 0.1–10 pc·km/s** (Figs 6–7); GMC clouds at
+  n=1e2–1e6 are **1–5 decades beyond** where it was tested, where θ_target is already saturated to ≈0.94–0.999
+  (extrapolation, not measurement). Built `data/make_elbadry_overlay.py` → `elbadry_overlay.png`: our resolved
+  θ_1D = 1−cool_at_blowout per config (the f_κ=1 Spitzer floor) overlaid on the verified Eq 37/38 band — **our
+  points sit far below the target (gap 0.25→0.94 at n=1e2), entirely in the extrapolated GMC regime.** That gap
+  is the cooling deficit mixing/κ_mix (or, as a stand-in, f_κ) must supply. Honest axis caveat: El-Badry's n is
+  ambient, ours is nCore; the literature θ really depends on the (higher) interface density. No production code touched.
 - **2026-06-29 (Helix run scaffolding for the 819-combo sweep — committed).** The sweep was "HPC-ready"
   only via a bare `--emit-jobs jobs/` + `sbatch jobs/submit_sweep.sbatch`, which would have **failed on
   Helix**: outputs resolve under the read-only `/home` repo checkout, and the emitted sbatch leaves
