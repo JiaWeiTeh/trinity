@@ -2,6 +2,12 @@
 
 > **This file covers only the §9 live edge runs.** For the *whole-storyline* reproducibility map (every result
 > → its `.param` + command + artifact), see [`../REPRODUCE.md`](../REPRODUCE.md).
+>
+> **Heads-up — a second, unrelated workflow also lives in this folder:** the f_κ(n_H) **sweep** launcher
+> `run_fkappa.sbatch` + `sync.sh` (driving `params/sweep_fkappa_nH.param`; reduced by `../data/reduce_fkappa_sweep.py`,
+> plotted by `../data/make_fkappa_nH_sweep.py` — REPRODUCE.md result #18 / Block C). That is the HPC array
+> sweep + reduce-then-plot pipeline; it is **NOT** part of the §9 live edge runs documented below. Don't conflate
+> `sync.sh`/`run_fkappa.sbatch` (sweep) with `compare_live.py`/`make_params.py` (the live runs).
 
 > ⚠️ **This document may be out of date — verify before trusting it.** It is a
 > point-in-time analysis/audit, not a maintained spec; the code moves faster

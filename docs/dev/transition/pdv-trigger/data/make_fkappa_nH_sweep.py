@@ -141,33 +141,51 @@ def main():
         print(f"(skipping figure: {e})")
         return
 
-    fig, ax = plt.subplots(figsize=(8.5, 5.6))
-    cells = sorted({(r["mCloud"], r["sfe"]) for r in rows})
-    cmap = plt.get_cmap("viridis")
-    for i, (mC, sf) in enumerate(cells):
-        sub = sorted([r for r in rows if r["mCloud"] == mC and r["sfe"] == sf], key=lambda r: r["nCore"])
-        x = np.array([r["nCore"] for r in sub], float)
-        y = np.array([r["f_kappa_fire_measured"] for r in sub], float)
-        yfit = np.array([r["f_kappa_fire_fit"] for r in sub], float)
-        y = np.where(np.isfinite(y), y, yfit)
-        col = cmap(i / max(1, len(cells) - 1))
-        ax.loglog(x, y, "o-", color=col, lw=1.5, ms=6, label=rf"$M_{{\rm cl}}{{=}}{mC:.0e}$, sfe$={sf:g}$")
-    allx = np.array([r["nCore"] for r in rows], float)
-    ally = np.array([r["f_kappa_fire_measured"] if np.isfinite(r["f_kappa_fire_measured"])
-                     else r["f_kappa_fire_fit"] for r in rows], float)
-    good = np.isfinite(allx) & np.isfinite(ally) & (ally > 0)
-    if good.sum() >= 2:
-        q, lnA = np.polyfit(np.log(allx[good]), np.log(ally[good]), 1)
-        xx = np.logspace(np.log10(allx[good].min()), np.log10(allx[good].max()), 50)
-        ax.loglog(xx, np.exp(lnA) * xx ** q, "--", color="k", lw=1.6,
-                  label=rf"all-cell fit: $f_\kappa^{{\rm fire}}\propto n_{{\rm core}}^{{{q:.2f}}}$")
-    ax.set_xlabel(r"$n_{\rm core}$  [cm$^{-3}$]")
-    ax.set_ylabel(r"$f_\kappa$ to reach $\theta=0.95$ (cooling fires)")
-    ax.set_title(r"$f_\kappa(n_{\rm H})$ calibration — do the $M_{\rm cl}$/sfe series collapse onto one curve?",
-                 fontsize=11.5)
-    ax.legend(fontsize=8, ncol=2)
-    ax.grid(True, which="both", alpha=0.25)
-    fig.tight_layout()
+    # De-conflation figure, made READABLE: the MEASURED f_kappa-to-fire vs nCore, FACETED by sfe
+    # (one panel each) with one line per mCloud (<=3 lines/panel). Read it two ways:
+    #   - across panels (sfe): if the curves shift, sfe matters;
+    #   - within a panel (mCloud lines): if they overlap, mCloud doesn't -> clean f_kappa(n_H).
+    # A faint all-data power law is drawn in every panel as a common reference. Triangles = cells that
+    # never fired within the f_kappa grid (capped at the ceiling), i.e. "needs more boost than swept".
+    fk_grid_max = max((fk for cell in by_cell.values() for (fk, _t, _f) in cell), default=64.0)
+    sfes = sorted({r["sfe"] for r in rows})
+    mclouds = sorted({r["mCloud"] for r in rows})
+    colors = {mC: plt.get_cmap("viridis")(i / max(1, len(mclouds) - 1)) for i, mC in enumerate(mclouds)}
+
+    mx = np.array([r["nCore"] for r in rows if np.isfinite(r["f_kappa_fire_measured"])], float)
+    my = np.array([r["f_kappa_fire_measured"] for r in rows if np.isfinite(r["f_kappa_fire_measured"])], float)
+    ref = None
+    if len(mx) >= 2:
+        q, lnA = np.polyfit(np.log(mx), np.log(my), 1)
+        xr = np.logspace(np.log10(mx.min()), np.log10(mx.max()), 50)
+        ref = (xr, np.exp(lnA) * xr ** q, q)
+
+    fig, axes = plt.subplots(1, len(sfes), figsize=(4.7 * len(sfes), 4.7), sharex=True, sharey=True)
+    axes = np.atleast_1d(axes)
+    for ax, sf in zip(axes, sfes):
+        if ref is not None:
+            ax.plot(ref[0], ref[1], "--", color="0.6", lw=1.3, zorder=1,
+                    label=rf"all-data $\propto n^{{{ref[2]:.2f}}}$")
+        for mC in mclouds:
+            sub = sorted([r for r in rows if r["sfe"] == sf and r["mCloud"] == mC], key=lambda r: r["nCore"])
+            x = np.array([r["nCore"] for r in sub], float)
+            ym = np.array([r["f_kappa_fire_measured"] for r in sub], float)
+            fin = np.isfinite(ym)
+            ax.plot(x[fin], ym[fin], "o-", color=colors[mC], lw=1.8, ms=6,
+                    label=rf"$M_{{\rm cl}}{{=}}{mC:.0e}$")
+            if (~fin).any():                              # didn't fire in-grid -> cap at ceiling w/ open ^
+                ax.scatter(x[~fin], np.full((~fin).sum(), fk_grid_max), marker="^",
+                           facecolors="none", edgecolors=colors[mC], s=55, zorder=3)
+        ax.set_xscale("log"); ax.set_yscale("log")
+        ax.set_title(rf"sfe $= {sf:g}$", fontsize=11)
+        ax.set_xlabel(r"$n_{\rm core}$  [cm$^{-3}$]")
+        ax.axhline(fk_grid_max, color="0.8", lw=0.8, ls=":")
+        ax.grid(True, which="both", alpha=0.25)
+    axes[0].set_ylabel(r"$f_\kappa$ to fire cooling  ($\theta\!\to\!0.95$)")
+    axes[-1].legend(fontsize=8, loc="upper right", framealpha=0.9)
+    fig.suptitle(r"$f_\kappa(n_{\rm H})$ calibration — clean function of $n_{\rm core}$, or shifted by "
+                 rf"$M_{{\rm cl}}$/sfe?   ($\triangle$ = no fire by $f_\kappa{{=}}{fk_grid_max:g}$)", fontsize=11.5)
+    fig.tight_layout(rect=(0, 0, 1, 0.95))
     png = os.path.join(_PDV, "fkappa_nH_sweep.png")
     fig.savefig(png, dpi=150)
     print(f"wrote {png}")
