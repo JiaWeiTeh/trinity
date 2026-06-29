@@ -171,8 +171,8 @@ def build_dlaw_block(
         )
 
     # --- 5. Convert pc → cm and pc^-3 → cm^-3 in log space ------------------
-    log_pc_per_cm = math.log10(INV_CONV.pc2cm)        # +18.4892
-    log_ndens_offset = math.log10(INV_CONV.ndens_au2cgs)  # -55.4682
+    log_pc_per_cm = math.log10(INV_CONV.pc2cm)        # +18.4894
+    log_ndens_offset = math.log10(INV_CONV.ndens_au2cgs)  # -55.4681
     log_r_cm = np.log10(r_pc) + log_pc_per_cm
     log_n_cm3 = log_n_pc3 + log_ndens_offset
 

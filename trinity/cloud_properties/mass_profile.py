@@ -65,7 +65,7 @@ def _is_scalar(x) -> bool:
 
 
 def _to_array(x) -> np.ndarray:
-    """Convert input to numpy array, preserving dtype."""
+    """Convert input to a 1-D float numpy array."""
     return np.atleast_1d(np.asarray(x, dtype=float))
 
 
@@ -87,7 +87,7 @@ def get_mass_density(
     """
     Get mass density rho(r) from number density n(r).
 
-    This function wraps get_density_profile() from density_profile_integrated.py
+    This function wraps get_density_profile() from density_profile.py
     and converts number density [1/pc^3] to mass density [Msun/pc^3].
 
     Parameters

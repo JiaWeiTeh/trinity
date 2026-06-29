@@ -14,10 +14,11 @@ Runtime specs are split into physical buckets that mirror
 ``trinity_reader``'s ``Snapshot`` grouping (``runtime_time`` /
 ``runtime_radii`` / ``runtime_bubble`` / ``runtime_bubble_cooling`` /
 ``runtime_pressure`` / ``runtime_force`` / ``runtime_shell`` /
-``runtime_feedback``), plus three TRINITY-specific buckets not in
+``runtime_feedback``), plus four TRINITY-specific buckets not in
 that table: ``runtime_control`` (phase/end flags), ``runtime_residuals``
-(solver diagnostics), and ``runtime_cloud_profile`` (set-once profile
-tables built in phase 0).
+(solver diagnostics), ``runtime_cloud_profile`` (set-once profile
+tables built in phase 0), and ``runtime_loaded`` (loaded SPS data and
+cooling / BE-profile interpolators).
 
 ``default`` field convention
 ----------------------------
@@ -113,10 +114,10 @@ def _validate_dens_profile(value, params) -> None:
 
 
 def _validate_betadelta_solver(value, params) -> None:
-    """Selects the energy-implicit (beta, delta) solver. 'legacy' is the
-    bounded grid + L-BFGS-B search (default, unchanged behaviour); 'hybr'
+    """Selects the energy-implicit (beta, delta) solver. 'hybr' (default)
     is the unbounded scipy root-finder with a physical dMdt>0 acceptance
-    gate (see trinity/phase1b_energy_implicit/get_betadelta.py)."""
+    gate; 'legacy' is the bounded grid + L-BFGS-B search
+    (see trinity/phase1b_energy_implicit/get_betadelta.py)."""
     from trinity._input.errors import ParameterFileError
     if value not in ('legacy', 'hybr'):
         raise ParameterFileError(
@@ -603,8 +604,8 @@ def materialize_runtime(params) -> None:
     the spec, which matches today's behavior since the original Step
     10 also constructed them after Step 9.
 
-    Today this adds 103 items: 9 with ``exclude_from_snapshot=True``
-    (the cooling cubes, sps_data/sps_f, the rcloud counter) and 94
+    Today this adds 106 items: 9 with ``exclude_from_snapshot=True``
+    (the cooling cubes, sps_data/sps_f, the rcloud counter) and 97
     with False (time-varying simulation state — bubble_*, shell_*,
     forces, residuals, etc.).  mCloud_input / mCluster (Step 6) and
     sps_column_map (Step 7) are pre-added and skipped here.

@@ -30,6 +30,10 @@ def get_Lambda(T, cooling_CIE_interpolation, metallicity):
     ----------
     T : float/array
         Temperature.
+    cooling_CIE_interpolation : callable
+        Interpolation function (log K -> log Lambda).
+    metallicity : float
+        Cloud metallicity (selects/validates against the CIE library).
 
     Available libraries (set via `path_cooling_CIE` in .param) include:
         1: CLOUDY cooling curve for HII region, solar metallicity.
@@ -45,12 +49,7 @@ def get_Lambda(T, cooling_CIE_interpolation, metallicity):
     Returns
     -------
     Lambda [erg/s * cm3]: float.
-        Cooling.
-    These values are from the file directly:
-        logT: temperature (log).
-        logLambda: Lambda-values (log).
-    cooling_CIE_interpolation [log(K)]: 
-        Interpolation function that takes temperature.
+        Cooling rate (per the CIE curve at temperature T).
 
     """
     

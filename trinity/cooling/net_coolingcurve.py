@@ -93,7 +93,7 @@ def get_dudt(age, ndens, T, phi, params_dict):
     
     # In order to improve speed, here we use dictionary. This means that the age will not be 
     # as accurate, since the cooling structure only updates every once in a while or so.
-    # E.g., lets say 5e4 years according to run_implicit_energy.py.
+    # E.g., lets say 5e4 years according to run_energy_implicit_phase.py.
     
     
     cooling_nonCIE = params_dict['cStruc_cooling_nonCIE'].value

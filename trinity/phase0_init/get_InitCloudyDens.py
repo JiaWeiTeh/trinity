@@ -27,12 +27,9 @@ def create_InitCloudyDens(path2output,
                         cloudy_dict,
                        coll_counter=0):
 
-    # Note:
-        # old code: __cloudy__.create_dlaw()
-    
     dx_small = 1e-4 * u.pc
     rLast = (rCloud - dx_small).to(u.pc)
-    # last radius just outside cloud
+    # last radius just inside cloud
     # TODO: shouldn't this be +dx_small then?
     r = np.logspace(-1.,np.log10(rLast.value), endpoint=True, num=200) * u.pc
     # join with different endpoints
@@ -47,7 +44,6 @@ def create_InitCloudyDens(path2output,
     logn = np.log10((n/u.cm**-3)) * u.cm**-3
     logr = np.log10(r/u.pc) * u.pc
     
-    # old: dlaw.txt
     # save into csv
     full_path = os.path.join(path2output, 'init_density_profile_col'+ str(coll_counter) + '.csv')
     rel_path = os.path.relpath(full_path, os.getcwd())

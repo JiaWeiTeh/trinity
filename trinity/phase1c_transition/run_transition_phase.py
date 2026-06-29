@@ -10,12 +10,14 @@ momentum-driven expansion, using scipy.integrate.solve_ivp.
 Overview
 --------
 The transition phase handles the period when bubble thermal energy (Eb)
-becomes negligible as cooling dominates. Energy decays on the sound-crossing
-timescale: dE/dt = -Eb / t_sound.
+becomes negligible as cooling dominates. Energy decays at
+dE/dt = min(Ed_energy_balance, Ed_soundcrossing): continuous with the implicit
+phase early on, falling back to the sound-crossing rate -Eb/(R2/c_sound) once
+cooling becomes inefficient.
 
 Key Features
 ------------
-1. **Energy decay model**: dE/dt = -Eb / t_sound (sound-crossing timescale)
+1. **Energy decay model**: dE/dt = min(Ed_energy_balance, Ed_soundcrossing)
 2. **Pure ODE functions**: No dictionary mutations during integration
 3. **scipy.integrate.solve_ivp(LSODA)**: Adaptive integration for accuracy
 4. **Segment-based integration**: Parameter updates between segments
@@ -689,7 +691,7 @@ def run_phase_transition(params) -> TransitionPhaseResults:
 
         # Shell mass update for adaptive stepping comparison.
         # Apply the same collapse-freeze and never-decrease guards as the
-        # primary shell mass block (lines 510-531).
+        # primary shell mass block above.
         prev_mShell_post = params['shell_mass'].value
         is_collapse_post = params.get('isCollapse', None)
         is_collapse_post_val = is_collapse_post.value if is_collapse_post and hasattr(is_collapse_post, 'value') else False

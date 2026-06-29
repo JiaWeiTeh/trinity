@@ -21,6 +21,8 @@ Events are categorized by their consequence:
    - cloud_boundary: R2 > rCloud (energy phase -> implicit)
    - cooling_balance: L_cool ~ L_gain (implicit -> transition)
    - energy_floor: Eb < threshold (transition -> momentum)
+
+3. **Monitoring Events** (non-terminal; record a crossing only):
    - velocity_sign: v2 crosses zero (collapse onset detection)
 
 Usage
@@ -258,7 +260,7 @@ def make_energy_floor_event(energy_floor: float, y_index: int = 2,
     Parameters
     ----------
     energy_floor : float
-        Minimum energy threshold (erg). Below this, transition to momentum phase.
+        Minimum energy threshold (code/AU units, Msun*pc^2/Myr^2). Below this, transition to momentum phase.
     y_index : int
         Index of Eb in state vector y. Default 2 for [R2, v2, Eb, ...].
     name : str
@@ -514,7 +516,7 @@ def build_transition_phase_events(params, energy_floor: float = 1e3) -> List[Cal
     params : dict
         Parameter dictionary with coll_r, stop_r, etc.
     energy_floor : float
-        Minimum energy threshold (erg). Default 1e3.
+        Minimum energy threshold (code/AU units, Msun*pc^2/Myr^2). Default 1e3.
 
     Returns
     -------
@@ -536,7 +538,7 @@ def build_transition_phase_events(params, energy_floor: float = 1e3) -> List[Cal
     if stop_r is not None and stop_r > 0:
         events.append(make_max_radius_event(stop_r))
 
-    logger.debug(f"Transition phase events: energy_floor={energy_floor:.2e} erg, "
+    logger.debug(f"Transition phase events: energy_floor={energy_floor:.2e} (AU), "
                  f"min_radius={min_r:.4f} pc")
     return events
 

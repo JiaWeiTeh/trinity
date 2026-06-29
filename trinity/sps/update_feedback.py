@@ -61,7 +61,7 @@ class SPSFeedback:
     pdotdot_total : float
         Time derivative of total momentum rate
     v_mech_total : float
-        Wind velocity [pc/Myr]
+        Effective total mechanical velocity [pc/Myr]
     """
     t: float
     Qi: float
@@ -101,9 +101,9 @@ def get_current_sps_feedback(t, params) -> SPSFeedback:
 
     Interpolates the SPS feedback time-series at the given time and returns
     an SPSFeedback dataclass. The interpolators are built by
-    `read_sps.get_interpolation` from data loaded via `read_sps.read_sps`;
-    both branches (legacy SB99 positional and user-defined sps_path) feed
-    the same `params['sps_f']` dict.
+    `read_sps.get_interpolation` from data loaded via `read_sps.read_sps`,
+    which loads both the bundled default and user files through a single
+    column-map loader feeding `params['sps_f']`.
 
     Parameters
     ----------
@@ -133,11 +133,11 @@ def get_current_sps_feedback(t, params) -> SPSFeedback:
         - pdot_SN : float, SN momentum rate [M_sun·pc/Myr²]
         - pdot_total : float, total momentum rate [M_sun·pc/Myr²]
         - pdotdot_total : float, time derivative of pdot_total
-        - v_mech_total : float, wind velocity [pc/Myr]
+        - v_mech_total : float, effective total mechanical velocity [pc/Myr]
 
     Notes
     -----
-    Wind velocity (v_mech_total) uses total quantities:
+    The effective velocity (v_mech_total) uses total quantities:
       v_mech_total = 2 * Lmech_total / pdot_total
     This is an effective velocity such that pRam = L/(2*pi*r^2*v) yields
     the correct total ram pressure: pdot_total / (4*pi*r^2).

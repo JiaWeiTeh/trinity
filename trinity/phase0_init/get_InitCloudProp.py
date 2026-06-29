@@ -551,7 +551,7 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
     print("=" * 70)
-    print("TESTING get_InitCloudProp_integrated")
+    print("TESTING get_InitCloudProp")
     print("=" * 70)
 
     # Mock value class for testing

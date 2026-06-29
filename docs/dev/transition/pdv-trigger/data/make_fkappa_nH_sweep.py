@@ -1,18 +1,26 @@
 #!/usr/bin/env python3
 r"""Controlled f_kappa(n_H) calibration — fit + plot from the reduced summary.csv (laptop step).
 
-The reduce-then-plot split (cf. paper/II-survey): the heavy walk over the 819 dictionary.jsonl trajectories
-happens ONCE on HPC via reduce_fkappa_sweep.py -> a small summary.csv (one row per run). THIS script reads
-only that tiny CSV (a few hundred KB; rsync'd to the laptop), groups by (mCloud, sfe, nCore) cell, fits
-theta = a*f_kappa^p per cell, solves f_kappa_fire (theta -> 0.95 cooling_balance trigger), and draws the
-de-conflation figure (one f_kappa_fire(nCore) series per mCloud/sfe -- collapse => clean f_kappa(n_H),
-spread => multi-dimensional). NO jsonl, no numpy-on-the-cluster, no trinity import for the data step.
+Step 3 of the reduce-then-plot pipeline (REPRODUCE.md Block C):
+  1. run the 819-combo sweep on Helix          -> runs/run_fkappa.sbatch        (sync.sh submit)
+  2. reduce the jsonl to one small summary.csv  -> data/reduce_fkappa_sweep.py   (ON HPC; sync.sh reduce)
+  3. THIS script (the LAPTOP step): read ONLY summary.csv, group by (mCloud, sfe, nCore) cell, fit
+     theta = a * f_kappa^p, solve f_kappa_fire (theta -> 0.95 cooling_balance trigger), fit
+     f_kappa_fire(nCore) as a power law, and draw the de-conflation figure (do the mCloud/sfe series
+     collapse onto one n_H curve, or spread?).
 
-REPRODUCE (after the HPC sweep + reduce -- see REPRODUCE.md / sweep_fkappa_nH.param):
-    python run.py docs/dev/transition/pdv-trigger/runs/params/sweep_fkappa_nH.param --emit-jobs jobs/
-    sbatch jobs/submit_sweep.sbatch                                  # -> outputs/sweep_fkappa_nH/<run>/
-    python docs/dev/transition/pdv-trigger/data/reduce_fkappa_sweep.py outputs/sweep_fkappa_nH  # -> summary.csv
-    python docs/dev/transition/pdv-trigger/data/make_fkappa_nH_sweep.py outputs/sweep_fkappa_nH/summary.csv
+Reads only summary.csv (the multi-GB jsonl stays on the cluster), so you iterate on the figure locally
+with no numpy/trinity-on-cluster and no re-reading the sweep. This REPLACES the conflated 3-anchor
+estimate (compact/mid/diffuse varied mCloud+sfe+nCore together) with a clean single-variable f_kappa(n_H).
+
+Consumes the summary.csv columns written by reduce_fkappa_sweep.py:
+    mCloud, sfe, nCore, cooling_boost_kappa, theta_blowout, cooling_fired
+
+REPRODUCE (after the sweep + reduce -- see REPRODUCE.md Block C):
+    ./docs/dev/transition/pdv-trigger/runs/sync.sh down      # pulls summary.csv -> data/summary.csv
+    python docs/dev/transition/pdv-trigger/data/make_fkappa_nH_sweep.py            # reads data/summary.csv
+    python docs/dev/transition/pdv-trigger/data/make_fkappa_nH_sweep.py PATH/summary.csv   # or an explicit path
+Self-test (no data needed):  python .../make_fkappa_nH_sweep.py --selftest
 Deliverables:
     docs/dev/transition/pdv-trigger/data/fkappa_nH_sweep.csv   (one row per mCloud,sfe,nCore cell + fit)
     docs/dev/transition/pdv-trigger/fkappa_nH_sweep.png
@@ -25,8 +33,9 @@ import sys
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _PDV = os.path.dirname(_HERE)
-_REPO = os.path.abspath(os.path.join(_HERE, *([os.pardir] * 5)))
-_DEFAULT_SUMMARY = os.path.join(_REPO, "outputs", "sweep_fkappa_nH", "summary.csv")
+# Default input is the reduced table that `sync.sh down` drops next to this script. Override by
+# passing a summary.csv path as argv[1] (e.g. the cluster's outputs/sweep_fkappa_nH/summary.csv).
+_DEFAULT_SUMMARY = os.path.join(_HERE, "summary.csv")
 _TRIGGER = 0.95
 
 
@@ -57,16 +66,33 @@ def fit_fire(fks, thetas):
     return a, p, f_fire
 
 
+def _selftest():
+    """fit_fire recovers a known power law theta = a*f^p and its f_fire (theta -> _TRIGGER)."""
+    a, p = 0.2, 0.5
+    fks = [1.0, 2.0, 4.0, 8.0, 16.0]
+    thetas = [a * f ** p for f in fks]
+    got_a, got_p, got_fire = fit_fire(fks, thetas)
+    want_fire = (_TRIGGER / a) ** (1.0 / p)
+    assert abs(got_a - a) < 1e-9 and abs(got_p - p) < 1e-9, f"fit ({got_a},{got_p}) != ({a},{p})"
+    assert abs(got_fire - want_fire) <= 1e-9 * want_fire, f"f_fire {got_fire} != {want_fire}"
+    print(f"selftest OK: fit_fire recovers theta={a}*f_k^{p} -> f_k_fire={got_fire:.3f} (== {want_fire:.3f})")
+
+
 def main():
+    if "--selftest" in sys.argv:
+        _selftest()
+        return
     summary = sys.argv[1] if len(sys.argv) > 1 else _DEFAULT_SUMMARY
     if not os.path.exists(summary):
         print(f"No summary.csv at {summary}.\n"
-              "Run the sweep then REDUCE it on HPC first (see REPRODUCE.md / Block C):\n"
-              "  sbatch jobs/submit_sweep.sbatch         # -> outputs/sweep_fkappa_nH/<run>/\n"
-              "  python docs/dev/transition/pdv-trigger/data/reduce_fkappa_sweep.py outputs/sweep_fkappa_nH\n"
-              "Then re-run this with the summary.csv path.")
+              "Run the sweep, REDUCE it on HPC, then pull the CSV (see REPRODUCE.md Block C):\n"
+              "  ./docs/dev/transition/pdv-trigger/runs/sync.sh submit    # run the 819-combo array\n"
+              "  ./docs/dev/transition/pdv-trigger/runs/sync.sh reduce    # jsonl -> summary.csv (on HPC)\n"
+              "  ./docs/dev/transition/pdv-trigger/runs/sync.sh down      # summary.csv -> data/\n"
+              "Or pass a summary.csv path explicitly as the first argument.")
         return
 
+    # group theta_blowout by (mCloud, sfe, nCore) cell from the reduced summary.csv
     by_cell = {}
     for r in csv.DictReader(open(summary)):
         mCloud, sfe, nCore = _f(r.get("mCloud")), _f(r.get("sfe")), _f(r.get("nCore"))
