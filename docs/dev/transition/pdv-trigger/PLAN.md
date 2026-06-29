@@ -73,6 +73,18 @@ framing):**
   `f_κ(n_H)` mode (gated, default-off byte-identical).
 
 **Status ledger (newest first):**
+- **2026-06-29 (819-combo f_κ(n_H) SWEEP RAN ON HELIX — results in, predictions scored).** The controlled grid
+  (7 nCore × 3 mCloud × 3 sfe = 63 cells × 13 f_κ) ran; reduced to `data/fkappa_nH_sweep.csv`. Scored against
+  the form's pre-registered predictions (`data/make_fkappa_sweep_analysis.py` → `data/fkappa_sweep_scorecard.csv`,
+  `fkappa_sweep_analysis.png`): **P2 de-conflation = FAN-OUT confirmed** (×2–32 spread across mCloud/sfe at fixed
+  n ⇒ f_κ is multi-dimensional, NOT f(n_H) alone) ✅; **diffuse→κ_mix confirmed** (6/63 low-n high-sfe cells
+  never fire even at f_κ=64) ✅; **P1 slope WRONG** — measured **f_κ_fire ≈ 1.0×10³·n_core^(−0.60)**, vs the
+  predicted n^(−0.30) (2× too shallow) ❌; **P3 root cause** — the 6-anchor baseline θ₀(n) was undersampled
+  (0.41/dex) vs the real grid (**1.13/dex**) ❌; **P4 leverage** median 0.21 vs predicted 0.31 ⚠. Net: the
+  *qualitative* conclusions (steep decline, multi-dimensional, diffuse-corner-needs-κ_mix) held and are now
+  measured; the *slope magnitude* was off because of the baseline. **Closes the §3.1 OPEN sweep task.** Next:
+  (a) regress measured f_κ_fire on (n_core, mCloud, sfe) for the second axis; (b) spec the gated El-Badry κ_mix
+  mode for the never-fire corner. Doc: `F_KAPPA_FUNCTIONAL_FORM.md` §0 banner + new §8 scorecard.
 - **2026-06-29 (El-Badry+2019 §3.1/§5.2 VERIFIED from the maintainer-supplied PDF).** The PDF (pp.5–6,13,15)
   confirms line-by-line: Eq 16 (Spitzer C=6e-7·T^(5/2), density-weak), Eq 17 (Parker), Spitzer↔Parker cross at
   6.6×10⁴ K, Eq 19/20 (saturation, q_sat=(3/2)ρc_s,iso³ = 5φρc³ with φ=0.3), **Eq 21 κ_mix=(λδv)ρk_B/μm_p**

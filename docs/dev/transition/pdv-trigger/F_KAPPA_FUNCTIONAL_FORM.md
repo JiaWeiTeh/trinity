@@ -34,6 +34,15 @@
 
 ---
 
+> ✅ **SWEEP RESULTS ARE IN (2026-06-29) — see §8.** The 819-combo grid ran on Helix. The composed form
+> below (slope −0.30) was a **pre-registered prediction**; the **measured** central trend is steeper:
+> **f_κ_fire ≈ 1.0×10³·n_core^(−0.60)** (θ\*=0.95). Scorecard: **fan-out confirmed** (f_κ is multi-dimensional,
+> ×2–32 spread at fixed n; the de-conflation answer is "does NOT collapse to one n_H curve") ✅; **diffuse end
+> needs κ_mix** (6/63 low-n high-sfe cells never fire even at f_κ=64) ✅; **slope was 2× too shallow** ❌
+> (my 6-anchor baseline θ₀(n) gave 0.41/dex; the real grid gives 1.13/dex). Use §8's measured numbers for any
+> magnitude; the §0–§6 composition below is the (partly-wrong) reasoning that the sweep tested. Artifacts:
+> `data/fkappa_nH_sweep.csv`, `data/make_fkappa_sweep_analysis.py`, `fkappa_sweep_analysis.png`.
+
 ## 0. TL;DR — the form you can use now
 
 ```
@@ -262,6 +271,42 @@ densities*, not circular tuning. (Credit: external review, 2026-06-29.)
 
 ---
 
+## 8. MEASURED — 819-combo sweep results & prediction scorecard (2026-06-29)
+
+The controlled grid (7 nCore × 3 mCloud × 3 sfe = 63 cells × 13 f_κ) ran on Helix; reduced to
+`data/fkappa_nH_sweep.csv` (per-cell θ(f_κ) fit + measured firing f_κ). Scored against the predictions
+this doc pre-registered **before** the data existed (`data/make_fkappa_sweep_analysis.py` →
+`data/fkappa_sweep_scorecard.csv`, `fkappa_sweep_analysis.png`):
+
+| # | pre-registered (§0–§3) | **measured (63 cells)** | grade |
+|---|---|---|---|
+| P1 slope | f_κ ∝ n^(−0.30) | **f_κ_fire ≈ 1.0×10³·n_core^(−0.60)** | ❌ 2× too shallow |
+| P2 de-conflation | fan-out, not one n_H curve | **×2–32 spread across mCloud/sfe at fixed n** | ✅ |
+| P3 baseline θ₀(n) | logit slope **0.41**/dex | logit slope **1.13**/dex (`logit θ₀ ≈ −3.4 + 1.13·log₁₀n`) | ❌ ~3× steeper |
+| P4 leverage p | 0.31 | median **0.21** (IQR 0.11–0.26) | ⚠ ballpark, point high |
+| physical | diffuse unreachable by f_κ → κ_mix | **6/63 cells never fire at f_κ≤64** (all low-n, high-sfe) | ✅ |
+
+**What this means.**
+- **The qualitative physics held.** f_κ falls steeply with density; it is **multi-dimensional** (not f(n_H)
+  alone — the fan-out); and the **diffuse, high-sfe corner is genuinely unreachable by a Spitzer boost** — the
+  6 never-fire cells are exactly where §5's saturation argument said you must switch to the El-Badry κ_mix
+  (Eq 21). Those are the load-bearing conclusions and they are now *measured*, not argued.
+- **The slope was 2× too shallow, and §0–§3 names the cause:** the composed form is only as good as its
+  baseline θ₀(n), and my **6-anchor θ₀(n) fit (0.41/dex) was badly undersampled** — the clean 63-cell grid
+  gives **1.13/dex**. A steeper θ₀(n) under a flat target ⇒ a steeper f_κ(n). The logistic-vs-raw-power leverage
+  debate (§3) turned out to be second-order next to this baseline error.
+- **The corrected central form** (use this for magnitudes): **f_κ_fire ≈ 1.0×10³·n_core^(−0.60)** for θ\*=0.95
+  → ≈ 65 (n=1e2) / 17 (1e3) / 4 (1e4) / 1 (1e5) — **but** with ×3–30 mCloud/sfe scatter, so quote it as a trend
+  with a band, not a point. The fan-out is the real headline: **f_κ(n_H) alone is not a sufficient
+  parametrization** — a usable calibration needs (n_core, mCloud, sfe), or a switch to the structural κ_mix.
+
+**Next (post-sweep):** the de-conflation says calibrate on more than n_H. Two clean follow-ups — (a) regress
+the measured f_κ_fire on (n_core, mCloud, sfe) to find the second axis; (b) given the never-fire corner, spec
+the gated El-Badry **κ_mix = (λδv)ρk_B/μm_p** mode (Eq 21, verified §7) for the diffuse end, default-off
+byte-identical. Both are dev-only.
+
+---
+
 ## 7. Provenance / caveats (read before citing a number)
 
 - **El-Badry now VERIFIED (2026-06-29):** the maintainer supplied the El-Badry+2019 PDF (pp. 5–6, 13, 15). Its
@@ -277,5 +322,6 @@ densities*, not circular tuning. (Credit: external review, 2026-06-29.)
   1902.09547 (not ApJ 879 / not Weinberg); Lancaster Paper I = 2104.07691, Paper II = 2104.07722.
 
 ---
-*Written 2026-06-29 on `feature/PdV-trigger-term-pt2`. Builder: `data/make_fkappa_functional_form.py`
-(reads `fmix_table.csv`, `kappa_blowout_calibration.csv`, `kappa_calibration_estimate.csv`; no sims).*
+*Written 2026-06-29 on `feature/PdV-trigger-term-pt2`. Builders (no sims): `data/make_fkappa_functional_form.py`
+(the composed pre-sweep form) and `data/make_fkappa_sweep_analysis.py` (the §8 scorecard, reads the committed
+sweep result `data/fkappa_nH_sweep.csv`).*

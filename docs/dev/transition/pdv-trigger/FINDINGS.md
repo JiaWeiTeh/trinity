@@ -49,6 +49,13 @@
 > hedge is retracted, and El-Badry's θ(n_H,λδv) target agrees with Lancaster to ~15% in f_κ. Citation: MNRAS
 > 490,1961 / Weisz / arXiv:1902.09547 (*not* ApJ 879). This supersedes the §2/§2a "[schematic/to-verify]" flags
 > for El-Badry's specific algebra.
+>
+> **→ SWEEP RESULTS (2026-06-29):** the 819-combo grid ran (Helix). Measured central trend **f_κ_fire ≈
+> 1.0×10³·n_core^(−0.60)** (θ\*=0.95) — steeper than the predicted n^(−0.30). **De-conflation = fan-out** (×2–32
+> spread across mCloud/sfe ⇒ f_κ is multi-dimensional, not f(n_H) alone), and **6/63 low-n high-sfe cells never
+> fire even at f_κ=64** (the diffuse corner needs the structural κ_mix). The pre-registered scorecard (2 ✅
+> qualitative, slope ❌ 2× too shallow from an undersampled 6-anchor baseline) is in `F_KAPPA_FUNCTIONAL_FORM.md`
+> §8 (`data/fkappa_nH_sweep.csv`, `data/make_fkappa_sweep_analysis.py`).
 
 What looks like "three ways to boost cooling" is really **two cooling-magnitude approaches on opposite sides
 of the structure solve, plus a separate trigger axis**. The key disambiguation: **"modify cooling like
