@@ -73,6 +73,19 @@ framing):**
   `f_κ(n_H)` mode (gated, default-off byte-identical).
 
 **Status ledger (newest first):**
+- **2026-06-28 (adopt the reduce-then-plot pattern for the 819-run sweep — HPC data handling).** A maintainer
+  flagged (with `paper/II-survey/reduce_survey.py` as precedent) that walking ~800 multi-GB `dictionary.jsonl`
+  with the numpy `harvest()` is the wrong shape for HPC: it needs the trinity env, can't run on a login node,
+  and assumes the data is local. Adopted the pattern: **`data/reduce_fkappa_sweep.py`** — a STDLIB-ONLY
+  (orjson/tqdm optional), streaming, `--workers` reducer that walks the sweep ONCE on HPC and writes one small
+  `summary.csv` (the multi-GB jsonl never leaves the cluster). It computes the calibration scalars
+  (θ_blowout = bubble_LTotal/Lmech_total at first R2>rCloud, θ_max, cooling_fired) **bit-identically to the
+  proven array `harvest()`** — validated by `--selftest` (streaming θ_blowout 0.667154 == harvest 0.667154 on
+  `cal_compact__k1`) and a 16-run smoke test (compact 0.667 / diffuse 0.169 / mid 0.610, all match). Refactored
+  `data/make_fkappa_nH_sweep.py` to **read only `summary.csv`** (no jsonl, no numpy-on-cluster, no trinity
+  import) — fits per (mCloud,sfe,nCore) cell + the de-conflation figure; validated end-to-end on a synthetic
+  819-row summary (recovers the injected θ∝f_κ^p and f_κ_fire). `REPRODUCE.md` Block C is now the 4-step
+  sweep → reduce(HPC) → rsync small CSV → plot(laptop). No production code touched.
 - **2026-06-28 (controlled f_κ(n_H) calibration sweep — built, HPC-ready, not yet run; broadened to 819).**
   The clean replacement for the conflated 3-anchor estimate (compact/mid/diffuse vary mCloud+sfe+nCore
   together). `runs/params/sweep_fkappa_nH.param` sweeps **nCore [1e2,3e2,1e3,3e3,1e4,3e4,1e5] (primary, fine) ×
