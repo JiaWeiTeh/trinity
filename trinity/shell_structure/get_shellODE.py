@@ -82,7 +82,7 @@ def get_shellODE(y,
     chi_e = params['chi_e_shell'].value   # shell electron factor (singly ionised)
     t_ion = params['TShell_ion'].value
     t_neu = params['TShell_neu'].value
-    alpha_B = params['caseB_alpha'].value  #cm3/s (au)
+    alpha_B = params['caseB_alpha'].value  # case-B recombination coeff [code units; physically cm^3/s]
     k_B = params['k_B'].value  
     c = params['c_light'].value  
     Ln = params['Ln'].value  

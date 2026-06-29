@@ -610,7 +610,7 @@ def get_residual_detailed(
 # =============================================================================
 
 def _get_betadelta_solver(params) -> str:
-    """The configured beta-delta solver ('legacy' default).
+    """The configured beta-delta solver (production default 'hybr').
 
     Robust to params that predate the ``betadelta_solver`` key (e.g. the
     unit-test fixtures), which fall back to the legacy path.
@@ -630,9 +630,9 @@ def solve_betadelta_pure(
 ) -> BetaDeltaResult:
     """Dispatch to the configured beta-delta solver (``betadelta_solver``).
 
-    'legacy' (default) is the bounded grid + L-BFGS-B search, byte-identical
-    to the pre-switch behaviour. 'hybr' is the unbounded scipy root-finder
-    with a physical dMdt>0 acceptance gate (Phase 3) — not yet wired in.
+    'hybr' (production default) is the unbounded scipy root-finder with a
+    physical dMdt>0 acceptance gate. 'legacy' is the bounded grid + L-BFGS-B
+    search, byte-identical to the pre-switch behaviour.
     """
     solver = _get_betadelta_solver(params)
     if solver == 'legacy':

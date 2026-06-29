@@ -12,7 +12,7 @@ frozen-dataclass + module-level tuple pattern).  Consumed by:
 * ``tools/gen_default_param.py`` (Phase 3+ regenerates
   ``default.param`` from the registry).
 
-The registry is fully populated (187 specs) and live for run-const /
+The registry is fully populated (200 specs) and live for run-const /
 metadata derivation (Phase 5), validation (Phase 6), sentinel
 resolution (Phase 7), conditional schema (Phase 8), and runtime/
 derived-init materialization (Phase 9); Step 6's derived-init

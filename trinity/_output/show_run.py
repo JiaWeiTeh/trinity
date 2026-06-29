@@ -24,8 +24,8 @@ Exit codes
   successful per ``output.is_successful_run``).
 * 1 — run directory not found, or both ``metadata.json`` and
   ``simulationEnd.txt`` missing.
-* 2..9 — with ``--quiet``, the run's own ``exit_code`` from the
-  termination block (capped at 9 so it fits in POSIX).
+* 1..9 — with ``--quiet``, the run's own ``exit_code`` from the
+  termination block (floored at 1, capped at 9 so it fits in POSIX).
 """
 
 from __future__ import annotations

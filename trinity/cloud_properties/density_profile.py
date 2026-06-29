@@ -37,7 +37,7 @@ def _is_scalar(x) -> bool:
 
 
 def _to_array(x) -> np.ndarray:
-    """Convert input to numpy array, preserving dtype."""
+    """Convert input to a 1-D float numpy array."""
     return np.atleast_1d(np.asarray(x, dtype=float))
 
 

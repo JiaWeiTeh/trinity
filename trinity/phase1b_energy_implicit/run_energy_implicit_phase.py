@@ -30,10 +30,11 @@ to the same timestamp (t_now). The snapshot includes:
 
 Beta-Delta Solver
 -----------------
-The beta-delta solver (get_betadelta.py) uses:
-1. Grid search first (5x5 grid by default, GRID_SIZE=5)
-2. L-BFGS-B fallback only if grid residual > LBFGSB_FALLBACK_THRESHOLD
-3. Best result selection from all candidates
+The beta-delta solver (get_betadelta.py) is selectable via the
+``betadelta_solver`` parameter (production default 'hybr'):
+- 'hybr': unbounded scipy root-finder with a physical dMdt>0 acceptance gate.
+- 'legacy': grid search (5x5, GRID_SIZE=5), then L-BFGS-B fallback only if the
+  grid residual > LBFGSB_FALLBACK_THRESHOLD, then best-of-candidates.
 
 The solver returns a BetaDeltaResult dataclass with:
 - beta, delta: Cooling parameters
@@ -115,7 +116,7 @@ MAX_SEGMENTS = 5000
 FOUR_PI = 4.0 * np.pi
 
 # Adaptive stepping parameters
-ADAPTIVE_THRESHOLD_DEX = 0.05  # dex - threshold for parameter change (10^0.1 ≈ 1.26x)
+ADAPTIVE_THRESHOLD_DEX = 0.05  # dex - threshold for parameter change (10^0.05 ≈ 1.12x)
 ADAPTIVE_FACTOR = 10**0.1     # Factor to increase/decrease DT_SEGMENT (~1.26)
 
 # Consecutive unconverged beta-delta solves before a WARNING is logged
@@ -1090,7 +1091,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
 
         # Shell mass update for adaptive stepping comparison.
         # Apply the same collapse-freeze and never-decrease guards as the
-        # primary shell mass block (lines 642-662).
+        # primary shell mass block above.
         prev_mShell_post = params['shell_mass'].value
         is_collapse_post = params.get('isCollapse', None)
         is_collapse_post_val = is_collapse_post.value if is_collapse_post and hasattr(is_collapse_post, 'value') else False

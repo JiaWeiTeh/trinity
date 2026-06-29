@@ -321,7 +321,7 @@ def create_BE_sphere(
     Optional:
     ---------
     mu : float
-        Mean molecular weight for mass conversion [m_H units] (default: 1.4 = mu_convert)
+        Mean molecular weight for mass conversion [Msun] (production passes mu_convert ≈ 1.4·m_H in Msun; the 1.4 default arg is a placeholder)
     gamma : float
         Adiabatic index (default: 5/3)
     validate : bool
@@ -339,7 +339,7 @@ def create_BE_sphere(
     1. Solve Lane-Emden equation (or use cached solution)
     2. Find ξ_out where ρ/ρc = 1/Omega (direct lookup)
     3. Get m(ξ_out) from Lane-Emden solution (direct lookup)
-    4. Calculate c_s from: M = m × ρc × a³ where a = c_s/√(4πGρc)
+    4. Calculate c_s from: M = 4π × m × ρc × a³ where a = c_s/√(4πGρc)
     5. Convert to physical units
 
     No nested optimization needed!

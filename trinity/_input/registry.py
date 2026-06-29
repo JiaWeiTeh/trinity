@@ -603,8 +603,8 @@ def materialize_runtime(params) -> None:
     the spec, which matches today's behavior since the original Step
     10 also constructed them after Step 9.
 
-    Today this adds 103 items: 9 with ``exclude_from_snapshot=True``
-    (the cooling cubes, sps_data/sps_f, the rcloud counter) and 94
+    Today this adds 106 items: 9 with ``exclude_from_snapshot=True``
+    (the cooling cubes, sps_data/sps_f, the rcloud counter) and 97
     with False (time-varying simulation state — bubble_*, shell_*,
     forces, residuals, etc.).  mCloud_input / mCluster (Step 6) and
     sps_column_map (Step 7) are pre-added and skipped here.

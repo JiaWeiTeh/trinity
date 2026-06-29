@@ -3,12 +3,14 @@
 """
 Atomic read/write helpers for ``metadata.json``.
 
-Two writers touch ``metadata.json`` over the lifetime of a run:
+Three writers touch ``metadata.json`` over the lifetime of a run:
 
 * ``DescribedDict.flush()`` writes the run-constants on the first flush
   (typically at run start, when the first batch of snapshots is saved).
 * ``write_simulation_end()`` updates the file at run end to add the
   ``termination`` and ``final_state`` blocks.
+* ``write_termination_debug_report()`` merges the ``termination_debug``
+  block at emergency-flush time.
 
 This module exposes the small helpers both writers share so the write
 path is uniform — atomic temp-file + rename, identical JSON formatting

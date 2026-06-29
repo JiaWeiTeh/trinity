@@ -25,7 +25,7 @@ All quantities are in code units [Msun, pc, Myr] after conversion by read_param.
 - nCore: number density [1/pc³] (converted from cm⁻³ via ndens_cgs2au)
 - mCloud: cloud mass [Msun]
 - rCloud, rCore: radii [pc]
-- mu_ion: mean molecular weight [Msun] (converted from m_H)
+- mu: mean molecular weight [Msun] (converted from m_H)
 """
 
 import logging

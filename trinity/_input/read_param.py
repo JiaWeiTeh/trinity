@@ -433,7 +433,7 @@ def read_param(path2file):
     # =============================================================================
     # Pops keys whose active_when predicate is False (e.g. densPL_alpha on
     # a densBE run, densBE_Omega on a densPL run) and adds keys whose
-    # predicate is True but which aren't yet present (e.g. the 8
+    # predicate is True but which aren't yet present (e.g. the 9
     # densBE_* runtime params on a densBE run). All metadata (info, unit,
     # exclude_from_snapshot) comes from the spec; mutable defaults are
     # deep-copied so runs don't share state. Step 9 below sweeps
@@ -462,9 +462,9 @@ def read_param(path2file):
     # For every spec not yet in params (i.e. not from default.param,
     # resolve_all, or apply_active_when) and not gated by active_when
     # (Phase 8) or consumed_by (Phase 7's sps_path bundle), create a
-    # fresh DescribedItem from spec metadata.  Default 103 adds today:
+    # fresh DescribedItem from spec metadata.  Default 106 adds today:
     # 9 with exclude_from_snapshot=True (cooling cubes, sps_data/sps_f,
-    # rcloud counter) and 94 with False (time-varying simulation state
+    # rcloud counter) and 97 with False (time-varying simulation state
     # -- bubble_*, shell_*, forces, residuals -- that snapshots stream).
     # Must run after Step 9; new items' exclude_from_snapshot comes
     # straight from the spec and bypasses Step 9's sweep, matching the

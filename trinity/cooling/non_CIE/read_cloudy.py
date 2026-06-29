@@ -38,7 +38,10 @@ def get_coolingStructure(params):
     cooling_data: A class which includes
         .datacube: the cooling datacube. See create_cubes()
         .interp: interpolation function for triplets in the cube
-        .(ndens, temp, phi) [in astropy units]: available values for the triplets (log_ndens_arr, log_temp_arr, log_phi_arr)
+        .(ndens, temp, phi): log10 arrays (log cm⁻³, log K, log cm⁻²s⁻¹) for
+            the triplets (log_ndens_arr, log_temp_arr, log_phi_arr)
+    heating_data: the heating datacube class (same structure as cooling_data)
+    netcooling_interpolation: RegularGridInterpolator for net cooling
 
     """
     
@@ -221,7 +224,7 @@ def create_cubes(filename, path2cooling):
     cool_table = np.transpose(np.vstack([ndens_data, temp_data, phi_data, cooling_data]))
     # go from ndens, then T, then phi.
     cool_cube = np.empty((len(log_ndens_arr), len(log_temp_arr),len(log_phi_arr)))
-    # size = (31, 21, 22), meaning 31 slices of (21x22) arrays
+    # size = (n_ndens, n_temp, n_phi), e.g. (33, 21, 22) for the bundled Z1.00 tables
     cool_cube[:] = np.nan
     
     # fill in cooling cube
