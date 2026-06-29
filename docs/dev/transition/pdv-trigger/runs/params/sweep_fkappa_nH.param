@@ -1,0 +1,34 @@
+# Controlled f_kappa(n_H) calibration sweep — broadened HPC grid (de-conflates n_H from mCloud, sfe).
+# ============================================================================================
+# WHY: the original 3 calibration anchors (compact/mid/diffuse) varied mCloud AND sfe AND nCore
+# together, so "f_kappa(n_H)" was conflated. This grid sweeps nCore FINELY as the primary axis,
+# AND varies mCloud + sfe as secondary axes -- so we can SEE whether the f_kappa needed to fire
+# the cooling transition (theta->0.95) is a clean function of n_H alone, or also depends on cloud
+# mass / star-formation efficiency. f_kappa is swept FINE (13 values) so the firing point is
+# BRACKETED precisely at every density (dense fires ~4, diffuse ~60), not extrapolated.
+#
+# GRID = 7 nCore x 13 f_kappa x 3 mCloud x 3 sfe = 819 runs (HPC; under the 1000 ceiling).
+# nCore capped at 1e5 ON PURPOSE -- 1e6 is pathologically stiff/slow for the implicit solve
+# (data/dense_stiffness_diag.csv; NOT f_kappa-driven). rCloud stays < the 200 pc rCloud_max
+# ceiling across the whole grid (max is mCloud 1e7 x nCore 1e2 ~ 70-85 pc).
+#
+# RUN (HPC only -- do NOT run 819 combos in an ephemeral container):
+#   python run.py docs/dev/transition/pdv-trigger/runs/params/sweep_fkappa_nH.param --dry-run   # lists 819
+#   python run.py docs/dev/transition/pdv-trigger/runs/params/sweep_fkappa_nH.param --emit-jobs jobs/
+#   sbatch jobs/submit_sweep.sbatch        # SLURM array 1-819; cap concurrency with --workers K
+#   python docs/dev/transition/pdv-trigger/data/make_fkappa_nH_sweep.py   # harvest + fit f_kappa_fire
+
+# --- swept (Cartesian: 7 x 13 x 3 x 3 = 819) ---
+nCore                  [1e2, 3e2, 1e3, 3e3, 1e4, 3e4, 1e5]
+cooling_boost_kappa    [1.0, 1.5, 2.0, 3.0, 4.0, 6.0, 8.0, 12.0, 16.0, 24.0, 32.0, 48.0, 64.0]
+mCloud                 [1e5, 1e6, 1e7]
+sfe                    [0.03, 0.1, 0.3]
+
+# --- fixed ---
+dens_profile           densPL
+densPL_alpha           0
+nISM                   0.1
+stop_t                 2.0
+log_console            False
+log_file               True
+path2output            outputs/sweep_fkappa_nH
