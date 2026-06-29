@@ -61,6 +61,14 @@ source (knob `registry.py`, equation file:line); no assumptions.
 the loss single-count. Current direction = **B** (κ_eff), calibrated to a density-dependent target, with **C**
 (PdV) as an optional timing assist.
 
+**f_κ vs f_mix (row B vs row A — not the same knob; report §14).** f_mix scales the *output* L_cool
+(`L_loss=L_leak+f_mix·L_cool`); f_κ scales the *conduction coefficient* (`κ_eff=f_κ·C_th·T^(5/2)`, L_cool
+emerges). Magnitude: measured `f_κ=2 ≈ f_mix 1.2–1.5` (matched-t back-reaction); as a power law `θ∝f_κ^p`
+(p≈0.2–0.4 measured), so `f_mix≈f_κ^p` and inverting `f_κ≈f_mix^(1/p) ≫ f_mix` — which is why §3's firing
+f_mix (1.4–3.8) and §13's firing f_κ (~4–60) look so different (same physics, two parametrisations). **But
+the deeper difference:** f_mix touches only L_cool (bubble unchanged); f_κ self-consistently raises dMdt∝f_κ^(2/7),
+drains Eb, lowers Pb (θ emerges) — so even at matched L_cool the trajectories differ. **Not interchangeable.**
+
 ## 0. What the verification changed (errors caught and fixed)
 1. **§2 gap numbers were wrong.** An earlier draft said "gap ~0.45 (diffuse) → ~0.25 (dense), shrinking."
    Recomputing the gap from the *actual* plotted band function gives a **non-monotonic** result and a
