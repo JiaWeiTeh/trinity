@@ -102,6 +102,14 @@ framing):**
   denser n_H full-run grid to pin `f_κ(n_H)`, then wire `cooling_boost_kappa` as an optional density-dependent
   `f_κ(n_H)` mode (gated, default-off byte-identical).
 
+> **📏 STANDING RULE (maintainer, AUTHORITATIVE, 2026-06-30): run every run to AT LEAST 5 Myr.** Never cap
+> `stop_t` short for cheapness — the energy→momentum transition epoch is θ's *peak*, which sits ~0.4–1 Myr and
+> the bubble keeps evolving for several Myr; a run capped at 0.3 Myr stops *before* the transition-relevant
+> physics. **Only exception:** a run the physics ends sooner (blowout / `ENERGY_COLLAPSED`) — that is the run's
+> fate, not a truncation. **Audit (2026-06-30):** ✅ the current κ_mix conclusions use the 6 Myr cleanroom runs;
+> ❌ the `cal_*` anchors behind `KMIX_PROTOTYPE.md` were capped 0.3–1.0 Myr ("just past blowout, to keep cheap")
+> → re-derive those from ≥5 Myr runs before trusting their Pb numbers. f1edge_lowdens (3 Myr) is also short.
+
 **Status ledger (newest first):**
 - **2026-06-30 (κ_mix TIME-RESOLVED θ — the blowout metric was the WRONG epoch; walks back "only 1/6 fires").**
   `make_kmix_theta_trajectory.py` re-solved κ_mix across ~14 rows/config of the implicit phase (not the single

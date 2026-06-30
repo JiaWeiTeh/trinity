@@ -48,6 +48,13 @@ Unit conversions made explicit in the builder (dimensional self-check printed):
 - **`λδv` in pc·km/s → cm²/s** via `× 3.086×10²³`.
 - `C_th = 6×10⁻⁷`, `k_B = 1.380649×10⁻¹⁶` are cgs (registry); `T` in K. All combined in cgs.
 
+> **⚠️ TRUNCATED-DATA CAVEAT (2026-06-30): the `cal_*` Pb anchors below are from runs capped at 0.3–1.0 Myr**
+> ("just past blowout, to keep cheap"), which is *before* the θ-peak/transition epoch (~0.4–1 Myr). The GO
+> conclusion is qualitatively robust (κ_mix dominates the cool layer at *any* Pb, and early-phase Pb is if
+> anything *higher*), but the specific Pb medians here are early-phase-biased. **Per the standing ≥5 Myr rule
+> (`PLAN.md`), re-derive these anchors from full ≥5 Myr runs before using the numbers quantitatively.** The
+> self-consistent/time-resolved conclusions (`KMIX_SELFCONSISTENT.md`) already use full 6 Myr cleanroom runs.
+
 ## 2. Result (4 clean density anchors, run in-container 2026-06-30; units-correct)
 
 The 4 `cal_*` f_κ=1 baselines were **run in the container** (each ~12 min, all `STOPPING_TIME` at t=0.3 Myr;
