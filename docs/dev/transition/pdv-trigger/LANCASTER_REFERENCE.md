@@ -22,16 +22,18 @@
 There are **several** Lancaster papers; this workstream needs facts from **three different ones**, so don't
 collapse them to one citation:
 
-| short cite | arXiv / ref | what it gives us |
+| short cite | ref | what it gives us |
 |---|---|---|
-| **Lancaster 2021b** | 2104.07691 (ApJ 914, 90), "Efficiently Cooled Stellar Wind Bubbles … I: Theory" | the **momentum-driven** theory: 3D interface mixing → efficient cooling → bubble follows momentum-driven (not energy-driven) |
-| **Lancaster 2021c** | 2104.07722 (ApJ 914, 91), "… II: Validation with 3D sims" | the **θ ~ 0.9–0.99** cooling-efficiency result (the magnitude anchor this workstream uses) |
+| **Lancaster 2021, Paper I** | ApJ 914 (Theory; companion to below) | the **momentum-driven** theory: 3D interface mixing at a *fractal* bubble/shell interface → efficient cooling → bubble follows a momentum-driven "efficiently-cooled" (EC) solution, not energy-driven |
+| **Lancaster 2021, Paper II** | **ApJ 914, 90** (2021), "Efficiently Cooled Stellar Wind Bubbles in Turbulent Clouds. II. Validation with Hydrodynamic Simulations" | **the θ-magnitude anchor — verified here in §7 (one of the supplied PDFs).** 3D sims: **Θ = 0.9–0.99**, αp~1.2–4, generic over nH≈40–2×10⁵ |
 | **Lancaster 2024** | (Lancaster, Ostriker, Kim+ 2024) | the **αp ↔ ⟨vout⟩** boundary condition: matching interface energy fluxes sets the momentum enhancement |
-| **Lancaster 2025** | **2505.22730v1** (May 2025), "Co-Evolution of Wind Bubbles & Photoionized Gas I" | **THIS PDF** — the semi-analytic Co-Evolution Model (CEM); *uses* θ and αp from the above; adds the wind-vs-PIR ζ framework |
+| **Lancaster 2025** | **2505.22730v1** (May 2025), "Co-Evolution of Wind Bubbles & Photoionized Gas I" | the semi-analytic Co-Evolution Model (CEM); *uses* θ and αp from the above; adds the wind-vs-PIR ζ framework (§1–§6 below) |
 
-**So "Lancaster 2021" was NOT wrong for the θ~0.9–0.99 claim** (that's 2021c). The 2025 PDF the maintainer
-supplied is a *newer, different* paper (the CEM). Cite the θ magnitude as **Lancaster 2021c**; cite the
-(1−θ)/αp framework + the wind+PIR co-evolution as **Lancaster 2025** (this PDF).
+**⚠️ Two corrections (2026-06-30, from reading the actual ApJ 914, 90 PDF):** (1) **ApJ 914, 90 is Paper II
+(the *sims/validation* paper), not the theory paper** — I had it as "I: Theory" before; the title is literally
+"II. Validation … with Hydrodynamic Simulations." The companion Paper I (Theory) is a separate article. (2) So
+the θ~0.9–0.99 anchor is **Lancaster 2021 Paper II (ApJ 914, 90)** — §7 has the verified numbers. "2021" was
+right; the 2025 PDF is a *different, newer* paper (the CEM, §1–§6).
 
 ## 1. The one-paragraph takeaway (what this 2025 paper gives TRINITY)
 
@@ -105,4 +107,41 @@ PdV-exclusive; `ebpeak` (`Edot_from_balance = Lmech − Lloss − 4πR2²v2·Pb 
 the PdV-inclusive criterion. For **massive clusters** (large Lw ⇒ large PdV), the PdV-inclusive criterion fires
 earlier and is the more physical transition — consistent with Lancaster's momentum-driven (αp→1) picture.
 
-*Transcribed from arXiv:2505.22730v1 on 2026-06-30, `feature/PdV-trigger-term-pt2`. No production code touched.*
+## 7. Lancaster 2021 Paper II (ApJ 914, 90) — the sims paper, verified numbers (the θ anchor)
+
+Read the actual PDF 2026-06-30. This is the **3D-hydro validation** of the efficiently-cooled (EC) theory.
+The numbers TRINITY's calibration rests on:
+
+- **Θ ≡ Ė_cool/Lw = 0.9–0.99** (the cooling fraction). They report the *retained* fraction
+  **1−Θ ~ 0.1–0.01**, decreasing in time **∝ t^{−1/2}**, **for ALL models**. (Same θ as El-Badry/TRINITY.)
+  Energy-retention formula (Eq 10): `1−Θ = (αR·ḃ/Vw)(1+fturb) / (2(1+αp))` — so 1−Θ tracks the bubble
+  expansion speed ḃ relative to the wind speed Vw; as the bubble slows (ḃ ∝ t^{−1/2}), 1−Θ → 0, Θ → 1.
+- **EC dynamics (momentum-driven):** `p_r = αp·ṗw·t` (Eq 3), `R_b ∝ (αp ṗw/ρ̄)^{1/4} t^{1/2}` (Eq 5) —
+  shallower than energy-driven t^{3/5}. **αp ≈ Ξ within 6%** (momentum enhancement ≈ energy enhancement).
+- **Measured αp ~ 1.2–4** (near the momentum-driven αp≈1, slightly enhanced). Fractal interface excess
+  dimension d~0.4–0.7 (so D~2.4–2.7); turbulent velocity in the hot gas near the interface **vt ~ 200–400
+  km/s** (this is Lancaster's physical mixing driver — the analogue of El-Badry's δv).
+- **Density range tested: nH ≈ 40 to 2×10⁵ cm⁻³** (Mcloud = 5×10⁴, 10⁵, 5×10⁵ M☉; Rcloud = 2.5, 5, 10, 20 pc;
+  uniform-ρ̄ turbulent boxes). "Generic over >3 orders of magnitude in density" and **density-insensitive** —
+  but note the weak trend: 1−Θ ∝ ḃ/Vw ∝ ρ̄^{−1/4}, so **Θ rises weakly with density** (SAME sign as El-Badry).
+
+### 7a. What this DECIDES for TRINITY (route a vs b, and the λδv value)
+
+- **Lancaster's plateau is GMC-only (nH ≳ 40); it does NOT test diffuse ISM.** Their lowest density (~40 cm⁻³,
+  the 5×10⁴ M☉ / 20 pc GMC) is still a dense cloud. So **Lancaster cannot adjudicate the diffuse end.**
+- **Over the GMC range Lancaster and El-Badry AGREE** — both give Θ≈0.9–0.99 and both *rise* with n. (El-Badry
+  at λδv=1: θ(40)=0.92, θ(2e5)=0.998 — right on the Lancaster band.) So the two 3D/1D anchors corroborate each
+  other where they overlap.
+- **Route-a is therefore the best-supported answer at the diffuse end:** below Lancaster's tested range
+  (nH ≲ 40), only El-Badry's √n speaks, and it gives θ < 0.9 → **diffuse clouds genuinely stay energy-driven**
+  (the user's "some clouds can't transition" — yes, the diffuse ones, *uncontradicted* by Lancaster). This is
+  the falsifiable critical-density prediction.
+- **λδv calibration (refined):** to make TRINITY's trigger fire (θ≥0.95) across Lancaster's *whole* momentum-
+  driven GMC range (down to nH~40), need θ(λδv, 40) ≥ 0.95 ⟹ **λδv ≈ 3.5 pc·km/s** (n_fire ≈ 48). This is also
+  **El-Badry's own calibration value (A_mix=3.5 was fit at λδv=3)** — doubly anchored. So adopt **λδv ≈ 3**
+  (n_fire ≈ 50): GMC clouds (nH ≳ 50) transition; diffuse clouds (nH ≲ 50) stay energy-driven = fate. *(At
+  λδv=1, n_fire=143 would wrongly exclude Lancaster's nH~40–140 momentum-driven clouds — so λδv=1 is a bit low;
+  ~3 matches Lancaster better.)*
+
+*Transcribed from ApJ 914, 90 (Lancaster+2021 Paper II) and arXiv:2505.22730v1 (Lancaster+2025) on 2026-06-30,
+`feature/PdV-trigger-term-pt2`. No production code touched.*

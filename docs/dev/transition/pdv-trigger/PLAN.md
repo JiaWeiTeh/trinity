@@ -128,6 +128,18 @@ framing):**
 > → re-derive those from ≥5 Myr runs before trusting their Pb numbers. f1edge_lowdens (3 Myr) is also short.
 
 **Status ledger (newest first):**
+- **2026-06-30 (Lancaster 2021 Paper II read → λδv CALIBRATION resolved + route-a confirmed at the diffuse end;
+  `LANCASTER_REFERENCE.md` §7).** Read ApJ 914, 90 (Lancaster+2021 Paper II, the 3D-sims validation). **Verified
+  numbers:** Θ≡Ė_cool/Lw = **0.9–0.99** (retained 1−Θ~0.1–0.01, ∝t^{−1/2}, Eq 10) for ALL models; αp~1.2–4;
+  fractal interface D~2.4–2.7; turbulent vt~200–400 km/s (their δv analogue); **density range nH≈40–2×10⁵**
+  (GMC/clump, NOT diffuse). **Paper-ID fix:** ApJ 914, 90 is **Paper II (sims)**, not the theory paper (I had it
+  backwards). **Decisive for route a/b:** Lancaster's plateau is **GMC-only (nH≳40)** and AGREES with El-Badry
+  there (both Θ≈0.9–0.99, both rising with n) — but Lancaster **does NOT test diffuse ISM**, so it does not
+  contradict El-Badry's √n drop at low n. ⇒ **route-a stands: diffuse clouds (nH≲50) genuinely stay
+  energy-driven** (answers "can some clouds not transition" — yes, the diffuse ones). **λδv CALIBRATION:** to
+  fire (θ≥0.95) across Lancaster's whole momentum-driven GMC range (down to nH~40) needs **λδv≈3–3.5**
+  (n_fire≈48) — which is *also* El-Badry's own calibration value (A_mix=3.5 fit at λδv=3). **Adopt λδv≈3**
+  (n_fire≈50). (λδv=1 → n_fire=143 would wrongly exclude Lancaster's nH~40–140 clouds.) No code; no sims.
 - **2026-06-30 (Lancaster 2025 read + the PdV-inclusivity question answered; new doc `LANCASTER_REFERENCE.md`,
   imprint banners on both reference docs).** Read arXiv:2505.22730v1 (Lancaster 2025, "Co-Evolution of Wind
   Bubbles & Photoionized Gas I" — the CEM). **Confirms** Lancaster's `θ ≡ Ė_cool/Lw` = El-Badry's = TRINITY's,
