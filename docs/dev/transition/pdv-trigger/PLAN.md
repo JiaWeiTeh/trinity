@@ -82,9 +82,10 @@ let TRINITY's wrong-trend *resolved* θ win at some epoch — check, and prefer 
 (diffuse fate) is a *prediction*, untested below nH~40 by either paper; (4) θ→1 dense-core behaviour needs the
 ceiling to stay numerically sane.
 
-**BEST PATH FORWARD:** (i) write the gated `theta_elbadry` mode **spec** (θ(λδv≈3, n_amb(R2)), θ_max,
-ebpeak pairing, byte-identical-off proof, 8-config + ≥5 Myr test) → (ii) implement (default-off) → (iii)
-validate on the 8 configs to ≥5 Myr, reading firing by **first-crossing** (never blowout). Evidence chain:
+**BEST PATH FORWARD:** (i) ✅ **spec written** — `THETA_ELBADRY_SPEC.md` (θ(λδv≈3, n_amb(R2)), θ_max, ebpeak
+pairing, byte-identical-off proof, 8-config + ≥5 Myr test; 3 registry params + 1 `effective_Lloss` branch) →
+(ii) **implement** (default-off, byte-identical) → (iii) validate on the 8 configs to ≥5 Myr, reading firing by
+**first-crossing** (never blowout). Evidence chain:
 `ELBADRY_REFERENCE.md` (θ, closed form, n-mapping, theta_target verification) · `LANCASTER_REFERENCE.md` (θ
 magnitude, λδv≈3, route-a) · `KMIX_SELFCONSISTENT.md` (why the structural port was shelved).
 
@@ -132,6 +133,17 @@ for provenance.*
 > → re-derive those from ≥5 Myr runs before trusting their Pb numbers. f1edge_lowdens (3 Myr) is also short.
 
 **Status ledger (newest first):**
+- **2026-06-30 (CAPSTONE SPEC written — `THETA_ELBADRY_SPEC.md`; the path is off-paper-ready).** Consolidated
+  every resolved decision into one implementation-ready spec for the gated `theta_elbadry` mode: **3 registry
+  params** (`cooling_boost_mode='theta_elbadry'`, `cooling_boost_lambda_dv` default 0=off/set 3.0,
+  `cooling_boost_theta_max`=0.99) + **1 branch** in `effective_Lloss_from_params` (`get_betadelta.py:360`) that
+  computes θ=A_mix√(λδv·n_amb(R2))/(11/5+…) per step (A_mix=3.5; n_amb via `get_density_profile(R2)` pc⁻³→cm⁻³)
+  and reuses the *verified* `theta_target` (1−θ) budget — no κ_mix port, no structural change. Byte-identical-off
+  by construction (`mode='none'`→`Lcool+Lleak`). Pairs with `transition_trigger='cooling_balance,ebpeak'` (PdV).
+  Flags the `max(resolved,target)` subtlety as a **test gate** (log where resolved wins; switch to direct
+  θ_target if the diffuse end misbehaves). Test plan: unit (byte-identical-off + θ matches the calculator) →
+  8-config ≥5 Myr on-runs (fate pattern vs n_fire≈50, first-crossing firing, resolved-wins fraction). NEXT =
+  implement per the spec. No production code; no sims.
 - **2026-06-30 (Lancaster 2021 Paper II read → λδv CALIBRATION resolved + route-a confirmed at the diffuse end;
   `LANCASTER_REFERENCE.md` §7).** Read ApJ 914, 90 (Lancaster+2021 Paper II, the 3D-sims validation). **Verified
   numbers:** Θ≡Ė_cool/Lw = **0.9–0.99** (retained 1−Θ~0.1–0.01, ∝t^{−1/2}, Eq 10) for ALL models; αp~1.2–4;
