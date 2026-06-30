@@ -85,6 +85,18 @@ framing):**
   `f_κ(n_H)` mode (gated, default-off byte-identical).
 
 **Status ledger (newest first):**
+- **2026-06-29 (κ_mix OFFLINE PROTOTYPE — step 1 of Rung-B, GO; + master `INDEX.md`).** Built the offline scoping
+  harness (`data/make_kmix_prototype.py` → `data/kmix_prototype.csv` + `kmix_prototype.png`; reads committed
+  `runs/data/harvest_*.csv`, **no solver touched, no sims**) — the de-risk step the guardrail requires before any
+  wiring. **Units handled explicitly** (the bug class): `Pb` is AU `Msun/Myr²/pc` → cgs via `/1.5454e12`
+  (`Pb_cgs2au`); λδv pc·km/s → cm²/s ×3.086e23; dimensional self-check printed. Result: at the front
+  (`n=Pb/k_B T`), `κ_mix/κ_Spitzer = λδv·Pb/(C_th·T^{7/2})`, and in the cool layer (2e4–2e5 K) **κ_mix dominates
+  Spitzer by 10³–10⁹ even at λδv=1** across compact/diffuse/dense (T_cross 2.7e5–1.2e7 K, above the layer) →
+  **GO**: κ_mix would restructure the front, it is not negligible. Equally: even λδv≪1 dominates, so λδv is the
+  **sensitive magnitude knob** — calibrate to Lancaster, never crank. Coverage: **4 of 8 configs** (heavy harvest
+  is a stub; the other 4 need HPC Pb(t)); the 3 covered span the regime range so the GO holds. Next (still
+  pre-production): self-consistent re-solve with κ_mix injected, all 8 configs, byte-identical-off. Also added
+  **`INDEX.md`** (master map: reading order, the doc timeline/phase/purpose table, the κ_mix implementation track).
 - **2026-06-29 (maintainer MANUSCRIPT DRAFT verified + folded; new doc `KMIX_DIFFUSIVITY.md`).** Line-by-line
   checked a 2-section LaTeX draft ("A functional form for the conduction multiplier" + "Where the mixing
   diffusivity comes from") + claims table against our committed results. **~90% matches** (f_mix=f_κ^q with

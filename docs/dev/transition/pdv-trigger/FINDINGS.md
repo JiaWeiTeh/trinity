@@ -85,6 +85,12 @@
 > Lancaster 0.9–0.99** (the cadence-free magnitude anchor). Flags: the draft's "sweep not yet run" is stale (it
 > fanned out); the eddy-turnover λ closure is heuristic; route a (diffuse energy-driven) vs b (κ_mix under-cooling)
 > stays open until κ_mix is wired + tested on all 8 configs.
+>
+> **→ κ_mix offline prototype (2026-06-29, `KMIX_PROTOTYPE.md`):** step 1 of the Rung-B implementation, **GO**.
+> Offline, units-correct (Pb AU→cgs /1.5454e12; λδv→cm²/s), no solver touched. At the front
+> `κ_mix/κ_Spitzer = λδv·Pb/(C_th·T^{7/2})`: in the cool layer (2e4–2e5 K) **κ_mix dominates Spitzer 10³–10⁹ even
+> at λδv=1** (compact/diffuse/dense; 4 of 8 configs) → wiring warranted, but λδv is the sensitive knob (calibrate
+> to Lancaster). Master navigation now in **`INDEX.md`**.
 
 What looks like "three ways to boost cooling" is really **two cooling-magnitude approaches on opposite sides
 of the structure solve, plus a separate trigger axis**. The key disambiguation: **"modify cooling like
