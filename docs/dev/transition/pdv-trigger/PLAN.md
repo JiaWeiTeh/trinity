@@ -103,6 +103,18 @@ framing):**
   `f_κ(n_H)` mode (gated, default-off byte-identical).
 
 **Status ledger (newest first):**
+- **2026-06-30 (κ_mix TIME-RESOLVED θ — the blowout metric was the WRONG epoch; walks back "only 1/6 fires").**
+  `make_kmix_theta_trajectory.py` re-solved κ_mix across ~14 rows/config of the implicit phase (not the single
+  near-blowout row §2 used). **θ peaks EARLY (high Pb ⇒ κ_mix most dominant) and decays — blowout is the
+  low-θ *tail*.** So §2 sampled the minimum: `be_sphere`/`midrange` (n=1e4) blowout θ≈0.23 but
+  **trajectory-max 1.84/1.14** (would fire). Robust conclusions: λδv still saturates (not a dial); **dense
+  (n≥1e5) stay low** (θ_max≲0.5) — that ceiling holds. **Open:** the decisive **early high-Pb epochs FAIL to
+  solve** with the hard-max injection (0/4 early rows every config; the baseline OFF solve succeeds there) →
+  mid-cloud firing is *plausible but unconfirmed*. Also found a **faithfulness bug** shared with SPEC §3:
+  κ_mix ∝ n ∝ 1/T, so the κ_mix-regime kprime is **−1/T, not 0**. **Next step (the clear single one):** a
+  **smooth-max + correct-kprime** injection (`κ_eff=κ_S(1+R^s)^{1/s}`, kprime `(1/T)[2.5−3.5R^s/(1+R^s)]`) that
+  survives the early phase, then re-run §2b. Updated `KMIX_SELFCONSISTENT.md` (§2 superseded-banner, new §2b,
+  §3 routes), SPEC §3 (kprime), FINDINGS, INDEX. No production code; no sims.
 - **2026-06-30 (Pb-collapse fix APPLIED to production — the FIRST production code change in this workstream;
   maintainer-authorized).** Applied `PB_COLLAPSE_GUARD_FIX.md`: in `run_energy_implicit_phase.py` the
   phase-boundary reconciliation snapshot now **skips the Pb recompute on the `energy_collapsed` exit** (Eb<0 →

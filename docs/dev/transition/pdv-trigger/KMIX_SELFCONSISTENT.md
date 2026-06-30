@@ -47,7 +47,13 @@ production expression** — so the off-state is the literal same float ops. (Fir
 had reordered the κ′-term `2.5·dTdr²/T` as `(2.5/T)·dTdr²`; FP non-associativity, amplified by the stiff ODE,
 broke bit-identity. Fixed by emitting the production expression exactly in the Spitzer branch.)
 
-## 2. The physics result (decisive, and it tempers the κ_mix optimism)
+## 2. The physics result (single near-blowout row — **partially superseded by §2b**)
+
+> **⚠️ READ §2b FIRST.** The §2 numbers below are measured at **one near-blowout (max-R2) row** per config.
+> The time-resolved follow-up (§2b, `make_kmix_theta_trajectory.py`) shows **that row is the wrong epoch** —
+> θ peaks *early* (high Pb) and decays, so blowout is the low-θ *tail*. The §2 "only 1/6 fires / dense
+> plateau low" reading **oversold the ceiling for the mid configs**. Finding (1) GO-on-mechanism and finding
+> (2) saturation **stand**; finding (3) is corrected in §2b; finding (4) boundary stands.
 
 θ = `bubble_LTotal / Lmech_total` (resolved loss fraction), swept over λδv ∈ {0, 0.01, 0.1, 0.3, 1, 3, 10}
 pc·km/s, one representative near-blowout (max-R2) row per config:
@@ -119,27 +125,75 @@ stays a dial because you keep it modest; κ_mix is *born* in the saturated regim
 traded tunability for faithfulness; this test is where the cost of that trade became visible.
 
 **Consistency, not contradiction:** f_κ *also* saturates — eventually. The sweep's "6/63 low-n/high-sfe cells
-never fire even at f_κ=64" (`FINDINGS.md`) is the **same structural θ ceiling** that now shows as "dense/mid
-plateau at θ≈0.23–0.35." κ_mix just drives every config to its ceiling immediately, exposing them. So the two
-results agree; κ_mix didn't *create* the low dense θ, it *revealed* the ceiling f_κ would also hit.
+never fire even at f_κ=64" (`FINDINGS.md`) is the **same structural θ ceiling** that shows for the **dense
+(n≥1e5)** end here (θ_max≲0.5). κ_mix drives every config to its ceiling immediately, exposing it; it didn't
+*create* the low dense θ, it *revealed* the ceiling f_κ would also hit. (For mid clouds the "ceiling" is
+higher than the blowout row implied — see §2b.)
 
-## 3. What this means for the track
+## 2b. Time-resolved θ — the blowout metric was the wrong epoch (2026-06-30)
 
-- The honest read: **κ_mix is a real but SATURATING, density-mis-matched correction.** It is *not* a tunable
-  knob and does *not* deliver Lancaster-level θ for dense clouds. The earlier hope — "wire κ_mix, calibrate
-  λδv to Lancaster per cloud" — is **falsified by the self-consistent solve.**
-- **Open routes (next strategy revision, to weigh before any production wiring):**
-  1. **Combine** κ_mix (which fixes the diffuse end / supplies the floor) with a *separate* density-dependent
-     top-up for the dense end (the θ_target cap, `cooling_boost_mode='theta_target'`, already gated) — κ_mix
-     for what it does well, the cap for the rest.
-  2. **Re-examine the metric.** θ at the single max-R2 row may understate the dense clouds' integrated cooling;
-     a time-integrated or blowout-window θ could read differently (cheap to add to this harness).
-  3. **Boundary re-derivation.** If the low dense plateau is partly the RHS-only approximation (Spitzer
-     boundary seeding a κ_mix interior), a proper κ_mix boundary layer might raise the dense θ. Test in-harness
-     before concluding.
-- **Production status: still untouched.** This is an offline measurement that *changes the plan*, not the code.
-  Nothing is wired; the registry params in the spec are **not** added. The next decision is the maintainer's:
-  which route (1–3) to pursue, or whether κ_mix's diffuse-only win is enough to justify a gated `κ_mix` floor
-  *plus* the existing θ_target cap.
+The single-row caveat (§2) was the right thing to check, and it mattered. `make_kmix_theta_trajectory.py`
+re-solves the structure with κ_mix across **~14 rows of each implicit-phase trajectory** (same RHS-only
+injection, λδv=1 saturated vs 0 baseline; reads committed cleanroom trajectories, no sims) →
+`data/kmix_theta_trajectory{,_summary}.csv` + `kmix_theta_trajectory.png`.
+
+| config | n | θ blowout (old §2) | θ **max over phase** | θ energy-integral | frac. phase θ≥0.95 | κ_mix solved (early) |
+|---|---:|---:|---:|---:|---:|---:|
+| large_diffuse | 1e2 | 1.54 | 1.98 | 1.16 | 0.47 | 9/14 (0/4) |
+| be_sphere | 1e4 | 0.23 | **1.84** | 0.30 | 0.13 | 8/14 (0/4) |
+| midrange_pl0 | 1e4 | 0.24 | **1.14** | 0.20 | 0.13 | 8/14 (0/4) |
+| pl2_steep | 1e5 | 0.24 | 0.50 | 0.16 | 0.00 | 8/14 (0/4) |
+| simple_cluster | 1e5 | 0.32 | 0.32 | 0.16 | 0.00 | 9/14 (0/4) |
+| small_dense | 1e6 | 0.35 | 0.35 | 0.19 | 0.00 | 11/14 (1/4) |
+
+**What this corrects and what it newly exposes:**
+
+1. **The blowout row was the wrong epoch (robust).** θ peaks **early** (high Pb ⇒ large R ⇒ κ_mix most
+   dominant) and decays as the bubble expands and Pb drops. Blowout = max R2 = the **late, low-Pb, low-θ
+   tail**. So §2 systematically sampled the *minimum* θ. For the mid configs the undersell is severe
+   (`be_sphere` 0.23 → trajectory-max **1.84**).
+2. **κ_mix is much stronger than §2 implied — but the firing question is NOT cleanly answered.** Where the
+   mid-config solves, θ exceeds 0.95 (would fire). But the **early high-Pb rows fail to solve** with the
+   hard-max injection (0/4 early rows for every config; the *baseline* off-solve succeeds there, so it is the
+   κ_mix injection at large R, not the replay). The decisive epoch is exactly the one we can't yet solve, so
+   "mid clouds fire" is **plausible but unconfirmed**.
+3. **Dense (n≥1e5) still plateau low where they solve** (θ_max 0.32–0.50, never 0.95) — for the genuinely
+   dense end the ceiling looks real. The energy-integral θ_int is modest everywhere except diffuse (0.16–0.30
+   for mid/dense), i.e. even the brief mid-config excursions above 0.95 are a small slice of the phase.
+4. **Two limitations this run surfaces (next iteration, not fixed here):**
+   - **(A) Stability:** the hard `max(κ_mix, κ_Spitzer)` is too stiff at the early high-Pb epochs → the solve
+     NaNs exactly where it matters. Needs a **smooth-max** blend `κ_eff = κ_S·(1+R^s)^(1/s)`.
+   - **(B) Faithfulness:** κ_mix = (λδv)·n·k_B ∝ **n ∝ 1/T** at fixed Pb, so in the κ_mix-dominated regime
+     `(dκ/dT)/κ = −1/T`, **not 0**. The harness (and `KMIX_IMPLEMENTATION_SPEC.md` §3) used 0 ("κ flat in
+     T") — a faithfulness bug. It does not move the saturation/wrong-epoch headlines but shifts exact θ; the
+     smooth form gives the correct kprime `(1/T)[2.5 − 3.5·R^s/(1+R^s)]` (→ 2.5/T Spitzer, → −1/T κ_mix).
+
+**Net:** κ_mix is a *stronger* and *more promising* correction than the blowout metric showed — plausibly
+enough to transition the mid (n~1e4) clouds — but a clean verdict needs a **revised injection (smooth-max +
+correct kprime)** that survives the early high-Pb phase. The dense (n≥1e5) low ceiling is the most robust
+negative. **This supersedes §2's "only 1/6 fires."**
+
+## 3. What this means for the track (updated after §2b)
+
+- The honest read after the time-resolved check: **κ_mix saturates (not a tunable knob) — that stands — but
+  it is a *stronger* correction than the blowout metric showed.** θ peaks early and exceeds 0.95 for the mid
+  (n~1e4) clouds where the solve succeeds, so the "only the diffuse end fires" conclusion is **not safe**. What
+  *is* robust: λδv is not a dial, and the **dense (n≥1e5)** end stays low (θ_max≲0.5). The "calibrate λδv to
+  Lancaster per cloud" hope is still **falsified** (saturation).
+- **The clear next step is now a single thing, not a menu** — ✅ route 2 (re-metric) is **done** (§2b) and it
+  promoted route 0:
+  0. **Revise the injection: smooth-max + correct kprime, then re-run §2b.** `κ_eff = κ_S·(1+R^s)^(1/s)` with
+     kprime `(1/T)[2.5 − 3.5·R^s/(1+R^s)]`. This (A) removes the hard-max stiffness that NaNs the early
+     high-Pb epochs — the decisive ones for firing — and (B) fixes the κ_mix∝1/T faithfulness bug. **Until the
+     early phase solves, the mid-cloud firing question stays open.** Cheap, offline, no sims.
+  1. **Then decide combine-vs-cap:** if the revised run confirms mid clouds fire but dense don't, pair a κ_mix
+     floor (diffuse/mid) with the gated `theta_target` cap (dense) — each for what it does well.
+  2. ✅ **Re-metric — DONE (§2b).** The single-row metric understated θ badly; the trajectory view is the
+     measurement to trust.
+  3. **Boundary re-derivation** stays a lower-priority lever for the dense ceiling.
+- **Production status: still untouched.** Offline measurements that *change the plan*, not the code; no
+  registry params added. The maintainer's call: authorize the route-0 revised-injection re-run (recommended —
+  it's what stands between "mid clouds plausibly fire" and a confirmed answer), or pick the combine-vs-cap
+  direction now on the current evidence.
 
 *Written 2026-06-30 on `feature/PdV-trigger-term-pt2`. No production code touched; monkeypatch-only, no sims.*

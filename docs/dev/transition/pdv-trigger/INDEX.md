@@ -47,7 +47,7 @@ conclusion that the faithful fix is the structural **κ_mix (Rung-B) term**, now
 | `KMIX_DIFFUSIVITY.md` | 06-29 | Phase 3 (κ_mix) / §15.7 | the maintainer manuscript draft, verified line-by-line + the λδv-origin refinement | **live** |
 | `KMIX_PROTOTYPE.md` | 06-29 | Phase 4 (implementation) | **step 1** of the κ_mix wiring: the offline scoping prototype (units-correct, no solver) | **live** |
 | `KMIX_IMPLEMENTATION_SPEC.md` | 06-30 | Phase 4 (implementation) | **design+units spec** for wiring κ_mix: dimensionless-multiplier strategy, the 3 sites, gate param, 8-config gates | **live** (plan; §3 boundary refined by self-consistent) |
-| `KMIX_SELFCONSISTENT.md` | 06-30 | Phase 4 (implementation) | **step 2**: κ_mix injected into the REAL solver (monkeypatch). θ rises but **SATURATES** & misses Lancaster for dense clouds; retires the λδv-pin | **live** |
+| `KMIX_SELFCONSISTENT.md` | 06-30 | Phase 4 (implementation) | **step 2**: κ_mix in the REAL solver (monkeypatch). θ SATURATES (retires λδv-pin); **§2b time-resolved**: blowout was the wrong epoch — mid clouds would fire, dense stay low, early phase needs a smooth-max injection | **live** |
 | `PB_COLLAPSE_GUARD_FIX.md` | 06-30 | Phase 4 (hygiene) | the energy-collapse reconciliation no longer emits a garbage negative Pb — **APPLIED + tested** (596 pass) | **done** |
 
 *Phases:* **1** PdV/cooling-boost trigger question (06-24→28) · **2** Rung-B structural scoping (06-26) ·
@@ -64,8 +64,10 @@ The recurring conclusion is that the faithful fix is `κ = max(κ_mix, κ_Spitze
 | pin λδv | ~~calibrate λδv to Lancaster θ~0.9–0.99~~ | ❌ **RETIRED** — self-consistent θ **saturates** by λδv≈0.01, so λδv is not a knob | `KMIX_SELFCONSISTENT.md` §2 |
 | **prototype (offline)** | does κ_mix matter, where, units? — go/no-go | ✅ **GO** — κ_mix dominates the cool layer 10³–10⁸ across nCore 1e2–1e6; full regime set covered **5/5** (4 cal anchors `ok` + heavy `excluded:energy_collapsed`), run in-container 06-30 | `KMIX_PROTOTYPE.md` |
 | spec (design) | dimensionless-multiplier κ_eff, gate params, 3 sites, units, 8-config gates | ✅ written (§3 boundary refined) | `KMIX_IMPLEMENTATION_SPEC.md` |
-| **self-consistent (offline)** | re-solve structure with κ_mix injected | ✅ **DONE** — G1 bit-identical-off + G2 replay pass; θ RISES but SATURATES & misses Lancaster for dense (1/6 fires); RHS-only stable 6/6; boundary injection diverges | `KMIX_SELFCONSISTENT.md` |
-| **strategy revision** | κ_mix is a saturating, density-mismatched correction → combine with θ_target cap? re-metric? boundary re-derive? | ⏳ **maintainer decision** | `KMIX_SELFCONSISTENT.md` §3 |
+| **self-consistent (offline)** | re-solve structure with κ_mix injected | ✅ **DONE** — G1 bit-identical-off + G2 replay pass; θ RISES but SATURATES (λδv not a dial); RHS-only stable; boundary injection diverges | `KMIX_SELFCONSISTENT.md` §2 |
+| **time-resolved θ (re-metric)** | is the dense ceiling real or a single-row artifact? | ✅ **DONE** — blowout was the WRONG epoch; θ peaks early; mid (1e4) would fire, dense (≥1e5) stay low; **but early high-Pb epochs don't solve** (hard-max too stiff) + kprime bug (−1/T) | `KMIX_SELFCONSISTENT.md` §2b |
+| **revise injection** | smooth-max + correct kprime → survive the early phase, re-run §2b → confirm mid-cloud firing | ⏳ **NEXT (recommended)** | `KMIX_SELFCONSISTENT.md` §3 route 0 |
+| **strategy decision** | combine κ_mix floor (diffuse/mid) + θ_target cap (dense)? | ⏳ after the re-run | `KMIX_SELFCONSISTENT.md` §3 |
 | gated production | `κ_mix` mode default-off byte-identical; equivalence gate; full 8-config | ⏸ **on hold** pending the strategy revision | `RUNGB_SCOPING.md` §8 + spec §6 |
 
 *Independent hygiene item (not κ_mix), ✅ APPLIED 2026-06-30:* the energy-collapse reconciliation used to emit

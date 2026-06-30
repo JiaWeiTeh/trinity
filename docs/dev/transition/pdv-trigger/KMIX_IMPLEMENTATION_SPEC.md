@@ -101,13 +101,21 @@ The integration sweeps from that cool boundary inward to the hot interior, cross
   re-derivation (the El-Badry layer ≠ the `dR2 ∝ 1/C` closure) — NOT a naive C-scaling.
 - **Site :406 — general-κ RHS (the substantive change).** Two pieces:
   1. **Prefactor:** `Pb/(C_th·T^(5/2))` → `Pb/(C_th·T^(5/2)·max(1, R))` = `Pb/κ_eff`.
-  2. **The κ′ term:** the `−2.5·dTdr²/T` term is the Spitzer `(dκ/dT)/κ·(dTdr)²` contribution
-     (`κ_S = C_th T^(5/2) ⟹ (dκ/dT)/κ = 2.5/T`). Where **κ_mix dominates (R>1)** κ is **flat in T**, so this
-     term **→ 0**; where Spitzer dominates (R≤1) it stays `−2.5·dTdr²/T`. Faithful form:
+  2. **The κ′ term — ⚠️ CORRECTED (`KMIX_SELFCONSISTENT.md` §2b).** The `−2.5·dTdr²/T` term is the
+     `(dκ/dT)/κ·(dTdr)²` contribution. **κ_mix is NOT flat in T:** `κ_mix = (λδv)·n·k_B ∝ n ∝ 1/T` at fixed
+     Pb, so `(dκ_mix/dT)/κ_mix = −1/T`, *not* 0. The hard-max form below (used in the first harness) is
+     therefore wrong in the κ_mix regime **and** numerically too stiff (it NaNs the early high-Pb epochs). Use
+     the **smooth-max** instead — `κ_eff = κ_S·(1+R^s)^(1/s)` (s≈4) — which is C¹ and gives the correct kprime
+     analytically:
      ```python
-     kprime_over_k = (2.5 / T) if R <= 1.0 else 0.0     # (dκ_eff/dT)/κ_eff
-     dTdrr = (Pb / kappa_eff * (...) - kprime_over_k * dTdr**2 - 2 * dTdr / r)
+     # smooth-max (preferred): R = kappa_mix/kappa_Spitzer ∝ 1/T^3.5
+     blend = (1.0 + R**s) ** (1.0 / s)            # kappa_eff = kappa_Spitzer * blend
+     kprime_over_k = (2.5 - 3.5 * R**s / (1.0 + R**s)) / T   # -> 2.5/T (Spitzer), -> -1/T (kappa_mix)
+     dTdrr = (Pb / (C_th * T**2.5 * blend) * (...) - kprime_over_k * dTdr**2 - 2 * dTdr / r)
      ```
+     For bit-identical-off, branch λδv=0 → the verbatim production expression (the `*blend`=1.0 / kprime
+     reorder otherwise breaks G1, `KMIX_SELFCONSISTENT.md` §1). The earlier hard-max+0 form is retained only as
+     the first-pass harness; **do not ship it.**
   **Verify against Weaver+77 Eqs 42–43 during implementation** that *only* the `−2.5·dTdr²/T` term carries the
   κ-derivative — the other `2.5`/`5/2` factors in the bracket are the enthalpy `γ/(γ−1)` (physical, κ-independent)
   and must **not** be switched. This mapping is asserted here as the design; it is a **gate item**, not a

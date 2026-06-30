@@ -103,6 +103,17 @@
 > physical term (κ_mix) isn't tunable.** The low dense θ is the *same* ceiling as the sweep's "6/63 never fire",
 > revealed not created. Caveat: the plateau is a single near-blowout row — a time-integrated metric could move
 > it (open). Gated production **on hold** pending the strategy revision (`KMIX_SELFCONSISTENT.md` §3).
+>
+> **→ κ_mix TIME-RESOLVED θ — the blowout metric was the wrong epoch (2026-06-30, `KMIX_SELFCONSISTENT.md`
+> §2b).** Re-solved κ_mix across ~14 rows/config of the implicit phase (not one row). **θ peaks EARLY (high
+> Pb) and decays — blowout = the low-θ tail**, so the §2 single-row read *undersold* κ_mix badly (`be_sphere`
+> 0.23 → trajectory-max **1.84**). So the earlier "only 1/6 fires / misses Lancaster for mid" is **walked
+> back**: where it solves, the **mid (n~1e4) clouds exceed θ=0.95 and would fire**; only the **dense (n≥1e5)**
+> end stays low (θ_max≲0.5) — *that* ceiling is robust. **BUT the decisive early high-Pb epochs FAIL to solve**
+> with the hard-max injection (0/4 early rows; baseline solves there) → firing *plausible but unconfirmed*.
+> Also caught a **faithfulness bug**: κ_mix ∝ n ∝ 1/T, so the κ_mix-regime kprime is **−1/T not 0** (harness +
+> SPEC §3). Next: a **smooth-max + correct-kprime** injection that survives the early phase, then re-run.
+> Builder `data/make_kmix_theta_trajectory.py`.
 
 What looks like "three ways to boost cooling" is really **two cooling-magnitude approaches on opposite sides
 of the structure solve, plus a separate trigger axis**. The key disambiguation: **"modify cooling like
