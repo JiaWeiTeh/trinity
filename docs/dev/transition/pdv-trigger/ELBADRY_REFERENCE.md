@@ -129,4 +129,43 @@ the Weaver structure ODE at all.
 the swept-up shell density, or the interface density? El-Badry's ρ₀ is the *uniform ambient* the bubble expands into,
 so the natural map is the **local cloud density at the shell radius**; this must be pinned before production.
 
-*Transcribed from the PDF 2026-06-30 on `feature/PdV-trigger-term-pt2`. No production code touched.*
+## 8. ⚠️ Discrete-SN vs continuous-SB99 input (maintainer caveat, 2026-06-30) — what carries over and what does NOT
+
+El-Badry injects **discrete SNe** every Δt_SNe; TRINITY takes **continuous SB99 (winds+SNe) luminosity**. So
+the parts of El-Badry built on SN *discreteness* are obsolete for TRINITY — but the part we use is not:
+
+- **USE (carries over): the closed-form θ(λδv, n) (Eq 37/38) is explicitly Δt_SNe-INDEPENDENT** — El-Badry states
+  θ depends only on ambient density and λδv (the layer-width time-dependence cancels n²ΛR², §5.2). So the formula
+  carries **no SN-timescale baggage**. TRINITY's continuous input fits the *continuous-injection* framework
+  (Weaver Eq 3-6) **better** than El-Badry's discrete SNe did (he had to argue discrete→continuous at t≳3 Myr).
+- **DO NOT USE: the λδv *estimate* (Eq 22-23)** — it is built on mode-growth ∼ 1/Δt_SNe and is SN-discreteness
+  specific. **Calibrate λδv to Lancaster instead** (a second, independent reason beyond "λδv∈[1,10] is off-regime").
+- **LARGELY MOOT for TRINITY: the early-time discrete-shock physics (§6.1** — blast waves supersonic to ~3 Myr,
+  continuous-injection invalid early). TRINITY's input is continuous from the start, so it lacks that early-time
+  discreteness invalidity. The ≥5 Myr rule still holds — but for **mixing-layer equilibrium**, not for the
+  discrete-shock reason. (So El-Badry's "θ is a t≳3 Myr quantity" is *less* restrictive for TRINITY, not more.)
+- **SECOND-ORDER: winds vs SNe.** El-Badry's Ė_in is SN-only; TRINITY's `Lmech_total` is winds+SNe. θ is a
+  *fraction radiated* set by interface physics, not by the input type, so the formula still applies. El-Badry §6.2
+  (added 3 Myr of winds) found "little effect — wind mechanical luminosity is similar to SNe." Consistent.
+
+## 9. ✅ VERIFICATION — TRINITY's `theta_target` mode IS El-Badry's (1−θ) budget (2026-06-30)
+
+Verified in source that `cooling_boost_mode='theta_target'` faithfully realizes the El-Badry energy budget, so
+feeding it θ(λδv,n) is sound:
+
+- `effective_Lloss(theta_target)` = **`max(Lcool+Lleak, θ·Lmech)`** (`get_betadelta.py:355`). When the target
+  dominates (1D under-counts, so it does), `Lloss = θ·Lmech`.
+- Energy ODE / β-δ residual use this Lloss (`get_betadelta.py:473,577`), so
+  `dEb/dt = Lgain − Lloss − PdV = (1−θ)·Lmech − PdV` — **exactly El-Badry's `Ė_in → (1−θ)Ė_in`.**
+- Trigger (`run_energy_implicit_phase.py:1142,1154,1207`): `Lgain = feedback.Lmech_total` (= Ė_in);
+  fires when `(Lgain−Lloss)/Lgain < 0.05` ⟺ **`θ_eff = Lloss/Lgain ≥ 0.95`** — fires at El-Badry's θ.
+- All three sites route through `effective_Lloss_from_params` ⇒ **single-count, consistent** (registry confirms).
+- **Off (`mode='none'`) = `Lcool+Lleak` ⇒ byte-identical.** ✓
+
+**The one implementation GAP:** `cooling_boost_theta` is a **constant** param (default 0.0). El-Badry's θ(λδv,n)
+is **density-dependent**, so it must be computed each step from λδv + `n_amb(R2)`. Cleanest: a new mode
+(e.g. `'theta_elbadry'`) that evaluates Eq 37/38 inline, reading a new `lambda_dv` param + the cloud density at R2.
+**Also needed: a θ_max ceiling (<1)** — at GMC density El-Badry θ→0.999, and `R ∝ (1−θ)^{1/5} → 0` would stall
+the bubble; the existing registry note already anticipates "a ceiling θ_max<1 at GMC-core density." Cap at e.g. 0.99.
+
+*Transcribed + verified 2026-06-30 on `feature/PdV-trigger-term-pt2`. No production code touched.*

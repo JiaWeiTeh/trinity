@@ -128,6 +128,17 @@ framing):**
 > → re-derive those from ≥5 Myr runs before trusting their Pb numbers. f1edge_lowdens (3 Myr) is also short.
 
 **Status ledger (newest first):**
+- **2026-06-30 (VERIFIED the θ_target mechanism + recorded the discrete-SN vs continuous-SB99 caveat).**
+  Confirmed in source (`ELBADRY_REFERENCE.md` §9) that TRINITY's `cooling_boost_mode='theta_target'` IS
+  El-Badry's (1−θ) budget: `Lloss = max(Lcool+leak, θ·Lmech)` (`get_betadelta.py:355`) ⇒ energy ODE gets
+  `dEb/dt=(1−θ)Lmech−PdV`; trigger (`run_energy_implicit_phase.py:1207`) fires at `θ_eff=Lloss/Lgain≥0.95`,
+  `Lgain=Lmech_total`; all three sites (residual/ODE/trigger) consistent; off=byte-identical. **Gap:**
+  `cooling_boost_theta` is a *constant* — El-Badry's θ(λδv,n) needs a per-step density-dependent value (new mode
+  `'theta_elbadry'` evaluating Eq 37/38 from λδv + n_amb(R2)) + a **θ_max<1 ceiling** (else (1−θ)→0 stalls the
+  bubble at GMC density). **Maintainer caveat folded in (`ELBADRY_REFERENCE.md` §8):** El-Badry's *discrete-SN*
+  machinery (Δt_SNe, §6.1 early-shock invalidity, the λδv estimate Eq 22-23) is obsolete for TRINITY's
+  *continuous SB99* input — BUT the closed-form θ(λδv,n) is **Δt_SNe-independent** so it carries no SN-timescale
+  baggage; calibrate λδv to Lancaster (not the Eq-22 estimate); winds-vs-SNe is second-order for θ. No code; no sims.
 - **2026-06-30 (FULL El-Badry+2019 read → REVISED PLAN: use his analytic θ(λδv,n) as TRINITY's θ_target;
   new docs `ELBADRY_REFERENCE.md` + `data/make_elbadry_theta.py`).** Read the whole 32-page paper
   equation-by-equation (transcribed into `ELBADRY_REFERENCE.md` so future sessions skip the PDF). **The pivotal
