@@ -128,6 +128,22 @@ framing):**
 > → re-derive those from ≥5 Myr runs before trusting their Pb numbers. f1edge_lowdens (3 Myr) is also short.
 
 **Status ledger (newest first):**
+- **2026-06-30 (Lancaster 2025 read + the PdV-inclusivity question answered; new doc `LANCASTER_REFERENCE.md`,
+  imprint banners on both reference docs).** Read arXiv:2505.22730v1 (Lancaster 2025, "Co-Evolution of Wind
+  Bubbles & Photoionized Gas I" — the CEM). **Confirms** Lancaster's `θ ≡ Ė_cool/Lw` = El-Badry's = TRINITY's,
+  and the (1−θ) ED solution (Eq 1–3) is identical to El-Badry. **Landscape fix:** the θ~0.9–0.99 anchor is
+  **Lancaster 2021c** (2104.07722), *not* this 2025 paper — so "2021" was right for that claim; the 2025 PDF is
+  a newer, different paper. **PdV ANSWER (the branch's core question):** El-Badry/Lancaster/TRINITY θ is the
+  **cooling fraction, PdV-EXCLUSIVE by definition**. Lancaster makes the split explicit — **θ (cooling) vs αp
+  (momentum/PdV enhancement, ṗr/ṗw)**, coupled via the mixing velocity ⟨vout⟩; the energy→momentum transition
+  is fundamentally the **αp→1 (momentum/PdV) budget**, not cooling alone. In source, TRINITY mirrors this:
+  `cooling_balance` (θ≥0.95) uses Lloss only = **PdV-exclusive**; `ebpeak` is `Edot_from_balance = Lmech − Lloss
+  − 4πR2²v2·Pb ≤ 0` (`get_betadelta.py:475`; code comment "PdV-inclusive"). **So the maintainer's intuition is
+  right: for massive clusters (large Lw ⇒ large PdV) the PdV-inclusive `ebpeak` fires earlier and is the more
+  physical transition.** Recommendation: pair the El-Badry θ_target (cooling boost) **with `ebpeak`**
+  (transition_trigger='cooling_balance,ebpeak', first-fire) — the boost lowers retained energy (1−θ)Lmech and
+  ebpeak checks whether PdV drains the rest; especially for massive clusters. Imprint banners added so future
+  visits use `ELBADRY_REFERENCE.md`/`LANCASTER_REFERENCE.md` instead of re-reading PDFs. No code; no sims.
 - **2026-06-30 (n-mapping RESOLVED + verified — `data/make_nmap_verify.py`).** Re-derived that El-Badry's `n`
   enters θ *only* as a proxy for the Weaver combo `R²Pb^{3/2} = K_W(1−θ)Ė_in ρ₀^{1/2}` (K_W=0.0383, verified).
   His L_int is interface-local (needs only R, Pb, λδv, T_pk). **Two faithful options:** (A) local cloud density

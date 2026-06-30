@@ -48,7 +48,8 @@ conclusion that the faithful fix is the structural **κ_mix (Rung-B) term**, now
 | `KMIX_PROTOTYPE.md` | 06-29 | Phase 4 (implementation) | **step 1** of the κ_mix wiring: the offline scoping prototype (units-correct, no solver) | **live** |
 | `KMIX_IMPLEMENTATION_SPEC.md` | 06-30 | Phase 4 (implementation) | **design+units spec** for wiring κ_mix: dimensionless-multiplier strategy, the 3 sites, gate param, 8-config gates | **live** (plan; §3 boundary refined by self-consistent) |
 | `KMIX_SELFCONSISTENT.md` | 06-30 | Phase 4 (implementation) | **step 2**: κ_mix in the REAL solver (monkeypatch). θ SATURATES (retires λδv-pin); **§2b time-resolved**: blowout was the wrong epoch — mid clouds would fire, dense stay low, early phase needs a smooth-max injection | **live** (dense-low walked back, see ELBADRY_REFERENCE) |
-| `ELBADRY_REFERENCE.md` | 06-30 | Phase 4 (the pivot) | **full El-Badry+2019 distilled** (every eq/number; skip the PDF). θ_ElBadry = θ_TRINITY; the closed form Eq 37/38; the TRINITY mapping | **live** (token-saver) |
+| `ELBADRY_REFERENCE.md` | 06-30 | Phase 4 (the pivot) | 📌 **full El-Badry+2019 distilled** (every eq/number; skip the PDF). θ_ElBadry = θ_TRINITY; closed form Eq 37/38; TRINITY mapping + theta_target verification | **live** (imprint) |
+| `LANCASTER_REFERENCE.md` | 06-30 | Phase 4 (the pivot) | 📌 **Lancaster distilled** (2025 CEM PDF + the 2021b/c/2024 landscape; skip the PDFs). θ=Ė_cool/Lw matches; the αp (PdV/momentum) split; θ~0.9–0.99 anchor is 2021c | **live** (imprint) |
 | `PB_COLLAPSE_GUARD_FIX.md` | 06-30 | Phase 4 (hygiene) | the energy-collapse reconciliation no longer emits a garbage negative Pb — **APPLIED + tested** (596 pass) | **done** |
 
 *Phases:* **1** PdV/cooling-boost trigger question (06-24→28) · **2** Rung-B structural scoping (06-26) ·

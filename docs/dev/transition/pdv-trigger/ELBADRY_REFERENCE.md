@@ -1,5 +1,10 @@
 # El-Badry+2019 — full-paper reference (read THIS before re-reading the PDF)
 
+> 📌 **IMPRINT — canonical El-Badry reference for `feature/PdV-trigger-term-pt2`.** Whenever this branch needs
+> an El-Badry fact (θ, κ_mix, the (1−θ) solution, saturation, the closed form), **read this doc, do NOT re-open
+> the PDF** — that wastes tokens. If a needed fact is missing, add it here from the PDF and keep going. Sibling:
+> `LANCASTER_REFERENCE.md` (same role for the Lancaster papers).
+>
 > ⚠️ **This document may be out of date — verify before trusting it.** Point-in-time reference, not a
 > maintained spec. **Re-check each equation/number against the PDF if it is load-bearing.** The PDF is
 > `arXiv:1902.09547v2` (MNRAS 490, 1961, 2019), 32 pages; this doc distills every equation and number this
