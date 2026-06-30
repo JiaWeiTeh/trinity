@@ -54,6 +54,24 @@ framing):**
 | **Target** | **θ(n_H)** from El-Badry (`λδv`=κ_eff, a *set* 1D knob) + Lancaster (3D, parameter-free ≈0.9–0.99) | the calibration data |
 | **Knob** | **f_κ(properties)** tuned so emergent θ → target, density-dependently | the remaining work = **calibration** |
 
+> **⚡ SYNTHESIS UPDATE (2026-06-30) — the tunable knob isn't physical; the physical term isn't tunable.**
+> The self-consistent κ_mix test (`KMIX_SELFCONSISTENT.md`) sharpens the "Mechanism/Knob" rows above into a
+> real fork. **f_κ** (the scalar in the table) is a working *continuous* knob **but unphysical** (a modest scalar
+> on hot-interior Spitzer; it never reaches the cool layer, and raises dMdt the wrong way). **κ_mix** is the
+> *physical* cool-layer term **but NOT tunable**: it is 10⁵–10⁸× Spitzer the instant it is on, so resolved θ
+> **saturates by λδv≈0.01** and lands density-**mismatched** (diffuse overshoots → fires; mid/dense plateau
+> 0.23–0.35 ≪ Lancaster). So **"calibrate λδv to Lancaster" is RETIRED**, and the table's "Knob = f_κ tuned to
+> target" is now: *f_κ is the only dial, used as a **calibrated effective parameter**, with κ_mix as the
+> physical justification for why enhanced cooling exists.*
+> |  | tunable? | physical? |
+> |---|:--:|:--:|
+> | **f_κ** (Rung A) | ✅ | ❌ |
+> | **κ_mix** (Rung B) | ❌ (saturates) | ✅ |
+> The low dense θ is the **same ceiling** as the sweep's "6/63 never fire" — revealed, not created (caveat:
+> single near-blowout row; a time-integrated metric could move it). **Open fork (maintainer):** (a) use f_κ as
+> the calibrated effective knob; (b) κ_mix floor (diffuse) **+** the gated `theta_target` cap (dense); (c)
+> re-metric / κ_mix boundary re-derivation. Full reasoning: `KMIX_SELFCONSISTENT.md` §2a–§3.
+
 - **`θ_target` vs κ_eff was a FALSE dichotomy** — `θ(n_H)` is the *target*, κ_eff is the *mechanism* of the
   same knob. (`RUNGB_SCOPING.md` §2a is the canonical θ/`λδv`/`f_κ`/0.95 reconciliation.)
 - **Evaporation-decoupling (the old "Rung B endgame") is DEMOTED to an optional high-fidelity bonus.** The

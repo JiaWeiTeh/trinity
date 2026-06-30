@@ -91,6 +91,18 @@
 > `κ_mix/κ_Spitzer = λδv·Pb/(C_th·T^{7/2})`: in the cool layer (2e4–2e5 K) **κ_mix dominates Spitzer 10³–10⁹ even
 > at λδv=1** (compact/diffuse/dense; 4 of 8 configs) → wiring warranted, but λδv is the sensitive knob (calibrate
 > to Lancaster). Master navigation now in **`INDEX.md`**.
+>
+> **→ κ_mix SELF-CONSISTENT in the real solver (2026-06-30, `KMIX_SELFCONSISTENT.md`):** injected `κ_eff =
+> max(κ_mix, κ_Spitzer)` into the production structure solve (monkeypatch, no edit), 6 cleanroom + 2 fixtures.
+> G1 bit-identical-off + G2 replay pass. **κ_mix raises θ and the solver is stable, BUT θ SATURATES by
+> λδv≈0.01** (κ_mix is 10⁵–10⁸× Spitzer the instant it is on) ⇒ **λδv is NOT a tunable knob — the "calibrate λδv
+> to Lancaster" step is RETIRED.** The saturated θ is density-**mismatched** (diffuse overshoots → fires; mid/dense
+> plateau 0.23–0.35 ≪ Lancaster, 1/6 fires). **Reconciliation (§2a):** f_κ scaled because it is a *modest scalar
+> on hot-interior Spitzer* (linear regime, but unphysical); κ_mix saturates because it is a *T-independent floor
+> born deep in the cool layer* (physical, but past the dial). **The tunable knob (f_κ) isn't physical; the
+> physical term (κ_mix) isn't tunable.** The low dense θ is the *same* ceiling as the sweep's "6/63 never fire",
+> revealed not created. Caveat: the plateau is a single near-blowout row — a time-integrated metric could move
+> it (open). Gated production **on hold** pending the strategy revision (`KMIX_SELFCONSISTENT.md` §3).
 
 What looks like "three ways to boost cooling" is really **two cooling-magnitude approaches on opposite sides
 of the structure solve, plus a separate trigger axis**. The key disambiguation: **"modify cooling like

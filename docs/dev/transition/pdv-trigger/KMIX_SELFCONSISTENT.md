@@ -91,6 +91,38 @@ pc·km/s, one representative near-blowout (max-R2) row per config:
 *(The 2 fixtures fail at λδv>0 — the stiff 5e9 is the collapse regime with near-zero θ; consistent with
 excluding the heavy cloud, `KMIX_PROTOTYPE.md` §2. They pass G1 identity.)*
 
+## 2a. Why f_κ scaled but κ_mix saturates — the tunable-vs-physical trade (the reconciliation)
+
+A natural objection: *earlier we could scale `f_κ` (`cooling_boost_kappa`) and θ responded as a continuous
+knob (the 819-sweep gave `f_κ-to-fire ∝ n^−0.6`; `bubble_LTotal ×1.23–1.38` at f_κ=2). Why does κ_mix not
+behave the same?* Because **they are different operations**, and the difference is exactly the saturation:
+
+- **`f_κ` is a uniform scalar on Spitzer:** `κ = f_κ·C_th·T^(5/2)` — it keeps the `T^(5/2)` shape and scales it
+  by a *modest* factor. It scales the conduction that is dominated by the **hot interior**, where you sit in
+  the **linear** part of the response. So f_κ is a smooth dial — **but it never puts conductivity in the cool
+  layer** (Spitzer `T^(5/2) → 0` there), which is why it is *not physical* (it can't represent cool-layer
+  mixing) and why it raises dMdt the wrong way.
+- **κ_mix is a temperature-independent floor:** `κ_eff = max(κ_mix, κ_Spitzer)`. It lives **entirely in the
+  cool layer**, and there it is `10⁵–10⁸ ×` Spitzer the *instant* it is on (even λδv≈0.01, `KMIX_PROTOTYPE.md`
+  §2). So the dial (λδv) starts **far past the linear range** — raising it just makes an already-overwhelming
+  term more overwhelming; the cool layer is already maximally conducting (isothermal), so θ stops moving.
+
+In one line: **κ_mix is like pinning an *effective f_κ* to a huge value, but only in the cool layer.** f_κ
+stays a dial because you keep it modest; κ_mix is *born* in the saturated regime.
+
+|  | tunable? | physical? |
+|---|:--:|:--:|
+| **f_κ** (Rung A, scalar on Spitzer) | ✅ continuous knob | ❌ a fudge; wrong-sign density dep.; raises dMdt |
+| **κ_mix** (Rung B, T-independent floor) | ❌ saturates by λδv≈0.01 | ✅ the faithful cool-layer mixing term |
+
+**The thing we could tune isn't physical; the thing that's physical we can't tune.** The f_κ→κ_mix pivot
+traded tunability for faithfulness; this test is where the cost of that trade became visible.
+
+**Consistency, not contradiction:** f_κ *also* saturates — eventually. The sweep's "6/63 low-n/high-sfe cells
+never fire even at f_κ=64" (`FINDINGS.md`) is the **same structural θ ceiling** that now shows as "dense/mid
+plateau at θ≈0.23–0.35." κ_mix just drives every config to its ceiling immediately, exposing them. So the two
+results agree; κ_mix didn't *create* the low dense θ, it *revealed* the ceiling f_κ would also hit.
+
 ## 3. What this means for the track
 
 - The honest read: **κ_mix is a real but SATURATING, density-mis-matched correction.** It is *not* a tunable
