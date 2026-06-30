@@ -128,6 +128,16 @@ framing):**
 > → re-derive those from ≥5 Myr runs before trusting their Pb numbers. f1edge_lowdens (3 Myr) is also short.
 
 **Status ledger (newest first):**
+- **2026-06-30 (n-mapping RESOLVED + verified — `data/make_nmap_verify.py`).** Re-derived that El-Badry's `n`
+  enters θ *only* as a proxy for the Weaver combo `R²Pb^{3/2} = K_W(1−θ)Ė_in ρ₀^{1/2}` (K_W=0.0383, verified).
+  His L_int is interface-local (needs only R, Pb, λδv, T_pk). **Two faithful options:** (A) local cloud density
+  `n_amb(R2)=get_density_profile(R2)` → his closed form (reuses A_mix=3.5); (B) direct `θ=L_int(R2,Pb)/Lmech`
+  (no n-mapping; saturation emerges from Pb). **Verified (A) is faithful at equilibrium:** `n_eff/n_amb` median
+  ~0.66–0.88 across all 6 cleanroom configs — the ~0.7 offset is exactly the dropped (1−θ)² cooling factor; it
+  diverges (≤6 dex) only at the early-core/blowout extremes where El-Badry's late-time model is invalid anyway.
+  **Recommend (A) for the first cut** (simplest, reuses calibration, θ_max ceiling handles the saturated dense
+  core); (B) is the robust upgrade. Density is the local n_H at R2 (TRINITY's n is already n_H — matches
+  El-Badry). Detail: `ELBADRY_REFERENCE.md` §7. No production code; no sims.
 - **2026-06-30 (VERIFIED the θ_target mechanism + recorded the discrete-SN vs continuous-SB99 caveat).**
   Confirmed in source (`ELBADRY_REFERENCE.md` §9) that TRINITY's `cooling_boost_mode='theta_target'` IS
   El-Badry's (1−θ) budget: `Lloss = max(Lcool+leak, θ·Lmech)` (`get_betadelta.py:355`) ⇒ energy ODE gets

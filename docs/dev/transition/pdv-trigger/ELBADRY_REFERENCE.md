@@ -125,9 +125,28 @@ the Weaver structure ODE at all.
 | mixing knob | `λδv ∈ [0.1,10]` | the one free parameter — calibrate to Lancaster θ~0.9-0.99 |
 | closed-form θ | Eq 37/38, A_mix=3.5 | feed as `cooling_boost_theta` target in `cooling_boost_mode='theta_target'` |
 
-**Open mapping question (honest):** what exactly is `n_amb` for a stratified GMC — the local profile density at R2,
-the swept-up shell density, or the interface density? El-Badry's ρ₀ is the *uniform ambient* the bubble expands into,
-so the natural map is the **local cloud density at the shell radius**; this must be pinned before production.
+**RESOLVED — the n-mapping (verified 2026-06-30, `data/make_nmap_verify.py`).** El-Badry's `n` is **not a
+free-standing local density** — re-deriving his §5.2, the ambient density enters θ *only* as a proxy for the
+Weaver combination **`R²·P^{3/2} = K_W·(1−θ)·Ė_in·ρ₀^{1/2}`**, `K_W = 0.0383` (cgs, verified numerically). His
+interface cooling rate `L_int = 4π√(α·λδv)·R²·Pb^{3/2}·√(Λ(T_pk))/(k_B·T_pk)` (Eq 34 simplified) is **local to
+the interface** — it needs only R, Pb, λδv, T_pk; ρ₀ appears only when he substitutes the *uniform-medium*
+Weaver R(ρ₀), P(ρ₀). So there are two faithful options for TRINITY:
+
+- **(A) local cloud density `n_amb(R2) = get_density_profile(R2)` → El-Badry's closed form θ(λδv, n_amb).**
+  Reuses his calibration (A_mix=3.5); simplest. **Verified faithful at the late-time equilibrium regime that
+  matters:** across all 6 cleanroom configs, `n_eff(R2,Pb)/n_amb(R2)` has a **tight median ~0.66–0.88** — and
+  that ~0.7 offset is exactly the **(1−θ)² cooling factor** dropped from the proxy (baseline θ~0.2–0.4 ⇒
+  (1−θ)²~0.4–0.6). It **diverges by orders of magnitude only at the early high-Pb core and late blowout** —
+  precisely where El-Badry's late-time model is invalid anyway (so the divergence is harmless).
+- **(B) direct form: `θ = L_int(R2,Pb)/Lmech`** using TRINITY's actual R2, Pb. **No n-mapping; saturation
+  emerges naturally** because Pb already carries the (1−θ) cooling effect (with cooling
+  `R²Pb^{3/2} = K_W(1−θ)Ė_in ρ₀^{1/2}` ⇒ θ/(1−θ) ∝ √(λδv ρ₀), the El-Badry saturating form). More robust at the
+  extremes, but needs `Λ(T_pk)` (T_pk≈2×10⁴ K) and the constant calibrated to A_mix=3.5.
+
+**Recommendation: (A) for the first cut** — simplest, reuses El-Badry's calibration, faithful where the model
+applies; the θ_max ceiling handles the saturated dense-core regime. **(B) is the robust upgrade** if the
+early-phase / blowout extremes turn out to matter. Either way the density is the **local hydrogen-nuclei density
+at R2** (`get_density_profile`, pc⁻³ → cm⁻³ via /2.938×10⁵⁵), and TRINITY's n is already n_H (matches El-Badry).
 
 ## 8. ⚠️ Discrete-SN vs continuous-SB99 input (maintainer caveat, 2026-06-30) — what carries over and what does NOT
 
