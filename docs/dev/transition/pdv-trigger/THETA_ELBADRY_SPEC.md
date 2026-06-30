@@ -24,6 +24,17 @@ canonical synthesis). **STATUS: spec only — NO production code is changed by t
 maintainer guardrail, nothing ships until it is gated default-off **byte-identical**, tested on all 8 configs,
 each run to **≥5 Myr**.
 
+> **🧪 TWO-STAGE PLAN — SHADOW FIRST, then production (maintainer decision 2026-06-30).** Production is **NOT
+> finalized** by this spec: two design points (§6 the `max(resolved,target)` choice; §7 the fate pattern) are
+> *unresolved-until-data*, and TRINITY has never been run end-to-end with any θ-boosting mode. So:
+> - **STAGE A — SHADOW (no production edit):** apply the §3 logic via a runtime **monkeypatch** of
+>   `effective_Lloss_from_params` (a dev-only `data/` harness, like every other `make_*.py`), run the 8 configs
+>   to ≥5 Myr, harvest θ(t)/firing/fate, and **resolve §6 + §7 from the data.** Nothing in `trinity/` changes.
+> - **STAGE B — PRODUCTION (only after Stage A passes):** make the §2/§3 change for real, gated default-off
+>   byte-identical, with the now-data-informed §6 choice locked in.
+> The spec sections below describe the *final* code (Stage B); Stage A runs the **identical logic** by
+> monkeypatch so the shadow result transfers 1:1.
+
 **One-line design:** add a `cooling_boost_mode='theta_elbadry'` that, each step, sets the target loss fraction
 to **θ = A_mix·√(λδv·n_amb(R2)) / (11/5 + A_mix·√(λδv·n_amb(R2)))** (capped at θ_max) and feeds it through the
 *already-verified* `theta_target` `(1−θ)` budget. No κ_mix port, no structural solve change.
@@ -141,15 +152,28 @@ The 8 configs (`INDEX.md` §3): `simple_cluster`, `midrange_pl0`, `be_sphere`, `
    full-run (test 3) on the stiff edges, in **separate processes**, at **matched t**. Persist the θ(t) and
    fate table as a committed CSV/figure under `data/`.
 
-## 8. Apply order (when green-lit; production default stays `none`)
+## 8. Apply order — TWO STAGES (shadow first, production after)
 
-1. Add the 3 registry params (§2) + the `effective_Lloss_from_params` branch (§3).
-2. Test 1 (unit, byte-identical-off) → green.
-3. Launch the 8-config ≥5 Myr runs (§7.3) in the background; monitor; harvest θ(t) + fate table to `data/`.
-4. Inspect: fate pattern vs n_fire≈50; the §6 resolved-wins gate; first-crossing firing times.
-5. If clean: commit to `feature/PdV-trigger-term-pt2`; **production default `mode='none'` — no behaviour ships**.
+**STAGE A — SHADOW (no `trinity/` edit; the gate before production):**
+1. Build `data/make_theta_elbadry_shadow.py`: a runner that **monkeypatches** `effective_Lloss_from_params`
+   (both `get_betadelta` and the name imported into `run_energy_implicit_phase`) to the §3 `theta_elbadry`
+   logic, then runs each of the 8 configs to **≥5 Myr** via the normal pipeline (λδv=3,
+   `transition_trigger='cooling_balance,ebpeak'`). Launch in the background (≤60 min each); monitor.
+2. Harvest θ_eff(t), first-crossing firing time, the **fate pattern** (which configs transition vs stay
+   energy-driven) and the **§6 resolved-wins fraction** → committed CSV/figure under `data/`.
+3. **Resolve the open design points from the data:** fate pattern vs n_fire≈50; max() vs direct-θ_target (§6);
+   any θ→1 numerical issues despite the ceiling; λδv fine-tune if needed. Update the spec + canonical synthesis.
+
+**STAGE B — PRODUCTION (only after Stage A is clean):**
+4. Make the §2 (3 params) + §3 (one `effective_Lloss_from_params` branch) change for real, with the
+   data-informed §6 choice locked in.
+5. Test 1 (unit: byte-identical-off + θ matches the calculator) → green; ruff F-rules; full `pytest`.
+6. Re-run the 8 configs ≥5 Myr with `mode='theta_elbadry'` (now production) → must reproduce the Stage-A
+   shadow result (1:1, since the logic is identical).
+7. Commit to `feature/PdV-trigger-term-pt2`; **production default `mode='none'` — no behaviour ships**.
    Reconcile the ⭐⭐ canonical synthesis + `INDEX.md` §1.5 + this spec together.
-6. If the §6 gate or the fate pattern misbehaves: that is a *finding*, not a failure — record it, decide
-   direct-θ_target vs max(), and re-run. Measure, don't guess.
+
+*If Stage A misbehaves: that is a finding, not a failure — record it, revise the design, re-shadow. The point of
+Stage A is that revising a harness is free; revising committed production is not.*
 
 *Written 2026-06-30 on `feature/PdV-trigger-term-pt2`. No production code touched; spec only.*

@@ -82,10 +82,14 @@ let TRINITY's wrong-trend *resolved* θ win at some epoch — check, and prefer 
 (diffuse fate) is a *prediction*, untested below nH~40 by either paper; (4) θ→1 dense-core behaviour needs the
 ceiling to stay numerically sane.
 
-**BEST PATH FORWARD:** (i) ✅ **spec written** — `THETA_ELBADRY_SPEC.md` (θ(λδv≈3, n_amb(R2)), θ_max, ebpeak
-pairing, byte-identical-off proof, 8-config + ≥5 Myr test; 3 registry params + 1 `effective_Lloss` branch) →
-(ii) **implement** (default-off, byte-identical) → (iii) validate on the 8 configs to ≥5 Myr, reading firing by
-**first-crossing** (never blowout). Evidence chain:
+**BEST PATH FORWARD — SHADOW FIRST (production NOT yet finalized):** (i) ✅ **spec written**
+(`THETA_ELBADRY_SPEC.md`). (ii) **STAGE A — SHADOW:** run the §3 logic via a runtime monkeypatch harness on the
+8 configs to ≥5 Myr (no `trinity/` edit), harvest θ(t)/firing/fate, and **resolve the two open design points
+from data** (§6 max-vs-direct; the fate pattern). (iii) **STAGE B — PRODUCTION** (only after Stage A is clean):
+the 3 params + 1 `effective_Lloss` branch, gated default-off byte-identical, re-validated to reproduce the
+shadow 1:1. Firing read by **first-crossing** (never blowout). *Why shadow first: two design points are
+unresolved-until-data and TRINITY has never run with any θ-boosting mode end-to-end — revising a harness is
+free, revising committed production is not.* Evidence chain:
 `ELBADRY_REFERENCE.md` (θ, closed form, n-mapping, theta_target verification) · `LANCASTER_REFERENCE.md` (θ
 magnitude, λδv≈3, route-a) · `KMIX_SELFCONSISTENT.md` (why the structural port was shelved).
 
