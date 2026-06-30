@@ -34,6 +34,13 @@
 
 ## Re-entry ledger — open this FIRST (the 🔄 banner, operationalized)
 
+> **Sibling (2026-06-30):** `HIMASS_HANDOFF_PLAN.md` — plan to replace the explicit-phase `Eb<=0`
+> dead-stop (`run_energy_phase.py:340`, `ENERGY_COLLAPSED`) with a **pressure-crossover** terminal event
+> that routes massive/dense collapsing clouds into the existing 1c→2 momentum chain instead of stopping.
+> Records the verified correction that the high-mass turnover is **PdV/inertial-loading driven, not
+> radiative** (`FINDINGS.md` §1/§6a + the `Pb` cancels `Eb` identity), and that `ebpeak` is opt-in/shadow,
+> not the default path. Branch `bugfix/high-mass-cluster-transition-without-ebpeak`.
+
 The recheck list the banners demand. **Every visit:** re-verify the anchors below, update the ledger,
 *then* read on. All findings here are **already persisted** (CSVs + figures under `data/` and this
 folder) — do **not** re-run the hours-long sims to recover them; reproduce only to extend.
