@@ -95,6 +95,11 @@ framing):**
   λδv is the sensitive knob (even λδv≪1 dominates) → calibrate to Lancaster, never crank. Heavy 5e9 **excluded**
   (energy-collapse, no implicit phase → no mixing layer; itself a finding). Updated `KMIX_PROTOTYPE.md` §2–§3,
   `INDEX.md` track. **Validation:** compact max θ=0.676 == the known baseline 0.667. No production code touched.
+  **Side diagnosis (heavy negative Pb):** investigated `fail_repro` Pb=−1.6×10¹⁸ — NOT a results bug; it is the
+  collapse signature (`Pb=(γ−1)Eb/V`, Eb<0 at `ENERGY_COLLAPSED`, ÷ tiny V), only in the terminal row, healthy
+  runs clean. Minor robustness nit logged in `KMIX_PROTOTYPE.md` §2 (the `Eb<=0` guard at
+  `run_energy_implicit_phase.py:1074` fires *after* the Pb compute at line 865; a pre-solve `Eb>0`/`V>0` guard
+  would avoid the garbage value) — **not fixed** (production change, guardrail; low priority).
 - **2026-06-29 (κ_mix OFFLINE PROTOTYPE — step 1 of Rung-B, GO; + master `INDEX.md`).** Built the offline scoping
   harness (`data/make_kmix_prototype.py` → `data/kmix_prototype.csv` + `kmix_prototype.png`; reads committed
   `runs/data/harvest_*.csv`, **no solver touched, no sims**) — the de-risk step the guardrail requires before any
