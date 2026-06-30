@@ -1,5 +1,11 @@
 # Rung B — faithful `κ_eff` / mixing-layer interface (OPTIONAL high-fidelity bonus)
 
+> 🛑 **SHELVED DIRECTION (2026-06-30) — read as HISTORY.** The **structural κ_mix injection** this doc scopes
+> (and §8's "gated production") was tested in the real solver (`KMIX_SELFCONSISTENT.md`) and **SHELVED**: κ_mix
+> saturates (10⁵–10⁸× Spitzer instantly) and is numerically unstable in the Weaver ODE. The current direction
+> **imposes El-Badry's θ as the trigger target instead** (`PLAN.md` ⭐⭐ canonical synthesis). κ_mix survives
+> only as the *physical justification* for why θ∝√(λδv·n) — not as a thing to wire into the structure solve.
+
 > **⭐ DEMOTED by "the merge" (2026-06-26).** This whole doc is about making evaporation fall *while* cooling
 > rises (El-Badry fidelity). **That is no longer the main line.** The **goal** is enhanced, density-dependent
 > cooling matched to obs/3D, and the **mechanism for it is already built** — κ_eff = `cooling_boost_kappa`

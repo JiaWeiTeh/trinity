@@ -18,20 +18,45 @@
 
 TRINITY transitions a feedback bubble from **energy-driven** to **momentum-driven** when interface cooling drains
 the mechanical luminosity (the `cooling_balance` trigger at θ = L_cool/L_mech ≥ 0.95). This workstream asks: *what
-sets θ, what knob raises it to the obs/3D values (Lancaster θ~0.9–0.99), and how does it depend on cloud
-properties?* It ran from the PdV-in-the-trigger question through the f_κ (Rung-A scalar) calibration to the
-conclusion that the faithful fix is the structural **κ_mix (Rung-B) term**, now in its offline-prototype stage.
-**Everything to date is dev-only — no production physics code has changed.**
+sets θ, what raises it to the obs/3D values (Lancaster θ~0.9–0.99), and how does it depend on cloud properties?*
+**Current direction (2026-06-30):** the one master parameter is θ ≡ L_cool/L_mech — *identical* in TRINITY,
+El-Badry, and Lancaster — and El-Badry gives a 3D-calibrated **closed form θ(λδv, n)**. The plan is to **impose
+that θ as the trigger target** via TRINITY's gated `theta_target` mode (λδv≈3, n=local cloud density, θ_max
+ceiling, paired with `ebpeak` for PdV). *History:* it ran from the PdV question → f_κ (Rung-A) calibration → a
+structural κ_mix (Rung-B) port that was **tested and shelved** (it saturates) → the θ_target direction.
+**Everything to date is dev-only — no production physics code has changed** (except the queued Pb-collapse hygiene
+fix, applied + tested). See `PLAN.md` ⭐⭐ canonical synthesis + §1.5 staleness audit above.
 
-## 1. Read in this order (orientation)
+## 1. Read in this order (orientation) — updated 2026-06-30 for the θ_target direction
 
-1. **this file** — the map.
-2. `PLAN.md` — the living plan + the ⭐ synthesis ("the goal / the merge") + the dated status ledger (newest first).
-3. `FINDINGS.md` — the settled, verified results + the taxonomy of approaches.
-4. `F_KAPPA_FUNCTIONAL_FORM.md` — the **main current doc**: the f_κ(n) functional form, the 819-sweep scorecard,
-   the cliff/fan-out, the metric, the physical derivation → κ_mix (§0–§13).
-5. `REPRODUCE.md` — result → `.param`/command → artifact manifest (rebuild any figure without re-running sims).
-6. the storyline: `make_pdvtrigger_report.py` → `pdvtrigger_report.html` (rendered narrative, §1–§15).
+1. **this file** — the map (incl. the §1.5 staleness audit below).
+2. `PLAN.md` → the **⭐⭐ CANONICAL SYNTHESIS + VERDICT** block (the current direction; supersedes all earlier
+   synthesis) + the dated status ledger (newest first).
+3. `ELBADRY_REFERENCE.md` + `LANCASTER_REFERENCE.md` — 📌 the two **imprint** reference docs (θ definition, the
+   closed form, λδv≈3, the n-mapping, the theta_target verification, PdV). Read these instead of the PDFs.
+4. `KMIX_SELFCONSISTENT.md` — *why the structural κ_mix port was shelved* (the negative result that pivoted us).
+5. `REPRODUCE.md` — result → `.param`/command → artifact manifest.
+
+> ⚠️ **`F_KAPPA_FUNCTIONAL_FORM.md` is NO LONGER the main doc** — it documents the *f_κ(n) power-law* avenue,
+> which is **superseded** (see §1.5). Read it as history, not direction.
+
+## 1.5 ⚠️ STALENESS AUDIT — docs that describe SUPERSEDED directions (read before trusting a conclusion)
+
+The direction changed on 2026-06-30 (κ_eff/f_κ/κ_mix-structural → **impose El-Badry's θ as the trigger
+target**). Several docs predate that and, read in isolation, would point the wrong way. **They are kept for
+provenance but flagged here so a stale conclusion can't hijack the path forward:**
+
+| doc | what's STALE in it | the correct current view |
+|---|---|---|
+| `F_KAPPA_FUNCTIONAL_FORM.md` | the whole **f_κ(n) power-law** program (f_κ∝n^−0.3/−0.6, the 819-sweep scorecard, the "cliff") as the *direction* | f_κ is a tunable-but-unphysical fudge; **superseded** by imposing El-Badry's θ_target. The sweep data is still valid *evidence*; the **prescription is not the plan**. |
+| `RUNGB_SCOPING.md` | the **structural κ_mix injection** ("re-promoted", §8 gated production) as the path | the structural port is **SHELVED** (saturates/unstable, `KMIX_SELFCONSISTENT.md`); κ_mix survives only as physical *justification* for θ∝√(λδv·n) |
+| `KMIX_SELFCONSISTENT.md` §2 | "dense θ plateaus low (~0.35) / only 1/6 fires" | **WALKED BACK** — that was the wrong epoch (blowout) + a buggy port; El-Badry+Lancaster agree **dense θ is HIGH (0.9–0.99)**. See §2b and `LANCASTER_REFERENCE.md` §7. |
+| `KMIX_DIFFUSIVITY.md` / `KMIX_PROTOTYPE.md` | "calibrate λδv to Lancaster (value open)"; prototype Pb anchors from **0.3–1.0 Myr truncated** runs | **λδv≈3 is now pinned** (`LANCASTER_REFERENCE.md` §7); re-derive prototype Pb from ≥5 Myr runs before quoting numbers |
+| `KMIX_IMPLEMENTATION_SPEC.md` | the κ_mix-into-the-ODE wiring design | **SHELVED** (banner in the doc); its dimensionless-multiplier *units* strategy is still reusable |
+| any "Lancaster 2021c / ApJ 914, 91" / "ApJ 914,90 = theory" | paper-ID confusion | ApJ 914, **90 is Paper II (sims)** — the θ~0.9–0.99 anchor; see `LANCASTER_REFERENCE.md` §0 |
+
+**Rule going forward (maintainer): whenever a decision is made, update the ⭐⭐ canonical synthesis AND this
+audit AND the affected sibling together — never one in isolation.**
 
 ## 2. The docs — timeline, role, purpose, status
 
@@ -41,9 +66,9 @@ conclusion that the faithful fix is the structural **κ_mix (Rung-B) term**, now
 | `NOTE_PATCHES.md` | 06-24 | Phase 1 (trigger) / §2–§3 | the Paper-II note patches: don't-double-count, the f_mix convention fix | settled |
 | `FINDINGS.md` | 06-25 | all / §1–§14 | the verified findings + the 3-axis taxonomy (outcome/mechanism/trigger) | **live** |
 | `KAPPA_EFF_SCOPING.md` | 06-25 | Phase 1 (mechanism) / §11 | κ_eff Rung-A feasibility map + the back-reaction result (the cooling mechanism) | settled |
-| `RUNGB_SCOPING.md` | 06-26 | Phase 2 (Rung B) / §11 | the structural κ_mix scoping; §8 front-conduction next step; §2a θ/λδv reconciliation | **live** (re-promoted) |
+| `RUNGB_SCOPING.md` | 06-26 | Phase 2 (Rung B) / §11 | the structural κ_mix scoping; §8 front-conduction next step; §2a θ/λδv reconciliation | 🛑 **SHELVED** (structural port abandoned; §1.5) |
 | `REPRODUCE.md` | 06-28 | manifest | result→param→command→artifact map; cheap (🟢) vs HPC (🔴) tags | **live** |
-| `F_KAPPA_FUNCTIONAL_FORM.md` | 06-29 | Phase 3 (calibration) / §15 | **main doc**: f_κ(n) form, sweep scorecard, cliff, metric, physical-cap, derivation→κ_mix | **live** |
+| `F_KAPPA_FUNCTIONAL_FORM.md` | 06-29 | Phase 3 (calibration) / §15 | f_κ(n) form, sweep scorecard, cliff, metric, derivation→κ_mix | 🛑 **SUPERSEDED direction** (data valid; prescription not the plan; §1.5) |
 | `KMIX_DIFFUSIVITY.md` | 06-29 | Phase 3 (κ_mix) / §15.7 | the maintainer manuscript draft, verified line-by-line + the λδv-origin refinement | **live** |
 | `KMIX_PROTOTYPE.md` | 06-29 | Phase 4 (implementation) | **step 1** of the κ_mix wiring: the offline scoping prototype (units-correct, no solver) | **live** |
 | `KMIX_IMPLEMENTATION_SPEC.md` | 06-30 | Phase 4 (implementation) | **design+units spec** for wiring κ_mix: dimensionless-multiplier strategy, the 3 sites, gate param, 8-config gates | **live** (plan; §3 boundary refined by self-consistent) |

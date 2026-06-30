@@ -38,56 +38,60 @@ The recheck list the banners demand. **Every visit:** re-verify the anchors belo
 *then* read on. All findings here are **already persisted** (CSVs + figures under `data/` and this
 folder) — do **not** re-run the hours-long sims to recover them; reproduce only to extend.
 
-### ⭐ Current synthesis — the GOAL and "the merge" (read this first; 2026-06-26)
+### ⭐⭐ CANONICAL SYNTHESIS + VERDICT (read this first — supersedes all earlier synthesis blocks; 2026-06-30)
 
-**The goal (north star, maintainer-stated):** modify the cooling so this 1D sim has **enhanced cooling
-comparable to observations and 3D simulations**, and **somewhat dependent on cloud/cluster/bubble
-properties** — i.e. raise the loss fraction `θ = L_cool/L_mech` from the 1D-resolved **0.25 (diffuse) → 0.70
-(dense)** at blowout toward the obs/3D values (Lancaster ≈ **0.9–0.99**; El-Badry `θ(n_H, λδv)`), **density-
-dependently**.
+*This single block replaces the older layered ⭐/⚡/⚡⚡ synthesis. It reflects the grand view across
+`ELBADRY_REFERENCE.md`, `LANCASTER_REFERENCE.md`, and all the κ_mix work. Whenever a decision is made, update
+THIS block and the affected sibling docs together.*
 
-**The merge (current understanding — supersedes the earlier "κ_eff endgame / evaporation-decoupling"
-framing):**
-| role | what | status |
+**The goal (maintainer north star):** give TRINITY's 1D bubble cooling **comparable to 3D/obs (Lancaster
+θ~0.9–0.99) and dependent on cloud properties**, so the energy→momentum transition fires physically — and
+**let transition be "fate"** (clouds that can't reach the threshold stay energy-driven, by design).
+
+**The decided approach — impose El-Badry's analytic θ as the trigger target (NOT a structural κ_mix port):**
+The one master parameter is **`θ ≡ L_cool/L_mech`** — *identical* in TRINITY, El-Badry (`L_int/Ė_in`), and
+Lancaster (`Ė_cool/Lw`); all SB dynamics follow from it via the `(1−θ)` substitution. El-Badry gives a
+**3D-calibrated closed form** `θ = A_mix·√(λδv·n) / (11/5 + A_mix·√(λδv·n))`, A_mix=3.5. Feed it into TRINITY's
+**existing gated `cooling_boost_mode='theta_target'`** (verified in source to be exactly the `(1−θ)` budget),
+with the density-dependent value computed per-step.
+
+| element | decision | anchor |
 |---|---|---|
-| **Mechanism** | **κ_eff** = `cooling_boost_kappa` (Rung A) — enhances conduction ⇒ more ~10⁵ K radiating gas ⇒ raises **emergent** cooling in-structure (θ comes out, not imposed) | **built, gated, byte-identical-off**; measured `bubble_LTotal` ×1.23–1.38 at f_κ=2 |
-| **Target** | **θ(n_H)** from El-Badry (`λδv`=κ_eff, a *set* 1D knob) + Lancaster (3D, parameter-free ≈0.9–0.99) | the calibration data |
-| **Knob** | **f_κ(properties)** tuned so emergent θ → target, density-dependently | the remaining work = **calibration** |
+| **mechanism** | **impose** θ_target (the 3D mixing 1D can't resolve), not emerge it | El-Badry endorses (his §7: "implement in any Weaver-based model") |
+| **knob** | **λδv ≈ 3** pc·km/s | matches Lancaster's GMC momentum-driven range (nH 40–2e5) **and** El-Badry's own A_mix=3.5 fit (λδv=3) |
+| **density `n`** | **local cloud density at the shell, n_amb(R2)** | verified faithful at equilibrium (`make_nmap_verify.py`); the direct R2,Pb form is the robust alt |
+| **ceiling** | **θ_max < 1** (e.g. 0.99) | else `R∝(1−θ)^{1/5}→0` stalls the bubble at GMC density |
+| **trigger** | **`cooling_balance` + `ebpeak`** (first-fire) | θ is PdV-**exclusive**; `ebpeak` (Edot_balance≤0) is PdV-**inclusive** → catches massive-cluster transitions cooling alone misses |
+| **fate** | clouds with **nH ≲ 50** (n_fire at λδv=3) stay energy-driven | route-a; El-Badry √n, **uncontradicted** by Lancaster (whose plateau is GMC-only) |
 
-> **⚡ SYNTHESIS UPDATE (2026-06-30) — the tunable knob isn't physical; the physical term isn't tunable.**
-> The self-consistent κ_mix test (`KMIX_SELFCONSISTENT.md`) sharpens the "Mechanism/Knob" rows above into a
-> real fork. **f_κ** (the scalar in the table) is a working *continuous* knob **but unphysical** (a modest scalar
-> on hot-interior Spitzer; it never reaches the cool layer, and raises dMdt the wrong way). **κ_mix** is the
-> *physical* cool-layer term **but NOT tunable**: it is 10⁵–10⁸× Spitzer the instant it is on, so resolved θ
-> **saturates by λδv≈0.01** and lands density-**mismatched** (diffuse overshoots → fires; mid/dense plateau
-> 0.23–0.35 ≪ Lancaster). So **"calibrate λδv to Lancaster" is RETIRED**, and the table's "Knob = f_κ tuned to
-> target" is now: *f_κ is the only dial, used as a **calibrated effective parameter**, with κ_mix as the
-> physical justification for why enhanced cooling exists.*
-> |  | tunable? | physical? |
-> |---|:--:|:--:|
-> | **f_κ** (Rung A) | ✅ | ❌ |
-> | **κ_mix** (Rung B) | ❌ (saturates) | ✅ |
-> The low dense θ is the **same ceiling** as the sweep's "6/63 never fire" — revealed, not created (caveat:
-> single near-blowout row; a time-integrated metric could move it). **Open fork (maintainer):** (a) use f_κ as
-> the calibrated effective knob; (b) κ_mix floor (diffuse) **+** the gated `theta_target` cap (dense); (c)
-> re-metric / κ_mix boundary re-derivation. Full reasoning: `KMIX_SELFCONSISTENT.md` §2a–§3.
->
-> **⚡⚡ SUPERSEDING DIRECTION (2026-06-30, after the full El-Badry read — `ELBADRY_REFERENCE.md`): use
-> El-Badry's analytic θ(λδv,n) directly as the θ_target.** The fork above is resolved by a cleaner option the
-> full paper hands us. El-Badry's **`θ ≡ L_int/Ė_in` IS TRINITY's trigger θ**, and he gives a 3D-calibrated
-> closed form `θ = A_mix√(λδv·n)/(11/5 + A_mix√(λδv·n))` (A_mix=3.5). Feed it into the **existing gated
-> `cooling_boost_mode='theta_target'`** — no κ_mix port, no f_κ fudge, no stability/saturation fight. This *is*
-> the user's "f_κ from an n,T correlation + calibrate to sim, transition is fate" idea, realized with El-Badry's
-> own calibration: at λδv=1 the **firing threshold is ambient n≈143 cm⁻³** (GMC fires, diffuse ISM doesn't = fate).
-> κ_mix remains the *physical justification* (why θ∝√(λδv·n)); the direct injection is shelved. **Revised
-> Mechanism/Target/Knob table:**
-> | role | OLD (κ_mix/f_κ) | NEW (El-Badry θ_target) |
-> |---|---|---|
-> | Target | θ(n) from El-Badry+Lancaster | **same** — now a closed form, Eq 37/38 |
-> | Mechanism | inject κ_mix into the structure ODE (saturates/unstable) | **impose θ_target** = El-Badry θ(λδv,n) (the 3D physics 1D can't resolve) |
-> | Knob | f_κ / λδv (saturates) | **λδv** — smooth, calibratable to Lancaster |
-> **Caveats:** GMC θ is EXTRAPOLATED past El-Badry's tested n≤10 (Lancaster supports, unvalidated >10);
-> n=ambient-at-shell not nСore; θ is late-time (≥5 Myr). Full detail: `ELBADRY_REFERENCE.md` §6–§7.
+**κ_mix (Rung B) is SHELVED as a structural injection** — it saturates (10⁵–10⁸× Spitzer instantly) and is
+numerically unstable in the Weaver ODE (`KMIX_SELFCONSISTENT.md`). It survives only as the **physical
+justification** for *why* θ∝√(λδv·n). The scalar f_κ (Rung A) is a tunable-but-unphysical fudge, now subsumed:
+imposing El-Badry's θ directly is both tunable (via λδv) and physical (3D-calibrated).
+
+**VERDICT: the plan is sound and triple-anchored — but it is still entirely on paper.** El-Badry's closed form,
+Lancaster's magnitude, and TRINITY's existing mechanism all agree, and the calibration (λδv≈3), n-mapping, PdV
+pairing, and fate prediction are all resolved on paper. **The one thing not yet done is a single TRINITY run
+with the mode on.** So the risk is no longer conceptual — it is execution + validation.
+
+**SETTLED:** θ is the master parameter (3-way identical) · θ_target = El-Badry closed form · λδv≈3 · n=n_amb(R2)
+· θ_max ceiling needed · pair with ebpeak for PdV · diffuse clouds (nH≲50) stay energy-driven (route-a) ·
+`theta_target` mode = the `(1−θ)` budget (source-verified) · ≥5 Myr per run.
+**OPEN / RISKS:** (1) **no run yet** — validate on the 8 configs to ≥5 Myr; (2) the `max(resolved, target)` could
+let TRINITY's wrong-trend *resolved* θ win at some epoch — check, and prefer direct θ_target if so; (3) route-a
+(diffuse fate) is a *prediction*, untested below nH~40 by either paper; (4) θ→1 dense-core behaviour needs the
+ceiling to stay numerically sane.
+
+**BEST PATH FORWARD:** (i) write the gated `theta_elbadry` mode **spec** (θ(λδv≈3, n_amb(R2)), θ_max,
+ebpeak pairing, byte-identical-off proof, 8-config + ≥5 Myr test) → (ii) implement (default-off) → (iii)
+validate on the 8 configs to ≥5 Myr, reading firing by **first-crossing** (never blowout). Evidence chain:
+`ELBADRY_REFERENCE.md` (θ, closed form, n-mapping, theta_target verification) · `LANCASTER_REFERENCE.md` (θ
+magnitude, λδv≈3, route-a) · `KMIX_SELFCONSISTENT.md` (why the structural port was shelved).
+
+---
+
+*Historical context below (pre-2026-06-30 κ_eff/κ_mix framing) — superseded by the canonical block above; kept
+for provenance.*
 
 - **`θ_target` vs κ_eff was a FALSE dichotomy** — `θ(n_H)` is the *target*, κ_eff is the *mechanism* of the
   same knob. (`RUNGB_SCOPING.md` §2a is the canonical θ/`λδv`/`f_κ`/0.95 reconciliation.)

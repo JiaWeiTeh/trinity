@@ -1,5 +1,12 @@
 # f_κ(n_H) — a closed-form calibration target (composed, not fitted-cold)
 
+> 🛑 **SUPERSEDED DIRECTION (2026-06-30) — read as HISTORY, not the plan.** This doc develops the **f_κ(n)
+> power-law** program (f_κ∝n^−0.3/−0.6, the 819-sweep scorecard, the cliff). That program is **superseded**: the
+> current direction is to **impose El-Badry's analytic θ as the trigger target** (`PLAN.md` ⭐⭐ canonical
+> synthesis; `ELBADRY_REFERENCE.md`), because f_κ is a tunable-but-*unphysical* fudge. **The sweep DATA here is
+> still valid evidence; the f_κ(n) PRESCRIPTION is no longer the path.** Don't restart the f_κ-power-law avenue
+> from this doc without re-reading the canonical synthesis first.
+
 > ⚠️ **This document may be out of date — verify before trusting it.** It is a
 > point-in-time analysis/audit, not a maintained spec; the code moves faster
 > than these notes (paths, line numbers, and "what shipped" status drift).

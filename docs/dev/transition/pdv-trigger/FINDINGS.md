@@ -39,6 +39,12 @@
 
 ## Taxonomy of the approaches (read first; 2026-06-28)
 
+> 🛑 **DIRECTION CHANGED 2026-06-30 — read `PLAN.md` ⭐⭐ canonical synthesis + `INDEX.md` §1.5 staleness audit
+> FIRST.** The callouts immediately below (f_κ(n) power-law, the sweep scorecard) describe the **superseded**
+> f_κ avenue. The current plan **imposes El-Badry's θ as the trigger target** (λδv≈3); f_κ is a
+> tunable-but-unphysical fudge. The findings below are valid *evidence/history*; they are **not the direction**.
+> The newest, current callouts are at the BOTTOM of this list (κ_mix self-consistent → time-resolved → El-Badry).
+
 > **→ Calibration target (2026-06-29):** the composed closed-form **f_κ(n_H) = (θ\*/θ₀(n_H))^(1/p) ≈
 > 1.4×10²·n_H^(−0.30)** now lives in **`F_KAPPA_FUNCTIONAL_FORM.md`** (target = Lancaster flat θ*≈0.90 · baseline
 > `logit θ₀ = −1.73+0.41 log₁₀ n_H` · raw full-range leverage p≈0.31). f_κ≈48(diffuse)/9(mid)/3(dense) for
