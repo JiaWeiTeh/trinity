@@ -85,6 +85,19 @@ framing):**
   `f_κ(n_H)` mode (gated, default-off byte-identical).
 
 **Status ledger (newest first):**
+- **2026-06-30 (Pb-collapse fix APPLIED to production — the FIRST production code change in this workstream;
+  maintainer-authorized).** Applied `PB_COLLAPSE_GUARD_FIX.md`: in `run_energy_implicit_phase.py` the
+  phase-boundary reconciliation snapshot now **skips the Pb recompute on the `energy_collapsed` exit** (Eb<0 →
+  `compute_R1_Pb` gave the garbage `Pb=−1.6×10¹⁸`) but **still `save_snapshot()`s** the last-healthy state so
+  `ENERGY_COLLAPSED` (code 51) reaches the output. **The `else: save_snapshot()` was essential** — the
+  failing-first test caught that skipping the whole block dropped the end code (`code None`); fixed, the test
+  goes red→green. **Gates:** new `test/test_energy_collapse_snapshot.py` (heavy collapsing cloud, end-to-end)
+  red on `main` then green; healthy-run regression **equivalent** — and surfaced a finding: **trinity is NOT
+  bit-reproducible run-to-run** (two same-code runs differ in 3 SN-feedback terms `F_ram_SN/Lmech_SN/pdot_SN`
+  at ~1e-22, BLAS-threading noise; **all physics fields bit-identical**), so the "byte-identical" gate is
+  qualified accordingly; full `pytest` **596 passed**. Behaviour identical for every non-collapsing run (the
+  change is an `if termination_reason != "energy_collapsed":` wrapper + an `else`). Reconciled `INDEX.md` and
+  `PB_COLLAPSE_GUARD_FIX.md` (status → APPLIED).
 - **2026-06-30 (SELF-CONSISTENT κ_mix injected into the REAL solver — decisive, tempers the GO; new doc
   `KMIX_SELFCONSISTENT.md`).** Built `data/make_kmix_selfconsistent.py`: monkeypatches the conduction in
   `bubble_luminosity.py` (RHS site :406) and re-runs the full production `get_bubbleproperties_pure()` with

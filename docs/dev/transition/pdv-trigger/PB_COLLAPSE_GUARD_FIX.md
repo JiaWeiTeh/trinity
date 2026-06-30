@@ -24,12 +24,14 @@
 
 ## 0. Status, scope, and the guardrail this respects
 
-**This is a PLAN only — no production code is changed by this document.** It is written under the
-maintainer's standing guardrail (*nothing touches the production solver before it is tested*). The fix it
-describes is a **one-line, correctness-preserving robustness change** to the energy-implicit phase; it is
-queued here with its full test plan so it can be applied deliberately, not folded silently into the κ_mix
-work. It is **independent** of the κ_mix effort — a pre-existing output-hygiene bug surfaced while harvesting
-`Pb(t)` for the κ_mix prototype.
+**STATUS: APPLIED + tested (2026-06-30), maintainer-authorized.** The fix landed on
+`feature/PdV-trigger-term-pt2` with its failing-first test, regression, and the full suite green (§5).
+**The applied fix is two-part, not one-line** — skipping the reconciliation alone dropped the
+`ENERGY_COLLAPSED` code from the output (it was the only snapshot that persisted the end code), so an
+`else: params.save_snapshot()` was added to keep the stop fate propagating (see §4, the propagation correction
+the test caught). It is a **correctness-preserving robustness change** to the energy-implicit phase,
+**independent** of the κ_mix effort — a pre-existing output-hygiene bug surfaced while harvesting `Pb(t)` for
+the κ_mix prototype.
 
 ## 1. Symptom (what was observed)
 
@@ -77,26 +79,35 @@ compute_R1_Pb" past collapse — the reconciliation block walks straight into ex
 
 ## 4. The fix (smallest diff that is correct)
 
-**Skip the reconciliation snapshot when the run ended by energy-collapse.** On that exit the last *healthy*
-snapshot (step 1, line 946) is already the correct final physics row at the last valid `t`; recomputing
-derived properties from the invalid post-collapse `Eb` produces only garbage. Guard the block:
+**Skip the reconciliation *recompute* on the energy-collapse exit, but still persist a final snapshot so the
+stop fate reaches the output.** Recomputing `Pb = (γ−1)·Eb/V` from the invalid post-collapse `Eb` produces
+garbage; but the reconciliation `save_snapshot()` was *also* the only call that wrote `ENERGY_COLLAPSED` (code
+51) into the dictionary (the in-loop snapshot at line 946 runs *before* collapse detection). So skipping the
+whole block silently dropped the end code — **the failing-first test (§5.1) caught exactly this.** The applied
+fix guards the recompute *and* adds an `else` that saves the last-healthy state (which still carries `Pb>0`
+from line 868 and the end code set at line 1080):
 
 ```python
-# phase1b_energy_implicit/run_energy_implicit_phase.py, at line 1269
+# phase1b_energy_implicit/run_energy_implicit_phase.py
 if termination_reason != "energy_collapsed":
     try:
         feedback_final = get_current_sps_feedback(t_now, params)
-        ...
+        ...                                   # full reconciliation (recompute Pb/shell/forces, save)
         params.save_snapshot()
     except Exception as e:
         logger.warning(f"Phase-boundary reconciliation failed: {e}")
+else:
+    # Eb<0 -> compute_R1_Pb gives garbage; params still holds the last healthy Pb + the
+    # ENERGY_COLLAPSED code/reason -> save them so the stop fate reaches the output.
+    params.save_snapshot()
 ```
 
 **Why this option over the alternatives:**
 
-- ✅ **Chosen — skip reconciliation on collapse.** Minimal, intention-revealing, and *byte-identical for every
-  non-collapsing run* (the guard is false only on the collapse path, which the healthy 8-config set never
-  takes except `fail_repro`). The collapsed run keeps its last-valid row + the ENERGY_COLLAPSED code/reason.
+- ✅ **Chosen — skip the recompute on collapse, but still `save_snapshot()`.** Minimal, intention-revealing,
+  and unchanged for every non-collapsing run (the guard is false only on the collapse path). The collapsed run
+  keeps its last-valid Pb + the ENERGY_COLLAPSED code/reason. *(The `else: save_snapshot()` is essential — see
+  §4-block above; without it the end code never reaches the output, which the failing test caught.)*
 - ❌ *Guard `Eb > 0` inside the block before `compute_R1_Pb`.* Also works, but leaves a half-reconciled
   snapshot (feedback updated, Pb/forces not) — a subtler inconsistency than simply not writing it.
 - ❌ *Clamp `Pb` to NaN/last-valid in `bubble_E2P`.* Touches a shared physics primitive used everywhere — far
@@ -110,47 +121,46 @@ if termination_reason != "energy_collapsed":
 
 All tests go in the `pytest` suite (project convention — no ad-hoc scripts). Three layers:
 
-### 5.1 Unit — the collapse path short-circuits cleanly (the failing test, written first)
+### 5.1 Unit — the collapse path short-circuits cleanly (the failing test) ✅ DONE
 
-New `test/test_energy_collapse_snapshot.py`. Drive the energy-implicit phase to (or inject) an
-`Eb ≤ 0` terminal state and assert on the resulting params/output:
+`test/test_energy_collapse_snapshot.py` runs a heavy collapsing cloud (`mCloud=5e9, sfe=0.1, nCore=1e2`,
+collapses at t~3e-3 Myr, ~80 s) end-to-end via `run.py` (mirrors `test_run_smoke`) and asserts on the output
+`dictionary.jsonl`:
 
-- `params['SimulationEndCode'].value == SimulationEndCode.ENERGY_COLLAPSED.code` (== 51) — **propagation
-  preserved**.
-- `params['SimulationEndReason'].value` contains `"collapsed"` — **propagation preserved**.
-- `params['Pb'].value > 0` (or is the last finite healthy value) — **no negative Pb survives**. *Before the
-  fix this assertion fails* (`Pb ≈ −1.6×10¹⁸`); after, it passes. This is the bug-→-failing-test→-fix gate
-  (rule 4).
-- The recorded final row's `Pb` is finite and positive.
+- last row `SimulationEndCode == 51` — **collapse propagates** (this is what the propagation correction in §4
+  restored; *the first fix attempt without the `else` failed this assertion → code `None`*).
+- **no row** carries `Pb < 0` — *fails on current `main`* (terminal `Pb ≈ −1.6×10¹⁸`, row 52), *passes after*.
+  The bug-→-failing-test→-fix gate (rule 4); confirmed red (1 failed, 82 s) then green (1 passed, 80 s).
+- the last row's `Pb` is finite and **positive**.
 
-Prefer driving the real phase on the `fail_repro` config if it fits CI time; otherwise a minimal fixture that
-calls the reconciliation path with `termination_reason = "energy_collapsed"` and a negative `Eb`, asserting no
-`save_snapshot()` with negative Pb occurs (spy/monkeypatch on `save_snapshot`).
+### 5.2 Regression — the healthy path is unchanged (the "don't break anything" gate) ✅ DONE
 
-### 5.2 Regression — the healthy path is byte-identical (the "don't break anything" gate)
+The fix cannot perturb a non-collapsing run **by construction**: the only change is the `if termination_reason
+!= "energy_collapsed":` wrapper (always True for a healthy run → the original block runs identically) plus an
+`else` (never taken). Verified empirically: ran `mCloud=1e5, sfe=0.3, stop_t=0.03` (reaches & exits the
+implicit phase, so the changed code path *is* exercised) **before** (stashed) and **after** the fix, in
+separate processes.
 
-The fix must not perturb any non-collapsing run. Per CLAUDE.md rule 5, prove it on the solver edges:
+- **Finding — trinity is NOT bit-reproducible run-to-run.** Pre-fix vs post-fix `dictionary.jsonl` differ, but
+  **so do two *same-code* runs**, in *exactly* the same three keys: `F_ram_SN`, `Lmech_SN`, `pdot_SN` — the SN
+  feedback terms at **~1e-22** (physically zero; no SN at t~3e-7 Myr), i.e. BLAS-threading noise. **All physics
+  fields** (`Eb`, `Pb`, `R2`, `v2`, `T0`, `bubble_LTotal`, `shell_mass`, …) are **bit-identical** across runs.
+- **So the gate is: "differs only in the 3 nondeterministic ~1e-22 SN-noise terms, identical to a same-code run
+  pair; all physics bit-identical."** A literal byte-identical `dictionary.jsonl` is **unachievable even for
+  the same code** (this corrects the original gate wording, which assumed bit-reproducibility). The fix passes:
+  its diff set == the same-code diff set.
 
-- Run `param/simple_cluster.param` and `docs/dev/performance/f1edge_{lowdens,hidens}*.param` **before and
-  after** the change, in **separate processes** (trinity leaks module-global state in-process), to the same
-  `STOPPING_TIME`.
-- **Gate: byte-identical `dictionary.jsonl`** (diff the files / compare a content hash). These runs never take
-  the `energy_collapsed` branch, so the guard is always-false for them and output must be bit-for-bit
-  unchanged. Any diff = the guard is mis-scoped → stop and re-examine.
-- Cheap proxy already on hand: the 4 committed `runs/data/harvest_cal_*.csv` came from healthy runs; re-harvest
-  after the fix and confirm identical.
+### 5.3 Verification — the collapsed run is fixed end-to-end ✅ DONE
 
-### 5.3 Verification — the collapsed run is fixed end-to-end and still stops correctly
+Covered by 5.1's end-to-end run (a heavy collapsing cloud, the `fail_repro` regime): still `ENERGY_COLLAPSED`
+(51), zero negative-Pb rows, terminal row = last healthy positive-Pb snapshot. The reconciliation row is now
+*replaced* by the bare-snapshot row (same `t`, healthy Pb) rather than dropped, so the end code still lands.
 
-- Run `fail_repro` (heavy 5×10⁹) after the fix.
-- Assert: still stops with `ENERGY_COLLAPSED` (code 51); its `dictionary.jsonl` now has **no negative Pb in any
-  row** (the terminal garbage row is gone); the last row is the last *healthy* positive-Pb snapshot at the
-  last valid `t`; row count drops by exactly one (the dropped reconciliation row) or the last row is replaced —
-  document whichever the implementation yields.
+### 5.4 Full suite ✅ DONE
 
-### 5.4 Full suite
-
-`pytest` green before and after; `pre-commit run --all-files` (ruff F-rules) clean. No new ruff scope.
+`pytest -q` (default, non-stress): **596 passed, 4 deselected, 0 failed** (121 s) with the fix. Ruff F-rules
+on the edited file: clean **on the changed lines** (9 pre-existing F401/F841 at lines 61–665 are untouched
+dead code — flagged, not deleted, per CLAUDE.md rule 3).
 
 ## 6. Propagation checklist (the maintainer asked specifically that the result propagates)
 
@@ -160,17 +170,19 @@ Confirm each, post-fix:
    break, untouched by this fix). ✅ by construction.
 2. `SimulationEndReason` string reaches the same. ✅ by construction.
 3. The final `dictionary.jsonl` row carries a **finite, positive** Pb (last healthy snapshot), so any reader
-   that takes `last_row.Pb` gets a physical value. ✅ via 5.3.
-4. No downstream consumer relied on the *presence* of a reconciliation row for collapsed runs (grep
-   `EndSimulationDirectly` / readers in `trinity/_output/`). **To verify during apply** — if a reader assumes a
-   trailing reconciliation row exists, prefer the `Eb>0`-inside-block variant (§4) instead.
+   that takes `last_row.Pb` gets a physical value. ✅ via 5.1/5.3 (last row `Pb>0`, asserted).
+4. A trailing snapshot row **still exists** on collapse (the `else: save_snapshot()`), so any consumer that
+   relied on the *presence* of a final row is unaffected — only its `Pb` changed from garbage to healthy. ✅
+   (This is why the `else` was added rather than dropping the snapshot outright.)
 
-## 7. Apply order (when the maintainer green-lights production)
+## 7. Apply order — ✅ EXECUTED (2026-06-30)
 
-1. Write `test/test_energy_collapse_snapshot.py` (§5.1) → confirm it **fails** on current `main`.
-2. Apply the one-line guard (§4).
-3. Re-run §5.1 (now passes), §5.2 (byte-identical), §5.3 (fail_repro clean), §5.4 (full suite + ruff).
-4. Commit dev branch `feature/PdV-trigger-term-pt2`; no production default changes; reconcile `INDEX.md`/`PLAN.md`
-   and the `KMIX_PROTOTYPE.md` §2 diagnosis note (correct its line-ordering guess to point here).
+1. ✅ Wrote `test/test_energy_collapse_snapshot.py` (§5.1) → confirmed **red** on current code (negative Pb).
+2. ✅ Applied the guard (§4) — and, after the test caught the dropped end code, added the `else:
+   save_snapshot()` propagation branch.
+3. ✅ §5.1 green; §5.2 equivalent (only the 3 nondeterministic ~1e-22 SN terms differ, same as a same-code
+   run pair); §5.3 collapsed run clean; §5.4 full suite **596 passed**.
+4. ✅ Reconciled `INDEX.md`/`PLAN.md` and the `KMIX_PROTOTYPE.md` §2 note. No production *default* changes
+   (behaviour identical for every non-collapsing run).
 
-*Written 2026-06-30 on `feature/PdV-trigger-term-pt2`. No production code touched.*
+*Written + applied 2026-06-30 on `feature/PdV-trigger-term-pt2`.*

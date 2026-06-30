@@ -48,7 +48,7 @@ conclusion that the faithful fix is the structural **κ_mix (Rung-B) term**, now
 | `KMIX_PROTOTYPE.md` | 06-29 | Phase 4 (implementation) | **step 1** of the κ_mix wiring: the offline scoping prototype (units-correct, no solver) | **live** |
 | `KMIX_IMPLEMENTATION_SPEC.md` | 06-30 | Phase 4 (implementation) | **design+units spec** for wiring κ_mix: dimensionless-multiplier strategy, the 3 sites, gate param, 8-config gates | **live** (plan; §3 boundary refined by self-consistent) |
 | `KMIX_SELFCONSISTENT.md` | 06-30 | Phase 4 (implementation) | **step 2**: κ_mix injected into the REAL solver (monkeypatch). θ rises but **SATURATES** & misses Lancaster for dense clouds; retires the λδv-pin | **live** |
-| `PB_COLLAPSE_GUARD_FIX.md` | 06-30 | Phase 4 (hygiene) | plan+tests to stop the energy-collapse reconciliation snapshot emitting a garbage negative Pb | **live** (plan) |
+| `PB_COLLAPSE_GUARD_FIX.md` | 06-30 | Phase 4 (hygiene) | the energy-collapse reconciliation no longer emits a garbage negative Pb — **APPLIED + tested** (596 pass) | **done** |
 
 *Phases:* **1** PdV/cooling-boost trigger question (06-24→28) · **2** Rung-B structural scoping (06-26) ·
 **3** f_κ calibration + the pivot to κ_mix (06-29, this session) · **4** κ_mix implementation, offline-first (current).
@@ -68,9 +68,10 @@ The recurring conclusion is that the faithful fix is `κ = max(κ_mix, κ_Spitze
 | **strategy revision** | κ_mix is a saturating, density-mismatched correction → combine with θ_target cap? re-metric? boundary re-derive? | ⏳ **maintainer decision** | `KMIX_SELFCONSISTENT.md` §3 |
 | gated production | `κ_mix` mode default-off byte-identical; equivalence gate; full 8-config | ⏸ **on hold** pending the strategy revision | `RUNGB_SCOPING.md` §8 + spec §6 |
 
-*Independent hygiene item (not κ_mix):* the energy-collapse reconciliation snapshot emits one garbage negative
-Pb on the `fail_repro` heavy run — diagnosed and planned in `PB_COLLAPSE_GUARD_FIX.md` (one-line fix + tests,
-queued behind the guardrail).
+*Independent hygiene item (not κ_mix), ✅ APPLIED 2026-06-30:* the energy-collapse reconciliation used to emit
+one garbage negative Pb on collapsed runs (e.g. `fail_repro`). Fixed in `run_energy_implicit_phase.py` (skip the
+Pb recompute on the `energy_collapsed` exit, but still `save_snapshot()` so code 51 propagates) + a failing-first
+test; full suite 596 pass. Details + the trinity-not-bit-reproducible finding: `PB_COLLAPSE_GUARD_FIX.md`.
 
 **Open question carried through:** route (a) diffuse blows out energy-driven (bounded physical diffusivity) vs
 route (b) diffuse is 1D-under-cooled → κ_mix gets it to θ_target. The self-consistent run, calibrated to Lancaster,
