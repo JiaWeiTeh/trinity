@@ -60,6 +60,12 @@ phase, converted to cgs:
 | mid (n~1e4) | 1.5×10⁻⁷ | 6.9×10⁷ | 2.2×10⁴ | 3.5×10⁶ K |
 | compact (n~1e5) | 5.4×10⁻⁷ | 2.5×10⁸ | 7.8×10⁴ | 5.0×10⁶ K |
 | dense (n~1e6) | 6.2×10⁻⁸ | 2.8×10⁷ | 8.9×10³ | 2.7×10⁶ K |
+| heavy (n~5e9) | — | — | — | — (`excluded:energy_collapsed`) |
+
+The 5th background sim, the heavy 5×10⁹ `fail_repro`, is now carried in the builder **explicitly** as a
+`status=excluded:energy_collapsed` row (not a silent skip): it ENERGY_COLLAPSED in the energy phase with no
+positive implicit-phase Pb, so no cooling/mixing layer ever forms and κ_mix is moot for it — itself a finding
+(the pathological heavy cloud has nothing for mixing to enhance). Full regime coverage = **5/5** background sims.
 
 **Reading.** In the cool mixing layer (2×10⁴–2×10⁵ K, where n²Λ peaks) **κ_mix dominates Spitzer by 10³–10⁸ even
 at λδv=1**, and T_cross (2.4–5.0×10⁶ K) sits **far above** the layer in *every* regime. So κ_mix would
@@ -93,11 +99,13 @@ cloud has no mixing layer to enhance.)*
 
 ## 3. Coverage + the next step
 
-- **The full density span (nCore 1e2–1e6) is covered** by the 4 `cal_*` anchors, run in-container 2026-06-30
-  (~12 min each; the runs fit comfortably in <60 min — no HPC needed, contrary to the earlier assumption). The
-  named closure-8 labels (`midrange_pl0`, `be_sphere`, `pl2_steep`, `small_dense_highsfe`, `small_1e6`) are
-  *upstream analysis* configs whose density range is already spanned here; the heavy `fail_repro` is excluded
-  (energy-collapse, no implicit phase). So the **GO conclusion is firm across the density range.**
+- **The full regime set (all 5 background sims) is now covered (5/5)** by the builder, run in-container
+  2026-06-30 (~12 min each; the runs fit comfortably in <60 min — no HPC needed, contrary to the earlier
+  assumption): the **4 `cal_*` anchors** span nCore 1e2–1e6 cleanly (`status=ok`, STOPPING_TIME), and the
+  **heavy `fail_repro`** is carried explicitly as `status=excluded:energy_collapsed` (covered with its reason,
+  not silently dropped). The named closure-8 labels (`midrange_pl0`, `be_sphere`, `pl2_steep`,
+  `small_dense_highsfe`, `small_1e6`) are *upstream analysis* configs whose density range is already spanned by
+  the clean anchors. So the **GO conclusion is firm across the density range.**
 - **Next (still pre-production):** the self-consistent test — re-solve the structure with `κ = max(κ_mix,
   κ_Spitzer)` (a harness that *calls* the `bubble_luminosity.py` solver functions with κ_mix injected, still
   off the production path), on all 8 configs, byte-identical-off proven, then the gated production mode

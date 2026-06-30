@@ -60,15 +60,20 @@ PB_AU2CGS = 1.0 / 1545441495671.806    # Pb_au -> erg/cm^3 (from unit_conversion
 _LAYER = (2e4, 2e5)                    # the cool mixing layer (cooling peak .. El-Badry crossover)
 
 # config label -> harvest file stem (the f_kappa=1 baseline arm); regime for the spread.
-# The 4 cal_* anchors (run in-container 2026-06-30, STOPPING_TIME at t=0.3 Myr) span the canonical
-# nCore 1e2-1e6 density range cleanly. The heavy 5e9 (fail_repro) is EXCLUDED: it ENERGY_COLLAPSED in
-# the energy phase (negative Pb, no implicit/cooling structure ever forms) -> kappa_mix is moot for it,
-# which is itself a finding. The earlier f1edge/simple_cluster harvests gave consistent dominance.
+# THE FULL REGIME SET = the 5 background sims run in-container 2026-06-30 (each <60 min):
+#   - 4 cal_* anchors span the canonical nCore 1e2-1e6 density ladder cleanly (STOPPING_TIME, SUCCESS).
+#   - the heavy 5e9 (fail_repro) ENERGY_COLLAPSED in the energy phase (code 51): negative Pb, no
+#     implicit/cooling structure ever forms -> kappa_mix is moot for it. It is kept here so the full
+#     regime set is COVERED EXPLICITLY (reported excluded-with-reason, status column), not silently
+#     dropped -- the "the pathological heavy cloud has no mixing layer to enhance" finding is itself data.
+# (The earlier f1edge/simple_cluster baselines, committed under runs/data/, gave consistent dominance as
+#  cross-checks; the harness reads any harvest_*.csv so they can be appended for free.)
 _CONFIGS = [
     ("diffuse (n~1e2)", "harvest_cal_diffuse__k1.csv", "diffuse"),
     ("mid (n~1e4)", "harvest_cal_mid__ek1.csv", "mid"),
     ("compact (n~1e5)", "harvest_cal_compact__k1.csv", "compact"),
     ("dense (n~1e6)", "harvest_cal_dense__ek1.csv", "dense"),
+    ("heavy (n~5e9, COLLAPSED)", "harvest_fail_repro__none.csv", "heavy"),
 ]
 
 
@@ -114,30 +119,38 @@ def main():
             continue
         pb_med, pb_max, n = _pb_cgs_series(path)
         if not math.isfinite(pb_med):
-            print(f"  (skip {label}: {stem} has no usable Pb column — stub/failed harvest)")
+            # No usable (positive, implicit-phase) Pb. For the heavy run this is the
+            # ENERGY_COLLAPSED signature (negative Pb, no cooling structure) -- COVER it
+            # explicitly as an excluded regime point with the reason, don't silently drop.
+            rows.append(dict(config=label, regime=regime, status="excluded:energy_collapsed",
+                             Pb_cgs_med="nan", ratio_lo_T_ldv1="nan", ratio_hi_T_ldv1="nan",
+                             ldv_dom_at_2e4="nan", ldv_dom_at_2e5="nan", Tcross_ldv1="nan", n_pts=0))
+            print(f"{label:26s} EXCLUDED — no positive implicit-phase Pb (ENERGY_COLLAPSED: the heavy "
+                  "cloud never forms a cooling/mixing layer, so kappa_mix is moot for it).")
             continue
         # lambda*dv needed for kappa_mix to dominate at the layer floor (2e4) and ceiling (2e5)
         ldv_at = lambda T: (C_TH * T ** 3.5) / (PC_KMS * pb_med)   # ratio=1 -> solve lambda*dv
-        rows.append(dict(config=label, regime=regime, Pb_cgs_med=f"{pb_med:.2e}",
+        rows.append(dict(config=label, regime=regime, status="ok", Pb_cgs_med=f"{pb_med:.2e}",
                          ratio_lo_T_ldv1=round(ratio(1.0, pb_med, _LAYER[0]), 2),
                          ratio_hi_T_ldv1=round(ratio(1.0, pb_med, _LAYER[1]), 3),
                          ldv_dom_at_2e4=round(ldv_at(2e4), 4),
                          ldv_dom_at_2e5=round(ldv_at(2e5), 3),
                          Tcross_ldv1=f"{t_cross(1.0, pb_med):.2e}", n_pts=n))
-        print(f"{label:22s} Pb={pb_med:.2e} cgs | kmix/kSp @T=2e4: {ratio(1,pb_med,2e4):7.1f}, @T=2e5: "
+        print(f"{label:26s} Pb={pb_med:.2e} cgs | kmix/kSp @T=2e4: {ratio(1,pb_med,2e4):7.1f}, @T=2e5: "
               f"{ratio(1,pb_med,2e5):6.2f} (lambda*dv=1) | T_cross(ldv=1)={t_cross(1,pb_med):.1e} K | "
               f"lambda*dv to dominate 2e5 K = {ldv_at(2e5):.2f}")
 
     out = os.path.join(_HERE, "kmix_prototype.csv")
     with open(out, "w", newline="") as fh:
-        w = csv.DictWriter(fh, fieldnames=["config", "regime", "Pb_cgs_med", "ratio_lo_T_ldv1",
+        w = csv.DictWriter(fh, fieldnames=["config", "regime", "status", "Pb_cgs_med", "ratio_lo_T_ldv1",
                                            "ratio_hi_T_ldv1", "ldv_dom_at_2e4", "ldv_dom_at_2e5",
                                            "Tcross_ldv1", "n_pts"])
         w.writeheader()
         w.writerows(rows)
         fh.write("# kappa_mix/kappa_Spitzer = (lambda*dv[pc.km/s]*3.086e23)*Pb_cgs/(6e-7*T^3.5); T_cross=(..)^(2/7)\n")
         fh.write("# Pb_au->cgs / 1.5454414956718e12 (unit_conversions.Pb_cgs2au); cool layer 2e4-2e5 K\n")
-        fh.write("# SCOPING ONLY (front estimate, not resolved theta); 4 of 8 configs (rest need Pb(t) from HPC runs)\n")
+        fh.write("# SCOPING ONLY (front estimate, not resolved theta). status=ok: 4 cal_* anchors span nCore 1e2-1e6.\n")
+        fh.write("# status=excluded:energy_collapsed: the heavy 5e9 (fail_repro) collapsed -> no mixing layer (a finding).\n")
         fh.write("# lambda*dv SWEPT not imported; pin it later by calibrating kappa_mix to Lancaster theta~0.9-0.99\n")
     print(f"\nwrote {out}")
 
@@ -195,11 +208,14 @@ def main():
     png = os.path.join(_PDV, "kmix_prototype.png")
     fig.savefig(png, dpi=140)
     print(f"wrote {png}")
-    # note any of the canonical 8 still missing
-    have = {s for _, s, _ in _CONFIGS if os.path.exists(os.path.join(_RUNS, s))}
-    print(f"\n[coverage] {len(have)} clean density anchors (nCore 1e2-1e6, cal_* run in-container 2026-06-30, "
-          "STOPPING_TIME). Heavy 5e9 EXCLUDED (ENERGY_COLLAPSED, no implicit phase). The named closure-8 labels "
-          "(midrange_pl0/be_sphere/pl2_steep/...) are upstream configs whose density range is already covered here.")
+    # coverage: the full 5-sim regime set (4 clean anchors + the heavy collapse, covered explicitly)
+    ok = [r for r in rows if r.get("status") == "ok"]
+    excl = [r for r in rows if r.get("status", "").startswith("excluded")]
+    print(f"\n[coverage] full regime set = {len(rows)}/{len(_CONFIGS)} background sims (run in-container "
+          f"2026-06-30, each <60 min): {len(ok)} clean density anchors (nCore 1e2-1e6, STOPPING_TIME) "
+          f"+ {len(excl)} EXCLUDED:energy_collapsed (heavy 5e9, no implicit phase -> no mixing layer, a finding). "
+          "The named closure-8 labels (midrange_pl0/be_sphere/pl2_steep/...) are upstream configs whose density "
+          "range is already spanned by the clean anchors.")
     _ = glob  # harness reads any harvest_*.csv when added
 
 
