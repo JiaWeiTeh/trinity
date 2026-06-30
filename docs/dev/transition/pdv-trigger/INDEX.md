@@ -46,6 +46,8 @@ conclusion that the faithful fix is the structural **κ_mix (Rung-B) term**, now
 | `F_KAPPA_FUNCTIONAL_FORM.md` | 06-29 | Phase 3 (calibration) / §15 | **main doc**: f_κ(n) form, sweep scorecard, cliff, metric, physical-cap, derivation→κ_mix | **live** |
 | `KMIX_DIFFUSIVITY.md` | 06-29 | Phase 3 (κ_mix) / §15.7 | the maintainer manuscript draft, verified line-by-line + the λδv-origin refinement | **live** |
 | `KMIX_PROTOTYPE.md` | 06-29 | Phase 4 (implementation) | **step 1** of the κ_mix wiring: the offline scoping prototype (units-correct, no solver) | **live** |
+| `KMIX_IMPLEMENTATION_SPEC.md` | 06-30 | Phase 4 (implementation) | **design+units spec** for wiring κ_mix: dimensionless-multiplier strategy, the 3 sites, gate param, 8-config gates | **live** (plan) |
+| `PB_COLLAPSE_GUARD_FIX.md` | 06-30 | Phase 4 (hygiene) | plan+tests to stop the energy-collapse reconciliation snapshot emitting a garbage negative Pb | **live** (plan) |
 
 *Phases:* **1** PdV/cooling-boost trigger question (06-24→28) · **2** Rung-B structural scoping (06-26) ·
 **3** f_κ calibration + the pivot to κ_mix (06-29, this session) · **4** κ_mix implementation, offline-first (current).
@@ -60,8 +62,13 @@ The recurring conclusion is that the faithful fix is `κ = max(κ_mix, κ_Spitze
 | derive | physical prescription → it's κ_mix(λδv), not a scalar power law | ✅ done | `F_KAPPA_FUNCTIONAL_FORM.md` §13 |
 | pin λδv | don't import El-Badry [1,10] (off-regime); calibrate to Lancaster θ~0.9–0.99 | ✅ argued | `KMIX_DIFFUSIVITY.md` §2 |
 | **prototype (offline)** | does κ_mix matter, where, units? — go/no-go | ✅ **GO** — κ_mix dominates the cool layer 10³–10⁸ across nCore 1e2–1e6 (4 cal anchors run in-container 06-30) | `KMIX_PROTOTYPE.md` |
-| self-consistent (offline) | re-solve structure with κ_mix injected, **all 8 configs**, byte-identical-off | ⏳ next | — |
-| gated production | `κ_mix` mode default-off byte-identical; equivalence gate; full 8-config | ⏳ pending | `RUNGB_SCOPING.md` §8 |
+| spec (design) | dimensionless-multiplier κ_eff, gate params, 3 sites, units, 8-config gates | ✅ written | `KMIX_IMPLEMENTATION_SPEC.md` |
+| self-consistent (offline) | re-solve structure with κ_mix injected, **all 8 configs**, byte-identical-off | ⏳ next | `KMIX_IMPLEMENTATION_SPEC.md` §4.3 |
+| gated production | `κ_mix` mode default-off byte-identical; equivalence gate; full 8-config | ⏳ pending | `RUNGB_SCOPING.md` §8 + spec §6 |
+
+*Independent hygiene item (not κ_mix):* the energy-collapse reconciliation snapshot emits one garbage negative
+Pb on the `fail_repro` heavy run — diagnosed and planned in `PB_COLLAPSE_GUARD_FIX.md` (one-line fix + tests,
+queued behind the guardrail).
 
 **Open question carried through:** route (a) diffuse blows out energy-driven (bounded physical diffusivity) vs
 route (b) diffuse is 1D-under-cooled → κ_mix gets it to θ_target. The self-consistent run, calibrated to Lancaster,

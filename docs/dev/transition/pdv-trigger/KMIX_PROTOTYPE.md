@@ -80,12 +80,16 @@ cloud has no mixing layer to enhance.)*
 > `Pb = −1.6×10¹⁸` at its *terminal* row only. Root cause: `Pb = (γ−1)·Eb/V` (`get_bubbleParams.py:236`), so Pb is
 > linear in Eb; the heavy bubble's `Eb` crosses to **negative** at the collapse (energy exhausted), and the extreme
 > magnitude is that negative Eb divided by a tiny collapsing shell volume `V→0`. The collapse **is** correctly
-> caught (`Eb <= 0` → `ENERGY_COLLAPSED`, `run_energy_implicit_phase.py:1074`). It appears **only** in the heavy
-> run, **only** in the last row (it does not propagate; the run stops), and the **4 healthy cal runs have zero
-> negative Pb/Eb** across 600+ rows. **Minor robustness nit (not fixed — production change, guardrail):** the
-> `Eb<=0` guard at line 1074 fires *after* the Pb compute (`compute_R1_Pb`, line 865) and the snapshot log, so the
-> garbage Pb is emitted before the halt; a guard `Eb>0`/`V>0` *before* the structure solve would avoid it. Low
-> priority (correctness/stop-fate already right; downstream analysis excludes collapsed runs).
+> caught (`Eb <= 0` → `ENERGY_COLLAPSED`, code 51, `run_energy_implicit_phase.py:1074`). It appears **only** in the
+> heavy run, **only** in the last row (it does not propagate into the integration; the run stops), and the
+> **4 healthy cal runs have zero negative Pb/Eb** across 600+ rows. **Source of the bad row (re-traced 06-30 —
+> corrects the earlier guess here):** it is **not** the line-1074-vs-865 ordering. The line-865/868 Pb is the
+> last *healthy* value; the garbage row comes from the **phase-boundary reconciliation snapshot** (lines
+> 1269–1297) that runs *after* the collapse `break` and recomputes `Pb_f = compute_R1_Pb(R2, Eb<0, …)` (line
+> 1273) from the now-negative collapse `Eb`, then `save_snapshot()` (line 1297). Full diagnosis + a one-line fix
+> (skip reconciliation when `termination_reason == "energy_collapsed"`) + its test plan: **`PB_COLLAPSE_GUARD_FIX.md`**.
+> Low priority (correctness/stop-fate already right; downstream analysis excludes collapsed runs) — queued behind
+> the guardrail, not yet applied.
 
 ## 3. Coverage + the next step
 

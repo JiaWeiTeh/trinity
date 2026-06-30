@@ -85,6 +85,23 @@ framing):**
   `f_κ(n_H)` mode (gated, default-off byte-identical).
 
 **Status ledger (newest first):**
+- **2026-06-30 (two PLANS written — gated κ_mix impl+units spec, and the Pb-collapse fix; no code changed).**
+  Per the maintainer's two asks: (1) **`KMIX_IMPLEMENTATION_SPEC.md`** — the design for wiring κ_mix. Key
+  decision that neutralizes the units bug class: implement κ_mix as a **dimensionless multiplier** on the
+  existing Spitzer term, `κ_eff = κ_Spitzer·max(1, R)`, `R = (λδv)·Pb_cgs/(C_th·T^(7/2))` computed entirely in
+  cgs — so the solver's mixed AU/cgs RHS is untouched and **off ⇒ multiplier is literally 1.0 ⇒ bit-identical**.
+  Verified the 3 conduction sites (`bubble_luminosity.py` :291 seed=leave-Spitzer, :370 boundary + :406 RHS =
+  need κ_eff because `_T_INIT_BOUNDARY=3e4 K` sits *inside* the κ_mix layer). Gate params mirror
+  `cooling_boost_mode`: `kappa_mix_mode='none'` + `kappa_mix_lambda_dv=0.0` (double off-switch). Gates:
+  per-call bit-identical-off → self-consistent offline (all 8) → gated full-run byte-identical-off + θ
+  calibration to Lancaster. (2) **`PB_COLLAPSE_GUARD_FIX.md`** — re-traced the heavy-run negative Pb: the
+  earlier "line-1074-vs-865 ordering" guess was **wrong**. The garbage `Pb=−1.6×10¹⁸` is emitted by the
+  **phase-boundary reconciliation snapshot** (`run_energy_implicit_phase.py:1269–1297`) that runs after the
+  collapse `break` and recomputes `Pb_f=compute_R1_Pb(R2, Eb<0, …)` (:1273) from the negative collapse Eb, then
+  `save_snapshot()` (:1297). Fix = skip reconciliation when `termination_reason=='energy_collapsed'` (one line,
+  byte-identical for all non-collapsing runs); test plan = failing unit test (no negative Pb survives, code 51
+  still propagates) + 8-config byte-identical regression + fail_repro end-to-end. Both queued behind the
+  guardrail — **no production code touched.** Reconciled `INDEX.md` §2/§3 and `KMIX_PROTOTYPE.md` §2.
 - **2026-06-30 (ran the 4 cal anchors in-container → κ_mix prototype on the full density span; GO firm).** The
   earlier "HPC needed" assumption was wrong — full sims fit in <60 min (each ~12 min). Ran cal_compact/mid/diffuse/
   dense (f_κ=1) + heavy fail_repro via background agents, monitored with a 10-min health loop; all completed
@@ -97,9 +114,10 @@ framing):**
   `INDEX.md` track. **Validation:** compact max θ=0.676 == the known baseline 0.667. No production code touched.
   **Side diagnosis (heavy negative Pb):** investigated `fail_repro` Pb=−1.6×10¹⁸ — NOT a results bug; it is the
   collapse signature (`Pb=(γ−1)Eb/V`, Eb<0 at `ENERGY_COLLAPSED`, ÷ tiny V), only in the terminal row, healthy
-  runs clean. Minor robustness nit logged in `KMIX_PROTOTYPE.md` §2 (the `Eb<=0` guard at
-  `run_energy_implicit_phase.py:1074` fires *after* the Pb compute at line 865; a pre-solve `Eb>0`/`V>0` guard
-  would avoid the garbage value) — **not fixed** (production change, guardrail; low priority).
+  runs clean. *(Source re-traced 06-30 — see the newer ledger entry above and `PB_COLLAPSE_GUARD_FIX.md`: the
+  bad row is the post-loop reconciliation snapshot at `run_energy_implicit_phase.py:1269–1297`, not the
+  line-1074-vs-865 ordering this entry originally guessed.)* **Not fixed** (production change, guardrail; low
+  priority).
 - **2026-06-29 (κ_mix OFFLINE PROTOTYPE — step 1 of Rung-B, GO; + master `INDEX.md`).** Built the offline scoping
   harness (`data/make_kmix_prototype.py` → `data/kmix_prototype.csv` + `kmix_prototype.png`; reads committed
   `runs/data/harvest_*.csv`, **no solver touched, no sims**) — the de-risk step the guardrail requires before any
