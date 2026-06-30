@@ -46,7 +46,8 @@ conclusion that the faithful fix is the structural **κ_mix (Rung-B) term**, now
 | `F_KAPPA_FUNCTIONAL_FORM.md` | 06-29 | Phase 3 (calibration) / §15 | **main doc**: f_κ(n) form, sweep scorecard, cliff, metric, physical-cap, derivation→κ_mix | **live** |
 | `KMIX_DIFFUSIVITY.md` | 06-29 | Phase 3 (κ_mix) / §15.7 | the maintainer manuscript draft, verified line-by-line + the λδv-origin refinement | **live** |
 | `KMIX_PROTOTYPE.md` | 06-29 | Phase 4 (implementation) | **step 1** of the κ_mix wiring: the offline scoping prototype (units-correct, no solver) | **live** |
-| `KMIX_IMPLEMENTATION_SPEC.md` | 06-30 | Phase 4 (implementation) | **design+units spec** for wiring κ_mix: dimensionless-multiplier strategy, the 3 sites, gate param, 8-config gates | **live** (plan) |
+| `KMIX_IMPLEMENTATION_SPEC.md` | 06-30 | Phase 4 (implementation) | **design+units spec** for wiring κ_mix: dimensionless-multiplier strategy, the 3 sites, gate param, 8-config gates | **live** (plan; §3 boundary refined by self-consistent) |
+| `KMIX_SELFCONSISTENT.md` | 06-30 | Phase 4 (implementation) | **step 2**: κ_mix injected into the REAL solver (monkeypatch). θ rises but **SATURATES** & misses Lancaster for dense clouds; retires the λδv-pin | **live** |
 | `PB_COLLAPSE_GUARD_FIX.md` | 06-30 | Phase 4 (hygiene) | plan+tests to stop the energy-collapse reconciliation snapshot emitting a garbage negative Pb | **live** (plan) |
 
 *Phases:* **1** PdV/cooling-boost trigger question (06-24→28) · **2** Rung-B structural scoping (06-26) ·
@@ -60,11 +61,12 @@ The recurring conclusion is that the faithful fix is `κ = max(κ_mix, κ_Spitze
 | step | what | status | doc |
 |---|---|---|---|
 | derive | physical prescription → it's κ_mix(λδv), not a scalar power law | ✅ done | `F_KAPPA_FUNCTIONAL_FORM.md` §13 |
-| pin λδv | don't import El-Badry [1,10] (off-regime); calibrate to Lancaster θ~0.9–0.99 | ✅ argued | `KMIX_DIFFUSIVITY.md` §2 |
+| pin λδv | ~~calibrate λδv to Lancaster θ~0.9–0.99~~ | ❌ **RETIRED** — self-consistent θ **saturates** by λδv≈0.01, so λδv is not a knob | `KMIX_SELFCONSISTENT.md` §2 |
 | **prototype (offline)** | does κ_mix matter, where, units? — go/no-go | ✅ **GO** — κ_mix dominates the cool layer 10³–10⁸ across nCore 1e2–1e6; full regime set covered **5/5** (4 cal anchors `ok` + heavy `excluded:energy_collapsed`), run in-container 06-30 | `KMIX_PROTOTYPE.md` |
-| spec (design) | dimensionless-multiplier κ_eff, gate params, 3 sites, units, 8-config gates | ✅ written | `KMIX_IMPLEMENTATION_SPEC.md` |
-| self-consistent (offline) | re-solve structure with κ_mix injected, **all 8 configs**, byte-identical-off | ⏳ next | `KMIX_IMPLEMENTATION_SPEC.md` §4.3 |
-| gated production | `κ_mix` mode default-off byte-identical; equivalence gate; full 8-config | ⏳ pending | `RUNGB_SCOPING.md` §8 + spec §6 |
+| spec (design) | dimensionless-multiplier κ_eff, gate params, 3 sites, units, 8-config gates | ✅ written (§3 boundary refined) | `KMIX_IMPLEMENTATION_SPEC.md` |
+| **self-consistent (offline)** | re-solve structure with κ_mix injected | ✅ **DONE** — G1 bit-identical-off + G2 replay pass; θ RISES but SATURATES & misses Lancaster for dense (1/6 fires); RHS-only stable 6/6; boundary injection diverges | `KMIX_SELFCONSISTENT.md` |
+| **strategy revision** | κ_mix is a saturating, density-mismatched correction → combine with θ_target cap? re-metric? boundary re-derive? | ⏳ **maintainer decision** | `KMIX_SELFCONSISTENT.md` §3 |
+| gated production | `κ_mix` mode default-off byte-identical; equivalence gate; full 8-config | ⏸ **on hold** pending the strategy revision | `RUNGB_SCOPING.md` §8 + spec §6 |
 
 *Independent hygiene item (not κ_mix):* the energy-collapse reconciliation snapshot emits one garbage negative
 Pb on the `fail_repro` heavy run — diagnosed and planned in `PB_COLLAPSE_GUARD_FIX.md` (one-line fix + tests,

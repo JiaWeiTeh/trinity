@@ -106,9 +106,13 @@ cloud has no mixing layer to enhance.)*
   not silently dropped). The named closure-8 labels (`midrange_pl0`, `be_sphere`, `pl2_steep`,
   `small_dense_highsfe`, `small_1e6`) are *upstream analysis* configs whose density range is already spanned by
   the clean anchors. So the **GO conclusion is firm across the density range.**
-- **Next (still pre-production):** the self-consistent test — re-solve the structure with `κ = max(κ_mix,
-  κ_Spitzer)` (a harness that *calls* the `bubble_luminosity.py` solver functions with κ_mix injected, still
-  off the production path), on all 8 configs, byte-identical-off proven, then the gated production mode
-  (`RUNGB_SCOPING.md` §8). Only after all 8 pass does anything reach production.
+- **Next step — DONE (2026-06-30), see `KMIX_SELFCONSISTENT.md`.** The self-consistent test re-solved the
+  structure with `κ = max(κ_mix, κ_Spitzer)` injected into the **real** solver (monkeypatch, off production),
+  on the 6 cleanroom configs + 2 fixtures, with G1 bit-identical-off and G2 replay gates passing. **Result
+  tempers this GO:** κ_mix *does* raise the resolved θ and the solver is stable, but θ **saturates** by
+  λδv≈0.01 (so the front-estimate "λδv is the knob" does NOT make it a *tunable* knob) and the saturated θ
+  **misses Lancaster for mid/dense clouds** (only the diffuse end fires). So the prototype's "dominance" is
+  real but does not, by itself, deliver the density-dependent Lancaster θ. Gated production is **on hold**
+  pending the strategy revision (`KMIX_SELFCONSISTENT.md` §3).
 
 *Written 2026-06-29 on `feature/PdV-trigger-term-pt2`. No production code touched; no sims.*

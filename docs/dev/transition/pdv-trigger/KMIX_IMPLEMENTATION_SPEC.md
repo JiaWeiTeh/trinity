@@ -93,7 +93,12 @@ The integration sweeps from that cool boundary inward to the hot interior, cross
 - **Site :291 — leave Spitzer.** This is only the **initial guess** for the dMdt root-find; the converged dMdt
   is fixed by the ODE+BCs (which *do* use κ_eff). A Spitzer seed lands in the basin and keeps the diff
   minimal. (If convergence ever degrades in the κ_mix regime, upgrade the seed — flag, don't pre-optimize.)
-- **Site :370 — κ_eff in the boundary.** Replace `C_th` in `constant` with `C_th·max(1, R(T_init, Pb))`.
+- **Site :370 — ⚠️ CORRECTED by the self-consistent test (`KMIX_SELFCONSISTENT.md` §2).** A naive
+  `C_th → C_th·max(1, R(T_init, Pb))` here **DIVERGES**: the Spitzer boundary offset `dR2 ∝ C_th`, so the
+  multiplier scales `dR2` by `R(T_init) ≫ 1`, pushing `r2_prime = R2−dR2` past `R1` (invalid domain).
+  Patching both :370 and :406 failed at *every* λδv>0; **RHS-only (:406, IC kept Spitzer) is stable.** So the
+  boundary must either **stay Spitzer** (the validated scoping choice) or get a κ_mix-specific layer
+  re-derivation (the El-Badry layer ≠ the `dR2 ∝ 1/C` closure) — NOT a naive C-scaling.
 - **Site :406 — general-κ RHS (the substantive change).** Two pieces:
   1. **Prefactor:** `Pb/(C_th·T^(5/2))` → `Pb/(C_th·T^(5/2)·max(1, R))` = `Pb/κ_eff`.
   2. **The κ′ term:** the `−2.5·dTdr²/T` term is the Spitzer `(dκ/dT)/κ·(dTdr)²` contribution
@@ -127,9 +132,12 @@ gates the code path; λδv=0 makes the path a no-op even when on. Both must be `
 `exclude_from_snapshot=True` (run constants, like the cooling-boost family). `info` strings must point here and
 state "default = BYTE-IDENTICAL", matching the house style of `cooling_boost_kappa`'s registry note.
 
-**λδv is calibrated to Lancaster θ~0.9–0.99, never imported from El-Badry's [1,10] (off-regime) and never
-cranked** — the prototype showed even λδv≪1 already dominates the cool layer, so the value is the sensitive
-output of calibration, not a free input (`KMIX_DIFFUSIVITY.md` §2, `KMIX_PROTOTYPE.md` §2).
+**⚠️ UPDATE (`KMIX_SELFCONSISTENT.md` §2): the "calibrate λδv to Lancaster" plan is RETIRED.** The
+self-consistent solve shows θ **saturates by λδv ≈ 0.01** (κ_mix swamps Spitzer at tiny λδv), so λδv is **not a
+continuous knob** — the κ_mix-saturated θ is a fixed per-config output, and it misses the Lancaster band for
+mid/dense clouds. λδv as a gate param still works as an **on/off** (0 = byte-identical; any small >0 = κ_mix
+floor on), but it cannot be *dialed* to a target. Whether to wire κ_mix at all now depends on the strategy
+revision (`KMIX_SELFCONSISTENT.md` §3), so the registry params below are **on hold**, not yet added.
 
 ## 5. Equivalence gates (CLAUDE.md rule 5 — this is an iterative/solver path)
 

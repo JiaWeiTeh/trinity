@@ -85,6 +85,22 @@ framing):**
   `f_κ(n_H)` mode (gated, default-off byte-identical).
 
 **Status ledger (newest first):**
+- **2026-06-30 (SELF-CONSISTENT κ_mix injected into the REAL solver — decisive, tempers the GO; new doc
+  `KMIX_SELFCONSISTENT.md`).** Built `data/make_kmix_selfconsistent.py`: monkeypatches the conduction in
+  `bubble_luminosity.py` (RHS site :406) and re-runs the full production `get_bubbleproperties_pure()` with
+  `κ_eff = κ_Spitzer·max(1, R)` on the 6 cleanroom configs (via `make_da_replay` state rebuild) + 2 fixtures.
+  **Gates pass:** G1 identity **bit-identical (0.0)** off, G2 replay vs logged `bubble_Lloss` ≤7e-7. **Physics
+  (the decisive part):** (1) κ_mix raises resolved θ in all 6 and the solver is stable across the sweep — GO
+  confirmed self-consistently; BUT (2) θ **SATURATES by λδv≈0.01** (κ_mix swamps Spitzer at tiny λδv) → λδv is
+  **not a tunable knob** ⇒ the "pin λδv to Lancaster" step is **RETIRED**; (3) the saturated θ is
+  density-**mismatched** — diffuse overshoots (θ=1.54, fires) but mid/dense plateau **low** (0.23–0.35 ≪
+  Lancaster 0.9–0.99), only **1/6** reaches the 0.95 trigger ⇒ **κ_mix alone does NOT transition the dense
+  clouds**; (4) boundary finding — injecting κ_eff into the Spitzer boundary IC (:370) **diverges** (`dR2 ∝ C`
+  blows past R1), so **RHS-only** is the stable/correct choice, **refining SPEC §3**. Net: κ_mix is a real but
+  saturating, density-mismatched correction; gated production is **on hold** pending a strategy revision
+  (combine with the θ_target cap? re-metric? boundary re-derive? — `KMIX_SELFCONSISTENT.md` §3). No production
+  code touched (monkeypatch-only, no sims). Reconciled INDEX §2/§3 track, the spec (§3 + λδv-pin), and
+  `KMIX_PROTOTYPE.md` §3.
 - **2026-06-30 (two PLANS written — gated κ_mix impl+units spec, and the Pb-collapse fix; no code changed).**
   Per the maintainer's two asks: (1) **`KMIX_IMPLEMENTATION_SPEC.md`** — the design for wiring κ_mix. Key
   decision that neutralizes the units bug class: implement κ_mix as a **dimensionless multiplier** on the
