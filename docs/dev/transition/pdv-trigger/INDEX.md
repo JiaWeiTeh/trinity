@@ -59,7 +59,7 @@ The recurring conclusion is that the faithful fix is `κ = max(κ_mix, κ_Spitze
 |---|---|---|---|
 | derive | physical prescription → it's κ_mix(λδv), not a scalar power law | ✅ done | `F_KAPPA_FUNCTIONAL_FORM.md` §13 |
 | pin λδv | don't import El-Badry [1,10] (off-regime); calibrate to Lancaster θ~0.9–0.99 | ✅ argued | `KMIX_DIFFUSIVITY.md` §2 |
-| **prototype (offline)** | does κ_mix matter, where, units? — go/no-go | ✅ **go** (κ_mix dominates the cool layer 10³–10⁹; 4/8 regimes) | `KMIX_PROTOTYPE.md` |
+| **prototype (offline)** | does κ_mix matter, where, units? — go/no-go | ✅ **GO** — κ_mix dominates the cool layer 10³–10⁸ across nCore 1e2–1e6 (4 cal anchors run in-container 06-30) | `KMIX_PROTOTYPE.md` |
 | self-consistent (offline) | re-solve structure with κ_mix injected, **all 8 configs**, byte-identical-off | ⏳ next | — |
 | gated production | `κ_mix` mode default-off byte-identical; equivalence gate; full 8-config | ⏳ pending | `RUNGB_SCOPING.md` §8 |
 

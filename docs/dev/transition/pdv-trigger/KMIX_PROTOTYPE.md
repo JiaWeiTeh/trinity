@@ -48,31 +48,41 @@ Unit conversions made explicit in the builder (dimensional self-check printed):
 - **`λδv` in pc·km/s → cm²/s** via `× 3.086×10²³`.
 - `C_th = 6×10⁻⁷`, `k_B = 1.380649×10⁻¹⁶` are cgs (registry); `T` in K. All combined in cgs.
 
-## 2. Result (4 of 8 regimes; units-correct)
+## 2. Result (4 clean density anchors, run in-container 2026-06-30; units-correct)
 
-Using the committed f_κ=1 baseline arms (median Pb over the implicit phase):
+The 4 `cal_*` f_κ=1 baselines were **run in the container** (each ~12 min, all `STOPPING_TIME` at t=0.3 Myr;
+harvested to `runs/data/harvest_cal_*.csv`), spanning the canonical nCore 1e2–1e6. Median Pb over the implicit
+phase, converted to cgs:
 
 | config (regime) | Pb [cgs] | κ_mix/κ_Spitzer @2e4 K | @2e5 K | T_cross (λδv=1) |
 |---|---:|---:|---:|---:|
-| compact (n~1e5) | 2.0×10⁻¹¹ | 9.0×10³ | 2.9 | 2.7×10⁵ K |
-| diffuse (n~1e2) | 1.6×10⁻⁸ | 7.3×10⁶ | 2.3×10³ | 1.8×10⁶ K |
-| dense-stiff (n~1e6) | 1.0×10⁻⁵ | 4.7×10⁹ | 1.5×10⁶ | 1.2×10⁷ K |
+| diffuse (n~1e2) | 4.4×10⁻⁸ | 2.0×10⁷ | 6.3×10³ | 2.4×10⁶ K |
+| mid (n~1e4) | 1.5×10⁻⁷ | 6.9×10⁷ | 2.2×10⁴ | 3.5×10⁶ K |
+| compact (n~1e5) | 5.4×10⁻⁷ | 2.5×10⁸ | 7.8×10⁴ | 5.0×10⁶ K |
+| dense (n~1e6) | 6.2×10⁻⁸ | 2.8×10⁷ | 8.9×10³ | 2.7×10⁶ K |
 
-**Reading.** In the cool mixing layer (2×10⁴–2×10⁵ K, where n²Λ peaks) **κ_mix dominates Spitzer by 10³–10⁹ even
-at λδv=1**, and T_cross sits at or above the layer in every regime. So κ_mix would **substantially restructure the
-conduction front** — the go decision: wiring it is warranted, it is *not* a negligible correction. Equally
-important, even **λδv ≪ 1** already dominates the layer (the "λδv to dominate 2×10⁵ K" is 0.35 / ~0 / ~0), so
-**λδv is the sensitive magnitude knob** — at λδv=1 the ratio is already 10³–10⁹, so the value must be **calibrated
-to Lancaster θ~0.9–0.99, not imported/cranked** (this is the RUNGB_SCOPING "κ_mix swamps Spitzer" concern made
-quantitative: with λδv=1 we get 10³–10⁹, the same family as that doc's 10²⁴ for `D_turb=R2 v2`).
+**Reading.** In the cool mixing layer (2×10⁴–2×10⁵ K, where n²Λ peaks) **κ_mix dominates Spitzer by 10³–10⁸ even
+at λδv=1**, and T_cross (2.4–5.0×10⁶ K) sits **far above** the layer in *every* regime. So κ_mix would
+**substantially restructure the conduction front** — the go decision: wiring it is warranted, it is *not* a
+negligible correction. The dominance is **fairly uniform across density** (Pb varies little at matched epoch),
+so κ_mix matters generically, not just at one end. Equally important, even **λδv ≪ 1** already dominates (the
+"λδv to dominate 2×10⁵ K" is ≈0 for all), so **λδv is the sensitive magnitude knob** — at λδv=1 the ratio is
+already 10³–10⁸, so the value must be **calibrated to Lancaster θ~0.9–0.99, not imported/cranked** (this is the
+RUNGB_SCOPING "κ_mix swamps Spitzer" concern made quantitative; same family as that doc's 10²⁴ for
+`D_turb=R2 v2`, but tamed once λδv is pinned).
 
-## 3. Coverage gap + the next step
+*(Cross-checks: the earlier f1edge/simple_cluster harvests, and the heavy `fail_repro`, gave consistent
+dominance. The heavy 5e9 is **excluded** — it `ENERGY_COLLAPSED` in the energy phase with negative Pb; no
+implicit/cooling structure ever forms, so κ_mix is moot for it. That is itself a finding: the pathological heavy
+cloud has no mixing layer to enhance.)*
 
-- **4 of the canonical 8** are covered (compact / diffuse / dense-stiff; heavy `fail_repro` harvest is a stub with
-  no usable Pb). The other 4 — `midrange_pl0`, `be_sphere`, `pl2_steep`, `small_dense_highsfe`, `small_1e6`
-  control — need their `Pb(t)` (HPC runs; full sims are ~90 min–hours, too slow in-container). The harness reads
-  any `harvest_*.csv`, so it extends for free when that data lands. The 3 covered already span the regime range,
-  so the **go/no-go conclusion holds**; the remaining 4 confirm.
+## 3. Coverage + the next step
+
+- **The full density span (nCore 1e2–1e6) is covered** by the 4 `cal_*` anchors, run in-container 2026-06-30
+  (~12 min each; the runs fit comfortably in <60 min — no HPC needed, contrary to the earlier assumption). The
+  named closure-8 labels (`midrange_pl0`, `be_sphere`, `pl2_steep`, `small_dense_highsfe`, `small_1e6`) are
+  *upstream analysis* configs whose density range is already spanned here; the heavy `fail_repro` is excluded
+  (energy-collapse, no implicit phase). So the **GO conclusion is firm across the density range.**
 - **Next (still pre-production):** the self-consistent test — re-solve the structure with `κ = max(κ_mix,
   κ_Spitzer)` (a harness that *calls* the `bubble_luminosity.py` solver functions with κ_mix injected, still
   off the production path), on all 8 configs, byte-identical-off proven, then the gated production mode

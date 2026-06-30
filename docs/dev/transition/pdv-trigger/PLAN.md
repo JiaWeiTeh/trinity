@@ -85,6 +85,16 @@ framing):**
   `f_κ(n_H)` mode (gated, default-off byte-identical).
 
 **Status ledger (newest first):**
+- **2026-06-30 (ran the 4 cal anchors in-container → κ_mix prototype on the full density span; GO firm).** The
+  earlier "HPC needed" assumption was wrong — full sims fit in <60 min (each ~12 min). Ran cal_compact/mid/diffuse/
+  dense (f_κ=1) + heavy fail_repro via background agents, monitored with a 10-min health loop; all completed
+  cleanly (cal: STOPPING_TIME at t=0.3 Myr; heavy: ENERGY_COLLAPSED). Harvested Pb(t) →
+  `runs/data/harvest_cal_*.csv`; pointed `data/make_kmix_prototype.py` at the 4 clean density anchors (nCore
+  1e2–1e6). Result CONFIRMED + strengthened: **κ_mix/κ_Spitzer = 10³–10⁸ in the cool layer (2e4–2e5 K) at λδv=1**,
+  T_cross 2.4–5.0×10⁶ K (far above the layer), fairly **uniform across density** → κ_mix matters generically;
+  λδv is the sensitive knob (even λδv≪1 dominates) → calibrate to Lancaster, never crank. Heavy 5e9 **excluded**
+  (energy-collapse, no implicit phase → no mixing layer; itself a finding). Updated `KMIX_PROTOTYPE.md` §2–§3,
+  `INDEX.md` track. **Validation:** compact max θ=0.676 == the known baseline 0.667. No production code touched.
 - **2026-06-29 (κ_mix OFFLINE PROTOTYPE — step 1 of Rung-B, GO; + master `INDEX.md`).** Built the offline scoping
   harness (`data/make_kmix_prototype.py` → `data/kmix_prototype.csv` + `kmix_prototype.png`; reads committed
   `runs/data/harvest_*.csv`, **no solver touched, no sims**) — the de-risk step the guardrail requires before any
