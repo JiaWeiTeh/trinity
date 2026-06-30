@@ -484,12 +484,24 @@ to declaring diffuse clouds energy-driven. Route a is only correct if you distru
 | 1e4 | 0.61 | 0.99 | 0.38 |
 | 3e4 | 0.95 | 1.00 | 0.05 |
 
-**Bottom line — the "derived number" requested.** It is **not** a single f_max or a scalar power law. It is
-**λδv ∈ [1,10] pc·km/s** (El-Badry's one mixing parameter) feeding the **structural κ_mix term**, with crossover
-n_crit ≈ 0.2 and a saturation cap ∝ n. The next concrete step is therefore **not** another f_κ(n) sweep but
-**wiring the gated κ_mix mode** (Rung B) — see `RUNGB_SCOPING.md` §8 (front-conduction intervention), which this
-derivation now physically motivates: add `κ_mix = (λδv)·n·k_B/(μm_p)` as `κ = max(κ_mix, κ_Spitzer)` near the
-front, default-off byte-identical, with λδv the calibrated knob.
+**Bottom line — the "derived number" requested.** It is **not** a single f_max or a scalar power law. It is the
+mixing diffusivity **λδv** (El-Badry's one mixing parameter) feeding the **structural κ_mix term**, with crossover
+n_crit ≈ 0.2 and a saturation cap ∝ n. **Refinement (2026-06-29, from the maintainer's manuscript draft — verified
+in `KMIX_DIFFUSIVITY.md`):** do **not** import El-Badry's `λδv ∈ [1,10] pc·km/s` — it is *doubly off-regime* for
+TRINITY (derived for discrete-SN driving where TRINITY has continuous winds; at ISM densities n~0.1–10 where TRINITY
+reaches GMC cores). Instead: use El-Badry for the **mechanism** + the √(λδv·n) scaling; take **δv from the code's own
+v_rel** (≈ the expansion speed); and **pin the remaining length scale λ by calibrating κ_mix so the resolved θ
+matches Lancaster 2021b (θ~0.9–0.99)** — Lancaster's cadence-free continuous-wind 3D bubbles are the right
+**magnitude anchor**, El-Badry the **mechanism anchor**. (λδv's KH-instability origin and why λ is sub-parsec and
+*calibrated, not computed*, are in `KMIX_DIFFUSIVITY.md` §2; the eddy-turnover argument there is heuristic, the
+Lancaster-calibration conclusion is the keeper.) The next concrete step is therefore **not** another f_κ(n) sweep
+but **wiring the gated κ_mix mode** (Rung B) — see `RUNGB_SCOPING.md` §8: add `κ_mix = (λδv)·n·k_B/(μm_p)` as
+`κ = max(κ_mix, κ_Spitzer)` near the front, default-off byte-identical, λδv calibrated to Lancaster.
+
+**Open: route (a) vs (b) is not settled** — the manuscript leans diffuse→energy-driven (the *physical* diffusivity,
+bounded by v_rel and a sub-pc λ, may not reach θ=0.95); §13 above leans the other way (El-Badry's verified flat-high
+θ* says diffuse 1D is under-cooled, so κ_mix *should* reach it). **The κ_mix implementation, calibrated to Lancaster
+and tested on all 8 configs, decides it per cloud** — do not assert either fate before then.
 
 ---
 

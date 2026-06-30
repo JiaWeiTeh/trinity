@@ -978,7 +978,11 @@ call a prescription.</p>
 In the cool mixing layer (T\(\sim\)2&times;10\(^4\) K) \(\kappa_{\text{mix}}/\kappa_{\text{Spitzer}}\!\approx\!10^3\!-\!10^7\),
 because Spitzer \(\propto T^{5/2}\) <b>vanishes</b> there &mdash; so a scalar \(f_\kappa\!\cdot\!\kappa_{\text{Spitzer}}\)
 <b>cannot</b> represent it. The faithful object is the structural \(\kappa{=}\max(\kappa_{\text{mix}},\kappa_{\text{Spitzer}})\)
-term (Rung B), with <b>\(\lambda\delta v\!\in\![1,10]\) pc&middot;km/s</b> the single physical parameter, saturation-capped.</div>
+term (Rung B), with the mixing diffusivity \(\lambda\delta v\) the single physical parameter, saturation-capped.
+<span class="small">(Don&rsquo;t import El-Badry&rsquo;s \(\lambda\delta v{\in}[1,10]\) pc&middot;km/s &mdash; doubly
+off-regime for TRINITY (discrete-SN + ISM density); take \(\delta v\) from the code&rsquo;s \(v_{\rm rel}\) and
+<b>calibrate \(\lambda\) so resolved \(\theta\) matches Lancaster 0.9&ndash;0.99</b>, the cadence-free magnitude
+anchor &mdash; verified in <code>KMIX_DIFFUSIVITY.md</code>.)</span></div>
 <figure>__FIG_DERIV__<figcaption><b>Why it is \(\kappa_{\text{mix}}\), not a scalar.</b> Left: Spitzer (\(\propto T^{5/2}\))
 vanishes in the cool mixing layer where the T-independent \(\kappa_{\text{mix}}\) rules &mdash; no single multiplier can
 bridge that. Right: El-Badry&rsquo;s verified target is flat-high <i>even at diffuse</i> (0.94 at \(n{=}10^2\)) while

@@ -85,6 +85,19 @@ framing):**
   `f_κ(n_H)` mode (gated, default-off byte-identical).
 
 **Status ledger (newest first):**
+- **2026-06-29 (maintainer MANUSCRIPT DRAFT verified + folded; new doc `KMIX_DIFFUSIVITY.md`).** Line-by-line
+  checked a 2-section LaTeX draft ("A functional form for the conduction multiplier" + "Where the mixing
+  diffusivity comes from") + claims table against our committed results. **~90% matches** (f_mix=f_κ^q with
+  q≈0.3–0.4 < the El-Badry 1/2; `f_κ(n)=[θ_target/θ_0]^(1/q)` ≈4 compact/≈60 diffuse; θ/(1−θ)=1.6√n folding the
+  11/5 = our 3.5 form; the degeneracy; f_κ=60⇒κ_mix). **Three flags:** (i) the draft's "single-variable sweep, not
+  yet run" is **STALE** — we ran the 819-combo sweep and it **fanned out** (multi-dimensional), so its open question
+  is answered; (ii) the eddy-turnover closure (ω=δv/λ replacing the SN cadence for continuous winds) is
+  **heuristic** — it pins the contrast (≈40), not λ; the *conclusion* (λ sub-pc, calibrate not compute) is the
+  keeper; (iii) **route a vs b unresolved** — draft leans diffuse→energy-driven (bounded physical diffusivity),
+  §13 leans diffuse-under-cooled→κ_mix; the κ_mix implementation calibrated to Lancaster + tested on all 8 configs
+  decides it. **Adopted refinement:** do **not** import El-Badry's λδv∈[1,10] (doubly off-regime: discrete-SN +
+  ISM density); use El-Badry for *mechanism*, δv from v_rel, and **pin λ by calibrating κ_mix to Lancaster's
+  θ~0.9–0.99** (the cadence-free magnitude anchor). Folded into `F_KAPPA_FUNCTIONAL_FORM.md` §13.
 - **2026-06-29 (PHYSICAL PRESCRIPTION DERIVED → it's κ_mix(λδv), Rung B RE-PROMOTED).** Followed the
   "negative power isn't physical" thread to its end (`F_KAPPA_FUNCTIONAL_FORM.md` §13; builder
   `data/make_fkappa_physical_derivation.py` → `data/fkappa_physical_derivation.csv` + `fkappa_physical_derivation.png`).

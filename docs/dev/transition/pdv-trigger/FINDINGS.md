@@ -76,8 +76,15 @@
 > (matches El-Badry); a **scalar f_κ can't represent κ_mix** (Spitzer ∝ T^(5/2) vanishes in the cool layer →
 > ratio 10³–10⁷). The verified El-Badry θ* is flat-high even at diffuse (0.94 vs 1D 0.29) ⇒ the diffuse
 > never-fire is likely a **1D under-cooling artifact** → faithful fix is the **structural κ_mix (Rung B,
-> re-promoted), λδv∈[1,10] pc·km/s**, not a scalar f_κ power law. Builder `data/make_fkappa_physical_derivation.py`;
+> re-promoted)**, not a scalar f_κ power law. Builder `data/make_fkappa_physical_derivation.py`;
 > reconciles RUNGB_SCOPING's κ_mix-magnitude. Next: wire the gated κ_mix mode (RUNGB §8).
+>
+> **→ Manuscript draft verified (2026-06-29, `KMIX_DIFFUSIVITY.md`):** a maintainer LaTeX draft, ~90% matching our
+> results. Key **refinement adopted**: do *not* import El-Badry's λδv∈[1,10] (doubly off-regime — discrete-SN +
+> ISM density); use El-Badry for the *mechanism*, take δv from v_rel, and **calibrate λ so resolved θ matches
+> Lancaster 0.9–0.99** (the cadence-free magnitude anchor). Flags: the draft's "sweep not yet run" is stale (it
+> fanned out); the eddy-turnover λ closure is heuristic; route a (diffuse energy-driven) vs b (κ_mix under-cooling)
+> stays open until κ_mix is wired + tested on all 8 configs.
 
 What looks like "three ways to boost cooling" is really **two cooling-magnitude approaches on opposite sides
 of the structure solve, plus a separate trigger axis**. The key disambiguation: **"modify cooling like
