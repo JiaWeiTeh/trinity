@@ -120,6 +120,10 @@ FIGURES = {
         "fkappa_physical_cap.png",
         "the physical-cap reframing: left = f_kappa needed to fire vs column with physical cap lines (f_max=2/4/8); below a cap a cloud is momentum-driven, above it stays energy-driven, and 6 cells never fire under any cap; right = the momentum-vs-energy-driven split as a function of the assumed physical max enhancement f_max, crossing near f_max=8, with the 6 never-fire cells as the floor",
     ),
+    "__FIG_DERIV__": (
+        "fkappa_physical_derivation.png",
+        "deriving the physical prescription: left = Spitzer conductivity (rises as T^5/2) vs El-Badry's temperature-independent kappa_mix at GMC density, showing kappa_mix dominates the cool mixing layer where Spitzer vanishes (so a scalar f_kappa multiplier cannot represent it); right = El-Badry's verified flat-high cooling target theta* (even at diffuse) vs TRINITY's measured rising 1D baseline theta0, the orange gap kappa_mix must supply is large at diffuse, arguing the diffuse never-fire is a 1D under-cooling artifact",
+    ),
 }
 
 
@@ -961,8 +965,36 @@ follow: <b>(a)</b> accept non-transition (a physical \(f_{\max}\)) &mdash; simpl
 is a <i>physically-bounded</i> prescription, not \(f_\kappa\) cranked to 64. <span class="small">Testing it needs no
 new grid &mdash; any \(f_\kappa(n){=}\text{clamp}(A n^{q},1,f_{\max})\) is read off the existing
 <code>summary.csv</code>; a small 63-run generator sweep only confirms a chosen prescription as real runs.</span></div>
+<h3>15.7 &middot; The physical prescription, derived &mdash; it is \(\kappa_{\text{mix}}(\lambda\delta v)\), not a power law</h3>
+<p>Chasing the &ldquo;negative power isn&rsquo;t physical&rdquo; objection to its end settles the whole question.
+There are <b>three</b> different \(f_\kappa(n)\), and only one is the mechanism: <b>(i) mechanism</b>
+\(f_\kappa{=}\kappa_{\text{mix}}/\kappa_{\text{Spitzer}}{\propto}n\) (rises); <b>(ii) target</b>
+\(\theta^\star(n;\lambda\delta v)\) (Eq 37/38, flat-high); <b>(iii) boost</b> to reach the target \(\propto n^{-0.6}\)
+(falls &mdash; a boost factor, <i>not</i> a conductivity). The empirical \(-0.6\) is (iii); it is the wrong object to
+call a prescription.</p>
+<div class="box find"><span class="lab">Derived</span> Crossover \(\kappa_{\text{mix}}{=}\kappa_{\text{Spitzer}}\) at
+\(n_{\text{crit}}{=}C_{\text{th}}T^{5/2}/((\lambda\delta v)k_B)\) \(=\) <b>0.25 cm\(^{-3}\)</b> (T=2&times;10\(^5\) K,
+\(\lambda\delta v{=}1\)) &mdash; matching El-Badry&rsquo;s &ldquo;\(\kappa_{\text{mix}}\) dominates \(n\!\gtrsim\!0.2\)&rdquo;.
+In the cool mixing layer (T\(\sim\)2&times;10\(^4\) K) \(\kappa_{\text{mix}}/\kappa_{\text{Spitzer}}\!\approx\!10^3\!-\!10^7\),
+because Spitzer \(\propto T^{5/2}\) <b>vanishes</b> there &mdash; so a scalar \(f_\kappa\!\cdot\!\kappa_{\text{Spitzer}}\)
+<b>cannot</b> represent it. The faithful object is the structural \(\kappa{=}\max(\kappa_{\text{mix}},\kappa_{\text{Spitzer}})\)
+term (Rung B), with <b>\(\lambda\delta v\!\in\![1,10]\) pc&middot;km/s</b> the single physical parameter, saturation-capped.</div>
+<figure>__FIG_DERIV__<figcaption><b>Why it is \(\kappa_{\text{mix}}\), not a scalar.</b> Left: Spitzer (\(\propto T^{5/2}\))
+vanishes in the cool mixing layer where the T-independent \(\kappa_{\text{mix}}\) rules &mdash; no single multiplier can
+bridge that. Right: El-Badry&rsquo;s verified target is flat-high <i>even at diffuse</i> (0.94 at \(n{=}10^2\)) while
+TRINITY&rsquo;s 1D baseline is only 0.29; the orange gap is what \(\kappa_{\text{mix}}\) must supply. From
+<code>data/make_fkappa_physical_derivation.py</code>.</figcaption></figure>
+<div class="box over"><span class="lab">Course-correction on &sect;15.6</span> Because the verified target is flat-high
+even at diffuse, the diffuse never-fire corner is most likely a <b>1D under-cooling artifact</b>, not a true
+energy-driven fate. So the resolution tilts to <b>route (b): add \(\kappa_{\text{mix}}\)</b> (Rung B,
+<b>re-promoted</b> from &ldquo;optional bonus&rdquo;), rather than route (a) &ldquo;accept non-transition&rdquo;.
+&sect;15.6&rsquo;s point still stands &mdash; don&rsquo;t crank \(f_\kappa\) to 64 &mdash; but the physical answer is the
+structural \(\kappa_{\text{mix}}\), and the &ldquo;derived number&rdquo; is \(\lambda\delta v\), not an \(f_{\max}\).
+<span class="small">Next: wire the gated \(\kappa_{\text{mix}}\) mode (RUNGB_SCOPING &sect;8), default-off byte-identical;
+this also reconciles that doc&rsquo;s \(\kappa_{\text{mix}}/\kappa_S\!\approx\!10^{24}\) absurdity &mdash; it came from
+\(D_{\text{turb}}{=}R_2 v_2\); El-Badry&rsquo;s \(\lambda\delta v\) is the sane magnitude.]</span></div>
 <p class="small muted">All numbers in this section trace to <code>data/summary.csv</code> (the reduced 819-run table)
-and the builders named above; see <code>F_KAPPA_FUNCTIONAL_FORM.md</code> &sect;0&ndash;&sect;12 for the full
+and the builders named above; see <code>F_KAPPA_FUNCTIONAL_FORM.md</code> &sect;0&ndash;&sect;13 for the full
 treatment.</p>
 """
 
@@ -1001,6 +1033,7 @@ vs expensive (a full sim). Use it to re-run any piece for a paper and to prove t
 <tr><td><code>data/fkappa_sweep_scorecard.csv</code> + <code>fkappa_sweep_analysis.png</code> (+ <code>data/make_fkappa_sweep_analysis.py</code>)</td><td>&sect;15.3 the pre-registered prediction scorecard (slope \(n^{-0.60}\) vs predicted \(n^{-0.30}\); fan-out; never-fire; \(M_\star\)-independence) + predicted-vs-measured</td></tr>
 <tr><td><code>data/fkappa_cliff_metric.csv</code> + <code>fkappa_cliff_metric.png</code> (+ <code>data/make_fkappa_cliff_metric.py</code>)</td><td>&sect;15.4&ndash;15.5 the catastrophic-cooling cliff (constant-column threshold), the multi-dimensional fan-out (\(R^2\) of \(n_{\text{core}}\)/column/2-var, \(M_\star\)-independence), and the metric sanity (\(\theta_{\max}{-}\theta_{\text{blowout}}\) median 0.004)</td></tr>
 <tr><td><code>data/fkappa_physical_cap.csv</code> + <code>fkappa_physical_cap.png</code> (+ <code>data/make_fkappa_physical_cap.py</code>)</td><td>&sect;15.6 the physical-cap reframing: the sign flip (physical \(f_\kappa\!\propto\!n^{+1}\) vs fire-threshold \(n^{-0.6}\)), the momentum/energy split per \(f_{\max}\), and the falsifiable critical column \(N_{\text{crit}}\!\approx\!1\!-\!4{\times}10^{23}\)</td></tr>
+<tr><td><code>data/fkappa_physical_derivation.csv</code> + <code>fkappa_physical_derivation.png</code> (+ <code>data/make_fkappa_physical_derivation.py</code>)</td><td>&sect;15.7 the derived physical prescription: the three \(f_\kappa(n)\) (mechanism/target/boost), the \(\kappa_{\text{mix}}{=}\kappa_{\text{Spitzer}}\) crossover \(n_{\text{crit}}{=}0.25\), why a scalar \(f_\kappa\) can't represent cool-layer mixing, and the \(\theta^\star\) gap arguing for \(\kappa_{\text{mix}}\) (Rung B)</td></tr>
 <tr><td><code>KAPPA_EFF_SCOPING.md</code></td><td>&sect;11 the κ_eff cooling-mechanism feasibility map + the &sect;6a Rung-A result table; the mechanism vs the optional evaporation-decoupling bonus</td></tr>
 <tr><td><code>storyline_figs/*.png</code> (+ <code>make_storyline_figs.py</code>)</td><td>the four storyline figures (&sect;2 double-count, &sect;3 convention, &sect;4 regime, &sect;5 heatmap), each a pure read of the CSVs</td></tr>
 <tr><td><code>PLAN.md</code> / <code>FINDINGS.md</code></td><td>the living plan (&ldquo;Outcome &amp; pivot&rdquo;) and the verified findings &mdash; the source of truth this report is a sibling of</td></tr>

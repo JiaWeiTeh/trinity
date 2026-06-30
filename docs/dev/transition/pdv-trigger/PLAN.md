@@ -58,7 +58,10 @@ framing):**
   same knob. (`RUNGB_SCOPING.md` §2a is the canonical θ/`λδv`/`f_κ`/0.95 reconciliation.)
 - **Evaporation-decoupling (the old "Rung B endgame") is DEMOTED to an optional high-fidelity bonus.** The
   1D `dMdt` is anchored at the 3×10⁴ K front, so it *resists* El-Badry-style evaporation suppression — but
-  that suppression is **not in the goal**. `FM1`/`FM1b` (`data/fm1*_*.py`) are **useful negative results**
+  that suppression is **not in the goal**. *(Update 2026-06-29: this demotion is specifically of the
+  **evaporation-suppression** aspect of Rung B. The **κ_mix conductivity term** — the other aspect — is
+  **RE-PROMOTED** to the faithful cooling fix for the diffuse end; see the 06-29 ledger entry + §13. The scalar
+  Rung-A `f_κ` cannot represent cool-layer mixing, so κ_mix(λδv) is the physical mechanism after all.)* `FM1`/`FM1b` (`data/fm1*_*.py`) are **useful negative results**
   that ruled out the wrong knobs (imposing `dMdt`; an interior loss-integrand term) and point **back to
   κ_eff** as the mechanism.
 - **REFINED GOAL (2026-06-29): a *physically-bounded* f_κ(n) prescription, not f_κ tuned to force every cloud
@@ -82,6 +85,22 @@ framing):**
   `f_κ(n_H)` mode (gated, default-off byte-identical).
 
 **Status ledger (newest first):**
+- **2026-06-29 (PHYSICAL PRESCRIPTION DERIVED → it's κ_mix(λδv), Rung B RE-PROMOTED).** Followed the
+  "negative power isn't physical" thread to its end (`F_KAPPA_FUNCTIONAL_FORM.md` §13; builder
+  `data/make_fkappa_physical_derivation.py` → `data/fkappa_physical_derivation.csv` + `fkappa_physical_derivation.png`).
+  Three distinct f_κ(n): **mechanism** κ_mix/κ_Spitzer ∝ n (RISES, the physical enhancement); **target**
+  θ*(n;λδv) Eq37/38 (flat-high 0.94–0.999); **boost** to reach the target ∝ n^−0.6 (FALLS — a boost factor, NOT a
+  conductivity). Key results: (1) crossover κ_mix=κ_Spitzer at **n_crit=0.25 cm⁻³** (T=2e5, λδv=1) — matches
+  El-Badry's "n≳0.2"; (2) a **scalar f_κ can't represent the mechanism** — in the cool layer (T~2e4)
+  κ_mix/κ_Spitzer≈10³–10⁷ because Spitzer∝T^(5/2) vanishes → the faithful form is the **structural κ_mix term**,
+  λδv∈[1,10] pc·km/s the single parameter, saturation-capped ∝n; (3) **course-correction on the "accept
+  non-transition" idea** — El-Badry's verified θ* is flat-high *even at diffuse* (0.94 at n=1e2 vs 1D baseline
+  0.29, gap 0.65), so the diffuse never-fire is most likely a **1D under-cooling artifact** → route (b) κ_mix, not
+  route (a) accept. This **re-promotes Rung B** from "optional fidelity bonus" to the faithful fix, and
+  reconciles RUNGB_SCOPING's κ_mix-magnitude absurdity (κ_mix/κ_S≈10²⁴ came from D_turb=R2·v2; use λδv∈[1,10]
+  instead → sane n_crit≈0.2). The "derived number" asked for = **λδv ∈ [1,10] pc·km/s**, not an f_max/power law.
+  Next concrete step: **wire the gated κ_mix mode** (RUNGB_SCOPING §8 front-conduction intervention), default-off
+  byte-identical. Documented in §13 + storyline §15.7.
 - **2026-06-29 (STRATEGY REFINEMENT — physically-bounded f_κ, accept non-transition; the "don't force it"
   reframing).** Prompted by the maintainer: searching f_κ up to 64 to force every cloud to fire assumes every
   cloud must be momentum-driven, which isn't physical. Two facts (new doc sections `F_KAPPA_FUNCTIONAL_FORM.md`

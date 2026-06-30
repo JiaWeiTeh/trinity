@@ -417,7 +417,10 @@ so N_crit has real scatter; nCore and cloud size both enter.)
 prediction is the *dividing line*; which side is physically right is settled against observations, not asserted.
 The two routes are: **(a) accept non-transition** (physical f_max, this section) — simple, honest about the 1D
 limit; **(b) add κ_mix** (Rung B) — if you trust Lancaster that diffuse clouds *should* cool. Either way the
-deliverable is the same: a physically-bounded prescription, not f_κ cranked to 64.
+deliverable is the same: a physically-bounded prescription, not f_κ cranked to 64. **→ §13 resolves the choice:**
+the *derivation* of the physical prescription (El-Badry's verified flat-high θ* even at diffuse) tilts toward
+**route (b), κ_mix** — the diffuse never-fire is most likely a 1D under-cooling artifact, not a true energy-driven
+fate.
 
 **What sets f_max / the prescription (the next input).** `f_max` and the rising exponent are physics, not free
 fit parameters: they follow from El-Badry's `λδv` (1–10 pc·km/s), the saturation ceiling (Cowie & McKee,
@@ -439,6 +442,54 @@ fixed per run, a small **generator** (extend `runs/make_params.py`) emits one ru
 is **63 runs per prescription** (vs the 819 of the free f_κ scan) — cheap. The eventual production form is a
 gated `cooling_boost_kappa_mode = "density"` that computes f_κ(n) in-code (default-off byte-identical), but the
 generator sweep validates the prescription first.
+
+---
+
+## 13. The physical prescription, DERIVED — it is κ_mix(λδv), not an f_κ(n) power law (2026-06-29)
+
+The maintainer's objection — "the f_κ(n) ∝ n^(−0.6) we measured has a *negative* power, which is not a physical
+conductivity" — is correct, and chasing it down resolves the whole question. Builder:
+`data/make_fkappa_physical_derivation.py` → `data/fkappa_physical_derivation.csv` + `fkappa_physical_derivation.png`
+(constants + the committed `summary.csv`, no sims).
+
+**Keep three "f_κ(n)" straight — only one is the mechanism:**
+1. **MECHANISM** `f_κ = κ_mix/κ_Spitzer`. El-Badry Eq 21 `κ_mix = (λδv)·n·k_B` (T-independent); `κ_Spitzer = C_th·T^(5/2)`.
+   So `f_κ_mech ∝ n / T^(5/2)` — **RISES with density** (positive power). This is the physical enhancement.
+2. **TARGET** `θ*(n; λδv) = ψ/(11/5+ψ)`, `ψ = 3.5√(λδv·n)` (Eq 37/38, verified §7) — the cooling efficiency to aim
+   for; flat-high (0.94–0.999) across the GMC range.
+3. **BOOST** the f_κ to make TRINITY's emergent θ *reach* (2): **FALLS** with density, because TRINITY's baseline
+   θ₀(n) already rises. This is the empirical `n^(−0.6)` — a **boost factor, not a conductivity.** It is not
+   "unphysical", it is the wrong *object* to call a prescription.
+
+**The derivation (verified numbers):**
+- **Crossover** `κ_mix = κ_Spitzer` at `n_crit = C_th·T^(5/2)/((λδv)·k_B)`. At T=2×10⁵ K, λδv=1 → **n_crit = 0.25
+  cm⁻³**, matching El-Badry's stated "κ_mix dominates n ≳ 0.2, T ≲ 2×10⁵ K." ✓
+- **A scalar f_κ cannot represent the mechanism.** In the cool mixing layer (T~2×10⁴ K, the cooling peak)
+  `κ_mix/κ_Spitzer ≈ 10³–10⁷` and ∝ n, because Spitzer ∝ T^(5/2) **vanishes** there. So `f_κ·κ_Spitzer` would need
+  to be enormous at low T and ~1 at high T — it cannot be a single scalar. **The faithful object is the structural
+  `κ = max(κ_mix, κ_Spitzer)` term (Rung B)**, with **λδv ∈ [1,10] pc·km/s** the *single physical parameter*,
+  capped by saturation (`q_sat = 5φρc_s³ ∝ n`, Eq 19/20).
+
+**The honest course-correction on §11 (route a vs route b).** The verified El-Badry target is **flat-high even at
+diffuse** (θ*=0.94 at n=1e2, λδv=1), while TRINITY's measured 1D baseline is only 0.29 there — a **gap of 0.65**
+(shrinking to ~0 at dense). So *if El-Badry/Lancaster are right that diffuse clouds do cool in 3D*, the diffuse
+never-fire corner is a **1D under-cooling artifact**, and the faithful fix is **κ_mix (route b)** — *not* "accept
+non-transition" (route a, which trusts the 1D θ₀ as truth). §11's physical-cap reframing is right that f_κ=64 is
+unphysical and you must not crank a knob to force firing; but the *resolution* of "what then" tilts to κ_mix, not
+to declaring diffuse clouds energy-driven. Route a is only correct if you distrust the 3D/obs.
+
+| n_core | 1D baseline θ₀ | El-Badry θ* (λδv=1) | gap κ_mix must supply |
+|---:|---:|---:|---:|
+| 1e2 | 0.29 | 0.94 | **0.65** |
+| 1e4 | 0.61 | 0.99 | 0.38 |
+| 3e4 | 0.95 | 1.00 | 0.05 |
+
+**Bottom line — the "derived number" requested.** It is **not** a single f_max or a scalar power law. It is
+**λδv ∈ [1,10] pc·km/s** (El-Badry's one mixing parameter) feeding the **structural κ_mix term**, with crossover
+n_crit ≈ 0.2 and a saturation cap ∝ n. The next concrete step is therefore **not** another f_κ(n) sweep but
+**wiring the gated κ_mix mode** (Rung B) — see `RUNGB_SCOPING.md` §8 (front-conduction intervention), which this
+derivation now physically motivates: add `κ_mix = (λδv)·n·k_B/(μm_p)` as `κ = max(κ_mix, κ_Spitzer)` near the
+front, default-off byte-identical, with λδv the calibrated knob.
 
 ---
 

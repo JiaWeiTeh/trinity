@@ -70,6 +70,14 @@
 > falsifiable **critical column** N_crit≈1–4×10²³ cm⁻² for the energy→momentum split (6/63 never fire under any
 > cap). Tension: Lancaster 3D says diffuse clouds also cool → accept-non-transition vs add-κ_mix, settled vs obs.
 > Builder `data/make_fkappa_physical_cap.py`; prescriptions are testable by re-analysis of `summary.csv` (no sims).
+>
+> **→ Physical prescription DERIVED (2026-06-29, §13):** three f_κ(n) — mechanism κ_mix/κ_Spitzer ∝ n (rises),
+> target θ*(n;λδv) flat-high, boost ∝ n^−0.6 (falls; a boost factor, NOT a conductivity). Crossover n_crit=0.25
+> (matches El-Badry); a **scalar f_κ can't represent κ_mix** (Spitzer ∝ T^(5/2) vanishes in the cool layer →
+> ratio 10³–10⁷). The verified El-Badry θ* is flat-high even at diffuse (0.94 vs 1D 0.29) ⇒ the diffuse
+> never-fire is likely a **1D under-cooling artifact** → faithful fix is the **structural κ_mix (Rung B,
+> re-promoted), λδv∈[1,10] pc·km/s**, not a scalar f_κ power law. Builder `data/make_fkappa_physical_derivation.py`;
+> reconciles RUNGB_SCOPING's κ_mix-magnitude. Next: wire the gated κ_mix mode (RUNGB §8).
 
 What looks like "three ways to boost cooling" is really **two cooling-magnitude approaches on opposite sides
 of the structure solve, plus a separate trigger axis**. The key disambiguation: **"modify cooling like

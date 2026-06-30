@@ -1,0 +1,12 @@
+nCore,theta0_1D,theta_EB_ldv1,theta_EB_ldv10,gap_ldv1
+100,0.292,0.941,0.981,0.649
+300,0.361,0.965,0.989,0.604
+1000,0.438,0.981,0.994,0.542
+3000,0.524,0.989,0.996,0.464
+10000,0.614,0.994,0.998,0.38
+30000,0.951,0.996,0.999,0.046
+100000,0.96,0.998,0.999,0.038
+# crossover n_crit(T=2e5,ldv=1)=0.25 cm^-3 (matches El-Badry ~0.2)
+# kappa_mix=(lambda*dv)*n*kB (Eq21); kappa_Spitzer=C_th*T^(5/2); f_kappa_mech~n (rises)
+# physical enhancement RISES with n; empirical fire-threshold ~n^-0.6 is a boost-factor, not a conductivity
+# faithful form = structural kappa_mix (Rung B), lambda*dv in [1,10] pc.km/s; scalar f_kappa can't represent the cool layer
