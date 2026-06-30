@@ -24,6 +24,16 @@
 
 ---
 
+> **⏸ SHELVED (2026-06-30): the direct κ_mix-into-the-Weaver-ODE injection this spec designs is superseded by
+> the El-Badry θ_target path (`ELBADRY_REFERENCE.md`).** The full-paper read showed El-Badry's θ ≡ TRINITY's
+> trigger θ and is available as a 3D-calibrated closed form (Eq 37/38), so we can impose it via the existing
+> gated `cooling_boost_mode='theta_target'` without porting κ_mix into the structure solver (which saturated and
+> went numerically unstable). This spec is retained for the **dimensionless-multiplier units strategy** (§2,
+> still correct and reusable) and as the record of *why the direct port was abandoned*. Two corrections from the
+> full read: **Parker conductivity is negligible** (κ_P ≪ κ_S) and **saturation barely affects θ** (it mostly
+> changes Mhot ~15-20% and early-time numerics) — so neither is the missing piece I speculated last turn; the
+> real issue was that the closed-form θ makes the whole port unnecessary.
+
 ## 0. What this is, and the guardrail
 
 This is the **design + units spec** for wiring El-Badry's mixing conductivity κ_mix into TRINITY's

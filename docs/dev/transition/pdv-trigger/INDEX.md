@@ -47,7 +47,8 @@ conclusion that the faithful fix is the structural **κ_mix (Rung-B) term**, now
 | `KMIX_DIFFUSIVITY.md` | 06-29 | Phase 3 (κ_mix) / §15.7 | the maintainer manuscript draft, verified line-by-line + the λδv-origin refinement | **live** |
 | `KMIX_PROTOTYPE.md` | 06-29 | Phase 4 (implementation) | **step 1** of the κ_mix wiring: the offline scoping prototype (units-correct, no solver) | **live** |
 | `KMIX_IMPLEMENTATION_SPEC.md` | 06-30 | Phase 4 (implementation) | **design+units spec** for wiring κ_mix: dimensionless-multiplier strategy, the 3 sites, gate param, 8-config gates | **live** (plan; §3 boundary refined by self-consistent) |
-| `KMIX_SELFCONSISTENT.md` | 06-30 | Phase 4 (implementation) | **step 2**: κ_mix in the REAL solver (monkeypatch). θ SATURATES (retires λδv-pin); **§2b time-resolved**: blowout was the wrong epoch — mid clouds would fire, dense stay low, early phase needs a smooth-max injection | **live** |
+| `KMIX_SELFCONSISTENT.md` | 06-30 | Phase 4 (implementation) | **step 2**: κ_mix in the REAL solver (monkeypatch). θ SATURATES (retires λδv-pin); **§2b time-resolved**: blowout was the wrong epoch — mid clouds would fire, dense stay low, early phase needs a smooth-max injection | **live** (dense-low walked back, see ELBADRY_REFERENCE) |
+| `ELBADRY_REFERENCE.md` | 06-30 | Phase 4 (the pivot) | **full El-Badry+2019 distilled** (every eq/number; skip the PDF). θ_ElBadry = θ_TRINITY; the closed form Eq 37/38; the TRINITY mapping | **live** (token-saver) |
 | `PB_COLLAPSE_GUARD_FIX.md` | 06-30 | Phase 4 (hygiene) | the energy-collapse reconciliation no longer emits a garbage negative Pb — **APPLIED + tested** (596 pass) | **done** |
 
 *Phases:* **1** PdV/cooling-boost trigger question (06-24→28) · **2** Rung-B structural scoping (06-26) ·
@@ -66,8 +67,8 @@ The recurring conclusion is that the faithful fix is `κ = max(κ_mix, κ_Spitze
 | spec (design) | dimensionless-multiplier κ_eff, gate params, 3 sites, units, 8-config gates | ✅ written (§3 boundary refined) | `KMIX_IMPLEMENTATION_SPEC.md` |
 | **self-consistent (offline)** | re-solve structure with κ_mix injected | ✅ **DONE** — G1 bit-identical-off + G2 replay pass; θ RISES but SATURATES (λδv not a dial); RHS-only stable; boundary injection diverges | `KMIX_SELFCONSISTENT.md` §2 |
 | **time-resolved θ (re-metric)** | is the dense ceiling real or a single-row artifact? | ✅ **DONE** — blowout was the WRONG epoch; θ peaks early; mid (1e4) would fire, dense (≥1e5) stay low; **but early high-Pb epochs don't solve** (hard-max too stiff) + kprime bug (−1/T) | `KMIX_SELFCONSISTENT.md` §2b |
-| **revise injection** | smooth-max + correct kprime → survive the early phase, re-run §2b → confirm mid-cloud firing | ⏳ **NEXT (recommended)** | `KMIX_SELFCONSISTENT.md` §3 route 0 |
-| **strategy decision** | combine κ_mix floor (diffuse/mid) + θ_target cap (dense)? | ⏳ after the re-run | `KMIX_SELFCONSISTENT.md` §3 |
+| ~~revise injection~~ | ~~smooth-max + correct kprime~~ | ⏸ **SHELVED** — superseded by the El-Badry θ_target path (no κ_mix port needed) | `ELBADRY_REFERENCE.md` |
+| **El-Badry θ_target (NEW direction)** | feed θ(λδv,n)=A_mix√(λδv·n)/(11/5+…) into gated `theta_target`; offline calculator done | ⏳ **NEXT (recommended)** — pin the n-mapping + λδv, then wire gated/byte-identical-off, run ≥5 Myr | `ELBADRY_REFERENCE.md` §7, `data/make_elbadry_theta.py` |
 | gated production | `κ_mix` mode default-off byte-identical; equivalence gate; full 8-config | ⏸ **on hold** pending the strategy revision | `RUNGB_SCOPING.md` §8 + spec §6 |
 
 *Independent hygiene item (not κ_mix), ✅ APPLIED 2026-06-30:* the energy-collapse reconciliation used to emit

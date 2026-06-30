@@ -71,6 +71,23 @@ framing):**
 > single near-blowout row; a time-integrated metric could move it). **Open fork (maintainer):** (a) use f_κ as
 > the calibrated effective knob; (b) κ_mix floor (diffuse) **+** the gated `theta_target` cap (dense); (c)
 > re-metric / κ_mix boundary re-derivation. Full reasoning: `KMIX_SELFCONSISTENT.md` §2a–§3.
+>
+> **⚡⚡ SUPERSEDING DIRECTION (2026-06-30, after the full El-Badry read — `ELBADRY_REFERENCE.md`): use
+> El-Badry's analytic θ(λδv,n) directly as the θ_target.** The fork above is resolved by a cleaner option the
+> full paper hands us. El-Badry's **`θ ≡ L_int/Ė_in` IS TRINITY's trigger θ**, and he gives a 3D-calibrated
+> closed form `θ = A_mix√(λδv·n)/(11/5 + A_mix√(λδv·n))` (A_mix=3.5). Feed it into the **existing gated
+> `cooling_boost_mode='theta_target'`** — no κ_mix port, no f_κ fudge, no stability/saturation fight. This *is*
+> the user's "f_κ from an n,T correlation + calibrate to sim, transition is fate" idea, realized with El-Badry's
+> own calibration: at λδv=1 the **firing threshold is ambient n≈143 cm⁻³** (GMC fires, diffuse ISM doesn't = fate).
+> κ_mix remains the *physical justification* (why θ∝√(λδv·n)); the direct injection is shelved. **Revised
+> Mechanism/Target/Knob table:**
+> | role | OLD (κ_mix/f_κ) | NEW (El-Badry θ_target) |
+> |---|---|---|
+> | Target | θ(n) from El-Badry+Lancaster | **same** — now a closed form, Eq 37/38 |
+> | Mechanism | inject κ_mix into the structure ODE (saturates/unstable) | **impose θ_target** = El-Badry θ(λδv,n) (the 3D physics 1D can't resolve) |
+> | Knob | f_κ / λδv (saturates) | **λδv** — smooth, calibratable to Lancaster |
+> **Caveats:** GMC θ is EXTRAPOLATED past El-Badry's tested n≤10 (Lancaster supports, unvalidated >10);
+> n=ambient-at-shell not nСore; θ is late-time (≥5 Myr). Full detail: `ELBADRY_REFERENCE.md` §6–§7.
 
 - **`θ_target` vs κ_eff was a FALSE dichotomy** — `θ(n_H)` is the *target*, κ_eff is the *mechanism* of the
   same knob. (`RUNGB_SCOPING.md` §2a is the canonical θ/`λδv`/`f_κ`/0.95 reconciliation.)
@@ -111,6 +128,26 @@ framing):**
 > → re-derive those from ≥5 Myr runs before trusting their Pb numbers. f1edge_lowdens (3 Myr) is also short.
 
 **Status ledger (newest first):**
+- **2026-06-30 (FULL El-Badry+2019 read → REVISED PLAN: use his analytic θ(λδv,n) as TRINITY's θ_target;
+  new docs `ELBADRY_REFERENCE.md` + `data/make_elbadry_theta.py`).** Read the whole 32-page paper
+  equation-by-equation (transcribed into `ELBADRY_REFERENCE.md` so future sessions skip the PDF). **The pivotal
+  fact:** El-Badry's cooling efficiency **`θ ≡ L_int/Ė_in` IS TRINITY's trigger θ = L_cool/L_mech** (Ė_in =
+  ESN/Δt_SNe = L_mech), and he gives a **3D-calibrated closed form** `θ = A_mix√(λδv·n)/(11/5 + A_mix√(λδv·n))`,
+  A_mix=3.5 (Eq 37/38). Validated our calculator reproduces his fiducial θ(1,1)=0.61. **So the cleanest path is
+  to feed his θ(λδv,n) straight into TRINITY's existing gated `cooling_boost_mode='theta_target'`** — El-Badry
+  *himself* endorses this ("our solution … can be easily implemented in any application that uses the Weaver
+  model", p.26). This **drops the κ_mix-into-the-Weaver-ODE injection** (the saturating/unstable path) entirely.
+  **Three findings that reframe earlier work:** (1) **"dense θ low" is walked back** — El-Badry's √n (rising) +
+  his own note "at molecular-cloud densities, high θ" + Lancaster θ~0.9-0.99 all agree dense clouds have HIGH θ;
+  our self-consistent solve's dense θ~0.35 is the **outlier/artifact** (kprime, hard-max, wrong epoch). (2)
+  **Parker conductivity is NEGLIGIBLE** (κ_P ≪ κ_S; El-Badry §3.1) — *correcting my prior-turn claim* it was a
+  load-bearing missing piece. (3) **Saturation mainly affects Mhot (~15-20%) + early-time numerics, NOT θ** —
+  *also tempering my prior-turn claim*; it's not the key to the cooling efficiency. **The "fate" picture (your
+  framing) falls out cleanly:** at λδv=1 the firing threshold is ambient n≈143 cm⁻³ — GMC cores (≥1e2) fire,
+  diffuse ISM doesn't, a falsifiable critical-density prediction. **Honest caveats (don't assume):** GMC θ rests
+  on EXTRAPOLATING El-Badry's √n beyond his tested n≤10 (supported by Lancaster, unvalidated at n>10); the
+  n-mapping (ambient density at the shell, NOT nCore) must be pinned; θ is a LATE-TIME (≥5 Myr) equilibrium;
+  λδv∈[0.1,10] is the free knob to calibrate. No production code; no sims.
 - **2026-06-30 (κ_mix TIME-RESOLVED θ — the blowout metric was the WRONG epoch; walks back "only 1/6 fires").**
   `make_kmix_theta_trajectory.py` re-solved κ_mix across ~14 rows/config of the implicit phase (not the single
   near-blowout row §2 used). **θ peaks EARLY (high Pb ⇒ κ_mix most dominant) and decays — blowout is the
