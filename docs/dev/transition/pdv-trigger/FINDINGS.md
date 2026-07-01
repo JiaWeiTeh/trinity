@@ -843,10 +843,53 @@ so 'auto' inherits that caveat.
 > 2. **Open tension with §8e:** §8e (same day, pt2 line, no cross-knowledge) found `cooling_boost_kappa=8`
 >    drives the β-δ solver to non-physical `dMdt` and a frozen state on `simple_cluster`/`be_sphere`/
 >    `small_1e6`, while this sweep reports 57/57 cells firing cleanly at f_κ_fire up to 64 under
->    (`betadelta_solver=hybr`, α=0, nISM 0.1, stop_t 2). Candidate explanations — solver choice, config
->    differences, or §8e's early-time truncation — are **unresolved**. Do not treat either result as
->    refuting the other until one run matrix covers both setups.
+>    (`betadelta_solver=hybr`, α=0, nISM 0.1, stop_t 2). ~~Candidate explanations — solver choice, config
+>    differences, or §8e's early-time truncation — are **unresolved**.~~ **→ RESOLVED same day from the
+>    committed sweep data itself — see §9a** (both results are true; the knob's breakdown is
+>    non-monotonic in f_κ).
 > 3. **Direction tension:** 'auto' interpolates a per-cloud f_κ so that *every* cloud fires — this
 >    chases the target, in tension with the same-day maintainer decisions "single physical f_κ constant,
 >    NOT f_κ(n)" and route-a ("diffuse clouds may never enter momentum"). 'auto' therefore stands as a
 >    **documented opt-in convenience mode** (like `theta_target`), not the production direction.
+
+## 9a. [data] The §8e⇄§9 kappa tension RESOLVED — breakdown is NON-MONOTONIC in f_κ (2026-07-01, no new sims)
+
+Read straight out of the committed `data/summary.csv` (the 819-run Helix sweep) — no new runs needed.
+Builder: `data/make_kappa_stability_map.py` → `data/kappa_stability_map.csv`.
+
+**The decisive cell.** The sweep's `simple_cluster` analog (mCloud 1e5, sfe 0.3, nCore 1e5 — same mass/SFE/
+density; recipe differs only in nISM 0.1 vs 1 and stop_t) across its 13 f_κ values:
+
+| f_κ | outcome |
+|---:|---|
+| 1, 1.5 | healthy to stop_t=2, θ_max 0.68/0.75, no fire |
+| 2, 3 | **froze mid-implicit** (t_final 0.54/0.62), no fire |
+| **4, 6** | **FIRES** → momentum (θ at fire 1.02/1.04) |
+| **8, 12** | **froze mid-implicit** (t_final 0.44/0.37), **θ_max = 0.5331 / 0.588** — §8e's "θ stuck ~0.53 at f_κ=8", reproduced independently on Helix |
+| 16 | fires, but θ_max=4.55 (non-physical solver spike en route) |
+| 24 | broke (t_final 0.048) |
+| 32, 48, 64 | fire violently (n_impl 3–6 rows) |
+
+**Grid-wide stats:** 57 cells fired; **17/57 are non-monotonic** (at least one f_κ *above* the cell's
+f_κ_fire fails to fire); **38/819 runs froze mid-implicit without firing** (the §8e signature: premature
+end, still `implicit`, θ frozen sub-threshold). So:
+
+- **§8e was right**: f_κ=8 breaks the solver on simple_cluster — the Helix sweep hit the identical freeze
+  (θ 0.533) on the matching cell. Not a container artifact, not the solver choice (both lines ran the
+  default `betadelta_solver=hybr`).
+- **§9 was right**: every one of the 57 cells fires *at its own f_κ_fire* — the firing bands are real.
+- **Neither refutes the other**: the kappa knob has **interleaved firing bands and breakdown windows**
+  (here: fire 4–6, dead 8–12, fire 16+). §8e happened to sample inside a dead window.
+
+**Consequences.**
+1. **The knob-choice argument against `cooling_boost_kappa` gets stronger**: a production knob whose
+   usable values form disconnected bands, with silent mid-run freezes between them, is not shippable —
+   independent of the evaporation side-effect. The `multiplier` tentative choice (§8e) stands, now on
+   firmer ground.
+2. **New risk flagged for `'auto'`**: the resolver trilinearly *interpolates* f_κ between grid cells, but
+   only the grid's f_κ_fire values are measured to fire — an interpolated value (e.g. 5.3 or 10 for this
+   cell) can land inside a dead window. 'auto' remains opt-in/PROVISIONAL (flag #1 above) with this
+   added caveat.
+3. The "786/819 ok" sweep report over-reads: "ok" includes the 38 mid-implicit freezes (exit-0 runs that
+   died early without firing). The fit's f_κ_fire values are unaffected (smallest *fired* f), but
+   per-run health must be judged from `t_final`/`phase_final`, not the exit code.

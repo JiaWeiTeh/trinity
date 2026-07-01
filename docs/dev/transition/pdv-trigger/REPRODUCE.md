@@ -87,6 +87,7 @@ Legend — **Sims?**: 🟢 none (reads committed CSV, seconds) · 🟡 a few ful
 | 24 | **κ_mix offline prototype** — does mixing dominate the cool layer? units-correct, no solver | `KMIX_PROTOTYPE.md` | `runs/data/harvest_*.csv` (Pb time series) | `python data/make_kmix_prototype.py` | `data/kmix_prototype.csv`, `kmix_prototype.png` | 🟢 |
 | 25 | **θ₁-collapse + de-conflation verdict** (n_H-only REFUTED; universal leverage p≈0.27; pt3) | `FINDINGS.md` §9 | — (reads #18's `data/fkappa_nH_sweep.csv`) | `python data/make_fkappa_theta1_collapse.py` | `data/fkappa_theta1_collapse.csv`, `fkappa_theta1_collapse.png` | 🟢 |
 | 26 | **`cooling_boost_kappa='auto'` acceptance** (pt3: GMC run fires cooling_balance → momentum; ⚠️ PROVISIONAL — grid measured at stop_t=2, see `FINDINGS.md` §9 flags) | `FINDINGS.md` §9 | `runs/params/fkauto_verify.param` | `python run.py runs/params/fkauto_verify.param`, then `python data/make_fkappa_auto_verify.py` | `data/fkappa_auto_verify.csv` | 🟡 |
+| 27 | **Kappa stability map** — §8e⇄§9 tension resolved: breakdown non-monotonic in f_κ (17/57 cells; 38 frozen runs; §8e's θ≈0.53 reproduced on Helix) | `FINDINGS.md` §9a | — (reads #18's `data/summary.csv`) | `python data/make_kappa_stability_map.py` | `data/kappa_stability_map.csv` | 🟢 |
 
 ¹ #12 reads the same `cal_*__k{1,2,4}` runs as #11 — once those exist in `outputs/kcal/`, #12 is a 🟢 re-read.
 

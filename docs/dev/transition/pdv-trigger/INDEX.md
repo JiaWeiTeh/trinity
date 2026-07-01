@@ -120,7 +120,7 @@ the canonical 8-config base params live in `../cleanroom/configs/` (6) + `runs/m
 | direction | θ is an OUTPUT; mechanism boost; El-Badry/Lancaster = calibration target; single physical f; route-a | ✅ decided 07-01 | PLAN ⭐⭐, FINDINGS §8c |
 | knob choice | `multiplier` tentative (kappa breaks @8 + slow; κ_mix shelved; theta_target double-counts) | 🟡 tentative | FINDINGS §8e |
 | **→ NEXT: re-derive the `multiplier` calibration** | run the committed 📏 matrix (8 configs × f_mix {none,2,4,8} × 5 Myr), harvest θ_max, fit θ₀/p and the θ₁-collapse analogue, pick the single physical f_mix, compute the route-a boundary | ⏳ **READY — params + sbatch + harvester committed** (`runs/params/theta5/`, `runs/run_theta5.sbatch`, `runs/harvest_theta_max.py`); **run on HPC** | `runs/README.md` 📏 |
-| resolve the §8e⇄§9 tension | same knob, opposite behavior (kappa breaks @8 vs 57/57 fire ≤64) — isolate solver (hybr?) vs config vs duration | ⏳ open | `CONTAMINATION.md` ⚡ #1 |
+| resolve the §8e⇄§9 tension | both right: kappa breakdown is **non-monotonic in f_κ** (dead windows between firing bands; §8e's θ≈0.53 freeze reproduced on Helix) | ✅ resolved 07-01 from committed data | `FINDINGS.md §9a`, `data/kappa_stability_map.csv` |
 | revalidate `'auto'` (pt3) | re-measure the 63-cell grid under the 📏 protocol (5 Myr, θ_max) or keep 'auto' opt-in-provisional | ⏳ open | FINDINGS §9 flags |
 | acceptance target | Lancaster-band GMCs (n ≳ 48 cm⁻³) fire `cooling_balance` with emergent θ_max ∈ 0.9–0.99 and reach momentum; diffuse clouds stay energy-driven **by design** (route-a boundary = the falsifiable output) | the goal | LANCASTER_REFERENCE §7 |
 | massive clouds | ride PR #715 `Eb≤0→momentum`; θ knobs must NOT touch them (§8b lesson) | ✅ shipped | HIMASS_HANDOFF_PLAN |

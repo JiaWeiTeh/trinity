@@ -133,9 +133,11 @@ NOT cheap in a container), fit θ₀/p per config from θ_max, test the θ₁-co
 f_fire ≈ (0.95/θ₁)^k law, re-fit for `multiplier`), then pick the **single physical f_mix** and compute the
 route-a boundary. (2) pin **f_max** — the one physics input left (2–8 argued; structural κ_mix that would
 justify more at the diffuse end stays SHELVED). (3) confirm the massive cloud hands off cleanly under
-`multiplier` (already shown for the gated/default path — `fail_repro` → 500 pc). (4) resolve the **§8e⇄§9
-kappa tension** (breaks at 8 vs fires at ≤64; solver/config/duration confound — `CONTAMINATION.md` ⚡ #1).
-(5) decide `'auto'` (pt3): revalidate its 63-cell grid under the 📏 protocol or keep it opt-in-provisional.
+`multiplier` (already shown for the gated/default path — `fail_repro` → 500 pc). (4) ✅ **RESOLVED (same day, from committed data — `FINDINGS.md §9a`)**: the §8e⇄§9 kappa tension was
+non-monotonic breakdown windows in f_κ (fire 4–6, dead 8–12, fire 16+ on the simple_cluster cell; §8e's
+θ≈0.53 freeze reproduced on Helix at 0.5331) — kappa is even less shippable; `'auto'` gains an
+interpolation-into-a-dead-window caveat. (5) decide `'auto'` (pt3): revalidate its 63-cell grid under the
+📏 protocol or keep it opt-in-provisional.
 
 **BEST PATH FORWARD (updated 2026-07-01):** (i) **Rung A `multiplier` is already in production** (gated
 default-off — `grep cooling_boost_mode trinity/`). (ii) **Run the 📏 theta5 matrix on HPC** and re-derive the

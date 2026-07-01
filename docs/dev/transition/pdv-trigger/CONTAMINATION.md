@@ -147,10 +147,12 @@ Status legend: **CLEAN** (quotable for its stated question) · **FLAG-x** (usabl
 
 ## ⚡ Open tensions (neither side quotable as refuting the other)
 
-1. **FINDINGS §8e vs §9 on `cooling_boost_kappa`:** §8e (pt2): f_κ=8 → non-physical dMdt, frozen state,
-   never fires (simple_cluster/be_sphere/small_1e6, default solver, early-time). §9 (pt3 sweep): 57/57
-   cells fire cleanly at f_κ_fire up to 64 (hybr solver, α=0, nISM 0.1, stop_t 2). Same knob, opposite
-   behavior; setups differ in solver/config/duration. **Unresolved** — needs one matrix covering both setups.
+1. **FINDINGS §8e vs §9 on `cooling_boost_kappa` — ✅ RESOLVED (2026-07-01, from committed data;
+   `FINDINGS.md §9a`, `data/kappa_stability_map.csv`).** Both were right: the knob's breakdown is
+   **non-monotonic in f_κ** (firing bands interleave with freeze windows; 17/57 cells non-monotonic,
+   38/819 runs froze mid-implicit). The sweep's simple_cluster-analog cell freezes at f_κ=8/12 with
+   θ_max=0.5331 — §8e's ~0.53, reproduced on Helix. Solver choice is ruled out (both ran default hybr).
+   Fallout: kappa even less shippable; `'auto'` gains an interpolation-into-a-dead-window caveat.
 2. **`'auto'` (fire everything, per-cloud f_κ) vs the maintainer decisions** "single physical f_κ
    constant" + route-a ("diffuse clouds may never enter momentum"). 'auto' stands as an opt-in
    convenience, not the production direction.
