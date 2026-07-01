@@ -1,16 +1,20 @@
-"""Regression: an energy-collapsed run must not emit a garbage negative Pb.
+"""Regression: an energy-driven collapse must never emit a garbage negative Pb.
 
-When the energy-driven bubble collapses (Eb falls through 0 -> ENERGY_COLLAPSED),
-the phase-boundary reconciliation snapshot at the end of the implicit phase used to
-recompute Pb = (gamma-1)*Eb/V from the now-NEGATIVE collapse Eb and save it as the
-terminal dictionary.jsonl row (Pb ~ -1.6e18). The stop fate (code 51) was already
-correct; only the trailing row was garbage. The fix skips the reconciliation snapshot
-on the energy_collapsed exit, so the last recorded row keeps the last healthy Pb>0.
+When the energy-driven bubble loses Eb through 0, the phase-boundary reconciliation
+snapshot at the end of the implicit phase used to recompute Pb = (gamma-1)*Eb/V from
+the now-NEGATIVE collapse Eb and save it as the terminal dictionary.jsonl row
+(Pb ~ -1.6e18). The Pb-fix (PB_COLLAPSE_GUARD_FIX.md) skips the reconciliation recompute
+on a bad-Eb exit so no negative-Pb row is ever written.
 
-This is a slow (~1-2 min) end-to-end run of a heavy cloud that collapses very early
-(t ~ 3e-3 Myr), mirroring test_run_smoke's subprocess pattern. It asserts the collapse
-is recorded (code 51) AND that no row carries a negative Pb. Before the fix the final
-row fails the Pb>0 assertion; after, it passes.
+Since PR #715 (`bugfix/high-mass-cluster-transition-without-ebpeak`), a *finite* Eb<=0
+collapse no longer dead-stops as ENERGY_COLLAPSED — phase 1b now ROUTES it to the
+momentum phase (`classify_energy_collapse`, ENERGY_HANDOFF_FLOOR=1e3). This heavy cloud
+(5e9, n=1e2) is the canonical case that used to dead-stop and now hands off. This test
+locks in the COMBINED post-merge invariant: the heavy cloud (a) reaches the momentum
+phase (the handoff works, no ENERGY_COLLAPSED dead-stop) and (b) still writes zero
+negative-Pb rows and a finite-positive terminal Pb (the reconciliation stays clean).
+
+Slow (~1-2 min) end-to-end run, mirroring test_run_smoke's subprocess pattern.
 """
 
 from __future__ import annotations
@@ -26,7 +30,7 @@ ENERGY_COLLAPSED_CODE = 51
 
 
 def test_energy_collapse_emits_no_negative_Pb(tmp_path):
-    """A heavy cloud that ENERGY_COLLAPSEs writes code 51 and zero negative-Pb rows."""
+    """The heavy cloud that used to dead-stop now hands off to momentum with clean Pb."""
     param = tmp_path / "collapse.param"
     param.write_text(
         "model_name      collapse\n"
@@ -39,7 +43,7 @@ def test_energy_collapse_emits_no_negative_Pb(tmp_path):
         "densPL_alpha    0\n"
         "ZCloud          1\n"
         "rCloud_max      1e9\n"
-        "stop_t          0.05\n"     # bound runtime; collapse fires first (~3e-3 Myr)
+        "stop_t          0.05\n"     # bound runtime; the collapse/handoff fires ~3e-3 Myr
         "log_console     False\n"
     )
 
@@ -64,14 +68,19 @@ def test_energy_collapse_emits_no_negative_Pb(tmp_path):
     ]
     assert rows, "dictionary.jsonl is empty — the run never wrote a snapshot"
 
-    # The collapse must be recorded (the stop fate still propagates).
-    assert rows[-1].get("SimulationEndCode") == ENERGY_COLLAPSED_CODE, (
-        f"expected ENERGY_COLLAPSED (code {ENERGY_COLLAPSED_CODE}); "
-        f"got {rows[-1].get('SimulationEndCode')} — config no longer collapses, test is moot"
+    # PR #715: the finite Eb<=0 collapse now ROUTES to momentum instead of dead-stopping
+    # as ENERGY_COLLAPSED. Assert the handoff actually happened (the run reached momentum),
+    # and was NOT recorded as the old code-51 dead-stop.
+    phases = {str(r.get("current_phase")) for r in rows}
+    assert "momentum" in phases, (
+        f"heavy cloud did not reach the momentum phase (handoff regressed); phases seen: {phases}"
+    )
+    assert rows[-1].get("SimulationEndCode") != ENERGY_COLLAPSED_CODE, (
+        "heavy cloud dead-stopped on ENERGY_COLLAPSED — the PR #715 handoff regressed"
     )
 
-    # The fix: no row may carry a negative bubble pressure. (Pre-fix the reconciliation
-    # snapshot wrote a terminal Pb ~ -1.6e18 from the negative collapse Eb.)
+    # The Pb-fix invariant (independent of fate): no row may carry a negative bubble
+    # pressure. Pre-fix the reconciliation snapshot wrote a terminal Pb ~ -1.6e18.
     negative = [(i, r.get("Pb")) for i, r in enumerate(rows)
                 if isinstance(r.get("Pb"), (int, float)) and r["Pb"] < 0]
     assert not negative, (
@@ -79,7 +88,7 @@ def test_energy_collapse_emits_no_negative_Pb(tmp_path):
         f"first: row {negative[0][0]} Pb={negative[0][1]:.3e}"
     )
 
-    # And the last recorded row is a finite, positive pressure (the last healthy snapshot).
+    # And the last recorded row is a finite, positive pressure.
     last_Pb = rows[-1].get("Pb")
     assert isinstance(last_Pb, (int, float)) and last_Pb > 0, (
         f"terminal Pb is not finite-positive: {last_Pb!r}"
