@@ -1,4 +1,4 @@
-# PdV-trigger workstream — findings (verified; Stage-A shadow ran 9 configs — see §8)
+# PdV-trigger workstream — findings (Stage-A shadow §8/§8a; ⚠️ high-mass verdict revised post-PR#715 — see §8b)
 
 > ⚠️ **This document may be out of date — verify before trusting it.** It is a
 > point-in-time analysis/audit, not a maintained spec; the code moves faster
@@ -532,6 +532,59 @@ on clouds that survive). Whether dense compact clouds *should* recollapse is a p
 that is independent of wiring the trigger. If the maintainer accepts SHELL_COLLAPSED as the correct fate for
 weak-cluster/dense-core configs (the likely reading), **Stage A is clean and Stage B can proceed.** Artifacts:
 `data/sweep_tmax_fate.csv`, `outputs/sweep_tmax/tmax_*/`.
+
+> 🛑 **§8/§8a partly SUPERSEDED by §8b (2026-07-01) — the code changed under us.** §8/§8a ran on **pre-PR#715**
+> code. Main has since merged `bugfix/high-mass-cluster-transition-without-ebpeak` (PR #715), which **routes a
+> finite `Eb≤0` collapse to the momentum phase** instead of dead-stopping. Re-running on the merged code flips
+> the high-mass verdict — see §8b. The §8/§8a **firing/threshold/max-gate results still hold** (they're about
+> the trigger algebra); the **fate conclusions for massive/dense clouds do NOT** (the momentum handoff, plus a
+> regime error in applying El-Badry's θ, changes them).
+
+## 8b. [data] Re-run on the merged high-mass handoff (PR #715) — imposing El-Badry θ REVERSES the fix (2026-07-01)
+
+The maintainer merged the high-mass energy→momentum handoff to `main` (PR #715,
+`bugfix/high-mass-cluster-transition-without-ebpeak`; `HIMASS_HANDOFF_PLAN.md`). Two code changes touch the
+phases the Stage-A shadow exercises: (1) phase 1b now routes a **finite `Eb≤0`** collapse to the momentum phase
+(`classify_energy_collapse` + `ENERGY_HANDOFF_FLOOR=1e3`) instead of the `ENERGY_COLLAPSED` dead-stop; (2) phase
+1a gains a `cooling_balance` parity check. I **merged main into this branch** (code auto-merged clean; my Pb-fix
+and the routing coexist — different regions) and re-ran on the merged code. Artifacts:
+`data/newcode_default_vs_theta.csv`, `outputs/{baseline_v2,shadow_te_v2}/`.
+
+**The decisive contrast (same configs, merged code, default trigger vs El-Badry θ imposed):**
+
+| config (mass, n) | DEFAULT (stock trigger) | θ_elbadry imposed (λδv=3, θ_max=0.99) |
+|---|---|---|
+| fail_repro (5e9, n=1e2) | **large_radius (exit 2)** — energy→implicit→**momentum**, expands to the 500 pc stop radius, v2=+37 | **velocity_runaway (exit 50)** — collapses inward, v2=**−500** pc/Myr, R2=5 pc, dies in `transition` |
+| pl2_steep (1e6, n=1e5) | **expanding** (v2=+23, R2=1.2 pc, healthy) when stopped in the stiff implicit solve | **velocity_runaway (exit 50)** — v2=**−500**, R2=0.07 pc |
+
+**Findings:**
+
+1. **The maintainer's fix works and is verified here:** `fail_repro` — the canonical diffuse-massive dead-stop
+   (was `ENERGY_COLLAPSED` at t=0.003 Myr) — now runs cleanly to **large_radius (500 pc)** on the default path.
+2. **Imposing El-Badry θ REVERSES it.** With `theta_elbadry` forcing `L_loss=θ·L_mech` (θ=0.965–0.99), the
+   *same* clouds violently recollapse (v2 pinned at the −500 pc/Myr `MAX_VELOCITY_COLLAPSE` cap, R2→~0). What
+   §8 recorded as `SHELL_COLLAPSED` on the old code is now `velocity_runaway` (or a near-zero-radius solver
+   stall) on the new code — but the physics is the same and now it is **unambiguously the θ-imposition
+   causing it, since the default path expands these very clouds.**
+3. **Why it's a regime error, not just aggressive tuning (ties to `HIMASS_HANDOFF_PLAN.md` §1):** the
+   maintainer verified the high-mass turnover is **PdV / inertial-loading driven, NOT radiative** — for
+   `fail_repro`, radiative is ~1% of L_mech while PdV/L_mech≈1.4. El-Badry's θ is a **radiative** ratio
+   (L_cool/L_mech) from SN-driven sims. Imposing θ=0.99 there injects a **fake radiative sink of 0.99·L_mech
+   on top of the real PdV sink** — double-draining the bubble and crashing it inward. PdV already enters the
+   energy budget separately (`Edot_from_balance = Lgain − Lloss − 4πR2²v2·Pb`), so the imposed radiative θ is
+   double-counting the loss in exactly the regime where PdV dominates. **The θ_max sweep (§8a) missed this
+   because it only ran on the old dead-stop code and read the terminal *label*, not the default contrast.**
+
+**Consequence for the plan — the `theta_elbadry` SPEC needs a regime gate, and Stage B is NOT ready.** As
+specified (impose θ=A_mix√(λδv·n) on *every* cloud via `effective_Lloss`), the mode **re-breaks precisely the
+massive clouds PR #715 just fixed**. El-Badry's θ is only physical where **radiative cooling actually dominates**
+(the dense/compact regime where `cooling_balance` engages natively) — it must **not** be applied to the
+**PdV/inertia-dominated** massive/diffuse clouds, which the momentum handoff already carries. Options for the
+revised spec: (a) gate `theta_elbadry` off when PdV/L_mech ≳ 1 (or when radiative ≪ L_mech), deferring those
+clouds to the handoff; (b) restrict the imposed θ to the radiative channel only and let PdV + the handoff do the
+rest; (c) drop θ-imposition for high-mass and keep it only as the diffuse-end cooling correction it was
+originally scoped for. This must be resolved **before** any production wiring. Prior "Stage A clean → Stage B"
+(end of §8a) is **retracted for the massive-cloud regime.**
 
 ## 7. Provenance
 - Commits (`feature/PdV-trigger-term`): `6642ff4` matrix+comparator, `dc1c2fd` note patches, `17f9653`

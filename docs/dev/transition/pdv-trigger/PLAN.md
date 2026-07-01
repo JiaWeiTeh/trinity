@@ -50,6 +50,13 @@ folder) — do **not** re-run the hours-long sims to recover them; reproduce onl
 
 ### ⭐⭐ CANONICAL SYNTHESIS + VERDICT (read this first — supersedes all earlier synthesis blocks; 2026-06-30)
 
+> 🛑 **REVISED 2026-07-01 — read the top ledger entry + `FINDINGS.md §8b` FIRST.** After PR #715 (high-mass
+> `Eb≤0`→momentum handoff) merged to `main`, re-running showed **imposing El-Badry θ REVERSES the fix** —
+> it over-cools PdV-dominated massive clouds into recollapse (regime error: θ is a *radiative* ratio, but the
+> high-mass turnover is PdV-driven). **The `theta_elbadry` SPEC now needs a regime gate and Stage B is not
+> ready for the massive-cloud regime.** The "shadow first → Stage B" framing below still holds for the
+> radiative/dense regime, but is retracted for massive/PdV-dominated clouds.
+
 *This single block replaces the older layered ⭐/⚡/⚡⚡ synthesis. It reflects the grand view across
 `ELBADRY_REFERENCE.md`, `LANCASTER_REFERENCE.md`, and all the κ_mix work. Whenever a decision is made, update
 THIS block and the affected sibling docs together.*
@@ -157,6 +164,22 @@ for provenance.*
 > → re-derive those from ≥5 Myr runs before trusting their Pb numbers. f1edge_lowdens (3 Myr) is also short.
 
 **Status ledger (newest first):**
+- **2026-07-01 (⚠️ COURSE-CORRECTION — merged PR #715 high-mass handoff; imposing El-Badry θ REVERSES it →
+  `FINDINGS.md §8b`, `data/newcode_default_vs_theta.csv`).** Maintainer merged
+  `bugfix/high-mass-cluster-transition-without-ebpeak` to `main`: phase 1b now **routes finite `Eb≤0` →
+  momentum** (`classify_energy_collapse`, `ENERGY_HANDOFF_FLOOR=1e3`) instead of `ENERGY_COLLAPSED`; phase 1a
+  gains `cooling_balance` parity. Merged main into this branch (code auto-merged clean; my Pb-fix coexists) and
+  re-ran. **Result: on the merged code, `fail_repro` (5e9,n1e2) DEFAULT → large_radius (expands to 500 pc via
+  momentum) — the fix works; but with `theta_elbadry` imposed it → velocity_runaway (v2=−500 inward collapse).
+  Imposing El-Badry θ RE-BREAKS exactly the massive clouds PR #715 fixed** (same flip for pl2_steep: default
+  expanding vs θ-imposed velocity_runaway). Root cause (regime error, ties to `HIMASS_HANDOFF_PLAN.md` §1): the
+  high-mass turnover is **PdV/inertia-driven, not radiative** (radiative ~1% of L_mech; PdV/L_mech≈1.4).
+  El-Badry θ is a *radiative* ratio — imposing θ·L_mech there adds a fake radiative sink ON TOP of the real PdV
+  sink (double-counts the loss; PdV is already in `Edot_from_balance`) → crashes the bubble inward. **§8/§8a
+  firing/threshold/max-gate results still hold; their massive-cloud FATE conclusions do NOT.** ⇒ **the
+  `theta_elbadry` SPEC needs a REGIME GATE** (apply only where radiative dominates / `cooling_balance` engages
+  natively; gate OFF when PdV/L_mech≳1 and defer those clouds to the handoff). **Stage B is NOT ready; the
+  earlier "Stage A clean → Stage B" is retracted for the massive-cloud regime.**
 - **2026-06-30 (STAGE A — θ_max SWEEP RAN → `FINDINGS.md §8a`, `data/sweep_tmax_fate.csv`; the SHELL_COLLAPSE
   question is now a maintainer physics call, NOT a knob).** Swept θ_max∈{0.80,0.85,0.90,0.95,0.99} × {pl2_steep,
   simple_cluster} to 5 Myr. **All 10 recollapse**, at the *same* fire (~0.01 Myr) & collapse (~0.06/0.13 Myr)

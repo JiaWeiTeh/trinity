@@ -1,0 +1,5 @@
+config,mass_ncore,path,code_version,fate,exit,end_R2_pc,end_v2_pcMyr,phases,note
+fail_repro,"5e9,n1e2",default,merged(PR715),large_radius,2,500.0,37.4,energy+implicit+momentum,"maintainer fix works: expands to 500pc stop radius"
+fail_repro,"5e9,n1e2",theta_elbadry_LDV3_tmax0.99,merged(PR715),velocity_runaway,50,5.24,-500.0,energy+implicit+transition,"imposing theta=0.965 -> violent recollapse, reverses the fix"
+pl2_steep,"1e6,n1e5",default,merged(PR715),expanding_when_stopped,,1.24,23.1,energy+implicit,"v2=+23 (expanding) when manually stopped in stiff implicit solve"
+pl2_steep,"1e6,n1e5",theta_elbadry_LDV3_tmax0.99,merged(PR715),velocity_runaway,50,0.071,-500.0,energy+implicit+transition,"imposing theta=0.99 -> violent recollapse to near-zero radius"
