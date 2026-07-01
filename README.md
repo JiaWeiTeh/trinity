@@ -8,8 +8,8 @@
 TRINITY is a feedback-driven bubble evolution code. For a given
 giant-molecular-cloud mass, star-formation efficiency, density profile,
 and ambient medium, it integrates the time evolution of an expanding
-feedback bubble — shell radius, velocity, thermal state, and force
-budget — and resolves the phase transitions and stopping fate of the
+feedback bubble, i.e., shell radius, velocity, thermal state, and force
+budget, and resolves the phase transitions and stopping fate of the
 shell.
 
 Full documentation: <https://jiaweiteh.github.io/trinity-web/>
@@ -30,7 +30,7 @@ tools/         small CLI utilities (param generation, audits, output comparisons
 ## Requirements
 
 Python 3.9 or newer and the scientific stack (NumPy, SciPy, Astropy,
-Matplotlib, pandas) — installed via the command below. No compilation
+Matplotlib, pandas), installed via the command below. No compilation
 step. Regenerating the publication-quality figures additionally needs a
 LaTeX installation, since the plot style renders text with `text.usetex`.
 
@@ -69,7 +69,7 @@ python run.py param/sweep_example.param --workers 4   # run them across 4 worker
 ```
 
 To scale across nodes on an HPC cluster (e.g. bwForCluster Helix /
-bwUniCluster), emit a SLURM job array instead — one task per combination:
+bwUniCluster), emit a SLURM job array instead, one task per combination:
 
 ```bash
 python run.py param/sweep_example.param --emit-jobs jobs/
@@ -85,7 +85,7 @@ for the full workflow.
 ## Reproducing the figures
 
 The method-paper figures regenerate from the post-processed `.npz`
-bundles committed under `paper/methods/data/` — no raw simulation output
+bundles committed under `paper/methods/data/`, no raw simulation output
 and no extra *data* downloads needed. The figure scripts do need the `[plots]`
 extra (`pip install -e ".[plots]"`) and a LaTeX install (the plot style uses
 `text.usetex`):
@@ -99,7 +99,7 @@ python paper/methods/make_figures.py teaser     # or one figure by short name
 
 Raw simulation outputs, the full SPS/cooling libraries, and the figure
 run-sets are not committed to the repository because of their size.
-They are available on request — contact <jiaweiteh.astro@gmail.com>.
+They are available on request. Please contact <jiaweiteh.astro@gmail.com>.
 
 ## Citation
 
@@ -110,4 +110,4 @@ A BibTeX entry is available from
 
 ## License
 
-GPL v3 — see [`LICENSE`](LICENSE).
+GPL v3: see [`LICENSE`](LICENSE).
