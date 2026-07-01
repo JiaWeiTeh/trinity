@@ -30,7 +30,7 @@ f_κ(n)) and a flagged logging fix.
   investigation. Gate the `logger.debug` so it only fires for a *real* sub-floor (min_T meaningfully below
   `_T_INIT_BOUNDARY`), leaving the residual/return value UNCHANGED. Verify byte-identical physics (pytest;
   the guard's return is untouched). *(subagent)*
-- [ ] **T2 — record the design decision.** In `F_KAPPA §14` + `PLAN.md`: **use a single physical f_κ constant,
+- [x] **T2 — DONE (F_KAPPA §14 DECISION + PLAN).** In `F_KAPPA §14` + `PLAN.md`: **use a single physical f_κ constant,
   not a steep f_κ(n) formula.** Rationale: the physical enhancement κ_mix/κ_Spitzer ∝ n *rises* with density,
   opposite to the "chase-El-Badry" f_κ(n) (which rises as n *falls*); so there is no physical f_κ(n) that fires
   every cloud. Set one physical f_κ and let the density-dependence emerge as θ(n) (denser → higher emergent θ →
@@ -44,7 +44,7 @@ f_κ(n)) and a flagged logging fix.
   from the `multiplier` runs.
 - [x] **T4 — DONE (FINDINGS §8e; physical θ from dictionary, not the contaminated observer).** Emergent θ(n) at f_κ=8 (kappa) vs the §14 prediction + the (retracted)
   `multiplier` numbers; the route-a threshold. Land in `FINDINGS §8e`; correct the §14 table's knob.
-- [ ] **T5 — commit + push** (min_T fix, docs, runner + CSV/figure).
+- [x] **T5 — DONE (517c7503, d207b2f7, fe171b20).** commit + push (min_T fix, docs, runner + CSV/figure).
 
 ## Expected (from §14, to be confirmed with the correct knob)
 At f_κ=8 the emergent θ should be ~0.99 (n=1e5, fire), ~0.91 (n=1e4, borderline), ~0.55 (n=100, route-a) — but
