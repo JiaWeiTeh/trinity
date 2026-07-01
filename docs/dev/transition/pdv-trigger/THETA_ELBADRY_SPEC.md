@@ -1,4 +1,13 @@
-# `theta_elbadry` mode — implementation spec (the capstone; consolidates every resolved decision)
+# `theta_elbadry` mode — spec for the OPT-IN forced-cooling override (not the default path)
+
+> ✅ **DEMOTED TO AN OPT-IN OPTION (2026-07-01) — read `PLAN.md` ⭐⭐ + `FINDINGS.md §8c` FIRST.** This mode
+> **enforces** θ (`L_loss = max(L_cool+L_leak, θ·L_mech)`). The workstream's default direction is the opposite:
+> **let θ EMERGE** from a boosted cooling mechanism (Rung A, `cooling_boost_mode='multiplier'`/f_κ) — because
+> enforcing θ double-counts the PdV loss and re-breaks massive clouds (`FINDINGS.md §8b/§8c`). So `theta_elbadry`
+> is kept as a **documented opt-in override for users who explicitly want forced cooling to a target θ(n)** — not
+> the production trigger. The formula/constants/wiring below are still correct *for that option*; read §0.6 for
+> **when the forced θ is applied** and its caveats. The earlier "capstone / STAGE-B production" framing is
+> superseded.
 
 > ⚠️ **This document may be out of date — verify before trusting it.** Point-in-time implementation spec.
 > **Re-check each line/site against current source before applying.** Written as a PLAN.
@@ -38,6 +47,34 @@ each run to **≥5 Myr**.
 **One-line design:** add a `cooling_boost_mode='theta_elbadry'` that, each step, sets the target loss fraction
 to **θ = A_mix·√(λδv·n_amb(R2)) / (11/5 + A_mix·√(λδv·n_amb(R2)))** (capped at θ_max) and feeds it through the
 *already-verified* `theta_target` `(1−θ)` budget. No κ_mix port, no structural solve change.
+
+## 0.6 WHEN is the forced θ applied? (and why NOT at a discrete event like blowout)
+
+**It is applied CONTINUOUSLY — every solver step, from the start of the energy phase — not at a discrete
+event.** The imposed θ enters through `effective_Lloss_from_params`, which is evaluated on *every* (β,δ)
+residual call and energy-ODE step (`get_betadelta.py:473,577`). So `theta_elbadry` is a **standing floor on the
+loss fraction** for the whole energy-driven evolution, not a switch that flips at some epoch.
+
+**This is deliberate, and a user of the option must understand it:**
+
+- **Do NOT gate it to `blowout` (R2 > rCloud) or any other event.** El-Badry's mixing-layer cooling operates
+  throughout the bubble's life (wherever hot and cool gas share an interface), not only after blowout. Turning
+  forced cooling on at blowout would be **arbitrary and unphysical** — it would let the bubble evolve with the
+  wrong (under-cooled) budget for the whole pre-blowout phase and then discontinuously jump. Blowout is also
+  *late* for many clouds (dense ones fire the transition long before R2 reaches rCloud). **We argue against any
+  event-gated application.**
+- **The continuous floor is exactly what makes the mode aggressive** (and why it double-counts PdV on massive
+  clouds — `FINDINGS.md §8b`): from t≈0 it forces `L_loss = θ·L_mech` regardless of whether the real losses are
+  radiative or PdV. That is the price of *enforcing* θ; the emergent-θ (f_κ) default avoids it by scaling only
+  the radiative channel.
+- **The trigger it feeds** (`cooling_balance` ≡ θ≥0.95) is read by **first-crossing** — the first solver step at
+  which the imposed θ crosses 0.95 — **never** at blowout. (Firing-time semantics: `FINDINGS.md §8` reads the
+  first `momentum`-phase step.)
+
+**Net for the option's user:** `theta_elbadry` says "make the *cooling fraction* equal to El-Badry's θ(n) at
+every instant." It is a crude, physically-motivated override of the loss budget, not an event. If you want the
+transition to depend on *when* the bubble reaches a state, use the emergent-θ (f_κ) path — there θ genuinely
+tracks the solved bubble.
 
 ## 1. The formula + the pinned constants
 

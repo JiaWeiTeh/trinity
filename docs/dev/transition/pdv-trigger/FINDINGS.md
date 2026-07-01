@@ -1,4 +1,4 @@
-# PdV-trigger workstream — findings (Stage-A shadow §8/§8a; ⚠️ high-mass verdict revised post-PR#715 — see §8b)
+# PdV-trigger workstream — findings (✅ direction corrected 2026-07-01: θ is an output, f_κ reinstated — see §8c)
 
 > ⚠️ **This document may be out of date — verify before trusting it.** It is a
 > point-in-time analysis/audit, not a maintained spec; the code moves faster
@@ -39,11 +39,16 @@
 
 ## Taxonomy of the approaches (read first; 2026-06-28)
 
-> 🛑 **DIRECTION CHANGED 2026-06-30 — read `PLAN.md` ⭐⭐ canonical synthesis + `INDEX.md` §1.5 staleness audit
-> FIRST.** The callouts immediately below (f_κ(n) power-law, the sweep scorecard) describe the **superseded**
-> f_κ avenue. The current plan **imposes El-Badry's θ as the trigger target** (λδv≈3); f_κ is a
-> tunable-but-unphysical fudge. The findings below are valid *evidence/history*; they are **not the direction**.
-> The newest, current callouts are at the BOTTOM of this list (κ_mix self-consistent → time-resolved → El-Badry).
+> ✅ **DIRECTION CORRECTED 2026-07-01 — read `PLAN.md` ⭐⭐ canonical synthesis + `FINDINGS.md §8c` FIRST.**
+> The current direction is **Rung A / f_κ — boost the cooling MECHANISM and let θ EMERGE** (`cooling_boost_mode=
+> 'multiplier'`), with El-Badry/Lancaster as the **calibration target** for the emergent θ, not an enforced
+> value. The intermediate "impose El-Badry θ" (`theta_target`/θ_elbadry) avenue is **demoted to an opt-in
+> override** because enforcing θ double-counts the PdV loss on massive clouds (§8b) — a symptom of enforcement
+> that f_κ does not have (§8c). So the f_κ callouts below are **back on the critical path** (the power-law
+> *exponents* still need recalibration to the "physical value + accept route-a" stance of
+> `F_KAPPA_FUNCTIONAL_FORM.md` §11–13); the θ_elbadry callouts at the bottom are the **opt-in option**, not the
+> default. Historical caveat: earlier revisions of THIS banner (06-30) said the reverse — treat those as
+> superseded.
 
 > **→ Calibration target (2026-06-29):** the composed closed-form **f_κ(n_H) = (θ\*/θ₀(n_H))^(1/p) ≈
 > 1.4×10²·n_H^(−0.30)** now lives in **`F_KAPPA_FUNCTIONAL_FORM.md`** (target = Lancaster flat θ*≈0.90 · baseline
@@ -589,7 +594,52 @@ revised spec: (a) gate `theta_elbadry` off when PdV/L_mech ≳ 1 (or when radiat
 clouds to the handoff; (b) restrict the imposed θ to the radiative channel only and let PdV + the handoff do the
 rest; (c) drop θ-imposition for high-mass and keep it only as the diffuse-end cooling correction it was
 originally scoped for. This must be resolved **before** any production wiring. Prior "Stage A clean → Stage B"
-(end of §8a) is **retracted for the massive-cloud regime.**
+(end of §8a) is **retracted for the massive-cloud regime.** **→ RESOLVED in §8c (2026-07-01):** the answer is
+not to *gate* enforcement (options a/b/c above) but to **stop enforcing** — boost the mechanism (f_κ) and let θ
+emerge; enforcement (`theta_elbadry`) becomes an opt-in override.
+
+## 8c. [data] Direction corrected — θ is an OUTPUT; f_κ reinstated, θ_elbadry demoted to opt-in (2026-07-01)
+
+§8b framed the fix as "gate `theta_elbadry` off in the PdV regime." Prototyping that gate
+(`data/_theta_elbadry_gated_runner.py`, `data/gate_prototype.csv`) worked — and in working, it revealed that
+the whole *enforce-θ* framing is the wrong primitive. Maintainer steer: **θ should be an output of the solved
+bubble, not an input you set.**
+
+**The gate prototype (measured):**
+
+| config | variant | trigger | gated calls | fate |
+|---|---|---|---|---|
+| fail_repro (5e9, n=1e2) | θ imposed (§8b) | cooling_balance,ebpeak | 0 | **velocity_runaway** (recollapse) |
+| fail_repro | θ **gated** (PdV/L_mech>0.7) | cooling_balance | 69/84 | **large_radius** (expands to 500 pc) |
+| fail_repro | θ **gated** | cooling_balance,**ebpeak** | 57/72 | **large_radius** (expands to 500 pc) |
+| pl2_steep (1e6, n=1e5) | θ **gated** | cooling_balance | 1/46 | shell_collapsed (radiative regime → gate barely fires → θ kept) |
+
+**Findings:**
+
+1. **The gate fixes the reversal:** deferring the PdV-dominated cloud (`fail_repro`, PdV/L_mech peaks 2.65)
+   makes it expand to 500 pc like the default path, instead of `velocity_runaway`. And the **θ-gate ALONE does
+   it** — `ebpeak` on/off is irrelevant (both → large_radius). So the culprit was never `ebpeak`; it was the
+   imposed θ over-cooling. The gate is **selective**: `pl2_steep` (radiative regime, PdV<0.7) is barely gated,
+   so it is unchanged.
+2. **But the gate is just re-deriving, by hand, what f_κ gives for free.** The double-counting in §8b is a
+   *direct symptom of enforcing θ*: `L_loss=θ·L_mech` is blind to whether the loss is radiative or PdV, so on a
+   PdV-dominated cloud it injects a fake radiative sink on top of the real PdV sink. The Rung-A **`multiplier`**
+   mode (`L_loss = L_leak + f_κ·L_cool`) scales **only the radiative channel** — in a PdV-dominated bubble
+   radiative is ~1% of L_mech, so `f_κ·L_cool` *physically cannot* over-drain it. **No regime error, no gate
+   needed.** The gate is a symptom-patch; f_κ removes the disease.
+3. **Corrected direction (see `PLAN.md` ⭐⭐ + top ledger):** Rung A (`multiplier`/f_κ, already shipped, gated
+   default-off) is PRIMARY and θ **emerges**; El-Badry/Lancaster are the **calibration target** for that emergent
+   θ (pick f_κ(n) so the *solved* θ lands in-band), **not** an enforced value. Set f_κ at a **physical** value
+   and **accept diffuse route-a non-transition** (maintainer: "diffuse clouds may never enter momentum — the
+   physics never allows it") — do NOT crank f_κ to ~60 to force it (`F_KAPPA_FUNCTIONAL_FORM.md` §11–13).
+   Massive/PdV clouds ride the PR #715 `Eb≤0→momentum` handoff, untouched by θ. **`theta_elbadry`/`theta_target`
+   remains as a documented opt-in override** (`THETA_ELBADRY_SPEC.md`) for users who explicitly want forced
+   cooling — the gate/§8b caveat is why it is not the default.
+4. **Rung A (scalar f_κ, reinstated) ≠ Rung B (structural κ_mix, still SHELVED).** The reinstatement is of the
+   scalar multiplier only; the structural κ_mix injection remains numerically unstable (`KMIX_SELFCONSISTENT.md`).
+
+Artifacts: `data/_theta_elbadry_gated_runner.py`, `data/gate_prototype.csv`,
+`outputs/{shadow_gate,shadow_gate_ebpeak}/`.
 
 ## 7. Provenance
 - Commits (`feature/PdV-trigger-term`): `6642ff4` matrix+comparator, `dc1c2fd` note patches, `17f9653`

@@ -19,36 +19,41 @@
 TRINITY transitions a feedback bubble from **energy-driven** to **momentum-driven** when interface cooling drains
 the mechanical luminosity (the `cooling_balance` trigger at θ = L_cool/L_mech ≥ 0.95). This workstream asks: *what
 sets θ, what raises it to the obs/3D values (Lancaster θ~0.9–0.99), and how does it depend on cloud properties?*
-**Current direction (2026-06-30):** the one master parameter is θ ≡ L_cool/L_mech — *identical* in TRINITY,
-El-Badry, and Lancaster — and El-Badry gives a 3D-calibrated **closed form θ(λδv, n)**. The plan is to **impose
-that θ as the trigger target** via TRINITY's gated `theta_target` mode (λδv≈3, n=local cloud density, θ_max
-ceiling, paired with `ebpeak` for PdV). *History:* it ran from the PdV question → f_κ (Rung-A) calibration → a
-structural κ_mix (Rung-B) port that was **tested and shelved** (it saturates) → the θ_target direction.
+**Current direction (corrected 2026-07-01):** the one master parameter is θ ≡ L_cool/L_mech — *identical* in
+TRINITY, El-Badry, and Lancaster — but **θ is an OUTPUT, not an input.** The plan is **Rung A: boost the cooling
+MECHANISM** (`cooling_boost_mode='multiplier'`, f_κ, scaling the resolved radiative channel) and **let the solved
+bubble PRODUCE θ**, using El-Badry's closed form θ(λδv, n) and Lancaster's θ≈0.9–0.99 as the **calibration
+target** for that emergent θ — set f_κ at a *physical* value and **accept that diffuse clouds may never
+transition** (route-a). *History:* PdV question → f_κ (Rung-A) → a structural κ_mix (Rung-B) port **tested and
+shelved** (saturates) → an **impose-El-Badry-θ** detour (`theta_target`) that was **demoted to an opt-in override**
+on 2026-07-01 because enforcing θ double-counts the PdV loss on massive clouds (`FINDINGS.md §8b/§8c`).
 **Everything to date is dev-only — no production physics code has changed** (except the queued Pb-collapse hygiene
-fix, applied + tested). See `PLAN.md` ⭐⭐ canonical synthesis + §1.5 staleness audit above.
+fix, applied + tested; Rung-A `multiplier` shipped earlier, gated default-off). See `PLAN.md` ⭐⭐ canonical
+synthesis + §1.5 staleness audit below.
 
-## 1. Read in this order (orientation) — updated 2026-06-30 for the θ_target direction
+## 1. Read in this order (orientation) — updated 2026-07-01 for the emergent-θ (f_κ) correction
 
 1. **this file** — the map (incl. the §1.5 staleness audit below).
 2. `PLAN.md` → the **⭐⭐ CANONICAL SYNTHESIS + VERDICT** block (the current direction; supersedes all earlier
    synthesis) + the dated status ledger (newest first).
-3. `ELBADRY_REFERENCE.md` + `LANCASTER_REFERENCE.md` — 📌 the two **imprint** reference docs (θ definition, the
-   closed form, λδv≈3, the n-mapping, the theta_target verification, PdV). Read these instead of the PDFs.
-4. `KMIX_SELFCONSISTENT.md` — *why the structural κ_mix port was shelved* (the negative result that pivoted us).
-5. `REPRODUCE.md` — result → `.param`/command → artifact manifest.
-
-> ⚠️ **`F_KAPPA_FUNCTIONAL_FORM.md` is NO LONGER the main doc** — it documents the *f_κ(n) power-law* avenue,
-> which is **superseded** (see §1.5). Read it as history, not direction.
+3. `FINDINGS.md` §8c — *why enforcing θ was demoted and f_κ reinstated* (the direction correction + gate proof).
+4. `ELBADRY_REFERENCE.md` + `LANCASTER_REFERENCE.md` — 📌 the two **imprint** reference docs (θ definition, the
+   closed form, λδv≈3, the n-mapping, PdV) — now the **calibration target** for emergent θ, not an enforced value.
+5. `F_KAPPA_FUNCTIONAL_FORM.md` — the emergent-θ / f_κ calibration program (**back on the critical path**; read
+   §11–13 "don't-force-it" as the current stance).
+6. `REPRODUCE.md` — result → `.param`/command → artifact manifest.
 
 ## 1.5 ⚠️ STALENESS AUDIT — docs that describe SUPERSEDED directions (read before trusting a conclusion)
 
-The direction changed on 2026-06-30 (κ_eff/f_κ/κ_mix-structural → **impose El-Badry's θ as the trigger
-target**). Several docs predate that and, read in isolation, would point the wrong way. **They are kept for
-provenance but flagged here so a stale conclusion can't hijack the path forward:**
+The direction was **corrected on 2026-07-01** back to **emergent θ via f_κ** (boost the mechanism, calibrate to
+El-Badry/Lancaster) after the intermediate "**impose** El-Badry's θ" avenue (2026-06-30) was shown to
+double-count PdV on massive clouds (`FINDINGS.md §8b/§8c`). Several docs predate one or both pivots and, read in
+isolation, point the wrong way. **They are kept for provenance but flagged here:**
 
 | doc | what's STALE in it | the correct current view |
 |---|---|---|
-| `F_KAPPA_FUNCTIONAL_FORM.md` | the whole **f_κ(n) power-law** program (f_κ∝n^−0.3/−0.6, the 819-sweep scorecard, the "cliff") as the *direction* | f_κ is a tunable-but-unphysical fudge; **superseded** by imposing El-Badry's θ_target. The sweep data is still valid *evidence*; the **prescription is not the plan**. |
+| any doc/banner saying **"impose El-Badry θ as the trigger target"** is the direction (incl. earlier revisions of `PLAN.md`, `FINDINGS.md` taxonomy banner, `THETA_ELBADRY_SPEC.md` framing) | the *enforce-θ* framing | **demoted to an opt-in override** (2026-07-01) — it double-counts PdV (`FINDINGS.md §8b/§8c`). Direction = **emergent θ via f_κ**, El-Badry as calibration target. |
+| `F_KAPPA_FUNCTIONAL_FORM.md` | the goal of *fitting* a power-law exponent and *forcing* the diffuse end (f_κ~60) | the **program (emergent θ via f_κ) is REINSTATED**; only the "force it" specifics are superseded by §11–13 "don't-force-it" (physical f_κ + accept route-a). Sweep data still valid evidence. |
 | `RUNGB_SCOPING.md` | the **structural κ_mix injection** ("re-promoted", §8 gated production) as the path | the structural port is **SHELVED** (saturates/unstable, `KMIX_SELFCONSISTENT.md`); κ_mix survives only as physical *justification* for θ∝√(λδv·n) |
 | `KMIX_SELFCONSISTENT.md` §2 | "dense θ plateaus low (~0.35) / only 1/6 fires" | **WALKED BACK** — that was the wrong epoch (blowout) + a buggy port; El-Badry+Lancaster agree **dense θ is HIGH (0.9–0.99)**. See §2b and `LANCASTER_REFERENCE.md` §7. |
 | `KMIX_DIFFUSIVITY.md` / `KMIX_PROTOTYPE.md` | "calibrate λδv to Lancaster (value open)"; prototype Pb anchors from **0.3–1.0 Myr truncated** runs | **λδv≈3 is now pinned** (`LANCASTER_REFERENCE.md` §7); re-derive prototype Pb from ≥5 Myr runs before quoting numbers |
@@ -68,14 +73,14 @@ audit AND the affected sibling together — never one in isolation.**
 | `KAPPA_EFF_SCOPING.md` | 06-25 | Phase 1 (mechanism) / §11 | κ_eff Rung-A feasibility map + the back-reaction result (the cooling mechanism) | settled |
 | `RUNGB_SCOPING.md` | 06-26 | Phase 2 (Rung B) / §11 | the structural κ_mix scoping; §8 front-conduction next step; §2a θ/λδv reconciliation | 🛑 **SHELVED** (structural port abandoned; §1.5) |
 | `REPRODUCE.md` | 06-28 | manifest | result→param→command→artifact map; cheap (🟢) vs HPC (🔴) tags | **live** |
-| `F_KAPPA_FUNCTIONAL_FORM.md` | 06-29 | Phase 3 (calibration) / §15 | f_κ(n) form, sweep scorecard, cliff, metric, derivation→κ_mix | 🛑 **SUPERSEDED direction** (data valid; prescription not the plan; §1.5) |
+| `F_KAPPA_FUNCTIONAL_FORM.md` | 06-29 | Phase 3 (calibration) / §15 | f_κ(n) emergent-θ calibration: sweep scorecard, cliff, metric, §11–13 "don't-force-it" | ✅ **REINSTATED direction** (emergent θ via f_κ; recalibrate exponents to physical-cap stance; §1.5) |
 | `KMIX_DIFFUSIVITY.md` | 06-29 | Phase 3 (κ_mix) / §15.7 | the maintainer manuscript draft, verified line-by-line + the λδv-origin refinement | **live** |
 | `KMIX_PROTOTYPE.md` | 06-29 | Phase 4 (implementation) | **step 1** of the κ_mix wiring: the offline scoping prototype (units-correct, no solver) | **live** |
 | `KMIX_IMPLEMENTATION_SPEC.md` | 06-30 | Phase 4 (implementation) | **design+units spec** for wiring κ_mix: dimensionless-multiplier strategy, the 3 sites, gate param, 8-config gates | **live** (plan; §3 boundary refined by self-consistent) |
 | `KMIX_SELFCONSISTENT.md` | 06-30 | Phase 4 (implementation) | **step 2**: κ_mix in the REAL solver (monkeypatch). θ SATURATES (retires λδv-pin); **§2b time-resolved**: blowout was the wrong epoch — mid clouds would fire, dense stay low, early phase needs a smooth-max injection | **live** (dense-low walked back, see ELBADRY_REFERENCE) |
 | `ELBADRY_REFERENCE.md` | 06-30 | Phase 4 (the pivot) | 📌 **full El-Badry+2019 distilled** (every eq/number; skip the PDF). θ_ElBadry = θ_TRINITY; closed form Eq 37/38; TRINITY mapping + theta_target verification | **live** (imprint) |
 | `LANCASTER_REFERENCE.md` | 06-30 | Phase 4 (the pivot) | 📌 **Lancaster distilled** (2025 CEM PDF + 2021 Paper II sims; skip the PDFs). θ=Ė_cool/Lw matches; the αp (PdV/momentum) split; θ~0.9–0.99 + λδv≈3 + route-a (§7) | **live** (imprint) |
-| `THETA_ELBADRY_SPEC.md` | 06-30 | Phase 5 (implementation) | **the capstone spec**: gated `theta_elbadry` mode (3 params + 1 `effective_Lloss` branch), θ_max, ebpeak pairing, byte-identical-off, 8-config ≥5 Myr test | **live** (implementation-ready) |
+| `THETA_ELBADRY_SPEC.md` | 06-30 | Phase 5 (opt-in option) | the gated `theta_elbadry` mode (enforce El-Badry θ) — **now an opt-in OVERRIDE, not the default** (it double-counts PdV, §8b/§8c); documents the forced-cooling option incl. how/when θ is applied | **live** (opt-in option; demoted 2026-07-01) |
 | `PB_COLLAPSE_GUARD_FIX.md` | 06-30 | Phase 4 (hygiene) | the energy-collapse reconciliation no longer emits a garbage negative Pb — **APPLIED + tested** (596 pass) | **done** |
 
 *Phases:* **1** PdV/cooling-boost trigger question (06-24→28) · **2** Rung-B structural scoping (06-26) ·

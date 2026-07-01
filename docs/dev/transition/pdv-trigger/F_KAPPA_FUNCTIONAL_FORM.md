@@ -1,11 +1,15 @@
 # f_κ(n_H) — a closed-form calibration target (composed, not fitted-cold)
 
-> 🛑 **SUPERSEDED DIRECTION (2026-06-30) — read as HISTORY, not the plan.** This doc develops the **f_κ(n)
-> power-law** program (f_κ∝n^−0.3/−0.6, the 819-sweep scorecard, the cliff). That program is **superseded**: the
-> current direction is to **impose El-Badry's analytic θ as the trigger target** (`PLAN.md` ⭐⭐ canonical
-> synthesis; `ELBADRY_REFERENCE.md`), because f_κ is a tunable-but-*unphysical* fudge. **The sweep DATA here is
-> still valid evidence; the f_κ(n) PRESCRIPTION is no longer the path.** Don't restart the f_κ-power-law avenue
-> from this doc without re-reading the canonical synthesis first.
+> ✅ **REINSTATED as the direction (2026-07-01) — but read `PLAN.md` ⭐⭐ + `FINDINGS.md §8c` FIRST.** The
+> f_κ / **emergent-θ** program this doc develops is **back on the critical path**: enforcing El-Badry's θ
+> (`theta_target`/θ_elbadry) was demoted to an opt-in override because it double-counts the PdV loss on massive
+> clouds (`FINDINGS.md §8b/§8c`), whereas **boosting the mechanism (f_κ) and letting θ emerge** avoids that by
+> construction. **Caveat on the specifics here:** the earlier goal of *fitting* a power-law exponent and
+> *forcing* the diffuse end (f_κ~60) is **superseded by §11–13's "don't-force-it"**: set f_κ at a **physical**
+> value, use El-Badry/Lancaster as the *calibration target* for the emergent θ, and **accept diffuse route-a
+> non-transition** (maintainer-endorsed 2026-07-01). So: program = current; power-law exponents = still to be
+> recalibrated to the physical-cap stance; the 819-sweep DATA remains valid evidence. (An earlier 06-30 banner
+> here called this whole doc "superseded" — that reversal is itself now superseded.)
 
 > ⚠️ **This document may be out of date — verify before trusting it.** It is a
 > point-in-time analysis/audit, not a maintained spec; the code moves faster

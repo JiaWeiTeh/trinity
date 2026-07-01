@@ -36,11 +36,12 @@ th{background:#f1f4f9;font-weight:600;}tr:nth-child(even) td{background:#f7f9fc;
 .meta{color:var(--mut);font-size:13px;border-top:1px solid var(--line);margin-top:56px;padding-top:16px;}
 </style></head><body><div class="book">
 
-<h1>The El-Badry θ trigger — what it is, what we impose, and where it breaks</h1>
+<h1>The El-Badry θ trigger — what it is, why enforcing it breaks, and why θ should emerge</h1>
 <p class="lede">A single number, θ = L<sub>cool</sub>/L<sub>mech</sub>, decides when a feedback bubble stops
-being energy-driven. This documents the El-Badry closed form we use for it, exactly what the shadow harness
-imposes and checks, the physics underneath — and the regime where imposing it fights the newly-merged
-high-mass momentum handoff.</p>
+being energy-driven. This documents the El-Badry closed form, exactly what the shadow harness imposes and
+checks, the physics underneath, the regime where <em>imposing</em> it fights the merged high-mass momentum
+handoff — and the 2026-07-01 correction (Chapter 8): <b>θ is an output; boost the cooling mechanism (f_κ) and
+let θ emerge, using El-Badry only to calibrate.</b> The enforce-θ mode below is now an opt-in override.</p>
 
 <div>
   <p class="bn warn"><b>⚠️ May be out of date — verify before trusting.</b> Point-in-time analysis, not a
@@ -51,10 +52,11 @@ high-mass momentum handoff.</p>
   <p class="bn keep"><b>💾 Persist diagnostics — commit, don't re-run.</b> Every figure here traces to a
   committed harness/CSV under <code>docs/dev/transition/pdv-trigger/</code>. Regenerate with
   <code>make_elbadry_story_figs.py</code>; do not re-run the hours-long sims to recover a number.</p>
-  <p class="bn x">🔗 <b>Cross-check siblings.</b> This narrative summarizes <code>PLAN.md</code>,
-  <code>FINDINGS.md</code> §8/§8a/§8b, <code>ELBADRY_REFERENCE.md</code>, <code>LANCASTER_REFERENCE.md</code>,
-  <code>THETA_ELBADRY_SPEC.md</code>, and main's <code>HIMASS_HANDOFF_PLAN.md</code>. If a number here
-  disagrees with a sibling, reconcile both.</p>
+  <p class="bn x">🔗 <b>Cross-check siblings.</b> This narrative summarizes <code>PLAN.md</code> (⭐⭐ canonical
+  synthesis — corrected 2026-07-01), <code>FINDINGS.md</code> §8/§8a/§8b/§8c, <code>ELBADRY_REFERENCE.md</code>,
+  <code>LANCASTER_REFERENCE.md</code>, <code>F_KAPPA_FUNCTIONAL_FORM.md</code> (emergent-θ calibration),
+  <code>THETA_ELBADRY_SPEC.md</code> (the opt-in override), and main's <code>HIMASS_HANDOFF_PLAN.md</code>. If a
+  number here disagrees with a sibling, reconcile both.</p>
 </div>
 
 <nav class="toc"><h2>Contents</h2><ol>
@@ -65,7 +67,8 @@ high-mass momentum handoff.</p>
 <li><a href="#c5">Stage-A: the fate map (pre-PR#715)</a></li>
 <li><a href="#c6">The reversal — imposing θ fights the PR#715 handoff</a></li>
 <li><a href="#c7">Open question — does v2&lt;0 mean momentum?</a></li>
-<li><a href="#c8">Reproduce</a></li>
+<li><a href="#c8">Correction — θ is an output; f_κ reinstated</a></li>
+<li><a href="#c9">Reproduce</a></li>
 </ol></nav>
 
 <!-- ================================================================= -->
@@ -280,6 +283,57 @@ suggestion is retracted.</div>
 <!-- ================================================================= -->
 <div class="chapter" id="c8">
 <span class="ch-num">Chapter 8</span>
+<h2 class="ch-title">Correction — θ is an output; f_κ reinstated</h2>
+
+<p><span class="pill ok">direction 2026-07-01</span> Everything in Chapters 2–6 <em>imposes</em> θ. The maintainer's
+call — and the data — say that was the wrong primitive: <b>θ is an OUTPUT of the solved bubble, not an input you
+set.</b> Physically you don't get to choose θ; the cooling (whatever its mechanism) decides how much energy is
+radiated, and θ = L<sub>cool</sub>/L<sub>mech</sub> is the <em>result</em>. Enforcing it puts the answer in by
+hand.</p>
+
+<div class="callout"><b>The two knobs, side by side.</b>
+<ul>
+<li><b>Rung A / f_κ</b> (<code>cooling_boost_mode='multiplier'</code>): <code>L_loss = L_leak + f_κ·L_cool</code>
+— scale the <em>resolved radiative channel</em>, then the solver produces whatever θ follows. θ emerges.</li>
+<li><b>θ_elbadry</b> (<code>cooling_boost_mode='theta_target'</code>): <code>L_loss = max(L_cool+L_leak,
+θ·L_mech)</code> — set θ directly. θ enforced.</li>
+</ul></div>
+
+<p>The Chapter-6 reversal is a <b>direct symptom of enforcing θ</b>. <code>L_loss = θ·L_mech</code> is blind to
+whether the loss is radiative or PdV, so on a PdV-dominated massive cloud it adds a fake radiative sink on top of
+the real PdV sink (double-count) → recollapse. <b>f_κ cannot do this:</b> it scales only the radiative channel,
+which is ~1% of L<sub>mech</sub> in a PdV-dominated bubble, so it physically cannot over-drain it. No regime
+error, no gate.</p>
+
+<figure>
+<img src="story_elbadry_f5_reversal.png" alt="default vs theta imposed">
+<figcaption><b>The proof, re-read.</b> The green bars (default / emergent path) are what f_κ-style behavior gives;
+the red bars (θ imposed) are the enforcement failure. A quick regime-gate prototype
+(<code>data/_theta_elbadry_gated_runner.py</code>) that simply switches θ off when PdV/L<sub>mech</sub>&gt;0.7
+already turns <code>fail_repro</code> green (large_radius, 500 pc) — but that gate is just re-deriving, by hand,
+the selectivity f_κ has for free. Details: <code>FINDINGS.md §8c</code>, <code>data/gate_prototype.csv</code>.</figcaption>
+</figure>
+
+<h3>The corrected plan</h3>
+<ul>
+<li><b>Rung A (f_κ) is primary</b> — already shipped in production, gated default-off byte-identical. θ emerges.</li>
+<li><b>El-Badry / Lancaster are the calibration target</b> for the emergent θ — pick f_κ(n) so the <em>solved</em>
+θ lands at their θ(n), rather than enforcing it.</li>
+<li><b>Set f_κ at a physical value; accept diffuse route-a.</b> Don't crank f_κ to ~60 to force the diffuse end —
+clouds whose physics never reaches θ≥0.95 simply <b>stay energy-driven, by design</b> (maintainer: "diffuse
+clouds may never enter momentum — the physics never allows it"). See <code>F_KAPPA_FUNCTIONAL_FORM.md</code> §11–13.</li>
+<li><b>Massive / PdV clouds ride the PR #715 handoff</b> (Eb≤0 → momentum), untouched by θ.</li>
+<li><b>θ_elbadry stays as a documented opt-in override</b> for users who explicitly want forced cooling to a
+target θ(n). It is applied <em>continuously</em> (every step), <b>not</b> gated to an event like blowout — see
+<code>THETA_ELBADRY_SPEC.md §0.6</code> for why event-gating would be arbitrary/unphysical.</li>
+</ul>
+<p>κ_mix (Rung B, the <em>structural</em> injection) stays shelved — that is a different mechanism from the scalar
+f_κ reinstated here.</p>
+</div>
+
+<!-- ================================================================= -->
+<div class="chapter" id="c9">
+<span class="ch-num">Chapter 9</span>
 <h2 class="ch-title">Reproduce</h2>
 <pre><code># figures (reads only committed CSVs, no sim):
 python docs/dev/transition/pdv-trigger/make_elbadry_story_figs.py
@@ -299,7 +353,7 @@ Closed-form constants: A<sub>mix</sub>=3.5, λδv=3, θ<sub>max</sub>=0.99, n<su
 
 <p class="meta">Generated for branch <code>feature/PdV-trigger-term-pt2</code>. Figures:
 <code>make_elbadry_story_figs.py</code> → <code>fig/elbadry_f{1..6}_*.png</code>. Sources of truth:
-<code>PLAN.md</code>, <code>FINDINGS.md</code> §8–§8b, <code>THETA_ELBADRY_SPEC.md</code>,
+<code>PLAN.md</code>, <code>FINDINGS.md</code> §8–§8c, <code>THETA_ELBADRY_SPEC.md</code>,
 <code>ELBADRY_REFERENCE.md</code>, <code>LANCASTER_REFERENCE.md</code>, main's <code>HIMASS_HANDOFF_PLAN.md</code>.</p>
 
-</div></body></html>
+</div><!--/chapter c9--></div><!--/book--></body></html>

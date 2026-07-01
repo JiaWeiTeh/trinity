@@ -48,77 +48,75 @@ The recheck list the banners demand. **Every visit:** re-verify the anchors belo
 *then* read on. All findings here are **already persisted** (CSVs + figures under `data/` and this
 folder) — do **not** re-run the hours-long sims to recover them; reproduce only to extend.
 
-### ⭐⭐ CANONICAL SYNTHESIS + VERDICT (read this first — supersedes all earlier synthesis blocks; 2026-06-30)
+### ⭐⭐ CANONICAL SYNTHESIS + VERDICT (read this first — supersedes all earlier synthesis blocks; corrected 2026-07-01)
 
-> 🛑 **REVISED 2026-07-01 — read the top ledger entry + `FINDINGS.md §8b` FIRST.** After PR #715 (high-mass
-> `Eb≤0`→momentum handoff) merged to `main`, re-running showed **imposing El-Badry θ REVERSES the fix** —
-> it over-cools PdV-dominated massive clouds into recollapse (regime error: θ is a *radiative* ratio, but the
-> high-mass turnover is PdV-driven). **The `theta_elbadry` SPEC now needs a regime gate and Stage B is not
-> ready for the massive-cloud regime.** The "shadow first → Stage B" framing below still holds for the
-> radiative/dense regime, but is retracted for massive/PdV-dominated clouds.
+> ✅ **DIRECTION CORRECTED 2026-07-01 (maintainer steer). θ is an OUTPUT, not an input.** The earlier plan to
+> **impose** El-Badry's θ (`cooling_boost_mode='theta_target'`, the "θ_elbadry" SPEC) is **demoted to an opt-in
+> second option.** Enforcing θ was a shortcut around a hard calibration, and it broke the causal structure:
+> it sets `L_loss=θ·L_mech` regardless of what the loss actually is, so on **PdV/inertia-dominated** massive
+> clouds it double-counts the loss (PdV is already in `Edot_from_balance`) and drives them to recollapse —
+> **reversing PR #715's momentum handoff** (proven: `FINDINGS.md §8b`, `data/newcode_default_vs_theta.csv`).
+> The corrected direction returns to **Rung A — boost the cooling MECHANISM (`cooling_boost_mode='multiplier'`,
+> f_κ) and let the solved bubble PRODUCE θ**, with El-Badry/Lancaster used to **calibrate** what θ should emerge
+> to, not to enforce it. See the top status-ledger entry (2026-07-01) and `FINDINGS.md §8c`.
 
 *This single block replaces the older layered ⭐/⚡/⚡⚡ synthesis. It reflects the grand view across
-`ELBADRY_REFERENCE.md`, `LANCASTER_REFERENCE.md`, and all the κ_mix work. Whenever a decision is made, update
-THIS block and the affected sibling docs together.*
+`ELBADRY_REFERENCE.md`, `LANCASTER_REFERENCE.md`, `F_KAPPA_FUNCTIONAL_FORM.md`, and all the κ_mix work.
+Whenever a decision is made, update THIS block and the affected sibling docs together.*
 
 **The goal (maintainer north star):** give TRINITY's 1D bubble cooling **comparable to 3D/obs (Lancaster
 θ~0.9–0.99) and dependent on cloud properties**, so the energy→momentum transition fires physically — and
 **let transition be "fate"** (clouds that can't reach the threshold stay energy-driven, by design).
 
-**The decided approach — impose El-Badry's analytic θ as the trigger target (NOT a structural κ_mix port):**
-The one master parameter is **`θ ≡ L_cool/L_mech`** — *identical* in TRINITY, El-Badry (`L_int/Ė_in`), and
-Lancaster (`Ė_cool/Lw`); all SB dynamics follow from it via the `(1−θ)` substitution. El-Badry gives a
-**3D-calibrated closed form** `θ = A_mix·√(λδv·n) / (11/5 + A_mix·√(λδv·n))`, A_mix=3.5. Feed it into TRINITY's
-**existing gated `cooling_boost_mode='theta_target'`** (verified in source to be exactly the `(1−θ)` budget),
-with the density-dependent value computed per-step.
+**The corrected approach — θ EMERGES from a boosted cooling mechanism (Rung A / f_κ):** The one master
+parameter is **`θ ≡ L_cool/L_mech`** — *identical* in TRINITY, El-Badry (`L_int/Ė_in`), and Lancaster
+(`Ė_cool/Lw`); all SB dynamics follow from it via `(1−θ)`. **Physically θ is not a knob you get to set** — the
+cooling (whatever its mechanism) decides how much energy is radiated, and θ is the *result*. So the only
+legitimate lever is the cooling **mechanism**: `cooling_boost_mode='multiplier'` (Rung A, f_κ) scales the
+**resolved radiative channel** `L_loss = L_leak + f_κ·L_cool`, then the bubble solver produces whatever θ
+follows. El-Badry's closed form `θ = A_mix·√(λδv·n)/(11/5 + A_mix·√(λδv·n))` (A_mix=3.5) and Lancaster's
+θ≈0.9–0.99 are the **calibration target** for that emergent θ — pick f_κ(n) so the *solved* θ lands there.
 
 | element | decision | anchor |
 |---|---|---|
-| **mechanism** | **impose** θ_target (the 3D mixing 1D can't resolve), not emerge it | El-Badry endorses (his §7: "implement in any Weaver-based model") |
-| **knob** | **λδv ≈ 3** pc·km/s | matches Lancaster's GMC momentum-driven range (nH 40–2e5) **and** El-Badry's own A_mix=3.5 fit (λδv=3) |
-| **density `n`** | **local cloud density at the shell, n_amb(R2)** | verified faithful at equilibrium (`make_nmap_verify.py`); the direct R2,Pb form is the robust alt |
-| **ceiling** | **θ_max < 1** (e.g. 0.99) | else `R∝(1−θ)^{1/5}→0` stalls the bubble at GMC density |
-| **trigger** | **`cooling_balance` + `ebpeak`** (first-fire) | θ is PdV-**exclusive**; `ebpeak` (Edot_balance≤0) is PdV-**inclusive** → catches massive-cluster transitions cooling alone misses |
-| **fate** | clouds with **nH ≲ 50** (n_fire at λδv=3) stay energy-driven | route-a; El-Badry √n, **uncontradicted** by Lancaster (whose plateau is GMC-only) |
+| **mechanism** | **boost the mechanism** (`multiplier`/f_κ on the radiative channel); θ **emerges** | causally honest; and f_κ scales only radiative → **cannot over-drain a PdV-dominated bubble** (no regime error, no gate — `FINDINGS.md §8c`) |
+| **calibration** | pick f_κ(n) so the **solved** θ matches El-Badry/Lancaster | `F_KAPPA_FUNCTIONAL_FORM.md` (El-Badry/Lancaster as the target, not the enforced value) |
+| **f_κ magnitude** | set f_κ at a **physically-bounded** value; **do NOT crank it to ~60** to force the diffuse end | `F_KAPPA_FUNCTIONAL_FORM.md` §11–13 "don't-force-it" |
+| **diffuse fate** | clouds whose physics never reaches θ≥0.95 **stay energy-driven, by design** (route-a) | maintainer-endorsed 2026-07-01: "diffuse clouds may never enter momentum — the cooling/physics never allows it"; El-Badry √n, uncontradicted by Lancaster (GMC-only plateau) |
+| **massive/PdV clouds** | **no θ-imposition;** the PR #715 `Eb≤0→momentum` handoff carries them | `HIMASS_HANDOFF_PLAN.md`; `FINDINGS.md §8b/§8c` |
+| **El-Badry θ_elbadry** | **opt-in second option only** (forced cooling), fully documented incl. its regime caveat | `THETA_ELBADRY_SPEC.md` (now framed as the override, not the default) |
 
 **κ_mix (Rung B) is SHELVED as a structural injection** — it saturates (10⁵–10⁸× Spitzer instantly) and is
 numerically unstable in the Weaver ODE (`KMIX_SELFCONSISTENT.md`). It survives only as the **physical
-justification** for *why* θ∝√(λδv·n). The scalar f_κ (Rung A) is a tunable-but-unphysical fudge, now subsumed:
-imposing El-Badry's θ directly is both tunable (via λδv) and physical (3D-calibrated).
+justification** for *why* enhanced interface cooling scales ∝√(λδv·n). Note Rung A (scalar f_κ, WORKS, now
+primary) ≠ Rung B (structural κ_mix, SHELVED) — they are different mechanisms.
 
-**VERDICT: the plan is sound and triple-anchored — but it is still entirely on paper.** El-Badry's closed form,
-Lancaster's magnitude, and TRINITY's existing mechanism all agree, and the calibration (λδv≈3), n-mapping, PdV
-pairing, and fate prediction are all resolved on paper. **The one thing not yet done is a single TRINITY run
-with the mode on.** So the risk is no longer conceptual — it is execution + validation.
+**VERDICT: return to emergent θ via f_κ; El-Badry calibrates, does not enforce.** The θ_elbadry detour
+established real value — a verified closed form, the n-mapping, the source-verified `(1−θ)` budget, and the
+proof that *enforcing* θ double-counts PdV — but its conclusion is that enforcement is the wrong primitive.
+Rung A (`multiplier`) is already shipped in production, gated default-off byte-identical. The remaining work is
+**calibration + validation**, not a new mechanism.
 
-**SETTLED:** θ is the master parameter (3-way identical) · θ_target = El-Badry closed form · λδv≈3 · n=n_amb(R2)
-· θ_max ceiling needed · pair with ebpeak for PdV · diffuse clouds (nH≲50) stay energy-driven (route-a) ·
-`theta_target` mode = the `(1−θ)` budget (source-verified) · ≥5 Myr per run.
-**OPEN / RISKS:** (1) **no run yet** — validate on the 8 configs to ≥5 Myr; (2) the `max(resolved, target)` could
-let TRINITY's wrong-trend *resolved* θ win at some epoch — check, and prefer direct θ_target if so; (3) route-a
-(diffuse fate) is a *prediction*, untested below nH~40 by either paper; (4) θ→1 dense-core behaviour needs the
-ceiling to stay numerically sane.
+**SETTLED (2026-07-01):** θ is the master parameter (3-way identical) & is an **output** · knob = cooling
+**mechanism** (`multiplier`/f_κ), not enforced θ · El-Badry/Lancaster = **calibration target** for emergent θ ·
+f_κ at a **physical** value; **accept diffuse route-a non-transition** · massive/PdV clouds handled by the
+PR #715 handoff, **not** θ · `theta_elbadry`/`theta_target` = **opt-in override**, documented with its
+double-counting caveat · ≥5 Myr per run.
+**OPEN:** (1) **calibrate f_κ(n)** to a physical value so emergent θ matches El-Badry/Lancaster on the
+radiative/dense configs (re-analysis of the existing sweep, no new mechanism); (2) confirm on a live run that
+emergent θ lands in-band AND the massive cloud hands off cleanly (the `data/_theta_elbadry_gated_runner.py`
+result already shows the emergent/default path expands `fail_repro` to 500 pc); (3) the diffuse end: whether a
+physically-bounded f_κ leaves a *falsifiable* critical column for route-a (`F_KAPPA_FUNCTIONAL_FORM.md` §11–13).
 
-**BEST PATH FORWARD — SHADOW FIRST (production NOT yet finalized):** (i) ✅ **spec written**
-(`THETA_ELBADRY_SPEC.md`). (ii) ✅ **STAGE A — SHADOW RAN (2026-06-30):** the §3 logic ran via the monkeypatch
-harness (`data/_theta_elbadry_runner.py`) on 9 configs to ≥5 Myr (no `trinity/` edit) →
-`FINDINGS.md §8` + `data/shadow_te_fate.csv`. **Resolved: §6 `max()` gate is SAFE** (resolved-wins 0/N — El-Badry
-θ ≥ native θ everywhere, so max==direct). **SHELL_COLLAPSE confirmed patch-induced:** dense compact clouds
-(n≥1e4, θ=0.99) fire at t<0.02 Myr then **SHELL_COLLAPSE** (clean endcode 4); stock TRINITY's native radiative θ
-peaks ~0.66 (§6a `ebpeak_8config_xcheck.csv`) << 0.95, so it never fires these — imposing θ=0.99 is what
-collapses them (baseline full-runs abandoned as unneeded + restart-killed). **θ_max sweep RAN (§8a):** all of
-{0.80…0.99}×{pl2_steep,simple_cluster} recollapse at the same time regardless of cap (below 0.95 the transition
-still fires via `ebpeak`/PdV) ⇒ **the cap is NOT the lever; recollapse is intrinsic to dense clouds
-transitioning.** What remains is a **pure physics call for the maintainer** — accept SHELL_COLLAPSED as the
-correct fate of a weak-cluster/dense core (likely), or treat it as a momentum-phase fidelity issue (out of this
-workstream's scope). **Stage B may proceed once that reading is accepted** (θ_max=0.95 or 0.99, identical for
-dense clouds). (iii) **STAGE B — PRODUCTION** (only after Stage A is clean):
-the 3 params + 1 `effective_Lloss` branch, gated default-off byte-identical, re-validated to reproduce the
-shadow 1:1. Firing read by **first-crossing** (never blowout). *Why shadow first: two design points are
-unresolved-until-data and TRINITY has never run with any θ-boosting mode end-to-end — revising a harness is
-free, revising committed production is not.* Evidence chain:
-`ELBADRY_REFERENCE.md` (θ, closed form, n-mapping, theta_target verification) · `LANCASTER_REFERENCE.md` (θ
-magnitude, λδv≈3, route-a) · `KMIX_SELFCONSISTENT.md` (why the structural port was shelved).
+**BEST PATH FORWARD:** (i) **Rung A f_κ is already in production** (`cooling_boost_mode='multiplier'`, gated
+default-off — `grep cooling_boost_mode trinity/`). (ii) **Calibrate f_κ(n)** from the committed sweep so the
+*solved* θ matches El-Badry/Lancaster on radiative/dense configs; set the diffuse value to a physical cap and
+accept route-a. (iii) **Validate** one live run per regime that emergent θ is in-band and the massive cloud
+still hands off (baseline/emergent already expands `fail_repro`). (iv) Keep **θ_elbadry as the documented
+opt-in override** for users who explicitly want forced cooling (`THETA_ELBADRY_SPEC.md`). Evidence chain:
+`ELBADRY_REFERENCE.md` (closed form, n-mapping) · `LANCASTER_REFERENCE.md` (θ magnitude, route-a) ·
+`F_KAPPA_FUNCTIONAL_FORM.md` (emergent-θ calibration) · `FINDINGS.md §8b/§8c` (why enforcement double-counts) ·
+`HIMASS_HANDOFF_PLAN.md` (the PR #715 handoff that carries the massive clouds).
 
 ---
 
@@ -164,6 +162,22 @@ for provenance.*
 > → re-derive those from ≥5 Myr runs before trusting their Pb numbers. f1edge_lowdens (3 Myr) is also short.
 
 **Status ledger (newest first):**
+- **2026-07-01 (✅ DIRECTION CORRECTED — θ is an OUTPUT; Rung A f_κ reinstated, θ_elbadry demoted to opt-in →
+  `FINDINGS.md §8c`, `data/gate_prototype.csv`).** Maintainer steer: enforcing θ (`theta_target`/θ_elbadry)
+  broke the causal structure — θ should *emerge* from a boosted cooling **mechanism**, not be set by hand.
+  Evidence it matters: the PdV double-counting (§8b) is a **direct symptom of enforcement** — `L_loss=θ·L_mech`
+  is blind to whether the loss is radiative or PdV, so it over-drains PdV-dominated clouds. **f_κ
+  (`multiplier`) scales only the radiative channel, so it *cannot* over-drain a PdV-dominated bubble** —
+  demonstrated: the PdV **regime-gate** prototype (`data/_theta_elbadry_gated_runner.py`) makes `fail_repro`
+  expand to 500 pc (large_radius) instead of velocity_runaway, and the θ-gate ALONE does it (ebpeak irrelevant)
+  — i.e. the gate merely re-derives, by hand, the selectivity f_κ has for free. **Corrected plan:** (1) Rung A
+  f_κ (`multiplier`, already shipped, gated default-off) is PRIMARY; (2) El-Badry/Lancaster = **calibration
+  target** for the *emergent* θ, not an enforced value; (3) set f_κ at a **physical** value and **accept
+  diffuse route-a non-transition** (maintainer: "diffuse clouds may never enter momentum — the physics never
+  allows it"); (4) massive/PdV clouds ride the PR #715 handoff, not θ; (5) **`theta_elbadry` stays as a
+  documented opt-in override** (`THETA_ELBADRY_SPEC.md`). This RE-PROMOTES Rung A (scalar f_κ) — *not* Rung B
+  (structural κ_mix, still SHELVED). §8/§8a/§8b results stand as evidence; the *direction* they were gathered
+  under (enforce θ) is corrected here.
 - **2026-07-01 (⚠️ COURSE-CORRECTION — merged PR #715 high-mass handoff; imposing El-Badry θ REVERSES it →
   `FINDINGS.md §8b`, `data/newcode_default_vs_theta.csv`).** Maintainer merged
   `bugfix/high-mass-cluster-transition-without-ebpeak` to `main`: phase 1b now **routes finite `Eb≤0` →
