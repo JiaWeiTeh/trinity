@@ -100,7 +100,7 @@ So we <b>impose</b> a physically-motivated θ. El-Badry+2019 gives a closed form
 </table>
 
 <figure>
-<img src="fig/elbadry_f1_closedform.png" alt="El-Badry closed form theta(n)">
+<img src="story_elbadry_f1_closedform.png" alt="El-Badry closed form theta(n)">
 <figcaption><b>Fig 1.</b> The closed form. θ rises with √(λδv·n) and saturates. With λδv=3 (solid) it crosses the
 0.95 firing threshold at <b>n<sub>fire</sub> ≈ 48 cm⁻³</b>: clouds denser than that transition; diffuse clouds
 (n≲48) stay energy-driven. Points are the 8 test configs at their core density, colored by Stage-A fate.
@@ -130,7 +130,7 @@ up to the El-Badry target. The imposed L<sub>loss</sub> then feeds consistently 
 <code>Edot_from_balance</code> energy ODE, and the trigger.</p>
 
 <figure>
-<img src="fig/elbadry_f2_impose.png" alt="imposed theta per config vs native">
+<img src="story_elbadry_f2_impose.png" alt="imposed theta per config vs native">
 <figcaption><b>Fig 2.</b> The imposed El-Badry θ per config (bars) sits far above the native radiative θ peak
 (~0.66, purple band). Across all 9 configs the diagnostic <code>resolved-wins = 0/N</code> — El-Badry's θ wins
 the <code>max()</code> on <em>every</em> call, so imposing θ here is operationally identical to assigning it
@@ -152,7 +152,7 @@ energy fraction drops below a threshold:</p>
 Imposing the El-Badry θ is exactly what pushes a cloud across it.</p>
 
 <figure>
-<img src="fig/elbadry_f3_check.png" alt="the cooling_balance check">
+<img src="story_elbadry_f3_check.png" alt="the cooling_balance check">
 <figcaption><b>Fig 3.</b> The check is one line: fire when $1-\theta<0.05$, i.e. θ≥0.95 (green). Because the
 El-Badry θ saturates near 0.99 for dense clouds, they land deep in the firing region; only the very diffuse
 <code>diffuse_probe</code> (θ=0.897) stays left of the line and remains energy-driven until PdV (<code>ebpeak</code>)
@@ -194,7 +194,7 @@ clean split — and it is <b>not</b> gated by θ alone (every dense cloud pins a
 cloud binding:</p>
 
 <figure>
-<img src="fig/elbadry_f4_fatemap.png" alt="Stage-A fate map">
+<img src="story_elbadry_f4_fatemap.png" alt="Stage-A fate map">
 <figcaption><b>Fig 4.</b> Mass–density plane, marker size ∝ imposed θ. Dense compact clouds (n≳10⁴) fire almost
 instantly and <b>recollapse</b> (SHELL_COLLAPSED, red); well-powered diffuse clouds reach STOPPING_TIME expanding
 (green); the heavy <code>fail_repro</code> (5×10⁹ M☉) dead-stopped as ENERGY_COLLAPSED (purple) on this old code.
@@ -219,7 +219,7 @@ phase 1b now <b>routes a finite $E_b\le0$ collapse to the momentum phase</b>
 ENERGY_COLLAPSED, and phase 1a gains a <code>cooling_balance</code> parity check. I merged main in and re-ran.</p>
 
 <figure>
-<img src="fig/elbadry_f5_reversal.png" alt="default vs theta imposed on new code">
+<img src="story_elbadry_f5_reversal.png" alt="default vs theta imposed on new code">
 <figcaption><b>Fig 5.</b> On the merged code, <b>default</b> (green) does what the fix intends —
 <code>fail_repro</code> expands to the 500 pc stop radius (v2=+37), <code>pl2_steep</code> is expanding (v2=+23).
 <b>Imposing El-Badry θ</b> (red) drives the <em>same</em> clouds violently inward to the −500 pc/Myr
@@ -230,7 +230,7 @@ ENERGY_COLLAPSED, and phase 1a gains a <code>cooling_balance</code> parity check
 there double-counts the loss:</p>
 
 <figure>
-<img src="fig/elbadry_f6_regime.png" alt="PdV vs radiative regime">
+<img src="story_elbadry_f6_regime.png" alt="PdV vs radiative regime">
 <figcaption><b>Fig 6.</b> Live decomposition (main's <code>data/live_pdv_decomp.csv</code>). For
 <code>fail_repro</code> at the Eb-peak, PdV is <b>99%</b> of L<sub>mech</sub> while radiative is <b>~1%</b> —
 the shell soaks the energy as bulk motion. Imposing θ=0.99 there injects a fake radiative sink of 0.99·L<sub>mech</sub>

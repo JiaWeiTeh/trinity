@@ -2,7 +2,7 @@
 """Figures for ELBADRY_THETA_STORY.html — document the El-Badry theta closed form:
 what it is, what we impose, what we check, and the physics behind it.
 
-All inputs are committed CSVs in data/ (no sim run here). Writes PNGs to fig/.
+All inputs are committed CSVs in data/ (no sim run here). Writes story_elbadry_f*.png next to this script.
 Run:  python docs/dev/transition/pdv-trigger/make_elbadry_story_figs.py
 """
 import csv
@@ -15,10 +15,10 @@ matplotlib.rcParams["text.usetex"] = False  # dev fig — never LaTeX (plot_base
 import matplotlib.pyplot as plt
 import numpy as np
 
+# Figures land directly in the workstream folder (the `fig/` subdir is gitignored as scratch).
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(HERE, "data")
-FIG = os.path.join(HERE, "fig")
-os.makedirs(FIG, exist_ok=True)
+FIG = HERE
 
 A_MIX = 3.5          # El-Badry+2019 Eq 37 fit
 LDV = 3.0            # lambda*delta_v (pc km/s), calibrated
@@ -88,7 +88,7 @@ def fig1():
     ax.legend(loc="lower right", fontsize=9.5, framealpha=0.95)
     ax.grid(alpha=0.25)
     fig.tight_layout()
-    fig.savefig(os.path.join(FIG, "elbadry_f1_closedform.png"), dpi=130)
+    fig.savefig(os.path.join(FIG, "story_elbadry_f1_closedform.png"), dpi=130)
     plt.close(fig)
 
 
@@ -122,7 +122,7 @@ def fig2():
                  fontsize=10.5)
     ax.grid(axis="y", alpha=0.25)
     fig.tight_layout()
-    fig.savefig(os.path.join(FIG, "elbadry_f2_impose.png"), dpi=130)
+    fig.savefig(os.path.join(FIG, "story_elbadry_f2_impose.png"), dpi=130)
     plt.close(fig)
 
 
@@ -149,7 +149,7 @@ def fig3():
     ax.set_ylim(0, 0.20)
     ax.grid(alpha=0.25)
     fig.tight_layout()
-    fig.savefig(os.path.join(FIG, "elbadry_f3_check.png"), dpi=130)
+    fig.savefig(os.path.join(FIG, "story_elbadry_f3_check.png"), dpi=130)
     plt.close(fig)
 
 
@@ -175,7 +175,7 @@ def fig4():
     ax.legend(loc="lower left", fontsize=9, framealpha=0.95, title="fate (marker size ∝ θ)")
     ax.grid(alpha=0.22, which="both")
     fig.tight_layout()
-    fig.savefig(os.path.join(FIG, "elbadry_f4_fatemap.png"), dpi=130)
+    fig.savefig(os.path.join(FIG, "story_elbadry_f4_fatemap.png"), dpi=130)
     plt.close(fig)
 
 
@@ -207,7 +207,7 @@ def fig5():
     fig.suptitle("Fig 5 — On merged PR#715 code: DEFAULT expands (green); imposing El-Badry θ recollapses (red)",
                  fontsize=11)
     fig.tight_layout(rect=(0, 0, 1, 0.95))
-    fig.savefig(os.path.join(FIG, "elbadry_f5_reversal.png"), dpi=130)
+    fig.savefig(os.path.join(FIG, "story_elbadry_f5_reversal.png"), dpi=130)
     plt.close(fig)
 
 
@@ -235,7 +235,7 @@ def fig6():
     ax.legend(fontsize=9.5)
     ax.grid(axis="y", alpha=0.25)
     fig.tight_layout()
-    fig.savefig(os.path.join(FIG, "elbadry_f6_regime.png"), dpi=130)
+    fig.savefig(os.path.join(FIG, "story_elbadry_f6_regime.png"), dpi=130)
     plt.close(fig)
 
 
