@@ -36,13 +36,13 @@ f_κ(n)) and a flagged logging fix.
   every cloud. Set one physical f_κ and let the density-dependence emerge as θ(n) (denser → higher emergent θ →
   fires) and a **route-a critical density**. Match El-Badry where physical (dense); accept undershoot + route-a
   at the diffuse end.
-- [ ] **T3 — correct-knob validation sims.** `data/_kappa_validation_runner.py`: production `cooling_boost_kappa`
+- [x] **T3 — DONE (kappa breaks at f_k=8, slow at all f_k; FINDINGS §8e).** `data/_kappa_validation_runner.py`: production `cooling_boost_kappa`
   (with `cooling_boost_mode='none'`, so θ_emergent = (L_cool+L_leak)/L_mech with L_cool from the boosted
   conduction). Observe θ_max (peak, ≥5 Myr where feasible — the standing rule). Runs at a single physical
   **f_κ=8** on: dense `simple_cluster` (n=1e5, expect fire), boundary `be_sphere` (n=1e4), diffuse `small_1e6`
   (n=100, expect route-a). NB `kappa` enters the structure ODE (+ raises evaporation) so numerics may differ
   from the `multiplier` runs.
-- [ ] **T4 — harvest + writeup.** Emergent θ(n) at f_κ=8 (kappa) vs the §14 prediction + the (retracted)
+- [x] **T4 — DONE (FINDINGS §8e; physical θ from dictionary, not the contaminated observer).** Emergent θ(n) at f_κ=8 (kappa) vs the §14 prediction + the (retracted)
   `multiplier` numbers; the route-a threshold. Land in `FINDINGS §8e`; correct the §14 table's knob.
 - [ ] **T5 — commit + push** (min_T fix, docs, runner + CSV/figure).
 

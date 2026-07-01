@@ -733,10 +733,18 @@ validate — at the physical f_κ=8 it breaks down.**
   `dictionary.jsonl`, the accepted state) sticks at **~0.53 — it does NOT fire**. Nothing like the `multiplier`
   run's θ_max≈1.33 (§14). So **the §14 multiplier validation does NOT transfer to the knob the calibration was
   actually fit on.**
-- **kappa is also far SLOWER:** it enters the bubble-structure ODE, so even the dense `be_sphere` (n=1e4) grinds
-  at the 1a→1b boundary and doesn't reach the implicit phase in the time budget — where the same config under
-  `multiplier` reached θ_max=1.006 quickly (§14). kappa=2 was launched to test whether a lower value is stable
-  (`outputs/kappa_val_fk2/`; slow — pending).
+- **`be_sphere` (n=1e4), kappa=8:** same story — emergent θ ≤ **0.48**, **does NOT fire** (vs `multiplier`
+  θ_max=1.006, §14). So on *both* dense configs the structural knob gives a **much lower** emergent θ than the
+  multiplier. Physical reason: boosting the conduction coefficient raises the **evaporative mass flux** (more
+  cool gas mixed in), and that back-reaction *damps* the net radiated L_cool — it does not simply 8× it. This is
+  exactly the coupling El-Badry says a faithful κ_eff must **suppress** (registry note); `cooling_boost_kappa`
+  does the opposite, so θ stays moderate. The faithful version (κ_mix, Rung B) would suppress evaporation — but
+  it is SHELVED (unstable).
+- **kappa is also far SLOWER at ANY f_κ:** it enters the bubble-structure ODE, so every structure solve is
+  costlier. **kappa=2 (stable — 0 non-physical dMdt, so f_κ=8 was simply too high) STILL timed out in phase 1a**
+  (t=0.00291, 0 implicit segments in 6.5 min), physical θ≈0.49 — where the same config under `multiplier`
+  reached the trigger and fired by t=0.009. So kappa is impractical here **regardless of f_κ**: fragile at 8,
+  slow at all values.
 - **⚠️ Methodology correction:** the runner's `theta_max` observer over-counts — it records *every*
   `effective_Lloss` call, incl. the solver's **non-physical trial (β,δ) points** (it reported a bogus
   θ_max=3.223). The trustworthy emergent θ is `bubble_Lloss/Lmech_total` at the **accepted** segments in
@@ -749,9 +757,12 @@ evaporation) *and* slow (enters the structure ODE). With the structural κ_mix (
 same class of reason, that leaves **`cooling_boost_mode='multiplier'`** (scalar on the resolved L_cool) as the
 **pragmatic mechanism**: it is stable and fast (never touches the structure ODE) and still scales only the
 radiative channel (so it keeps the §8c no-PdV-double-count property), at the cost of being "structural-L_cool ×
-scalar" rather than fully emergent. **Open:** confirm kappa is unusable at *all* physical f_κ (the kappa=2 test)
-vs only at 8; a definitive structural validation would need HPC. **Tentative: adopt `multiplier` as the
-production mechanism; θ still emerges (from the structural L_cool), just scaled.**
+scalar" rather than fully emergent. **kappa=2 confirmed kappa is impractical at all physical f_κ** (stable but
+still too slow to reach the θ peak). A definitive structural validation of §14 would need HPC. **Tentative
+decision: adopt `multiplier` as the production mechanism; θ still emerges (from the structural L_cool), just
+scaled** — with the caveat that `multiplier`'s emergent θ (8×L_cool, fires easily) is *cruder* than kappa's
+back-reacted θ (~0.5, doesn't fire), so the **calibrated f_κ magnitude must be re-derived for `multiplier`**
+(the §14 θ₀/p were fit on kappa and do not carry over).
 
 Artifacts: `data/_kappa_validation_runner.py`, `outputs/{kappa_val,kappa_val_fk2}/`, `KAPPA_VALIDATION_PLAN.md`.
 
