@@ -12,6 +12,7 @@ Importing this module is sufficient to set up paths and plot style.
 
 import sys
 import os
+import shutil
 from pathlib import Path
 
 import numpy as np
@@ -40,6 +41,13 @@ FIG_DIR.mkdir(parents=True, exist_ok=True)
 _STYLE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "trinity.mplstyle")
 if os.path.exists(_STYLE_PATH):
     plt.style.use(_STYLE_PATH)
+    # trinity.mplstyle sets text.usetex=True for the publication look, but that
+    # shells out to `latex`. On a node with no TeX toolchain (Helix compute nodes;
+    # tools/cluster/matplotlibrc sets usetex=False but the style above re-enables
+    # it) fall back to mathtext so rendering still works — mathtext.fontset=cm keeps
+    # the Computer-Modern look. No effect where latex exists.
+    if shutil.which("latex") is None:
+        plt.rcParams["text.usetex"] = False
 
 
 # ------------------------------------------------------------------

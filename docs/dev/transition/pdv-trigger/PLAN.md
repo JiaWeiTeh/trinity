@@ -34,6 +34,16 @@
 
 ## Re-entry ledger — open this FIRST (the 🔄 banner, operationalized)
 
+> **Sibling (updated 2026-07-01):** `HIMASS_HANDOFF_PLAN.md` — **now PARTIALLY IMPLEMENTED, not just a plan.**
+> **Shipped:** phase 1b routes a finite `Eb<=0` collapse to the momentum phase (via 1c) instead of the
+> `ENERGY_COLLAPSED` dead-stop (`run_energy_implicit_phase.classify_energy_collapse`); phase 1a gained a
+> `cooling_balance` check. Verified: `fail_repro` (5e9,n1e2) now reaches momentum out to 500 pc; G0
+> bit-identical on `simple_cluster`; pytest 596 passed. **Deferred:** phase-1a collapse routing, and the
+> smoother pressure-crossover terminal event (the 1b handoff currently fires on post-step `Eb<=0`).
+> Records the verified correction that the high-mass turnover is **PdV/inertial-loading driven, not
+> radiative** (`FINDINGS.md` §1/§6a + the `Pb` cancels `Eb` identity), and that `ebpeak` is opt-in/shadow,
+> not the default path. Branch `bugfix/high-mass-cluster-transition-without-ebpeak`.
+
 The recheck list the banners demand. **Every visit:** re-verify the anchors below, update the ledger,
 *then* read on. All findings here are **already persisted** (CSVs + figures under `data/` and this
 folder) — do **not** re-run the hours-long sims to recover them; reproduce only to extend.

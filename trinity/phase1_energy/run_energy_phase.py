@@ -163,9 +163,9 @@ def run_energy(params):
         # In the energy-driven Eb -> 0 collapse the bubble degenerates:
         # the cooling table goes out of bounds, solve_R1 cannot bracket, etc. Any
         # such failure here means the energy-driven model has broken down -- stop
-        # the run cleanly rather than crash with the bare exception. The momentum-
-        # driven continuation is future work (docs/dev/transition). See
-        # docs/dev/failed-large-clouds.
+        # the run cleanly rather than crash with the bare exception. (Phase 1b now
+        # ROUTES a clean Eb<=0 collapse to the momentum phase; routing it from 1a too
+        # is deferred -- see docs/dev/transition/pdv-trigger/HIMASS_HANDOFF_PLAN.md.)
         try:
             bubble_data = bubble_luminosity.get_bubbleproperties_pure(params)
         except (ValueError, RuntimeError, bubble_luminosity.BubbleSolverError) as e:
@@ -262,6 +262,31 @@ def run_energy(params):
         params.save_snapshot()
 
         # =============================================================================
+        # 6b. Transition-trigger parity with phase 1b (cooling_balance).
+        # A violently cooling cloud can reach the energy->momentum cooling balance
+        # WITHIN this fixed ~3000-yr early phase; without a check here it would either
+        # wait for the 1a->1b boundary or, if cooling drives Eb<=0 first, hit the
+        # collapse routing below. Evaluated at the consistent pre-ODE snapshot with the
+        # SAME formula as run_energy_implicit_phase.py (Lgain=Lmech_total,
+        # Lloss=effective_Lloss(Lcool=bubble_LTotal, leak)). No-op for healthy bubbles
+        # (early cooling is negligible, ratio ~1 >> threshold) -> byte-identical (G0).
+        from trinity.phase1b_energy_implicit.run_energy_implicit_phase import parse_transition_triggers
+        from trinity.phase1b_energy_implicit.get_betadelta import effective_Lloss_from_params
+        _active_triggers = parse_transition_triggers(params['transition_trigger'].value)
+        if 'cooling_balance' in _active_triggers:
+            _Lgain = feedback.Lmech_total
+            _leak = ode_result.bubble_Leak if ode_result.bubble_Leak is not None else 0.0
+            _Lloss = effective_Lloss_from_params(params, bubble_data.bubble_LTotal, _leak, _Lgain)
+            _thr = params['phaseSwitch_LlossLgain'].value
+            _thr = _thr if _thr else 0.05
+            if _Lgain > 0 and (_Lgain - _Lloss) / _Lgain < _thr:
+                logger.info(
+                    f"Phase 1a cooling_balance reached (Lloss/Lgain > {1 - _thr:.2f}) at "
+                    f"t={t_now:.6e} Myr -> ending early phase (hands off via 1b -> 1c -> momentum)."
+                )
+                break
+
+        # =============================================================================
         # 7. Create ODE snapshot and integrate
         # =============================================================================
         snapshot = energy_phase_ODEs.create_ODE_snapshot(params, shell_data)
@@ -331,12 +356,15 @@ def run_energy(params):
         params['v2'].value = v2
         params['Eb'].value = Eb
 
-        # Catastrophic-cooling collapse: a massive/dense cloud can radiate the
-        # bubble's thermal energy away faster than the wind resupplies it, so Eb
-        # falls through zero. The energy-driven model is then invalid (it would
-        # otherwise drive R1->R2 and divide-by-zero -> Eb=nan, crashing the run).
-        # Stop cleanly here; the momentum-driven continuation is future work
-        # (docs/dev/transition). See docs/dev/failed-large-clouds.
+        # Energy-driven collapse in the early (1a) phase: a massive/dense cloud can
+        # lose the bubble's thermal energy (PdV work on a heavy shell, or radiative
+        # cooling) faster than the wind resupplies it, so Eb falls through zero. The
+        # energy-driven model is then invalid (it would drive R1->R2 and divide-by-zero
+        # -> Eb=nan). Phase 1b now ROUTES such a collapse to the momentum phase
+        # (run_energy_implicit_phase.classify_energy_collapse); routing it from 1a too
+        # is deferred (rare: collapse within the fixed ~3000-yr early window). Until
+        # then 1a stops cleanly here. See
+        # docs/dev/transition/pdv-trigger/HIMASS_HANDOFF_PLAN.md.
         if not np.isfinite(Eb) or Eb <= 0:
             params['EndSimulationDirectly'].value = True
             params['SimulationEndReason'].value = (

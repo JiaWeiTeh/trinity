@@ -43,7 +43,10 @@ ship.
 
 Massive clouds (`mCloud=5e9`) drain `Eb` via PdV expansion work (`4πR²·Pb·v2 > Lmech`), so `Eb`
 collapses through zero and the run hits the shipped `ENERGY_COLLAPSED` clean stop
-(`docs/dev/failed-large-clouds/PLAN.md`, treat as unverified; verified §3 below). H3 asks: **if we
+(`docs/dev/failed-large-clouds/PLAN.md`, treat as unverified; verified §3 below).
+*(Update 2026-07-01: that dead-stop is exactly what H3/H4 argued should instead be a momentum handoff —
+now shipped for a finite `Eb<=0` in phase 1b, which ROUTES to momentum. This experiment predates the fix.
+See `docs/dev/transition/pdv-trigger/HIMASS_HANDOFF_PLAN.md`.)* H3 asks: **if we
 artificially floor `Eb > 0`, does the bubble keep expanding and the run proceed cleanly — does the
 failing cloud then behave like a healthy one** (the "healthy vs failing" diagnostic,
 storyline3 §1.4 / `failed-large-clouds/figures/fig2`: healthy ⇒ `Eb` grows, `PdV/Lmech<1`;

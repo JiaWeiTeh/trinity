@@ -6,6 +6,12 @@ images so the file is portable/downloadable, and renders the math with MathJax (
 Reproduce:
   python docs/dev/failed-large-clouds/figures/make_insights_html.py
   -> writes docs/dev/failed-large-clouds/insights.html
+
+NOTE (2026-07-01): the ENERGY_COLLAPSED "dead-stop" narrative this report tells is now SUPERSEDED
+for finite Eb<=0 collapses in phase 1b, which route to the momentum phase (see
+docs/dev/transition/pdv-trigger/HIMASS_HANDOFF_PLAN.md and storyline_s3 Chapter 3). The generated
+insights.html carries a manually-injected superseded banner (marker `SUPERSEDED-2026-07-01`, right
+after <body>); if you regenerate this file, RE-ADD that banner (or update the report body).
 """
 import base64
 import os
