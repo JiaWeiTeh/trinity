@@ -719,6 +719,42 @@ given enough wall-time (their `theta_target` shadows reached 10/14 Myr, §8) —
 Artifacts: `data/_fkappa_validation_runner.py` (θ_max observer + `LOG_LEVEL`), `data/_minT_tol_confirm_runner.py`
 (the retracted min_T test), `outputs/{fkappa_val,fkappa_debug,fk_compare_1,fk_compare_2,fk_compare_8}/`.
 
+## 8e. [data] Correct-knob (`cooling_boost_kappa`) validation — it BREAKS DOWN at f_κ=8; reframes the knob choice (2026-07-01)
+
+Re-running the §14 validation with the **correct** knob (`cooling_boost_kappa` — the structural conduction boost
+the §14 leverage/θ₀ were fit on, not the `multiplier` I mistakenly used; `data/_kappa_validation_runner.py`,
+`cooling_boost_mode='none'` so θ_emergent = bubble_Lloss/Lmech). Result: **the structural knob does NOT cleanly
+validate — at the physical f_κ=8 it breaks down.**
+
+- **`simple_cluster` (n=1e5), kappa=8:** from implicit segment ~6 the beta-delta solver hits **"no physical
+  (dMdt>0) root"** — kappa's boosted conduction drives dMdt **negative** (the evaporative-flux side-effect the
+  registry warns of: *"raises the evaporative mass flux … a structural probe, not the final model"*). The solver
+  **holds the last physical dMdt and the state freezes**, so the *physical* emergent θ (bubble_Lloss/Lmech from
+  `dictionary.jsonl`, the accepted state) sticks at **~0.53 — it does NOT fire**. Nothing like the `multiplier`
+  run's θ_max≈1.33 (§14). So **the §14 multiplier validation does NOT transfer to the knob the calibration was
+  actually fit on.**
+- **kappa is also far SLOWER:** it enters the bubble-structure ODE, so even the dense `be_sphere` (n=1e4) grinds
+  at the 1a→1b boundary and doesn't reach the implicit phase in the time budget — where the same config under
+  `multiplier` reached θ_max=1.006 quickly (§14). kappa=2 was launched to test whether a lower value is stable
+  (`outputs/kappa_val_fk2/`; slow — pending).
+- **⚠️ Methodology correction:** the runner's `theta_max` observer over-counts — it records *every*
+  `effective_Lloss` call, incl. the solver's **non-physical trial (β,δ) points** (it reported a bogus
+  θ_max=3.223). The trustworthy emergent θ is `bubble_Lloss/Lmech_total` at the **accepted** segments in
+  `dictionary.jsonl` (the value that feeds the trigger) — that is the ~0.53 above. This caveat applies to the
+  §14 `multiplier` θ_max numbers too (re-harvest from the dictionary before quoting them as physical).
+
+**Reframes the knob decision (`PLAN.md` KNOB CORRECTION):** the "fully-emergent structural knob"
+(`cooling_boost_kappa`) is **numerically impractical at a physical f_κ** — fragile (non-physical dMdt / raises
+evaporation) *and* slow (enters the structure ODE). With the structural κ_mix (Rung B) already SHELVED for the
+same class of reason, that leaves **`cooling_boost_mode='multiplier'`** (scalar on the resolved L_cool) as the
+**pragmatic mechanism**: it is stable and fast (never touches the structure ODE) and still scales only the
+radiative channel (so it keeps the §8c no-PdV-double-count property), at the cost of being "structural-L_cool ×
+scalar" rather than fully emergent. **Open:** confirm kappa is unusable at *all* physical f_κ (the kappa=2 test)
+vs only at 8; a definitive structural validation would need HPC. **Tentative: adopt `multiplier` as the
+production mechanism; θ still emerges (from the structural L_cool), just scaled.**
+
+Artifacts: `data/_kappa_validation_runner.py`, `outputs/{kappa_val,kappa_val_fk2}/`, `KAPPA_VALIDATION_PLAN.md`.
+
 ## 7. Provenance
 - Commits (`feature/PdV-trigger-term`): `6642ff4` matrix+comparator, `dc1c2fd` note patches, `17f9653`
   live 3/4 configs, `8bcc6b0` θ_lit plot, `b94689c` plot layout fix, plus this commit (4/4 + figure

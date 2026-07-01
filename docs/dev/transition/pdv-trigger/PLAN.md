@@ -72,6 +72,12 @@ folder) — do **not** re-run the hours-long sims to recover them; reproduce onl
 > decision: which knob is the production mechanism. This does not change the §8c "θ-should-emerge, not be enforced"
 > conclusion (both knobs are emergent-flavoured and neither double-counts PdV); it does mean the §14 calibration
 > must be re-validated with the SAME knob it was fit on.
+> **→ OUTCOME (`FINDINGS §8e`, 2026-07-01): re-validated with `kappa` — it BREAKS DOWN at the physical f_κ=8**
+> (non-physical dMdt / evaporation side-effect → state freezes, physical θ~0.53, no fire) **and is far slower**
+> (enters the structure ODE). With Rung-B κ_mix also SHELVED, the **tentative decision is `multiplier` as the
+> production mechanism** — stable, fast, still radiative-only (no PdV double-count), θ emerges from the
+> structural L_cool (just scaled). Confirm-or-refute pending a kappa=2 stability test + (for a definitive
+> structural check) HPC.
 
 *This single block replaces the older layered ⭐/⚡/⚡⚡ synthesis. It reflects the grand view across
 `ELBADRY_REFERENCE.md`, `LANCASTER_REFERENCE.md`, `F_KAPPA_FUNCTIONAL_FORM.md`, and all the κ_mix work.

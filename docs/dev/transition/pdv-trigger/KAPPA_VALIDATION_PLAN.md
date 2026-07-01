@@ -10,9 +10,22 @@ fit with **`cooling_boost_kappa`** (the structural conduction boost — θ fully
 §14 validation must be re-run with the SAME knob it was calibrated on. Plus a maintainer decision (single f_κ vs
 f_κ(n)) and a flagged logging fix.
 
+## Progress (2026-07-01)
+- **T1 ✅ DONE** (committed `517c7503`): `_MINT_LOG_TOL=1.0` gates the min_T DEBUG log; return unchanged;
+  `test_run_smoke` passed. **T2 ✅ DONE** (same commit): single-f_κ decision recorded in §14 + PLAN.
+- **T3 ⏳ running — early result is a surprise:** at the *physical* f_κ=8 the **`cooling_boost_kappa` knob BREAKS
+  DOWN** on `simple_cluster` — it drives the beta-delta solver to **non-physical dMdt<0** from segment ~6
+  (`"no physical (dMdt>0) root"`), so the state **freezes** and the *physical* emergent θ (=bubble_Lloss/Lmech
+  from `dictionary.jsonl`, the accepted state) sticks at **~0.53 — it does NOT fire**, nothing like the
+  `multiplier` run's θ_max≈1.33. This is the registry's "raises evaporative mass flux … a structural probe, not
+  the final model" biting. **Testing kappa=2** to see if a lower value is stable (`outputs/kappa_val_fk2/`).
+  ⚠️ **Methodology fix:** the runner's `theta_max` observer is **contaminated** — it records *every*
+  `effective_Lloss` call incl. the solver's non-physical trial (β,δ) points (gave a bogus θ_max=3.22). Harvest
+  the PHYSICAL θ from `dictionary.jsonl` `bubble_Lloss/Lmech_total` (finite, accepted states) instead.
+
 ## Tasks
 
-- [ ] **T1 — min_T log fix (production, behaviour-neutral).** `bubble_luminosity.py:345` logs
+- [x] **T1 — min_T log fix (production, behaviour-neutral).** `bubble_luminosity.py:345` logs
   `"Rejected. min T: 29999.99…"` for every *benign* boundary transient (penalty ≈1.0), which misled the §8d
   investigation. Gate the `logger.debug` so it only fires for a *real* sub-floor (min_T meaningfully below
   `_T_INIT_BOUNDARY`), leaving the residual/return value UNCHANGED. Verify byte-identical physics (pytest;
