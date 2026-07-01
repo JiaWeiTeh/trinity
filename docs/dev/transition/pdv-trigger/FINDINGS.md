@@ -442,23 +442,35 @@ with `transition_trigger=cooling_balance,ebpeak`. Harvest: `data/harvest_shadow.
    (mCloud 4.5e9 — absurd) energy-collapses at t=0.003 *before any transition*; small_dense_highsfe
    (nCore 1e6) hits the known β-δ `MonotonicError` solver stiffness at t=0.004, also before any transition.
    Neither reaches the patched code path long enough for θ to matter.
-5. **Open design question — is dense-cloud SHELL_COLLAPSE the right physics, or does θ_max=0.99 force
-   premature collapse?** Because resolved-wins=0 (point 1), the patch cools these clouds *harder* than
-   stock TRINITY would, so it necessarily accelerates collapse relative to baseline. Two readings:
-   (a) **physical** — these clusters are modest (3e4–1e5 M⊙ of stars) against dense cores, and a
-   cooling-dominated bubble with ~1% of Lw left genuinely cannot stay open; or (b) **too aggressive** —
-   θ_max=0.99 over-cools and a softer cap (e.g. 0.95) would let dense clouds momentum-drive instead of
-   recollapse. **Isolation test in progress:** `data/_baseline_runner.py` runs the same dense configs with
-   stock trinity (no patch, default `cooling_balance`); `OUT_BASE=outputs/baseline_te`. If baseline *also*
-   collapses them, (a) holds and the patch is faithful; if baseline keeps them energy-driven/expanding, (b)
-   holds and the cap needs revisiting before Stage B. *(Dense baselines are very slow in the early implicit
-   solve — hours-scale; result to be appended here.)*
+5. **The SHELL_COLLAPSE IS patch-induced — resolved from committed data, not new runs.** The intended
+   isolation was a stock-trinity baseline (`data/_baseline_runner.py`), but dense baselines are hours-scale
+   in the stiff early implicit solve and the container restarts repeatedly killed them. **We don't need
+   them:** the committed frozen-trajectory cross-check (`§6a` + `data/ebpeak_8config_xcheck.csv`) already
+   gives stock TRINITY's *native* radiative θ — the quantity `cooling_balance` actually tests (PdV-exclusive).
+   Per §6a it **peaks at ~0.66 for compact/dense clouds** (0.17 diffuse), *far* below the 0.95 firing
+   threshold. So stock TRINITY **never fires `cooling_balance` for these dense clouds and keeps them
+   energy-driven** — consistent with the whole reason this workstream exists (TRINITY under-cools). Imposing
+   El-Badry θ=0.99 pushes native 0.66 → 0.99, and *that* is what collapses them. resolved-wins=0 (point 1)
+   is the same statement from the shadow side: θ_elbadry always exceeds native θ.
+6. **So the real question is physical, and it belongs to the maintainer:** El-Badry/Lancaster say θ≈0.9–0.99
+   *is* correct for dense clouds (high n → θ→1), so raising θ is faithful to the literature. But in
+   El-Badry's own sims a θ→1 bubble is momentum-driven and **still expands** — it does not recollapse.
+   TRINITY instead drives these to SHELL_COLLAPSED. Two readings remain, and they need a physics call:
+   (a) **physical for these configs** — the clusters are modest (3e4–1e5 M⊙ vs dense cores), so genuine
+   recollapse is plausible (Lancaster doesn't test this weak-cluster/dense corner); or (b) **artifact** —
+   either θ_max=0.99 is too aggressive (a softer cap ~0.95 leaves ~2× more driving luminosity), *or*
+   TRINITY's momentum phase mishandles a near-zero-thermal-energy bubble and collapses it when El-Badry
+   would keep it expanding. Distinguishing (a) from (b) is the **one open Stage-A item**; a θ_max sweep
+   (0.90/0.95/0.99) on 2–3 dense configs would separate "cap too high" from "momentum phase recollapses
+   regardless," and is far cheaper than the baseline full-runs.
 
-**Stage-A verdict so far:** the mechanism works end-to-end and the numerical gate (§6 max) is clean. The
-one thing standing between Stage A and Stage-B production is resolving the SHELL_COLLAPSE reading (point 5)
-— do **not** wire the production `theta_elbadry` mode until the baseline isolation settles whether θ_max=0.99
-is physical or needs softening. Artifacts (committed): `data/_theta_elbadry_runner.py`,
-`data/_baseline_runner.py`, `data/harvest_shadow.py`, `data/shadow_te_fate.csv`.
+**Stage-A verdict:** the mechanism works end-to-end, the numerical gate (§6 max) is clean, θ(n) and the
+firing threshold behave, and the dense-cloud SHELL_COLLAPSE is confirmed *patch-induced* (not stock, not a
+solver bug). What remains before Stage B is a **physics decision** — is early collapse of θ≈0.99 dense
+clouds correct, or does θ_max need softening / the momentum phase need scrutiny? Do **not** wire the
+production `theta_elbadry` mode until that decision is made. Artifacts (committed):
+`data/_theta_elbadry_runner.py`, `data/_baseline_runner.py`, `data/harvest_shadow.py`,
+`data/shadow_te_fate.csv`.
 
 ## 7. Provenance
 - Commits (`feature/PdV-trigger-term`): `6642ff4` matrix+comparator, `dc1c2fd` note patches, `17f9653`
