@@ -35,6 +35,15 @@ Verification (`data/verify_extended_fix_all_configs.csv`):
 | **`fail_helix` (real Helix: sfe0.05/PISM0)** | **1a** | **False** | `ENERGY_COLLAPSED` (51) | 7.03 |
 | `small_1e5`/`small_1e6` (healthy) | — | False | **no-op (byte-identical to pre-fix)** | — |
 
+> **⛔ SUPERSEDED for the 1b case (2026-07-01) — the table above is now STALE.** On branch
+> `bugfix/high-mass-cluster-transition-without-ebpeak`, a **finite** `Eb<=0` collapse in **phase 1b** no
+> longer ends on `ENERGY_COLLAPSED` — it **ROUTES to the momentum phase** (via 1c), so `fail_repro` now runs
+> `energy→implicit→momentum` out to the 500 pc stop radius (not `ENERGY_COLLAPSED`/R2=9.73). Only
+> **non-finite** `Eb`, and **phase-1a** collapses (e.g. `fail_helix`, routing deferred), still end
+> `ENERGY_COLLAPSED`. This plan's "ENERGY_COLLAPSED is the permanent fate" framing (incl. §"permanent
+> behaviour" below) is **no longer true for finite 1b collapses.** Canonical doc:
+> `docs/dev/transition/pdv-trigger/HIMASS_HANDOFF_PLAN.md`.
+
 Took **two** rounds: the first (G+F: `bubble_E2P` floor + post-ODE `Eb<=0` check) fixed the 1b configs but
 the real Helix point collapses *inside* phase 1a, where the per-segment solves raise *before* the post-ODE
 check — `solve_R1`→`get_r1` `sqrt(<0)` at an overshot `R2<0`, then the cooling table out-of-bounds at
@@ -476,8 +485,10 @@ fails to establish?* Three paths, in detail, so the call can be made on evidence
 
 ### Path 1 — Ship & defer  *(recommended)*
 - **What:** open a PR for `bugfix/failed-large-clouds` → main. `G+F` + the diagnostic suite (4 figs, CSVs,
-  `insights.html`) land. `ENERGY_COLLAPSED` (code 51) is the documented, **permanent** behaviour for this band;
-  downstream sweeps filter on it. Paths 2/3 stay pre-scoped, pulled off the shelf only on a concrete need.
+  `insights.html`) land. `ENERGY_COLLAPSED` (code 51) is the documented behaviour for this band.
+  *(No longer "permanent": as of 2026-07-01 a finite 1b `Eb<=0` collapse routes to momentum instead —
+  see the SUPERSEDED note at the top. `ENERGY_COLLAPSED` now means non-finite `Eb` or a phase-1a collapse.)*
+  Paths 2/3 stay pre-scoped, pulled off the shelf only on a concrete need.
 - **Remaining work:** a PR description; nothing else.
 - **Cost:** ~zero (done).  **Risk:** none technical; the only limitation is scientific (flagged, not continued)
   and it is documented + cheap to lift later.
