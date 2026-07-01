@@ -641,36 +641,56 @@ bubble, not an input you set.**
 Artifacts: `data/_theta_elbadry_gated_runner.py`, `data/gate_prototype.csv`,
 `outputs/{shadow_gate,shadow_gate_ebpeak}/`.
 
-## 8d. [data] The diffuse-config "hang" diagnosed — implicit-solve non-convergence, NOT the min_T guard (2026-07-01)
+## 8d. [data] The diffuse-config "hang" is a PERFORMANCE cliff, not a stall/bug — diagnosed (2026-07-01)
 
-Validating the §14 route-a end (n=100 at f_κ=8, `multiplier` mode) exposed a stall: both `large_diffuse_lowsfe`
-and `small_1e6` freeze at **t≈0.00293 Myr** (the energy→implicit handoff) and never advance — the apparent
-"hang" behind several timed-out/OOM'd diffuse runs this session. DEBUG diagnosis (θ_max standing rule → run to
-≥5 Myr; here it never gets there):
+Validating the §14 route-a end (n=100, `multiplier` mode) hit what looked like a stall at **t≈0.003 Myr** (the
+fixed 1a→1b handoff — as the maintainer noted, 1a ends ~3e-3 Myr). A DEBUG investigation with an f_κ sweep
+(`data/_fkappa_validation_runner.py` with `LOG_LEVEL=DEBUG`, ≥6.5 min/run) **overturned three of my initial
+claims** — logging them here because the retractions are the finding:
 
-- **What it's doing:** the bubble-structure `dMdt` fsolve re-solves the **same state** (R2=1.3819 pc, R1=0.7053
-  pc, T_inner≈2.5×10⁷ K) ~1/sec **indefinitely** — the implicit segment can't be accepted, `dt` collapses, sim
-  time never advances (`bubble_luminosity.get_bubbleproperties_pure` on repeat).
-- **⚠️ RETRACTED hypothesis:** I first blamed the `min_T < _T_INIT_BOUNDARY` guard (`bubble_luminosity.py:344`),
-  which logs **513 "Rejected. min T: 29999.99…"** boundary transients (min_T a ~1e-4 K FP undershoot below the
-  T=3×10⁴ K outer-boundary IC). **Wrong on two counts, per the data:** (1) the rejection penalty
-  `residual·(3e4/min_T)²` = **0.999993 ≈ 1.0** when min_T≈floor, so those rejections are **benign** — they
-  barely perturb the residual and do not block convergence; (2) my "relax the guard" test lowered
-  `_T_INIT_BOUNDARY`, which moves the **IC and the guard together**, so the transient just followed to the new
-  boundary (min_T=29999.94998 < 29999.95). The min_T spam is a **red herring**.
-- **Real cause:** the beta-delta / bubble-structure implicit solve **does not converge to a physical step** at
-  this early, stiff state — the same class as the `MonotonicError` / "no physical dMdt root" failures seen for
-  `midrange_pl0`/`small_dense_highsfe` (§8). The strong `multiplier` boost (f_κ=8) on a **diffuse** cloud makes
-  the structure stiff enough to trip it; the `theta_target` shadow of the same config did NOT stall here (it ran
-  to 14 Myr, §8) because that mode tops up L_loss for the trigger/ODE without re-stiffening the structure
-  integrand the way an 8× `multiplier` on L_cool does.
-- **Relevance to the plan:** this is **another reason not to push f_κ high at the diffuse end** — high f_κ there
-  is not only physically route-a but **numerically brittle**. It reinforces the §14 stance (physical f_κ cap +
-  accept route-a), and it means the diffuse route-a θ_max can't be *measured* under a big multiplier until the
-  early implicit-solve robustness is improved (out of this workstream's scope — a bubble-structure/solver item).
+**Measured throughput (`large_diffuse_lowsfe`, 6.5 min wall each; the loop logs `[Implicit] t=` per segment):**
 
-Artifacts: `data/_fkappa_validation_runner.py` (θ_max observer), `data/_minT_tol_confirm_runner.py` (the
-retracted confirmation), `outputs/{fkappa_val,fkappa_debug,minT_confirm,minT_debug}/`.
+| f_κ | segments in 6.5 min | sim-t reached | bubble-solves/seg (first 5 seg) |
+|---:|---:|---:|---:|
+| 1 (default) | 47 | 0.059 Myr | 144 |
+| 2 | 41 | 0.041 Myr | 175 |
+| 8 | 14 | 0.0078 Myr | 214 |
+
+**Findings (each correcting an earlier hypothesis):**
+
+1. **It is NOT a stall / hang / infinite loop — it is slow forward progress.** Every f_κ advances (47/41/14
+   segments); I first called it a "stall" because I checked while it was still crawling through the expensive
+   early segments and the INFO log rounds to the t=0.003 entry.
+2. **It is NOT a convergence failure.** The beta-delta `hybr` solver converges *perfectly* every segment
+   (`beta-delta hybr result: g=1e-13…1e-17, converged=True, ier=1, evals≈20`). So "accept ~1e-4 and move on"
+   does not apply — nothing marginal is being rejected; it lands at ~1e-15. **(Retracts the "implicit-solve
+   non-convergence / no physical root" claim.)**
+3. **It is NOT the `min_T` guard.** The 513 "Rejected. min T: 29999.99…" lines are boundary transients whose
+   rejection penalty `residual·(3e4/min_T)²` = **0.999993 ≈ 1.0** — benign. (My "relax the guard" test was also
+   invalid: lowering `_T_INIT_BOUNDARY` moves the IC *and* the guard together, so the transient just follows.)
+   **Red herring.**
+4. **It is NOT f_κ-specific — answering the maintainer's Q1.** f_κ=1 (default, no boost) hits the *same* t=0.003
+   handoff and grinds too; it just clears the early segments faster. So there are **two** compounding effects:
+   (a) **config-intrinsic slowness** — even f_κ=1 only reaches t=0.059 Myr in 6.5 min → **~11 h to reach 6 Myr**
+   (the "failed-large-clouds" class, mCloud=1e7 diffuse); and (b) a **cooling-boost cost concentrated in the
+   early implicit segments** at the small-R2 / fast-v2 (262 km/s) handoff corner — f_κ=8 does ~⅓ the segments
+   and reaches ~7× less sim-time than f_κ=1. Past that corner the per-segment cost converges (f_κ=1 and f_κ=2
+   both ~7 bubble-solves/seg overall). **(Retracts the "f_κ=8 stiffens the structure enough to trip it" framing
+   — the config is slow at f_κ=1 too.)**
+
+**Root cause:** a *performance* cliff — each implicit segment at this early, small-radius, fast-expanding,
+diffuse state costs many (7–50) bubble-structure `dMdt` fsolves while `dt` is small (5e-4, shrinking), so
+sim-time crawls; a cooling boost multiplies the early-segment cost. Not a correctness bug in the solver.
+
+**Relevance to the plan:** the emergent-θ mechanism itself is *correct* here (beta-delta converges); the issue
+is that **boosted diffuse runs are computationally impractical to carry to ≥5 Myr** in this environment — which,
+with the physics (§14 route-a) and the intrinsic mCloud=1e7 slowness, is a further reason to **cap f_κ low at
+the diffuse end and accept route-a**. Making these runs fast is a bubble-structure/`dt` performance item, out of
+this workstream's scope. *(Whether the slowness is the diffuse handoff or specifically the 1e7 mass: a
+size-controlled `small_1e6` (n=100, mCloud=9e5) f_κ=1 run is in flight — result appended here.)*
+
+Artifacts: `data/_fkappa_validation_runner.py` (θ_max observer + `LOG_LEVEL`), `data/_minT_tol_confirm_runner.py`
+(the retracted min_T test), `outputs/{fkappa_val,fkappa_debug,fk_compare_1,fk_compare_2,fk_compare_8}/`.
 
 ## 7. Provenance
 - Commits (`feature/PdV-trigger-term`): `6642ff4` matrix+comparator, `dc1c2fd` note patches, `17f9653`

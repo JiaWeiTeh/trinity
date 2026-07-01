@@ -583,11 +583,12 @@ mode at f_κ=8, `cooling_balance` only):**
 The two dense configs fire, and **θ_max exceeds the blowout-θ₀ prediction** (1.33 vs 0.99; 1.01 vs 0.91) —
 confirming the blowout baseline is conservative and that the emergent `multiplier` path reaches firing at a
 physical f_κ. (Both then `shell_collapsed` — the separate dense-core recollapse question, `FINDINGS §8a`, not a
-double-count; unlike enforced θ these fired from *emergent* radiative cooling.) **The n=1e2 route-a check could
-NOT be measured:** both diffuse configs **stall at t≈0.003 Myr under f_κ=8** — the implicit bubble-structure
-solve fails to converge at that stiff, diffuse, strongly-boosted state (`FINDINGS §8d` — diagnosed; the earlier
-"min_T guard" hypothesis is retracted there). This is itself evidence for the §14 stance: **high f_κ at the
-diffuse end is numerically brittle as well as physically route-a** — another reason to cap f_κ low there.
+double-count; unlike enforced θ these fired from *emergent* radiative cooling.) **The n=1e2 route-a θ_max could
+NOT be measured — but for a PERFORMANCE reason, not a bug:** the diffuse configs progress far too slowly to
+reach ≥5 Myr (even f_κ=1 needs ~11 h; a cooling boost makes the early implicit segments ~3–7× costlier). The
+beta-delta solver itself converges perfectly (`FINDINGS §8d` — the earlier "stall / min_T guard / non-convergence"
+claims are all retracted there). Net: **boosted diffuse runs are computationally impractical here** — which,
+with the physics, is a further reason to cap f_κ low at the diffuse end and accept route-a.
 
 ## 7. Provenance / caveats (read before citing a number)
 
