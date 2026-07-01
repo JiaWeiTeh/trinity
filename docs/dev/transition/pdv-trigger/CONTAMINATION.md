@@ -114,6 +114,7 @@ Status legend: **CLEAN** (quotable for its stated question) · **FLAG-x** (usabl
 | `kmix_prototype.csv` | E5 | κ_mix offline | **CONTAMINATED-(a)** (Pb anchors from 0.3–1.0 Myr runs) — GO verdict qualitative only |
 | `kmix_selfconsistent.csv`, `kmix_theta_trajectory{,_summary}.csv` | E5 | κ_mix patched | SUPERSEDED/SHELVED (+ known kprime −1/T bug, early rows unsolved, "dense low" walked back as port artifact) |
 | `elbadry_theta.csv`, `nmap_verify.csv` | E6 | analytic | CLEAN |
+| `elbadry_overlay.csv` (cherry-picked from pt1 `3e68143`, 07-01) | E6 | analytic band + resolved θ_1D | band CLEAN (Eq 37/38 PDF-verified; extrapolated beyond n≈10); TRINITY points FLAG-(b) (blowout-epoch θ_1D — re-plot from theta5 θ_max when available) |
 | `shadow_te_fate.csv` | E6 | imposed θ | SUPERSEDED (impose-θ demoted); trigger-algebra rows OK; fail_repro row `pre-#715`; FLAG-(c) (call-level diag) |
 | `sweep_tmax_fate.csv` | E6 | imposed θ | SUPERSEDED + `pre-#715`; orphan (no committed harvester) |
 | `live_pdv_decomp.csv` | E7 | none | CLEAN as the dead-stop **bug evidence**; not a fate record |

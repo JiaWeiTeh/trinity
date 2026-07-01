@@ -139,7 +139,7 @@ in **`CONTAMINATION.md`** (do not quote a number without checking it there first
 |---|---|---|
 | `feature/PdV-trigger-term-pt2` | **merged** via PR #717 → `main` (154e4da) | the whole pt2 session (E1–E7 docs/data above) |
 | `feature/transition-trigger-pt3` | **merged into this line** (d222883) | the 819-sweep fold-in (`ca3b4c7`) + `cooling_boost_kappa='auto'` (`01b9616`) — written in parallel, without pt2's same-day corrections; reconciled in FINDINGS §9 + CONTAMINATION.md |
-| `feature/PdV-trigger-term` (pt1) | stale, 5 unmerged doc commits | `HANDOFF.md` (superseded by the pt2 handoff), **`3e68143` El-Badry-PDF eq verification + θ_1D overlay (`elbadry_overlay.{csv,png}` + builder — NOT in main; worth cherry-picking if the overlay is wanted)**, storyline f_κ↔f_mix sharpening (superseded by F_KAPPA §14 framing) |
+| `feature/PdV-trigger-term` (pt1) | stale, 4 remaining unmerged doc commits | `HANDOFF.md` (superseded by the pt2 handoff), storyline f_κ↔f_mix sharpening (superseded by F_KAPPA §14 framing). **`3e68143` (El-Badry-PDF eq verification + θ_1D overlay) was cherry-picked into this line 2026-07-01** (`elbadry_overlay.{csv,png}`, FINDINGS §2 update) |
 | `fix/transition-trigger-pt2/pt3/pt3-figs` (06-16/17), `fix/transition-trigger-problem-pt4` (06-24) | ancient (≥122 behind main) | earlier transition-trigger attempts predating this workstream — historical only, do not develop on them |
 
 *Index rewritten 2026-07-01 during the pt2⇄pt3 reconciliation. Update §2/§3/§5 whenever a doc, step, or branch changes.*
