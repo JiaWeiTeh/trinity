@@ -740,6 +740,12 @@ validate — at the physical f_κ=8 it breaks down.**
   exactly the coupling El-Badry says a faithful κ_eff must **suppress** (registry note); `cooling_boost_kappa`
   does the opposite, so θ stays moderate. The faithful version (κ_mix, Rung B) would suppress evaporation — but
   it is SHELVED (unstable).
+- **`small_1e6` (n=100, diffuse), kappa=8:** physical θ≈**0.25**, no fire (also stuck in phase 1a). So the three
+  configs give a clean **monotonic emergent θ(n) = 0.25 / 0.48 / 0.53 for n = 100 / 1e4 / 1e5** — all early-time
+  (phase 1a / frozen, well before the blowout peak), all below the 0.95 threshold. The **density ordering is the
+  encouraging part**: emergent θ rises with density exactly as the "let θ emerge, route-a falls out" picture
+  predicts — but the *magnitudes* are far below `multiplier`'s and (because they're pre-peak + kappa breaks/stalls)
+  we cannot say whether the dense ones would eventually fire.
 - **kappa is also far SLOWER at ANY f_κ:** it enters the bubble-structure ODE, so every structure solve is
   costlier. **kappa=2 (stable — 0 non-physical dMdt, so f_κ=8 was simply too high) STILL timed out in phase 1a**
   (t=0.00291, 0 implicit segments in 6.5 min), physical θ≈0.49 — where the same config under `multiplier`
