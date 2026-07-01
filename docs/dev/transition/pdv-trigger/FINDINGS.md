@@ -786,3 +786,60 @@ Artifacts: `data/_kappa_validation_runner.py`, `outputs/{kappa_val,kappa_val_fk2
 - Live lowdens (now committed under `runs/data/`): `harvest_f1edge_lowdens__{none,mult2,mult3}.csv` + the
   two `f1edge_lowdens_*` rows of `live_compare.csv`; produced via `run.py` under `timeout` in an isolated
   clean worktree at `17f9653` — these used `run.py` directly, not `run_stamped`, so no `provenance.json`.
+
+## 9. [data] The 819-run sweep landed — de-conflation verdict + the θ₁-collapse law (2026-07-01, pt3)
+
+> ✳️ **Merge note (2026-07-01):** this section arrived from the parallel `feature/transition-trigger-pt3`
+> branch (commits `ca3b4c7`/`01b9616`), written the same day as §8b–§8e but **without knowledge of them**.
+> It was numbered §8 there; renumbered §9 here to avoid the collision. Read it together with §8e — the two
+> sections' `cooling_boost_kappa` results are in open tension (see the ⚠️ contamination note at the end).
+
+The controlled f_κ(n_H) grid (REPRODUCE #18, Block C) **ran on Helix 2026-06-29** — 786/819 ok in
+10h17m (`data/sweep_report.txt`; 33 array tasks died without a sentinel, all interior duplicates of
+bracketed cells). Reduced to `data/summary.csv` (786 rows), fitted per (mCloud, sfe, nCore) cell in
+`data/fkappa_nH_sweep.csv` (63 cells; `fkappa_nH_sweep.png`). Three results:
+
+1. **De-conflation verdict: a single-variable f_κ(n_H) is REFUTED.** At fixed nCore the measured
+   f_κ_fire spreads up to **32×** across (mCloud, sfe) (worst at nCore=3e3: 1→32). sfe is a strong
+   secondary axis (higher sfe ⇒ more Lmech ⇒ lower θ ⇒ more boost), and mCloud dominates the dense
+   end — 1e7 M☉ clouds fire at f_κ=1 for n≥3e3 while 1e5 M☉ still needs 3–4.
+2. **What collapses it: the starting deficit.** Over the 41 fired-above-1 cells,
+   `log10 f_κ_fire = 0.041 + 3.755·log10(0.95/θ₁)` (corr 0.968, rms 0.116 dex — vs 0.21 dex for the
+   best 3-input fit), i.e. **f_κ_fire ≈ (0.95/θ₁)^3.76** with θ₁ the resolved loss fraction at
+   f_κ=1. Equivalently a **universal leverage θ ∝ f_κ^0.266** — the pessimistic developed-epoch
+   exponent of §6, not the optimistic 0.63 snapshot estimate (which is hereby retired for
+   calibration use). `data/make_fkappa_theta1_collapse.py` → `fkappa_theta1_collapse.{csv,png}`.
+3. **Firing ⇒ momentum, at Lancaster-band θ.** At each cell's measured f_κ_fire, 57/57 runs fire
+   `cooling_balance` and 57/57 leave the energy phase (45 in `momentum`, 12 still in `transition`
+   at stop_t=2); θ_max at fire spans 0.93–1.21 (median 1.02) — the trigger crosses at θ=0.95 and
+   segment granularity overshoots the 0.99 band edge for ~half the cells.
+
+**Production consequence (shipped, pt3):** `cooling_boost_kappa = 'auto'` — a load-time registry
+resolver (`trinity/_input/fkappa_auto.py`) that trilinearly interpolates the measured 63-cell grid
+in (log mCloud_input, log sfe, log nCore); hull-clamped with a warning; the censored diffuse/high-SFE
+corner (6 cells, nothing ≤64 fired) resolves to the ceiling 64 with an explicit may-not-fire warning.
+Numeric values pass through untouched, so the default 1.0 path stays byte-identical. Tests:
+`test/test_fkappa_auto.py`. Acceptance run: `runs/params/fkauto_verify.param` (1e5 M☉, sfe 0.03,
+nCore 1e3 — a Lancaster-like GMC; auto→12) reduced by `data/make_fkappa_auto_verify.py` →
+`data/fkappa_auto_verify.csv` (REPRODUCE #26). Caveats: calibration is densPL α=0, nISM 0.1,
+stop_t=2, hybr — other profiles/solvers resolve on the same table with no measured guarantee (a
+warning is logged); f_κ remains the Rung-A structural probe (it still RAISES evaporative dMdt, §6),
+so 'auto' inherits that caveat.
+
+> ⚠️ **Post-merge contamination + tension flags (2026-07-01, added when pt3 was merged into the pt2 line;
+> see `CONTAMINATION.md`):**
+> 1. **Standing-rule violations (📏 PLAN rules 1+2):** the sweep behind the θ₁-collapse law and the `'auto'`
+>    grid ran at **`stop_t=2` Myr** (rule 1 demands ≥5 Myr) and defines `f_κ_fire` as "**fired by 2 Myr**",
+>    not as "θ_max over a ≥5 Myr run" (rule 2). A cell that would fire between 2 and 5 Myr at lower f_κ is
+>    over-boosted by 'auto'; the six censored cells might fire by 5 Myr. **The 63-cell grid is therefore
+>    PROVISIONAL until re-measured under the 8-config × 5 Myr × θ_max protocol** (`runs/README.md`).
+> 2. **Open tension with §8e:** §8e (same day, pt2 line, no cross-knowledge) found `cooling_boost_kappa=8`
+>    drives the β-δ solver to non-physical `dMdt` and a frozen state on `simple_cluster`/`be_sphere`/
+>    `small_1e6`, while this sweep reports 57/57 cells firing cleanly at f_κ_fire up to 64 under
+>    (`betadelta_solver=hybr`, α=0, nISM 0.1, stop_t 2). Candidate explanations — solver choice, config
+>    differences, or §8e's early-time truncation — are **unresolved**. Do not treat either result as
+>    refuting the other until one run matrix covers both setups.
+> 3. **Direction tension:** 'auto' interpolates a per-cloud f_κ so that *every* cloud fires — this
+>    chases the target, in tension with the same-day maintainer decisions "single physical f_κ constant,
+>    NOT f_κ(n)" and route-a ("diffuse clouds may never enter momentum"). 'auto' therefore stands as a
+>    **documented opt-in convenience mode** (like `theta_target`), not the production direction.

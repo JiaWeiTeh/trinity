@@ -147,3 +147,11 @@ calibrating `f_κ(properties)` to the `θ(n_H)` target (El-Badry `λδv`=κ_eff 
 (`../FINDINGS.md`) close the loop — calibrate to θ_lit(n). **Caveat:** the figure's literature band is still
 SCHEMATIC pending a PDF digitize (`NOTE_PATCHES.md` Patch 4), so it quantifies **no** gap; the
 constant-can't-bridge case rests on the fmix table (f_mix 1.36 dense → 3.81 diffuse), not the band.
+
+## fkauto_verify (2026-07-01, pt3) — acceptance run for `cooling_boost_kappa='auto'`
+
+`params/fkauto_verify.param`: one cell of the 819-run sweep (mCloud 1e5, sfe 0.03, nCore 1e3 — a
+Lancaster-like GMC; same fixed recipe: densPL α=0, nISM 0.1, stop_t 2) with `cooling_boost_kappa auto`.
+Contract: 'auto' resolves to the sweep-measured f_κ_fire=12, `cooling_balance` fires (θ→0.95), and the
+run reaches the momentum chain. Reduce with `python ../data/make_fkappa_auto_verify.py` →
+`../data/fkappa_auto_verify.csv` (REPRODUCE #26). Raw output stays in gitignored `outputs/fkauto_verify/`.
