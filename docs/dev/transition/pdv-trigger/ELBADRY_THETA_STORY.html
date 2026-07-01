@@ -1,0 +1,305 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TRINITY — The El-Badry θ trigger: what it is, what we impose, and where it breaks</title>
+<script>window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["$$","$$"],["\\[","\\]"]]},svg:{fontCache:"global"}};</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<style>
+:root{--ink:#1f2733;--mut:#5b6675;--line:#e3e8ef;--bg:#fff;--panel:#f7f9fc;--accent:#2c6fb3;--red:#c0392b;--green:#2f9e44;--purple:#7b4fb0;}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.62 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+.book{max-width:900px;margin:0 auto;padding:38px 22px 110px;}
+.book>h1{font-size:30px;line-height:1.2;margin:0 0 6px;letter-spacing:-.01em;}
+.book>.lede{color:var(--mut);font-size:16.5px;margin:0 0 22px;}
+.bn{border:1px solid var(--line);border-left-width:4px;border-radius:8px;padding:11px 15px;margin:9px 0;font-size:13px;line-height:1.5;background:var(--panel);color:#3b4452;}
+.bn.warn{border-left-color:#e8842a;}.bn.live{border-left-color:#2c6fb3;}.bn.keep{border-left-color:#2f9e44;}.bn.x{border-left-color:#c0392b;}
+nav.toc{border:1px solid var(--line);border-radius:12px;padding:14px 20px;margin:24px 0 10px;background:#fbfcfe;}
+nav.toc h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin:0 0 8px;}
+nav.toc ol{margin:0;padding-left:20px;}nav.toc>ol>li{margin:5px 0;font-weight:600;}
+nav.toc a{color:var(--accent);text-decoration:none;}nav.toc a:hover{text-decoration:underline;}
+.chapter{border-top:2px solid var(--line);margin-top:40px;padding-top:6px;}
+.ch-num{display:block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin:22px 0 2px;}
+.ch-title{font-size:24px;margin:2px 0 12px;letter-spacing:-.01em;}
+h3{font-size:18px;margin:24px 0 8px;}
+code{background:#f3f6fa;border:1px solid var(--line);border-radius:4px;padding:1px 5px;font:13px/1.4 "SFMono-Regular",Consolas,Menlo,monospace;}
+pre{background:#1c2330;color:#e6e9ef;padding:13px 15px;border-radius:9px;overflow:auto;font-size:12.5px;line-height:1.5;}
+pre code{background:none;border:0;color:inherit;padding:0;}
+figure{margin:22px 0;text-align:center;}
+figure img{max-width:100%;border:1px solid var(--line);border-radius:9px;box-shadow:0 2px 12px rgba(20,30,50,.06);}
+figcaption{color:var(--mut);font-size:13px;margin-top:8px;text-align:left;}
+table{border-collapse:collapse;width:100%;margin:16px 0;font-size:13.5px;}
+th,td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top;}
+th{background:#f1f4f9;font-weight:600;}tr:nth-child(even) td{background:#f7f9fc;}
+.callout{border-left:4px solid var(--accent);background:#f2f7fc;padding:11px 16px;border-radius:0 8px 8px 0;margin:16px 0;}
+.callout.ok{border-color:var(--green);background:#f0faf6;}.callout.warn{border-color:#c9a400;background:#fffbe9;}.callout.bad{border-color:var(--red);background:#fdf2f0;}
+.pill{display:inline-block;font-size:11.5px;font-weight:600;padding:2px 9px;border-radius:999px;background:#eef1f6;color:#445;margin-right:5px;}
+.pill.ok{background:#d8f3e8;color:#0f6b48;}.pill.bad{background:#fde0dc;color:#9b271b;}.pill.q{background:#ede7f6;color:#5b3ea6;}
+.meta{color:var(--mut);font-size:13px;border-top:1px solid var(--line);margin-top:56px;padding-top:16px;}
+</style></head><body><div class="book">
+
+<h1>The El-Badry θ trigger — what it is, what we impose, and where it breaks</h1>
+<p class="lede">A single number, θ = L<sub>cool</sub>/L<sub>mech</sub>, decides when a feedback bubble stops
+being energy-driven. This documents the El-Badry closed form we use for it, exactly what the shadow harness
+imposes and checks, the physics underneath — and the regime where imposing it fights the newly-merged
+high-mass momentum handoff.</p>
+
+<div>
+  <p class="bn warn"><b>⚠️ May be out of date — verify before trusting.</b> Point-in-time analysis, not a
+  maintained spec; code moves faster than these notes. Re-check every claim, snippet, and line reference
+  against current source.</p>
+  <p class="bn live"><b>🔄 Living document — recheck and refine on every visit.</b> Re-verify the claims,
+  update drift, and rethink the framing if a better one exists. Leave it better than you found it.</p>
+  <p class="bn keep"><b>💾 Persist diagnostics — commit, don't re-run.</b> Every figure here traces to a
+  committed harness/CSV under <code>docs/dev/transition/pdv-trigger/</code>. Regenerate with
+  <code>make_elbadry_story_figs.py</code>; do not re-run the hours-long sims to recover a number.</p>
+  <p class="bn x">🔗 <b>Cross-check siblings.</b> This narrative summarizes <code>PLAN.md</code>,
+  <code>FINDINGS.md</code> §8/§8a/§8b, <code>ELBADRY_REFERENCE.md</code>, <code>LANCASTER_REFERENCE.md</code>,
+  <code>THETA_ELBADRY_SPEC.md</code>, and main's <code>HIMASS_HANDOFF_PLAN.md</code>. If a number here
+  disagrees with a sibling, reconcile both.</p>
+</div>
+
+<nav class="toc"><h2>Contents</h2><ol>
+<li><a href="#c1">The master parameter θ, and El-Badry's closed form</a></li>
+<li><a href="#c2">What we IMPOSE — <code>effective_Lloss</code></a></li>
+<li><a href="#c3">What we CHECK — the cooling_balance trigger</a></li>
+<li><a href="#c4">The physics behind the √(λδv·n) form</a></li>
+<li><a href="#c5">Stage-A: the fate map (pre-PR#715)</a></li>
+<li><a href="#c6">The reversal — imposing θ fights the PR#715 handoff</a></li>
+<li><a href="#c7">Open question — does v2&lt;0 mean momentum?</a></li>
+<li><a href="#c8">Reproduce</a></li>
+</ol></nav>
+
+<!-- ================================================================= -->
+<div class="chapter" id="c1">
+<span class="ch-num">Chapter 1</span>
+<h2 class="ch-title">The master parameter θ, and El-Badry's closed form</h2>
+
+<p>TRINITY transitions a feedback bubble from <b>energy-driven</b> (a hot, thermally-supported interior does
+PdV work on the shell) to <b>momentum-driven</b> (the hot gas has radiated away; only the wind's direct ram
+pressure remains) when the bubble becomes cooling-dominated. The single number that measures "cooling-dominated"
+is</p>
+
+<p>$$\theta \;\equiv\; \frac{L_{\rm cool}}{L_{\rm mech}}\qquad(\text{fraction of the mechanical luminosity radiated away}).$$</p>
+
+<p>θ is <b>identical</b> across the three sources we lean on: TRINITY's <code>cooling_balance</code> trigger,
+El-Badry+2019 ($\theta=L_{\rm int}/\dot E_{\rm in}$), and Lancaster ($\theta=\dot E_{\rm cool}/L_w$). All the
+bubble dynamics follow through the factor $(1-\theta)$ — the fraction of energy left to drive the shell.</p>
+
+<p>The problem this workstream exists to solve: TRINITY's <b>native</b> radiative cooling under-cools. Its
+resolved θ peaks near <b>0.66</b> for compact/dense clouds (FINDINGS §6a) — well below the 0.95 trigger — so
+realistic clouds never transition, even though El-Badry and Lancaster both say θ should be ~0.9–0.99 for them.
+So we <b>impose</b> a physically-motivated θ. El-Badry+2019 gives a closed form for it (their Eq 37/38):</p>
+
+<p>$$\boxed{\;\theta(n) \;=\; \frac{A_{\rm mix}\,\sqrt{\lambda\delta v\,n}}{\tfrac{11}{5} + A_{\rm mix}\,\sqrt{\lambda\delta v\,n}}\;}$$</p>
+
+<table>
+<tr><th>symbol</th><th>meaning</th><th>value we set</th></tr>
+<tr><td>$A_{\rm mix}$</td><td>mixing-layer normalization (fit; 1.7 analytic)</td><td><b>3.5</b> (El-Badry Eq 37 fit)</td></tr>
+<tr><td>$\lambda\delta v$</td><td>mixing length × velocity (pc·km/s) — the one free knob</td><td><b>3.0</b> (calibrated to Lancaster GMC θ≈0.9–0.99)</td></tr>
+<tr><td>$n$</td><td>local gas density at the shell, <code>get_density_profile(R2)</code> → cm⁻³</td><td>per-step, per-config</td></tr>
+<tr><td>$\theta_{\max}$</td><td>saturation cap</td><td><b>0.99</b></td></tr>
+</table>
+
+<figure>
+<img src="fig/elbadry_f1_closedform.png" alt="El-Badry closed form theta(n)">
+<figcaption><b>Fig 1.</b> The closed form. θ rises with √(λδv·n) and saturates. With λδv=3 (solid) it crosses the
+0.95 firing threshold at <b>n<sub>fire</sub> ≈ 48 cm⁻³</b>: clouds denser than that transition; diffuse clouds
+(n≲48) stay energy-driven. Points are the 8 test configs at their core density, colored by Stage-A fate.
+θ is essentially pinned at the 0.99 cap for every cloud with n≳10⁴.</figcaption>
+</figure>
+
+<p>So "El-Badry θ=0.99 imposed" is shorthand for: <em>for a dense cloud, the √n term saturates the closed form,
+θ pins at the cap 0.99, and the model is told to radiate 99% of L<sub>mech</sub></em> — leaving 1% to drive the
+shell.</p>
+</div>
+
+<!-- ================================================================= -->
+<div class="chapter" id="c2">
+<span class="ch-num">Chapter 2</span>
+<h2 class="ch-title">What we IMPOSE — <code>effective_Lloss</code></h2>
+
+<p>The shadow harness (<code>data/_theta_elbadry_runner.py</code>) monkeypatches one function,
+<code>effective_Lloss_from_params</code> (bound in both <code>get_betadelta.py</code> and
+<code>run_energy_implicit_phase.py</code>), so every solver step uses:</p>
+
+<pre><code>theta   = A_mix * sqrt(lambda_dv * n_amb(R2)) / (11/5 + A_mix * sqrt(...))   # capped at 0.99
+L_loss  = max( L_cool + L_leak,   theta * L_mech )     # &lt;- what we impose</code></pre>
+
+<p>This reuses TRINITY's existing <code>theta_target</code> mode exactly (<code>get_betadelta.py:355</code>):
+the <code>max()</code> guarantees we never <em>reduce</em> cooling below what TRINITY resolves — we only lift it
+up to the El-Badry target. The imposed L<sub>loss</sub> then feeds consistently into the (β,δ) residual, the
+<code>Edot_from_balance</code> energy ODE, and the trigger.</p>
+
+<figure>
+<img src="fig/elbadry_f2_impose.png" alt="imposed theta per config vs native">
+<figcaption><b>Fig 2.</b> The imposed El-Badry θ per config (bars) sits far above the native radiative θ peak
+(~0.66, purple band). Across all 9 configs the diagnostic <code>resolved-wins = 0/N</code> — El-Badry's θ wins
+the <code>max()</code> on <em>every</em> call, so imposing θ here is operationally identical to assigning it
+directly. That is the whole point (native under-cools) — and also, as Chapter 6 shows, the whole danger.</figcaption>
+</figure>
+</div>
+
+<!-- ================================================================= -->
+<div class="chapter" id="c3">
+<span class="ch-num">Chapter 3</span>
+<h2 class="ch-title">What we CHECK — the cooling_balance trigger</h2>
+
+<p>The transition fires (<code>run_energy_implicit_phase.py:1207</code>, and now also in phase 1a) when the net
+energy fraction drops below a threshold:</p>
+
+<p>$$\frac{L_{\rm gain}-L_{\rm loss}}{L_{\rm gain}} < 0.05 \qquad\Longleftrightarrow\qquad \theta \ge 0.95$$</p>
+
+<p>with $L_{\rm gain}=L_{\rm mech}$. So the "0.95 trigger" and "net energy &lt; 5%" are the same statement.
+Imposing the El-Badry θ is exactly what pushes a cloud across it.</p>
+
+<figure>
+<img src="fig/elbadry_f3_check.png" alt="the cooling_balance check">
+<figcaption><b>Fig 3.</b> The check is one line: fire when $1-\theta<0.05$, i.e. θ≥0.95 (green). Because the
+El-Badry θ saturates near 0.99 for dense clouds, they land deep in the firing region; only the very diffuse
+<code>diffuse_probe</code> (θ=0.897) stays left of the line and remains energy-driven until PdV (<code>ebpeak</code>)
+eventually trips it.</figcaption>
+</figure>
+</div>
+
+<!-- ================================================================= -->
+<div class="chapter" id="c4">
+<span class="ch-num">Chapter 4</span>
+<h2 class="ch-title">The physics behind the √(λδv·n) form</h2>
+
+<p>El-Badry+2019 models the bubble's cooling as happening in a <b>turbulent mixing layer</b> at the
+interface between the hot ($10^6$–$10^7$ K) interior and the cool ($\sim10^4$ K) shell. Hot and cool gas mix at
+an intermediate temperature $T_{\rm pk}\approx2\times10^4$ K where the cooling function peaks; the layer radiates
+efficiently there. The mixing rate scales as the product of a mixing length and a velocity ($\lambda\delta v$),
+and the emission measure of the layer scales with density $n$ — so the radiated luminosity, and hence θ, grows
+as $\sqrt{\lambda\delta v\,n}$. The $11/5$ and $A_{\rm mix}$ come from integrating the cooling function through
+the layer (El-Badry §3.1/§5.2, Eq 16/19/20/21/35/37/38; verified from the maintainer-supplied PDF —
+<code>ELBADRY_REFERENCE.md</code>).</p>
+
+<div class="callout warn"><b>Regime caveat (this is the crux of Chapter 6).</b> El-Badry's θ is a
+<em>radiative</em> ratio, derived for <em>SN-driven</em> bubbles where the interior is hot and tenuous and
+radiative mixing-layer cooling is the dominant sink. It says nothing about <b>PdV / inertial</b> losses. When
+TRINITY's dominant sink is PdV work on a heavy shell (massive clouds), the El-Badry radiative θ is off-regime.</div>
+
+<p>Two independent anchors agree the magnitude is right where it applies: Lancaster's 3D GMC sims give θ≈0.9–0.99
+for n<sub>H</sub>≈40–2×10⁵, and calibrating λδv≈3 lands El-Badry's θ in that band (within ~15%). This is why
+λδv=3 is the chosen knob (<code>LANCASTER_REFERENCE.md</code> §7).</p>
+</div>
+
+<!-- ================================================================= -->
+<div class="chapter" id="c5">
+<span class="ch-num">Chapter 5</span>
+<h2 class="ch-title">Stage-A: the fate map (pre-PR#715 code)</h2>
+
+<p>Running the imposed-θ harness end-to-end on 9 configs to ≥5 Myr (<code>data/shadow_te_fate.csv</code>) gave a
+clean split — and it is <b>not</b> gated by θ alone (every dense cloud pins at 0.99) but by cluster power vs
+cloud binding:</p>
+
+<figure>
+<img src="fig/elbadry_f4_fatemap.png" alt="Stage-A fate map">
+<figcaption><b>Fig 4.</b> Mass–density plane, marker size ∝ imposed θ. Dense compact clouds (n≳10⁴) fire almost
+instantly and <b>recollapse</b> (SHELL_COLLAPSED, red); well-powered diffuse clouds reach STOPPING_TIME expanding
+(green); the heavy <code>fail_repro</code> (5×10⁹ M☉) dead-stopped as ENERGY_COLLAPSED (purple) on this old code.
+Two firing/threshold results are robust and survive everything below: the <code>max()</code> gate is safe
+(resolved-wins 0/N), and n<sub>fire</sub>≈48 behaves.</figcaption>
+</figure>
+
+<p>Stage-A's original reading was "dense clouds physically recollapse." The θ<sub>max</sub> sweep
+(<code>data/sweep_tmax_fate.csv</code>) then showed the recollapse is <em>independent of the cap</em> — every
+θ<sub>max</sub>∈{0.80…0.99} recollapses at the same time, and below 0.95 the transition still fires via PdV
+(<code>ebpeak</code>). That looked like intrinsic physics. <b>Then the code changed under us.</b></p>
+</div>
+
+<!-- ================================================================= -->
+<div class="chapter" id="c6">
+<span class="ch-num">Chapter 6</span>
+<h2 class="ch-title">The reversal — imposing θ fights the PR#715 handoff</h2>
+
+<p>The maintainer merged <code>bugfix/high-mass-cluster-transition-without-ebpeak</code> (PR #715) to main:
+phase 1b now <b>routes a finite $E_b\le0$ collapse to the momentum phase</b>
+(<code>classify_energy_collapse</code>, <code>ENERGY_HANDOFF_FLOOR=1e3</code>) instead of dead-stopping as
+ENERGY_COLLAPSED, and phase 1a gains a <code>cooling_balance</code> parity check. I merged main in and re-ran.</p>
+
+<figure>
+<img src="fig/elbadry_f5_reversal.png" alt="default vs theta imposed on new code">
+<figcaption><b>Fig 5.</b> On the merged code, <b>default</b> (green) does what the fix intends —
+<code>fail_repro</code> expands to the 500 pc stop radius (v2=+37), <code>pl2_steep</code> is expanding (v2=+23).
+<b>Imposing El-Badry θ</b> (red) drives the <em>same</em> clouds violently inward to the −500 pc/Myr
+<code>velocity_runaway</code> cap, R2→0. Imposing θ <b>reverses the fix.</b></figcaption>
+</figure>
+
+<p>Why? Because the high-mass turnover is <b>PdV/inertia-driven, not radiative</b> — and imposing a radiative θ
+there double-counts the loss:</p>
+
+<figure>
+<img src="fig/elbadry_f6_regime.png" alt="PdV vs radiative regime">
+<figcaption><b>Fig 6.</b> Live decomposition (main's <code>data/live_pdv_decomp.csv</code>). For
+<code>fail_repro</code> at the Eb-peak, PdV is <b>99%</b> of L<sub>mech</sub> while radiative is <b>~1%</b> —
+the shell soaks the energy as bulk motion. Imposing θ=0.99 there injects a fake radiative sink of 0.99·L<sub>mech</sub>
+<em>on top of</em> the real PdV sink (already counted separately in
+$\dot E = L_{\rm gain}-L_{\rm loss}-4\pi R_2^2 v_2 P_b$), so the bubble is over-drained and crashes inward.
+Only <code>f1edge_hidens</code> is genuinely radiative-dominated — there El-Badry's θ is appropriate.</figcaption>
+</figure>
+
+<div class="callout bad"><b>Consequence.</b> The <code>theta_elbadry</code> SPEC, as written (impose θ on every
+cloud), re-breaks exactly the massive clouds PR #715 just fixed. El-Badry's θ is physical only where <b>radiative
+cooling dominates</b> (dense/compact). The mode needs a <b>regime gate</b> — off when PdV/L<sub>mech</sub>≳1,
+deferring those clouds to the momentum handoff. Stage B (production wiring) is <b>not ready</b> for the
+massive-cloud regime. (FINDINGS §8b.)</div>
+</div>
+
+<!-- ================================================================= -->
+<div class="chapter" id="c7">
+<span class="ch-num">Chapter 7</span>
+<h2 class="ch-title">Open question — does v2&lt;0 mean momentum?</h2>
+
+<p><span class="pill q">open</span> When the shell reverses ($v_2<0$), should the run jump straight to the
+momentum phase (dropping the cooling/structure solve)? It would prevent the solver hang seen at the collapse
+singularity. But thinking critically: <b>no, $v_2<0$ does not by itself mean momentum-driven.</b></p>
+
+<ul>
+<li>The energy↔momentum distinction is about the <b>thermal reservoir $E_b$</b>, not the velocity sign.
+"Momentum-driven" means $E_b\to0$ so the bubble pressure floors at the wind ram pressure. A bubble with
+<b>$E_b>0$ and $v_2<0$</b> is a thermally-supported shell that is recollapsing because gravity + swept-up inertia
++ ambient pressure currently exceed $4\pi R_2^2 P_b$ — it is <b>still energy-driven</b>, and physical.</li>
+<li>Such a bubble can even <b>rebound</b>: as it contracts it does negative PdV work on the interior, $E_b$ (and
+$P_b$) rise, resisting collapse — an oscillatory "breathing" mode. Forcing it to momentum on the first $v_2<0$
+would destroy that physics and mislabel the state.</li>
+<li>The correct transition criterion is therefore the maintainer's <b>$E_b$-based</b> one (thermal energy spent
+→ momentum). A collapsing $E_b>0$ bubble that keeps shrinking is a genuine <b>SHELL_COLLAPSED</b> (the cloud
+recollapses to re-form stars), not a momentum handoff.</li>
+</ul>
+
+<div class="callout"><b>So the solver hang is an $E_b$-singularity issue, not a velocity one.</b> The structure
+solve goes singular only as $E_b\to0$ ($R_1\to R_2$, shell_volume→0). In the θ-imposed runs the over-cooling
+drove $E_b$ <em>negative</em>, and the transition phase kept solving the singular structure (that is the hang).
+The robust fix is to check $E_b$ / the pressure-crossover <em>before</em> the expensive structure solve each step
+and route then — the "pressure-crossover terminal event" the maintainer already flagged as deferred
+(<code>HIMASS_HANDOFF_PLAN.md</code> §2) — <b>not</b> a $v_2<0$ trigger. My earlier "$v_2<0$ → momentum"
+suggestion is retracted.</div>
+</div>
+
+<!-- ================================================================= -->
+<div class="chapter" id="c8">
+<span class="ch-num">Chapter 8</span>
+<h2 class="ch-title">Reproduce</h2>
+<pre><code># figures (reads only committed CSVs, no sim):
+python docs/dev/transition/pdv-trigger/make_elbadry_story_figs.py
+
+# the shadow harness (imposes El-Badry theta, no production edit):
+LDV=3 THETA_MAX=0.99 STOP_T=6 OUT_BASE=outputs/shadow_te \
+  python docs/dev/transition/pdv-trigger/data/_theta_elbadry_runner.py &lt;config.param&gt; &lt;name&gt;
+
+# the default baseline (stock trigger, for the Fig-5 contrast):
+STOP_T=6 OUT_BASE=outputs/baseline_v2 \
+  python docs/dev/transition/pdv-trigger/data/_baseline_runner.py &lt;config.param&gt; &lt;name&gt;
+
+# harvest a fate table:
+OUT_BASE=outputs/shadow_te python docs/dev/transition/pdv-trigger/data/harvest_shadow.py</code></pre>
+<p>Data: <code>data/{shadow_te_fate,sweep_tmax_fate,newcode_default_vs_theta,ebpeak_8config_xcheck,live_pdv_decomp}.csv</code>.
+Closed-form constants: A<sub>mix</sub>=3.5, λδv=3, θ<sub>max</sub>=0.99, n<sub>fire</sub>≈48 cm⁻³.</p>
+
+<p class="meta">Generated for branch <code>feature/PdV-trigger-term-pt2</code>. Figures:
+<code>make_elbadry_story_figs.py</code> → <code>fig/elbadry_f{1..6}_*.png</code>. Sources of truth:
+<code>PLAN.md</code>, <code>FINDINGS.md</code> §8–§8b, <code>THETA_ELBADRY_SPEC.md</code>,
+<code>ELBADRY_REFERENCE.md</code>, <code>LANCASTER_REFERENCE.md</code>, main's <code>HIMASS_HANDOFF_PLAN.md</code>.</p>
+
+</div></body></html>

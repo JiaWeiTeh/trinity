@@ -407,6 +407,11 @@ shadow `ebpeak_t=None` — **`ebpeak` never fired**.
 
 ## 8. [data] Stage-A shadow — El-Badry θ imposed end-to-end on 9 configs (2026-06-30)
 
+> 📖 **Illustrated walkthrough:** `ELBADRY_THETA_STORY.html` (6 figures, `make_elbadry_story_figs.py` →
+> `fig/elbadry_f{1..6}_*.png`) narrates the closed form, what §2/§3 impose & check, the physics, and the §8b
+> reversal. Regenerate with `python docs/dev/transition/pdv-trigger/make_elbadry_story_figs.py` (reads only the
+> committed CSVs).
+
 First end-to-end test of the capstone (`THETA_ELBADRY_SPEC.md`). `data/_theta_elbadry_runner.py`
 monkeypatches `effective_Lloss_from_params` (in BOTH `get_betadelta` and `run_energy_implicit_phase`) to
 the El-Badry analytic θ — `θ = A_mix·√(λδv·n_amb)/(11/5 + A_mix·√(λδv·n_amb))`, A_mix=3.5, λδv=3,
