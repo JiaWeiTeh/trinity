@@ -1,4 +1,4 @@
-# PdV-trigger workstream — findings (verified, 4/4 live configs)
+# PdV-trigger workstream — findings (✅ direction corrected 2026-07-01: θ is an output, f_κ reinstated — see §8c)
 
 > ⚠️ **This document may be out of date — verify before trusting it.** It is a
 > point-in-time analysis/audit, not a maintained spec; the code moves faster
@@ -38,6 +38,93 @@
 > **[schematic / to-verify]**.
 
 ## Taxonomy of the approaches (read first; 2026-06-28)
+
+> ✅ **DIRECTION CORRECTED 2026-07-01 — read `PLAN.md` ⭐⭐ canonical synthesis + `FINDINGS.md §8c` FIRST.**
+> The current direction is **Rung A / f_κ — boost the cooling MECHANISM and let θ EMERGE** (`cooling_boost_mode=
+> 'multiplier'`), with El-Badry/Lancaster as the **calibration target** for the emergent θ, not an enforced
+> value. The intermediate "impose El-Badry θ" (`theta_target`/θ_elbadry) avenue is **demoted to an opt-in
+> override** because enforcing θ double-counts the PdV loss on massive clouds (§8b) — a symptom of enforcement
+> that f_κ does not have (§8c). So the f_κ callouts below are **back on the critical path** (the power-law
+> *exponents* still need recalibration to the "physical value + accept route-a" stance of
+> `F_KAPPA_FUNCTIONAL_FORM.md` §11–13); the θ_elbadry callouts at the bottom are the **opt-in option**, not the
+> default. Historical caveat: earlier revisions of THIS banner (06-30) said the reverse — treat those as
+> superseded.
+
+> **→ Calibration target (2026-06-29):** the composed closed-form **f_κ(n_H) = (θ\*/θ₀(n_H))^(1/p) ≈
+> 1.4×10²·n_H^(−0.30)** now lives in **`F_KAPPA_FUNCTIONAL_FORM.md`** (target = Lancaster flat θ*≈0.90 · baseline
+> `logit θ₀ = −1.73+0.41 log₁₀ n_H` · raw full-range leverage p≈0.31). f_κ≈48(diffuse)/9(mid)/3(dense) for
+> θ*=0.95 — matches the measured firing anchor (compact fires at f_κ≈3.4). It supersedes the §2-area schematic
+> for *how to set f_κ* and confirms there is **no literature `f_κ ∝ n_H^p`** to borrow. (A logit/odds-space first
+> cut overshot ~10–30× — θ fires before it saturates; see the doc's §0 🛠 correction.) **El-Badry §3.1/§5.2 now
+> VERIFIED from the maintainer-supplied PDF** (Eq 16/19/20/21/35/37/38; A_mix≈3.5) — the earlier `[unverified]`
+> hedge is retracted, and El-Badry's θ(n_H,λδv) target agrees with Lancaster to ~15% in f_κ. Citation: MNRAS
+> 490,1961 / Weisz / arXiv:1902.09547 (*not* ApJ 879). This supersedes the §2/§2a "[schematic/to-verify]" flags
+> for El-Badry's specific algebra.
+>
+> **→ SWEEP RESULTS (2026-06-29):** the 819-combo grid ran (Helix). Measured central trend **f_κ_fire ≈
+> 1.0×10³·n_core^(−0.60)** (θ\*=0.95) — steeper than the predicted n^(−0.30). **De-conflation = fan-out** (×2–32
+> spread across mCloud/sfe ⇒ f_κ is multi-dimensional, not f(n_H) alone), and **6/63 low-n high-sfe cells never
+> fire even at f_κ=64** (the diffuse corner needs the structural κ_mix). The pre-registered scorecard (2 ✅
+> qualitative, slope ❌ 2× too shallow from an undersampled 6-anchor baseline) is in `F_KAPPA_FUNCTIONAL_FORM.md`
+> §8 (`data/fkappa_nH_sweep.csv`, `data/make_fkappa_sweep_analysis.py`).
+>
+> **→ Fan-out anatomy + metric (2026-06-29, §9–§10):** the 1e7 "broken power law" = a **catastrophic-cooling
+> cliff** — θ@f_κ=1 fires with no boost above a ≈constant **column** N_H≈8×10²³ (massive clouds fire at lower
+> density because they sweep that column at lower n). The fan-out is multi-dimensional: nCore primary (R²=0.73),
+> + rCloud/cloud-size secondary (2-var 0.75), **independent of cluster mass** (f_κ_fire vs M★ R²=0.002). The
+> metric (θ=L_cool/L_mech at blowout R2>rCloud; fire on theta_max≥0.95) is robust — snapshot-vs-peak median
+> 0.004 — with one fixable imprecision (theta_max not capped at blowout_t). Builder `data/make_fkappa_cliff_metric.py`.
+>
+> **→ Don't-force-it reframing (2026-06-29, §11–§12):** the *physical* f_κ (El-Badry κ_mix∝n) **rises** with
+> density, OPPOSITE the empirical fire-threshold (∝n^−0.6) — so a physically-bounded f_κ leaves the diffuse corner
+> **energy-driven by choice** rather than cranking f_κ to 64 to force it. A physical cap f_max≈2–8 predicts a
+> falsifiable **critical column** N_crit≈1–4×10²³ cm⁻² for the energy→momentum split (6/63 never fire under any
+> cap). Tension: Lancaster 3D says diffuse clouds also cool → accept-non-transition vs add-κ_mix, settled vs obs.
+> Builder `data/make_fkappa_physical_cap.py`; prescriptions are testable by re-analysis of `summary.csv` (no sims).
+>
+> **→ Physical prescription DERIVED (2026-06-29, §13):** three f_κ(n) — mechanism κ_mix/κ_Spitzer ∝ n (rises),
+> target θ*(n;λδv) flat-high, boost ∝ n^−0.6 (falls; a boost factor, NOT a conductivity). Crossover n_crit=0.25
+> (matches El-Badry); a **scalar f_κ can't represent κ_mix** (Spitzer ∝ T^(5/2) vanishes in the cool layer →
+> ratio 10³–10⁷). The verified El-Badry θ* is flat-high even at diffuse (0.94 vs 1D 0.29) ⇒ the diffuse
+> never-fire is likely a **1D under-cooling artifact** → faithful fix is the **structural κ_mix (Rung B,
+> re-promoted)**, not a scalar f_κ power law. Builder `data/make_fkappa_physical_derivation.py`;
+> reconciles RUNGB_SCOPING's κ_mix-magnitude. Next: wire the gated κ_mix mode (RUNGB §8).
+>
+> **→ Manuscript draft verified (2026-06-29, `KMIX_DIFFUSIVITY.md`):** a maintainer LaTeX draft, ~90% matching our
+> results. Key **refinement adopted**: do *not* import El-Badry's λδv∈[1,10] (doubly off-regime — discrete-SN +
+> ISM density); use El-Badry for the *mechanism*, take δv from v_rel, and **calibrate λ so resolved θ matches
+> Lancaster 0.9–0.99** (the cadence-free magnitude anchor). Flags: the draft's "sweep not yet run" is stale (it
+> fanned out); the eddy-turnover λ closure is heuristic; route a (diffuse energy-driven) vs b (κ_mix under-cooling)
+> stays open until κ_mix is wired + tested on all 8 configs.
+>
+> **→ κ_mix offline prototype (2026-06-29, `KMIX_PROTOTYPE.md`):** step 1 of the Rung-B implementation, **GO**.
+> Offline, units-correct (Pb AU→cgs /1.5454e12; λδv→cm²/s), no solver touched. At the front
+> `κ_mix/κ_Spitzer = λδv·Pb/(C_th·T^{7/2})`: in the cool layer (2e4–2e5 K) **κ_mix dominates Spitzer 10³–10⁹ even
+> at λδv=1** (compact/diffuse/dense; 4 of 8 configs) → wiring warranted, but λδv is the sensitive knob (calibrate
+> to Lancaster). Master navigation now in **`INDEX.md`**.
+>
+> **→ κ_mix SELF-CONSISTENT in the real solver (2026-06-30, `KMIX_SELFCONSISTENT.md`):** injected `κ_eff =
+> max(κ_mix, κ_Spitzer)` into the production structure solve (monkeypatch, no edit), 6 cleanroom + 2 fixtures.
+> G1 bit-identical-off + G2 replay pass. **κ_mix raises θ and the solver is stable, BUT θ SATURATES by
+> λδv≈0.01** (κ_mix is 10⁵–10⁸× Spitzer the instant it is on) ⇒ **λδv is NOT a tunable knob — the "calibrate λδv
+> to Lancaster" step is RETIRED.** The saturated θ is density-**mismatched** (diffuse overshoots → fires; mid/dense
+> plateau 0.23–0.35 ≪ Lancaster, 1/6 fires). **Reconciliation (§2a):** f_κ scaled because it is a *modest scalar
+> on hot-interior Spitzer* (linear regime, but unphysical); κ_mix saturates because it is a *T-independent floor
+> born deep in the cool layer* (physical, but past the dial). **The tunable knob (f_κ) isn't physical; the
+> physical term (κ_mix) isn't tunable.** The low dense θ is the *same* ceiling as the sweep's "6/63 never fire",
+> revealed not created. Caveat: the plateau is a single near-blowout row — a time-integrated metric could move
+> it (open). Gated production **on hold** pending the strategy revision (`KMIX_SELFCONSISTENT.md` §3).
+>
+> **→ κ_mix TIME-RESOLVED θ — the blowout metric was the wrong epoch (2026-06-30, `KMIX_SELFCONSISTENT.md`
+> §2b).** Re-solved κ_mix across ~14 rows/config of the implicit phase (not one row). **θ peaks EARLY (high
+> Pb) and decays — blowout = the low-θ tail**, so the §2 single-row read *undersold* κ_mix badly (`be_sphere`
+> 0.23 → trajectory-max **1.84**). So the earlier "only 1/6 fires / misses Lancaster for mid" is **walked
+> back**: where it solves, the **mid (n~1e4) clouds exceed θ=0.95 and would fire**; only the **dense (n≥1e5)**
+> end stays low (θ_max≲0.5) — *that* ceiling is robust. **BUT the decisive early high-Pb epochs FAIL to solve**
+> with the hard-max injection (0/4 early rows; baseline solves there) → firing *plausible but unconfirmed*.
+> Also caught a **faithfulness bug**: κ_mix ∝ n ∝ 1/T, so the κ_mix-regime kprime is **−1/T not 0** (harness +
+> SPEC §3). Next: a **smooth-max + correct-kprime** injection that survives the early phase, then re-run.
+> Builder `data/make_kmix_theta_trajectory.py`.
 
 What looks like "three ways to boost cooling" is really **two cooling-magnitude approaches on opposite sides
 of the structure solve, plus a separate trigger axis**. The key disambiguation: **"modify cooling like
@@ -322,6 +409,368 @@ shadow `ebpeak_t=None` — **`ebpeak` never fired**.
   agrees to the digit** (simple_cluster live 0.911 == frozen 0.911). The f_κ-*dependence* (trade-off) is
   live-only and extended to `mid`=midrange_pl0 (running) + `dense`=small_dense_highsfe (stalled — nCore 1e6 is
   numerically stiff; frozen point used). HPC-deferred for the remaining configs.
+
+## 8. [data] Stage-A shadow — El-Badry θ imposed end-to-end on 9 configs (2026-06-30)
+
+> 📖 **Illustrated walkthrough:** `ELBADRY_THETA_STORY.html` (6 figures, `make_elbadry_story_figs.py` →
+> `fig/elbadry_f{1..6}_*.png`) narrates the closed form, what §2/§3 impose & check, the physics, and the §8b
+> reversal. Regenerate with `python docs/dev/transition/pdv-trigger/make_elbadry_story_figs.py` (reads only the
+> committed CSVs).
+
+First end-to-end test of the capstone (`THETA_ELBADRY_SPEC.md`). `data/_theta_elbadry_runner.py`
+monkeypatches `effective_Lloss_from_params` (in BOTH `get_betadelta` and `run_energy_implicit_phase`) to
+the El-Badry analytic θ — `θ = A_mix·√(λδv·n_amb)/(11/5 + A_mix·√(λδv·n_amb))`, A_mix=3.5, λδv=3,
+θ_max=0.99 — **without touching production code**, then runs each config in a separate process to ≥5 Myr
+with `transition_trigger=cooling_balance,ebpeak`. Harvest: `data/harvest_shadow.py` →
+**`data/shadow_te_fate.csv`** (the table below). `n_amb` = local cloud density at the shell,
+`get_density_profile(R2)·ndens_au2cgs`.
+
+| config | n_core (cm⁻³) | mCloud | sfe | θ imposed | fire t (Myr) | fate | end (t, R2, v2) |
+|---|---|---|---|---|---|---|---|
+| simple_cluster | 1e5 | 1e5 | 0.30 | 0.990 | 0.009 | **SHELL_COLLAPSED** | 0.14 Myr, 0.99 pc, −0.1 |
+| pl2_steep | 1e5 | 1e6 | 0.10 | 0.990 | 0.011 | **SHELL_COLLAPSED** | 0.06 Myr, 0.94 pc, −0.3 |
+| be_sphere | 1e4 | 1e6 | 0.05 | 0.990 | 0.015 | **SHELL_COLLAPSED** | 2.30 Myr, 1.5 pc, −23 |
+| midrange_pl0 | 1e4 | 1e6 | 0.10 | 0.990 | 0.017 | **SHELL_COLLAPSED** | 1.42 Myr, 1.5 pc, −28 |
+| large_diffuse_lowsfe | 100 | 1e7 | 0.01 | 0.965 | 0.052 | **SHELL_COLLAPSED** | 14.3 Myr, 1.5 pc, −122 |
+| small_1e6 | 100 | 9e5 | 0.10 | 0.965 | 0.052 | STOPPING_TIME | 10.0 Myr, 254 pc, +28 |
+| diffuse_probe | 10 | 9e5 | 0.10 | 0.897 | 0.154 (ebpeak) | STOPPING_TIME | 6.0 Myr, 139 pc, +28 |
+| fail_repro | 100 | 4.5e9 | 0.10 | 0.965 | — | energy_collapsed | 0.003 Myr (pre-existing heavy-cloud break) |
+| small_dense_highsfe | 1e6 | 1e4 | 0.50 | 0.990 | — | CRASHED_EARLY | 0.004 Myr (pre-existing β-δ solver stiffness) |
+
+**Findings:**
+
+1. **§6 `max(resolved, target)` gate is SAFE — resolved-wins 0/N on all 9 configs.** El-Badry's θ is ≥
+   TRINITY's native resolved θ in *every* call, so the `max()` never selects the resolved term: imposing
+   θ_target here is operationally identical to direct θ assignment. This clears the SPEC §6 gate. **It also
+   means the patch raises θ above baseline everywhere** — a key fact for the isolation read (point 5).
+2. **θ(n) is monotone and the firing threshold behaves as designed.** n=10 → θ=0.897 (<0.95, so
+   `cooling_balance` never trips — fires only later via `ebpeak`); n=100 → 0.965; n≥1e4 → 0.99 (capped).
+   The n_fire≈48–50 cm⁻³ threshold is confirmed: the n=10 cloud stays energy-driven until ebpeak, n≥100
+   trips cooling_balance promptly.
+3. **Fate splits by cluster power vs cloud binding, NOT by θ alone:**
+   - *Dense compact* (n≥1e4, θ=0.99): fire at t<0.02 Myr → **SHELL_COLLAPSED**. 99% cooling strips the
+     thermal support and the shell stalls then **recollapses** — v2 goes negative, R2 decreases, `isCollapse`
+     is set, and the run ends when R2 falls below `coll_r`=1 pc (`run_transition_phase.py:772/789`,
+     `run_momentum_phase.py:842`). SHELL_COLLAPSED is **endcode 4 = a CLEAN physical fate** (range 0–9), the
+     code's label for shell recollapse — not a numerical error. (Confirmed in the data: collapsed configs end
+     with v2<0: be_sphere −23, midrange_pl0 −28, large_diffuse_lowsfe −122 km/s.)
+   - *Diffuse, well-powered* (small_1e6: n=100, sfe=0.1, mCloud=9e5): STOPPING_TIME, expands to 254 pc.
+   - *Diffuse, under-powered* (large_diffuse_lowsfe: n=100 but sfe=0.01 in a 1e7 cloud): fires early yet
+     SHELL_COLLAPSES only at **t=14.3 Myr** — the cluster is too weak to hold a 1e7 cloud open; late
+     recollapse is physically expected.
+   - *Very diffuse* (diffuse_probe: n=10): θ<0.95, stays energy-driven until ebpeak fires at 0.15 Myr, then
+     expands healthily (139 pc) to stop-time.
+4. **The two non-results are at unphysical extremes and are pre-existing, NOT patch-induced.** fail_repro
+   (mCloud 4.5e9 — absurd) energy-collapses at t=0.003 *before any transition*; small_dense_highsfe
+   (nCore 1e6) hits the known β-δ `MonotonicError` solver stiffness at t=0.004, also before any transition.
+   Neither reaches the patched code path long enough for θ to matter.
+5. **The SHELL_COLLAPSE IS patch-induced — resolved from committed data, not new runs.** The intended
+   isolation was a stock-trinity baseline (`data/_baseline_runner.py`), but dense baselines are hours-scale
+   in the stiff early implicit solve and the container restarts repeatedly killed them. **We don't need
+   them:** the committed frozen-trajectory cross-check (`§6a` + `data/ebpeak_8config_xcheck.csv`) already
+   gives stock TRINITY's *native* radiative θ — the quantity `cooling_balance` actually tests (PdV-exclusive).
+   Per §6a it **peaks at ~0.66 for compact/dense clouds** (0.17 diffuse), *far* below the 0.95 firing
+   threshold. So stock TRINITY **never fires `cooling_balance` for these dense clouds and keeps them
+   energy-driven** — consistent with the whole reason this workstream exists (TRINITY under-cools). Imposing
+   El-Badry θ=0.99 pushes native 0.66 → 0.99, and *that* is what collapses them. resolved-wins=0 (point 1)
+   is the same statement from the shadow side: θ_elbadry always exceeds native θ.
+6. **So the real question is physical, and it belongs to the maintainer:** El-Badry/Lancaster say θ≈0.9–0.99
+   *is* correct for dense clouds (high n → θ→1), so raising θ is faithful to the literature. But in
+   El-Badry's own sims a θ→1 bubble is momentum-driven and **still expands** — it does not recollapse.
+   TRINITY instead drives these to SHELL_COLLAPSED. Two readings remain, and they need a physics call:
+   (a) **physical for these configs** — the clusters are modest (3e4–1e5 M⊙ vs dense cores), so genuine
+   recollapse is plausible (Lancaster doesn't test this weak-cluster/dense corner); or (b) **artifact** —
+   either θ_max=0.99 is too aggressive (a softer cap ~0.95 leaves ~2× more driving luminosity), *or*
+   TRINITY's momentum phase mishandles a near-zero-thermal-energy bubble and collapses it when El-Badry
+   would keep it expanding. Distinguishing (a) from (b) is the **one open Stage-A item**; a θ_max sweep
+   (0.80/0.85/0.90/0.95/0.99) on the fast dense configs would separate "cap too high" from "momentum phase
+   recollapses regardless," and is far cheaper than the baseline full-runs. **RUNNING (2026-06-30):** sweep on
+   pl2_steep + simple_cluster, `outputs/sweep_tmax/tmax_*`; results → §8a below. NB θ<0.95 caps can't trip
+   `cooling_balance` at all (firing needs θ≥0.95), so the sub-0.95 rows also test whether these clouds then
+   stay energy-driven.
+
+**Stage-A verdict:** the mechanism works end-to-end, the numerical gate (§6 max) is clean, θ(n) and the
+firing threshold behave, and the dense-cloud SHELL_COLLAPSE is confirmed *patch-induced* (not stock, not a
+solver bug). What remains before Stage B is a **physics decision** — is early collapse of θ≈0.99 dense
+clouds correct, or does θ_max need softening / the momentum phase need scrutiny? Do **not** wire the
+production `theta_elbadry` mode until that decision is made. Artifacts (committed):
+`data/_theta_elbadry_runner.py`, `data/_baseline_runner.py`, `data/harvest_shadow.py`,
+`data/shadow_te_fate.csv`.
+
+## 8a. [data] θ_max sweep — the cap is NOT the lever; dense-cloud recollapse is intrinsic (2026-06-30)
+
+The §8 point-6 discriminator, run. Swept **θ_max ∈ {0.80, 0.85, 0.90, 0.95, 0.99}** on the two fast dense
+configs (pl2_steep n=1e5, simple_cluster n=1e5), same harness/trigger (`cooling_balance,ebpeak`), λδv=3, to
+5 Myr. Harvest → **`data/sweep_tmax_fate.csv`**.
+
+| θ_max | config | θ used | fire t (Myr) | trigger | end (t, R2, v2) | fate |
+|---|---|---|---|---|---|---|
+| 0.80 | pl2_steep | 0.80 | 0.012 | ebpeak (PdV) | 0.057, 0.96 pc, −0.3 | SHELL_COLLAPSED |
+| 0.85 | pl2_steep | 0.85 | 0.013 | ebpeak (PdV) | 0.057, 0.97 pc, −0.3 | SHELL_COLLAPSED |
+| 0.90 | pl2_steep | 0.90 | 0.010 | ebpeak (PdV) | 0.055, 0.90 pc, −0.1 | SHELL_COLLAPSED |
+| 0.95 | pl2_steep | 0.95 | 0.010 | cooling_balance | 0.055, 0.90 pc, −0.1 | SHELL_COLLAPSED |
+| 0.99 | pl2_steep | 0.99 | 0.011 | cooling_balance | 0.056, 0.94 pc, −0.3 | SHELL_COLLAPSED |
+| 0.80 | simple_cluster | 0.80 | 0.010 | ebpeak (PdV) | 0.130, 0.99 pc, −0.1 | SHELL_COLLAPSED |
+| 0.85 | simple_cluster | 0.85 | 0.009 | ebpeak (PdV) | 0.133, 0.98 pc, −0.1 | SHELL_COLLAPSED |
+| 0.90 | simple_cluster | 0.90 | 0.010 | ebpeak (PdV) | 0.129, 1.00 pc, −0.1 | SHELL_COLLAPSED |
+| 0.95 | simple_cluster | 0.95 | 0.019 | cooling_balance | 0.184, 0.97 pc, −4.3 | SHELL_COLLAPSED |
+| 0.99 | simple_cluster | 0.99 | 0.009 | cooling_balance | 0.135, 0.99 pc, −0.1 | SHELL_COLLAPSED |
+
+**Verdict — θ_max is not a useful knob here, and reading (b)"cap too aggressive" is refuted:**
+
+1. **All 10 runs recollapse**, at essentially the *same* fire time (~0.01 Myr) and collapse time (~0.055 Myr
+   pl2_steep / ~0.13 Myr simple_cluster), **independent of θ_max**. Lowering the cap from 0.99 to 0.80 does
+   not save the cloud and barely shifts the timing.
+2. **Below 0.95 the transition still fires — via `ebpeak` (PdV), not `cooling_balance`.** Imposing θ≥~0.80
+   raises L_loss to θ·L_mech, which is already enough to drive `Edot_from_balance≤0` and trip ebpeak at
+   t~0.01 Myr. (This is why it fires where stock doesn't: stock's native radiative θ~0.66 leaves the
+   PdV-inclusive ratio at ~0.91<1, so stock ebpeak never fires — §6a.) So *any* physically-plausible imposed
+   θ for a dense cloud (El-Badry says 0.9–0.99) transitions it, and it then recollapses.
+3. **Therefore the recollapse is intrinsic to these dense compact clouds transitioning — not an artifact of
+   the specific cap.** The remaining question from §8 point 6 collapses to a single fork, now cleanly posed:
+   is the recollapse (a) **physical** — a dense compact core with a modest cluster (3e4–1e5 M⊙) genuinely
+   recaptures its shell once the bubble stops being energy-supported (TRINITY has a *dedicated clean fate*,
+   SHELL_COLLAPSED, for exactly this) — or (b′) a **momentum/transition-phase fidelity** issue, where TRINITY
+   recollapses a bubble that El-Badry's θ→1 sims keep weakly expanding? **This is no longer a trigger-design
+   question** (the trigger correctly decides *when* to leave energy-driven); it is a question about the
+   momentum phase's treatment of a near-zero-thermal-energy shell, which is **outside this workstream's
+   scope**.
+
+**Bottom line for Stage B:** the `theta_elbadry` trigger works as designed and θ_max needs no tuning — pick
+0.95 or 0.99 (they behave identically for dense clouds; 0.99 matters only for the *magnitude* of (1−θ) driving
+on clouds that survive). Whether dense compact clouds *should* recollapse is a physics call for the maintainer
+that is independent of wiring the trigger. If the maintainer accepts SHELL_COLLAPSED as the correct fate for
+weak-cluster/dense-core configs (the likely reading), **Stage A is clean and Stage B can proceed.** Artifacts:
+`data/sweep_tmax_fate.csv`, `outputs/sweep_tmax/tmax_*/`.
+
+> 🛑 **§8/§8a partly SUPERSEDED by §8b (2026-07-01) — the code changed under us.** §8/§8a ran on **pre-PR#715**
+> code. Main has since merged `bugfix/high-mass-cluster-transition-without-ebpeak` (PR #715), which **routes a
+> finite `Eb≤0` collapse to the momentum phase** instead of dead-stopping. Re-running on the merged code flips
+> the high-mass verdict — see §8b. The §8/§8a **firing/threshold/max-gate results still hold** (they're about
+> the trigger algebra); the **fate conclusions for massive/dense clouds do NOT** (the momentum handoff, plus a
+> regime error in applying El-Badry's θ, changes them).
+
+## 8b. [data] Re-run on the merged high-mass handoff (PR #715) — imposing El-Badry θ REVERSES the fix (2026-07-01)
+
+The maintainer merged the high-mass energy→momentum handoff to `main` (PR #715,
+`bugfix/high-mass-cluster-transition-without-ebpeak`; `HIMASS_HANDOFF_PLAN.md`). Two code changes touch the
+phases the Stage-A shadow exercises: (1) phase 1b now routes a **finite `Eb≤0`** collapse to the momentum phase
+(`classify_energy_collapse` + `ENERGY_HANDOFF_FLOOR=1e3`) instead of the `ENERGY_COLLAPSED` dead-stop; (2) phase
+1a gains a `cooling_balance` parity check. I **merged main into this branch** (code auto-merged clean; my Pb-fix
+and the routing coexist — different regions) and re-ran on the merged code. Artifacts:
+`data/newcode_default_vs_theta.csv`, `outputs/{baseline_v2,shadow_te_v2}/`.
+
+**The decisive contrast (same configs, merged code, default trigger vs El-Badry θ imposed):**
+
+| config (mass, n) | DEFAULT (stock trigger) | θ_elbadry imposed (λδv=3, θ_max=0.99) |
+|---|---|---|
+| fail_repro (5e9, n=1e2) | **large_radius (exit 2)** — energy→implicit→**momentum**, expands to the 500 pc stop radius, v2=+37 | **velocity_runaway (exit 50)** — collapses inward, v2=**−500** pc/Myr, R2=5 pc, dies in `transition` |
+| pl2_steep (1e6, n=1e5) | **expanding** (v2=+23, R2=1.2 pc, healthy) when stopped in the stiff implicit solve | **velocity_runaway (exit 50)** — v2=**−500**, R2=0.07 pc |
+
+**Findings:**
+
+1. **The maintainer's fix works and is verified here:** `fail_repro` — the canonical diffuse-massive dead-stop
+   (was `ENERGY_COLLAPSED` at t=0.003 Myr) — now runs cleanly to **large_radius (500 pc)** on the default path.
+2. **Imposing El-Badry θ REVERSES it.** With `theta_elbadry` forcing `L_loss=θ·L_mech` (θ=0.965–0.99), the
+   *same* clouds violently recollapse (v2 pinned at the −500 pc/Myr `MAX_VELOCITY_COLLAPSE` cap, R2→~0). What
+   §8 recorded as `SHELL_COLLAPSED` on the old code is now `velocity_runaway` (or a near-zero-radius solver
+   stall) on the new code — but the physics is the same and now it is **unambiguously the θ-imposition
+   causing it, since the default path expands these very clouds.**
+3. **Why it's a regime error, not just aggressive tuning (ties to `HIMASS_HANDOFF_PLAN.md` §1):** the
+   maintainer verified the high-mass turnover is **PdV / inertial-loading driven, NOT radiative** — for
+   `fail_repro`, radiative is ~1% of L_mech while PdV/L_mech≈1.4. El-Badry's θ is a **radiative** ratio
+   (L_cool/L_mech) from SN-driven sims. Imposing θ=0.99 there injects a **fake radiative sink of 0.99·L_mech
+   on top of the real PdV sink** — double-draining the bubble and crashing it inward. PdV already enters the
+   energy budget separately (`Edot_from_balance = Lgain − Lloss − 4πR2²v2·Pb`), so the imposed radiative θ is
+   double-counting the loss in exactly the regime where PdV dominates. **The θ_max sweep (§8a) missed this
+   because it only ran on the old dead-stop code and read the terminal *label*, not the default contrast.**
+
+**Consequence for the plan — the `theta_elbadry` SPEC needs a regime gate, and Stage B is NOT ready.** As
+specified (impose θ=A_mix√(λδv·n) on *every* cloud via `effective_Lloss`), the mode **re-breaks precisely the
+massive clouds PR #715 just fixed**. El-Badry's θ is only physical where **radiative cooling actually dominates**
+(the dense/compact regime where `cooling_balance` engages natively) — it must **not** be applied to the
+**PdV/inertia-dominated** massive/diffuse clouds, which the momentum handoff already carries. Options for the
+revised spec: (a) gate `theta_elbadry` off when PdV/L_mech ≳ 1 (or when radiative ≪ L_mech), deferring those
+clouds to the handoff; (b) restrict the imposed θ to the radiative channel only and let PdV + the handoff do the
+rest; (c) drop θ-imposition for high-mass and keep it only as the diffuse-end cooling correction it was
+originally scoped for. This must be resolved **before** any production wiring. Prior "Stage A clean → Stage B"
+(end of §8a) is **retracted for the massive-cloud regime.** **→ RESOLVED in §8c (2026-07-01):** the answer is
+not to *gate* enforcement (options a/b/c above) but to **stop enforcing** — boost the mechanism (f_κ) and let θ
+emerge; enforcement (`theta_elbadry`) becomes an opt-in override.
+
+## 8c. [data] Direction corrected — θ is an OUTPUT; f_κ reinstated, θ_elbadry demoted to opt-in (2026-07-01)
+
+§8b framed the fix as "gate `theta_elbadry` off in the PdV regime." Prototyping that gate
+(`data/_theta_elbadry_gated_runner.py`, `data/gate_prototype.csv`) worked — and in working, it revealed that
+the whole *enforce-θ* framing is the wrong primitive. Maintainer steer: **θ should be an output of the solved
+bubble, not an input you set.**
+
+**The gate prototype (measured):**
+
+| config | variant | trigger | gated calls | fate |
+|---|---|---|---|---|
+| fail_repro (5e9, n=1e2) | θ imposed (§8b) | cooling_balance,ebpeak | 0 | **velocity_runaway** (recollapse) |
+| fail_repro | θ **gated** (PdV/L_mech>0.7) | cooling_balance | 69/84 | **large_radius** (expands to 500 pc) |
+| fail_repro | θ **gated** | cooling_balance,**ebpeak** | 57/72 | **large_radius** (expands to 500 pc) |
+| pl2_steep (1e6, n=1e5) | θ **gated** | cooling_balance | 1/46 | shell_collapsed (radiative regime → gate barely fires → θ kept) |
+
+**Findings:**
+
+1. **The gate fixes the reversal:** deferring the PdV-dominated cloud (`fail_repro`, PdV/L_mech peaks 2.65)
+   makes it expand to 500 pc like the default path, instead of `velocity_runaway`. And the **θ-gate ALONE does
+   it** — `ebpeak` on/off is irrelevant (both → large_radius). So the culprit was never `ebpeak`; it was the
+   imposed θ over-cooling. The gate is **selective**: `pl2_steep` (radiative regime, PdV<0.7) is barely gated,
+   so it is unchanged.
+2. **But the gate is just re-deriving, by hand, what f_κ gives for free.** The double-counting in §8b is a
+   *direct symptom of enforcing θ*: `L_loss=θ·L_mech` is blind to whether the loss is radiative or PdV, so on a
+   PdV-dominated cloud it injects a fake radiative sink on top of the real PdV sink. The Rung-A **`multiplier`**
+   mode (`L_loss = L_leak + f_κ·L_cool`) scales **only the radiative channel** — in a PdV-dominated bubble
+   radiative is ~1% of L_mech, so `f_κ·L_cool` *physically cannot* over-drain it. **No regime error, no gate
+   needed.** The gate is a symptom-patch; f_κ removes the disease.
+3. **Corrected direction (see `PLAN.md` ⭐⭐ + top ledger):** Rung A (`multiplier`/f_κ, already shipped, gated
+   default-off) is PRIMARY and θ **emerges**; El-Badry/Lancaster are the **calibration target** for that emergent
+   θ (pick f_κ(n) so the *solved* θ lands in-band), **not** an enforced value. Set f_κ at a **physical** value
+   and **accept diffuse route-a non-transition** (maintainer: "diffuse clouds may never enter momentum — the
+   physics never allows it") — do NOT crank f_κ to ~60 to force it (`F_KAPPA_FUNCTIONAL_FORM.md` §11–13).
+   Massive/PdV clouds ride the PR #715 `Eb≤0→momentum` handoff, untouched by θ. **`theta_elbadry`/`theta_target`
+   remains as a documented opt-in override** (`THETA_ELBADRY_SPEC.md`) for users who explicitly want forced
+   cooling — the gate/§8b caveat is why it is not the default.
+4. **Rung A (scalar f_κ, reinstated) ≠ Rung B (structural κ_mix, still SHELVED).** The reinstatement is of the
+   scalar multiplier only; the structural κ_mix injection remains numerically unstable (`KMIX_SELFCONSISTENT.md`).
+
+Artifacts: `data/_theta_elbadry_gated_runner.py`, `data/gate_prototype.csv`,
+`outputs/{shadow_gate,shadow_gate_ebpeak}/`.
+
+## 8d. [data] The diffuse-config "hang" is a PERFORMANCE cliff, not a stall/bug — diagnosed (2026-07-01)
+
+Validating the §14 route-a end (n=100, `multiplier` mode) hit what looked like a stall at **t≈0.003 Myr** (the
+fixed 1a→1b handoff — as the maintainer noted, 1a ends ~3e-3 Myr). A DEBUG investigation with an f_κ sweep
+(`data/_fkappa_validation_runner.py` with `LOG_LEVEL=DEBUG`, ≥6.5 min/run) **overturned three of my initial
+claims** — logging them here because the retractions are the finding:
+
+**Measured throughput (`large_diffuse_lowsfe`, 6.5 min wall each; the loop logs `[Implicit] t=` per segment):**
+
+| f_κ | segments in 6.5 min | sim-t reached | bubble-solves/seg (first 5 seg) |
+|---:|---:|---:|---:|
+| 1 (default) | 47 | 0.059 Myr | 144 |
+| 2 | 41 | 0.041 Myr | 175 |
+| 8 | 14 | 0.0078 Myr | 214 |
+
+**Findings (each correcting an earlier hypothesis):**
+
+1. **It is NOT a stall / hang / infinite loop — it is slow forward progress.** Every f_κ advances (47/41/14
+   segments); I first called it a "stall" because I checked while it was still crawling through the expensive
+   early segments and the INFO log rounds to the t=0.003 entry.
+2. **It is NOT a convergence failure.** The beta-delta `hybr` solver converges *perfectly* every segment
+   (`beta-delta hybr result: g=1e-13…1e-17, converged=True, ier=1, evals≈20`). So "accept ~1e-4 and move on"
+   does not apply — nothing marginal is being rejected; it lands at ~1e-15. **(Retracts the "implicit-solve
+   non-convergence / no physical root" claim.)**
+3. **It is NOT the `min_T` guard.** The 513 "Rejected. min T: 29999.99…" lines are boundary transients whose
+   rejection penalty `residual·(3e4/min_T)²` = **0.999993 ≈ 1.0** — benign. (My "relax the guard" test was also
+   invalid: lowering `_T_INIT_BOUNDARY` moves the IC *and* the guard together, so the transient just follows.)
+   **Red herring.**
+4. **It is NOT f_κ-specific — answering the maintainer's Q1.** f_κ=1 (default, no boost) hits the *same* t=0.003
+   handoff and grinds too; it just clears the early segments faster. So there are **two** compounding effects:
+   (a) **config-intrinsic slowness** — even f_κ=1 only reaches t=0.059 Myr in 6.5 min → **~11 h to reach 6 Myr**
+   (the "failed-large-clouds" class, mCloud=1e7 diffuse); and (b) a **cooling-boost cost concentrated in the
+   early implicit segments** at the small-R2 / fast-v2 (262 km/s) handoff corner — f_κ=8 does ~⅓ the segments
+   and reaches ~7× less sim-time than f_κ=1. Past that corner the per-segment cost converges (f_κ=1 and f_κ=2
+   both ~7 bubble-solves/seg overall). **(Retracts the "f_κ=8 stiffens the structure enough to trip it" framing
+   — the config is slow at f_κ=1 too.)**
+
+**Root cause:** a *performance* cliff — each implicit segment at this early, small-radius, fast-expanding,
+diffuse state costs many (7–50) bubble-structure `dMdt` fsolves while `dt` is small (5e-4, shrinking), so
+sim-time crawls; a cooling boost multiplies the early-segment cost. Not a correctness bug in the solver.
+
+**Why the boost slows it (precise mechanism — NOT "stiffening the ODE"):** the `multiplier` knob **does not
+enter the bubble-structure ODE at all** — it scales `L_cool = bubble_LTotal` *after* the structure is solved
+(`get_betadelta.py:473`), feeding only the residual / energy-ODE / trigger; the structure ODE's conduction is
+`cooling_boost_kappa` (`bubble_luminosity.py:291/370/406`), untouched here. So f_κ=8 cannot "stiffen" the
+structure. It is slower because 8× larger `L_loss` → `dEb/dt` (=Edot) much more negative → Eb evolves fast →
+the **adaptive stepper shrinks dt** (0.0012→0.00034 Myr/seg, ~3.5×) → more, smaller segments; plus a modest
+(~1.5×) rise in structure-solve evals as the shifted beta-delta solution lands in a harder region.
+
+> ⚠️ **KNOB ERROR flagged (2026-07-01): these runs used `multiplier`, but §14's leverage/θ₀ were fit with
+> `cooling_boost_kappa` — different knobs (see `PLAN.md` ⭐⭐ KNOB CORRECTION).** So the §14 validation table
+> above (`θ_max=1.33/1.01`) is for `multiplier` and does **not** validate the `kappa`-based §14 calibration;
+> re-run the validation with `cooling_boost_kappa` at the calibrated f_κ. `kappa` *does* enter the structure ODE,
+> so its throughput/robustness behaviour on the diffuse handoff may differ from the `multiplier` runs here.
+
+> 🪵 **Logging nuisance (worth a one-line fix): the `"Rejected. min T: 29999.99…"` DEBUG line is misleading.**
+> It fires for every benign boundary transient (penalty ≈1.0) and misled this very investigation. The **guard**
+> is correct (it properly penalizes a *real* sub-floor min_T); only the **log** is noisy for the FP-undershoot
+> case. Fix: only log when the penalty is actually significant (min_T meaningfully below `_T_INIT_BOUNDARY`), or
+> reword/downgrade it. Production `bubble_luminosity.py:345` — a logging-quality change (behaviour-neutral),
+> flagged for the maintainer.
+
+**Relevance to the plan:** the emergent-θ mechanism itself is *correct* here (beta-delta converges); the issue
+is that **boosted diffuse runs are computationally impractical to carry to ≥5 Myr** in this environment — which,
+with the physics (§14 route-a) and the intrinsic mCloud=1e7 slowness, is a further reason to **cap f_κ low at
+the diffuse end and accept route-a**. Making these runs fast is a bubble-structure/`dt` performance item, out of
+this workstream's scope.
+
+**Size-control (settles mass-vs-handoff):** `small_1e6` (n=100 but mCloud=**9e5**, 10× smaller than
+large_diffuse's 1e7) at f_κ=1 hits the **identical handoff state** (R2=1.3819 pc, v2=262.47 km/s, t=0.00293 —
+the outer cloud mass doesn't touch the inner bubble yet) and progresses at a **near-identical rate** (42 seg →
+t=0.044 Myr vs large_diffuse's 47 seg → 0.059 Myr in 6.5 min). So the slowness is the **diffuse (n=100)
+early-implicit handoff corner** (small R2, fast v2), **NOT the 1e7 cloud mass**. Both diffuse configs *do* finish
+given enough wall-time (their `theta_target` shadows reached 10/14 Myr, §8) — they are slow, not stuck.
+
+Artifacts: `data/_fkappa_validation_runner.py` (θ_max observer + `LOG_LEVEL`), `data/_minT_tol_confirm_runner.py`
+(the retracted min_T test), `outputs/{fkappa_val,fkappa_debug,fk_compare_1,fk_compare_2,fk_compare_8}/`.
+
+## 8e. [data] Correct-knob (`cooling_boost_kappa`) validation — it BREAKS DOWN at f_κ=8; reframes the knob choice (2026-07-01)
+
+Re-running the §14 validation with the **correct** knob (`cooling_boost_kappa` — the structural conduction boost
+the §14 leverage/θ₀ were fit on, not the `multiplier` I mistakenly used; `data/_kappa_validation_runner.py`,
+`cooling_boost_mode='none'` so θ_emergent = bubble_Lloss/Lmech). Result: **the structural knob does NOT cleanly
+validate — at the physical f_κ=8 it breaks down.**
+
+- **`simple_cluster` (n=1e5), kappa=8:** from implicit segment ~6 the beta-delta solver hits **"no physical
+  (dMdt>0) root"** — kappa's boosted conduction drives dMdt **negative** (the evaporative-flux side-effect the
+  registry warns of: *"raises the evaporative mass flux … a structural probe, not the final model"*). The solver
+  **holds the last physical dMdt and the state freezes**, so the *physical* emergent θ (bubble_Lloss/Lmech from
+  `dictionary.jsonl`, the accepted state) sticks at **~0.53 — it does NOT fire**. Nothing like the `multiplier`
+  run's θ_max≈1.33 (§14). So **the §14 multiplier validation does NOT transfer to the knob the calibration was
+  actually fit on.**
+- **`be_sphere` (n=1e4), kappa=8:** same story — emergent θ ≤ **0.48**, **does NOT fire** (vs `multiplier`
+  θ_max=1.006, §14). So on *both* dense configs the structural knob gives a **much lower** emergent θ than the
+  multiplier. Physical reason: boosting the conduction coefficient raises the **evaporative mass flux** (more
+  cool gas mixed in), and that back-reaction *damps* the net radiated L_cool — it does not simply 8× it. This is
+  exactly the coupling El-Badry says a faithful κ_eff must **suppress** (registry note); `cooling_boost_kappa`
+  does the opposite, so θ stays moderate. The faithful version (κ_mix, Rung B) would suppress evaporation — but
+  it is SHELVED (unstable).
+- **`small_1e6` (n=100, diffuse), kappa=8:** physical θ≈**0.25**, no fire (also stuck in phase 1a). So the three
+  configs give a clean **monotonic emergent θ(n) = 0.25 / 0.48 / 0.53 for n = 100 / 1e4 / 1e5** — all early-time
+  (phase 1a / frozen, well before the blowout peak), all below the 0.95 threshold. The **density ordering is the
+  encouraging part**: emergent θ rises with density exactly as the "let θ emerge, route-a falls out" picture
+  predicts — but the *magnitudes* are far below `multiplier`'s and (because they're pre-peak + kappa breaks/stalls)
+  we cannot say whether the dense ones would eventually fire.
+- **kappa is also far SLOWER at ANY f_κ:** it enters the bubble-structure ODE, so every structure solve is
+  costlier. **kappa=2 (stable — 0 non-physical dMdt, so f_κ=8 was simply too high) STILL timed out in phase 1a**
+  (t=0.00291, 0 implicit segments in 6.5 min), physical θ≈0.49 — where the same config under `multiplier`
+  reached the trigger and fired by t=0.009. So kappa is impractical here **regardless of f_κ**: fragile at 8,
+  slow at all values.
+- **⚠️ Methodology correction:** the runner's `theta_max` observer over-counts — it records *every*
+  `effective_Lloss` call, incl. the solver's **non-physical trial (β,δ) points** (it reported a bogus
+  θ_max=3.223). The trustworthy emergent θ is `bubble_Lloss/Lmech_total` at the **accepted** segments in
+  `dictionary.jsonl` (the value that feeds the trigger) — that is the ~0.53 above. This caveat applies to the
+  §14 `multiplier` θ_max numbers too (re-harvest from the dictionary before quoting them as physical).
+
+**Reframes the knob decision (`PLAN.md` KNOB CORRECTION):** the "fully-emergent structural knob"
+(`cooling_boost_kappa`) is **numerically impractical at a physical f_κ** — fragile (non-physical dMdt / raises
+evaporation) *and* slow (enters the structure ODE). With the structural κ_mix (Rung B) already SHELVED for the
+same class of reason, that leaves **`cooling_boost_mode='multiplier'`** (scalar on the resolved L_cool) as the
+**pragmatic mechanism**: it is stable and fast (never touches the structure ODE) and still scales only the
+radiative channel (so it keeps the §8c no-PdV-double-count property), at the cost of being "structural-L_cool ×
+scalar" rather than fully emergent. **kappa=2 confirmed kappa is impractical at all physical f_κ** (stable but
+still too slow to reach the θ peak). A definitive structural validation of §14 would need HPC. **Tentative
+decision: adopt `multiplier` as the production mechanism; θ still emerges (from the structural L_cool), just
+scaled** — with the caveat that `multiplier`'s emergent θ (8×L_cool, fires easily) is *cruder* than kappa's
+back-reacted θ (~0.5, doesn't fire), so the **calibrated f_κ magnitude must be re-derived for `multiplier`**
+(the §14 θ₀/p were fit on kappa and do not carry over).
+
+Artifacts: `data/_kappa_validation_runner.py`, `outputs/{kappa_val,kappa_val_fk2}/`, `KAPPA_VALIDATION_PLAN.md`.
 
 ## 7. Provenance
 - Commits (`feature/PdV-trigger-term`): `6642ff4` matrix+comparator, `dc1c2fd` note patches, `17f9653`

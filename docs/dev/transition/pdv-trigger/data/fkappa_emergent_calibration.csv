@@ -1,0 +1,7 @@
+nCore_cm3,theta0,theta_EB_ldv3,fkappa_ideal,theta_achieved_fmax4,fires_fmax4,theta_achieved_fmax8,fires_fmax8,theta_achieved_fmax16,fires_fmax16
+10,0.211,0.897,106.35,0.324,False,0.402,False,0.499,False
+100,0.287,0.965,49.93,0.441,False,0.547,False,0.678,False
+1000,0.377,0.989,22.35,0.58,False,0.719,False,0.891,False
+10000,0.477,0.99,10.54,0.733,False,0.909,False,0.99,True
+100000,0.578,0.99,5.66,0.889,False,0.99,True,0.99,True
+1e+06,0.674,0.99,3.46,0.99,True,0.99,True,0.99,True

@@ -1,0 +1,12 @@
+config,nCore,theta0,fkappa90_medp,fkappa90_tierp,fkappa95_medp,fkappa95_tierp,fkappa95_measured,theta_EB_ldv1,fkappa_EB_medp
+large_diffuse_lowsfe,100,0.25,40.177,15.099,47.851,17.169,,0.9409,46.379
+midrange_pl0,10000,0.61,7.784,21.223,9.271,27.531,,0.9938,10.724
+be_sphere,10000,0.511,7.784,21.223,9.271,27.531,,0.9938,10.724
+simple_cluster,100000,0.667,4.172,4.172,4.969,4.969,3.409,0.998,5.828
+pl2_steep,100000,0.342,4.172,4.172,4.969,4.969,3.409,0.998,5.828
+small_dense_highsfe,1000000,0.697,2.549,2.549,3.035,3.035,,0.9994,3.576
+# baseline fit: logit(theta0) = -1.7269 +0.4087*log10(nH); RMS_logit=0.4903
+# leverage p_full (raw, full-range-to-firing): compact=0.309, diffuse=0.421, mid=0.208; median=0.309
+# form: f_kappa(nH) = (theta* / theta0(nH))^(1/p_full)   [raw power; matches measured firing]
+# NOTE low-f_κ logit-slope extrapolation OVERSHOOTS ~10-30x (theta fires before it saturates) -- not used
+# target theta* = 0.90 (Lancaster 2021 plateau, density-independent); 0.95 == shipped trigger

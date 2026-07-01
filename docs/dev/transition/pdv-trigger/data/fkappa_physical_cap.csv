@@ -1,0 +1,10 @@
+f_max,n_momentum,n_energy,N_crit_cm2
+2,18,45,3.686e+23
+4,24,39,1.711e+23
+8,31,32,1.151e+23
+16,38,25,5.317e+22
+32,47,16,2.556e+22
+64,57,6,1.690e+22
+# never-fire (energy-driven under any cap): 6/63 cells (all low-n/high-sfe)
+# physical f_kappa ~ n^+1 (El-Badry kappa_mix/kappa_Spitzer); fire-threshold ~ n^-0.6 (OPPOSITE sign)
+# a cloud is momentum-driven iff f_kappa_fire <= f_max; else energy-driven ('not meant to be')

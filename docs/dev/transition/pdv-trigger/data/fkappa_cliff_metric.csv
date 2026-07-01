@@ -1,0 +1,14 @@
+mCloud,sfe,nCore_cliff,column_cliff
+100000.0,0.03,20211.192413425768,2.034624920425519e+23
+100000.0,0.1,nan,nan
+100000.0,0.3,nan,nan
+1000000.0,0.03,12580.265628221887,3.177745171032104e+23
+1000000.0,0.1,89600.9475956211,1.1440703757152503e+24
+1000000.0,0.3,nan,nan
+10000000.0,0.03,8402.913198914874,5.234645200213532e+23
+10000000.0,0.1,28773.990003196832,1.1504548182842703e+24
+10000000.0,0.3,29429.753891340508,1.0724639712260414e+24
+# (A) cliff: nCore spread ×11 vs column spread ×5.7; median column 7.98e+23 cm^-2
+# (B) theta0 collapse R^2: nCore=0.733 column=0.712 rCloud=0.333; 2-var(nCore,rCloud)=0.752
+#     f_kappa_fire ~ M_star R^2=0.002 (independent of cluster mass)
+# (C) metric: median(theta_max-theta_blowout)=0.004, >0.05 in 5/63; 416/819 escaped vs 403 cooled-first

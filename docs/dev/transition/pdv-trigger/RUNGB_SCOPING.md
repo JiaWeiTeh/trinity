@@ -1,5 +1,11 @@
 # Rung B — faithful `κ_eff` / mixing-layer interface (OPTIONAL high-fidelity bonus)
 
+> 🛑 **SHELVED DIRECTION (2026-06-30) — read as HISTORY.** The **structural κ_mix injection** this doc scopes
+> (and §8's "gated production") was tested in the real solver (`KMIX_SELFCONSISTENT.md`) and **SHELVED**: κ_mix
+> saturates (10⁵–10⁸× Spitzer instantly) and is numerically unstable in the Weaver ODE. The current direction
+> **imposes El-Badry's θ as the trigger target instead** (`PLAN.md` ⭐⭐ canonical synthesis). κ_mix survives
+> only as the *physical justification* for why θ∝√(λδv·n) — not as a thing to wire into the structure solve.
+
 > **⭐ DEMOTED by "the merge" (2026-06-26).** This whole doc is about making evaporation fall *while* cooling
 > rises (El-Badry fidelity). **That is no longer the main line.** The **goal** is enhanced, density-dependent
 > cooling matched to obs/3D, and the **mechanism for it is already built** — κ_eff = `cooling_boost_kappa`
@@ -162,6 +168,15 @@ proxy, so this is from the abstracts/indexed text, not a direct page read):
 | **θ** (≡ `L_int/Ė` in El-Badry, `Ė_cool/L_w` in Lancaster) | the **loss fraction** | **measured — an OUTPUT** in *both* papers | TRINITY's resolved `L_cool/L_mech` |
 | **λδv** (= `κ_eff`, the mixing diffusivity) | the **mixing efficiency** | **set — an INPUT, only in 1D** (El-Badry "treated as an arbitrary parameter, a range of values explored"); Lancaster's 3D resolves the fractal interface and needs **no** such knob | **`κ_mix = ρ c_p D_turb`, `D_turb = λδv`** — i.e. **Rung B's added turbulent conductivity**, NOT the scalar `f_mix` and NOT exactly Rung A's `cooling_boost_kappa` (which *scales Spitzer*, hence couples cooling+evaporation) |
 | **0.95** | the energy→momentum trigger | a **threshold on the measured θ** (`(Lgain−Lloss)/Lgain<0.05 ≡ θ>0.95`), not a physics parameter | TRINITY's transition test |
+
+> **→ Magnitude reconciled (2026-06-29, `F_KAPPA_FUNCTIONAL_FORM.md` §13).** The κ_mix-swamps-Spitzer absurdity
+> flagged below (`κ_mix/κ_S ≈ 10²⁴`, `T_cross ≈ 10¹² K`) came from taking `D_turb = R2·v2` *literally*. Using
+> **El-Badry's actual `λδv ∈ [1,10] pc·km/s`** instead gives a *sane* crossover: `κ_mix = κ_Spitzer` at
+> `n_crit = C_th·T^(5/2)/((λδv)·k_B)` = **0.25 cm⁻³** at T=2×10⁵ K (λδv=1) — matching El-Badry's stated "κ_mix
+> dominates n ≳ 0.2". So the Rung-B knob is **λδv (1–10 pc·km/s), not D_turb=R2·v2**. The §13 derivation also
+> shows *why* the scalar Rung-A `f_κ` can't substitute (Spitzer ∝ T^(5/2) vanishes in the cool layer where κ_mix
+> rules), and that El-Badry's verified flat-high θ* even at diffuse argues the diffuse never-fire is a 1D
+> under-cooling artifact — i.e. **Rung B (κ_mix) is the faithful fix**, re-promoted from "optional bonus".
 
 **Consequences for the design.** (i) θ is never something to *impose*; you set the conductivity knob and θ
 emerges — which is exactly why the constant-`θ`/`f_mix` knobs were degenerate (`FINDINGS.md`) and why the

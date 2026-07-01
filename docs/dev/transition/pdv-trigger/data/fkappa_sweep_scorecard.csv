@@ -1,0 +1,10 @@
+prediction,pre_registered,measured,grade
+P1_slope,f_kappa ~ n^-0.30,n^-0.60,FAIL (2x too shallow)
+P2_deconflation,fan-out (not one curve),x32 spread + 6 never-fire,PASS
+P3_baseline_slope,logit theta0 slope 0.41/dex,1.13/dex,FAIL (~3x steeper)
+P4_leverage,p ~ 0.31,median 0.21,PARTIAL (ballpark; point high)
+physical_diffuse_kmix,diffuse unreachable by f_kappa,6 cells never fire,PASS
+# corrected central form: f_kappa_fire ~= 1013 * n_core^(-0.60)  (theta*=0.95, measured-only)
+# baseline: logit(theta0) = -3.376 +1.127*log10(nCore)
+# leverage p median = 0.214; never-fire(f_k<=64) = 6/63 (all low-n high-sfe)
+# NOTE fan-out (x2-32 across mCloud/sfe at fixed n) => f_kappa is multi-dimensional, not f(n_H) alone

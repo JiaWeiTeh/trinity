@@ -100,6 +100,30 @@ FIGURES = {
         "kappa_blowout_calibration.png",
         "f_kappa calibration on full runs: developed theta=Lcool/Lmech at cloud dispersal vs f_kappa for compact/mid/diffuse, with the 0.95 cooling_balance trigger; compact crosses at f_kappa~4 (red ring=cooling fired), mid ~5, diffuse far higher (~60); right panel is the cumulative radiated fraction",
     ),
+    "__FIG_FFORM__": (
+        "fkappa_functional_form.png",
+        "the composed f_kappa(n_H) form: left = measured theta(f_kappa) accelerates past 1 (fires before saturating); middle = TRINITY baseline theta0 rises with density while the El-Badry/Lancaster target is flat; right = the resulting f_kappa(n_H) ~ A n^-0.30 with the measured firing anchor",
+    ),
+    "__FIG_SWEEP__": (
+        "fkappa_nH_sweep.png",
+        "the 819-combo sweep de-conflation figure, faceted by sfe (three panels): f_kappa to fire theta=0.95 vs nCore, one line per cloud mass; the M_cl/sfe series do NOT collapse onto one curve (fan-out), the 1e7 line cliffs to f_kappa=1, and triangles mark cells that never fire by f_kappa=64",
+    ),
+    "__FIG_SCORE__": (
+        "fkappa_sweep_analysis.png",
+        "sweep prediction scorecard: left = measured fan-out with the all-data n^-0.60 fit (steeper than the pre-registered n^-0.30) and never-fire markers; right = pre-registered predicted vs measured f_kappa per cell, systematically off the 1:1 line because the predicted slope was too shallow",
+    ),
+    "__FIG_CLIFF__": (
+        "fkappa_cliff_metric.png",
+        "anatomy of the fan-out: baseline theta at f_kappa=1 vs density (left) cliffs at DIFFERENT nCore per cloud mass, but vs column N_H=nCore*rCloud (right) the cliffs roughly align at ~constant column, so the massive-cloud early firing is a swept-column catastrophic-cooling threshold",
+    ),
+    "__FIG_CAP__": (
+        "fkappa_physical_cap.png",
+        "the physical-cap reframing: left = f_kappa needed to fire vs column with physical cap lines (f_max=2/4/8); below a cap a cloud is momentum-driven, above it stays energy-driven, and 6 cells never fire under any cap; right = the momentum-vs-energy-driven split as a function of the assumed physical max enhancement f_max, crossing near f_max=8, with the 6 never-fire cells as the floor",
+    ),
+    "__FIG_DERIV__": (
+        "fkappa_physical_derivation.png",
+        "deriving the physical prescription: left = Spitzer conductivity (rises as T^5/2) vs El-Badry's temperature-independent kappa_mix at GMC density, showing kappa_mix dominates the cool mixing layer where Spitzer vanishes (so a scalar f_kappa multiplier cannot represent it); right = El-Badry's verified flat-high cooling target theta* (even at diffuse) vs TRINITY's measured rising 1D baseline theta0, the orange gap kappa_mix must supply is large at diffuse, arguing the diffuse never-fire is a 1D under-cooling artifact",
+    ),
 }
 
 
@@ -201,7 +225,16 @@ PdV / \(E_b\)-peak turnover. <b>Latest &mdash; the merge (2026-06-26):</b> the c
 mechanism that is <b>already built</b> &mdash; \(\kappa_{\text{eff}}\) (<code>cooling_boost_kappa</code>, Rung A)
 raises the <i>emergent</i> cooling in-structure (&sect;11). The remaining work is <b>calibrating
 \(f_\kappa(\text{properties})\)</b> to the target \(\theta(n_H)\) (El-Badry \(\lambda\delta v{=}\kappa_{\text{eff}}\)
-+ Lancaster). The evaporation-decoupling re-derivation is an <b>optional fidelity bonus</b>, not the goal.</p>
++ Lancaster). The evaporation-decoupling re-derivation is an <b>optional fidelity bonus</b>, not the goal.
+<b>Now done (2026-06-29, &sect;15):</b> El-Badry &sect;5.2 is <b>verified from the PDF</b>
+(\(\kappa_{\text{mix}}{=}(\lambda\delta v)\rho k_B/\mu m_p\); \(\theta{=}\psi/(\tfrac{11}{5}{+}\psi)\), \(A_{\text{mix}}{\approx}3.5\)),
+and the controlled <b>819-combo sweep</b> ran: the measured calibration is \(f_\kappa^{\text{fire}}\!\approx\!10^{3}n^{-0.60}\),
+but \(f_\kappa\) is <b>multi-dimensional</b> (a \(\times2\!-\!32\) \(M_{\text{cl}}\)/sfe fan-out), the diffuse/high-sfe
+corner <b>never fires</b> even at \(f_\kappa{=}64\) (needs the structural \(\kappa_{\text{mix}}\)), and the
+&ldquo;1e7 breaks the power law&rdquo; cliff is a <b>constant-column catastrophic-cooling threshold</b>. <b>The
+reframing (&sect;15.6):</b> don&rsquo;t force it &mdash; the <i>physical</i> \(f_\kappa\) <i>rises</i> with density
+(opposite the fire-threshold), so a physically-bounded \(f_\kappa\) leaves the diffuse corner <b>energy-driven by
+choice</b>, predicting a falsifiable <b>critical column</b> for the energy\(\to\)momentum split.</p>
 </div>
 
 <figure>__FIG_IDEAS__<figcaption><b>The whole storyline at a glance.</b> Every transition-fix idea tried,
@@ -792,6 +825,184 @@ emerges (El-Badry lives here, and it is the <i>same</i> knob as &ldquo;modify th
 density-dependent target, with <b>C</b> (PdV) as an optional timing assist.</p>
 """
 
+SEC_SWEEP = r"""
+<h2 id="sweep">15 &middot; The \(f_\kappa(n_H)\) calibration &mdash; composed, verified, then swept</h2>
+<p>&sect;11&ndash;13 left the merge with one job: <b>calibrate \(f_\kappa(\text{properties})\)</b> so the
+<i>emergent</i> \(\theta=L_{\text{cool}}/L_{\text{mech}}\) reaches the obs/3D target, density-dependently. This
+section does it three ways &mdash; a composed closed form, a line-by-line literature verification, and the
+controlled 819-combo sweep that tests both &mdash; and ends on what the sweep actually taught us.</p>
+
+<h3>15.1 &middot; A composed functional form (before the sweep)</h3>
+<p>Rather than wait for the grid to fit \(f_\kappa(n_H)\) cold, we compose it from three separable, independently
+checkable pieces: a <b>target</b> \(\theta^\star\) (the Lancaster 2021 plateau \(\approx0.9\), density-<i>independent</i>
+over &gt;3 dex), a <b>baseline</b> \(\theta_0(n_H)\) (TRINITY&rsquo;s emergent loss fraction at \(f_\kappa{=}1\),
+rising with density), and a <b>leverage</b> \(p\) (how \(\theta\) responds to \(f_\kappa\)). Inverting
+\(\theta=\theta_0\,f_\kappa^{p}\) gives \(f_\kappa(n_H)=(\theta^\star/\theta_0(n_H))^{1/p}\).</p>
+<div class="box over"><span class="lab">Course-correction (same day)</span> A first cut inverted the leverage in
+<i>logit/odds</i> space and overshot the one measured firing anchor by \(\sim\!10\!-\!30\times\) (compact fires at
+\(f_\kappa\!\approx\!3.4\), not \(\sim\!120\)). Cause: \(\theta(f_\kappa)\) <b>accelerates toward firing</b>
+(convex, because the bubble transitions <i>before</i> \(\theta\) saturates), so a concave logit extrapolated from
+the low-\(f_\kappa\) segment is wrong. The fix is the raw power-law exponent measured over the full range to firing
+(\(p\!\approx\!0.31\)), which reproduces the anchor and matches the El-Badry back-reaction estimate
+(\(f_{\text{mix}}{=}f_\kappa^{q},\ q{=}\ln1.3/\ln2\!\approx\!0.4\)). Only the amplitude changed; the slope did not.</div>
+<figure>__FIG_FFORM__<figcaption><b>The composed form.</b> Left: the measured \(\theta(f_\kappa)\) accelerates past
+1 (compact \(0.67\!\to\!0.74\!\to\!1.02\) at \(f_\kappa{=}1,2,4\)) &mdash; it fires before it saturates, which is why
+the raw power-law leverage, not a logistic, is correct. Middle: the baseline \(\theta_0(n_H)\) rises while the
+target is flat, so the density dependence of \(f_\kappa\) comes from the baseline. Right: the resulting
+\(f_\kappa(n_H)\) with the measured firing anchor. From <code>data/make_fkappa_functional_form.py</code>.</figcaption></figure>
+
+<h3>15.2 &middot; El-Badry 2019 &mdash; verified line-by-line from the PDF</h3>
+<div class="box find"><span class="lab">Verified (maintainer-supplied PDF)</span> The El-Badry, Ostriker, Kim,
+Quataert &amp; <b>Weisz</b> 2019 paper (MNRAS <b>490</b>, 1961; arXiv:1902.09547 &mdash; <i>not</i> ApJ 879, <i>not</i>
+&ldquo;Weinberg&rdquo;) supplies the mechanism and the target, and its &sect;3.1/&sect;5.2 equations check out exactly:
+<b>Eq 16</b> Spitzer \(\kappa{=}6{\times}10^{-7}T^{5/2}\); <b>Eq 19/20</b> saturation \(q_{\text{sat}}{=}\tfrac32\rho c_{s,\text{iso}}^3\)
+(\(=5\phi\rho c^3,\ \phi{=}0.3\)); <b>Eq 21</b> the turbulent-mixing term \(\kappa_{\text{mix}}{=}(\lambda\delta v)\rho k_B/\mu m_p\)
+&mdash; <i>temperature-independent</i>, \(\kappa{=}\max(\kappa_{\text{mix}},\kappa_{\text{Spitzer}})\); <b>Eq 35/37/38</b>
+\(\theta{=}\psi/(\tfrac{11}{5}{+}\psi)\) with \(\psi{=}A_{\text{mix}}\sqrt{\lambda\delta v\,n_H}\), \(A_{\text{mix}}\!\approx\!1.7\)
+analytic / <b>3.5</b> fit. The earlier in-container <code>[unverified]</code> hedge (a 403 access gap, not an error) is
+<b>retracted</b>. Bonus: El-Badry themselves propose calibrating \(\lambda\delta v\) to 3D cooling rates &mdash;
+exactly this workstream&rsquo;s strategy. Crucially the El-Badry target <i>saturates</i> to \(0.94\!-\!0.999\) across the
+GMC range, so it <b>agrees with the flat Lancaster anchor to \(\sim\!15\%\) in \(f_\kappa\)</b> &mdash; the composed form
+is robust to which verified target is used.</div>
+
+<h3>15.3 &middot; The 819-combo sweep &mdash; predictions scored</h3>
+<p>The controlled grid (7 \(n_{\text{core}}\) &times; 3 \(M_{\text{cl}}\) &times; 3 sfe = 63 cells &times; 13
+\(f_\kappa\)) ran on Helix (\(\sim\)10 h). The composed form&rsquo;s predictions were <b>pre-registered</b>; the grid
+graded them honestly.</p>
+<div class="tablewrap"><table><thead><tr><th>prediction (pre-registered)</th><th>measured (63 cells)</th><th></th></tr></thead><tbody>
+<tr><td>slope \(f_\kappa\propto n^{-0.30}\)</td><td>\(f_\kappa^{\text{fire}}\approx10^{3}\,n_{\text{core}}^{-0.60}\)</td><td class="loss">&times;2 too shallow</td></tr>
+<tr><td>de-conflation: fan-out, not one curve</td><td>\(\times2\!-\!32\) spread across \(M_{\text{cl}}\)/sfe</td><td class="win">PASS</td></tr>
+<tr><td>baseline \(\theta_0(n)\) logit slope 0.41/dex</td><td>1.13/dex</td><td class="loss">\(\sim\)3&times; steeper</td></tr>
+<tr><td>leverage \(p\approx0.31\)</td><td>median 0.21</td><td class="muted">ballpark</td></tr>
+<tr><td>diffuse unreachable \(\to\kappa_{\text{mix}}\)</td><td>6/63 low-\(n\)/high-sfe cells never fire at \(f_\kappa{=}64\)</td><td class="win">PASS</td></tr>
+</tbody></table></div>
+<p>The <b>qualitative physics held and is now measured</b>: \(f_\kappa\) falls steeply with density, is
+<b>multi-dimensional</b> (the fan-out), and the diffuse/high-sfe corner is genuinely unreachable by a Spitzer boost
+(those six cells need the El-Badry \(\kappa_{\text{mix}}\), Eq 21). The <b>slope was \(\times2\) too shallow</b> for a
+nameable reason: the composed form is only as good as its baseline, and the original <b>6-anchor \(\theta_0(n)\) was
+undersampled</b> (0.41/dex) &mdash; the clean 63-cell grid gives 1.13/dex. The logistic-vs-raw-power leverage debate
+turned out to be second-order next to that.</p>
+<figure>__FIG_SCORE__<figcaption><b>Scorecard.</b> Left: the measured fan-out with the all-data \(n^{-0.60}\) fit
+(black) far steeper than the pre-registered \(n^{-0.30}\) (red), plus the never-fire markers. Right:
+predicted-vs-measured \(f_\kappa\) per cell tilts systematically off the 1:1 line &mdash; the predicted slope was too
+shallow. From <code>data/make_fkappa_sweep_analysis.py</code> (reads the committed <code>data/fkappa_nH_sweep.csv</code>).</figcaption></figure>
+<figure>__FIG_SWEEP__<figcaption><b>The de-conflation figure</b> (faceted by sfe). One line per cloud mass; the series
+do <b>not</b> collapse onto one \(n_{\text{core}}\) curve &mdash; \(f_\kappa\) depends on more than density. The 1e7
+(yellow) line cliffs abruptly to \(f_\kappa{=}1\); triangles mark cells that never fire by \(f_\kappa{=}64\). From
+<code>data/make_fkappa_nH_sweep.py</code> (reads <code>data/summary.csv</code>).</figcaption></figure>
+
+<h3>15.4 &middot; Anatomy of the fan-out &mdash; the catastrophic-cooling cliff</h3>
+<p>Why does the 1e7 cloud &ldquo;break the power law&rdquo;? Because its baseline \(\theta_0\) (at \(f_\kappa{=}1\),
+no boost) <b>jumps past 0.95</b> &mdash; above that it fires with zero boost, so \(f_\kappa^{\text{fire}}\) collapses
+to 1. That cliff sits at <i>lower density</i> for <i>more massive</i> clouds (\(n\!\approx\!3{\times}10^3\) for 1e7 vs
+\(\approx\!2{\times}10^4\) for 1e5). The reason: at fixed density a 1e7 cloud is \(\sim\!4.6\times\) larger
+(\(r_{\text{cloud}}\!\propto\!(M/n)^{1/3}\)), so it sweeps the same <b>column</b> \(N_H{=}n_{\text{core}}\,r_{\text{cloud}}\)
+at lower density. Re-plotting vs column roughly <b>halves the cliff spread</b> (\(\times11\) in \(n_{\text{core}}\)
+\(\to\!\times5.7\) in column; median cliff column \(\approx\!8{\times}10^{23}\,\text{cm}^{-2}\)). Physically it is
+&ldquo;does catastrophic cooling beat cloud crossing&rdquo; &mdash; for big clouds, cooling wins at lower ambient density.</p>
+<div class="box"><span class="lab">The fan-out is multi-dimensional (not pure column)</span> Across all 63 cells,
+\(n_{\text{core}}\) is still the best <i>single</i> predictor of \(\theta_0\) (\(R^2{=}0.73\)); column is slightly
+worse globally (\(0.71\)) even though it nails the cliff; a 2-variable
+\(\theta_0\propto+0.11\ln n_{\text{core}}+0.06\ln r_{\text{cloud}}\) reaches \(R^2{=}0.75\) (coef ratio 2:1, so
+<i>not</i> pure column). And \(f_\kappa^{\text{fire}}\) is <b>independent of cluster mass</b> \(M_\star{=}\text{sfe}\cdot M_{\text{cl}}\)
+(\(R^2{=}0.002\)) &mdash; as it must be, since \(\theta\) is normalised by \(L_{\text{mech}}\propto M_\star\). So the
+calibration needs \(f_\kappa(n_{\text{core}}, r_{\text{cloud}}[,\text{sfe}])\), or the structural \(\kappa_{\text{mix}}\)
+for the corner that never fires. <span class="small muted">[The maintainer&rsquo;s PdV intuition is directionally
+right &mdash; massive clouds fire with less boost &mdash; but the driver the data supports is the swept column / radiative
+catastrophic cooling, not PdV directly; the firing metric is the radiative \(\theta\), and PdV is not isolable from the
+reduced data.]</span></div>
+<figure>__FIG_CLIFF__<figcaption><b>The cliff.</b> Baseline \(\theta\) at \(f_\kappa{=}1\) vs density (left) cliffs at
+different \(n_{\text{core}}\) per cloud mass; vs column \(N_H\) (right) the cliffs roughly align at a near-constant
+column &mdash; the massive-cloud early firing is a swept-column catastrophic-cooling threshold. From
+<code>data/make_fkappa_cliff_metric.py</code>.</figcaption></figure>
+
+<h3>15.5 &middot; The measurement metric &mdash; \(\theta\) at blowout</h3>
+<p>What does &ldquo;triggering 0.95&rdquo; measure? \(\theta=L_{\text{cool}}/L_{\text{mech}}\) sampled <b>per timestep
+during the energy phase</b> &mdash; not a fixed \(t\), not integrated to \(t_{\text{stop}}{=}10\). The reducer keeps
+<code>theta_blowout</code> (\(\theta\) at the first \(R_2{&gt;}r_{\text{cloud}}\), i.e. the cloud edge) and
+<code>theta_max</code> (the peak); &ldquo;fires&rdquo; \(=\) reached transition/momentum <b>and</b> (never blew out
+<b>or</b> \(\theta_{\max}{\ge}0.95\)). <b>Why blowout:</b> the science question is whether the cluster transitions to
+momentum-driven <i>while still inside the GMC</i>, and \(R_2{=}r_{\text{cloud}}\) is the natural end of that phase &mdash;
+more principled than a fixed time, which would fold in post-escape ambient evolution. The runs split cleanly:
+<b>403/819 cool before escaping</b> vs <b>416/819 reach blowout</b>.</p>
+<div class="box find"><span class="lab">Is blowout a good metric? Yes &mdash; and it&rsquo;s robust</span> The
+snapshot-vs-peak choice barely matters: \(\theta_{\max}-\theta_{\text{blowout}}\) has <b>median 0.004</b> (\(&gt;0.05\)
+in only 5/63 cells), so the calibration is insensitive to it, and the cliff/fan-out is genuine physics, not a metric
+artifact. <span class="small muted">One fixable imprecision: <code>theta_max</code> is taken over the whole implicit
+phase, not capped at <code>blowout_t</code>, so a post-escape peak could falsely tag &ldquo;fired in-cloud&rdquo;
+(\(\sim\)5 cells); capping it in the reducer is the clean fix. Alternatives answering different questions: \(\theta\) at
+matched physical time (apples-to-apples leverage), or time-integrated \(\int L_{\text{cool}}\,dt/\int L_{\text{mech}}\,dt\)
+(the total budget).]</span></div>
+<h3>15.6 &middot; Don&rsquo;t force it &mdash; a physically-bounded \(f_\kappa\) and a critical column</h3>
+<p>Searching \(f_\kappa\) up to 64 to make <i>every</i> cloud fire quietly assumes every cloud <b>must</b> become
+momentum-driven. It shouldn&rsquo;t. A large constant \(f_\kappa\) is not &ldquo;enhanced conduction&rdquo; &mdash; it
+multiplies the Spitzer \(T^{5/2}\) prefactor <i>everywhere</i>, over-conducting the hot interior; the physical
+enhancement is El-Badry&rsquo;s temperature-independent \(\kappa_{\text{mix}}{=}(\lambda\delta v)\,n\,k_B\) (Eq 21),
+which dominates only in the cool mixing layer.</p>
+<div class="box find"><span class="lab">The sign flip &mdash; the crux</span> Because \(\kappa_{\text{mix}}\!\propto\!n\)
+and \(\kappa_{\text{Spitzer}}\!\propto\!T^{5/2}\) (\(n\)-independent), the <b>physical</b> \(f_\kappa\) <b>rises</b>
+with density (\(\propto n^{+1}\)), while the measured fire-threshold <b>falls</b> (\(\propto n^{-0.6}\)) &mdash;
+<b>opposite signs</b>. So using the empirical \(-0.6\) as a prescription gives the <i>diffuse</i> clouds the
+<i>most</i> boost &mdash; precisely the &ldquo;forcing&rdquo; that feels wrong. The physical (rising) prescription
+gives diffuse the <i>least</i>: dense clouds transition, diffuse stay energy-driven and blow out. That is the honest
+reading.</p></div>
+<p><b>The experiment</b> (pure re-analysis of <code>summary.csv</code>, no new sims): cap the enhancement at a
+physical \(f_{\max}\); a cloud is momentum-driven iff \(f_\kappa^{\text{fire}}\!\le\!f_{\max}\), else energy-driven.
+A physically plausible \(f_{\max}\!\approx\!2\!-\!8\) predicts a <b>critical column</b>
+\(N_{\text{crit}}\!\approx\!1\!-\!4{\times}10^{23}\,\text{cm}^{-2}\): above it momentum-driven, below it energy-driven;
+<b>6/63 cells never fire under any cap</b> (genuinely energy-driven in 1D). This is a <b>falsifiable prediction</b>
+to compare with Lancaster/PHANGS, not a knob tuned to force a transition.</p>
+<figure>__FIG_CAP__<figcaption><b>The physical-cap reframing.</b> Left: \(f_\kappa\) to fire vs column with physical
+cap lines &mdash; below a line the cloud is momentum-driven, above it stays energy-driven (the boundary is soft, as
+column is only a partial predictor). Right: the momentum/energy split as a function of the assumed physical
+\(f_{\max}\), with the 6 never-fire cells as the floor. From <code>data/make_fkappa_physical_cap.py</code>.</figcaption></figure>
+<div class="box over"><span class="lab">The tension to keep honest</span> Lancaster&rsquo;s 3D finds catastrophic
+cooling &ldquo;generic over &gt;3 dex in density&rdquo;, so a non-transitioning <i>1D</i> cloud is <b>either</b>
+genuinely energy-driven <b>or</b> 1D-under-cooled (missing the \(\kappa_{\text{mix}}\) it cannot resolve). The
+critical-column prediction is the dividing line; which side is right is settled against observations. Two routes
+follow: <b>(a)</b> accept non-transition (a physical \(f_{\max}\)) &mdash; simple and honest about the 1D limit; or
+<b>(b)</b> add the structural \(\kappa_{\text{mix}}\) (Rung B) if you trust the 3D result. Either way the deliverable
+is a <i>physically-bounded</i> prescription, not \(f_\kappa\) cranked to 64. <span class="small">Testing it needs no
+new grid &mdash; any \(f_\kappa(n){=}\text{clamp}(A n^{q},1,f_{\max})\) is read off the existing
+<code>summary.csv</code>; a small 63-run generator sweep only confirms a chosen prescription as real runs.</span></div>
+<h3>15.7 &middot; The physical prescription, derived &mdash; it is \(\kappa_{\text{mix}}(\lambda\delta v)\), not a power law</h3>
+<p>Chasing the &ldquo;negative power isn&rsquo;t physical&rdquo; objection to its end settles the whole question.
+There are <b>three</b> different \(f_\kappa(n)\), and only one is the mechanism: <b>(i) mechanism</b>
+\(f_\kappa{=}\kappa_{\text{mix}}/\kappa_{\text{Spitzer}}{\propto}n\) (rises); <b>(ii) target</b>
+\(\theta^\star(n;\lambda\delta v)\) (Eq 37/38, flat-high); <b>(iii) boost</b> to reach the target \(\propto n^{-0.6}\)
+(falls &mdash; a boost factor, <i>not</i> a conductivity). The empirical \(-0.6\) is (iii); it is the wrong object to
+call a prescription.</p>
+<div class="box find"><span class="lab">Derived</span> Crossover \(\kappa_{\text{mix}}{=}\kappa_{\text{Spitzer}}\) at
+\(n_{\text{crit}}{=}C_{\text{th}}T^{5/2}/((\lambda\delta v)k_B)\) \(=\) <b>0.25 cm\(^{-3}\)</b> (T=2&times;10\(^5\) K,
+\(\lambda\delta v{=}1\)) &mdash; matching El-Badry&rsquo;s &ldquo;\(\kappa_{\text{mix}}\) dominates \(n\!\gtrsim\!0.2\)&rdquo;.
+In the cool mixing layer (T\(\sim\)2&times;10\(^4\) K) \(\kappa_{\text{mix}}/\kappa_{\text{Spitzer}}\!\approx\!10^3\!-\!10^7\),
+because Spitzer \(\propto T^{5/2}\) <b>vanishes</b> there &mdash; so a scalar \(f_\kappa\!\cdot\!\kappa_{\text{Spitzer}}\)
+<b>cannot</b> represent it. The faithful object is the structural \(\kappa{=}\max(\kappa_{\text{mix}},\kappa_{\text{Spitzer}})\)
+term (Rung B), with the mixing diffusivity \(\lambda\delta v\) the single physical parameter, saturation-capped.
+<span class="small">(Don&rsquo;t import El-Badry&rsquo;s \(\lambda\delta v{\in}[1,10]\) pc&middot;km/s &mdash; doubly
+off-regime for TRINITY (discrete-SN + ISM density); take \(\delta v\) from the code&rsquo;s \(v_{\rm rel}\) and
+<b>calibrate \(\lambda\) so resolved \(\theta\) matches Lancaster 0.9&ndash;0.99</b>, the cadence-free magnitude
+anchor &mdash; verified in <code>KMIX_DIFFUSIVITY.md</code>.)</span></div>
+<figure>__FIG_DERIV__<figcaption><b>Why it is \(\kappa_{\text{mix}}\), not a scalar.</b> Left: Spitzer (\(\propto T^{5/2}\))
+vanishes in the cool mixing layer where the T-independent \(\kappa_{\text{mix}}\) rules &mdash; no single multiplier can
+bridge that. Right: El-Badry&rsquo;s verified target is flat-high <i>even at diffuse</i> (0.94 at \(n{=}10^2\)) while
+TRINITY&rsquo;s 1D baseline is only 0.29; the orange gap is what \(\kappa_{\text{mix}}\) must supply. From
+<code>data/make_fkappa_physical_derivation.py</code>.</figcaption></figure>
+<div class="box over"><span class="lab">Course-correction on &sect;15.6</span> Because the verified target is flat-high
+even at diffuse, the diffuse never-fire corner is most likely a <b>1D under-cooling artifact</b>, not a true
+energy-driven fate. So the resolution tilts to <b>route (b): add \(\kappa_{\text{mix}}\)</b> (Rung B,
+<b>re-promoted</b> from &ldquo;optional bonus&rdquo;), rather than route (a) &ldquo;accept non-transition&rdquo;.
+&sect;15.6&rsquo;s point still stands &mdash; don&rsquo;t crank \(f_\kappa\) to 64 &mdash; but the physical answer is the
+structural \(\kappa_{\text{mix}}\), and the &ldquo;derived number&rdquo; is \(\lambda\delta v\), not an \(f_{\max}\).
+<span class="small">Next: wire the gated \(\kappa_{\text{mix}}\) mode (RUNGB_SCOPING &sect;8), default-off byte-identical;
+this also reconciles that doc&rsquo;s \(\kappa_{\text{mix}}/\kappa_S\!\approx\!10^{24}\) absurdity &mdash; it came from
+\(D_{\text{turb}}{=}R_2 v_2\); El-Badry&rsquo;s \(\lambda\delta v\) is the sane magnitude.]</span></div>
+<p class="small muted">All numbers in this section trace to <code>data/summary.csv</code> (the reduced 819-run table)
+and the builders named above; see <code>F_KAPPA_FUNCTIONAL_FORM.md</code> &sect;0&ndash;&sect;13 for the full
+treatment.</p>
+"""
+
+
 SEC_REPRO = r"""
 <h2 id="repro">Artifacts &amp; reproducibility</h2>
 <p class="small">Everything is committed under <code>docs/dev/transition/pdv-trigger/</code> &mdash; reproducible
@@ -819,6 +1030,14 @@ vs expensive (a full sim). Use it to re-run any piece for a paper and to prove t
 <tr><td><code>data/_trinity_style.py</code></td><td>the shared TRINITY plot style (loads <code>paper/_lib/trinity.mplstyle</code>, LaTeX-free fallback) so every storyline figure is visually consistent</td></tr>
 <tr><td><code>data/ebpeak_trigger_test.csv</code> (+ <code>make_ebpeak_trigger_test.py</code>, <code>ebpeak_trigger_test.png</code>)</td><td>&sect;12 does PdV alone trigger? Two <code>cooling_balance,ebpeak</code>-active runs (<code>runs/params/cal_&#123;compact,diffuse&#125;__ebpeak.param</code>): ebpeak never fires at \(f_\kappa{=}1\) (PdV-incl peaks \(0.91\)/\(0.86\) then declines); the trade-off keeps diffuse PdV-incl flat across \(f_\kappa\)</td></tr>
 <tr><td><code>ideas_comparison.png</code> (+ <code>data/make_ideas_comparison.py</code>)</td><td>the at-a-glance scoreboard of all ideas + three real-data evidence panels (reads <code>fmix_table</code>, <code>da_replay</code>, <code>kappa_backreaction</code> CSVs)</td></tr>
+<tr><td><code>F_KAPPA_FUNCTIONAL_FORM.md</code> (&sect;0&ndash;&sect;10)</td><td>&sect;15 the full \(f_\kappa(n_H)\) treatment: the composed form, the El-Badry PDF verification, the sweep scorecard, the cliff/fan-out anatomy, and the metric assessment &mdash; the source doc this section condenses</td></tr>
+<tr><td><code>fkappa_functional_form.png</code> (+ <code>data/make_fkappa_functional_form.py</code>)</td><td>&sect;15.1 the composed form (Lancaster target + measured baseline + raw-power leverage); reads <code>fmix_table</code>/<code>kappa_blowout_calibration</code>/<code>kappa_calibration_estimate</code> CSVs, no sims</td></tr>
+<tr><td><code>data/summary.csv</code> (+ <code>data/reduce_fkappa_sweep.py</code>, on HPC)</td><td>&sect;15.3 the reduced 819-run table (one row per run: \(\theta_{\text{blowout}}\), \(\theta_{\max}\), <code>cooling_fired</code>, axes) &mdash; the multi-GB jsonl stays on the cluster</td></tr>
+<tr><td><code>data/fkappa_nH_sweep.csv</code> + <code>fkappa_nH_sweep.png</code> (+ <code>data/make_fkappa_nH_sweep.py</code>)</td><td>&sect;15.3 the per-cell \(\theta{\sim}f_\kappa^{p}\) fit + the 3-panel faceted de-conflation figure (fan-out; 1e7 cliffs; never-fire triangles)</td></tr>
+<tr><td><code>data/fkappa_sweep_scorecard.csv</code> + <code>fkappa_sweep_analysis.png</code> (+ <code>data/make_fkappa_sweep_analysis.py</code>)</td><td>&sect;15.3 the pre-registered prediction scorecard (slope \(n^{-0.60}\) vs predicted \(n^{-0.30}\); fan-out; never-fire; \(M_\star\)-independence) + predicted-vs-measured</td></tr>
+<tr><td><code>data/fkappa_cliff_metric.csv</code> + <code>fkappa_cliff_metric.png</code> (+ <code>data/make_fkappa_cliff_metric.py</code>)</td><td>&sect;15.4&ndash;15.5 the catastrophic-cooling cliff (constant-column threshold), the multi-dimensional fan-out (\(R^2\) of \(n_{\text{core}}\)/column/2-var, \(M_\star\)-independence), and the metric sanity (\(\theta_{\max}{-}\theta_{\text{blowout}}\) median 0.004)</td></tr>
+<tr><td><code>data/fkappa_physical_cap.csv</code> + <code>fkappa_physical_cap.png</code> (+ <code>data/make_fkappa_physical_cap.py</code>)</td><td>&sect;15.6 the physical-cap reframing: the sign flip (physical \(f_\kappa\!\propto\!n^{+1}\) vs fire-threshold \(n^{-0.6}\)), the momentum/energy split per \(f_{\max}\), and the falsifiable critical column \(N_{\text{crit}}\!\approx\!1\!-\!4{\times}10^{23}\)</td></tr>
+<tr><td><code>data/fkappa_physical_derivation.csv</code> + <code>fkappa_physical_derivation.png</code> (+ <code>data/make_fkappa_physical_derivation.py</code>)</td><td>&sect;15.7 the derived physical prescription: the three \(f_\kappa(n)\) (mechanism/target/boost), the \(\kappa_{\text{mix}}{=}\kappa_{\text{Spitzer}}\) crossover \(n_{\text{crit}}{=}0.25\), why a scalar \(f_\kappa\) can't represent cool-layer mixing, and the \(\theta^\star\) gap arguing for \(\kappa_{\text{mix}}\) (Rung B)</td></tr>
 <tr><td><code>KAPPA_EFF_SCOPING.md</code></td><td>&sect;11 the κ_eff cooling-mechanism feasibility map + the &sect;6a Rung-A result table; the mechanism vs the optional evaporation-decoupling bonus</td></tr>
 <tr><td><code>storyline_figs/*.png</code> (+ <code>make_storyline_figs.py</code>)</td><td>the four storyline figures (&sect;2 double-count, &sect;3 convention, &sect;4 regime, &sect;5 heatmap), each a pure read of the CSVs</td></tr>
 <tr><td><code>PLAN.md</code> / <code>FINDINGS.md</code></td><td>the living plan (&ldquo;Outcome &amp; pivot&rdquo;) and the verified findings &mdash; the source of truth this report is a sibling of</td></tr>
@@ -840,7 +1059,7 @@ def main():
         HEAD, HERO,
         SEC_SETUP, SEC_DOUBLE, SEC_CONVENTION, SEC_REGIME, SEC_CLOSURE,
         SEC_DA, SEC_LIT, SEC_WIRING, SEC_LIVE, SEC_BOTTOM, SEC_KAPPA, SEC_EBPEAK, SEC_FKDEF,
-        SEC_TAXONOMY, SEC_REPRO,
+        SEC_TAXONOMY, SEC_SWEEP, SEC_REPRO,
     ]
     parts.append("</div></body></html>")
     html = "".join(parts)

@@ -1,0 +1,6 @@
+config,variant,pdv_gate,trigger,gated_calls,total_calls,fate,exit,note
+fail_repro,theta_imposed(sec8b),none,"cooling_balance,ebpeak",0,49,velocity_runaway,50,"imposed theta over-cools -> recollapse"
+fail_repro,theta_GATED,0.7,cooling_balance,69,84,large_radius,2,"gate defers PdV-dominated -> expands to 500pc (=default)"
+fail_repro,theta_GATED,0.7,"cooling_balance,ebpeak",57,72,large_radius,2,"gate alone fixes it; ebpeak on/off irrelevant"
+pl2_steep,theta_imposed(sec8b),none,"cooling_balance,ebpeak",0,59,velocity_runaway,50,"dense compact recollapse"
+pl2_steep,theta_GATED,0.7,cooling_balance,1,46,shell_collapsed,4,"radiative regime: gate barely fires, theta kept, still collapses (selective)"

@@ -1,0 +1,11 @@
+config,regime,status,Pb_cgs_med,ratio_lo_T_ldv1,ratio_hi_T_ldv1,ldv_dom_at_2e4,ldv_dom_at_2e5,Tcross_ldv1,n_pts
+diffuse (n~1e2),diffuse,ok,4.38e-08,19925614.87,6301.033,0.0,0.0,2.44e+06,88
+mid (n~1e4),mid,ok,1.52e-07,68920841.67,21794.684,0.0,0.0,3.47e+06,86
+compact (n~1e5),compact,ok,5.39e-07,245159988.33,77526.395,0.0,0.0,4.99e+06,63
+dense (n~1e6),dense,ok,6.22e-08,28295822.67,8947.925,0.0,0.0,2.69e+06,48
+"heavy (n~5e9, COLLAPSED)",heavy,excluded:energy_collapsed,nan,nan,nan,nan,nan,nan,0
+# kappa_mix/kappa_Spitzer = (lambda*dv[pc.km/s]*3.086e23)*Pb_cgs/(6e-7*T^3.5); T_cross=(..)^(2/7)
+# Pb_au->cgs / 1.5454414956718e12 (unit_conversions.Pb_cgs2au); cool layer 2e4-2e5 K
+# SCOPING ONLY (front estimate, not resolved theta). status=ok: 4 cal_* anchors span nCore 1e2-1e6.
+# status=excluded:energy_collapsed: the heavy 5e9 (fail_repro) collapsed -> no mixing layer (a finding).
+# lambda*dv SWEPT not imported; pin it later by calibrating kappa_mix to Lancaster theta~0.9-0.99
