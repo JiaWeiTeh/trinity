@@ -75,3 +75,28 @@ def test_energy_collapsed_endcode_is_inspection_required():
     assert code.code == 51
     assert 50 <= code.code <= 59
     assert code.value[1] == "energy_collapsed"
+
+
+# --- Energy-collapse ROUTING (docs/dev/transition/pdv-trigger/HIMASS_HANDOFF_PLAN.md) ---
+# When an energy-driven bubble collapses, a FINITE Eb<=0 is an energy->momentum
+# transition (Pb has floored to ~P_ram) and must route to the momentum phase, NOT
+# dead-stop. Only a NON-FINITE Eb is unrecoverable and keeps ENERGY_COLLAPSED.
+
+def test_classify_energy_collapse_routes_finite_collapse_to_momentum():
+    from trinity.phase1b_energy_implicit.run_energy_implicit_phase import classify_energy_collapse
+    assert classify_energy_collapse(0.0) == 'momentum'
+    assert classify_energy_collapse(-9.143e8) == 'momentum'   # the fail_repro collapse value
+
+
+def test_classify_energy_collapse_stops_only_on_nonfinite():
+    from trinity.phase1b_energy_implicit.run_energy_implicit_phase import classify_energy_collapse
+    assert classify_energy_collapse(np.nan) == 'stop'
+    assert classify_energy_collapse(np.inf) == 'stop'
+    assert classify_energy_collapse(-np.inf) == 'stop'
+
+
+def test_classify_energy_collapse_none_while_energy_driven():
+    from trinity.phase1b_energy_implicit.run_energy_implicit_phase import classify_energy_collapse
+    # A healthy, finite, positive Eb must NOT route or stop -> byte-identical (G0).
+    assert classify_energy_collapse(1.0e8) is None
+    assert classify_energy_collapse(1e-6) is None

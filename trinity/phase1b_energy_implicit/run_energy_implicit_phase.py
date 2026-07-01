@@ -174,6 +174,28 @@ ODE_METHOD = 'LSODA'
 ENERGY_HANDOFF_FLOOR = 1e3
 
 
+def classify_energy_collapse(Eb):
+    """Routing decision when the energy-driven bubble's Eb stops being viable.
+
+    Pure (no global state) so the routing invariant is unit-testable, mirroring
+    ``evaluate_r1_shadow``. Returns:
+
+    - ``'stop'``: ``Eb`` non-finite (nan/inf) -> unrecoverable, end on
+      ``ENERGY_COLLAPSED`` (cannot hand a bad state to momentum).
+    - ``'momentum'``: ``Eb <= 0`` and finite -> thermal driving spent (as ``Eb->0``
+      the bubble pressure floors at ``~P_ram``, so the shell is already
+      momentum-driven); route to the momentum phase instead of dead-stopping.
+    - ``None``: ``Eb > 0`` and finite -> still energy-driven, no routing.
+
+    docs/dev/transition/pdv-trigger/HIMASS_HANDOFF_PLAN.md
+    """
+    if not np.isfinite(Eb):
+        return 'stop'
+    if Eb <= 0:
+        return 'momentum'
+    return None
+
+
 # =============================================================================
 # Force Properties Dataclass
 # =============================================================================
@@ -1079,7 +1101,8 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         # -> P_ram since R1->R2), so the shell is already momentum-driven. Route to the
         # momentum phase via 1c instead of dead-stopping. See docs/dev/transition/
         # pdv-trigger/HIMASS_HANDOFF_PLAN.md.
-        if not np.isfinite(Eb):
+        _collapse = classify_energy_collapse(Eb)
+        if _collapse == 'stop':
             # Non-finite Eb (nan/inf) is unrecoverable -- cannot hand a bad state to
             # momentum; keep the clean stop.
             params['EndSimulationDirectly'].value = True
@@ -1094,7 +1117,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
                 f"(Eb non-finite, R2={R2:.4f} pc): stopping run cleanly."
             )
             break
-        if Eb <= 0:
+        if _collapse == 'momentum':
             # Hand off (R2, v2) to momentum. Set Eb to the transition energy floor so
             # 1c's bubble calls stay finite and its floor check immediately transitions
             # to phase 2. Do NOT set EndSimulationDirectly -> main runs 1c -> momentum.
