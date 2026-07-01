@@ -102,11 +102,14 @@ Rung A (`multiplier`) is already shipped in production, gated default-off byte-i
 f_κ at a **physical** value; **accept diffuse route-a non-transition** · massive/PdV clouds handled by the
 PR #715 handoff, **not** θ · `theta_elbadry`/`theta_target` = **opt-in override**, documented with its
 double-counting caveat · ≥5 Myr per run.
-**OPEN:** (1) **calibrate f_κ(n)** to a physical value so emergent θ matches El-Badry/Lancaster on the
-radiative/dense configs (re-analysis of the existing sweep, no new mechanism); (2) confirm on a live run that
-emergent θ lands in-band AND the massive cloud hands off cleanly (the `data/_theta_elbadry_gated_runner.py`
-result already shows the emergent/default path expands `fail_repro` to 500 pc); (3) the diffuse end: whether a
-physically-bounded f_κ leaves a *falsifiable* critical column for route-a (`F_KAPPA_FUNCTIONAL_FORM.md` §11–13).
+**OPEN:** (1) ✅ **f_κ(n) calibrated** (drafted, re-analysis only — `F_KAPPA_FUNCTIONAL_FORM.md` §14,
+`data/fkappa_emergent_calibration.csv`): invert emergent θ=θ₀(n)·f_κ^p to the El-Badry λδv=3 target, cap at a
+physical f_max → f_κ ideal 3.5 (n=1e6) → 106 (n=10); at f_max=8 only n≳1.6e4 fires, the rest is **route-a by
+design** (boundary n_routeA(f_max) is the falsifiable split). **Still needs:** one live `multiplier`-mode run
+per regime to confirm the *solved* θ lands on the §14 table (cheap). (2) pin **f_max** — the one physics input
+left (2–8 argued; structural κ_mix that would justify more at the diffuse end stays SHELVED). (3) confirm the
+massive cloud hands off cleanly under `multiplier` (already shown for the gated/default path — `fail_repro`
+→ 500 pc).
 
 **BEST PATH FORWARD:** (i) **Rung A f_κ is already in production** (`cooling_boost_mode='multiplier'`, gated
 default-off — `grep cooling_boost_mode trinity/`). (ii) **Calibrate f_κ(n)** from the committed sweep so the

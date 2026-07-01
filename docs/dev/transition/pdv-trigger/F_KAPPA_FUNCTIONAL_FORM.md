@@ -56,6 +56,10 @@
 
 ## 0. TL;DR — the form you can use now
 
+> ⭐ **For the CURRENT direction use §14** (emergent θ → El-Badry λδv=3 target, physically capped, route-a
+> accepted). The flat-θ* form immediately below is the earlier general form; §14 is its 2026-07-01
+> specialization to the corrected plan (density-dependent El-Badry target instead of a flat plateau).
+
 ```
    f_κ(n_H)  =  ( θ* / θ₀(n_H) )^(1/p)          [raw power; matches the measured firing anchor]
 
@@ -515,6 +519,52 @@ bounded by v_rel and a sub-pc λ, may not reach θ=0.95); §13 above leans the o
 and tested on all 8 configs, decides it per cloud** — do not assert either fate before then.
 
 ---
+
+## 14. ⭐ CURRENT calibration — emergent θ to the El-Badry λδv=3 target, physically capped (2026-07-01)
+
+This is the calibration under the **corrected direction** (`PLAN.md` ⭐⭐, `FINDINGS.md §8c`): θ is an **output**;
+boost the mechanism (`cooling_boost_mode='multiplier'`, f_κ) and pick f_κ(n) so the **solved** θ tracks
+El-Badry — do **not** enforce θ. Two changes from §0–§13: (a) the target is El-Badry's **density-dependent**
+θ_EB(n) at the calibrated **λδv=3** (not a flat θ*=0.90/0.95), and (b) f_κ is held at a **physical ceiling
+f_max** and clouds that can't reach θ=0.95 there are **accepted as route-a** (energy-driven by design) — the
+maintainer stance "diffuse clouds may never enter momentum; the physics never allows it."
+
+**Builder (no sims):** `data/make_fkappa_emergent_calibration.py` → `data/fkappa_emergent_calibration.csv`,
+`fkappa_emergent_calibration.png`, `fkappa_emergent_routea.png`. It reuses the committed emergent model
+θ(n,f_κ)=θ₀(n)·f_κ^p (θ₀ fit `logit θ₀=−1.7269+0.4087 log₁₀n`; p=0.31 median) and inverts
+**f_κ(n)=(θ_EB(n)/θ₀(n))^(1/p)**, capped at f_max.
+
+| n (cm⁻³) | θ₀ (f_κ=1) | θ_EB (λδv=3) | f_κ ideal | θ achieved @ f_max=8 | fires @8? |
+|---:|---:|---:|---:|---:|:--:|
+| 10  | 0.21 | 0.897 | 106 | 0.40 | no |
+| 100 | 0.29 | 0.965 | 50  | 0.55 | no |
+| 1e3 | 0.38 | 0.989 | 22  | 0.72 | no |
+| 1e4 | 0.48 | 0.990 | 11  | 0.91 | no (close) |
+| 1e5 | 0.58 | 0.990 | 5.7 | 0.99 | **yes** |
+| 1e6 | 0.67 | 0.990 | 3.5 | 0.99 | **yes** |
+
+**Findings:**
+
+1. **f_κ_ideal(n) to *hit* El-Badry rises steeply as n falls** (3.5 at 1e6 → 106 at n=10) — a direct measure of
+   how badly TRINITY's 1D under-cools at low density. Hitting El-Badry exactly at the diffuse end needs
+   unphysical f_κ (10s–100s), which is why we **cap, not chase**.
+2. **At a physical ceiling the split is clean and falsifiable.** The **route-a boundary** n_routeA(f_max) — the
+   least-dense cloud that reaches θ=0.95 at the capped f_κ — is **n ≳ 2.5×10⁵ (f_max=4), ≈1.6×10⁴ (f_max=8),
+   ≈1.8×10³ (f_max=16)** (`fkappa_emergent_routea.png`). Everything below stays energy-driven **by design**.
+   So the one honest free parameter is **f_max** (the physical cap on the mechanism), and it maps directly to a
+   **testable energy→momentum density threshold**.
+3. **This is the corrected form of §11–13's "don't-force-it."** Same spirit (physical cap → critical column),
+   but the target is now El-Badry's θ_EB(n) rather than a flat plateau, and it is applied to the **emergent** θ,
+   never enforced — so it cannot double-count PdV (`FINDINGS.md §8c`) and the massive/PdV clouds are left to the
+   PR #715 handoff.
+
+**Honest caveats (unchanged from §4):** p=0.31 is measured only over f_κ∈{1,2,4} to firing and is
+**non-monotonic in n** (the de-conflation the 819-sweep addresses), and θ₀(n) has RMS 0.49 scatter in logit
+(profile/SFE at fixed n — visible as the spread of the measured points in the figure). So the route-a boundary
+is good to ~factor-few in n; **f_max itself is the physics input still to be pinned** (2–8 argued in §11; the
+structural κ_mix that would justify a larger effective boost at the diffuse end stays SHELVED). Validation TODO:
+one live `multiplier`-mode run at the calibrated f_κ per regime to confirm the *solved* θ lands on the table
+above (cheap — a handful of runs, not a grid).
 
 ## 7. Provenance / caveats (read before citing a number)
 
