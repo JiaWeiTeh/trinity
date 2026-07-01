@@ -162,6 +162,35 @@ not jump across the switch. This is well-defined while `Eb` is small-but-finite,
    epoch remains, go through 1c. **Decide by measurement** (§5), not assumption — default to the
    lower-risk "always through 1c" unless 1c is shown to be ill-conditioned at near-zero `Eb`.
 
+### Design addendum — TRIGGER PARITY between 1a and 1b (2026-07-01, maintainer point)
+
+Both energy phases carry the identical `Eb<=0` dead-stop (1a:340, 1b:1074), but **only 1b evaluates a
+transition criterion** (`cooling_balance`, `run_energy_implicit_phase.py:1207`). 1a (the fixed ~3000-yr
+`TFINAL_ENERGY_PHASE=3e-3 Myr` early phase) has **no** transition check, so a cloud that would hand off
+*within* the first 3000 yr — a **violently cooling** dense cloud — instead either waits for the 1a→1b
+boundary or, if cooling drives `Eb<0` first, **hits 1a's own dead-stop and dies**. Both energy phases
+must evaluate the **same two triggers** so neither regime can reach `ENERGY_COLLAPSED`:
+
+- **`cooling_balance` in 1a is cheap and faithful — no betadelta needed.** The 1b ratio is
+  `(Lgain − Lloss)/Lgain` with **`Lgain = Lmech_total`** (`get_betadelta.py:466`, runner `:1142`) and
+  **`Lloss = bubble_LTotal + bubble_Leak`** (default `effective_Lloss`). All three inputs are already
+  computed every 1a step (`bubble_Lgain`/`bubble_Lloss` are nan in 1a, but they are just unfilled
+  betadelta *output* slots — the ratio does not use them). Verified on a live `fail_repro` 1a row:
+  `(1.014e13 − (1.315e11 + 0))/1.014e13 = 0.987`. Caveat: 1a's `bubble_LTotal` is the direct
+  (non-β/δ-resolved) estimate, so its value differs slightly from 1b's resolved one — the *criterion* is
+  identical, only the cooling estimate is 1a's cruder one (which is what "constant/early cooling" already
+  means). Accept the small inconsistency.
+- **Pressure crossover in 1a** (points 1–3 above) catches the **PdV-dominated** collapse that
+  `cooling_balance` structurally cannot (there the 1a ratio sits at ~0.99 — radiative ~1%). `Pb`, `P_ram`,
+  `P_HII` are all computed in 1a.
+
+So the fix installs **both** the `cooling_balance` check and the pressure-crossover terminal event in
+**1a as well as 1b**, each routing into the 1c→2 chain rather than dead-stopping. Whichever fires first
+wins (same precedence logic as 1b's `r1_transition_decision`). This subsumes the earlier "primary site =
+1b" framing: 1b remains where the *verified* `fail_repro` collapse lands, but parity in 1a is required for
+the violent-early-cooling regime. **Still gated by G0** — adding these checks must stay bit-identical on
+runs that don't trip them (both are `> threshold` / `Pb > P_ram` no-ops for healthy bubbles).
+
 > Scope guard: this is a **solver-edge** change (rule 5 / planning protocol "risky"). The diff should be
 > confined to (a) one terminal event + clamp in `run_energy_phase.py`, (b) the routing branch, and (c) an
 > analogous crossover handling in 1b if 1a hands off to 1b first. No new params, no κ_eff coupling, no
