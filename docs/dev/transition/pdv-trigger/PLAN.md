@@ -159,10 +159,21 @@ for provenance.*
 > **📏 STANDING RULE (maintainer, AUTHORITATIVE, 2026-06-30): run every run to AT LEAST 5 Myr.** Never cap
 > `stop_t` short for cheapness — the energy→momentum transition epoch is θ's *peak*, which sits ~0.4–1 Myr and
 > the bubble keeps evolving for several Myr; a run capped at 0.3 Myr stops *before* the transition-relevant
-> physics. **Only exception:** a run the physics ends sooner (blowout / `ENERGY_COLLAPSED`) — that is the run's
-> fate, not a truncation. **Audit (2026-06-30):** ✅ the current κ_mix conclusions use the 6 Myr cleanroom runs;
-> ❌ the `cal_*` anchors behind `KMIX_PROTOTYPE.md` were capped 0.3–1.0 Myr ("just past blowout, to keep cheap")
-> → re-derive those from ≥5 Myr runs before trusting their Pb numbers. f1edge_lowdens (3 Myr) is also short.
+> physics. **Only exception:** a run the physics ends sooner (blowout / `ENERGY_COLLAPSED` / recollapse) — that
+> is the run's fate, not a truncation. **Audit (2026-06-30):** ✅ the current κ_mix conclusions use the 6 Myr
+> cleanroom runs; ❌ the `cal_*` anchors behind `KMIX_PROTOTYPE.md` were capped 0.3–1.0 Myr → re-derive from
+> ≥5 Myr runs. f1edge_lowdens (3 Myr) is also short.
+>
+> **📏 STANDING RULE (maintainer, AUTHORITATIVE, 2026-07-01): θ is measured as its PEAK over the ≥5 Myr run
+> (θ_max), NOT at blowout.** The trigger fires on the **first crossing** of θ≥0.95, so the physically-meaningful
+> summary of a run is `θ_max = max_t θ(t)` over the whole ≥5 Myr evolution (or the natural end if the physics
+> stops sooner). **Blowout-θ (θ at R2=rCloud) is retired as a metric** — it is a single arbitrary/late epoch, it
+> is **undefined for clouds that recollapse before rCloud**, and it **under-reads the peak** (validated
+> 2026-07-01: at f_κ=8, θ_max = 1.33 / 1.01 for n=1e5 / 1e4 vs the blowout-θ₀ calibration's 0.99 / 0.91 — so
+> blowout-θ₀ is *conservative*). **All current and future θ measurement uses θ_max-over-≥5 Myr.** ⚠️ The §14
+> f_κ calibration and `kappa_blowout_calibration.csv` still use the old **blowout-θ₀** baseline → they are
+> **conservative and pending re-derivation** with θ_max (the `data/_fkappa_validation_runner.py` harness already
+> records θ_max and is the template). `F_KAPPA_FUNCTIONAL_FORM.md` §10/§14 flagged accordingly.
 
 **Status ledger (newest first):**
 - **2026-07-01 (✅ DIRECTION CORRECTED — θ is an OUTPUT; Rung A f_κ reinstated, θ_elbadry demoted to opt-in →

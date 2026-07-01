@@ -641,6 +641,37 @@ bubble, not an input you set.**
 Artifacts: `data/_theta_elbadry_gated_runner.py`, `data/gate_prototype.csv`,
 `outputs/{shadow_gate,shadow_gate_ebpeak}/`.
 
+## 8d. [data] The diffuse-config "hang" diagnosed — implicit-solve non-convergence, NOT the min_T guard (2026-07-01)
+
+Validating the §14 route-a end (n=100 at f_κ=8, `multiplier` mode) exposed a stall: both `large_diffuse_lowsfe`
+and `small_1e6` freeze at **t≈0.00293 Myr** (the energy→implicit handoff) and never advance — the apparent
+"hang" behind several timed-out/OOM'd diffuse runs this session. DEBUG diagnosis (θ_max standing rule → run to
+≥5 Myr; here it never gets there):
+
+- **What it's doing:** the bubble-structure `dMdt` fsolve re-solves the **same state** (R2=1.3819 pc, R1=0.7053
+  pc, T_inner≈2.5×10⁷ K) ~1/sec **indefinitely** — the implicit segment can't be accepted, `dt` collapses, sim
+  time never advances (`bubble_luminosity.get_bubbleproperties_pure` on repeat).
+- **⚠️ RETRACTED hypothesis:** I first blamed the `min_T < _T_INIT_BOUNDARY` guard (`bubble_luminosity.py:344`),
+  which logs **513 "Rejected. min T: 29999.99…"** boundary transients (min_T a ~1e-4 K FP undershoot below the
+  T=3×10⁴ K outer-boundary IC). **Wrong on two counts, per the data:** (1) the rejection penalty
+  `residual·(3e4/min_T)²` = **0.999993 ≈ 1.0** when min_T≈floor, so those rejections are **benign** — they
+  barely perturb the residual and do not block convergence; (2) my "relax the guard" test lowered
+  `_T_INIT_BOUNDARY`, which moves the **IC and the guard together**, so the transient just followed to the new
+  boundary (min_T=29999.94998 < 29999.95). The min_T spam is a **red herring**.
+- **Real cause:** the beta-delta / bubble-structure implicit solve **does not converge to a physical step** at
+  this early, stiff state — the same class as the `MonotonicError` / "no physical dMdt root" failures seen for
+  `midrange_pl0`/`small_dense_highsfe` (§8). The strong `multiplier` boost (f_κ=8) on a **diffuse** cloud makes
+  the structure stiff enough to trip it; the `theta_target` shadow of the same config did NOT stall here (it ran
+  to 14 Myr, §8) because that mode tops up L_loss for the trigger/ODE without re-stiffening the structure
+  integrand the way an 8× `multiplier` on L_cool does.
+- **Relevance to the plan:** this is **another reason not to push f_κ high at the diffuse end** — high f_κ there
+  is not only physically route-a but **numerically brittle**. It reinforces the §14 stance (physical f_κ cap +
+  accept route-a), and it means the diffuse route-a θ_max can't be *measured* under a big multiplier until the
+  early implicit-solve robustness is improved (out of this workstream's scope — a bubble-structure/solver item).
+
+Artifacts: `data/_fkappa_validation_runner.py` (θ_max observer), `data/_minT_tol_confirm_runner.py` (the
+retracted confirmation), `outputs/{fkappa_val,fkappa_debug,minT_confirm,minT_debug}/`.
+
 ## 7. Provenance
 - Commits (`feature/PdV-trigger-term`): `6642ff4` matrix+comparator, `dc1c2fd` note patches, `17f9653`
   live 3/4 configs, `8bcc6b0` θ_lit plot, `b94689c` plot layout fix, plus this commit (4/4 + figure

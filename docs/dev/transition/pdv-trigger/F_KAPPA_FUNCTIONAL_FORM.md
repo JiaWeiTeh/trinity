@@ -562,9 +562,32 @@ maintainer stance "diffuse clouds may never enter momentum; the physics never al
 **non-monotonic in n** (the de-conflation the 819-sweep addresses), and θ₀(n) has RMS 0.49 scatter in logit
 (profile/SFE at fixed n — visible as the spread of the measured points in the figure). So the route-a boundary
 is good to ~factor-few in n; **f_max itself is the physics input still to be pinned** (2–8 argued in §11; the
-structural κ_mix that would justify a larger effective boost at the diffuse end stays SHELVED). Validation TODO:
-one live `multiplier`-mode run at the calibrated f_κ per regime to confirm the *solved* θ lands on the table
-above (cheap — a handful of runs, not a grid).
+structural κ_mix that would justify a larger effective boost at the diffuse end stays SHELVED).
+
+> ⚠️ **θ₀ HERE IS A BLOWOUT SNAPSHOT — the calibration is CONSERVATIVE and pending re-derivation with θ_max.**
+> `θ₀(n)` above comes from `Lcool_over_Lmech_at_blowout` (`make_fkappa_functional_form.py:23,99,123`), i.e. θ at
+> R2=rCloud. Per the **📏 θ_max standing rule (2026-07-01, `PLAN.md`)** all θ is now measured as the **peak over
+> a ≥5 Myr run**, because the trigger fires on the *first crossing* and blowout under-reads the peak (and is
+> undefined for recollapsing clouds). Re-deriving θ₀(n) with θ_max will *lower* the required f_κ / move the
+> route-a boundary to lower density.
+
+**Live validation (2026-07-01, `data/_fkappa_validation_runner.py`, θ_max over ≥5 Myr, production `multiplier`
+mode at f_κ=8, `cooling_balance` only):**
+
+| config | n | predicted θ (blowout-θ₀ @8) | **measured θ_max** | fires? |
+|---|---:|---:|---:|:--:|
+| simple_cluster | 1e5 | 0.99 | **1.334** | **YES** |
+| be_sphere | 1e4 | 0.91 (no) | **1.006** | **YES** |
+| small_1e6 / large_diffuse | 1e2 | 0.55 (no) | *unmeasurable — stalls* | *(see FINDINGS §8d)* |
+
+The two dense configs fire, and **θ_max exceeds the blowout-θ₀ prediction** (1.33 vs 0.99; 1.01 vs 0.91) —
+confirming the blowout baseline is conservative and that the emergent `multiplier` path reaches firing at a
+physical f_κ. (Both then `shell_collapsed` — the separate dense-core recollapse question, `FINDINGS §8a`, not a
+double-count; unlike enforced θ these fired from *emergent* radiative cooling.) **The n=1e2 route-a check could
+NOT be measured:** both diffuse configs **stall at t≈0.003 Myr under f_κ=8** — the implicit bubble-structure
+solve fails to converge at that stiff, diffuse, strongly-boosted state (`FINDINGS §8d` — diagnosed; the earlier
+"min_T guard" hypothesis is retracted there). This is itself evidence for the §14 stance: **high f_κ at the
+diffuse end is numerically brittle as well as physically route-a** — another reason to cap f_κ low there.
 
 ## 7. Provenance / caveats (read before citing a number)
 
