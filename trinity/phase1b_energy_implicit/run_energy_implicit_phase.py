@@ -168,6 +168,11 @@ ODE_MAX_STEP = DT_SEGMENT_MIN / 5  # Max step = 2e-5 Myr (ensures >=5 steps per 
 # Solver method: 'LSODA' for stiff/non-stiff switching
 ODE_METHOD = 'LSODA'
 
+# Energy handed to phase 1c when an energy-driven bubble collapses (Eb -> 0) and
+# is routed to momentum instead of dead-stopping. Matches phase1c ENERGY_FLOOR
+# (1e3) so 1c's floor check immediately transitions to the momentum phase.
+ENERGY_HANDOFF_FLOOR = 1e3
+
 
 # =============================================================================
 # Force Properties Dataclass
@@ -1066,22 +1071,39 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         params['Eb'].value = Eb
         params['T0'].value = T0
 
-        # Catastrophic-cooling collapse: Eb has fallen through zero (cooling
-        # outruns the wind). The energy-driven model is invalid past this point
-        # (it would drive R1->R2 and divide-by-zero in compute_R1_Pb). Stop the
-        # run cleanly; momentum-driven continuation is future work (docs/dev/
-        # transition). See docs/dev/failed-large-clouds.
-        if not np.isfinite(Eb) or Eb <= 0:
+        # Energy-driven collapse: Eb has fallen through zero (a sink -- PdV work on a
+        # heavy shell, or radiative cooling -- outruns the wind). The energy-driven
+        # model is invalid past this point (it would drive R1->R2 and divide-by-zero
+        # in compute_R1_Pb). But this is an energy->momentum TRANSITION, not an ending:
+        # as Eb->0 the bubble pressure floors at ~P_ram (Pb = (g-1)Lmech/((4pi/3)R1^2 v)
+        # -> P_ram since R1->R2), so the shell is already momentum-driven. Route to the
+        # momentum phase via 1c instead of dead-stopping. See docs/dev/transition/
+        # pdv-trigger/HIMASS_HANDOFF_PLAN.md.
+        if not np.isfinite(Eb):
+            # Non-finite Eb (nan/inf) is unrecoverable -- cannot hand a bad state to
+            # momentum; keep the clean stop.
             params['EndSimulationDirectly'].value = True
             params['SimulationEndReason'].value = (
-                "Energy-driven bubble collapsed: Eb fell to <= 0 "
+                "Energy-driven bubble collapsed: Eb non-finite "
                 "(energy-driven phase no longer self-sustains)"
             )
             params['SimulationEndCode'].value = SimulationEndCode.ENERGY_COLLAPSED.code
             termination_reason = "energy_collapsed"
             logger.warning(
                 f"Energy-driven bubble collapsed at t={t_now:.6e} Myr "
-                f"(Eb={Eb:.3e}, R2={R2:.4f} pc): stopping run cleanly."
+                f"(Eb non-finite, R2={R2:.4f} pc): stopping run cleanly."
+            )
+            break
+        if Eb <= 0:
+            # Hand off (R2, v2) to momentum. Set Eb to the transition energy floor so
+            # 1c's bubble calls stay finite and its floor check immediately transitions
+            # to phase 2. Do NOT set EndSimulationDirectly -> main runs 1c -> momentum.
+            Eb = ENERGY_HANDOFF_FLOOR
+            params['Eb'].value = Eb
+            termination_reason = "energy_to_momentum"
+            logger.warning(
+                f"Energy-driven collapse at t={t_now:.6e} Myr (Eb<=0, R2={R2:.4f} pc, "
+                f"v2={v2:.3e} pc/Myr): thermal driving spent -> routing to momentum via 1c."
             )
             break
 

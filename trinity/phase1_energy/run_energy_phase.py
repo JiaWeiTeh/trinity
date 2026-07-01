@@ -262,6 +262,31 @@ def run_energy(params):
         params.save_snapshot()
 
         # =============================================================================
+        # 6b. Transition-trigger parity with phase 1b (cooling_balance).
+        # A violently cooling cloud can reach the energy->momentum cooling balance
+        # WITHIN this fixed ~3000-yr early phase; without a check here it would either
+        # wait for the 1a->1b boundary or, if cooling drives Eb<=0 first, hit the
+        # collapse routing below. Evaluated at the consistent pre-ODE snapshot with the
+        # SAME formula as run_energy_implicit_phase.py (Lgain=Lmech_total,
+        # Lloss=effective_Lloss(Lcool=bubble_LTotal, leak)). No-op for healthy bubbles
+        # (early cooling is negligible, ratio ~1 >> threshold) -> byte-identical (G0).
+        from trinity.phase1b_energy_implicit.run_energy_implicit_phase import parse_transition_triggers
+        from trinity.phase1b_energy_implicit.get_betadelta import effective_Lloss_from_params
+        _active_triggers = parse_transition_triggers(params['transition_trigger'].value)
+        if 'cooling_balance' in _active_triggers:
+            _Lgain = feedback.Lmech_total
+            _leak = ode_result.bubble_Leak if ode_result.bubble_Leak is not None else 0.0
+            _Lloss = effective_Lloss_from_params(params, bubble_data.bubble_LTotal, _leak, _Lgain)
+            _thr = params['phaseSwitch_LlossLgain'].value
+            _thr = _thr if _thr else 0.05
+            if _Lgain > 0 and (_Lgain - _Lloss) / _Lgain < _thr:
+                logger.info(
+                    f"Phase 1a cooling_balance reached (Lloss/Lgain > {1 - _thr:.2f}) at "
+                    f"t={t_now:.6e} Myr -> ending early phase (hands off via 1b -> 1c -> momentum)."
+                )
+                break
+
+        # =============================================================================
         # 7. Create ODE snapshot and integrate
         # =============================================================================
         snapshot = energy_phase_ODEs.create_ODE_snapshot(params, shell_data)
