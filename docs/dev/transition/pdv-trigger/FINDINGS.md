@@ -50,7 +50,12 @@
 > default. Historical caveat: earlier revisions of THIS banner (06-30) said the reverse — treat those as
 > superseded.
 
-> **→ Calibration target (2026-06-29):** the composed closed-form **f_κ(n_H) = (θ\*/θ₀(n_H))^(1/p) ≈
+> **→ Calibration target (2026-06-29) — 🛑 SUPERSEDED (kept as history):** the closed form below was falsified
+> on both parameters (slope: sweep measured −0.60 vs −0.30, scorecard P1 ❌; baseline: the 6-anchor θ₀ slope
+> 0.41/dex vs the grid's 1.13/dex, P3 ❌), rests on the retired blowout-θ metric, and the whole f_κ(n) framing
+> was then superseded by the **single-physical-constant DECISION** (F_KAPPA §14 ✅) + the **θ₁-collapse law**
+> (§9). Do not calibrate against it — `CONTAMINATION.md` ⛔ #3. Original text:
+> the composed closed-form **f_κ(n_H) = (θ\*/θ₀(n_H))^(1/p) ≈
 > 1.4×10²·n_H^(−0.30)** now lives in **`F_KAPPA_FUNCTIONAL_FORM.md`** (target = Lancaster flat θ*≈0.90 · baseline
 > `logit θ₀ = −1.73+0.41 log₁₀ n_H` · raw full-range leverage p≈0.31). f_κ≈48(diffuse)/9(mid)/3(dense) for
 > θ*=0.95 — matches the measured firing anchor (compact fires at f_κ≈3.4). It supersedes the §2-area schematic
@@ -773,7 +778,9 @@ back-reacted θ (~0.5, doesn't fire), so the **calibrated f_κ magnitude must be
 Artifacts: `data/_kappa_validation_runner.py`, `outputs/{kappa_val,kappa_val_fk2}/`, `KAPPA_VALIDATION_PLAN.md`.
 
 ## 7. Provenance
-- Commits (`feature/PdV-trigger-term`): `6642ff4` matrix+comparator, `dc1c2fd` note patches, `17f9653`
+- Commits (`feature/PdV-trigger-term` — the pt1 branch; the line continued on `feature/PdV-trigger-term-pt2`,
+  merged via PR #717, then reconciled with `feature/transition-trigger-pt3`, see `INDEX.md §5`):
+  `6642ff4` matrix+comparator, `dc1c2fd` note patches, `17f9653`
   live 3/4 configs, `8bcc6b0` θ_lit plot, `b94689c` plot layout fix, plus this commit (4/4 + figure
   de-annotated). Branch is also mirrored to `claude/amazing-darwin-pl1kzl`.
 - Data: `data/{fmix_table,pdv_combined_trigger}.csv`, `runs/data/live_compare.csv` (5 rows),

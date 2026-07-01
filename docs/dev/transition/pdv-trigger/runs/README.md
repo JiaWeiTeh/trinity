@@ -3,11 +3,14 @@
 > **This file covers only the §9 live edge runs.** For the *whole-storyline* reproducibility map (every result
 > → its `.param` + command + artifact), see [`../REPRODUCE.md`](../REPRODUCE.md).
 >
-> **Heads-up — a second, unrelated workflow also lives in this folder:** the f_κ(n_H) **sweep** launcher
-> `run_fkappa.sbatch` + `sync.sh` (driving `params/sweep_fkappa_nH.param`; reduced by `../data/reduce_fkappa_sweep.py`,
-> plotted by `../data/make_fkappa_nH_sweep.py` — REPRODUCE.md result #18 / Block C). That is the HPC array
-> sweep + reduce-then-plot pipeline; it is **NOT** part of the §9 live edge runs documented below. Don't conflate
-> `sync.sh`/`run_fkappa.sbatch` (sweep) with `compare_live.py`/`make_params.py` (the live runs).
+> **Heads-up — THREE distinct workflows live in this folder; don't conflate them:**
+> 1. the **📏 standard-protocol matrix** (`make_theta5_params.py` + `params/theta5/` + `run_theta5.sbatch`
+>    + `harvest_theta_max.py`) — the current, rule-compliant test harness (next section);
+> 2. the f_κ(n_H) **sweep** launcher `run_fkappa.sbatch` + `sync.sh` (driving `params/sweep_fkappa_nH.param`;
+>    reduced by `../data/reduce_fkappa_sweep.py`, plotted by `../data/make_fkappa_nH_sweep.py` —
+>    REPRODUCE.md result #18 / Block C) — ran on Helix 2026-06-29; ⚠️ its `stop_t=2` metric predates the
+>    standing rules (`../CONTAMINATION.md`);
+> 3. the historical §9 **live edge runs** (`compare_live.py`/`make_params.py`, documented below).
 
 > ⚠️ **This document may be out of date — verify before trusting it.** It is a
 > point-in-time analysis/audit, not a maintained spec; the code moves faster
@@ -41,6 +44,28 @@
 > siblings and reconcile: if a number, status, claim, or line reference here contradicts a sibling — or a
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
+
+## 📏 THE STANDARD PROTOCOL (2026-07-01) — 8 configs × ≥5 Myr × θ_max. Use this for every new test matrix.
+
+Maintainer rules (PLAN.md 📏 boxes; violations = CONTAMINATED, see `../CONTAMINATION.md`):
+
+1. **The 8 canonical configs** (INDEX.md §3): the cleanroom 6 (`simple_cluster`, `small_dense_highsfe`,
+   `pl2_steep`, `midrange_pl0`, `be_sphere`, `large_diffuse_lowsfe`) + `fail_repro` (heavy PdV-dominated) +
+   `small_1e6` (healthy control). Any production-facing knob claim is tested on all 8.
+2. **Every run goes to `stop_t = 5` Myr** — or its natural physics end (recollapse/`shell_collapsed`,
+   `large_radius`), never a wall-clock or cheapness truncation. No θ number from a `<5 Myr`-truncated run
+   is quotable.
+3. **θ is reported as `theta_max` over the whole run** — `max_t bubble_Lloss/Lmech_total` on ACCEPTED
+   `dictionary.jsonl` implicit rows. **Blowout-θ is retired**; call-level observers are banned (R6).
+4. **Separate processes** per run (trinity leaks module globals in-process), unique `path2output`.
+
+Ready-made matrix for the open question (re-derive the `multiplier` calibration, SESSION_HANDOFF
+next-step #1): `make_theta5_params.py` emits the committed `params/theta5/` 32-run matrix
+(8 configs × f_mix ∈ {none, 2, 4, 8}, all `stop_t 5`); `run_theta5.sbatch` is the Helix array
+launcher; `harvest_theta_max.py` is the sanctioned reducer → commit its CSV to `data/theta5_summary.csv`.
+Diffuse configs are hours-per-run (FINDINGS §8d cliff) — **run the matrix on HPC**, not in a container.
+
+---
 
 This folder executes the **NEXT step** the `../PLAN.md` (§Task B) has been pointing at: the
 matched-`t` **live** edge-config runs that replace the **frozen-trajectory screen**. The screen

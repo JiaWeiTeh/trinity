@@ -522,6 +522,15 @@ and tested on all 8 configs, decides it per cloud** — do not assert either fat
 
 ## 14. ⭐ CURRENT calibration — emergent θ to the El-Badry λδv=3 target, physically capped (2026-07-01)
 
+> ⛔ **QUOTABILITY (added 2026-07-01 reconciliation, `CONTAMINATION.md` ⛔ #1–#2): the *program* of this
+> section stands (emergent θ, physical cap, route-a); its *numbers* do not.** Three independent taints:
+> (i) θ₀(n) is a **blowout snapshot** (retired metric — box below); (ii) θ₀/p were **fit on
+> `cooling_boost_kappa`** (KNOB CORRECTION), a knob `FINDINGS §8e` then broke at f_κ=8, and they **do not
+> carry over** to the tentatively-chosen `multiplier`; (iii) the 6-anchor θ₀ baseline slope (0.41/dex logit)
+> was **falsified by the 819-sweep** (real grid 1.13/dex — PLAN scorecard P3 ❌). The θ_max=1.334/1.006
+> "live validation" at the bottom is additionally **observer-contaminated (R6) + wrong-knob (R5)**.
+> **Re-derivation path:** the 📏 standard-protocol matrix (`runs/README.md`, `runs/params/theta5/`).
+
 This is the calibration under the **corrected direction** (`PLAN.md` ⭐⭐, `FINDINGS.md §8c`): θ is an **output**;
 boost the cooling **mechanism** (the `cooling_boost_kappa` structural knob is the θ-fully-emergent one; see the
 `PLAN.md` KNOB CORRECTION) so the **solved** θ tracks El-Badry — do **not** enforce θ. Two changes from §0–§13:
@@ -587,7 +596,10 @@ structural κ_mix that would justify a larger effective boost at the diffuse end
 > route-a boundary to lower density.
 
 **Live validation (2026-07-01, `data/_fkappa_validation_runner.py`, θ_max over ≥5 Myr, production `multiplier`
-mode at f_κ=8, `cooling_balance` only):**
+mode at f_κ=8, `cooling_balance` only)** — ⛔ **RETRACTED as a validation** (kept as the historical record):
+(R5) it ran the **wrong knob** (`multiplier`) against a **kappa-fit** prediction column, and (R6) its θ_max
+column came from the **contaminated call-level observer** (records solver trial (β,δ) points; bogus 3.22
+precedent) — re-harvest from `dictionary.jsonl` (`runs/harvest_theta_max.py`) before quoting any number below:
 
 | config | n | predicted θ (blowout-θ₀ @8) | **measured θ_max** | fires? |
 |---|---:|---:|---:|:--:|
@@ -596,8 +608,9 @@ mode at f_κ=8, `cooling_balance` only):**
 | small_1e6 / large_diffuse | 1e2 | 0.55 (no) | *unmeasurable — stalls* | *(see FINDINGS §8d)* |
 
 The two dense configs fire, and **θ_max exceeds the blowout-θ₀ prediction** (1.33 vs 0.99; 1.01 vs 0.91) —
-confirming the blowout baseline is conservative and that the emergent `multiplier` path reaches firing at a
-physical f_κ. (Both then `shell_collapsed` — the separate dense-core recollapse question, `FINDINGS §8a`, not a
+*qualitatively* supporting that the blowout baseline is conservative and that the emergent `multiplier` path
+reaches firing at a physical f_κ (the specific numbers are retracted per the ⛔ flag above; the rule-compliant
+re-measurement is the 📏 theta5 matrix). (Both then `shell_collapsed` — the separate dense-core recollapse question, `FINDINGS §8a`, not a
 double-count; unlike enforced θ these fired from *emergent* radiative cooling.) **The n=1e2 route-a θ_max could
 NOT be measured — but for a PERFORMANCE reason, not a bug:** the diffuse configs progress far too slowly to
 reach ≥5 Myr (even f_κ=1 needs ~11 h; a cooling boost makes the early implicit segments ~3–7× costlier). The
