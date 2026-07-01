@@ -83,9 +83,13 @@ let TRINITY's wrong-trend *resolved* θ win at some epoch — check, and prefer 
 ceiling to stay numerically sane.
 
 **BEST PATH FORWARD — SHADOW FIRST (production NOT yet finalized):** (i) ✅ **spec written**
-(`THETA_ELBADRY_SPEC.md`). (ii) **STAGE A — SHADOW:** run the §3 logic via a runtime monkeypatch harness on the
-8 configs to ≥5 Myr (no `trinity/` edit), harvest θ(t)/firing/fate, and **resolve the two open design points
-from data** (§6 max-vs-direct; the fate pattern). (iii) **STAGE B — PRODUCTION** (only after Stage A is clean):
+(`THETA_ELBADRY_SPEC.md`). (ii) ✅ **STAGE A — SHADOW RAN (2026-06-30):** the §3 logic ran via the monkeypatch
+harness (`data/_theta_elbadry_runner.py`) on 9 configs to ≥5 Myr (no `trinity/` edit) →
+`FINDINGS.md §8` + `data/shadow_te_fate.csv`. **Resolved: §6 `max()` gate is SAFE** (resolved-wins 0/N — El-Badry
+θ ≥ native θ everywhere, so max==direct). **One design point still open:** dense compact clouds (n≥1e4, θ=0.99)
+fire at t<0.02 Myr then **SHELL_COLLAPSE** (clean endcode 4) — physical (under-powered cluster vs dense core) or
+θ_max=0.99 too aggressive? Baseline isolation (`data/_baseline_runner.py`, stock trinity) **in progress** to
+decide. **Do NOT start Stage B until that settles.** (iii) **STAGE B — PRODUCTION** (only after Stage A is clean):
 the 3 params + 1 `effective_Lloss` branch, gated default-off byte-identical, re-validated to reproduce the
 shadow 1:1. Firing read by **first-crossing** (never blowout). *Why shadow first: two design points are
 unresolved-until-data and TRINITY has never run with any θ-boosting mode end-to-end — revising a harness is
@@ -137,6 +141,21 @@ for provenance.*
 > → re-derive those from ≥5 Myr runs before trusting their Pb numbers. f1edge_lowdens (3 Myr) is also short.
 
 **Status ledger (newest first):**
+- **2026-06-30 (STAGE A — SHADOW RAN; 9 configs to ≥5 Myr → `FINDINGS.md §8`, `data/shadow_te_fate.csv`).**
+  Ran the §3 El-Badry-θ logic via `data/_theta_elbadry_runner.py` (monkeypatch, no `trinity/` edit), trigger
+  `cooling_balance,ebpeak`, λδv=3, θ_max=0.99. **Two of three Stage-A questions resolved by data:** (1) **§6
+  `max(resolved,target)` gate SAFE** — resolved-wins **0/N** across all 9 configs, so El-Badry θ ≥ TRINITY's
+  native θ everywhere and `max()`==direct assignment (no diffuse-end misbehavior). (2) **θ(n) + firing threshold
+  behave** — n=10→θ=0.897 (energy-driven until ebpeak), n=100→0.965, n≥1e4→0.99(cap); n_fire≈48–50 confirmed.
+  **(3) STILL OPEN — the SHELL_COLLAPSE question:** dense compact clouds (n≥1e4, θ=0.99) fire at t<0.02 Myr then
+  **SHELL_COLLAPSE** (endcode 4 = *clean* fate, not error); diffuse well-powered clouds reach STOPPING_TIME
+  expanding (small_1e6 → 254 pc; diffuse_probe → 139 pc); diffuse *under*-powered (large_diffuse_lowsfe sfe=0.01)
+  collapses late (14 Myr). Since resolved-wins=0, the patch cools harder than baseline ⇒ it *accelerates* collapse
+  vs stock — physical (weak cluster vs dense core) or θ_max=0.99 too aggressive? **Baseline isolation
+  (`data/_baseline_runner.py`, stock trinity, default `cooling_balance`) RUNNING** to decide; dense baselines are
+  slow (hours, stiff early implicit). The 2 non-results (fail_repro mCloud 4.5e9 energy-collapse; small_dense
+  nCore 1e6 β-δ MonotonicError) are **pre-existing extremes, not patch-induced** (both die before any transition).
+  **Stage B production stays BLOCKED until the SHELL_COLLAPSE reading settles.**
 - **2026-06-30 (CAPSTONE SPEC written — `THETA_ELBADRY_SPEC.md`; the path is off-paper-ready).** Consolidated
   every resolved decision into one implementation-ready spec for the gated `theta_elbadry` mode: **3 registry
   params** (`cooling_boost_mode='theta_elbadry'`, `cooling_boost_lambda_dv` default 0=off/set 3.0,

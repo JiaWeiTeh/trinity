@@ -1,4 +1,4 @@
-# PdV-trigger workstream — findings (verified, 4/4 live configs)
+# PdV-trigger workstream — findings (verified; Stage-A shadow ran 9 configs — see §8)
 
 > ⚠️ **This document may be out of date — verify before trusting it.** It is a
 > point-in-time analysis/audit, not a maintained spec; the code moves faster
@@ -395,6 +395,70 @@ shadow `ebpeak_t=None` — **`ebpeak` never fired**.
   agrees to the digit** (simple_cluster live 0.911 == frozen 0.911). The f_κ-*dependence* (trade-off) is
   live-only and extended to `mid`=midrange_pl0 (running) + `dense`=small_dense_highsfe (stalled — nCore 1e6 is
   numerically stiff; frozen point used). HPC-deferred for the remaining configs.
+
+## 8. [data] Stage-A shadow — El-Badry θ imposed end-to-end on 9 configs (2026-06-30)
+
+First end-to-end test of the capstone (`THETA_ELBADRY_SPEC.md`). `data/_theta_elbadry_runner.py`
+monkeypatches `effective_Lloss_from_params` (in BOTH `get_betadelta` and `run_energy_implicit_phase`) to
+the El-Badry analytic θ — `θ = A_mix·√(λδv·n_amb)/(11/5 + A_mix·√(λδv·n_amb))`, A_mix=3.5, λδv=3,
+θ_max=0.99 — **without touching production code**, then runs each config in a separate process to ≥5 Myr
+with `transition_trigger=cooling_balance,ebpeak`. Harvest: `data/harvest_shadow.py` →
+**`data/shadow_te_fate.csv`** (the table below). `n_amb` = local cloud density at the shell,
+`get_density_profile(R2)·ndens_au2cgs`.
+
+| config | n_core (cm⁻³) | mCloud | sfe | θ imposed | fire t (Myr) | fate | end (t, R2, v2) |
+|---|---|---|---|---|---|---|---|
+| simple_cluster | 1e5 | 1e5 | 0.30 | 0.990 | 0.009 | **SHELL_COLLAPSED** | 0.14 Myr, 0.99 pc, −0.1 |
+| pl2_steep | 1e5 | 1e6 | 0.10 | 0.990 | 0.011 | **SHELL_COLLAPSED** | 0.06 Myr, 0.94 pc, −0.3 |
+| be_sphere | 1e4 | 1e6 | 0.05 | 0.990 | 0.015 | **SHELL_COLLAPSED** | 2.30 Myr, 1.5 pc, −23 |
+| midrange_pl0 | 1e4 | 1e6 | 0.10 | 0.990 | 0.017 | **SHELL_COLLAPSED** | 1.42 Myr, 1.5 pc, −28 |
+| large_diffuse_lowsfe | 100 | 1e7 | 0.01 | 0.965 | 0.052 | **SHELL_COLLAPSED** | 14.3 Myr, 1.5 pc, −122 |
+| small_1e6 | 100 | 9e5 | 0.10 | 0.965 | 0.052 | STOPPING_TIME | 10.0 Myr, 254 pc, +28 |
+| diffuse_probe | 10 | 9e5 | 0.10 | 0.897 | 0.154 (ebpeak) | STOPPING_TIME | 6.0 Myr, 139 pc, +28 |
+| fail_repro | 100 | 4.5e9 | 0.10 | 0.965 | — | energy_collapsed | 0.003 Myr (pre-existing heavy-cloud break) |
+| small_dense_highsfe | 1e6 | 1e4 | 0.50 | 0.990 | — | CRASHED_EARLY | 0.004 Myr (pre-existing β-δ solver stiffness) |
+
+**Findings:**
+
+1. **§6 `max(resolved, target)` gate is SAFE — resolved-wins 0/N on all 9 configs.** El-Badry's θ is ≥
+   TRINITY's native resolved θ in *every* call, so the `max()` never selects the resolved term: imposing
+   θ_target here is operationally identical to direct θ assignment. This clears the SPEC §6 gate. **It also
+   means the patch raises θ above baseline everywhere** — a key fact for the isolation read (point 5).
+2. **θ(n) is monotone and the firing threshold behaves as designed.** n=10 → θ=0.897 (<0.95, so
+   `cooling_balance` never trips — fires only later via `ebpeak`); n=100 → 0.965; n≥1e4 → 0.99 (capped).
+   The n_fire≈48–50 cm⁻³ threshold is confirmed: the n=10 cloud stays energy-driven until ebpeak, n≥100
+   trips cooling_balance promptly.
+3. **Fate splits by cluster power vs cloud binding, NOT by θ alone:**
+   - *Dense compact* (n≥1e4, θ=0.99): fire at t<0.02 Myr → **SHELL_COLLAPSED**. 99% cooling strips the
+     thermal support and the shell stalls then recollapses to ~rCore. SHELL_COLLAPSED is **endcode 4 =
+     a CLEAN physical fate** (range 0–9), not an error.
+   - *Diffuse, well-powered* (small_1e6: n=100, sfe=0.1, mCloud=9e5): STOPPING_TIME, expands to 254 pc.
+   - *Diffuse, under-powered* (large_diffuse_lowsfe: n=100 but sfe=0.01 in a 1e7 cloud): fires early yet
+     SHELL_COLLAPSES only at **t=14.3 Myr** — the cluster is too weak to hold a 1e7 cloud open; late
+     recollapse is physically expected.
+   - *Very diffuse* (diffuse_probe: n=10): θ<0.95, stays energy-driven until ebpeak fires at 0.15 Myr, then
+     expands healthily (139 pc) to stop-time.
+4. **The two non-results are at unphysical extremes and are pre-existing, NOT patch-induced.** fail_repro
+   (mCloud 4.5e9 — absurd) energy-collapses at t=0.003 *before any transition*; small_dense_highsfe
+   (nCore 1e6) hits the known β-δ `MonotonicError` solver stiffness at t=0.004, also before any transition.
+   Neither reaches the patched code path long enough for θ to matter.
+5. **Open design question — is dense-cloud SHELL_COLLAPSE the right physics, or does θ_max=0.99 force
+   premature collapse?** Because resolved-wins=0 (point 1), the patch cools these clouds *harder* than
+   stock TRINITY would, so it necessarily accelerates collapse relative to baseline. Two readings:
+   (a) **physical** — these clusters are modest (3e4–1e5 M⊙ of stars) against dense cores, and a
+   cooling-dominated bubble with ~1% of Lw left genuinely cannot stay open; or (b) **too aggressive** —
+   θ_max=0.99 over-cools and a softer cap (e.g. 0.95) would let dense clouds momentum-drive instead of
+   recollapse. **Isolation test in progress:** `data/_baseline_runner.py` runs the same dense configs with
+   stock trinity (no patch, default `cooling_balance`); `OUT_BASE=outputs/baseline_te`. If baseline *also*
+   collapses them, (a) holds and the patch is faithful; if baseline keeps them energy-driven/expanding, (b)
+   holds and the cap needs revisiting before Stage B. *(Dense baselines are very slow in the early implicit
+   solve — hours-scale; result to be appended here.)*
+
+**Stage-A verdict so far:** the mechanism works end-to-end and the numerical gate (§6 max) is clean. The
+one thing standing between Stage A and Stage-B production is resolving the SHELL_COLLAPSE reading (point 5)
+— do **not** wire the production `theta_elbadry` mode until the baseline isolation settles whether θ_max=0.99
+is physical or needs softening. Artifacts (committed): `data/_theta_elbadry_runner.py`,
+`data/_baseline_runner.py`, `data/harvest_shadow.py`, `data/shadow_te_fate.csv`.
 
 ## 7. Provenance
 - Commits (`feature/PdV-trigger-term`): `6642ff4` matrix+comparator, `dc1c2fd` note patches, `17f9653`
