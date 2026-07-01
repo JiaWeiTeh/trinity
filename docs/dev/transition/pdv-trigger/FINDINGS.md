@@ -93,6 +93,15 @@ both solid; the literature-`θ_lit(n)` comparison (§2) is currently **schematic
 
 ## 1. [data] Boost needed to reach the 0.95 trigger rises steeply as density falls
 
+> **Provenance note (2026-06-30):** the `PdV/L_mech` and `L_cool/L_mech` magnitudes in this section come
+> from **frozen trajectory CSVs** (post-processed by `make_pdv_regime_table.py`, which runs no sim) —
+> stale-risk. A **live re-measurement against current code** is in `data/live_pdv_decomp.csv`
+> (`data/make_live_pdv_decomp.py`) and is recorded in `HIMASS_HANDOFF_PLAN.md` §1. It confirms the
+> decomposition is **density-dependent**: diffuse-massive (5e9, n=1e2) is **PdV-dominated** (PdV ≈
+> 1.43·Lmech, radiative ≈ 0.009 — live ≈ the frozen 1.42), but dense-massive (1e7, n=1e6) has PdV and
+> radiative **co-dominant** (≈0.29 each; radiative 0.45 > PdV 0.27 at the Eb-peak), i.e. radiative is NOT
+> negligible for dense clouds. Trust the live numbers where they differ.
+
 `data/fmix_table.csv` (per config, at blowout). nCore column independently confirmed from
 `docs/dev/transition/cleanroom/configs/<config>.param` (simple_cluster unset → schema default 1e5):
 

@@ -1,0 +1,3 @@
+config,n_rows,PdV_over_Lmech_med,PdV_over_Lmech_max,Lbub_over_Lmech_med,Lbub_over_Lmech_max,PdV_over_Lmech_atEbpeak,Lbub_over_Lmech_atEbpeak,Eb_crosses_zero
+fail_repro_5e9_n1e2,52,1.426,2.6474,0.0088,0.0137,0.9933,0.0137,True
+f1edge_hidens_1e7_n1e6,90,0.2896,2.6474,0.2903,0.4471,0.2695,0.4471,False
