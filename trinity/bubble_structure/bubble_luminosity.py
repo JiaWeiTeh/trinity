@@ -51,6 +51,12 @@ MIN_SPACING = 1e-12
 # (the "T_init=3e4" boundary-transient discussion).
 _T_INIT_BOUNDARY = 3e4
 
+# Only DEBUG-log a min_T rejection when the profile dips a MEANINGFUL amount below the
+# T_init boundary (a real inversion). The ~1e-4 K floating-point undershoot at the boundary
+# edge is benign (penalty ~1.0) and previously spammed the log misleadingly.
+# See docs/dev/transition/pdv-trigger/FINDINGS.md §8d.
+_MINT_LOG_TOL = 1.0  # K below _T_INIT_BOUNDARY before the rejection is worth logging
+
 # =============================================================================
 # Deterministic handling of stiff-solver failures.
 #
@@ -342,7 +348,8 @@ def _get_velocity_residuals(dMdt_init, params, Pb: float, R1: float) -> float:
 
     min_T = np.min(T_array)
     if min_T < _T_INIT_BOUNDARY:
-        logger.debug(f'Rejected. min T: {min_T}')
+        if min_T < _T_INIT_BOUNDARY - _MINT_LOG_TOL:
+            logger.debug(f'Rejected. min T: {min_T}')
         return residual * (_T_INIT_BOUNDARY / (min_T + 1e-1))**2
 
     if np.isnan(min_T):

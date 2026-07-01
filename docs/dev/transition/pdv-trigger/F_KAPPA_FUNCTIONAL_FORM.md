@@ -523,11 +523,26 @@ and tested on all 8 configs, decides it per cloud** — do not assert either fat
 ## 14. ⭐ CURRENT calibration — emergent θ to the El-Badry λδv=3 target, physically capped (2026-07-01)
 
 This is the calibration under the **corrected direction** (`PLAN.md` ⭐⭐, `FINDINGS.md §8c`): θ is an **output**;
-boost the mechanism (`cooling_boost_mode='multiplier'`, f_κ) and pick f_κ(n) so the **solved** θ tracks
-El-Badry — do **not** enforce θ. Two changes from §0–§13: (a) the target is El-Badry's **density-dependent**
-θ_EB(n) at the calibrated **λδv=3** (not a flat θ*=0.90/0.95), and (b) f_κ is held at a **physical ceiling
-f_max** and clouds that can't reach θ=0.95 there are **accepted as route-a** (energy-driven by design) — the
-maintainer stance "diffuse clouds may never enter momentum; the physics never allows it."
+boost the cooling **mechanism** (the `cooling_boost_kappa` structural knob is the θ-fully-emergent one; see the
+`PLAN.md` KNOB CORRECTION) so the **solved** θ tracks El-Badry — do **not** enforce θ. Two changes from §0–§13:
+(a) the target is El-Badry's **density-dependent** θ_EB(n) at the calibrated **λδv=3** (not a flat θ*=0.90/0.95),
+and (b) f_κ is held at a **physical ceiling f_max** and clouds that can't reach θ=0.95 there are **accepted as
+route-a** (energy-driven by design) — the maintainer stance "diffuse clouds may never enter momentum; the physics
+never allows it."
+
+> ✅ **DECISION (maintainer, 2026-07-01): use a SINGLE physical f_κ constant, NOT a steep f_κ(n) formula.** The
+> inversion below *can* produce a density-dependent f_κ(n), but it **rises as n falls** (3.5 at 1e6 → 106 at
+> n=10) — the "chase-El-Badry" shape — which is unphysical and numerically brittle at the diffuse end
+> (`FINDINGS §8d`). The **physical** enhancement is the opposite sign: `f_κ ≈ κ_mix/κ_Spitzer ∝ (λδv)·n/T^{5/2}`
+> → **∝ n at the fixed ~2×10⁴ K mixing layer, i.e. it RISES with density.** So there is **no physical f_κ(n)
+> that fires every cloud.** Therefore: **set one physical f_κ (a constant, ~few–8) and let the
+> density-dependence EMERGE** — denser clouds have higher native θ₀, so at a fixed f_κ their *solved* θ is higher
+> and they fire; diffuse clouds fall short and stay energy-driven. The density-dependence then lives in the
+> **route-a critical density** (n_routeA(f_κ), the falsifiable energy→momentum split), not in a hand-tuned
+> f_κ(n). Trade-off, stated honestly: a single f_κ won't trace El-Badry's θ(n) at *every* density (it undershoots
+> at mid-n), but matching there needs the unphysical rising f_κ(n) — so **match El-Badry where physical (dense);
+> accept undershoot + route-a at the diffuse end.** The f_κ(n) table below is kept as the *diagnostic* of how far
+> the emergent θ is from El-Badry per decade, **not** as a prescription to implement.
 
 **Builder (no sims):** `data/make_fkappa_emergent_calibration.py` → `data/fkappa_emergent_calibration.csv`,
 `fkappa_emergent_calibration.png`, `fkappa_emergent_routea.png`. It reuses the committed emergent model
