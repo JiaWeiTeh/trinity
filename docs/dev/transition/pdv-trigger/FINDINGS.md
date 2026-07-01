@@ -430,8 +430,11 @@ with `transition_trigger=cooling_balance,ebpeak`. Harvest: `data/harvest_shadow.
    trips cooling_balance promptly.
 3. **Fate splits by cluster power vs cloud binding, NOT by θ alone:**
    - *Dense compact* (n≥1e4, θ=0.99): fire at t<0.02 Myr → **SHELL_COLLAPSED**. 99% cooling strips the
-     thermal support and the shell stalls then recollapses to ~rCore. SHELL_COLLAPSED is **endcode 4 =
-     a CLEAN physical fate** (range 0–9), not an error.
+     thermal support and the shell stalls then **recollapses** — v2 goes negative, R2 decreases, `isCollapse`
+     is set, and the run ends when R2 falls below `coll_r`=1 pc (`run_transition_phase.py:772/789`,
+     `run_momentum_phase.py:842`). SHELL_COLLAPSED is **endcode 4 = a CLEAN physical fate** (range 0–9), the
+     code's label for shell recollapse — not a numerical error. (Confirmed in the data: collapsed configs end
+     with v2<0: be_sphere −23, midrange_pl0 −28, large_diffuse_lowsfe −122 km/s.)
    - *Diffuse, well-powered* (small_1e6: n=100, sfe=0.1, mCloud=9e5): STOPPING_TIME, expands to 254 pc.
    - *Diffuse, under-powered* (large_diffuse_lowsfe: n=100 but sfe=0.01 in a 1e7 cloud): fires early yet
      SHELL_COLLAPSES only at **t=14.3 Myr** — the cluster is too weak to hold a 1e7 cloud open; late
@@ -461,8 +464,11 @@ with `transition_trigger=cooling_balance,ebpeak`. Harvest: `data/harvest_shadow.
    either θ_max=0.99 is too aggressive (a softer cap ~0.95 leaves ~2× more driving luminosity), *or*
    TRINITY's momentum phase mishandles a near-zero-thermal-energy bubble and collapses it when El-Badry
    would keep it expanding. Distinguishing (a) from (b) is the **one open Stage-A item**; a θ_max sweep
-   (0.90/0.95/0.99) on 2–3 dense configs would separate "cap too high" from "momentum phase recollapses
-   regardless," and is far cheaper than the baseline full-runs.
+   (0.80/0.85/0.90/0.95/0.99) on the fast dense configs would separate "cap too high" from "momentum phase
+   recollapses regardless," and is far cheaper than the baseline full-runs. **RUNNING (2026-06-30):** sweep on
+   pl2_steep + simple_cluster, `outputs/sweep_tmax/tmax_*`; results → §8a below. NB θ<0.95 caps can't trip
+   `cooling_balance` at all (firing needs θ≥0.95), so the sub-0.95 rows also test whether these clouds then
+   stay energy-driven.
 
 **Stage-A verdict:** the mechanism works end-to-end, the numerical gate (§6 max) is clean, θ(n) and the
 firing threshold behave, and the dense-cloud SHELL_COLLAPSE is confirmed *patch-induced* (not stock, not a
