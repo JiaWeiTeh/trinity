@@ -44,21 +44,30 @@ A massive/dense cloud loses the bubble's thermal energy faster than it can build
 turns over and falls through zero **inside the explicit energy phase (1a)**. There, the guard
 
 ```python
-# trinity/phase1_energy/run_energy_phase.py:340
+# The SAME guard exists in BOTH energy phases (identical logic):
+#   trinity/phase1_energy/run_energy_phase.py:340            (explicit, phase 1a)
+#   trinity/phase1b_energy_implicit/run_energy_implicit_phase.py:1074  (implicit, phase 1b)
 if not np.isfinite(Eb) or Eb <= 0:
     params['EndSimulationDirectly'].value = True   # SimulationEndCode.ENERGY_COLLAPSED (51)
     ... break
 ```
 
-sets `EndSimulationDirectly=True`, which **no-ops phases 1b, 1c, AND 2** (each is gated
+sets `EndSimulationDirectly=True`, which **no-ops phases 1c AND 2** (each is gated
 `if params['EndSimulationDirectly'].value == False`, `main.py:283,303,343`). The run stops dead at
 `ENERGY_COLLAPSED` instead of continuing as a momentum-driven bubble. **That dead-stop is the bug.**
+
+> **Verified fire site (live, `fail_repro`):** the diffuse-massive collapse ran **52 steps in the explicit
+> phase with `Eb>0`** (1a's guard never tripped), handed to the **implicit** phase, and the **first implicit
+> step drove `Eb`→−9.1e8, tripping the guard at `run_energy_implicit_phase.py:1074`**. So for the failing
+> regime the dead-stop that actually fires is the **1b (implicit)** one — that is the **primary fix site**;
+> 1a:340 is the secondary (a config could collapse earlier, within 1a).
 
 ### What is NOT the mechanism (corrected diagnosis)
 - The default `transition_trigger` is **`cooling_balance`** (`default.param:282`), not `ebpeak`.
   `ebpeak` (`edot_balance ≤ 0`, PdV-inclusive) is **opt-in and shadow-only** — logged, never drives the
   switch (`run_energy_implicit_phase.py:199-212,1167-1205`). So "massive clusters cool via `ebpeak`" is
-  **false**; they die at the `Eb<=0` guard in 1a, often before 1b's triggers are ever evaluated.
+  **false**; the diffuse-massive collapse dies at the `Eb<=0` guard in **1b** (verified: `fail_repro` above),
+  because radiative `cooling_balance` can't fire when radiative ≪ Lmech.
 - The driver of the turnover is **density-dependent** — and this was settled by a **fresh live run
   against current code (2026-06-30)**, not the committed CSVs. ⚠️ The committed
   `data/pdv_regime_budget.csv` is **post-processing of frozen trajectory CSVs of unknown/old provenance**
@@ -67,26 +76,34 @@ sets `EndSimulationDirectly=True`, which **no-ops phases 1b, 1c, AND 2** (each i
   (`data/live_pdv_decomp.csv`, harness `data/make_live_pdv_decomp.py`; `PdV = 4πR2²·Pb·v2` exactly as
   `energy_phase_ODEs.py:280`):
 
-  | config (live) | mass, nCore | PdV/Lmech med | L_bubble/Lmech med | at Eb-peak: PdV / L_bub | Eb crosses 0? |
-  |---|---|---:|---:|---:|---|
-  | fail_repro | 5e9, **1e2** (diffuse) | **1.43** | **0.009** | 0.99 / 0.014 | **yes → dead-stop** |
-  | f1edge_hidens | 1e7, **1e6** (dense) | 0.29 | 0.29 | 0.27 / **0.45** | no (still growing; run stiff/partial, 90 rows) |
+  | config (live, **full run**) | mass, nCore | at Eb-peak: PdV / L_bub (·Lmech) | Eb fate | reached momentum? | **dead-stop?** |
+  |---|---|---:|---|---|---|
+  | fail_repro | 5e9, **1e2** (diffuse) | **0.99 / 0.014** | Eb → **−9.1e8** (strictly negative) | **No** (dies in `implicit`) | **YES — the bug** |
+  | f1edge_hidens | 1e7, **1e6** (dense) | 0.09 / **0.92** | Eb floors to 0 via `transition` | **Yes** (`energy→implicit→transition→momentum`) | No (clean) |
 
-  Two regimes, both verified live:
-  - **Diffuse-massive** (`5e9, n=1e2`): **PdV dominates ~160×** (1.43 vs 0.009 Lmech). The heavy shell
-    soaks the wind energy as bulk motion; the hot, tenuous interior barely radiates. Eb turns over and
-    crosses zero → the dead-stop fires. This is **PdV / inertial-loading collapse**.
-  - **Dense-massive** (`1e7, n=1e6`): PdV and radiative are **co-dominant**, and at the Eb-peak radiative
-    (0.45) actually **exceeds** PdV (0.27). Their **sum (0.72) is still < 1**, so Eb is still *growing*
-    — this config did not collapse in the bounded window.
-  - **Verdict on the external "it's `L_bubble`, not PdV" claim:** **wrong for diffuse-massive** (PdV is
-    the driver, radiative negligible), **only half-right for dense** (radiative is significant, even the
-    larger single sink at peak — but PdV is never the negligible self-damping term the analysis claimed,
-    and `Pb` is not `∝Eb`; see the identity below). The original "PdV matters" intuition is well-founded;
-    the universal "radiative drives it" framing is not. The committed `pdv_regime_budget.csv` happened to
-    reproduce for `fail_repro` (1.43 live ≈ 1.42 CSV) but its dense radiative values (0.02–0.20) read
-    **lower** than the live dense run (0.29–0.45) — a reminder to trust the live numbers. See
-    `FINDINGS.md` §1/§6a (flag those as frozen-trajectory provenance too).
+  **The key result — the dead-stop bug is regime-specific** (both configs run to completion; see §5 for the
+  partial-data correction that this supersedes):
+  - **Diffuse-massive** (`5e9, n=1e2`): **PdV dominates** (0.99 vs 0.014·Lmech at the peak; median PdV/Lmech
+    1.43). The heavy shell soaks the wind energy as bulk motion; the hot, tenuous interior barely radiates.
+    Radiative `cooling_balance` (needs `Lloss/Lgain>0.95`) **can never fire** because radiative is ~1% of
+    Lmech — so nothing hands it off, Eb crashes **strictly negative**, and the `Eb<=0` guard dead-stops the
+    run in the implicit phase (`reached_momentum=False`). **This is the bug, and it is the PdV-dominated
+    regime.**
+  - **Dense-massive** (`1e7, n=1e6`): **radiative dominates** at the turnover (0.92 vs 0.09·Lmech at the
+    Eb-peak; median L_bub/Lmech 0.36 > PdV 0.28). Radiative `cooling_balance` **fires normally**, so the
+    cloud walks through `transition` (Eb floored at `ENERGY_FLOOR=1e3`) into `momentum` — **no dead-stop, no
+    bug**. The existing default chain already handles it correctly.
+  - **Verdict on the external "it's `L_bubble`, not PdV" claim:** **wrong for the case that actually breaks.**
+    The regime that dead-stops (diffuse-massive) is PdV-dominated with radiative negligible; the analysis's
+    "radiative drives the collapse" describes the dense case, which **does not break**. So the collapse the
+    fix must catch is PdV-driven. PdV is never the negligible self-damping term the analysis claimed, and
+    `Pb` is not `∝Eb` (identity below). Original "PdV matters" intuition: **confirmed for the failing case.**
+  - **Scope sharpened:** the pressure-crossover trigger (§2) is the **safety net for the PdV-dominated
+    regime where `cooling_balance` structurally cannot fire** (radiative ≪ Lmech). It must *not* perturb the
+    radiative-dominated dense clouds, which already hand off correctly (→ G0 bit-identical gate covers them).
+  - Provenance: the committed `pdv_regime_budget.csv` reproduced for `fail_repro` (1.43 live ≈ 1.42 CSV) but
+    is frozen-trajectory post-processing (stale-risk); trust `data/live_pdv_decomp.csv`. `FINDINGS.md` §1/§6a
+    flagged accordingly.
 
 ### Why `Eb→0` is the wrong trigger point (this part of the external analysis is correct)
 At collapse the energy-driven structure is singular: `solve_R1` drives `R1→R2`, so
@@ -179,13 +196,20 @@ Replay the crossover point on the existing frozen trajectories (no full re-run):
 `Eb/Eb_peak ≲ few %` and `R1/R2→1` at the crossover (stillborn), route straight to momentum; else 1c.
 Persist as `data/crossover_epoch.csv`.
 
-**Already in hand (live, 2026-06-30, `data/live_pdv_decomp.csv`):** the diffuse-massive `fail_repro`
-(5e9, n=1e2) is the **stillborn** case — PdV ≈ 1.43·Lmech from birth, Eb barely grows then crosses zero
-→ route straight to momentum. The dense-massive `f1edge_hidens` (1e7, n=1e6) did **not** collapse in the
-bounded window (sinks sum 0.72 < 1, Eb growing; the run is numerically stiff and was truncated at 90
-rows) — its collapse behaviour, and whether it ever crosses the pressure crossover, is **still open** and
-needs a longer/HPC run (a real gap, not "verified"). Do NOT assume the dense case collapses the same way
-the diffuse one does.
+**Settled (live, 2026-06-30, `data/live_pdv_decomp.csv` — both runs now COMPLETE):**
+- The diffuse-massive `fail_repro` (5e9, n=1e2) is the **stillborn / PdV-dominated** case — 52 explicit
+  steps with Eb>0, then the first implicit step drives Eb strictly negative → `ENERGY_COLLAPSED`,
+  `reached_momentum=False`. This is the one that needs the fix; route it to momentum.
+- The dense-massive `f1edge_hidens` (1e7, n=1e6) **did complete** (126 rows; the earlier "90-row stiff/
+  partial" read is superseded). It is **radiative-dominated** (L_bub/Lmech 0.92 vs PdV 0.09 at the Eb-peak)
+  and **already transitions correctly**: `energy→implicit→transition→momentum`, Eb floored at
+  `ENERGY_FLOOR`, `dead_stop=False`. **It does NOT need the fix and must not be perturbed** (G0).
+
+So the 1c-vs-momentum decision (§2.4) only has to be made for the PdV-dominated collapse, and there the
+answer is **straight to momentum** (no meaningful energy epoch remains — Eb barely grew). The `small_dense_highsfe`
+(1e4, n=1e6 — dense but *light* shell, isolating radiative from inertial loading) run is still completing;
+its row will land in `live_pdv_decomp.csv` and is expected to look like `f1edge_hidens` (radiative-driven,
+clean handoff, no dead-stop) — confirming density, not mass, sets the sink balance.
 
 ## 6. Reproduce the §1 identity check (no sim, ~1 s)
 ```
