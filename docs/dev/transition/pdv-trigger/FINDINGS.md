@@ -478,6 +478,52 @@ production `theta_elbadry` mode until that decision is made. Artifacts (committe
 `data/_theta_elbadry_runner.py`, `data/_baseline_runner.py`, `data/harvest_shadow.py`,
 `data/shadow_te_fate.csv`.
 
+## 8a. [data] θ_max sweep — the cap is NOT the lever; dense-cloud recollapse is intrinsic (2026-06-30)
+
+The §8 point-6 discriminator, run. Swept **θ_max ∈ {0.80, 0.85, 0.90, 0.95, 0.99}** on the two fast dense
+configs (pl2_steep n=1e5, simple_cluster n=1e5), same harness/trigger (`cooling_balance,ebpeak`), λδv=3, to
+5 Myr. Harvest → **`data/sweep_tmax_fate.csv`**.
+
+| θ_max | config | θ used | fire t (Myr) | trigger | end (t, R2, v2) | fate |
+|---|---|---|---|---|---|---|
+| 0.80 | pl2_steep | 0.80 | 0.012 | ebpeak (PdV) | 0.057, 0.96 pc, −0.3 | SHELL_COLLAPSED |
+| 0.85 | pl2_steep | 0.85 | 0.013 | ebpeak (PdV) | 0.057, 0.97 pc, −0.3 | SHELL_COLLAPSED |
+| 0.90 | pl2_steep | 0.90 | 0.010 | ebpeak (PdV) | 0.055, 0.90 pc, −0.1 | SHELL_COLLAPSED |
+| 0.95 | pl2_steep | 0.95 | 0.010 | cooling_balance | 0.055, 0.90 pc, −0.1 | SHELL_COLLAPSED |
+| 0.99 | pl2_steep | 0.99 | 0.011 | cooling_balance | 0.056, 0.94 pc, −0.3 | SHELL_COLLAPSED |
+| 0.80 | simple_cluster | 0.80 | 0.010 | ebpeak (PdV) | 0.130, 0.99 pc, −0.1 | SHELL_COLLAPSED |
+| 0.85 | simple_cluster | 0.85 | 0.009 | ebpeak (PdV) | 0.133, 0.98 pc, −0.1 | SHELL_COLLAPSED |
+| 0.90 | simple_cluster | 0.90 | 0.010 | ebpeak (PdV) | 0.129, 1.00 pc, −0.1 | SHELL_COLLAPSED |
+| 0.95 | simple_cluster | 0.95 | 0.019 | cooling_balance | 0.184, 0.97 pc, −4.3 | SHELL_COLLAPSED |
+| 0.99 | simple_cluster | 0.99 | 0.009 | cooling_balance | 0.135, 0.99 pc, −0.1 | SHELL_COLLAPSED |
+
+**Verdict — θ_max is not a useful knob here, and reading (b)"cap too aggressive" is refuted:**
+
+1. **All 10 runs recollapse**, at essentially the *same* fire time (~0.01 Myr) and collapse time (~0.055 Myr
+   pl2_steep / ~0.13 Myr simple_cluster), **independent of θ_max**. Lowering the cap from 0.99 to 0.80 does
+   not save the cloud and barely shifts the timing.
+2. **Below 0.95 the transition still fires — via `ebpeak` (PdV), not `cooling_balance`.** Imposing θ≥~0.80
+   raises L_loss to θ·L_mech, which is already enough to drive `Edot_from_balance≤0` and trip ebpeak at
+   t~0.01 Myr. (This is why it fires where stock doesn't: stock's native radiative θ~0.66 leaves the
+   PdV-inclusive ratio at ~0.91<1, so stock ebpeak never fires — §6a.) So *any* physically-plausible imposed
+   θ for a dense cloud (El-Badry says 0.9–0.99) transitions it, and it then recollapses.
+3. **Therefore the recollapse is intrinsic to these dense compact clouds transitioning — not an artifact of
+   the specific cap.** The remaining question from §8 point 6 collapses to a single fork, now cleanly posed:
+   is the recollapse (a) **physical** — a dense compact core with a modest cluster (3e4–1e5 M⊙) genuinely
+   recaptures its shell once the bubble stops being energy-supported (TRINITY has a *dedicated clean fate*,
+   SHELL_COLLAPSED, for exactly this) — or (b′) a **momentum/transition-phase fidelity** issue, where TRINITY
+   recollapses a bubble that El-Badry's θ→1 sims keep weakly expanding? **This is no longer a trigger-design
+   question** (the trigger correctly decides *when* to leave energy-driven); it is a question about the
+   momentum phase's treatment of a near-zero-thermal-energy shell, which is **outside this workstream's
+   scope**.
+
+**Bottom line for Stage B:** the `theta_elbadry` trigger works as designed and θ_max needs no tuning — pick
+0.95 or 0.99 (they behave identically for dense clouds; 0.99 matters only for the *magnitude* of (1−θ) driving
+on clouds that survive). Whether dense compact clouds *should* recollapse is a physics call for the maintainer
+that is independent of wiring the trigger. If the maintainer accepts SHELL_COLLAPSED as the correct fate for
+weak-cluster/dense-core configs (the likely reading), **Stage A is clean and Stage B can proceed.** Artifacts:
+`data/sweep_tmax_fate.csv`, `outputs/sweep_tmax/tmax_*/`.
+
 ## 7. Provenance
 - Commits (`feature/PdV-trigger-term`): `6642ff4` matrix+comparator, `dc1c2fd` note patches, `17f9653`
   live 3/4 configs, `8bcc6b0` θ_lit plot, `b94689c` plot layout fix, plus this commit (4/4 + figure

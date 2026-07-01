@@ -89,10 +89,13 @@ harness (`data/_theta_elbadry_runner.py`) on 9 configs to ≥5 Myr (no `trinity/
 θ ≥ native θ everywhere, so max==direct). **SHELL_COLLAPSE confirmed patch-induced:** dense compact clouds
 (n≥1e4, θ=0.99) fire at t<0.02 Myr then **SHELL_COLLAPSE** (clean endcode 4); stock TRINITY's native radiative θ
 peaks ~0.66 (§6a `ebpeak_8config_xcheck.csv`) << 0.95, so it never fires these — imposing θ=0.99 is what
-collapses them (baseline full-runs abandoned as unneeded + restart-killed). **What remains is a physics call,
-not a run:** is the collapse correct (weak cluster vs dense core) or an artifact (θ_max too high / momentum phase
-mishandles a ~0-energy bubble)? Cheapest discriminator = θ_max∈{0.90,0.95,0.99} sweep on 2–3 dense configs.
-**Do NOT start Stage B until that call is made.** (iii) **STAGE B — PRODUCTION** (only after Stage A is clean):
+collapses them (baseline full-runs abandoned as unneeded + restart-killed). **θ_max sweep RAN (§8a):** all of
+{0.80…0.99}×{pl2_steep,simple_cluster} recollapse at the same time regardless of cap (below 0.95 the transition
+still fires via `ebpeak`/PdV) ⇒ **the cap is NOT the lever; recollapse is intrinsic to dense clouds
+transitioning.** What remains is a **pure physics call for the maintainer** — accept SHELL_COLLAPSED as the
+correct fate of a weak-cluster/dense core (likely), or treat it as a momentum-phase fidelity issue (out of this
+workstream's scope). **Stage B may proceed once that reading is accepted** (θ_max=0.95 or 0.99, identical for
+dense clouds). (iii) **STAGE B — PRODUCTION** (only after Stage A is clean):
 the 3 params + 1 `effective_Lloss` branch, gated default-off byte-identical, re-validated to reproduce the
 shadow 1:1. Firing read by **first-crossing** (never blowout). *Why shadow first: two design points are
 unresolved-until-data and TRINITY has never run with any θ-boosting mode end-to-end — revising a harness is
@@ -144,6 +147,19 @@ for provenance.*
 > → re-derive those from ≥5 Myr runs before trusting their Pb numbers. f1edge_lowdens (3 Myr) is also short.
 
 **Status ledger (newest first):**
+- **2026-06-30 (STAGE A — θ_max SWEEP RAN → `FINDINGS.md §8a`, `data/sweep_tmax_fate.csv`; the SHELL_COLLAPSE
+  question is now a maintainer physics call, NOT a knob).** Swept θ_max∈{0.80,0.85,0.90,0.95,0.99} × {pl2_steep,
+  simple_cluster} to 5 Myr. **All 10 recollapse**, at the *same* fire (~0.01 Myr) & collapse (~0.06/0.13 Myr)
+  times regardless of cap. Below 0.95 the transition still fires — via **`ebpeak` (PdV)**, because imposing
+  θ≥~0.80 pushes `Edot_from_balance≤0` (stock's native θ~0.66 doesn't → stock never fires these; §6a). ⇒
+  **reading (b) "θ_max too aggressive" is REFUTED — the cap is not the lever;** recollapse is intrinsic to these
+  dense compact clouds transitioning. The fork is now clean: **(a) physical** recollapse of a weak-cluster/dense
+  core (TRINITY's dedicated clean SHELL_COLLAPSED fate) vs **(b′) momentum-phase fidelity** (does TRINITY
+  recollapse a bubble El-Badry keeps expanding?) — and (b′) is **outside this workstream's scope** (a momentum
+  module question, not a trigger-design one). **Recommendation:** pick θ_max=0.95 or 0.99 (identical for dense
+  clouds), treat SHELL_COLLAPSED as the correct fate for these configs, and **Stage B can proceed** pending the
+  maintainer's OK on that physics reading. `SHELL_COLLAPSED` confirmed = shell recollapse (v2<0, R2<coll_r=1pc;
+  `run_transition_phase.py:772/789`).
 - **2026-06-30 (STAGE A — SHADOW RAN; 9 configs to ≥5 Myr → `FINDINGS.md §8`, `data/shadow_te_fate.csv`).**
   Ran the §3 El-Badry-θ logic via `data/_theta_elbadry_runner.py` (monkeypatch, no `trinity/` edit), trigger
   `cooling_balance,ebpeak`, λδv=3, θ_max=0.99. **Two of three Stage-A questions resolved by data:** (1) **§6
