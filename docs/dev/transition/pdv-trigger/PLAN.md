@@ -78,11 +78,29 @@ framing):**
   Two-anchor full-run grid **DONE** (`make_kappa_blowout_calibration.py`, 06-26 ledger): the estimate was
   **optimistic** — compact fires cooling at **f_κ≈4**, diffuse needs **≈60** (the developed-epoch leverage is
   weaker than the snapshot, exponent ~0.3–0.4). PdV-in-the-trigger probed (`make_ebpeak_trigger_test.py`,
-  06-28 ledger): `ebpeak` is an assist, not a substitute — it does not remove the need for the boost. Next: a
-  denser n_H full-run grid to pin `f_κ(n_H)`, then wire `cooling_boost_kappa` as an optional density-dependent
-  `f_κ(n_H)` mode (gated, default-off byte-identical).
+  06-28 ledger): `ebpeak` is an assist, not a substitute — it does not remove the need for the boost. The
+  819-combo grid **ran (2026-06-29)** and settled the de-conflation question: f_κ_fire is **NOT** a clean
+  function of n_H (spread up to 32× across mCloud/sfe at fixed density), but all fired cells collapse on the
+  starting deficit, f_κ_fire ≈ (0.95/θ₁)^3.76 (universal leverage θ∝f_κ^0.27; `fkappa_theta1_collapse.png`).
+  Production mode shipped 2026-07-01 (pt3): `cooling_boost_kappa='auto'` interpolates the full 3-axis
+  measured grid at load time (`trinity/_input/fkappa_auto.py`; gated, default 1.0 byte-identical).
 
 **Status ledger (newest first):**
+- **2026-07-01 (pt3: sweep folded in + `cooling_boost_kappa='auto'` shipped).** The 819-combo grid ran on
+  Helix 2026-06-29 (786/819 ok, 10h17m — `data/sweep_report.txt`, `data/summary.csv`; the fit step landed as
+  `data/fkappa_nH_sweep.csv` + `fkappa_nH_sweep.png` in commit `880334f` but no doc recorded it until now).
+  **De-conflation verdict: n_H-only REFUTED** — at fixed nCore the measured f_κ_fire spreads up to 32× across
+  (mCloud, sfe); sfe is a strong secondary axis and mCloud dominates the dense end (1e7 M☉ fires at f_κ=1 for
+  n≥3e3). **What does collapse it: the starting deficit** — log10 f_κ_fire = 0.041 + 3.755·log10(0.95/θ₁)
+  over all 41 fired-above-1 cells (corr 0.968, rms 0.116 dex vs 0.21 dex for the best input-space fit), i.e. a
+  universal leverage θ ∝ f_κ^0.266 — confirming §6's pessimistic developed-epoch exponent (~0.3), refuting the
+  optimistic 0.63 snapshot estimate (`data/make_fkappa_theta1_collapse.py` → `fkappa_theta1_collapse.{csv,png}`).
+  **Production mode shipped:** `cooling_boost_kappa='auto'` resolves at load (read_param Step 7 resolver) to the
+  measured f_κ_fire via trilinear log-space interpolation of the 63-cell grid (`trinity/_input/fkappa_auto.py`;
+  mCloud axis = pre-SFE `mCloud_input`; hull-clamped with warning; censored diffuse/high-SFE corner pinned at the
+  sweep ceiling 64 with a may-not-fire warning; numeric values pass through untouched → default byte-identical).
+  Tests: `test/test_fkappa_auto.py` (9). Acceptance: `runs/params/fkauto_verify.param` (1e5 M☉ GMC, sfe 0.03,
+  n 1e3 — auto→12) must fire cooling_balance and reach momentum (`data/make_fkappa_auto_verify.py`, REPRODUCE #20).
 - **2026-06-29 (Helix run scaffolding for the 819-combo sweep — committed).** The sweep was "HPC-ready"
   only via a bare `--emit-jobs jobs/` + `sbatch jobs/submit_sweep.sbatch`, which would have **failed on
   Helix**: outputs resolve under the read-only `/home` repo checkout, and the emitted sbatch leaves

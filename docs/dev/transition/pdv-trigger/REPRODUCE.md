@@ -78,7 +78,9 @@ Legend — **Sims?**: 🟢 none (reads committed CSV, seconds) · 🟡 a few ful
 | 15 | Dense-edge stiffness is **not** f_κ (it's extreme density) | PLAN ledger 06-28 | `diag_dense_hybr.param`, `diag_dense_legacy.param` | run both, observe (does not finish at nCore 1e6) | `data/dense_stiffness_diag.csv` | 🟡 |
 | 16 | FM1 / FM1b — wrong knobs ruled out (κ_eff confirmed) | §11 | — (offline prototypes) | `python data/make_fm1_rootcheck.py`; `python data/make_fm1b_evapsign.py` | `data/fm1*.csv`, `fm1*.png` | 🟢 |
 | 17 | All-ideas scoreboard | hero | — (reads CSVs above) | `python data/make_ideas_comparison.py` | `ideas_comparison.png` | 🟢 |
-| 18 | **Controlled f_κ(n_H) calibration** (+ de-conflation test, *ready/not-yet-run*) | (next) | `runs/params/sweep_fkappa_nH.param` (sweep → **819** combos) | `sync.sh submit`→`collect`→`reduce`→`down`, then `make_fkappa_nH_sweep.py` (Block C) | `data/summary.csv` → `data/fkappa_nH_sweep.csv`, `fkappa_nH_sweep.png` | 🔴 |
+| 18 | **Controlled f_κ(n_H) calibration** (+ de-conflation test) — **RAN on Helix 2026-06-29** (786/819 ok, 10h17m; `data/sweep_report.txt`) | FINDINGS §8 | `runs/params/sweep_fkappa_nH.param` (sweep → **819** combos) | `sync.sh submit`→`collect`→`reduce`→`down`, then `make_fkappa_nH_sweep.py` (Block C) | `data/summary.csv` → `data/fkappa_nH_sweep.csv`, `fkappa_nH_sweep.png` | 🟢 |
+| 19 | **θ₁-collapse + de-conflation verdict** (n_H-only REFUTED; universal leverage p≈0.27) | FINDINGS §8 | — (reads #18's `data/fkappa_nH_sweep.csv`) | `python data/make_fkappa_theta1_collapse.py` | `data/fkappa_theta1_collapse.csv`, `fkappa_theta1_collapse.png` | 🟢 |
+| 20 | **`cooling_boost_kappa='auto'` acceptance** (pt3: GMC run fires cooling_balance → momentum) | FINDINGS §8 | `runs/params/fkauto_verify.param` | `python run.py runs/params/fkauto_verify.param`, then `python data/make_fkappa_auto_verify.py` | `data/fkappa_auto_verify.csv` | 🟡 |
 
 ¹ #12 reads the same `cal_*__k{1,2,4}` runs as #11 — once those exist in `outputs/kcal/`, #12 is a 🟢 re-read.
 
@@ -120,7 +122,7 @@ python docs/dev/transition/pdv-trigger/data/make_kappa_backreaction.py \
 
 ---
 
-### Block C — controlled f_κ(n_H) calibration sweep (result #18; HPC, ready, not yet run)
+### Block C — controlled f_κ(n_H) calibration sweep (result #18; RAN on Helix 2026-06-29, artifacts committed)
 The clean replacement for the conflated 3-anchor estimate. Sweeps **nCore finely (primary axis) × a fine f_κ
 grid** that brackets the firing point at every density, **and also varies mCloud + sfe** so we can test whether
 `f_κ_fire` is a clean function of n_H alone or also depends on cloud mass / SFE.
