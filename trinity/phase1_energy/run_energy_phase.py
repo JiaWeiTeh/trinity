@@ -163,9 +163,9 @@ def run_energy(params):
         # In the energy-driven Eb -> 0 collapse the bubble degenerates:
         # the cooling table goes out of bounds, solve_R1 cannot bracket, etc. Any
         # such failure here means the energy-driven model has broken down -- stop
-        # the run cleanly rather than crash with the bare exception. The momentum-
-        # driven continuation is future work (docs/dev/transition). See
-        # docs/dev/failed-large-clouds.
+        # the run cleanly rather than crash with the bare exception. (Phase 1b now
+        # ROUTES a clean Eb<=0 collapse to the momentum phase; routing it from 1a too
+        # is deferred -- see docs/dev/transition/pdv-trigger/HIMASS_HANDOFF_PLAN.md.)
         try:
             bubble_data = bubble_luminosity.get_bubbleproperties_pure(params)
         except (ValueError, RuntimeError, bubble_luminosity.BubbleSolverError) as e:
@@ -356,12 +356,15 @@ def run_energy(params):
         params['v2'].value = v2
         params['Eb'].value = Eb
 
-        # Catastrophic-cooling collapse: a massive/dense cloud can radiate the
-        # bubble's thermal energy away faster than the wind resupplies it, so Eb
-        # falls through zero. The energy-driven model is then invalid (it would
-        # otherwise drive R1->R2 and divide-by-zero -> Eb=nan, crashing the run).
-        # Stop cleanly here; the momentum-driven continuation is future work
-        # (docs/dev/transition). See docs/dev/failed-large-clouds.
+        # Energy-driven collapse in the early (1a) phase: a massive/dense cloud can
+        # lose the bubble's thermal energy (PdV work on a heavy shell, or radiative
+        # cooling) faster than the wind resupplies it, so Eb falls through zero. The
+        # energy-driven model is then invalid (it would drive R1->R2 and divide-by-zero
+        # -> Eb=nan). Phase 1b now ROUTES such a collapse to the momentum phase
+        # (run_energy_implicit_phase.classify_energy_collapse); routing it from 1a too
+        # is deferred (rare: collapse within the fixed ~3000-yr early window). Until
+        # then 1a stops cleanly here. See
+        # docs/dev/transition/pdv-trigger/HIMASS_HANDOFF_PLAN.md.
         if not np.isfinite(Eb) or Eb <= 0:
             params['EndSimulationDirectly'].value = True
             params['SimulationEndReason'].value = (

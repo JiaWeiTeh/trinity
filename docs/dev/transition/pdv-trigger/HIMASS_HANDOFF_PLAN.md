@@ -32,9 +32,26 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status:** PLAN ONLY (2026-06-30). No production code touched. Branch
+**Status:** PARTIALLY IMPLEMENTED (2026-07-01). Branch
 `bugfix/high-mass-cluster-transition-without-ebpeak`. Siblings: `FINDINGS.md` (the diagnosis data),
 `PLAN.md` (the κ_eff/trigger strategy), `RUNGB_SCOPING.md`.
+
+> **✅ SHIPPED (2026-07-01).** The core fix is implemented and gated:
+> - **Phase 1b:** a finite `Eb<=0` collapse now ROUTES to the momentum phase via 1c instead of
+>   `ENERGY_COLLAPSED` (`run_energy_implicit_phase.py`: `classify_energy_collapse` + the guard;
+>   `ENERGY_HANDOFF_FLOOR=1e3`). Non-finite `Eb` still stops cleanly. **Verified:** `fail_repro`
+>   (5e9, n1e2) now runs `energy→implicit→momentum` out to the 500 pc stop radius (was: dead-stop at
+>   t=0.003 Myr). **G0 bit-identical** on `simple_cluster` (healthy run, `md5 9b57f9e3…` unchanged);
+>   **pytest 596 passed**; ruff clean. Regression tests in `test/test_energy_collapse_guard.py`.
+> - **Phase 1a:** `cooling_balance` transition check added (parity with 1b), G0-safe.
+>
+> **⏳ NOT yet done (deferred, still accurate as "future"):**
+> - **Phase 1a collapse routing** (rare: collapse within the fixed ~3000-yr early window) still
+>   dead-stops; needs a skip-1b handoff + a config that collapses in 1a to test.
+> - **Pressure-crossover terminal event** (§2 points 1–3): the current 1b handoff fires on the
+>   post-step `Eb<=0` (one-segment overshoot: Eb 4.8e8→floor). The terminal-event upgrade would catch
+>   the crossing mid-step for a smoother handoff. The design below is the upgrade path, NOT the shipped
+>   mechanism — read §2 as "how to improve the handoff", not "what runs today".
 
 ---
 

@@ -230,8 +230,9 @@ def bubble_E2P(Eb, r2, r1, gamma):
         # Catastrophic-cooling degeneracy: Eb collapses, the wind shock R1 -> R2,
         # so (r2**3 - r1**3) underflows to 0 in float64 and the divide blows up
         # (-> inf/ZeroDivisionError -> Eb=nan). Floor it so the divide stays finite;
-        # the energy phases detect the collapse (Eb<=0) and stop cleanly. Bit-identical
-        # on every physical bubble (shell_volume > 0). See docs/dev/failed-large-clouds.
+        # the energy phases detect the collapse (Eb<=0) and hand off (phase 1b routes
+        # to momentum; phase 1a stops -- see docs/dev/transition/pdv-trigger/
+        # HIMASS_HANDOFF_PLAN.md). Bit-identical on every physical bubble (shell_volume > 0).
         shell_volume = 1e-13 * r2**3
     Pb = (gamma - 1) * Eb / shell_volume / (4 * np.pi / 3)
     # return back in au

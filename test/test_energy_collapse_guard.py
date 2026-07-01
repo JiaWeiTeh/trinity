@@ -6,9 +6,14 @@ cooling a massive/dense cloud's bubble energy `Eb` collapses, the wind shock
 `R1 -> R2`, and the shell volume `R2**3 - R1**3` underflows to 0 in float64.
 The old `bubble_E2P` divided by that zero (-> inf / ZeroDivisionError -> Eb=nan,
 crashing the run). The guard floors the volume so the divide stays finite, and
-the energy phases stop cleanly with `SimulationEndCode.ENERGY_COLLAPSED`.
+the energy phases detect the collapse (Eb<=0) and hand off:
+
+- a FINITE Eb<=0 is an energy->momentum transition (Pb has floored to ~P_ram) and
+  ROUTES to the momentum phase via `classify_energy_collapse` (phase 1b);
+- a NON-FINITE Eb is unrecoverable and ends on `SimulationEndCode.ENERGY_COLLAPSED`.
 
 The guard is *bit-identical* on every physical bubble (shell volume > 0).
+See docs/dev/transition/pdv-trigger/HIMASS_HANDOFF_PLAN.md.
 """
 
 from __future__ import annotations
