@@ -682,12 +682,39 @@ claims** — logging them here because the retractions are the finding:
 diffuse state costs many (7–50) bubble-structure `dMdt` fsolves while `dt` is small (5e-4, shrinking), so
 sim-time crawls; a cooling boost multiplies the early-segment cost. Not a correctness bug in the solver.
 
+**Why the boost slows it (precise mechanism — NOT "stiffening the ODE"):** the `multiplier` knob **does not
+enter the bubble-structure ODE at all** — it scales `L_cool = bubble_LTotal` *after* the structure is solved
+(`get_betadelta.py:473`), feeding only the residual / energy-ODE / trigger; the structure ODE's conduction is
+`cooling_boost_kappa` (`bubble_luminosity.py:291/370/406`), untouched here. So f_κ=8 cannot "stiffen" the
+structure. It is slower because 8× larger `L_loss` → `dEb/dt` (=Edot) much more negative → Eb evolves fast →
+the **adaptive stepper shrinks dt** (0.0012→0.00034 Myr/seg, ~3.5×) → more, smaller segments; plus a modest
+(~1.5×) rise in structure-solve evals as the shifted beta-delta solution lands in a harder region.
+
+> ⚠️ **KNOB ERROR flagged (2026-07-01): these runs used `multiplier`, but §14's leverage/θ₀ were fit with
+> `cooling_boost_kappa` — different knobs (see `PLAN.md` ⭐⭐ KNOB CORRECTION).** So the §14 validation table
+> above (`θ_max=1.33/1.01`) is for `multiplier` and does **not** validate the `kappa`-based §14 calibration;
+> re-run the validation with `cooling_boost_kappa` at the calibrated f_κ. `kappa` *does* enter the structure ODE,
+> so its throughput/robustness behaviour on the diffuse handoff may differ from the `multiplier` runs here.
+
+> 🪵 **Logging nuisance (worth a one-line fix): the `"Rejected. min T: 29999.99…"` DEBUG line is misleading.**
+> It fires for every benign boundary transient (penalty ≈1.0) and misled this very investigation. The **guard**
+> is correct (it properly penalizes a *real* sub-floor min_T); only the **log** is noisy for the FP-undershoot
+> case. Fix: only log when the penalty is actually significant (min_T meaningfully below `_T_INIT_BOUNDARY`), or
+> reword/downgrade it. Production `bubble_luminosity.py:345` — a logging-quality change (behaviour-neutral),
+> flagged for the maintainer.
+
 **Relevance to the plan:** the emergent-θ mechanism itself is *correct* here (beta-delta converges); the issue
 is that **boosted diffuse runs are computationally impractical to carry to ≥5 Myr** in this environment — which,
 with the physics (§14 route-a) and the intrinsic mCloud=1e7 slowness, is a further reason to **cap f_κ low at
 the diffuse end and accept route-a**. Making these runs fast is a bubble-structure/`dt` performance item, out of
-this workstream's scope. *(Whether the slowness is the diffuse handoff or specifically the 1e7 mass: a
-size-controlled `small_1e6` (n=100, mCloud=9e5) f_κ=1 run is in flight — result appended here.)*
+this workstream's scope.
+
+**Size-control (settles mass-vs-handoff):** `small_1e6` (n=100 but mCloud=**9e5**, 10× smaller than
+large_diffuse's 1e7) at f_κ=1 hits the **identical handoff state** (R2=1.3819 pc, v2=262.47 km/s, t=0.00293 —
+the outer cloud mass doesn't touch the inner bubble yet) and progresses at a **near-identical rate** (42 seg →
+t=0.044 Myr vs large_diffuse's 47 seg → 0.059 Myr in 6.5 min). So the slowness is the **diffuse (n=100)
+early-implicit handoff corner** (small R2, fast v2), **NOT the 1e7 cloud mass**. Both diffuse configs *do* finish
+given enough wall-time (their `theta_target` shadows reached 10/14 Myr, §8) — they are slow, not stuck.
 
 Artifacts: `data/_fkappa_validation_runner.py` (θ_max observer + `LOG_LEVEL`), `data/_minT_tol_confirm_runner.py`
 (the retracted min_T test), `outputs/{fkappa_val,fkappa_debug,fk_compare_1,fk_compare_2,fk_compare_8}/`.

@@ -56,9 +56,22 @@ folder) — do **not** re-run the hours-long sims to recover them; reproduce onl
 > it sets `L_loss=θ·L_mech` regardless of what the loss actually is, so on **PdV/inertia-dominated** massive
 > clouds it double-counts the loss (PdV is already in `Edot_from_balance`) and drives them to recollapse —
 > **reversing PR #715's momentum handoff** (proven: `FINDINGS.md §8b`, `data/newcode_default_vs_theta.csv`).
-> The corrected direction returns to **Rung A — boost the cooling MECHANISM (`cooling_boost_mode='multiplier'`,
-> f_κ) and let the solved bubble PRODUCE θ**, with El-Badry/Lancaster used to **calibrate** what θ should emerge
-> to, not to enforce it. See the top status-ledger entry (2026-07-01) and `FINDINGS.md §8c`.
+> The corrected direction returns to **Rung A — boost the cooling MECHANISM (the `cooling_boost_kappa` /
+> `multiplier` f_κ family) and let the solved bubble PRODUCE θ**, with El-Badry/Lancaster used to **calibrate**
+> what θ should emerge to, not to enforce it. See the top status-ledger entry (2026-07-01) and `FINDINGS.md §8c`.
+>
+> ⚠️ **KNOB CORRECTION (2026-07-01, later): `cooling_boost_kappa` ≠ `multiplier` — they are different, and the
+> §14 calibration + the f_κ-throughput validation used DIFFERENT ones.** `cooling_boost_kappa` scales the Spitzer
+> conduction coefficient *inside* the bubble-structure ODE (`bubble_luminosity.py:291/370/406`) → L_cool changes
+> *through* the physics, θ **fully emergent** — this is what the §14 leverage/θ₀ were measured with, and the true
+> κ_eff "θ-as-output" mechanism (but it also raises the evaporative mass flux — registry note calls it "a
+> structural probe, not the final model"). `cooling_boost_mode='multiplier'` (`cooling_boost_fmix`) instead scales
+> the *already-computed* L_cool in `effective_Lloss` (`get_betadelta.py:473`) — it never enters the structure ODE
+> (avoids the evaporation side-effect, but θ is only "structural L_cool × scalar"). **My 2026-07-01 validation +
+> f_κ-sweep runs used `multiplier`, so they do NOT validate the `kappa`-based §14 numbers** (`FINDINGS §8d`). OPEN
+> decision: which knob is the production mechanism. This does not change the §8c "θ-should-emerge, not be enforced"
+> conclusion (both knobs are emergent-flavoured and neither double-counts PdV); it does mean the §14 calibration
+> must be re-validated with the SAME knob it was fit on.
 
 *This single block replaces the older layered ⭐/⚡/⚡⚡ synthesis. It reflects the grand view across
 `ELBADRY_REFERENCE.md`, `LANCASTER_REFERENCE.md`, `F_KAPPA_FUNCTIONAL_FORM.md`, and all the κ_mix work.
@@ -79,7 +92,7 @@ follows. El-Badry's closed form `θ = A_mix·√(λδv·n)/(11/5 + A_mix·√(λ
 
 | element | decision | anchor |
 |---|---|---|
-| **mechanism** | **boost the mechanism** (`multiplier`/f_κ on the radiative channel); θ **emerges** | causally honest; and f_κ scales only radiative → **cannot over-drain a PdV-dominated bubble** (no regime error, no gate — `FINDINGS.md §8c`) |
+| **mechanism** | **boost the cooling channel** so θ **emerges** — via one of two knobs (see ⚠️ below): `cooling_boost_kappa` (structural conduction boost, θ fully emergent) or `cooling_boost_mode='multiplier'` (scalar on the resolved L_cool). Either scales only the radiative channel → **cannot over-drain a PdV-dominated bubble** (no regime error, no gate — `FINDINGS.md §8c`) | causally honest |
 | **calibration** | pick f_κ(n) so the **solved** θ matches El-Badry/Lancaster | `F_KAPPA_FUNCTIONAL_FORM.md` (El-Badry/Lancaster as the target, not the enforced value) |
 | **f_κ magnitude** | set f_κ at a **physically-bounded** value; **do NOT crank it to ~60** to force the diffuse end | `F_KAPPA_FUNCTIONAL_FORM.md` §11–13 "don't-force-it" |
 | **diffuse fate** | clouds whose physics never reaches θ≥0.95 **stay energy-driven, by design** (route-a) | maintainer-endorsed 2026-07-01: "diffuse clouds may never enter momentum — the cooling/physics never allows it"; El-Badry √n, uncontradicted by Lancaster (GMC-only plateau) |
