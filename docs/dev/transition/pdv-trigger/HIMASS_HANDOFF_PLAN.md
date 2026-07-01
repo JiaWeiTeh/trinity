@@ -225,20 +225,33 @@ Replay the crossover point on the existing frozen trajectories (no full re-run):
 `Eb/Eb_peak ≲ few %` and `R1/R2→1` at the crossover (stillborn), route straight to momentum; else 1c.
 Persist as `data/crossover_epoch.csv`.
 
-**Settled (live, 2026-06-30, `data/live_pdv_decomp.csv` — both runs now COMPLETE):**
-- The diffuse-massive `fail_repro` (5e9, n=1e2) is the **stillborn / PdV-dominated** case — 52 explicit
-  steps with Eb>0, then the first implicit step drives Eb strictly negative → `ENERGY_COLLAPSED`,
-  `reached_momentum=False`. This is the one that needs the fix; route it to momentum.
-- The dense-massive `f1edge_hidens` (1e7, n=1e6) **did complete** (126 rows; the earlier "90-row stiff/
-  partial" read is superseded). It is **radiative-dominated** (L_bub/Lmech 0.92 vs PdV 0.09 at the Eb-peak)
-  and **already transitions correctly**: `energy→implicit→transition→momentum`, Eb floored at
-  `ENERGY_FLOOR`, `dead_stop=False`. **It does NOT need the fix and must not be perturbed** (G0).
+**Settled (live, `data/live_pdv_decomp.csv` — triangulation across 3 configs, 2026-06-30/07-01):**
+
+| config | mass, nCore | shell | dominant sink | Eb fate | dead_stop |
+|---|---|---|---|---|---|
+| `fail_repro` | 5e9, 1e2 | **heavy** | **PdV** (0.99 vs 0.01 at peak) | strictly negative | **True (bug)** |
+| `f1edge_hidens` | 1e7, 1e6 | heavy | **radiative** (0.92 vs 0.09) | floors → momentum | False |
+| `sd_highsfe` | **1e4**, 1e6 | **light** | neither (PdV 0.50 / L_bub 0.26 at peak, sum<1) | **grows, never turns over** | False |
+
+- **`fail_repro`** (PdV-dominated, heavy+diffuse): 52 explicit steps Eb>0, then the first implicit step
+  drives Eb strictly negative → `ENERGY_COLLAPSED`, `reached_momentum=False`. **The case that needs the fix.**
+- **`f1edge_hidens`** (radiative-dominated, heavy+dense): completed 126 rows,
+  `energy→implicit→transition→momentum`, Eb floored at `ENERGY_FLOOR`. **Already correct; must not be
+  perturbed (G0).**
+- **`sd_highsfe`** (light+dense): a **control** — isolates density from mass. Result: **Eb grows
+  monotonically to 1.18e8 over ~3 Myr, never negative, no collapse, no dead-stop.** So **density alone does
+  NOT trigger the bug** — the PdV starvation that dead-stops `fail_repro` needs a **heavy shell (high mass)**,
+  not just high density. (This run was **truncated by a container restart at 203 rows / t≈2.95 Myr while
+  still energy-driven** — `final_phase=implicit`/`reached_momentum=False` reflect the cut, NOT a natural end.
+  Deliberately **not** re-run to `stop_t`: the bug-relevant question — does it dead-stop? — is conclusively
+  answered *no* (Eb rising, `Eb_min=+2.0`), and driving this stiff slow-burner to 10 Myr across
+  restart-prone containers would cost hours for no new information. Its natural terminal fate
+  (cooling_balance vs blowout at late `t`) is out of scope for this bug.)
 
 So the 1c-vs-momentum decision (§2.4) only has to be made for the PdV-dominated collapse, and there the
-answer is **straight to momentum** (no meaningful energy epoch remains — Eb barely grew). The `small_dense_highsfe`
-(1e4, n=1e6 — dense but *light* shell, isolating radiative from inertial loading) run is still completing;
-its row will land in `live_pdv_decomp.csv` and is expected to look like `f1edge_hidens` (radiative-driven,
-clean handoff, no dead-stop) — confirming density, not mass, sets the sink balance.
+answer is **straight to momentum** (no meaningful energy epoch remains — Eb barely grew). **Mass, not
+density, gates the dead-stop**; density sets *which* sink (radiative vs PdV) dominates when a heavy shell
+does collapse.
 
 ## 6. Reproduce the §1 identity check (no sim, ~1 s)
 ```
