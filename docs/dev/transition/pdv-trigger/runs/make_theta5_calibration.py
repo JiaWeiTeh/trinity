@@ -64,8 +64,11 @@ def reduce_rows(rows):
         cfg, mode = name.rsplit("__", 1)
         if mode not in F_OF_MODE or not r.get("theta_max"):
             continue
+        theta = float(r["theta_max"])
+        if not math.isfinite(theta):
+            continue  # solver-breakdown arm (NaN loss rows) — excluded, note it in the doc
         by_cfg.setdefault(cfg, {})[F_OF_MODE[mode]] = {
-            "theta_max": float(r["theta_max"]),
+            "theta_max": theta,
             "fired": str(r.get("fired_cooling_balance", "")).lower() == "true",
         }
 

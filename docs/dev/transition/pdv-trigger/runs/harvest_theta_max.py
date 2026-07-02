@@ -16,6 +16,7 @@ Each argument is a run dir containing dictionary.jsonl (+ metadata.json).
 
 import csv
 import json
+import math
 import sys
 from pathlib import Path
 
@@ -39,7 +40,11 @@ COLUMNS = [
 
 def num(d, k):
     v = d.get(k)
-    return v if isinstance(v, (int, float)) and not isinstance(v, bool) else None
+    if not isinstance(v, (int, float)) or isinstance(v, bool):
+        return None
+    # dictionary.jsonl can carry NaN on solver-breakdown rows (e.g. the dense edge
+    # under boost) — a NaN theta would poison max(); treat as missing
+    return v if math.isfinite(v) else None
 
 
 def harvest(run_dir: Path) -> dict:
