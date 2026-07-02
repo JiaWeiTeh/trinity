@@ -11,7 +11,7 @@
 > are exact; stamp-less artifacts predate the convention (2026-07-02) — for those, only
 > the commit date is known. **Every new/edited builder must write the stamp.**
 
-229 artifacts · 0 stale-risk · 0 untracked · 8 stamped 🕐
+230 artifacts · 0 stale-risk · 0 untracked · 9 stamped 🕐
 
 | last updated (commit) | artifact | producer / flags |
 |---|---|---|
@@ -244,3 +244,4 @@
 | 2026-06-29 `18aea49` | `storyline_figs/fig_fmix_convention.png` | producer unknown (HPC/hand-made); refs: `make_pdvtrigger_report.py`, `make_storyline_figs.py` |
 | 2026-06-29 `18aea49` | `storyline_figs/fig_regime_split.png` | producer unknown (HPC/hand-made); refs: `make_pdvtrigger_report.py`, `make_storyline_figs.py` |
 | 2026-06-29 `18aea49` | `theta_vs_density.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_overlay.py`, `make_fmix_spread_plot.py` |
+| None `None` | `data/kappa_freeze_autopsy.csv` | by `make_kappa_freeze_autopsy.py` · 🕐 generated 2026-07-02T22:05:48Z | builder make_kappa_freeze_autopsy.py | code d8ec046+dirty |
