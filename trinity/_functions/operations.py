@@ -8,8 +8,12 @@ Created on Mon Apr 24 19:36:36 2023
 This script contains useful functions that help compute stuffs
 """
 
+import logging
+
 import numpy as np
 import trinity._functions.unit_conversions as cvt
+
+logger = logging.getLogger(__name__)
 
 
 def find_nearest(array, value):
@@ -30,9 +34,11 @@ def find_nearest_lower(array, value):
         2) closest to value.
     Elements in array need be monotonically increasing or decreasing!
     """
-    # check whether array is monotonic
+    # check whether array is monotonic. DEBUG log, not print: the raise is caught
+    # by the beta-delta trial wrapper (get_betadelta) as a penalised, retried
+    # trial, so this firing is benign per-trial noise that must not spam stdout.
     if not monotonic(array):
-        print(f"array has to be monotonic! Instead got {array}.")
+        logger.debug(f"array has to be monotonic! Instead got {array}.")
         raise MonotonicError()
 
     # is it increasing?
@@ -147,9 +153,9 @@ def find_nearest_higher(array, value):
     single-point spike, or a startup dip in the leading fraction) is tolerated;
     a deep or sustained-interior inversion still raises MonotonicError.
     """
-    # check whether array is monotonic
+    # check whether array is monotonic. DEBUG log, not print (see find_nearest_lower).
     if not _is_monotonic_or_tolerable(array):
-        print(f"array has to be monotonic! Instead got {array}.")
+        logger.debug(f"array has to be monotonic! Instead got {array}.")
         raise MonotonicError()
 
     # is it increasing? (use endpoints: robust to a tolerated local spike that

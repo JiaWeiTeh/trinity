@@ -1,3 +1,4 @@
+# generated 2026-07-02T12:05:54Z | builder make_kappa_stability_map.py | code 8a27ba9
 # kappa stability map from summary.csv (819 runs): 57 cells fired; 17 NON-MONOTONIC (some f > f_fire did not fire); 38 runs froze mid-implicit without firing (the sec8e signature). sec8e reproduced on Helix: cell (1e5, 0.3, 1e5) fires at 4-6, freezes at 8/12 (theta_max 0.5331 = sec8e's ~0.53).
 mCloud,sfe,nCore,f_kappa_fire,f_fired_all,f_nofire_above_fire,f_froze_early,nonmonotonic
 100000.0,0.03,100.0,32.0,32.0;48.0,64.0,,True
