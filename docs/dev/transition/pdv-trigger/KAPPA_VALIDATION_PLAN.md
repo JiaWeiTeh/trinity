@@ -3,8 +3,9 @@
 > **STATUS (2026-07-01, reconciliation): T1–T5 ALL DONE — this is now a historical record.** Outcome in
 > `FINDINGS.md §8e`; quotability of its numbers in `CONTAMINATION.md`. ⚠️ Its §8e runs never reached 5 Myr
 > (early-time; honestly flagged) and their θ values were **not persisted as CSV** (💾 violation, still open).
-> The §8e result is in **open tension with FINDINGS §9** (pt3 sweep: kappa fires at ≤64) — see
-> `CONTAMINATION.md` ⚡ #1.
+> The §8e-vs-§9 tension (pt3 sweep: kappa fires at ≤64) was **RESOLVED same-day** — `FINDINGS.md §9a` /
+> `data/kappa_stability_map.csv`: the kappa knob has **non-monotonic breakdown windows** in f_κ (firing bands
+> interleaved with freeze windows; §8e sampled a dead window) — see `CONTAMINATION.md` ⚡ #1 (updated 2026-07-02).
 >
 > ⚠️ **Point-in-time working plan, not a maintained spec** — re-verify against source before trusting.
 > 🔄 **Living** — tick tasks as done, note deviations, date them.

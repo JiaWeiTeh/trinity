@@ -1,0 +1,10 @@
+# generated 2026-07-02T14:23:13Z | builder make_theta5_figures.py | code cc479ba+dirty
+config,theta0_5Myr,f_fire_bracket,f_fire_predicted_by_law,theta_max_at_f4,fires_at_f4,fate_at_f4
+be_sphere,0.5286290124260625,"(2,4]",4.04,1.0385207205663884,True,shell_collapsed
+fail_repro,0.0031833760750618707,n/a,45300.21,0.012733508324625718,False,stopping_time
+large_diffuse_lowsfe,0.5350422013812615,"(2,4]",3.95,0.9567867685433026,True,stopping_time
+midrange_pl0,0.6355354439390808,"(2,4]",2.89,0.9813654633365688,True,shell_collapsed
+pl2_steep,0.5107530250900207,"(2,4]",4.3,0.9748650032378119,True,shell_collapsed
+simple_cluster,0.6759717869721299,"(1,2]",2.58,1.002291415290944,True,shell_collapsed
+small_1e6,0.29719261586142026,>8,11.55,0.6821235741815929,False,stopping_time
+small_dense_highsfe,0.7167705883636005,n/a,2.32,,False,shell_collapsed

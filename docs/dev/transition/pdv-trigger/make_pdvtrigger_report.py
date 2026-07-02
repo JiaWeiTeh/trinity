@@ -33,6 +33,7 @@ REPRODUCE
     python docs/dev/transition/pdv-trigger/make_pdvtrigger_report.py   # -> pdvtrigger_report.html
     python docs/dev/html-insights/build_storylines.py                  # rebuild storyline_s5.html
 """
+
 import base64
 from pathlib import Path
 
@@ -124,6 +125,26 @@ FIGURES = {
         "fkappa_physical_derivation.png",
         "deriving the physical prescription: left = Spitzer conductivity (rises as T^5/2) vs El-Badry's temperature-independent kappa_mix at GMC density, showing kappa_mix dominates the cool mixing layer where Spitzer vanishes (so a scalar f_kappa multiplier cannot represent it); right = El-Badry's verified flat-high cooling target theta* (even at diffuse) vs TRINITY's measured rising 1D baseline theta0, the orange gap kappa_mix must supply is large at diffuse, arguing the diffuse never-fire is a 1D under-cooling artifact",
     ),
+    "__FIG_T5ARMS__": (
+        "theta5_arms.png",
+        "the theta5 matrix: emergent theta_max vs f_mix for all 8 configs over 5 Myr, outcome-classed (fires-and-survives, fires-then-recollapses, route-a, PdV/handoff), with the 0.95 trigger and the Lancaster 0.90-0.99 band; f_mix=4 lifts the whole normal-GMC band across the trigger",
+    ),
+    "__FIG_T5LAW__": (
+        "theta5_collapse_law.png",
+        "the multiplier theta1-collapse law: smallest firing boost vs starting deficit 0.95/theta0 in log-log, five fired configs with grid brackets, the censored small_1e6 arrow, the fitted f_fire=1.4(0.95/theta0)^1.82 line and the much steeper kappa-knob law for contrast",
+    ),
+    "__FIG_T5METRIC__": (
+        "theta5_metric_correction.png",
+        "why blowout-theta was retired: per-config dumbbells from theta-at-blowout to theta_max over 5 Myr; the diffuse config is under-read 2.1x because its theta peaks at t~4.9 Myr, long after blowout",
+    ),
+    "__FIG_T5TARGET__": (
+        "theta5_target_vs_emergent.png",
+        "calibrate-don't-enforce: the El-Badry lambda-delta-v=3 target curve vs TRINITY's native theta0 (open) and f_mix=4 boosted theta_max (filled) per config; arrows show the boost lifting GMCs into the band; two configs at the same nCore=1e2 behave oppositely, so theta0 is not a function of density alone",
+    ),
+    "__FIG_T5KNOB__": (
+        "theta5_knob_choice.png",
+        "knob comparison: the kappa knob's theta_max vs f_kappa for one sweep cell shows firing bands interleaved with freeze windows (dead windows), while the multiplier knob's theta_max rises monotonically with f_mix with no dead windows",
+    ),
 }
 
 
@@ -183,7 +204,10 @@ HEAD = (
     '<!doctype html><html lang="en"><head><meta charset="utf-8">'
     '<meta name="viewport" content="width=device-width, initial-scale=1">'
     "<title>TRINITY &mdash; interface cooling without double-counting</title>"
-    + MATHJAX + "<style>" + CSS + "</style></head><body><div class=\"wrap\">"
+    + MATHJAX
+    + "<style>"
+    + CSS
+    + '</style></head><body><div class="wrap">'
 )
 
 HERO = r"""
@@ -214,7 +238,7 @@ degenerate, and the coupled one is refuted.</b> A flat \(\theta\!\approx\!0.95\)
 to the 0.95 trigger TRINITY already has, so it adds nothing; and
 \(\theta_{\text{target}}(\mathrm{Da})\) &mdash; tested this session offline <i>and</i> by a gate-validated
 real-Da replay &mdash; is <b>NO-GO</b> (real \(\mathrm{Da}\) is non-monotonic in density and \(\gg\!1\)
-everywhere, so \(\theta_{\max}\mathrm{Da}/(1+\mathrm{Da})\) saturates back to a constant). <b>The pivot:</b> the cooling
+everywhere, so \(\theta_{\max}\mathrm{Da}/(1+\mathrm{Da})\) saturates back to a constant). <span style="background:#eef9f1;border-radius:4px;padding:0 4px"><b>Addendum 2026-07-02 (&sect;16):</b> claim (3) was a <i>blowout-metric</i> artifact &mdash; under the \(\theta_{\max}\)-over-5-Myr rule a single \(f_{\rm mix}{=}4\) <b>does</b> fire the whole normal-GMC band.</span> <b>The pivot:</b> the cooling
 boost corrects cooling <b>magnitude</b>, it does not change the trigger. <span class="small muted">[framing
 corrected 06-26: TRINITY&rsquo;s <i>default</i> trigger is the cooling-driven <code>cooling_balance</code>
 (\(L_{\text{loss}}/L_{\text{gain}}\!>\!0.95\)); geometric blowout is <b>opt-in, default OFF</b> and is only the
@@ -1003,6 +1027,98 @@ treatment.</p>
 """
 
 
+SEC_THETA5 = r"""
+<h2 id="theta5">16 &middot; The theta5 matrix &mdash; the rule-compliant calibration lands (2026-07-02)</h2>
+
+<div class="box warnbox"><span class="lab">Supersession notice</span> Chapters 13&ndash;15 quote numbers measured
+<b>at blowout</b> on short runs &mdash; \(f_\kappa\)-to-fire \(\approx4/5\!-\!6/60\) (compact/mid/diffuse), and the
+&ldquo;no constant fires the grid&rdquo; verdict. The 2026-07-01 standing rules retired that metric
+(\(\theta=\theta_{\max}\) over \(\ge\)5 Myr, from <code>dictionary.jsonl</code> accepted rows), and this chapter&rsquo;s
+matrix re-measured everything under them. <b>The \(\approx60\) is dead</b> (a blowout artifact), and the
+&ldquo;no constant&rdquo; verdict inverts. Everything quotable is graded in <code>CONTAMINATION.md</code>.</div>
+
+<div class="tldr"><p style="margin:0"><b>TL;DR.</b> The 📏 protocol matrix &mdash; the canonical <b>8 configs
+&times; \(f_{\rm mix}\in\{1,2,4,8\}\) &times; 5 Myr</b> on the production <code>multiplier</code> knob &mdash; ran on
+Helix, <b>32/32 rule-compliant</b>. Results: <b>(1)</b> blowout under-read the diffuse baseline <b>2&times;</b>
+(\(\theta_0{=}0.535\), peaking at \(t\!\approx\!4.9\) Myr); <b>(2)</b> the firing boost collapses on the starting
+deficit, \(f_{\rm fire}\approx1.4\,(0.95/\theta_0)^{1.82}\); <b>(3)</b> a <b>single</b> \(f_{\rm mix}{=}4\) fires the
+whole normal-GMC band &mdash; including the diffuse cloud &mdash; at \(\theta_{\max}\) 0.96&ndash;1.04;
+<b>(4)</b> route-a survives, de-conflated: <code>small_1e6</code> (same \(n_{\rm core}\) as the firing diffuse
+config) never fires through \(f{=}8\), and <code>fail_repro</code> rides the PR#715 handoff untouched;
+<b>(5)</b> two new failure modes: <i>fire-then-recollapse</i> (dense cores at \(f\!\ge\!4\)) and <i>over-boost
+\(E_b\)-drain</i> (momentum without firing at \(f{=}8\)). <b>\(f_{\rm mix}\) is NOT yet pinned</b> &mdash; 4 is the
+leading candidate, gated on the recollapse physics call.</p></div>
+
+<figure>__FIG_T5ARMS__<figcaption><b>The matrix.</b> Emergent \(\theta_{\max}\) (5 Myr) vs \(f_{\rm mix}\), all 8
+configs, colored by outcome class; filled markers fired <code>cooling_balance</code>. At \(f_{\rm mix}{=}4\) every
+normal-GMC config sits at or above the trigger; the control and the PdV-dominated heavy cloud do not &mdash; by
+physics, not by tuning. From <code>data/make_theta5_figures.py</code> (REPRODUCE #29).</figcaption></figure>
+
+<h3>16.1 &middot; The measured calibration</h3>
+<div class="tablewrap"><table>
+<tr><th>config</th><th>\(n_{\rm core}\)</th><th>\(\theta_0\) (5 Myr)</th><th>\(f_{\rm fire}\) bracket</th><th>law predicts</th><th>\(\theta_{\max}\) @ \(f{=}4\)</th><th>fate @ \(f{=}4\)</th></tr>
+<tr><td>simple_cluster</td><td>1e5</td><td>0.676</td><td>(1,2]</td><td>2.6</td><td>1.002</td><td>fires; recollapses (fires+survives at \(f{=}2\))</td></tr>
+<tr><td>pl2_steep</td><td>1e5</td><td>0.511</td><td>(2,4]</td><td>4.3</td><td>0.975</td><td>fires; recollapses</td></tr>
+<tr><td>midrange_pl0</td><td>1e4</td><td>0.636</td><td>(2,4]</td><td>2.9</td><td>0.981</td><td>fires; recollapses</td></tr>
+<tr><td>be_sphere</td><td>1e4</td><td>0.529</td><td>(2,4]</td><td>4.0</td><td>1.039</td><td>fires; recollapses</td></tr>
+<tr><td>large_diffuse_lowsfe</td><td>1e2</td><td>0.535</td><td>(2,4]</td><td>3.9</td><td>0.957</td><td><b>fires; survives to 5 Myr</b></td></tr>
+<tr><td>small_1e6 (control)</td><td>1e2</td><td>0.297</td><td>&gt;8</td><td>11.6</td><td>0.682</td><td>route-a (healthy)</td></tr>
+<tr><td>fail_repro (5e9)</td><td>1e2</td><td>0.003</td><td>n/a</td><td>&mdash;</td><td>0.013</td><td>PR#715 handoff, boost-invariant</td></tr>
+<tr><td>small_dense_highsfe</td><td>1e6</td><td>0.717</td><td>n/a</td><td>2.3</td><td>NaN</td><td>dense-edge stiffness; \(E_b\!\le\!0\) handoff</td></tr>
+</table></div>
+<p class="sub">Full margins: <code>runs/data/theta5_fmix_scorecard.csv</code>; per-run record:
+<code>runs/data/theta5_summary.csv</code> (stamped, 32 rows).</p>
+
+<figure>__FIG_T5LAW__<figcaption><b>The \(\theta_1\)-collapse law is knob-specific.</b> The multiplier&rsquo;s
+leverage (\(\theta\propto f^{0.55}\)) is twice the kappa knob&rsquo;s (0.27) &mdash; no structural back-reaction
+eats the boost. All cloud-property dependence flows through the one scalar \(\theta_0\) TRINITY already
+computes.</figcaption></figure>
+
+<figure>__FIG_T5METRIC__<figcaption><b>Why the standing rule mattered.</b> Blowout-\(\theta\) under-reads every
+config and by 2.1&times; exactly where it decided the story (diffuse, peak at \(t\!\approx\!4.9\) Myr). The
+&ldquo;diffuse needs \(f\!\approx\!60\)&rdquo; claim of ch. 13&ndash;15 dies here.</figcaption></figure>
+
+<figure>__FIG_T5TARGET__<figcaption><b>Calibrate, don&rsquo;t enforce.</b> The \(f_{\rm mix}{=}4\) boost lifts the
+emergent \(\theta\) into the El-Badry/Lancaster band for GMCs; two configs at the same \(n_{\rm core}{=}10^2\)
+behave oppositely &mdash; the fire/route-a boundary is set by \(\theta_0\) (mass, SFE, structure), not by density
+alone.</figcaption></figure>
+
+<figure>__FIG_T5KNOB__<figcaption><b>Why the multiplier knob.</b> The structural kappa knob interleaves firing
+bands with freeze windows (dead windows, &sect;9a of <code>FINDINGS.md</code>); the multiplier is monotonic in
+\(f\) with no dead windows &mdash; but it has its own gentler over-boost ceiling (\(E_b\)-drain at
+\(f{=}8\)).</figcaption></figure>
+
+<h3>16.2 &middot; Referee robustness &mdash; why 4, and why a constant?</h3>
+<p><b>Why 4 and not 2.5 / 3.4 / 4.7?</b> Honestly: 4 is a <i>grid point</i>, not a fitted optimum. Its defense is
+that the law-predicted requirement for the hardest firing configs lands almost exactly on it (pl2_steep 4.3,
+be_sphere 4.0, large_diffuse 3.9) &mdash; i.e. 4 is the <b>minimal single constant that fires the band</b>, and any
+\(f\) in the window \([\sim\!4,\ \lesssim\!8)\) gives the same fire set (the conclusions are insensitive within the
+window; 8 hits the over-boost ceiling). The planned <b>theta5b fine bracket</b>
+(\(f\in\{2.5,3,3.5,4.5,5\}\) &times; 8 configs + a \(t_{\rm stop}{=}8\) Myr diffuse arm) turns that from a law-based
+argument into a measured sensitivity table: it pins each config&rsquo;s \(f_{\rm fire}\) to &plusmn;0.5, measures the
+workable window edges, and tests whether the diffuse cloud fires at \(f{=}2\) given more time (it grazed
+\(\theta{=}0.9552\) at exactly \(t{=}5\)).</p>
+<p><b>Why a constant and not \(f(\text{cloud properties})\)?</b> Four independent reasons, one per row of the
+model-comparison table in <code>PLAN.md</code>: <b>(i) physical sign</b> &mdash; the real enhancement
+\(\kappa_{\rm mix}/\kappa_{\rm Spitzer}\propto n\) <i>rises</i> with density, opposite to the falling
+\(f(n)\) a chase-the-target prescription needs, so no physical \(f(n)\) exists; <b>(ii) empirical</b> &mdash; the
+819-sweep refuted \(f(n_H)\)-only (32&times; spread at fixed \(n\)), and the full 3-axis lookup
+(<code>'auto'</code>) is measured to interpolate into kappa dead windows; <b>(iii) sufficiency</b> &mdash; the
+\(\theta_1\)-collapse law shows all property-dependence flows through \(\theta_0\), which the <i>solved bubble
+already supplies</i> &mdash; a constant \(f\) then lets the physics pick the fire set (route-a) instead of forcing
+it; <b>(iv) falsifiability</b> &mdash; one parameter makes one testable prediction
+(\(\theta_0>0.95/f^{0.55}\Rightarrow\) fires); a per-cloud \(f\) has as many parameters as calibration cells and
+predicts nothing. The referee-grade test: fit the law on a config subset, <b>predict</b> the held-out
+\(f_{\rm fire}\) brackets from \(\theta_0\) alone, and show the constant-\(f\)+law model matches the measurements
+as well as any multi-parameter \(f(\text{properties})\) fit.</p>
+
+<div class="box over"><span class="lab">Open &mdash; what still gates the pin</span> (1) the
+<b>fire-then-recollapse physics call</b>: at \(f{=}4\) every dense-core config fires then shell-collapses within
+0.05&ndash;2.5 Myr &mdash; acceptable re-accretion physics, or over-boost? (2) the theta5b fine bracket + long
+diffuse arm; (3) the dense-edge (\(n_{\rm core}{=}10^6\)) NaN-loss stiffness diagnosis. Until then every doc
+phrases \(f_{\rm mix}{=}4\) as the <i>leading candidate</i>, not the decision.</div>
+"""
+
 SEC_REPRO = r"""
 <h2 id="repro">Artifacts &amp; reproducibility</h2>
 <p class="small">Everything is committed under <code>docs/dev/transition/pdv-trigger/</code> &mdash; reproducible
@@ -1056,10 +1172,25 @@ MathJax-rendered.</footer>
 
 def main():
     parts = [
-        HEAD, HERO,
-        SEC_SETUP, SEC_DOUBLE, SEC_CONVENTION, SEC_REGIME, SEC_CLOSURE,
-        SEC_DA, SEC_LIT, SEC_WIRING, SEC_LIVE, SEC_BOTTOM, SEC_KAPPA, SEC_EBPEAK, SEC_FKDEF,
-        SEC_TAXONOMY, SEC_SWEEP, SEC_REPRO,
+        HEAD,
+        HERO,
+        SEC_SETUP,
+        SEC_DOUBLE,
+        SEC_CONVENTION,
+        SEC_REGIME,
+        SEC_CLOSURE,
+        SEC_DA,
+        SEC_LIT,
+        SEC_WIRING,
+        SEC_LIVE,
+        SEC_BOTTOM,
+        SEC_KAPPA,
+        SEC_EBPEAK,
+        SEC_FKDEF,
+        SEC_TAXONOMY,
+        SEC_SWEEP,
+        SEC_THETA5,
+        SEC_REPRO,
     ]
     parts.append("</div></body></html>")
     html = "".join(parts)

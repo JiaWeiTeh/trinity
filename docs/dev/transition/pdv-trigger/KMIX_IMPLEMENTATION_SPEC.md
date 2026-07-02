@@ -25,7 +25,9 @@
 ---
 
 > **⏸ SHELVED (2026-06-30): the direct κ_mix-into-the-Weaver-ODE injection this spec designs is superseded by
-> the El-Badry θ_target path (`ELBADRY_REFERENCE.md`).** The full-paper read showed El-Badry's θ ≡ TRINITY's
+> the El-Badry θ_target path (`ELBADRY_REFERENCE.md`)** (that path was later demoted to opt-in — `FINDINGS.md
+> §8c`; the current successor, as of 2026-07-02, is the emergent-θ `multiplier` knob, calibrated in
+> `FINDINGS.md §10`). The full-paper read showed El-Badry's θ ≡ TRINITY's
 > trigger θ and is available as a 3D-calibrated closed form (Eq 37/38), so we can impose it via the existing
 > gated `cooling_boost_mode='theta_target'` without porting κ_mix into the structure solver (which saturated and
 > went numerically unstable). This spec is retained for the **dimensionless-multiplier units strategy** (§2,

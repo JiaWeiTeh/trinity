@@ -1,0 +1,13 @@
+model_name             pl2_steep__mult3
+mCloud                 1e6
+nCore                  1e5
+rCore                  1
+sfe                    0.1
+dens_profile           densPL
+densPL_alpha           -2
+stop_t                 5
+cooling_boost_mode     multiplier
+cooling_boost_fmix     3
+log_console            False
+log_file               True
+path2output            outputs/theta5b/pl2_steep__mult3

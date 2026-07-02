@@ -23,6 +23,14 @@
 > an untracked `outputs/`. A future visit must be able to reproduce or compare
 > against the numbers **without re-running**; record the exact config + command
 > that produced each artifact.
+>
+> 🔗 **Cross-check the sibling docs — keep the workstream self-consistent.** This file is one of
+> several living docs for its workstream (`P0.md`, `pshadow-design.md`, `PROVENANCE_PROTOCOL.md`,
+> and the `pdv-trigger/` successor docs in this folder). They drift out of sync *with each
+> other* as fast as they drift from the code. Any agent or person editing one MUST, as part of the visit,
+> circle back through the siblings and reconcile: if a number, status, claim, or line reference here
+> contradicts a sibling — or a sibling has gone stale — fix it (or flag it, dated) so no two docs in the
+> workstream disagree. Never update one in isolation.
 
 **About this document**
 - **Status (updated 2026-06-22):** ⛔ **SUPERSEDED** by `cleanroom/FINDINGS.md` — this investigation has concluded: under the hybr default **no cooling-balance event fires (0/6 configs)**, so the transition is **geometric (blowout), not thermal**. The "F0 fires for flat configs" hypothesis was falsified and no trigger candidate shipped. Kept as the program's entry point / historical record.

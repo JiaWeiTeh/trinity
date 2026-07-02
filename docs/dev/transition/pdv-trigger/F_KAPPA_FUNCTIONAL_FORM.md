@@ -7,8 +7,9 @@
 > construction. **Caveat on the specifics here:** the earlier goal of *fitting* a power-law exponent and
 > *forcing* the diffuse end (f_κ~60) is **superseded by §11–13's "don't-force-it"**: set f_κ at a **physical**
 > value, use El-Badry/Lancaster as the *calibration target* for the emergent θ, and **accept diffuse route-a
-> non-transition** (maintainer-endorsed 2026-07-01). So: program = current; power-law exponents = still to be
-> recalibrated to the physical-cap stance; the 819-sweep DATA remains valid evidence. (An earlier 06-30 banner
+> non-transition** (maintainer-endorsed 2026-07-01). So: program = current; power-law exponents =
+> **recalibrated 2026-07-02 → `FINDINGS.md §10`** (the theta5 matrix; f_fire ≈ 1.4·(0.95/θ₀)^1.8); the
+> 819-sweep DATA remains valid evidence. (An earlier 06-30 banner
 > here called this whole doc "superseded" — that reversal is itself now superseded.)
 
 > ⚠️ **This document may be out of date — verify before trusting it.** It is a
@@ -56,8 +57,9 @@
 
 ## 0. TL;DR — the form you can use now
 
-> ⭐ **For the CURRENT direction use §14** (emergent θ → El-Badry λδv=3 target, physically capped, route-a
-> accepted). The flat-θ* form immediately below is the earlier general form; §14 is its 2026-07-01
+> ⭐ **For the CURRENT numbers use `FINDINGS.md §10` / `runs/data/theta5_calibration.csv` (2026-07-02); §14 is
+> the voided predecessor** (its *program* — emergent θ → El-Badry λδv=3 target, physically capped, route-a —
+> stands). The flat-θ* form immediately below is the earlier general form; §14 is its 2026-07-01
 > specialization to the corrected plan (density-dependent El-Badry target instead of a flat plateau).
 
 ```
@@ -230,7 +232,8 @@ Fielding+2020 fractal D=5/2. These feed a future temperature-independent κ_mix(
   *compact* run actually reaches the target there (it fires at f_κ≈3.4); diffuse only reaches θ=0.30 at f_κ=4.
   So f_κ≈48 (θ\*=0.95, n=1e2) is a raw-power extrapolation, uncertain ~2–3× (the docs' older estimate gives
   ≈60). What is *not* in doubt: diffuse needs **tens×** the boost dense needs, and probably more than conduction
-  can physically supply (§5).
+  can physically supply (§5). → **REFUTED by §10 (2026-07-02):** measured under θ_max on the `multiplier` knob,
+  diffuse fires at 4 vs compact at 2 — a factor **2**, not tens; the tens× was the blowout artifact.
 - **p is treated as constant but varies with config.** Measured p = 0.21 (mid) … 0.42 (diffuse), non-monotonic
   in n_H — so leverage depends on more than density (SFE/profile). A p(n_H, mCloud, SFE) changes the amplitude
   (not much the slope). De-conflating it is the sweep's job (`data/reduce_fkappa_sweep.py` →
@@ -529,7 +532,8 @@ and tested on all 8 configs, decides it per cloud** — do not assert either fat
 > carry over** to the tentatively-chosen `multiplier`; (iii) the 6-anchor θ₀ baseline slope (0.41/dex logit)
 > was **falsified by the 819-sweep** (real grid 1.13/dex — PLAN scorecard P3 ❌). The θ_max=1.334/1.006
 > "live validation" at the bottom is additionally **observer-contaminated (R6) + wrong-knob (R5)**.
-> **Re-derivation path:** the 📏 standard-protocol matrix (`runs/README.md`, `runs/params/theta5/`).
+> **Re-derived (2026-07-02): `FINDINGS.md §10` / `runs/data/theta5_calibration.csv`** — the 📏 matrix ran on
+> Helix (32/32 compliant); replacement law **f_fire ≈ 1.4·(0.95/θ₀)^1.8**.
 
 This is the calibration under the **corrected direction** (`PLAN.md` ⭐⭐, `FINDINGS.md §8c`): θ is an **output**;
 boost the cooling **mechanism** (the `cooling_boost_kappa` structural knob is the θ-fully-emergent one; see the
@@ -546,7 +550,9 @@ never allows it."
 > → **∝ n at the fixed ~2×10⁴ K mixing layer, i.e. it RISES with density.** So there is **no physical f_κ(n)
 > that fires every cloud.** Therefore: **set one physical f_κ (a constant, ~few–8) and let the
 > density-dependence EMERGE** — denser clouds have higher native θ₀, so at a fixed f_κ their *solved* θ is higher
-> and they fire; diffuse clouds fall short and stay energy-driven. The density-dependence then lives in the
+> and they fire; diffuse clouds fall short and stay energy-driven. (§10 nuance, 2026-07-02: the single-constant
+> approach is **CONFIRMED** by the theta5 matrix — but the canonical **diffuse GMC fires at f_mix=4**; route-a =
+> small_1e6 + fail_repro, a θ₀-set split.) The density-dependence then lives in the
 > **route-a critical density** (n_routeA(f_κ), the falsifiable energy→momentum split), not in a hand-tuned
 > f_κ(n). Trade-off, stated honestly: a single f_κ won't trace El-Badry's θ(n) at *every* density (it undershoots
 > at mid-n), but matching there needs the unphysical rising f_κ(n) — so **match El-Badry where physical (dense);
@@ -575,6 +581,8 @@ never allows it."
 2. **At a physical ceiling the split is clean and falsifiable.** The **route-a boundary** n_routeA(f_max) — the
    least-dense cloud that reaches θ=0.95 at the capped f_κ — is **n ≳ 2.5×10⁵ (f_max=4), ≈1.6×10⁴ (f_max=8),
    ≈1.8×10³ (f_max=16)** (`fkappa_emergent_routea.png`). Everything below stays energy-driven **by design**.
+   (Measured boundary: see §10, 2026-07-02 — the n_routeA≈1.6e4 prediction was ~3 dex too high (blowout
+   artifact); the diffuse n=1e2 GMC fires at f_mix=4, and the measured route-a split is θ₀-based.)
    So the one honest free parameter is **f_max** (the physical cap on the mechanism), and it maps directly to a
    **testable energy→momentum density threshold**.
 3. **This is the corrected form of §11–13's "don't-force-it."** Same spirit (physical cap → critical column),
@@ -585,15 +593,17 @@ never allows it."
 **Honest caveats (unchanged from §4):** p=0.31 is measured only over f_κ∈{1,2,4} to firing and is
 **non-monotonic in n** (the de-conflation the 819-sweep addresses), and θ₀(n) has RMS 0.49 scatter in logit
 (profile/SFE at fixed n — visible as the spread of the measured points in the figure). So the route-a boundary
-is good to ~factor-few in n; **f_max itself is the physics input still to be pinned** (2–8 argued in §11; the
-structural κ_mix that would justify a larger effective boost at the diffuse end stays SHELVED).
+is good to ~factor-few in n; **f_max itself is the physics input still to be pinned** — as of 2026-07-02 the
+measured bracket is §10's **2-vs-4** (4 fires the band but dense cores fire-then-recollapse; 2 fires only the
+compact config), gated on the recollapse physics call (2–8 was argued in §11; the structural κ_mix that would
+justify a larger effective boost at the diffuse end stays SHELVED).
 
-> ⚠️ **θ₀ HERE IS A BLOWOUT SNAPSHOT — the calibration is CONSERVATIVE and pending re-derivation with θ_max.**
-> `θ₀(n)` above comes from `Lcool_over_Lmech_at_blowout` (`make_fkappa_functional_form.py:23,99,123`), i.e. θ at
-> R2=rCloud. Per the **📏 θ_max standing rule (2026-07-01, `PLAN.md`)** all θ is now measured as the **peak over
-> a ≥5 Myr run**, because the trigger fires on the *first crossing* and blowout under-reads the peak (and is
-> undefined for recollapsing clouds). Re-deriving θ₀(n) with θ_max will *lower* the required f_κ / move the
-> route-a boundary to lower density.
+> ⚠️ **θ₀ HERE IS A BLOWOUT SNAPSHOT — the calibration was CONSERVATIVE; re-derived (§10, 2026-07-02):
+> confirmed.** `θ₀(n)` above comes from `Lcool_over_Lmech_at_blowout` (`make_fkappa_functional_form.py:23,99,123`),
+> i.e. θ at R2=rCloud. Per the **📏 θ_max standing rule (2026-07-01, `PLAN.md`)** all θ is now measured as the
+> **peak over a ≥5 Myr run**, because the trigger fires on the *first crossing* and blowout under-reads the peak
+> (and is undefined for recollapsing clouds). The θ_max re-derivation (§10) measured exactly this: diffuse θ₀
+> is **0.535 vs the blowout 0.25** (2× under-read), and the route-a boundary moved **~3 dex** down.
 
 **Live validation (2026-07-01, `data/_fkappa_validation_runner.py`, θ_max over ≥5 Myr, production `multiplier`
 mode at f_κ=8, `cooling_balance` only)** — ⛔ **RETRACTED as a validation** (kept as the historical record):
@@ -610,13 +620,14 @@ precedent) — re-harvest from `dictionary.jsonl` (`runs/harvest_theta_max.py`) 
 The two dense configs fire, and **θ_max exceeds the blowout-θ₀ prediction** (1.33 vs 0.99; 1.01 vs 0.91) —
 *qualitatively* supporting that the blowout baseline is conservative and that the emergent `multiplier` path
 reaches firing at a physical f_κ (the specific numbers are retracted per the ⛔ flag above; the rule-compliant
-re-measurement is the 📏 theta5 matrix). (Both then `shell_collapsed` — the separate dense-core recollapse question, `FINDINGS §8a`, not a
+re-measurement is the 📏 theta5 matrix — ran 2026-07-02 → §10). (Both then `shell_collapsed` — the separate dense-core recollapse question, `FINDINGS §8a`, not a
 double-count; unlike enforced θ these fired from *emergent* radiative cooling.) **The n=1e2 route-a θ_max could
 NOT be measured — but for a PERFORMANCE reason, not a bug:** the diffuse configs progress far too slowly to
 reach ≥5 Myr (even f_κ=1 needs ~11 h; a cooling boost makes the early implicit segments ~3–7× costlier). The
 beta-delta solver itself converges perfectly (`FINDINGS §8d` — the earlier "stall / min_T guard / non-convergence"
 claims are all retracted there). Net: **boosted diffuse runs are computationally impractical here** — which,
-with the physics, is a further reason to cap f_κ low at the diffuse end and accept route-a.
+with the physics, is a further reason to cap f_κ low at the diffuse end and accept route-a (since measured on
+Helix, 2026-07-02: θ₀=0.535, peak t≈4.9 Myr, fires at f=4 — §10).
 
 ## 7. Provenance / caveats (read before citing a number)
 
