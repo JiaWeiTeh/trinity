@@ -34,7 +34,7 @@ case "${1:-}" in
            ssh "$HOST" "bash -lc 'cd $REPO && git pull --ff-only'" ;;
 
   submit)  echo ">> on $HOST: git pull -> mkdir logs -> sbatch the 32-run theta5 array"
-           ssh "$HOST" "bash -lc 'cd $REPO && git pull && mkdir -p $LOGS && sbatch ${ARRAY:+--array=$ARRAY} $SBATCH'" ;;
+           ssh "$HOST" "bash -lc 'cd $REPO && git pull && mkdir -p $LOGS && sbatch --array=${ARRAY:-1-32} $SBATCH'" ;;
 
   watch)   echo ">> queue + newest theta5 task log on $HOST (Ctrl-C to stop)"
            ssh -t "$HOST" "squeue --me -o '%.10i %.20j %.2t %.10M %.6D %R' 2>/dev/null; \

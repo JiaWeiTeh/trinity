@@ -1,0 +1,34 @@
+# generated 2026-07-02T13:50:54Z | builder harvest_theta_max.py | code 23f623d3+dirty
+run_name,theta_max,t_at_theta_max,theta_first,n_impl,t_final,phase_final,reached_momentum,fired_cooling_balance,outcome,detail
+be_sphere__mult2,0.7338305232197541,0.7518927993834915,0.2780922762555606,163,5.0,implicit,False,False,stopping_time,Stopping time reached
+be_sphere__mult4,1.0385207205663884,0.4420886248308818,0.5658430834215201,68,2.483801548416249,momentum,True,True,shell_collapsed,Small radius reached (event)
+be_sphere__mult8,0.974617360457718,0.0032013832236381305,0.974617360457718,1,2.3010248593998908,momentum,True,True,shell_collapsed,Small radius reached (event)
+be_sphere__none,0.5286290124260625,0.5561157145840312,0.13836425459286708,164,5.0,implicit,False,False,stopping_time,Stopping time reached
+fail_repro__mult2,0.006366752855570126,0.0034132236381263295,0.006366752855570126,1,5.0,momentum,True,False,stopping_time,Stopping time reached
+fail_repro__mult4,0.012733508324625718,0.0034132236381263295,0.012733508324625718,1,5.0,momentum,True,False,stopping_time,Stopping time reached
+fail_repro__mult8,0.025467004373526423,0.0034132236381263295,0.025467004373526423,1,5.0,momentum,True,False,stopping_time,Stopping time reached
+fail_repro__none,0.0031833760750618707,0.0034132236381263295,0.0031833760750618707,1,5.0,momentum,True,False,stopping_time,Stopping time reached
+large_diffuse_lowsfe__mult2,0.9551884548346008,5.0,0.052818312132040614,172,5.0,implicit,False,False,stopping_time,Reached stop_t=5.000000e+00 Myr during prior phase
+large_diffuse_lowsfe__mult4,0.9567867685433026,2.426299682978202,0.105717285340206,118,5.0,transition,True,True,stopping_time,Stopping time reached
+large_diffuse_lowsfe__mult8,0.9678301910679062,2.098533133266765,0.21172419375658877,110,5.0,momentum,True,True,stopping_time,Stopping time reached
+large_diffuse_lowsfe__none,0.5350422013812615,4.860002109610836,0.026399085356659666,173,5.0,implicit,False,False,stopping_time,Stopping time reached
+midrange_pl0__mult2,0.8544536102859485,0.5332724889662787,0.25393220876741435,165,5.0,implicit,False,False,stopping_time,Stopping time reached
+midrange_pl0__mult4,0.9813654633365688,0.30060610083273726,0.5116766154690909,65,1.204800356237208,momentum,True,True,shell_collapsed,Small radius reached (event)
+midrange_pl0__mult8,0.9234078459395095,0.003411956173628838,0.9234078459395095,2,1.4254195333586093,momentum,True,False,shell_collapsed,Small radius reached (event)
+midrange_pl0__none,0.6355354439390808,0.43187417106131554,0.1267905268628485,166,5.0,implicit,False,False,stopping_time,Stopping time reached
+pl2_steep__mult2,0.7160384692022145,0.0479679152653595,0.5529868771618255,151,5.0,implicit,False,False,stopping_time,Stopping time reached
+pl2_steep__mult4,0.9748650032378119,0.0033806185964165916,0.9748650032378119,1,0.05487017055112993,momentum,True,True,shell_collapsed,Small radius reached
+pl2_steep__mult8,1.0067455815018949,0.001160618596416587,1.0067455815018949,2,0.05700143843871651,momentum,True,True,shell_collapsed,Small radius reached
+pl2_steep__none,0.5107530250900207,0.037183502640478115,0.2717091233962687,153,5.0,implicit,False,False,stopping_time,Stopping time reached
+simple_cluster__mult2,0.9673546126704027,0.11889955387876769,0.6520410071632202,49,5.0,momentum,True,True,stopping_time,Stopping time reached
+simple_cluster__mult4,1.002291415290944,0.0027203388192113594,1.002291415290944,2,0.13475820721248397,momentum,True,True,shell_collapsed,Small radius reached
+simple_cluster__mult8,0.9795216733039932,0.0012203388192113566,0.9795216733039932,1,0.1493344433460491,momentum,True,True,shell_collapsed,Small radius reached
+simple_cluster__none,0.6759717869721299,0.09810730361753958,0.311623761014012,163,5.0,implicit,False,False,stopping_time,Stopping time reached
+small_1e6__mult2,0.4841546671467493,1.0428880469017663,0.052818312132040614,173,5.0,implicit,False,False,stopping_time,Stopping time reached
+small_1e6__mult4,0.6821235741815929,1.0262996829782027,0.105717285340206,170,5.0,implicit,False,False,stopping_time,Stopping time reached
+small_1e6__mult8,0.8346424786871489,0.8985331332667641,0.21172419375658877,169,5.0,implicit,False,False,stopping_time,Stopping time reached
+small_1e6__none,0.29719261586142026,1.0100021096108447,0.026399085356659666,173,5.0,implicit,False,False,stopping_time,Stopping time reached
+small_dense_highsfe__mult2,0.6648884737737644,0.0034100437413721032,0.6648884737737644,2,0.04494580051931793,momentum,True,False,shell_collapsed,Small radius reached
+small_dense_highsfe__mult4,nan,0.0024500437413721007,nan,16,0.04757670928032198,momentum,True,False,shell_collapsed,Small radius reached
+small_dense_highsfe__mult8,nan,0.0014300437413720985,nan,13,0.038932168935484374,momentum,True,False,shell_collapsed,Small radius reached
+small_dense_highsfe__none,0.7167705883636005,0.01522984989231966,0.4194437116915983,147,5.0,implicit,False,False,stopping_time,Stopping time reached
