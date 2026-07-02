@@ -11,16 +11,16 @@
 > are exact; stamp-less artifacts predate the convention (2026-07-02) — for those, only
 > the commit date is known. **Every new/edited builder must write the stamp.**
 
-171 artifacts · 1 stale-risk · 0 untracked · 1 stamped 🕐
+171 artifacts · 0 stale-risk · 0 untracked · 1 stamped 🕐
 
 | last updated (commit) | artifact | producer / flags |
 |---|---|---|
 | 2026-07-02 `057cd96` | `data/fkappa_auto_verify.csv` | by `make_fkappa_auto_verify.py` |
+| 2026-07-02 `8a27ba9` | `data/kappa_stability_map.csv` | by `make_kappa_stability_map.py` · 🕐 generated 2026-07-02T12:05:54Z | builder make_kappa_stability_map.py | code 8a27ba9 |
 | 2026-07-01 `e38fa7a` | `ELBADRY_THETA_STORY.html` | producer unknown (HPC/hand-made); refs: `make_elbadry_story_figs.py` |
 | 2026-07-01 `a5cdf63` | `data/fkappa_emergent_calibration.csv` | by `make_fkappa_emergent_calibration.py` |
 | 2026-07-01 `ca3b4c7` | `data/fkappa_theta1_collapse.csv` | by `make_fkappa_theta1_collapse.py` |
 | 2026-07-01 `8d8bd18` | `data/gate_prototype.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-01 `2f452ea` | `data/kappa_stability_map.csv` | by `make_kappa_stability_map.py` · 🕐 generated 2026-07-02T12:00:05Z | builder make_kappa_stability_map.py | code 5a367e6+dirty · ⚠️ STALE-RISK: builder newer (make_kappa_stability_map.py 2026-07-02) — regenerate or justify |
 | 2026-07-01 `718dc24` | `data/live_pdv_decomp.csv` | by `make_live_pdv_decomp.py` |
 | 2026-07-01 `86950d2` | `data/newcode_default_vs_theta.csv` | producer unknown (HPC/hand-made); refs: `make_elbadry_story_figs.py` |
 | 2026-07-01 `d7b93ea` | `data/sweep_tmax_fate.csv` | — (hand-made/HPC, unreferenced) |
