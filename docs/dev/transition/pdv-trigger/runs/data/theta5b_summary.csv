@@ -1,0 +1,45 @@
+# generated 2026-07-02T21:13:23Z | builder harvest_theta_max.py | code 049d3905+dirty
+run_name,theta_max,t_at_theta_max,theta_first,n_impl,t_final,phase_final,reached_momentum,fired_cooling_balance,outcome,detail
+be_sphere__mult2p5,0.821125662419148,0.5480063944826602,0.34872984512143923,161,5.0,implicit,False,False,stopping_time,Stopping time reached
+be_sphere__mult3,0.940178186820634,0.638490835219234,0.42006725118772253,75,3.3185808007605684,momentum,True,False,shell_collapsed,Small radius reached (event)
+be_sphere__mult3p5,1.0045363208058335,0.5312891819325771,0.4923322939522252,72,2.7656090659318364,momentum,True,True,shell_collapsed,Small radius reached (event)
+be_sphere__mult4p5,0.9971130380605263,0.27263510656634915,0.6411063603913502,62,2.1058358882023485,momentum,True,True,shell_collapsed,Small radius reached (event)
+be_sphere__mult5,1.0006859630635838,0.27309860318587337,0.7191095007690106,62,2.0775269735367403,momentum,True,True,shell_collapsed,Small radius reached (event)
+fail_repro__mult2p5,0.00795845092434413,0.0034132236381263295,0.00795845092434413,1,5.0,momentum,True,False,stopping_time,Stopping time reached
+fail_repro__mult3,0.009550141854803967,0.0034132236381263295,0.009550141854803967,1,5.0,momentum,True,False,stopping_time,Stopping time reached
+fail_repro__mult3p5,0.011141822817174542,0.0034132236381263295,0.011141822817174542,1,5.0,momentum,True,False,stopping_time,Stopping time reached
+fail_repro__mult4p5,0.014325195182857024,0.0034132236381263295,0.014325195182857024,1,5.0,momentum,True,False,stopping_time,Stopping time reached
+fail_repro__mult5,0.01591688906750585,0.0034132236381263295,0.01591688906750585,1,5.0,momentum,True,False,stopping_time,Stopping time reached
+large_diffuse_lowsfe__mult2p5,0.8276939776671297,2.5575450969566154,0.06603541929625574,133,5.0,transition,True,False,stopping_time,Stopping time reached
+large_diffuse_lowsfe__mult3,0.8857377573771809,2.5648910233267426,0.07925760108707634,134,5.0,transition,True,False,stopping_time,Stopping time reached
+large_diffuse_lowsfe__mult3p5,0.9508565914217606,2.6833431561027323,0.09248490958325976,124,5.0,transition,True,True,stopping_time,Stopping time reached
+large_diffuse_lowsfe__mult4p5,0.9516332995300388,2.2762996829782027,0.11895294696288007,115,5.0,transition,True,True,stopping_time,Stopping time reached
+large_diffuse_lowsfe__mult5,0.9822954295041906,2.2762996829782027,0.13219296082478987,115,5.0,transition,True,True,stopping_time,Stopping time reached
+large_diffuse_lowsfe_t8__mult2,0.9604969176591036,5.042888046901757,0.052818312132040614,172,8.0,transition,True,True,stopping_time,Stopping time reached
+large_diffuse_lowsfe_t8__mult2p5,0.8276939776671297,2.5575450969566154,0.06603541929625574,133,8.0,momentum,True,False,stopping_time,Stopping time reached
+large_diffuse_lowsfe_t8__none,0.5350422013812615,4.860002109610836,0.026399085356659666,233,8.0,implicit,False,False,stopping_time,Stopping time reached
+midrange_pl0__mult2p5,1.0614257745727698,0.6081516411742972,0.3177887791222289,77,2.226309055918072,momentum,True,True,shell_collapsed,Small radius reached (event)
+midrange_pl0__mult3,1.092823055408164,0.43587740184608265,0.38194304925285166,72,1.3518346420936702,momentum,True,True,shell_collapsed,Small radius reached (event)
+midrange_pl0__mult3p5,1.0743290100131577,0.42483984995007334,0.4464941732914381,71,1.279940871037801,momentum,True,True,shell_collapsed,Small radius reached (event)
+midrange_pl0__mult4p5,1.0434839330141092,0.30182334476702,0.5777311160072263,65,1.206157374979575,momentum,True,True,shell_collapsed,Small radius reached (event)
+midrange_pl0__mult5,0.9268225216688519,0.19430347659229566,0.6450284869025941,64,1.2015228832765728,momentum,True,False,shell_collapsed,Small radius reached (event)
+pl2_steep__mult2p5,0.7181025421602205,0.0034106185964165917,0.7181025421602205,3,0.05622012660211087,momentum,True,False,shell_collapsed,Small radius reached
+pl2_steep__mult3,0.7257355115981229,0.0034106185964165917,0.7257355115981229,2,0.05546722877705179,momentum,True,False,shell_collapsed,Small radius reached
+pl2_steep__mult3p5,0.850344122545371,0.0034106185964165917,0.850344122545371,2,0.055432917415033964,momentum,True,False,shell_collapsed,Small radius reached
+pl2_steep__mult4p5,0.9758677728450195,0.0026006185964165896,0.9758677728450195,1,0.0552924700053196,momentum,True,True,shell_collapsed,Small radius reached
+pl2_steep__mult5,1.2238332741096203,0.003290745175508912,0.1913625649456581,10,0.05540406472272838,momentum,True,True,shell_collapsed,Small radius reached
+simple_cluster__mult2p5,0.6727481198655051,0.0034103388192113612,0.6727481198655051,2,0.13122649188185836,momentum,True,False,shell_collapsed,Small radius reached
+simple_cluster__mult3,0.8107069929861714,0.0034103388192113612,0.8107069929861714,2,0.1321986571122399,momentum,True,False,shell_collapsed,Small radius reached
+simple_cluster__mult3p5,1.006638077454612,0.003725817491451458,0.26463455368455024,3,0.13046730883742447,momentum,True,True,shell_collapsed,Small radius reached
+simple_cluster__mult4p5,1.0496684535756713,0.0031385792813121015,0.2125937373677093,7,0.1352098877169824,momentum,True,True,shell_collapsed,Small radius reached
+simple_cluster__mult5,1.0079917300134535,0.002454871076728203,0.19221689467518527,4,0.13734260345365978,momentum,True,True,shell_collapsed,Small radius reached
+small_1e6__mult2p5,0.5549211247400444,1.0075450969566166,0.06603541929625574,171,5.0,implicit,False,False,stopping_time,Stopping time reached
+small_1e6__mult3,0.6123089210857735,1.0148910233267436,0.07925760108707634,171,5.0,implicit,False,False,stopping_time,Stopping time reached
+small_1e6__mult3p5,0.6478230945842146,1.083343156102734,0.09248490958325976,171,5.0,implicit,False,False,stopping_time,Stopping time reached
+small_1e6__mult4p5,0.7109806812664056,1.1262996829782028,0.11895294696288007,170,5.0,implicit,False,False,stopping_time,Stopping time reached
+small_1e6__mult5,0.7423656368321255,1.1262996829782028,0.13219296082478987,170,5.0,implicit,False,False,stopping_time,Stopping time reached
+small_dense_highsfe__mult2p5,0.9502701476047075,0.0039761160304258355,0.7841933326948921,4,0.04889309706449353,momentum,True,True,shell_collapsed,Small radius reached
+small_dense_highsfe__mult3,1.0092114274964823,0.0038561160304258356,0.3180107716118672,4,0.04642303368574939,momentum,True,True,shell_collapsed,Small radius reached
+small_dense_highsfe__mult3p5,0.9748349054216635,0.0027800437413721016,0.9748349054216635,1,0.04015996123228735,momentum,True,True,shell_collapsed,Small radius reached
+small_dense_highsfe__mult4p5,0.9910812675841343,0.003103283498711001,0.2112912969422899,6,0.040951559449345004,momentum,True,True,shell_collapsed,Small radius reached
+small_dense_highsfe__mult5,0.9595250183203322,0.003732785912208895,0.19124562784158763,12,0.041751157704847566,momentum,True,True,shell_collapsed,Small radius reached
