@@ -58,6 +58,9 @@ Maintainer rules (PLAN.md 📏 boxes; violations = CONTAMINATED, see `../CONTAMI
 3. **θ is reported as `theta_max` over the whole run** — `max_t bubble_Lloss/Lmech_total` on ACCEPTED
    `dictionary.jsonl` implicit rows. **Blowout-θ is retired**; call-level observers are banned (R6).
 4. **Separate processes** per run (trinity leaks module globals in-process), unique `path2output`.
+5. **Every generated CSV carries a first-line provenance stamp** (`../_stamp.py`: true UTC generation
+   time + builder + code commit) — commit dates only upper-bound age under bulk commits. Readers skip
+   leading `#` lines. Regenerate `../MANIFEST.md` in the same commit as any artifact change.
 
 Ready-made matrix for the open question (re-derive the `multiplier` calibration, SESSION_HANDOFF
 next-step #1): `make_theta5_params.py` emits the committed `params/theta5/` 32-run matrix

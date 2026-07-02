@@ -23,6 +23,9 @@ import math
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from _stamp import stamp  # noqa: E402  (workstream provenance stamp)
+
 HERE = Path(__file__).resolve().parent
 DEFAULT_CSV = HERE / "data" / "theta5_summary.csv"
 TRIGGER = 0.95
@@ -155,10 +158,12 @@ def main(argv):
         return selftest()
     csv_in = Path(argv[argv.index("--csv") + 1]) if "--csv" in argv else DEFAULT_CSV
     with csv_in.open() as fh:
-        rows = list(csv.DictReader(fh))
+        # skip the leading '# generated ...' provenance stamp (_stamp.py)
+        rows = list(csv.DictReader(line for line in fh if not line.lstrip().startswith("#")))
     out, collapse = reduce_rows(rows)
     out_path = csv_in.parent / "theta5_calibration.csv"
     with out_path.open("w", newline="") as fh:
+        fh.write(stamp(__file__) + "\n")
         w = csv.DictWriter(fh, fieldnames=list(out[0].keys()))
         w.writeheader()
         w.writerows(out)

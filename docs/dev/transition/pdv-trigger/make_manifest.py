@@ -63,8 +63,21 @@ def main():
                 name = name[len(pre) :]
         return name
 
+    def embedded_stamp(relpath):
+        """First-line '# generated ...' provenance stamp (_stamp.py), if the artifact has one."""
+        if not relpath.endswith((".csv", ".txt")):
+            return None
+        try:
+            with open(REPO / relpath, errors="ignore") as fh:
+                first = fh.readline()
+        except OSError:
+            return None
+        if first.startswith("# generated "):
+            return first[2:].strip()
+        return None
+
     rows = []
-    n_stale = n_untracked = 0
+    n_stale = n_untracked = n_stamped = 0
     for a in artifacts:
         base = os.path.basename(a)
         if a not in tracked:
@@ -92,6 +105,10 @@ def main():
                 + ", ".join(f"{os.path.basename(s)} {script_date[s][0]}" for s in newer[:2])
                 + ") — regenerate or justify"
             )
+        st = embedded_stamp(a)
+        if st:
+            n_stamped += 1
+            prod_txt += f" · 🕐 {st}"
         rows.append(
             (date, base, a, f"{date} `{sha}`", prod_txt + ((" · " + stale) if stale else ""))
         )
@@ -105,8 +122,14 @@ def main():
         "> any artifact change. **Newest first.** Recency ≠ quotability: check `CONTAMINATION.md`",
         "> before quoting any number. ⚠️ STALE-RISK = the producing script changed after the",
         "> artifact was last regenerated (the committed output may be from an older builder).",
+        ">",
+        "> **Commit dates are UPPER BOUNDS** — work is often bulk-committed days after it was",
+        "> produced. Artifacts carrying a 🕐 first-line provenance stamp (`_stamp.py`: true UTC",
+        "> generation time + builder + code commit, `+dirty` = made from an uncommitted tree)",
+        "> are exact; stamp-less artifacts predate the convention (2026-07-02) — for those, only",
+        "> the commit date is known. **Every new/edited builder must write the stamp.**",
         "",
-        f"{len(rows)} artifacts · {n_stale} stale-risk · {n_untracked} untracked",
+        f"{len(rows)} artifacts · {n_stale} stale-risk · {n_untracked} untracked · {n_stamped} stamped 🕐",
         "",
         "| last updated (commit) | artifact | producer / flags |",
         "|---|---|---|",

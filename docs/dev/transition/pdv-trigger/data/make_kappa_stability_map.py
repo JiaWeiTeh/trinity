@@ -20,9 +20,13 @@ Deliverable:
 
 import csv
 import os
+import sys
 from collections import defaultdict
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.dirname(_HERE))
+from _stamp import stamp  # noqa: E402  (workstream provenance stamp)
+
 STOP_T = 2.0  # the sweep's stop_t; a no-fire run ending well short of it died/froze mid-implicit
 EARLY = 0.95 * STOP_T
 
@@ -92,6 +96,7 @@ def main():
     )
     out_path = os.path.join(_HERE, "kappa_stability_map.csv")
     with open(out_path, "w", newline="") as fh:
+        fh.write(stamp(__file__) + "\n")
         fh.write(header + "\n")
         w = csv.DictWriter(fh, fieldnames=list(out_rows[0].keys()))
         w.writeheader()
