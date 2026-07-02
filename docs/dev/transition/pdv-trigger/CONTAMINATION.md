@@ -67,11 +67,13 @@ folded 2026-07-01) predates all of them.
    (θ₀ is a blowout snapshot) + fit on `cooling_boost_kappa` (does not carry over to `multiplier`,
    FINDINGS §8e) + the 6-anchor θ₀ slope (0.41/dex) was **falsified by the 819-sweep** (real 1.13/dex,
    PLAN scorecard P3 ❌). The *shape* of the argument survives; **no number in that table is production-grade**.
+   Re-derived (2026-07-02) → `FINDINGS.md §10` / `runs/data/theta5_calibration.csv`.
 3. **f_κ-to-fire ≈ 4 / 5–6 / 60 and the closed form f_κ(n_H) ≈ 1.4×10²·n^−0.30** (FINDINGS §6 + the
    06-29 "Calibration target" banner; `data/kappa_blowout_calibration.csv`,
    `data/kappa_calibration_estimate.csv`, `data/fkappa_functional_form.csv`) — `blowout-θ` + `<5Myr`
    (cal runs stop_t 0.3–1.0) + slope refuted by the sweep (−0.60) + superseded by the single-constant
-   DECISION.
+   DECISION. Empirically refuted by theta5 (2026-07-02): diffuse f_fire = **4**, not 60 (the blowout metric
+   had under-read diffuse θ by 2× — `FINDINGS.md §10`).
 4. **The 63-cell `f_κ_fire` grid and everything derived from it** (`data/fkappa_nH_sweep.csv`,
    `data/summary.csv`, the θ₁-collapse fit `data/fkappa_theta1_collapse.csv`, and the shipped
    **`cooling_boost_kappa='auto'` lookup table** in `trinity/_input/fkappa_auto.py`) — `<5Myr`
@@ -118,16 +120,17 @@ Status legend: **CLEAN** (quotable for its stated question) · **FLAG-x** (usabl
 | `kmix_prototype.csv` | E5 | κ_mix offline | **CONTAMINATED-(a)** (Pb anchors from 0.3–1.0 Myr runs) — GO verdict qualitative only |
 | `kmix_selfconsistent.csv`, `kmix_theta_trajectory{,_summary}.csv` | E5 | κ_mix patched | SUPERSEDED/SHELVED (+ known kprime −1/T bug, early rows unsolved, "dense low" walked back as port artifact) |
 | `elbadry_theta.csv`, `nmap_verify.csv` | E6 | analytic | CLEAN |
-| `elbadry_overlay.csv` (cherry-picked from pt1 `3e68143`, 07-01) | E6 | analytic band + resolved θ_1D | band CLEAN (Eq 37/38 PDF-verified; extrapolated beyond n≈10); TRINITY points FLAG-(b) (blowout-epoch θ_1D — re-plot from theta5 θ_max when available) |
+| `elbadry_overlay.csv` (cherry-picked from pt1 `3e68143`, 07-01) | E6 | analytic band + resolved θ_1D | band CLEAN (Eq 37/38 PDF-verified; extrapolated beyond n≈10); TRINITY points FLAG-(b) (blowout-epoch θ_1D — θ_max now available (2026-07-02, `runs/data/theta5_summary.csv`), so the re-plot is actionable) |
 | `shadow_te_fate.csv` | E6 | imposed θ | SUPERSEDED (impose-θ demoted); trigger-algebra rows OK; fail_repro row `pre-#715`; FLAG-(c) (call-level diag) |
 | `sweep_tmax_fate.csv` | E6 | imposed θ | SUPERSEDED + `pre-#715`; orphan (no committed harvester) |
 | `live_pdv_decomp.csv` | E7 | none | CLEAN as the dead-stop **bug evidence**; not a fate record |
 | `newcode_default_vs_theta.csv` | E7 | default vs imposed θ | **CLEAN — the canonical post-#715 massive-cloud fate record**; orphan (hand-assembled) |
 | `gate_prototype.csv` | E7 | gated θ | CLEAN (post-#715 prototype; direction demoted regardless) |
-| `fkappa_emergent_calibration.csv` | E7 | prescribes **multiplier** from **kappa**-fit θ₀/p at **blowout** | **CONTAMINATED-(b)+(d)** — committed 33 min before rule (b); superseded by the re-derivation task |
+| `fkappa_emergent_calibration.csv` | E7 | prescribes **multiplier** from **kappa**-fit θ₀/p at **blowout** | **CONTAMINATED-(b)+(d)** — committed 33 min before rule (b); superseded by the re-derivation RESULT (§10, 2026-07-02) |
 | §8e θ numbers (0.25/0.48/0.53) | E7 | kappa 2/8 | FLAG-(a) (early-time, honestly labelled) + **never persisted as CSV** (💾 violation — FINDINGS-text only) |
 | `fkappa_auto_verify.csv` (ran 07-01) | E7 | kappa='auto' (→12) | CLEAN as the **mechanics acceptance** (auto resolves, fires, reaches momentum; θ from dictionary); FLAG-(a) for calibration use (stop_t=2 — inherits the grid's provisional status) |
 | `kappa_stability_map.csv` (built 07-01) | E7 | — (re-read of `summary.csv`) | CLEAN re-analysis; resolves ⚡ #1 (FINDINGS §9a) |
+| `theta5_*.png` (5 figures) + `runs/data/theta5_fmix_scorecard.csv` (built 07-02, `data/make_theta5_figures.py`) | E8 | — (re-reads of the theta5 CSVs + `summary.csv` + `fkappa_functional_form.csv`) | CLEAN re-analysis (REPRODUCE #29); the scorecard is the f_mix **candidate** margin table — f_mix=4 is NOT decided (recollapse call pending); F3 deliberately plots the ⛔ #3 blowout values AS the retired metric being corrected |
 
 ### `runs/data/`
 
@@ -140,7 +143,7 @@ Status legend: **CLEAN** (quotable for its stated question) · **FLAG-x** (usabl
 | `harvest_fail_repro__{none,mult2}.csv`, `live_compare.csv` fail_repro row | **CONTAMINATED-(e)** |
 | `compare_f1edge_hidens_theta9{0,5}.csv` | SUPERSEDED (theta_target demoted) + FLAG-(a) |
 | `harvest_cal_*__{k1,ek1}.csv` | **CONTAMINATED-(a)** (stop_t 0.3–1.0 by design) |
-| `theta5_summary.csv` + `theta5_calibration.csv` (RAN Helix 2026-07-02) | ✅ **CLEAN — the first fully rule-compliant calibration** (32/32 arms ≥5 Myr or physics end; θ_max from dictionary; same-knob fit+validation; stamped). Two per-arm flags: `small_dense_highsfe__mult{4,8}` carry **NaN loss rows** (dense-edge stiffness — excluded from the fit); `midrange_pl0__mult8` reached momentum via the **Eb≤0 handoff, NOT a cooling fire** (`fired=False` is correct — do not count it as a θ transition) |
+| `theta5_summary.csv` + `theta5_calibration.csv` (RAN Helix 2026-07-02) | ✅ **CLEAN — the first fully rule-compliant calibration** (32/32 arms ≥5 Myr or physics end; θ_max from dictionary; same-knob fit+validation; stamped). Two per-arm flags: `small_dense_highsfe__mult{4,8}` carry **NaN loss rows** (dense-edge stiffness — excluded from the fit); `midrange_pl0__mult8` reached momentum via the **Eb≤0 handoff, NOT a cooling fire** (`fired=False` is correct — do not count it as a θ transition). Stamp caveat: `theta5_summary.csv`'s stamp reads **`code 23f623d3+dirty`** — harvested on Helix from a dirty tree (the tree carried only the being-created CSVs, no code edits), noted per the `_stamp.py` doctrine |
 
 ### Production code (on this branch)
 
@@ -152,7 +155,7 @@ Status legend: **CLEAN** (quotable for its stated question) · **FLAG-x** (usabl
 | `theta_elbadry` mode | **never merged** — docs/harness only (`THETA_ELBADRY_SPEC.md`) |
 | PR #715 Eb≤0→momentum routing; Pb-collapse guard; `_MINT_LOG_TOL` log gate | shipped, behavior-verified |
 
-## ⚡ Open tensions (neither side quotable as refuting the other)
+## ⚡ Open + resolved tensions (while open, neither side is quotable as refuting the other)
 
 1. **FINDINGS §8e vs §9 on `cooling_boost_kappa` — ✅ RESOLVED (2026-07-01, from committed data;
    `FINDINGS.md §9a`, `data/kappa_stability_map.csv`).** Both were right: the knob's breakdown is
@@ -163,6 +166,10 @@ Status legend: **CLEAN** (quotable for its stated question) · **FLAG-x** (usabl
 2. **`'auto'` (fire everything, per-cloud f_κ) vs the maintainer decisions** "single physical f_κ
    constant" + route-a ("diffuse clouds may never enter momentum"). 'auto' stands as an opt-in
    convenience, not the production direction.
-3. **θ-peak epoch:** PLAN 📏 rule 1 says θ peaks ~0.4–1 Myr; SESSION_HANDOFF §5.2 says ~blowout
-   (0.05–0.1 Myr). Measured peaks so far: compact 0.912 @ t≈0.12, diffuse 0.862 @ t≈1.06 (PLAN §14 notes)
-   — i.e. **config-dependent**; the 5 Myr window covers both, which is the point of rule (a).
+3. **θ-peak epoch (updated 2026-07-02):** config-dependent, and the diffuse peak sits at the very **EDGE**
+   of the 5 Myr window. theta5 (`FINDINGS.md §10`) measured the diffuse baseline peak at **t≈4.9 Myr**
+   (large_diffuse θ₀=0.535), and `large_diffuse_lowsfe__mult2` **grazes 0.9552 exactly at stop_t=5** — so
+   the 5 Myr window may NOT fully cover the diffuse peak. Earlier anchors (PLAN 📏 rule 1 "~0.4–1 Myr";
+   SESSION_HANDOFF §5.2 "~blowout"; measured compact 0.912 @ t≈0.12, diffuse 0.862 @ t≈1.06) stand as
+   history. **Open residue: the stop_t=8 diffuse spot-check**, which would bracket the diffuse f_fire
+   between 2 and 4.

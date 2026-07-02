@@ -1,5 +1,9 @@
 # κ_eff / mixing-layer interface — feasibility & scoping (the cooling MECHANISM + its optional fidelity bonus)
 
+> **Status (2026-07-02):** the `cooling_boost_kappa` knob shipped here later showed **non-monotonic breakdown
+> windows** in f_κ (`FINDINGS.md §8e`/§9a — not shippable as production); the calibration was ultimately done
+> on the **`multiplier`** knob (`FINDINGS.md §10`).
+
 > ⚠️ **This document may be out of date — verify before trusting it.** It is a
 > point-in-time analysis/audit, not a maintained spec; the code moves faster
 > than these notes (paths, line numbers, and "what shipped" status drift).

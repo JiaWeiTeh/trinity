@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Turnkey reduction of the 📏 theta5 matrix — the multiplier-knob calibration (PLAN OPEN(1)).
+"""Turnkey reduction of the 📏 theta5 matrix — the multiplier-knob calibration
+(PLAN OPEN(1) — closed 2026-07-02, FINDINGS §10).
 
-Reads runs/data/theta5_summary.csv (written by harvest_theta_max.py after the HPC matrix runs)
+Reads runs/data/theta5_summary.csv (written by harvest_theta_max.py; the matrix ran 2026-07-02)
 and produces, per the BEST PATH FORWARD:
   1. per-config theta0 (= theta_max of the __none arm — the true >=5 Myr starting deficit),
      leverage p (fit of log theta_max vs log f_mix over NON-fired arms), and f_fire (smallest
@@ -32,6 +33,8 @@ TRIGGER = 0.95
 F_OF_MODE = {"none": 1.0, "mult2": 2.0, "mult4": 4.0, "mult8": 8.0}
 
 # nCore per config (cm^-3), for the Lancaster-band acceptance line (n_fire ~ 48).
+# NB the n>=48 line is a rough guide only — FINDINGS §10 showed the fire/route-a boundary is
+# theta0-based, not a clean n-threshold (small_1e6 and large_diffuse share nCore=1e2).
 NCORE = {
     "simple_cluster": 1e5,
     "small_dense_highsfe": 1e6,

@@ -10,6 +10,14 @@
 > 💾 **Persist diagnostics — commit, don't re-run.** Every measurement that
 > backs a decision must be committed with its provenance stamp; the `/tmp` runs
 > it came from are ephemeral.
+>
+> 🔗 **Cross-check the sibling docs — keep the workstream self-consistent.** This file is one of
+> several living docs for its workstream (`TRIGGER_PLAN.md`, `P0.md`, `pshadow-design.md`,
+> and the `pdv-trigger/` successor docs in this folder). They drift out of sync *with each
+> other* as fast as they drift from the code. Any agent or person editing one MUST, as part of the visit,
+> circle back through the siblings and reconcile: if a number, status, claim, or line reference here
+> contradicts a sibling — or a sibling has gone stale — fix it (or flag it, dated) so no two docs in the
+> workstream disagree. Never update one in isolation.
 
 ## Why
 The transition fix is large and must start from **zero contamination**. The

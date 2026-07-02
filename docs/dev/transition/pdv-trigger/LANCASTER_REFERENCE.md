@@ -141,7 +141,11 @@ The numbers TRINITY's calibration rests on:
   **El-Badry's own calibration value (A_mix=3.5 was fit at λδv=3)** — doubly anchored. So adopt **λδv ≈ 3**
   (n_fire ≈ 50): GMC clouds (nH ≳ 50) transition; diffuse clouds (nH ≲ 50) stay energy-driven = fate. *(At
   λδv=1, n_fire=143 would wrongly exclude Lancaster's nH~40–140 momentum-driven clouds — so λδv=1 is a bit low;
-  ~3 matches Lancaster better.)*
+  ~3 matches Lancaster better.)* **Caveat (2026-07-02): as a TRINITY fate prediction, the clean nH≷50 split is
+  contradicted by `FINDINGS.md §10` point 4** — under the measured `multiplier` calibration, `small_1e6`
+  (n=100) never fires through f=8 while `large_diffuse_lowsfe` (same n=100) fires at f=4; TRINITY's emergent
+  transition boundary is **θ₀-based**, not a clean n-threshold. (The λδv/El-Badry closed-form threshold above
+  stands as the literature-model statement.)
 
 *Transcribed from ApJ 914, 90 (Lancaster+2021 Paper II) and arXiv:2505.22730v1 (Lancaster+2025) on 2026-06-30,
 `feature/PdV-trigger-term-pt2`. No production code touched.*

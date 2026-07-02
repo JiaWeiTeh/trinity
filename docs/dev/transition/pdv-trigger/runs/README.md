@@ -62,11 +62,12 @@ Maintainer rules (PLAN.md 📏 boxes; violations = CONTAMINATED, see `../CONTAMI
    time + builder + code commit) — commit dates only upper-bound age under bulk commits. Readers skip
    leading `#` lines. Regenerate `../MANIFEST.md` in the same commit as any artifact change.
 
-Ready-made matrix for the open question (re-derive the `multiplier` calibration, SESSION_HANDOFF
-next-step #1): `make_theta5_params.py` emits the committed `params/theta5/` 32-run matrix
-(8 configs × f_mix ∈ {none, 2, 4, 8}, all `stop_t 5`); `run_theta5.sbatch` is the Helix array
-launcher; `harvest_theta_max.py` is the sanctioned reducer → commit its CSV to `data/theta5_summary.csv`.
-Diffuse configs are hours-per-run (FINDINGS §8d cliff) — **run the matrix on HPC**, not in a container.
+**The matrix RAN on Helix 2026-07-02 — 32/32 rule-compliant → `../FINDINGS.md §10`,
+`data/theta5_{summary,calibration}.csv`.** `make_theta5_params.py` emits the committed `params/theta5/`
+32-run matrix (8 configs × f_mix ∈ {none, 2, 4, 8}, all `stop_t 5`); `run_theta5.sbatch` is the Helix array
+launcher; `harvest_theta_max.py` is the sanctioned reducer (→ `data/theta5_summary.csv`), reduced by
+`make_theta5_calibration.py`. **Re-run only to extend** (the stop_t=8 diffuse arm, a finer f∈(2,4] bracket).
+Diffuse configs are hours-per-run (FINDINGS §8d cliff) — run any extension on HPC, not in a container.
 
 ---
 
@@ -79,6 +80,8 @@ to its `none` baseline at matched simulation time in a **separate process**, set
 demands a **density-dependent** enhancement. **Outcome (the merge, 2026-06-26):** no constant fires across
 density; the `Da`-coupled form was **refuted**; the answer is **κ_eff** (`cooling_boost_kappa`) as the cooling
 *mechanism* with `f_κ(properties)` calibrated to the `θ(n_H)` target (`PLAN.md` ⭐ synthesis).
+→ **Superseded 2026-07-01/02:** kappa has breakdown windows (FINDINGS §9a); the decision is a **single
+constant**; and under θ_max a single **f_mix=4 DOES fire the band** (FINDINGS §10).
 
 ## Zero-contamination contract (why this is trustworthy)
 
@@ -140,7 +143,9 @@ python docs/dev/transition/harness/run_stamped.py --check outputs/pdvlive/*
 
 **Open question this answers:** does the live boosted trajectory still hand off near blowout (frozen
 screen ≈ right), or does moving `Pb`/blowout break the constant-`f_mix` story (⇒ a density-dependent
-enhancement)? *(Answered: yes — the merge's `f_κ(n_H)` calibration, not the refuted `θ_target(Da)`.)*
+enhancement)? *(Answered: yes — the merge's `f_κ(n_H)` calibration, not the refuted `θ_target(Da)`.
+→ Superseded 2026-07-01/02: kappa has breakdown windows (§9a); decision = single constant; and under θ_max a
+single f_mix=4 DOES fire the band (§10).)*
 
 ## Live results (2026-06-25) — 4 of 4 configs; constant f=2 over/under-shoots by density
 
@@ -162,7 +167,7 @@ A constant `f_mix=2` lands **differently per density** — the headline (`data/l
 | `f1edge_hidens` | dense (nCore 1e6) | fires cooling at t=0.031 Myr | fires cooling **at birth** (t=0.0034), before any blowout | f=2 trips the already-cool dense cloud immediately — over-boost unless θ_lit(dense)→~1 (El-Badry catastrophic cooling) |
 | `simple_cluster` | compact | **never fires** (energy runaway >10 Myr) | fires handoff at t=0.131, **just after** blowout (0.109); blowout moves **+0.019 Myr later**; matched-`t` Eb −47%, v2 −44%, R2 −15% | f=2 ≈ marginal; large live trajectory shift ⇒ frozen screen insufficient |
 | `fail_repro` | heavy 5e9 | ENERGY_COLLAPSED t=0.0034 (phase 1a) | ENERGY_COLLAPSED t=0.0034, ~identical | cooling boost does **not** rescue heavy clouds — control confirmed |
-| `f1edge_lowdens` | diffuse (nCore 1e2) | blows out t=0.611, never fires (trunc. at 1200 s) | **does not fire** at f=2 (blowout 0.620, Eb −13%) **or f=3** (blowout 0.639, Eb −24%); boost only trims Eb + delays blowout +9/+28 kyr | even f=3 < the frozen screen's f≈3.8 → diffuse needs the most boost; confirms **live** that no constant fires across density |
+| `f1edge_lowdens` | diffuse (nCore 1e2) | blows out t=0.611, never fires (trunc. at 1200 s) | **does not fire** at f=2 (blowout 0.620, Eb −13%) **or f=3** (blowout 0.639, Eb −24%); boost only trims Eb + delays blowout +9/+28 kyr | even f=3 < the frozen screen's f≈3.8 → diffuse needs the most boost; confirms **live** that no constant fires across density (blowout-era metric — see §10) |
 
 **Verdict:** (1) boosting cooling materially moves the trajectory (Eb −47% compact, −24% diffuse at f=3) —
 the frozen screen *bounds* but does not *forecast*; (2) a single constant `f_mix` over-boosts the dense end
@@ -170,7 +175,8 @@ the frozen screen *bounds* but does not *forecast*; (2) a single constant `f_mix
 blowout intervenes at ~0.61 Myr) — the spread argues for a **density-dependent** enhancement, **not** a
 constant. **Per the merge:** deliver that via **κ_eff** (`cooling_boost_kappa`) as the cooling *mechanism*,
 calibrating `f_κ(properties)` to the `θ(n_H)` target (El-Badry `λδv`=κ_eff + Lancaster) — *not* the refuted
-`θ_target(Da)`; (3) heavy clouds collapse regardless of cooling. The zero-code
+`θ_target(Da)`; (3) heavy clouds collapse regardless of cooling (⛔ pre-PR#715 dead-stop artifact —
+CONTAMINATION #5; the post-#715 record is `../data/newcode_default_vs_theta.csv`). The zero-code
 `L_cool/L_mech`-vs-n diagnostic figure (`../theta_vs_density.png`) and the verified write-up
 (`../FINDINGS.md`) close the loop — calibrate to θ_lit(n). **Caveat:** the figure's literature band is still
 SCHEMATIC pending a PDF digitize (`NOTE_PATCHES.md` Patch 4), so it quantifies **no** gap; the

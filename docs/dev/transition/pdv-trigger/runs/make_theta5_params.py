@@ -12,7 +12,7 @@ The 8 configs are the canonical guardrail set (INDEX.md §3): the cleanroom 6
 (docs/dev/transition/cleanroom/configs/) + fail_repro (heavy 5e9 PdV-dominated) + small_1e6
 (healthy control, docs/dev/failed-large-clouds). The knob is `multiplier`
 (cooling_boost_fmix) — the tentative production mechanism (FINDINGS §8e) whose calibration
-was never re-derived after the KNOB CORRECTION (SESSION_HANDOFF next-step #1).
+this matrix re-derived on 2026-07-02 (FINDINGS §10).
 
 Every emitted .param sets a UNIQUE `path2output` under gitignored `outputs/theta5/`, so
 parallel runs never collide. Regenerate:
