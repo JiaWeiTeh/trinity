@@ -1029,3 +1029,12 @@ measured to be in the window's interior-bottom; the paper sentence is now "any f
 gives identical conclusions; 4 adopted" with the fire map as evidence. The DRAIN phenomenology
 should be mentioned wherever over-boost is discussed (it replaces "more boost = more
 transition" intuition).
+
+7. **No density/mass/SFE term survives at grid resolution (residual test, 2026-07-02):** the law
+   residuals correlate with nothing — vs log n_core r=−0.39 (p=0.45, slope −0.013 dex/dex), vs
+   log M_cloud r=+0.42 (p=0.40), vs log SFE r=−0.25 (p=0.63); all slopes are below the 0.079 dex
+   grid step. Sharper: the **θ₀-matched trio** (diffuse n=1e2 / be n=1e4 / pl2 n=1e5, θ₀ all
+   0.51–0.54) spans 3 dex in density yet their f_fire spread is 0.058 dex (3.5/3.5/4.0) →
+   **|∂log f_fire/∂log n| ≲ 0.02 at fixed θ₀**. All cloud-property dependence flows through θ₀.
+   Temperature/Λ(T) is the one *untested* axis (never varied independently); the theta5c design
+   — swap `path_cooling_CIE ∈ {1,2,3}` at fixed config — is specced in PLAN → REFEREE DEFENSE Q2.

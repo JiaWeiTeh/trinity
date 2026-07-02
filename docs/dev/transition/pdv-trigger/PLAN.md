@@ -195,6 +195,29 @@ The constant-f story the paper can defend: *all cloud-property dependence flows 
 bubble already computes; a single physical f then lets the physics select the fire set (route-a) instead of
 forcing it — one parameter, one falsifiable prediction.*
 
+**Q2 MEASURED (theta5b residual test, 2026-07-02).** Does f need a density (or temperature) term? Two
+independent checks on the fine bracket say no at grid resolution:
+
+1. **Residual correlations** (law residuals from `data/theta5_law_check.csv` vs config properties, 6 fired
+   configs — indicative, not conclusive, at N=6): resid vs log n_core Pearson r=−0.39 (p=0.45), slope
+   **−0.013 dex/dex**; vs log M_cloud r=+0.42 (p=0.40), slope +0.019; vs log SFE r=−0.25 (p=0.63), slope
+   −0.020. Every slope is far below the grid step (0.079 dex) over the sampled range; no property survives
+   as a predictor once θ₀ is used.
+2. **The θ₀-matched trio** (the sharper argument — density varied at *fixed* θ₀): large_diffuse (n=1e2,
+   θ₀=0.535), be_sphere (n=1e4, θ₀=0.529), pl2_steep (n=1e5, θ₀=0.511) share θ₀ to ±0.013 while spanning
+   **3 dex in density**; their measured f_fire are 3.5 / 3.5 / 4.0 — a spread of 0.058 dex, *below* the
+   0.079 dex grid step. Bound: **|∂log f_fire/∂log n| ≲ 0.02 at fixed θ₀** — a density term is unresolved.
+
+**Temperature is the untested axis.** The 8-config suite never varies Λ(T) independently — the interface
+temperature is emergent, so f_k's T-dependence is degenerate with the cooling table already inside L_cool.
+Cheapest falsification test (**theta5c**, zero code changes): re-run 2–3 configs × `path_cooling_CIE ∈
+{1,2,3}` (bundled Cloudy / Cloudy+grains / Gnat–Ferland 2012 tables — different Λ(T) shapes) at f ∈
+{1, 3.5, 4}. If the swapped Λ(T) shifts θ₀ and the law still predicts the shifted f_fire from θ₀ alone,
+all T-dependence flows through θ₀ and constant-f stands; if f_fire moves at *fixed* θ₀, f_k needs a
+T-term. (A metallicity lever also exists — Z=0.15 auto-pins a Sutherland–Dopita table in
+`read_param.py` — but `_validate_ZCloud` currently locks Z=1, so that arm needs a validator decision
+first.)
+
 ---
 
 *Historical context below (pre-2026-06-30 κ_eff/κ_mix framing) — superseded by the canonical block above; kept
