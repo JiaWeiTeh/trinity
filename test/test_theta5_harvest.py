@@ -60,14 +60,28 @@ def test_harvest_ignores_non_implicit_and_bad_rows(tmp_path):
     run = _write_run(tmp_path, thetas=[0.3], fired=False)
     # momentum-phase and Lmech=0 rows must not contribute a theta
     extra = [
-        json.dumps({"current_phase": "momentum", "t_now": 9.0, "bubble_Lloss": 1e9, "Lmech_total": 1.0}),
-        json.dumps({"current_phase": "implicit", "t_now": 9.1, "bubble_Lloss": 1.0, "Lmech_total": 0.0}),
+        json.dumps(
+            {"current_phase": "momentum", "t_now": 9.0, "bubble_Lloss": 1e9, "Lmech_total": 1.0}
+        ),
+        json.dumps(
+            {"current_phase": "implicit", "t_now": 9.1, "bubble_Lloss": 1.0, "Lmech_total": 0.0}
+        ),
     ]
     with (run / "dictionary.jsonl").open("a") as fh:
         fh.write("\n".join(extra) + "\n")
     row = harvest.harvest(run)
     assert abs(row["theta_max"] - 0.3) < 1e-12
     assert row["fired_cooling_balance"] is False
+
+
+def test_harvest_infers_fire_from_momentum_plus_theta(tmp_path):
+    # a run that fires and then runs on to stop_t ends as 'stopping_time' — metadata alone
+    # under-reports; firing must be inferred from reached-momentum + theta crossing
+    harvest = _load("harvest_theta_max")
+    run = _write_run(tmp_path, thetas=[0.5, 0.97], fired=False)
+    row = harvest.harvest(run)
+    assert row["reached_momentum"] is True
+    assert row["fired_cooling_balance"] is True
 
 
 def test_theta5_calibration_selftest():

@@ -18,9 +18,10 @@ import csv
 import json
 import os
 import sys
+from pathlib import Path
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
-_REPO = os.path.abspath(os.path.join(_HERE, *[".."] * 4))
+_REPO = os.path.abspath(os.path.join(_HERE, *[".."] * 5))
 sys.path.insert(0, _HERE)
 from reduce_fkappa_sweep import reduce_run  # noqa: E402  (sibling module)
 
@@ -29,7 +30,7 @@ _EXPECT_FK = 12.0  # fkappa_nH_sweep.csv, cell (1e5, 0.03, 1e3)
 
 def main():
     run_dir = sys.argv[1] if len(sys.argv) > 1 else os.path.join(_REPO, "outputs", "fkauto_verify")
-    row = reduce_run(os.path.join(run_dir, "dictionary.jsonl"))
+    row = reduce_run(Path(run_dir) / "dictionary.jsonl")
     meta = json.load(open(os.path.join(run_dir, "metadata.json")))
     row["cooling_boost_kappa"] = meta.get("cooling_boost_kappa")
     row["mCloud"], row["sfe"], row["nCore"] = 1e5, 0.03, 1e3  # folder name carries no axes

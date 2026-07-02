@@ -122,6 +122,8 @@ Status legend: **CLEAN** (quotable for its stated question) · **FLAG-x** (usabl
 | `gate_prototype.csv` | E7 | gated θ | CLEAN (post-#715 prototype; direction demoted regardless) |
 | `fkappa_emergent_calibration.csv` | E7 | prescribes **multiplier** from **kappa**-fit θ₀/p at **blowout** | **CONTAMINATED-(b)+(d)** — committed 33 min before rule (b); superseded by the re-derivation task |
 | §8e θ numbers (0.25/0.48/0.53) | E7 | kappa 2/8 | FLAG-(a) (early-time, honestly labelled) + **never persisted as CSV** (💾 violation — FINDINGS-text only) |
+| `fkappa_auto_verify.csv` (ran 07-01) | E7 | kappa='auto' (→12) | CLEAN as the **mechanics acceptance** (auto resolves, fires, reaches momentum; θ from dictionary); FLAG-(a) for calibration use (stop_t=2 — inherits the grid's provisional status) |
+| `kappa_stability_map.csv` (built 07-01) | E7 | — (re-read of `summary.csv`) | CLEAN re-analysis; resolves ⚡ #1 (FINDINGS §9a) |
 
 ### `runs/data/`
 

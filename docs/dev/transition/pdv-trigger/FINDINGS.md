@@ -859,6 +859,14 @@ so 'auto' inherits that caveat.
 >    NOT f_κ(n)" and route-a ("diffuse clouds may never enter momentum"). 'auto' therefore stands as a
 >    **documented opt-in convenience mode** (like `theta_target`), not the production direction.
 
+**Acceptance run EXECUTED (2026-07-01, in-container, ~14 min — REPRODUCE #26 ✅, 4/4 checks PASS):**
+`fkauto_verify` (1e5 M☉, sfe 0.03, nCore 1e3 — the Lancaster-like GMC): `'auto'` resolved to the
+sweep-measured **f_κ=12.0**, phase 1b exited via **`cooling_balance`** at t≈0.375 Myr, ran 1c → **momentum**
+to stop_t=2; emergent **θ_max = 1.061** from `dictionary.jsonl` accepted rows (`data/fkappa_auto_verify.csv`).
+So the 'auto' *mechanics* work end-to-end on this cell (two latent path bugs in the never-run reducer
+`make_fkappa_auto_verify.py` were fixed in the process). This validates the plumbing only — the grid's
+calibration contaminations (flag #1) and the dead-window interpolation risk (§9a) stand unchanged.
+
 ## 9a. [data] The §8e⇄§9 kappa tension RESOLVED — breakdown is NON-MONOTONIC in f_κ (2026-07-01, no new sims)
 
 Read straight out of the committed `data/summary.csv` (the 819-run Helix sweep) — no new runs needed.

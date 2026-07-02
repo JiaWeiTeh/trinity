@@ -1,0 +1,2 @@
+run_name,mCloud,sfe,nCore,cooling_boost_kappa,rCloud,n_impl,t_final,phase_final,theta_blowout,theta_max,blowout_t,reached_momentum,cooling_fired
+fkauto_verify,100000.0,0.03,1000.0,12.000000000000002,8.745599298713161,73,2.0,momentum,1.0607146871785824,1.0607146871785824,,True,True

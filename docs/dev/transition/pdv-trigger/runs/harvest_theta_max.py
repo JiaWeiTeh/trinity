@@ -27,6 +27,7 @@ COLUMNS = [
     "n_impl",
     "t_final",
     "phase_final",
+    "reached_momentum",
     "fired_cooling_balance",
     "outcome",
     "detail",
@@ -43,6 +44,7 @@ def harvest(run_dir: Path) -> dict:
     theta_max = t_at_max = theta_first = t_final = None
     phase_final = None
     n_impl = 0
+    reached_momentum = False
     with (run_dir / "dictionary.jsonl").open() as fh:
         for line in fh:
             line = line.strip()
@@ -54,6 +56,8 @@ def harvest(run_dir: Path) -> dict:
                 continue
             phase_final = d.get("current_phase", phase_final)
             t_final = num(d, "t_now") if num(d, "t_now") is not None else t_final
+            if d.get("current_phase") in ("transition", "momentum"):
+                reached_momentum = True
             if d.get("current_phase") != "implicit":
                 continue
             Lloss = num(d, "bubble_Lloss")
@@ -70,12 +74,17 @@ def harvest(run_dir: Path) -> dict:
                 theta_max, t_at_max = theta, num(d, "t_now")
 
     outcome = detail = None
-    fired = False
+    meta_fired = False
     meta_path = run_dir / "metadata.json"
     if meta_path.exists():
         term = json.loads(meta_path.read_text()).get("termination") or {}
         outcome, detail = term.get("outcome"), term.get("detail")
-        fired = "cooling_balance" in str(term)
+        meta_fired = "cooling_balance" in str(term)
+    # metadata only carries the FINAL termination — a run that fired and then ran on in the
+    # momentum phase to stop_t ends as 'stopping_time'. Infer firing the way the proven sweep
+    # reducer does: it left the energy phase AND theta crossed the trigger (default trigger is
+    # cooling_balance-only, so nothing else exits the phase upward; Eb<=0 handoffs have theta<0.95).
+    fired = meta_fired or (reached_momentum and theta_max is not None and theta_max >= 0.95)
     row.update(
         {
             "theta_max": theta_max,
@@ -84,6 +93,7 @@ def harvest(run_dir: Path) -> dict:
             "n_impl": n_impl,
             "t_final": t_final,
             "phase_final": phase_final,
+            "reached_momentum": reached_momentum,
             "fired_cooling_balance": fired,
             "outcome": outcome,
             "detail": detail,
