@@ -36,6 +36,10 @@
 (`feature/transition-trigger-pt3`) were reconciled. Full audit provenance: four independent
 re-reads of the docs, the code, and every committed artifact on that date.*
 
+**Version/recency is a separate axis:** this register grades *quotability*; **`MANIFEST.md`** (generated,
+`python make_manifest.py`) grades *currency* — per artifact, when it was last regenerated, by which script,
+and whether its builder has changed since (⚠️ STALE-RISK). Check both before using any number.
+
 ## The rules that define "contaminated"
 
 A result is **CONTAMINATED** if it violates any of (maintainer-authoritative; 📏 boxes in `PLAN.md`,

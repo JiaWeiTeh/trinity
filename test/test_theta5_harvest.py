@@ -86,3 +86,22 @@ def test_harvest_infers_fire_from_momentum_plus_theta(tmp_path):
 
 def test_theta5_calibration_selftest():
     _load("make_theta5_calibration").selftest()
+
+
+def test_stamped_csv_roundtrip(tmp_path):
+    # harvest --csv writes a '# generated ...' provenance stamp; the calibration reader skips it
+    harvest = _load("harvest_theta_max")
+    calib = _load("make_theta5_calibration")
+    for cfg, thetas in [("dense", [0.5, 0.97]), ("mid", [0.3, 0.4])]:
+        run = _write_run(tmp_path, thetas=thetas, fired=False)
+        run.rename(tmp_path / f"{cfg}__mult2")
+    summary = tmp_path / "theta5_summary.csv"
+    harvest.main(
+        [str(tmp_path / "dense__mult2"), str(tmp_path / "mid__mult2"), "--csv", str(summary)]
+    )
+    first = summary.read_text().splitlines()[0]
+    assert first.startswith("# generated ") and "| builder harvest_theta_max.py | code " in first
+    calib.main(["--csv", str(summary)])
+    out = (tmp_path / "theta5_calibration.csv").read_text().splitlines()
+    assert out[0].startswith("# generated ")  # fitter output is stamped too
+    assert any(line.startswith("dense,") for line in out)  # stamp did not corrupt parsing

@@ -19,6 +19,9 @@ import json
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from _stamp import stamp  # noqa: E402  (workstream provenance stamp)
+
 COLUMNS = [
     "run_name",
     "theta_max",
@@ -118,7 +121,9 @@ def main(argv):
     rows.sort(key=lambda r: r["run_name"])
     if csv_out:
         csv_out.parent.mkdir(parents=True, exist_ok=True)
+        stamp_line = stamp(__file__)  # BEFORE opening: writing the output dirties the tree
         with csv_out.open("w", newline="") as fh:
+            fh.write(stamp_line + "\n")
             w = csv.DictWriter(fh, fieldnames=COLUMNS)
             w.writeheader()
             w.writerows(rows)
