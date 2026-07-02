@@ -23,6 +23,14 @@
 > `outputs/`. A future visit must be able to reproduce or compare against the
 > numbers **without re-running**; record the exact config + command that produced
 > each artifact.
+>
+> 🔗 **Cross-check the sibling docs — keep the workstream self-consistent.** This file is one of
+> several living docs for its workstream (`TRIGGER_PLAN.md`, `P0.md`, `PROVENANCE_PROTOCOL.md`,
+> and the `pdv-trigger/` successor docs in this folder). They drift out of sync *with each
+> other* as fast as they drift from the code. Any agent or person editing one MUST, as part of the visit,
+> circle back through the siblings and reconcile: if a number, status, claim, or line reference here
+> contradicts a sibling — or a sibling has gone stale — fix it (or flag it, dated) so no two docs in the
+> workstream disagree. Never update one in isolation.
 
 **About this document**
 - **Status (updated 2026-06-22):** ⛔ **SUPERSEDED** by `cleanroom/FINDINGS.md` — the two-criterion F0 ∨ F4 design rests on "flat configs transition by cooling (F0 fires)", which the 6-config clean-room **falsified** (F0 never fires; even flat `simple_cluster` blows out geometrically). Never built, nothing shipped. Kept as a historical design record.
