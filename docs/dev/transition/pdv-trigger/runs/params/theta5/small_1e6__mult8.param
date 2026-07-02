@@ -1,0 +1,12 @@
+model_name             small_1e6__mult8
+mCloud                 1e6
+sfe                    0.1
+nCore                  1e2
+PISM                   1e4
+nISM                   0.1
+stop_t                 5
+cooling_boost_mode     multiplier
+cooling_boost_fmix     8
+log_console            False
+log_file               True
+path2output            outputs/theta5/small_1e6__mult8

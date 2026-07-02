@@ -1,0 +1,11 @@
+model_name             be_sphere__none
+mCloud                 1e6
+nCore                  1e4
+rCore                  1
+sfe                    0.05
+dens_profile           densBE
+densBE_Omega           14.0
+stop_t                 5
+log_console            False
+log_file               True
+path2output            outputs/theta5/be_sphere__none

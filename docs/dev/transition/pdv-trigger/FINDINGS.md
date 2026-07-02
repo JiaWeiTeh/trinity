@@ -50,7 +50,12 @@
 > default. Historical caveat: earlier revisions of THIS banner (06-30) said the reverse — treat those as
 > superseded.
 
-> **→ Calibration target (2026-06-29):** the composed closed-form **f_κ(n_H) = (θ\*/θ₀(n_H))^(1/p) ≈
+> **→ Calibration target (2026-06-29) — 🛑 SUPERSEDED (kept as history):** the closed form below was falsified
+> on both parameters (slope: sweep measured −0.60 vs −0.30, scorecard P1 ❌; baseline: the 6-anchor θ₀ slope
+> 0.41/dex vs the grid's 1.13/dex, P3 ❌), rests on the retired blowout-θ metric, and the whole f_κ(n) framing
+> was then superseded by the **single-physical-constant DECISION** (F_KAPPA §14 ✅) + the **θ₁-collapse law**
+> (§9). Do not calibrate against it — `CONTAMINATION.md` ⛔ #3. Original text:
+> the composed closed-form **f_κ(n_H) = (θ\*/θ₀(n_H))^(1/p) ≈
 > 1.4×10²·n_H^(−0.30)** now lives in **`F_KAPPA_FUNCTIONAL_FORM.md`** (target = Lancaster flat θ*≈0.90 · baseline
 > `logit θ₀ = −1.73+0.41 log₁₀ n_H` · raw full-range leverage p≈0.31). f_κ≈48(diffuse)/9(mid)/3(dense) for
 > θ*=0.95 — matches the measured firing anchor (compact fires at f_κ≈3.4). It supersedes the §2-area schematic
@@ -212,12 +217,19 @@ both solid; the literature-`θ_lit(n)` comparison (§2) is currently **schematic
   f_mix(n). The figure also states the degeneracy (§2a): `f_mix = 0.95/(L_cool/L_mech)` is exactly what a
   flat θ_lit≈0.95 would prescribe, because the trigger threshold *is* 0.95.
 
-## 2. θ_lit(n) figure — `theta_vs_density.png` — SCHEMATIC overlay, gap NOT quantified
+## 2. θ_lit(n) figure — `theta_vs_density.png` (schematic) → `elbadry_overlay.png` (VERIFIED, 2026-06-29)
 
 TRINITY's resolved `L_cool/L_mech` (= 1 − `cool_at_blowout`) vs ambient nCore is **real [data]** and rises
-**0.250 (1e2) → 0.697 (1e6)**. The literature overlay is **[schematic / to-verify]**: El-Badry+2019
-(arXiv:1902.09547) and Lancaster+2021 (arXiv:2104.07722) PDFs returned HTTP 403, so the band is an
-arbitrary saturating stand-in, NOT digitized θ(n).
+**0.250 (1e2) → 0.697 (1e6)**. The original literature overlay (`theta_vs_density.png`) was **schematic** —
+El-Badry+2019 / Lancaster+2021 PDFs 403'd, so the band was an arbitrary saturating stand-in.
+
+**UPDATE 2026-06-29 — El-Badry PDF obtained, equations VERIFIED [data]:** `elbadry_overlay.png`
+(+ `data/make_elbadry_overlay.py`) replaces the schematic band with the **real El-Badry §5.2 model**:
+`θ = ψ/(11/5+ψ)`, `ψ = A_mix·(λδv)^½·n_H^½`, **A_mix=3.5** (Eqs 37–38, verified line-by-line). Our resolved
+θ_1D points sit **far below** that target across the GMC range. **Crucial caveat:** El-Badry calibrated this
+at **n_H,0 = 0.1–10 cm⁻³** (Figs 6–7); our clouds at n=1e2–1e6 are 1–5 decades beyond, where θ_target is
+saturated to ≈0.94–0.999 by **extrapolation**, not measurement. (The earlier in-session doubt that those
+equations were confabulated is **retracted** — they are genuine; only the GMC extrapolation is the open issue.)
 
 **Recomputed gap (band_center − TRINITY) at each nCore — shows the schematic is not a usable comparator:**
 
@@ -773,7 +785,9 @@ back-reacted θ (~0.5, doesn't fire), so the **calibrated f_κ magnitude must be
 Artifacts: `data/_kappa_validation_runner.py`, `outputs/{kappa_val,kappa_val_fk2}/`, `KAPPA_VALIDATION_PLAN.md`.
 
 ## 7. Provenance
-- Commits (`feature/PdV-trigger-term`): `6642ff4` matrix+comparator, `dc1c2fd` note patches, `17f9653`
+- Commits (`feature/PdV-trigger-term` — the pt1 branch; the line continued on `feature/PdV-trigger-term-pt2`,
+  merged via PR #717, then reconciled with `feature/transition-trigger-pt3`, see `INDEX.md §5`):
+  `6642ff4` matrix+comparator, `dc1c2fd` note patches, `17f9653`
   live 3/4 configs, `8bcc6b0` θ_lit plot, `b94689c` plot layout fix, plus this commit (4/4 + figure
   de-annotated). Branch is also mirrored to `claude/amazing-darwin-pl1kzl`.
 - Data: `data/{fmix_table,pdv_combined_trigger}.csv`, `runs/data/live_compare.csv` (5 rows),
@@ -786,3 +800,111 @@ Artifacts: `data/_kappa_validation_runner.py`, `outputs/{kappa_val,kappa_val_fk2
 - Live lowdens (now committed under `runs/data/`): `harvest_f1edge_lowdens__{none,mult2,mult3}.csv` + the
   two `f1edge_lowdens_*` rows of `live_compare.csv`; produced via `run.py` under `timeout` in an isolated
   clean worktree at `17f9653` — these used `run.py` directly, not `run_stamped`, so no `provenance.json`.
+
+## 9. [data] The 819-run sweep landed — de-conflation verdict + the θ₁-collapse law (2026-07-01, pt3)
+
+> ✳️ **Merge note (2026-07-01):** this section arrived from the parallel `feature/transition-trigger-pt3`
+> branch (commits `ca3b4c7`/`01b9616`), written the same day as §8b–§8e but **without knowledge of them**.
+> It was numbered §8 there; renumbered §9 here to avoid the collision. Read it together with §8e — the two
+> sections' `cooling_boost_kappa` results are in open tension (see the ⚠️ contamination note at the end).
+
+The controlled f_κ(n_H) grid (REPRODUCE #18, Block C) **ran on Helix 2026-06-29** — 786/819 ok in
+10h17m (`data/sweep_report.txt`; 33 array tasks died without a sentinel, all interior duplicates of
+bracketed cells). Reduced to `data/summary.csv` (786 rows), fitted per (mCloud, sfe, nCore) cell in
+`data/fkappa_nH_sweep.csv` (63 cells; `fkappa_nH_sweep.png`). Three results:
+
+1. **De-conflation verdict: a single-variable f_κ(n_H) is REFUTED.** At fixed nCore the measured
+   f_κ_fire spreads up to **32×** across (mCloud, sfe) (worst at nCore=3e3: 1→32). sfe is a strong
+   secondary axis (higher sfe ⇒ more Lmech ⇒ lower θ ⇒ more boost), and mCloud dominates the dense
+   end — 1e7 M☉ clouds fire at f_κ=1 for n≥3e3 while 1e5 M☉ still needs 3–4.
+2. **What collapses it: the starting deficit.** Over the 41 fired-above-1 cells,
+   `log10 f_κ_fire = 0.041 + 3.755·log10(0.95/θ₁)` (corr 0.968, rms 0.116 dex — vs 0.21 dex for the
+   best 3-input fit), i.e. **f_κ_fire ≈ (0.95/θ₁)^3.76** with θ₁ the resolved loss fraction at
+   f_κ=1. Equivalently a **universal leverage θ ∝ f_κ^0.266** — the pessimistic developed-epoch
+   exponent of §6, not the optimistic 0.63 snapshot estimate (which is hereby retired for
+   calibration use). `data/make_fkappa_theta1_collapse.py` → `fkappa_theta1_collapse.{csv,png}`.
+3. **Firing ⇒ momentum, at Lancaster-band θ.** At each cell's measured f_κ_fire, 57/57 runs fire
+   `cooling_balance` and 57/57 leave the energy phase (45 in `momentum`, 12 still in `transition`
+   at stop_t=2); θ_max at fire spans 0.93–1.21 (median 1.02) — the trigger crosses at θ=0.95 and
+   segment granularity overshoots the 0.99 band edge for ~half the cells.
+
+**Production consequence (shipped, pt3):** `cooling_boost_kappa = 'auto'` — a load-time registry
+resolver (`trinity/_input/fkappa_auto.py`) that trilinearly interpolates the measured 63-cell grid
+in (log mCloud_input, log sfe, log nCore); hull-clamped with a warning; the censored diffuse/high-SFE
+corner (6 cells, nothing ≤64 fired) resolves to the ceiling 64 with an explicit may-not-fire warning.
+Numeric values pass through untouched, so the default 1.0 path stays byte-identical. Tests:
+`test/test_fkappa_auto.py`. Acceptance run: `runs/params/fkauto_verify.param` (1e5 M☉, sfe 0.03,
+nCore 1e3 — a Lancaster-like GMC; auto→12) reduced by `data/make_fkappa_auto_verify.py` →
+`data/fkappa_auto_verify.csv` (REPRODUCE #26). Caveats: calibration is densPL α=0, nISM 0.1,
+stop_t=2, hybr — other profiles/solvers resolve on the same table with no measured guarantee (a
+warning is logged); f_κ remains the Rung-A structural probe (it still RAISES evaporative dMdt, §6),
+so 'auto' inherits that caveat.
+
+> ⚠️ **Post-merge contamination + tension flags (2026-07-01, added when pt3 was merged into the pt2 line;
+> see `CONTAMINATION.md`):**
+> 1. **Standing-rule violations (📏 PLAN rules 1+2):** the sweep behind the θ₁-collapse law and the `'auto'`
+>    grid ran at **`stop_t=2` Myr** (rule 1 demands ≥5 Myr) and defines `f_κ_fire` as "**fired by 2 Myr**",
+>    not as "θ_max over a ≥5 Myr run" (rule 2). A cell that would fire between 2 and 5 Myr at lower f_κ is
+>    over-boosted by 'auto'; the six censored cells might fire by 5 Myr. **The 63-cell grid is therefore
+>    PROVISIONAL until re-measured under the 8-config × 5 Myr × θ_max protocol** (`runs/README.md`).
+> 2. **Open tension with §8e:** §8e (same day, pt2 line, no cross-knowledge) found `cooling_boost_kappa=8`
+>    drives the β-δ solver to non-physical `dMdt` and a frozen state on `simple_cluster`/`be_sphere`/
+>    `small_1e6`, while this sweep reports 57/57 cells firing cleanly at f_κ_fire up to 64 under
+>    (`betadelta_solver=hybr`, α=0, nISM 0.1, stop_t 2). ~~Candidate explanations — solver choice, config
+>    differences, or §8e's early-time truncation — are **unresolved**.~~ **→ RESOLVED same day from the
+>    committed sweep data itself — see §9a** (both results are true; the knob's breakdown is
+>    non-monotonic in f_κ).
+> 3. **Direction tension:** 'auto' interpolates a per-cloud f_κ so that *every* cloud fires — this
+>    chases the target, in tension with the same-day maintainer decisions "single physical f_κ constant,
+>    NOT f_κ(n)" and route-a ("diffuse clouds may never enter momentum"). 'auto' therefore stands as a
+>    **documented opt-in convenience mode** (like `theta_target`), not the production direction.
+
+**Acceptance run EXECUTED (2026-07-01, in-container, ~14 min — REPRODUCE #26 ✅, 4/4 checks PASS):**
+`fkauto_verify` (1e5 M☉, sfe 0.03, nCore 1e3 — the Lancaster-like GMC): `'auto'` resolved to the
+sweep-measured **f_κ=12.0**, phase 1b exited via **`cooling_balance`** at t≈0.375 Myr, ran 1c → **momentum**
+to stop_t=2; emergent **θ_max = 1.061** from `dictionary.jsonl` accepted rows (`data/fkappa_auto_verify.csv`).
+So the 'auto' *mechanics* work end-to-end on this cell (two latent path bugs in the never-run reducer
+`make_fkappa_auto_verify.py` were fixed in the process). This validates the plumbing only — the grid's
+calibration contaminations (flag #1) and the dead-window interpolation risk (§9a) stand unchanged.
+
+## 9a. [data] The §8e⇄§9 kappa tension RESOLVED — breakdown is NON-MONOTONIC in f_κ (2026-07-01, no new sims)
+
+Read straight out of the committed `data/summary.csv` (the 819-run Helix sweep) — no new runs needed.
+Builder: `data/make_kappa_stability_map.py` → `data/kappa_stability_map.csv`.
+
+**The decisive cell.** The sweep's `simple_cluster` analog (mCloud 1e5, sfe 0.3, nCore 1e5 — same mass/SFE/
+density; recipe differs only in nISM 0.1 vs 1 and stop_t) across its 13 f_κ values:
+
+| f_κ | outcome |
+|---:|---|
+| 1, 1.5 | healthy to stop_t=2, θ_max 0.68/0.75, no fire |
+| 2, 3 | **froze mid-implicit** (t_final 0.54/0.62), no fire |
+| **4, 6** | **FIRES** → momentum (θ at fire 1.02/1.04) |
+| **8, 12** | **froze mid-implicit** (t_final 0.44/0.37), **θ_max = 0.5331 / 0.588** — §8e's "θ stuck ~0.53 at f_κ=8", reproduced independently on Helix |
+| 16 | fires, but θ_max=4.55 (non-physical solver spike en route) |
+| 24 | broke (t_final 0.048) |
+| 32, 48, 64 | fire violently (n_impl 3–6 rows) |
+
+**Grid-wide stats:** 57 cells fired; **17/57 are non-monotonic** (at least one f_κ *above* the cell's
+f_κ_fire fails to fire); **38/819 runs froze mid-implicit without firing** (the §8e signature: premature
+end, still `implicit`, θ frozen sub-threshold). So:
+
+- **§8e was right**: f_κ=8 breaks the solver on simple_cluster — the Helix sweep hit the identical freeze
+  (θ 0.533) on the matching cell. Not a container artifact, not the solver choice (both lines ran the
+  default `betadelta_solver=hybr`).
+- **§9 was right**: every one of the 57 cells fires *at its own f_κ_fire* — the firing bands are real.
+- **Neither refutes the other**: the kappa knob has **interleaved firing bands and breakdown windows**
+  (here: fire 4–6, dead 8–12, fire 16+). §8e happened to sample inside a dead window.
+
+**Consequences.**
+1. **The knob-choice argument against `cooling_boost_kappa` gets stronger**: a production knob whose
+   usable values form disconnected bands, with silent mid-run freezes between them, is not shippable —
+   independent of the evaporation side-effect. The `multiplier` tentative choice (§8e) stands, now on
+   firmer ground.
+2. **New risk flagged for `'auto'`**: the resolver trilinearly *interpolates* f_κ between grid cells, but
+   only the grid's f_κ_fire values are measured to fire — an interpolated value (e.g. 5.3 or 10 for this
+   cell) can land inside a dead window. 'auto' remains opt-in/PROVISIONAL (flag #1 above) with this
+   added caveat.
+3. The "786/819 ok" sweep report over-reads: "ok" includes the 38 mid-implicit freezes (exit-0 runs that
+   died early without firing). The fit's f_κ_fire values are unaffected (smallest *fired* f), but
+   per-run health must be judged from `t_final`/`phase_final`, not the exit code.

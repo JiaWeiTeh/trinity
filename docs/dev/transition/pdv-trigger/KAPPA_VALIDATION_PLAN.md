@@ -1,9 +1,16 @@
-# Correct-knob (`cooling_boost_kappa`) validation + min_T log fix — working plan (2026-07-01)
+# Correct-knob (`cooling_boost_kappa`) validation + min_T log fix — working plan (2026-07-01) — ✅ COMPLETED
 
+> **STATUS (2026-07-01, reconciliation): T1–T5 ALL DONE — this is now a historical record.** Outcome in
+> `FINDINGS.md §8e`; quotability of its numbers in `CONTAMINATION.md`. ⚠️ Its §8e runs never reached 5 Myr
+> (early-time; honestly flagged) and their θ values were **not persisted as CSV** (💾 violation, still open).
+> The §8e result is in **open tension with FINDINGS §9** (pt3 sweep: kappa fires at ≤64) — see
+> `CONTAMINATION.md` ⚡ #1.
+>
 > ⚠️ **Point-in-time working plan, not a maintained spec** — re-verify against source before trusting.
 > 🔄 **Living** — tick tasks as done, note deviations, date them.
 > 💾 **Persist** — every result → committed CSV/figure under `data/` + this folder.
-> 🔗 **Siblings** — `PLAN.md` ⭐⭐ (KNOB CORRECTION), `FINDINGS.md §8b–§8d`, `F_KAPPA_FUNCTIONAL_FORM.md §14`.
+> 🔗 **Siblings** — `PLAN.md` ⭐⭐ (KNOB CORRECTION), `FINDINGS.md §8b–§8e/§9`, `F_KAPPA_FUNCTIONAL_FORM.md §14`,
+> `CONTAMINATION.md`.
 
 **Why:** the `2026-07-01` f_κ validation used `cooling_boost_mode='multiplier'`, but the §14 leverage/θ₀ were
 fit with **`cooling_boost_kappa`** (the structural conduction boost — θ fully emergent). Different knobs. So the
@@ -13,7 +20,8 @@ f_κ(n)) and a flagged logging fix.
 ## Progress (2026-07-01)
 - **T1 ✅ DONE** (committed `517c7503`): `_MINT_LOG_TOL=1.0` gates the min_T DEBUG log; return unchanged;
   `test_run_smoke` passed. **T2 ✅ DONE** (same commit): single-f_κ decision recorded in §14 + PLAN.
-- **T3 ⏳ running — early result is a surprise:** at the *physical* f_κ=8 the **`cooling_boost_kappa` knob BREAKS
+- **T3 ✅ DONE** (kept below as written live; reconciled with the Tasks list) **— the result was a surprise:**
+  at the *physical* f_κ=8 the **`cooling_boost_kappa` knob BREAKS
   DOWN** on `simple_cluster` — it drives the beta-delta solver to **non-physical dMdt<0** from segment ~6
   (`"no physical (dMdt>0) root"`), so the state **freezes** and the *physical* emergent θ (=bubble_Lloss/Lmech
   from `dictionary.jsonl`, the accepted state) sticks at **~0.53 — it does NOT fire**, nothing like the
@@ -47,6 +55,10 @@ f_κ(n)) and a flagged logging fix.
 - [x] **T5 — DONE (517c7503, d207b2f7, fe171b20).** commit + push (min_T fix, docs, runner + CSV/figure).
 
 ## Expected (from §14, to be confirmed with the correct knob)
-At f_κ=8 the emergent θ should be ~0.99 (n=1e5, fire), ~0.91 (n=1e4, borderline), ~0.55 (n=100, route-a) — but
-those were the `multiplier` predictions; `kappa` may land differently because it changes L_cool *through* the
-structure (and raises evaporation). The test IS that comparison.
+At f_κ=8 the emergent θ should be ~0.99 (n=1e5, fire), ~0.91 (n=1e4, borderline), ~0.55 (n=100, route-a).
+⚠️ Provenance correction (2026-07-01 reconciliation): that column is the **§14 model prediction, which was FIT
+on `cooling_boost_kappa`** (blowout-θ₀ + p) — the earlier label here calling it "the `multiplier` predictions"
+was wrong (the multiplier runs were the *validation*, and an invalid one — R5). `kappa` may land differently
+because it changes L_cool *through* the structure (and raises evaporation). The test IS that comparison.
+**Measured (T3/T4):** 0.53 (n=1e5) / 0.48 (n=1e4) / 0.25 (n=100) at f_κ=8, early-time, no fire — the knob
+broke down instead of confirming the table (`FINDINGS.md §8e`).

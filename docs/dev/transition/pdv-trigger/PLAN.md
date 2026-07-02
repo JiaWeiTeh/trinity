@@ -121,24 +121,36 @@ Rung A (`multiplier`) is already shipped in production, gated default-off byte-i
 f_κ at a **physical** value; **accept diffuse route-a non-transition** · massive/PdV clouds handled by the
 PR #715 handoff, **not** θ · `theta_elbadry`/`theta_target` = **opt-in override**, documented with its
 double-counting caveat · ≥5 Myr per run.
-**OPEN:** (1) ✅ **f_κ(n) calibrated** (drafted, re-analysis only — `F_KAPPA_FUNCTIONAL_FORM.md` §14,
-`data/fkappa_emergent_calibration.csv`): invert emergent θ=θ₀(n)·f_κ^p to the El-Badry λδv=3 target, cap at a
-physical f_max → f_κ ideal 3.5 (n=1e6) → 106 (n=10); at f_max=8 only n≳1.6e4 fires, the rest is **route-a by
-design** (boundary n_routeA(f_max) is the falsifiable split). **Still needs:** one live `multiplier`-mode run
-per regime to confirm the *solved* θ lands on the §14 table (cheap). (2) pin **f_max** — the one physics input
-left (2–8 argued; structural κ_mix that would justify more at the diffuse end stays SHELVED). (3) confirm the
-massive cloud hands off cleanly under `multiplier` (already shown for the gated/default path — `fail_repro`
-→ 500 pc).
+**OPEN (re-written 2026-07-01 after the KNOB CORRECTION + §8e — the earlier "✅ f_κ(n) calibrated … one cheap
+confirmation run" wording here was wrong and is retracted):**
+(1) ❗ **Re-derive the calibration on the `multiplier` knob.** The §14 θ₀/p were fit on `cooling_boost_kappa`
+(which §8e then broke at f_κ=8), θ₀ is a blowout snapshot (retired metric), the 6-anchor θ₀ slope was falsified
+by the 819-sweep, and the θ_max=1.334/1.006 "validation" came from the contaminated call-level observer (R6) —
+**no §14 number survives** (`CONTAMINATION.md` ⛔ #1–#2). The replacement is committed and ready: the 📏
+standard-protocol matrix (8 configs × f_mix ∈ {none,2,4,8} × 5 Myr, `runs/params/theta5/` +
+`runs/run_theta5.sbatch` + `runs/harvest_theta_max.py`) — **run it on HPC** (diffuse arms are hours-long, §8d;
+NOT cheap in a container), fit θ₀/p per config from θ_max, test the θ₁-collapse analogue (§9's
+f_fire ≈ (0.95/θ₁)^k law, re-fit for `multiplier`), then pick the **single physical f_mix** and compute the
+route-a boundary. (2) pin **f_max** — the one physics input left (2–8 argued; structural κ_mix that would
+justify more at the diffuse end stays SHELVED). (3) confirm the massive cloud hands off cleanly under
+`multiplier` (already shown for the gated/default path — `fail_repro` → 500 pc). (4) ✅ **RESOLVED (same day, from committed data — `FINDINGS.md §9a`)**: the §8e⇄§9 kappa tension was
+non-monotonic breakdown windows in f_κ (fire 4–6, dead 8–12, fire 16+ on the simple_cluster cell; §8e's
+θ≈0.53 freeze reproduced on Helix at 0.5331) — kappa is even less shippable; `'auto'` gains an
+interpolation-into-a-dead-window caveat. (5) decide `'auto'` (pt3): revalidate its 63-cell grid under the
+📏 protocol or keep it opt-in-provisional.
 
-**BEST PATH FORWARD:** (i) **Rung A f_κ is already in production** (`cooling_boost_mode='multiplier'`, gated
-default-off — `grep cooling_boost_mode trinity/`). (ii) **Calibrate f_κ(n)** from the committed sweep so the
-*solved* θ matches El-Badry/Lancaster on radiative/dense configs; set the diffuse value to a physical cap and
-accept route-a. (iii) **Validate** one live run per regime that emergent θ is in-band and the massive cloud
-still hands off (baseline/emergent already expands `fail_repro`). (iv) Keep **θ_elbadry as the documented
-opt-in override** for users who explicitly want forced cooling (`THETA_ELBADRY_SPEC.md`). Evidence chain:
+**BEST PATH FORWARD (updated 2026-07-01):** (i) **Rung A `multiplier` is already in production** (gated
+default-off — `grep cooling_boost_mode trinity/`). (ii) **Run the 📏 theta5 matrix on HPC** and re-derive the
+emergent-θ calibration on the *shippable* knob — θ measured only as **θ_max over ≥5 Myr from
+`dictionary.jsonl`** (never blowout, never the observer). (iii) From that matrix: choose the **single physical
+f_mix** so Lancaster-band GMCs (n ≳ 48 cm⁻³) fire `cooling_balance` with emergent θ_max ∈ 0.9–0.99 and reach
+momentum; publish the **route-a boundary** (the falsifiable energy/momentum split) for the clouds that don't.
+(iv) Massive clouds keep riding the PR #715 handoff untouched (§8b lesson). (v) Keep **θ_elbadry and `'auto'`
+as documented opt-in overrides** (`THETA_ELBADRY_SPEC.md`; FINDINGS §9 flags). Evidence chain:
 `ELBADRY_REFERENCE.md` (closed form, n-mapping) · `LANCASTER_REFERENCE.md` (θ magnitude, route-a) ·
-`F_KAPPA_FUNCTIONAL_FORM.md` (emergent-θ calibration) · `FINDINGS.md §8b/§8c` (why enforcement double-counts) ·
-`HIMASS_HANDOFF_PLAN.md` (the PR #715 handoff that carries the massive clouds).
+`FINDINGS.md §8b/§8c` (why enforcement double-counts) · `FINDINGS.md §8e/§9` (knob evidence, both sides) ·
+`HIMASS_HANDOFF_PLAN.md` (the PR #715 handoff that carries the massive clouds) · `CONTAMINATION.md` (what is
+quotable).
 
 ---
 
@@ -171,9 +183,12 @@ for provenance.*
   Two-anchor full-run grid **DONE** (`make_kappa_blowout_calibration.py`, 06-26 ledger): the estimate was
   **optimistic** — compact fires cooling at **f_κ≈4**, diffuse needs **≈60** (the developed-epoch leverage is
   weaker than the snapshot, exponent ~0.3–0.4). PdV-in-the-trigger probed (`make_ebpeak_trigger_test.py`,
-  06-28 ledger): `ebpeak` is an assist, not a substitute — it does not remove the need for the boost. Next: a
-  denser n_H full-run grid to pin `f_κ(n_H)`, then wire `cooling_boost_kappa` as an optional density-dependent
-  `f_κ(n_H)` mode (gated, default-off byte-identical).
+  06-28 ledger): `ebpeak` is an assist, not a substitute — it does not remove the need for the boost. The
+  819-combo grid **ran (2026-06-29)** and settled the de-conflation question: f_κ_fire is **NOT** a clean
+  function of n_H (spread up to 32× across mCloud/sfe at fixed density), but all fired cells collapse on the
+  starting deficit, f_κ_fire ≈ (0.95/θ₁)^3.76 (universal leverage θ∝f_κ^0.27; `fkappa_theta1_collapse.png`).
+  Production mode shipped 2026-07-01 (pt3): `cooling_boost_kappa='auto'` interpolates the full 3-axis
+  measured grid at load time (`trinity/_input/fkappa_auto.py`; gated, default 1.0 byte-identical).
 
 > **📏 STANDING RULE (maintainer, AUTHORITATIVE, 2026-06-30): run every run to AT LEAST 5 Myr.** Never cap
 > `stop_t` short for cheapness — the energy→momentum transition epoch is θ's *peak*, which sits ~0.4–1 Myr and
@@ -187,14 +202,52 @@ for provenance.*
 > (θ_max), NOT at blowout.** The trigger fires on the **first crossing** of θ≥0.95, so the physically-meaningful
 > summary of a run is `θ_max = max_t θ(t)` over the whole ≥5 Myr evolution (or the natural end if the physics
 > stops sooner). **Blowout-θ (θ at R2=rCloud) is retired as a metric** — it is a single arbitrary/late epoch, it
-> is **undefined for clouds that recollapse before rCloud**, and it **under-reads the peak** (validated
+> is **undefined for clouds that recollapse before rCloud**, and it **under-reads the peak** (illustrated
 > 2026-07-01: at f_κ=8, θ_max = 1.33 / 1.01 for n=1e5 / 1e4 vs the blowout-θ₀ calibration's 0.99 / 0.91 — so
-> blowout-θ₀ is *conservative*). **All current and future θ measurement uses θ_max-over-≥5 Myr.** ⚠️ The §14
+> blowout-θ₀ is *conservative*; ⚠️ those two θ_max values were later found to come from the **contaminated
+> call-level observer** (R6) *and* the wrong knob (R5) — the qualitative under-read stands, the numbers are
+> not quotable, `CONTAMINATION.md` ⛔ #1). **All current and future θ measurement uses θ_max-over-≥5 Myr,
+> harvested from `dictionary.jsonl`** (`runs/harvest_theta_max.py`). ⚠️ The §14
 > f_κ calibration and `kappa_blowout_calibration.csv` still use the old **blowout-θ₀** baseline → they are
-> **conservative and pending re-derivation** with θ_max (the `data/_fkappa_validation_runner.py` harness already
-> records θ_max and is the template). `F_KAPPA_FUNCTIONAL_FORM.md` §10/§14 flagged accordingly.
+> **conservative and pending re-derivation** with θ_max. ⚠️ Do NOT use `data/_fkappa_validation_runner.py`'s
+> observer for that (it is the R6-contaminated one) — the sanctioned harvester is `runs/harvest_theta_max.py`
+> on `dictionary.jsonl`. `F_KAPPA_FUNCTIONAL_FORM.md` §10/§14 flagged accordingly.
 
 **Status ledger (newest first):**
+- **2026-07-01 (RECONCILIATION: pt2⇄pt3 merged, contamination register created, 📏 protocol codified,
+  `multiplier` re-calibration matrix committed).** The parallel `feature/transition-trigger-pt3` line (819-sweep
+  fold-in + `cooling_boost_kappa='auto'`) was merged into the post-PR#717 mainline; its FINDINGS section
+  renumbered **§9** with post-merge flags (sweep `stop_t=2` vs 📏 rules; 'auto' = per-cloud lookup vs the
+  single-constant + route-a decisions; the **§8e⇄§9 kappa tension** left OPEN, not silently resolved).
+  **`CONTAMINATION.md` created** — rules (a)–(e), the full per-artifact register (what is quotable), the ⛔
+  do-not-quote list (§14 numbers, blowout-θ f_κ-to-fire, the 63-cell grid values, pre-#715 fates, observer θ).
+  **The 📏 standard protocol is now executable**: `runs/params/theta5/` (8 configs × f_mix {none,2,4,8}, all
+  `stop_t 5`, 32 params validated through `read_param`), `runs/run_theta5.sbatch` (Helix array),
+  `runs/harvest_theta_max.py` (θ_max from `dictionary.jsonl` accepted rows — the sanctioned measurement).
+  INDEX rewritten (era map E1–E7, all 21 docs statused, branch archaeology incl. the stranded
+  `feature/PdV-trigger-term` El-Badry-overlay commit `3e68143`). OPEN(1) re-written (the "✅ calibrated +
+  cheap confirmation" claim retracted). **NEXT: run the theta5 matrix on HPC** → re-fit θ₀/p + the
+  θ₁-collapse law for `multiplier` → pick the single physical f_mix → route-a boundary.
+- **2026-07-01 (pt3: sweep folded in + `cooling_boost_kappa='auto'` shipped — merged into this line same
+  day; see the ⚠️ post-merge flags in `FINDINGS.md §9` and `CONTAMINATION.md`).** The 819-combo grid ran on
+  Helix 2026-06-29 (786/819 ok, 10h17m — `data/sweep_report.txt`, `data/summary.csv`; the fit step landed as
+  `data/fkappa_nH_sweep.csv` + `fkappa_nH_sweep.png` in commit `880334f` but no doc recorded it until now).
+  **De-conflation verdict: n_H-only REFUTED** — at fixed nCore the measured f_κ_fire spreads up to 32× across
+  (mCloud, sfe); sfe is a strong secondary axis and mCloud dominates the dense end (1e7 M☉ fires at f_κ=1 for
+  n≥3e3). **What does collapse it: the starting deficit** — log10 f_κ_fire = 0.041 + 3.755·log10(0.95/θ₁)
+  over all 41 fired-above-1 cells (corr 0.968, rms 0.116 dex vs 0.21 dex for the best input-space fit), i.e. a
+  universal leverage θ ∝ f_κ^0.266 — confirming §6's pessimistic developed-epoch exponent (~0.3), refuting the
+  optimistic 0.63 snapshot estimate (`data/make_fkappa_theta1_collapse.py` → `fkappa_theta1_collapse.{csv,png}`).
+  **Production mode shipped:** `cooling_boost_kappa='auto'` resolves at load (read_param Step 7 resolver) to the
+  measured f_κ_fire via trilinear log-space interpolation of the 63-cell grid (`trinity/_input/fkappa_auto.py`;
+  mCloud axis = pre-SFE `mCloud_input`; hull-clamped with warning; censored diffuse/high-SFE corner pinned at the
+  sweep ceiling 64 with a may-not-fire warning; numeric values pass through untouched → default byte-identical).
+  Tests: `test/test_fkappa_auto.py` (9). Acceptance: `runs/params/fkauto_verify.param` (1e5 M☉ GMC, sfe 0.03,
+  n 1e3 — auto→12) must fire cooling_balance and reach momentum (`data/make_fkappa_auto_verify.py`, REPRODUCE #26).
+  ⚠️ Written on the pt3 branch **without knowledge of the same-day pt2 entries below** (direction correction,
+  knob correction, §8e) — the sweep's `stop_t=2`/fired-by-2-Myr metric violates 📏 rules 1+2, and 'auto' is a
+  per-cloud f_κ(properties) lookup, in tension with the single-constant + route-a decisions. Status: **opt-in,
+  PROVISIONAL** pending the 5 Myr/θ_max re-measurement.
 - **2026-07-01 (✅ DIRECTION CORRECTED — θ is an OUTPUT; Rung A f_κ reinstated, θ_elbadry demoted to opt-in →
   `FINDINGS.md §8c`, `data/gate_prototype.csv`).** Maintainer steer: enforcing θ (`theta_target`/θ_elbadry)
   broke the causal structure — θ should *emerge* from a boosted cooling **mechanism**, not be set by hand.
@@ -539,7 +592,20 @@ for provenance.*
   → `data/fkappa_functional_form.csv` + `fkappa_functional_form.png` (reads committed CSVs, no sims). The
   819-sweep now has a concrete job: **measure q(n_H[,mCloud,SFE]) and re-fit θ₀** to confirm/refine this curve.
   Also corrected the El-Badry citation everywhere it was wrong (MNRAS 490,1961 / Weisz / 1902.09547 — not ApJ
-  879 / not Weinberg) and flagged that this branch lacks the external handoff's `3e68143` El-Badry-overlay work.
+  879 / not Weinberg) — the external handoff's `3e68143` El-Badry-overlay work was cherry-picked into this line on 2026-07-01 (entry below).
+- **2026-06-29 (El-Badry+2019 PDF obtained — equations VERIFIED, overlay figure built).** The El-Badry PDF
+  (1902.09547) was finally provided (earlier it 403'd, so `θ(n)` was a schematic stand-in — see FINDINGS §2).
+  Read §5.2 and **verified the cooling-efficiency model line-by-line**: Eq 35 `L_int/Ė_th = (11/5)·θ/(1−θ)`
+  ⇔ Eq 38 **`θ = ψ/(11/5+ψ)`** (ψ≡L_int/Ė_th); Eq 37 **`ψ = A_mix·(λδv)^½·n_H^½`**, **A_mix=3.5** (fit;
+  1.7 first-principles); √n scaling REAL; θ time-independent (L_int∝t). **This retracts the earlier in-session
+  skepticism that those equations might be confabulated — they are genuine.** **The real caveat is DOMAIN:**
+  El-Badry calibrated this at **n_H,0 = 0.1–10 cm⁻³ and λδv = 0.1–10 pc·km/s** (Figs 6–7); GMC clouds at
+  n=1e2–1e6 are **1–5 decades beyond** where it was tested, where θ_target is already saturated to ≈0.94–0.999
+  (extrapolation, not measurement). Built `data/make_elbadry_overlay.py` → `elbadry_overlay.png`: our resolved
+  θ_1D = 1−cool_at_blowout per config (the f_κ=1 Spitzer floor) overlaid on the verified Eq 37/38 band — **our
+  points sit far below the target (gap 0.25→0.94 at n=1e2), entirely in the extrapolated GMC regime.** That gap
+  is the cooling deficit mixing/κ_mix (or, as a stand-in, f_κ) must supply. Honest axis caveat: El-Badry's n is
+  ambient, ours is nCore; the literature θ really depends on the (higher) interface density. No production code touched.
 - **2026-06-29 (Helix run scaffolding for the 819-combo sweep — committed).** The sweep was "HPC-ready"
   only via a bare `--emit-jobs jobs/` + `sbatch jobs/submit_sweep.sbatch`, which would have **failed on
   Helix**: outputs resolve under the read-only `/home` repo checkout, and the emitted sbatch leaves
@@ -872,7 +938,10 @@ screens reproduce byte-identical, real-Da replay re-passed its gate, 20/20 tests
 
 ---
 
-**Last updated:** 2026-06-26 (live status in the re-entry ledger above). **Branch:**
+**Last updated:** 2026-07-01 (live status in the re-entry ledger above; pt2 merged to main via PR #717, pt3
+merged into this line, docs reconciled — see `CONTAMINATION.md` + `INDEX.md §5`). **Branch history:**
+`feature/PdV-trigger-term` → `feature/PdV-trigger-term-pt2` (merged) ⇄ `feature/transition-trigger-pt3`
+(merged). Original branch note:
 `feature/PdV-trigger-term`. This note answers the maintainer's question ("add a PdV term to the transition
 trigger — what was the argument against it, and is it still valid for larger clusters?"), the **2026-06-23
 redirect** (test reading B directly; what does the standalone `PdV/Lmech` diagnostic buy us), and the
