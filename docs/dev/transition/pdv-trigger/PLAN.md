@@ -168,15 +168,17 @@ Committed, ready-to-run ammunition: the **theta5b matrix** (`runs/make_theta5b_p
 `runs/params/theta5b/`, 43 params validated through `read_param`; `runs/run_theta5b.sbatch`, array 1-43,
 ~same cost as theta5). Storyline treatment: `pdvtrigger_report.html` §16.2.
 
-*Q1 — "why exactly f_mix=4? are 2.5/3.4/4.7 workable?"* Today's honest answer: 4 is a **grid point**, defended
-by the law (the hardest configs need 4.3/4.0/3.9) as the **minimal single constant that fires the band**, with
-a workable window [~4, <8) bounded above by the over-boost ceiling. theta5b turns that into measurement:
+*Q1 — "why exactly f_mix=4? are 2.5/3.4/4.7 workable?"* **ANSWERED BY MEASUREMENT (theta5b, 2026-07-02 —
+FINDINGS §11, `data/theta5_fire_map.csv`):** 2.5 and 3.4 measurably miss part of the band (pl2_steep fires
+only at 4; be/diffuse at 3.5); 4.5 works; **5 already drops midrange_pl0** (over-boost Eb-drain). **The
+whole-band window is [4, 4.5]** and 4 sits inside it — a measured choice, no longer a grid-point argument.
+The matrix as designed:
 
 | theta5b arm | what it measures | referee answer it produces |
 |---|---|---|
-| f ∈ {2.5, 3, 3.5} × 8 configs | does anything below 4 fire pl2_steep/be_sphere (law says no: 4.3/4.0)? does 2.5–3 fire midrange (law says yes: 2.9)? | per-config f_fire to ±0.25–0.5 → the measured **window lower edge**; tests the law's out-of-sample accuracy |
-| f ∈ {4.5, 5} × 8 configs | window upper side: same fire set as 4? recollapse worsens? Eb-drain onset? | "conclusions are insensitive to f within [win_lo, win_hi]; 4 is a round representative" — the sentence the paper needs |
-| large_diffuse stop_t=8 at f ∈ {1, 2, 2.5} | the θ=0.9552-at-exactly-t=5 graze; native peak t≈4.9 | whether the diffuse f_fire is really (2,4] or drops to ≈2 given time — and whether stop_t=5 truncates the diffuse peak (📏 rule-1 check on itself) |
+| f ∈ {2.5, 3, 3.5} × 8 configs | window lower edge + law accuracy | **MEASURED:** pl2 needs 4 (3.5 → drain); be/diffuse fire at 3.5; mid/dense at 2.5; law rms **0.064 dex** out-of-sample (`data/theta5_law_check.csv`) |
+| f ∈ {4.5, 5} × 8 configs | window upper side | **MEASURED:** 4.5 keeps the full fire set; **5 drops midrange** (Eb-drain) → the paper sentence is "any f∈[4, 4.5] gives identical conclusions; 4 adopted" |
+| large_diffuse stop_t=8 at f ∈ {1, 2, 2.5} | the t=5 graze + peak capture | **MEASURED:** f=2 fires at t≈5.04 Myr (horizon-dependent threshold — state 5 Myr as the operational GMC-lifetime horizon); f=1@8Myr: native peak t≈4.86, unchanged — **5 Myr captures it**; f=2.5 still drains |
 
 *Q2 — "why a constant f and not f(cloud properties)?"* Four rows, each independently sufficient; the decisive
 test is out-of-sample prediction (fit the θ₁-collapse law on a config subset, predict the held-out f_fire
@@ -258,6 +260,19 @@ for provenance.*
 > on `dictionary.jsonl`. `F_KAPPA_FUNCTIONAL_FORM.md` §10/§14 flagged accordingly.
 
 **Status ledger (newest first):**
+- **2026-07-02 (✅ THETA5B RAN — window measured [4, 4.5]; law validated out-of-sample; the fire-vs-drain
+  race → `FINDINGS.md §11`, `data/theta5_fire_map.csv`, `data/theta5_law_check.csv`).** The 43-arm referee
+  matrix completed on Helix. Fine f_fire: sc 2 · mid 2.5 · dense-edge 2.5 · be 3.5 · diffuse 3.5 · pl2 4;
+  small_1e6 never (≤8). **The whole-band window is [4, 4.5]** (3.5 misses pl2; 5 drops midrange via over-boost
+  Eb-drain — its ceiling moved down from theta5's 8). The θ₁-collapse law predicted every fine threshold at
+  **rms 0.064 dex out-of-sample** — the constant-f + law model stands the referee test. **NEW systematic
+  (corrects §10/ch.16 "no dead windows" phrasing):** below threshold, boost can PREVENT firing — Eb-drain
+  hands off to momentum before θ crosses (sc fires at 2, NOT at 2.5–3, again at 3.5+); healthy runs, real
+  fire-set gaps, mechanistically transparent (unlike kappa's §9a solver freezes). Diffuse long arms: f=2 fires
+  at t≈5.04 Myr (horizon-dependence — 5 Myr is an operational choice); f=1@8Myr confirms the native peak is
+  captured by 5 Myr (📏 rule-1 self-check ✅). Dense edge fires at every fine arm (θ 0.95–1.01) — theta5's
+  NaNs were intermittent, ticket downgraded. **f_mix=4 adoption unchanged and strengthened** (now measured as
+  the window's interior).
 - **2026-07-02 (✅ MAINTAINER RULING — momentum-then-recollapse is acceptable physics; f_mix = 4 ADOPTED).**
   Maintainer, verbatim intent: a cloud that fires `cooling_balance`, hands off into the momentum phase, and
   subsequently recollapses is "completely fine" — fire-then-recollapse is an **outcome**, not a failure mode.

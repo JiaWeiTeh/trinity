@@ -618,7 +618,7 @@ def fig_knob(runs):
     ax.set_xticklabels(["1", "2", "4", "8"])
     ax.set_xlim(0.9, 17)
     ax.set_xlabel("$f_{\\rm mix}$ (multiplier, post-solve)")
-    ax.set_title("multiplier knob (theta5):\nmonotonic in $f$, no dead windows")
+    ax.set_title("multiplier knob (theta5 coarse grid):\nno solver freezes; but see the fire map —\nthe fire SET is non-monotonic (FINDINGS §11)")
     axes[0].set_ylim(0, 1.52)
     fig.savefig(os.path.join(_PDV, "theta5_knob_choice.png"))
     plt.close(fig)

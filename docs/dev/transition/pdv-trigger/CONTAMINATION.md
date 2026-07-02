@@ -131,6 +131,8 @@ Status legend: **CLEAN** (quotable for its stated question) · **FLAG-x** (usabl
 | `fkappa_auto_verify.csv` (ran 07-01) | E7 | kappa='auto' (→12) | CLEAN as the **mechanics acceptance** (auto resolves, fires, reaches momentum; θ from dictionary); FLAG-(a) for calibration use (stop_t=2 — inherits the grid's provisional status) |
 | `kappa_stability_map.csv` (built 07-01) | E7 | — (re-read of `summary.csv`) | CLEAN re-analysis; resolves ⚡ #1 (FINDINGS §9a) |
 | `theta5_*.png` (5 figures) + `runs/data/theta5_fmix_scorecard.csv` (built 07-02, `data/make_theta5_figures.py`) | E8 | — (re-reads of the theta5 CSVs + `summary.csv` + `fkappa_functional_form.csv`) | CLEAN re-analysis (REPRODUCE #29); the scorecard is the f_mix margin table — **f_mix=4 ADOPTED 2026-07-02** (maintainer ruling: momentum-then-recollapse is fine; PLAN ledger); F3 deliberately plots the ⛔ #3 blowout values AS the retired metric being corrected |
+| `theta5b_summary.csv` + `theta5b_calibration.csv` (RAN Helix 2026-07-02) | E8 | multiplier fine {2.5,3,3.5,4.5,5} + diffuse stop_t=8 | ✅ CLEAN rule-compliant (43/43 to stop_t or physics end; θ_max from dictionary; stop_t=8 arms EXCEED rule (a)). NB the theta5b-only calibration CSV lacks θ₀ (no f=1 arms) — use the combined analysis |
+| `theta5_fire_map.csv`, `theta5_law_check.csv`, `theta5b_{fire_map,law_check}.png` (built 07-02, `data/make_theta5b_analysis.py`) | E8 | — (re-reads both summaries) | CLEAN re-analysis (REPRODUCE #30): window [4,4.5], law rms 0.064 dex, DRAIN class = momentum-without-firing (do NOT count DRAIN as a θ transition) |
 
 ### `runs/data/`
 

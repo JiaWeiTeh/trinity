@@ -964,7 +964,9 @@ F_KAPPA §14 (`CONTAMINATION.md` ⛔ #1–#3).
 6. **NEW failure mode — over-boost Eb-drain:** midrange@8 reaches momentum via the Eb≤0 handoff
    WITHOUT the trigger firing (θ_max 0.923, `fired=False`); the dense edge does the same at every
    boosted f. `multiplier` has an over-boost ceiling — gentler than kappa's dead windows (§9a), but
-   the same lesson: more boost ≠ more transition.
+   the same lesson: more boost ≠ more transition. **→ refined by §11:** this is the general
+   fire-vs-drain race; the fine bracket shows per-config no-fire GAPS (e.g. simple_cluster at
+   f=2.5–3) and pulls midrange's ceiling down to f=5.
 
 **Figures (2026-07-02, `data/make_theta5_figures.py` → REPRODUCE #29):** `theta5_arms.png` (the full
 matrix, outcome-classed), `theta5_collapse_law.png` (the law + kappa's for contrast),
@@ -979,3 +981,51 @@ momentum-then-recollapse is acceptable physics; PLAN ledger)**; the theta5b fine
 (nCore 1e6) stiffness under boost needs its own diagnosis (NaN loss rows on accepted steps);
 (c) large_diffuse@2 grazing 0.9552 exactly at stop_t=5 suggests a t>5 Myr fire — the committed
 theta5b stop_t=8 arms bracket the diffuse f_fire.
+
+## 11. [data] theta5b — the fine bracket + long diffuse arms: window [4, 4.5], law validated, and the fire-vs-drain race (2026-07-02, Helix)
+
+The 43-arm referee matrix ran (fine f_mix ∈ {2.5, 3, 3.5, 4.5, 5} × 8 configs + large_diffuse
+stop_t=8 at f ∈ {1, 2, 2.5}); all arms reached stop_t or a physics end. Combined analysis with
+theta5: `data/make_theta5b_analysis.py` → `data/theta5_fire_map.csv`, `data/theta5_law_check.csv`,
+`theta5b_fire_map.png`, `theta5b_law_check.png`.
+
+1. **Fine f_fire per config (5 Myr):** simple_cluster **2**, midrange_pl0 **2.5**,
+   small_dense_highsfe **2.5**, be_sphere **3.5**, large_diffuse **3.5**, pl2_steep **4**;
+   small_1e6 never (through 8); fail_repro n/a (PdV handoff at all f).
+2. **The θ₁-collapse law survives out-of-sample: rms 0.064 dex (~16%) over 6 configs.** The
+   theta5-fit law f_fire = 1.4·(0.95/θ₀)^1.82 predicted every fine-measured f_fire within one
+   half-grid-step (worst: simple_cluster, +0.11 dex). One parameter (θ₀, which the solved bubble
+   supplies) carries all the cloud-property dependence — the referee-grade argument for the
+   constant-f prescription.
+3. **The whole-band window is [4, 4.5] — measured, and narrower than assumed.** At f=3.5,
+   pl2_steep does not fire (0.850, Eb-drains); at f=5, midrange_pl0 stops firing (0.927,
+   Eb-drains — theta5 had put its ceiling at 8; the fine scan pulls it to 5). **f_mix=4 is not
+   just the minimal band-firing constant — it sits inside a narrow measured window**, bounded
+   below by pl2_steep's threshold and above by midrange's over-boost drain. Referee answer:
+   2.5 and 3.4 measurably miss part of the band; 4.5 works; 5 already drops a config.
+4. **NEW SYSTEMATIC — the fire-vs-drain race (supersedes §10's "multiplier has no dead
+   windows" phrasing and the ch.16/F5 claim).** Below a config's f_fire, extra boost often
+   *prevents* firing: the boosted Eb drain reaches Eb≤0 and hands off to momentum BEFORE θ
+   crosses 0.95 (DRAIN cells in the fire map). simple_cluster fires at f=2, then does NOT at
+   2.5–3 (θ_max 0.67–0.81, handoff at t≈0.13), then fires again at 3.5+ — a real per-config
+   no-fire gap. Unlike kappa's §9a dead windows these are NOT solver pathologies: every run is
+   healthy, completes, and still reaches momentum — just via Eb≤0 with θ_max < 0.95 instead of
+   via the trigger in the Lancaster band. The corrected statement: *the multiplier knob has no
+   solver breakdowns; its fire SET is non-monotonic in f because firing races Eb-drain.*
+5. **Diffuse long arms:** (a) f=2 @ stop_t=8 **fires at t≈5.04 Myr** (θ_max 0.960) — the
+   theta5 graze (0.9552 at exactly t=5) was a real near-fire; the diffuse f_fire is
+   horizon-dependent: 3.5 within 5 Myr, 2 within ~5.1 Myr. The 5 Myr protocol horizon is an
+   operational choice and should be stated as such (GMC lifetime scale), not physics.
+   (b) f=1 @ stop_t=8: θ_max identical to the 5 Myr run (0.535, peak t≈4.86, no later growth) —
+   **the 5 Myr window does capture the native diffuse peak**; 📏 rule 1 self-check passes.
+   (c) f=2.5 @ stop_t=8 still DRAINs (θ_max 0.828 at t≈2.56) — the gap is not time-limited.
+6. **The dense edge fires after all:** small_dense_highsfe fires at every fine arm
+   (2.5→0.950, 3→1.009, 3.5→0.975, 4.5→0.991, 5→0.960; collapse t≈0.04–0.05). theta5's NaN
+   arms at exactly f=4 and 8 were erratic stiffness draws, not a wall — the nCore=1e6 ticket
+   stays open but is downgraded from "breaks under boost" to "intermittently NaNs".
+
+**Consequences for the f_mix=4 adoption (ledger 07-02):** unchanged and strengthened — 4 is
+measured to be in the window's interior-bottom; the paper sentence is now "any f in [4, 4.5]
+gives identical conclusions; 4 adopted" with the fire map as evidence. The DRAIN phenomenology
+should be mentioned wherever over-boost is discussed (it replaces "more boost = more
+transition" intuition).
