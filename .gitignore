@@ -20,6 +20,7 @@ paper/plots/
 paper/barnes26/
 paper/II-survey/
 paper/shellSSC6/
+paper/pedrini/
 test/test_barnes_population.py
 movie.txt
 lib/*
