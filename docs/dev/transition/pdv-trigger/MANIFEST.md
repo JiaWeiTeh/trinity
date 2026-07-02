@@ -11,12 +11,15 @@
 > are exact; stamp-less artifacts predate the convention (2026-07-02) — for those, only
 > the commit date is known. **Every new/edited builder must write the stamp.**
 
-171 artifacts · 0 stale-risk · 0 untracked · 1 stamped 🕐
+173 artifacts · 0 stale-risk · 0 untracked · 3 stamped 🕐
 
 | last updated (commit) | artifact | producer / flags |
 |---|---|---|
 | 2026-07-02 `057cd96` | `data/fkappa_auto_verify.csv` | by `make_fkappa_auto_verify.py` |
-| 2026-07-02 `8a27ba9` | `data/kappa_stability_map.csv` | by `make_kappa_stability_map.py` · 🕐 generated 2026-07-02T12:05:54Z | builder make_kappa_stability_map.py | code 8a27ba9 |
+| 2026-07-02 `eb3fe6d` | `data/kappa_stability_map.csv` | by `make_kappa_stability_map.py` · 🕐 generated 2026-07-02T12:05:54Z | builder make_kappa_stability_map.py | code 8a27ba9 |
+| 2026-07-02 `0082bef` | `runs/data/theta5_calibration.csv` | by `make_theta5_calibration.py` · 🕐 generated 2026-07-02T14:00:21Z | builder make_theta5_calibration.py | code ad15816 |
+| 2026-07-02 `0082bef` | `runs/data/theta5_summary.csv` | producer unknown (HPC/hand-made); refs: `harvest_theta_max.py`, `make_theta5_calibration.py` · 🕐 generated 2026-07-02T13:50:54Z | builder harvest_theta_max.py | code 23f623d3+dirty |
+| 2026-07-02 `a1501a3` | `runs/run_theta5.sbatch` | producer unknown (HPC/hand-made); refs: `make_theta5_params.py` |
 | 2026-07-01 `e38fa7a` | `ELBADRY_THETA_STORY.html` | producer unknown (HPC/hand-made); refs: `make_elbadry_story_figs.py` |
 | 2026-07-01 `a5cdf63` | `data/fkappa_emergent_calibration.csv` | by `make_fkappa_emergent_calibration.py` |
 | 2026-07-01 `ca3b4c7` | `data/fkappa_theta1_collapse.csv` | by `make_fkappa_theta1_collapse.py` |
@@ -60,7 +63,6 @@
 | 2026-07-01 `cf0469c` | `runs/params/theta5/small_dense_highsfe__mult4.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-01 `cf0469c` | `runs/params/theta5/small_dense_highsfe__mult8.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-01 `cf0469c` | `runs/params/theta5/small_dense_highsfe__none.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-01 `cf0469c` | `runs/run_theta5.sbatch` | producer unknown (HPC/hand-made); refs: `make_theta5_params.py` |
 | 2026-07-01 `104be88` | `story_elbadry_f1_closedform.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_story_figs.py` |
 | 2026-07-01 `104be88` | `story_elbadry_f2_impose.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_story_figs.py` |
 | 2026-07-01 `104be88` | `story_elbadry_f3_check.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_story_figs.py` |

@@ -140,7 +140,7 @@ Status legend: **CLEAN** (quotable for its stated question) · **FLAG-x** (usabl
 | `harvest_fail_repro__{none,mult2}.csv`, `live_compare.csv` fail_repro row | **CONTAMINATED-(e)** |
 | `compare_f1edge_hidens_theta9{0,5}.csv` | SUPERSEDED (theta_target demoted) + FLAG-(a) |
 | `harvest_cal_*__{k1,ek1}.csv` | **CONTAMINATED-(a)** (stop_t 0.3–1.0 by design) |
-| `theta5_summary.csv` | *(reserved)* the standard-protocol output — the first fully rule-compliant table |
+| `theta5_summary.csv` + `theta5_calibration.csv` (RAN Helix 2026-07-02) | ✅ **CLEAN — the first fully rule-compliant calibration** (32/32 arms ≥5 Myr or physics end; θ_max from dictionary; same-knob fit+validation; stamped). Two per-arm flags: `small_dense_highsfe__mult{4,8}` carry **NaN loss rows** (dense-edge stiffness — excluded from the fit); `midrange_pl0__mult8` reached momentum via the **Eb≤0 handoff, NOT a cooling fire** (`fired=False` is correct — do not count it as a θ transition) |
 
 ### Production code (on this branch)
 

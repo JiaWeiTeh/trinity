@@ -908,3 +908,56 @@ end, still `implicit`, θ frozen sub-threshold). So:
 3. The "786/819 ok" sweep report over-reads: "ok" includes the 38 mid-implicit freezes (exit-0 runs that
    died early without firing). The fit's f_κ_fire values are unaffected (smallest *fired* f), but
    per-run health must be judged from `t_final`/`phase_final`, not the exit code.
+
+## 10. [data] The theta5 matrix RAN — first fully rule-compliant `multiplier` calibration (2026-07-02, Helix)
+
+The 📏 standard-protocol matrix (8 configs × f_mix {none,2,4,8} × stop_t 5) ran on Helix — **32/32 arms
+compliant**: every run reached t=5 Myr or a genuine physics end (shell_collapsed); zero wall-clock
+truncations. θ harvested as θ_max from `dictionary.jsonl` accepted rows (`runs/harvest_theta_max.py`),
+same knob fit and validated. Artifacts: `runs/data/theta5_summary.csv` (32 rows) →
+`runs/data/theta5_calibration.csv` (`runs/make_theta5_calibration.py`). This replaces every number in
+F_KAPPA §14 (`CONTAMINATION.md` ⛔ #1–#3).
+
+| config | nCore | θ₀ (θ_max @ f=1, 5 Myr) | f_fire | fate at fire |
+|---|---:|---:|---:|---|
+| simple_cluster | 1e5 | 0.676 | **2** | fires t≈0.12, **momentum to 5 Myr (healthy)**; f=4/8 fire instantly then shell_collapse ~0.14 |
+| pl2_steep | 1e5 | 0.511 | 4 | fires instantly, shell_collapse t≈0.055 |
+| midrange_pl0 | 1e4 | 0.636 | 4 | fires t≈0.30, shell_collapse t≈1.20 |
+| be_sphere | 1e4 | 0.529 | 4 | fires t≈0.44, shell_collapse t≈2.48 |
+| **large_diffuse_lowsfe** | **1e2** | **0.535** | **4** | fires t≈2.43, **survives to 5 Myr** (transition @4, momentum @8); f=2 grazes 0.9552 at exactly stop_t |
+| small_1e6 (control) | 1e2 | 0.297 | >8 | never fires (0.835 @8) — **route-a**, healthy 5 Myr at all f |
+| fail_repro (5e9) | 1e2 | 0.003 | n/a | radiative θ ≤0.025 at all f; rides the PR#715 Eb≤0→momentum handoff identically with/without boost — **§8b acceptance PASSES** |
+| small_dense_highsfe | 1e6 | 0.717 | n/a | f=2: Eb≤0 handoff at t=0.045 WITHOUT firing; f=4/8: **NaN loss rows** then handoff+collapse — the known dense-edge (nCore 1e6) stiffness, now under boost |
+
+**Headline results:**
+
+1. **The blowout metric under-read diffuse θ by ~2× — 📏 rule 2 vindicated.** large_diffuse θ₀ = 0.535
+   with the peak at t≈4.9 Myr (vs 0.17–0.25 at blowout). Consequence: **the diffuse GMC fires at
+   f_mix=4**, not the f≈60 the contaminated blowout calibration demanded. The route-a boundary moves
+   far down.
+2. **θ₁-collapse law for `multiplier`:** over the 5 fired configs,
+   **log₁₀ f_fire = 0.142 + 1.824·log₁₀(0.95/θ₀)**, i.e. **f_fire ≈ 1.4·(0.95/θ₀)^1.8** — a leverage
+   θ ∝ f^0.55, ~2× kappa's 0.27 (no structural back-reaction to eat the boost). Same functional form
+   as §9's law, different constants — knob-specific, as the KNOB CORRECTION predicted.
+3. **A single physical f_mix ≈ 4 fires the whole normal-GMC band** (n=1e2–1e5, masses 1e5–1e7, incl.
+   the diffuse cloud) with θ_max at fire 0.96–1.04 — at/just over the Lancaster 0.9–0.99 band edge
+   (segment-granularity overshoot, cf. §9's median 1.02). f_mix=2 fires only simple_cluster.
+4. **Route-a is real and de-conflated:** small_1e6 (same nCore=1e2 as the diffuse config!) stays
+   energy-driven through f=8 — f_fire is set by θ₀ (mass/SFE/structure), not by density alone,
+   confirming §9's de-conflation with the correct knob.
+5. **NEW failure mode — fire-then-recollapse:** at f≥4 every dense-core config that fires promptly
+   shell_collapses (0.05–2.5 Myr). Only simple_cluster@2 and the diffuse@4/8 fire AND survive to
+   5 Myr. This is §8a's recollapse question resurfacing from EMERGENT cooling (not imposed θ) —
+   whether post-fire recollapse is physical (dense core re-accretes) is a **maintainer physics call**
+   before f_mix is pinned.
+6. **NEW failure mode — over-boost Eb-drain:** midrange@8 reaches momentum via the Eb≤0 handoff
+   WITHOUT the trigger firing (θ_max 0.923, `fired=False`); the dense edge does the same at every
+   boosted f. `multiplier` has an over-boost ceiling — gentler than kappa's dead windows (§9a), but
+   the same lesson: more boost ≠ more transition.
+
+**Open after this section:** (a) pin f_mix — 4 fires the band but recollapses the dense cores; 2 is
+gentle but only fires the compact config; the answer depends on the recollapse physics call and/or a
+finer f∈(2,4) bracket for the 0.85–0.98 near-miss arms; (b) the dense-edge (nCore 1e6) stiffness
+under boost needs its own diagnosis (NaN loss rows on accepted steps); (c) large_diffuse@2 grazing
+0.9552 exactly at stop_t=5 suggests a t>5 Myr fire — a stop_t=8 spot-check would bracket the diffuse
+f_fire between 2 and 4.

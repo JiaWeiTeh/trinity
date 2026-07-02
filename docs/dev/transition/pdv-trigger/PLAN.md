@@ -214,6 +214,20 @@ for provenance.*
 > on `dictionary.jsonl`. `F_KAPPA_FUNCTIONAL_FORM.md` §10/§14 flagged accordingly.
 
 **Status ledger (newest first):**
+- **2026-07-02 (✅ THETA5 MATRIX RAN — the first fully rule-compliant `multiplier` calibration →
+  `FINDINGS.md §10`, `runs/data/theta5_{summary,calibration}.csv`).** 32/32 arms reached 5 Myr or a
+  physics end on Helix; θ = θ_max from `dictionary.jsonl`. **OPEN(1) is CLOSED.** Results: blowout
+  under-read diffuse θ by ~2× (large_diffuse θ₀=0.535, peak at t≈4.9 — the old "diffuse needs f≈60"
+  is dead; **it fires at f_mix=4** and survives to 5 Myr); multiplier θ₁-collapse law
+  **f_fire ≈ 1.4·(0.95/θ₀)^1.8** (leverage θ∝f^0.55, knob-specific vs kappa's 0.27); **f_mix=4 fires
+  the whole normal-GMC band** (θ_max at fire 0.96–1.04), f_mix=2 only the compact config; route-a =
+  small_1e6 (de-conflated: same nCore as the firing diffuse config) + fail_repro (handoff untouched —
+  §8b acceptance PASSES). **New failure modes:** fire-then-recollapse (every dense-core config that
+  fires at f≥4 shell_collapses — §8a's question, now emergent → **maintainer physics call before
+  pinning f_mix**) and over-boost Eb-drain (midrange@8 reaches momentum WITHOUT firing; dense edge
+  NaNs — multiplier's gentler analog of §9a's dead windows). **NEXT: pin f_mix (2 vs 4 vs a finer
+  (2,4] bracket) pending the recollapse call; diffuse stop_t=8 spot-check; dense-edge stiffness
+  ticket.**
 - **2026-07-01 (RECONCILIATION: pt2⇄pt3 merged, contamination register created, 📏 protocol codified,
   `multiplier` re-calibration matrix committed).** The parallel `feature/transition-trigger-pt3` line (819-sweep
   fold-in + `cooling_boost_kappa='auto'`) was merged into the post-PR#717 mainline; its FINDINGS section
