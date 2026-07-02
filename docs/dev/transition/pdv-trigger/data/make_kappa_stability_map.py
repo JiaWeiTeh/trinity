@@ -95,8 +95,9 @@ def main():
         f"(theta_max 0.5331 = sec8e's ~0.53)."
     )
     out_path = os.path.join(_HERE, "kappa_stability_map.csv")
+    stamp_line = stamp(__file__)  # BEFORE opening: writing the output dirties the tree
     with open(out_path, "w", newline="") as fh:
-        fh.write(stamp(__file__) + "\n")
+        fh.write(stamp_line + "\n")
         fh.write(header + "\n")
         w = csv.DictWriter(fh, fieldnames=list(out_rows[0].keys()))
         w.writeheader()

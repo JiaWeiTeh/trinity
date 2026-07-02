@@ -162,8 +162,9 @@ def main(argv):
         rows = list(csv.DictReader(line for line in fh if not line.lstrip().startswith("#")))
     out, collapse = reduce_rows(rows)
     out_path = csv_in.parent / "theta5_calibration.csv"
+    stamp_line = stamp(__file__)  # BEFORE opening: writing the output dirties the tree
     with out_path.open("w", newline="") as fh:
-        fh.write(stamp(__file__) + "\n")
+        fh.write(stamp_line + "\n")
         w = csv.DictWriter(fh, fieldnames=list(out[0].keys()))
         w.writeheader()
         w.writerows(out)

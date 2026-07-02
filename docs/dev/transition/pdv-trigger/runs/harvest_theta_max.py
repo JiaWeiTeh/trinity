@@ -121,8 +121,9 @@ def main(argv):
     rows.sort(key=lambda r: r["run_name"])
     if csv_out:
         csv_out.parent.mkdir(parents=True, exist_ok=True)
+        stamp_line = stamp(__file__)  # BEFORE opening: writing the output dirties the tree
         with csv_out.open("w", newline="") as fh:
-            fh.write(stamp(__file__) + "\n")
+            fh.write(stamp_line + "\n")
             w = csv.DictWriter(fh, fieldnames=COLUMNS)
             w.writeheader()
             w.writerows(rows)
