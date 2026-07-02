@@ -1,0 +1,9 @@
+model_name             simple_cluster__mult4p5
+mCloud                 1e5
+sfe                    0.3
+stop_t                 5
+cooling_boost_mode     multiplier
+cooling_boost_fmix     4.5
+log_console            False
+log_file               True
+path2output            outputs/theta5b/simple_cluster__mult4p5

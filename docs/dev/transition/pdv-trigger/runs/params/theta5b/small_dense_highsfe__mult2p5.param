@@ -1,0 +1,13 @@
+model_name             small_dense_highsfe__mult2p5
+mCloud                 1e4
+nCore                  1e6
+rCore                  0.1
+sfe                    0.5
+dens_profile           densPL
+densPL_alpha           0
+stop_t                 5
+cooling_boost_mode     multiplier
+cooling_boost_fmix     2.5
+log_console            False
+log_file               True
+path2output            outputs/theta5b/small_dense_highsfe__mult2p5

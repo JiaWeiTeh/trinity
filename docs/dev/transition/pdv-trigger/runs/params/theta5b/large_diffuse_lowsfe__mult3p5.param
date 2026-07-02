@@ -1,0 +1,13 @@
+model_name             large_diffuse_lowsfe__mult3p5
+mCloud                 1e7
+nCore                  1e2
+rCore                  1
+sfe                    0.01
+dens_profile           densPL
+densPL_alpha           0
+stop_t                 5
+cooling_boost_mode     multiplier
+cooling_boost_fmix     3.5
+log_console            False
+log_file               True
+path2output            outputs/theta5b/large_diffuse_lowsfe__mult3p5

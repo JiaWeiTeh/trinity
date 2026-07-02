@@ -158,6 +158,36 @@ as documented opt-in overrides** (`THETA_ELBADRY_SPEC.md`; FINDINGS §9 flags). 
 `HIMASS_HANDOFF_PLAN.md` (the PR #715 handoff that carries the massive clouds) · `CONTAMINATION.md` (what is
 quotable).
 
+**REFEREE DEFENSE (2026-07-02) — the two questions a referee will ask, and the tests that answer them.**
+Committed, ready-to-run ammunition: the **theta5b matrix** (`runs/make_theta5b_params.py` →
+`runs/params/theta5b/`, 43 params validated through `read_param`; `runs/run_theta5b.sbatch`, array 1-43,
+~same cost as theta5). Storyline treatment: `pdvtrigger_report.html` §16.2.
+
+*Q1 — "why exactly f_mix=4? are 2.5/3.4/4.7 workable?"* Today's honest answer: 4 is a **grid point**, defended
+by the law (the hardest configs need 4.3/4.0/3.9) as the **minimal single constant that fires the band**, with
+a workable window [~4, <8) bounded above by the over-boost ceiling. theta5b turns that into measurement:
+
+| theta5b arm | what it measures | referee answer it produces |
+|---|---|---|
+| f ∈ {2.5, 3, 3.5} × 8 configs | does anything below 4 fire pl2_steep/be_sphere (law says no: 4.3/4.0)? does 2.5–3 fire midrange (law says yes: 2.9)? | per-config f_fire to ±0.25–0.5 → the measured **window lower edge**; tests the law's out-of-sample accuracy |
+| f ∈ {4.5, 5} × 8 configs | window upper side: same fire set as 4? recollapse worsens? Eb-drain onset? | "conclusions are insensitive to f within [win_lo, win_hi]; 4 is a round representative" — the sentence the paper needs |
+| large_diffuse stop_t=8 at f ∈ {1, 2, 2.5} | the θ=0.9552-at-exactly-t=5 graze; native peak t≈4.9 | whether the diffuse f_fire is really (2,4] or drops to ≈2 given time — and whether stop_t=5 truncates the diffuse peak (📏 rule-1 check on itself) |
+
+*Q2 — "why a constant f and not f(cloud properties)?"* Four rows, each independently sufficient; the decisive
+test is out-of-sample prediction (fit the θ₁-collapse law on a config subset, predict the held-out f_fire
+brackets from θ₀ alone — a per-cloud f(properties) fit cannot beat it without over-fitting):
+
+| prescription | free params | physical sign | measured behavior | falsifiable? | verdict |
+|---|---|---|---|---|---|
+| **constant f (+ θ₁-collapse law)** | 1 | n/a (physical cap 2–8, F_KAPPA §11) | fires the normal-GMC band at f=4; route-a emerges from θ₀ (§10) | yes: θ₀ > 0.95/f^0.55 ⇒ fires | **current choice** |
+| f(n_H) power law | 2 | ❌ wrong sign (κ_mix/κ_Sp ∝ n RISES; the chase-target f(n) falls) | REFUTED by the 819-sweep: 32× spread at fixed n (§9) | weakly | dead |
+| `'auto'` 3-axis lookup | 63 cells | ❌ chases the target (fires everything by construction) | interpolates into kappa dead windows (§9a); calibrated at stop_t=2 (⛔ #4) | no (fits anything) | opt-in convenience only |
+| local κ_mix(n,T) (Rung B) | 1 (λδv=3 pinned) | ✅ the physically faithful form | port SHELVED (saturation, solver failures — KMIX_SELFCONSISTENT); S0–S4 re-port ladder exists | yes | the *physics narrative*; revisit only if multiplier fails a gate |
+
+The constant-f story the paper can defend: *all cloud-property dependence flows through θ₀, which the solved
+bubble already computes; a single physical f then lets the physics select the fire set (route-a) instead of
+forcing it — one parameter, one falsifiable prediction.*
+
 ---
 
 *Historical context below (pre-2026-06-30 κ_eff/κ_mix framing) — superseded by the canonical block above; kept

@@ -1,0 +1,11 @@
+model_name             large_diffuse_lowsfe_t8__none
+mCloud                 1e7
+nCore                  1e2
+rCore                  1
+sfe                    0.01
+dens_profile           densPL
+densPL_alpha           0
+stop_t                 8
+log_console            False
+log_file               True
+path2output            outputs/theta5b/large_diffuse_lowsfe_t8__none
