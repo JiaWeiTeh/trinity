@@ -37,7 +37,12 @@ resolver), PR #715 handoff, Pb-collapse guard, `_MINT_LOG_TOL` log gate.
 
 1. **this file** — the map (incl. the §1.5 staleness audit below).
 2. **`CONTAMINATION.md`** — ⛔ what you may and may not quote (rules (a)–(e), the full artifact register,
-   the open §8e-vs-§9 tension). **Read before quoting ANY number from this workstream.**
+   the §8e-vs-§9 tension resolution). **Read before quoting ANY number from this workstream.**
+   **+ `MANIFEST.md`** — *which version is this file?* Generated ledger (`python make_manifest.py`): per
+   artifact, last-updated date + commit, its producing script, and a ⚠️ STALE-RISK flag whenever a builder
+   changed after its committed output (an output from an older builder version). Recency ≠ quotability —
+   use MANIFEST for "is this current?", CONTAMINATION for "may I quote it?". **Regenerate the manifest in
+   the same commit as any artifact change.**
 3. `PLAN.md` → the **⭐⭐ CANONICAL SYNTHESIS + VERDICT** block (the current direction; supersedes all earlier
    synthesis) + the dated status ledger (newest first).
 4. `FINDINGS.md` §8c (why enforce-θ was demoted), §8e (knob validation: kappa breaks; multiplier tentative),
