@@ -11,10 +11,9 @@
 #SBATCH --partition=cpu-single
 #SBATCH --account=bw22J006
 #SBATCH --export=NONE
-#SBATCH --array=1-32
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=2G
-#SBATCH --time=16:00:00                     # 5 Myr diffuse runs are the long pole (~11 h in-container; FINDINGS §8d)
+#SBATCH --time=1:30:00                     # 5 Myr diffuse runs are the long pole (~11 h in-container; FINDINGS §8d)
 #SBATCH --output=/gpfs/bwfor/work/ws/hd_cq295-trinity/jobs_theta5/logs/%A_%a.out
 
 module load devel/miniforge
