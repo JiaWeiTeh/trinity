@@ -13,8 +13,8 @@ Figures (workstream root):
   theta5_target_vs_emergent.png F4 El-Badry target vs native and f=4 emergent θ(n)
   theta5_knob_choice.png       F5 kappa breakdown windows vs multiplier monotonicity
 Also writes runs/data/theta5_fmix_scorecard.csv — the quantitative per-config margin table
-for the f_mix pin (NOT a decision: f_mix=4 is the leading candidate, gated on the
-fire-then-recollapse physics call — FINDINGS §10 open items).
+for the f_mix pin. f_mix=4 was ADOPTED 2026-07-02 (maintainer ruling: firing into momentum
+and then recollapsing is acceptable physics — PLAN ledger); theta5b refines the window.
 
 REPRODUCE:
     python docs/dev/transition/pdv-trigger/data/make_theta5_figures.py

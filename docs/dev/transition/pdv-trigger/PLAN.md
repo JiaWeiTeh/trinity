@@ -115,8 +115,11 @@ primary) ≠ Rung B (structural κ_mix, SHELVED) — they are different mechanis
 established real value — a verified closed form, the n-mapping, the source-verified `(1−θ)` budget, and the
 proof that *enforcing* θ double-counts PdV — but its conclusion is that enforcement is the wrong primitive.
 Rung A (`multiplier`) is already shipped in production, gated default-off byte-identical. **The calibration ran
-(§10, 2026-07-02); the remaining work is the f_mix pin** — gated on the fire-then-recollapse physics call
-(+ the diffuse stop_t=8 spot-check and the dense-edge NaN ticket) — not a new mechanism.
+(§10, 2026-07-02) and the recollapse gate is CLEARED (maintainer ruling, same day: firing into the momentum
+phase and then recollapsing is acceptable physics — an outcome, not a failure mode). f_mix = 4 is the ADOPTED
+working value** (production default stays `cooling_boost_mode='none'`; 4 is the documented recommended
+setting), subject only to the theta5b fine bracket (the referee sensitivity statement) and the diffuse
+stop_t=8 arm — not a new mechanism.
 
 **SETTLED (2026-07-01):** θ is the master parameter (3-way identical) & is an **output** · knob = cooling
 **mechanism** (`multiplier`/f_κ), not enforced θ · El-Badry/Lancaster = **calibration target** for emergent θ ·
@@ -131,11 +134,12 @@ re-derived on the `multiplier` knob.** The 📏 standard-protocol matrix (8 conf
 `multiplier`: **f_fire ≈ 1.4·(0.95/θ₀)^1.8**; **f_mix=4 fires the whole normal-GMC band incl. the diffuse
 cloud**; route-a = small_1e6 + fail_repro (θ₀-based, not a density threshold). (The §14 θ₀/p — fit on
 `cooling_boost_kappa`, blowout snapshot, falsified slope, R6 observer — remain void, `CONTAMINATION.md`
-⛔ #1–#2.) **Residue, now the open item: pin the single f_mix (2 vs 4 vs a finer (2,4] bracket), gated on the
-fire-then-recollapse physics call** (§10 point 5) — plus the diffuse stop_t=8 spot-check and the dense-edge
-(nCore 1e6) NaN stiffness ticket. (2) pin **f_max** — concrete state after §10: the bracket is **2-vs-4**
-(4 fires the band but dense cores fire-then-recollapse; 2 fires only the compact config), recollapse-gated;
-structural κ_mix that would justify more at the diffuse end stays SHELVED. (3) ✅ confirmed by theta5 — the
+⛔ #1–#2.) **Residue → ✅ gate CLEARED (2026-07-02, maintainer ruling): momentum-then-recollapse is
+acceptable physics ("completely fine"), so f_mix = 4 is ADOPTED as the working value**; the theta5b fine
+bracket + diffuse stop_t=8 arm remain as the referee sensitivity refinement (they may sharpen the window,
+not the decision). Dense-edge (nCore 1e6) NaN stiffness ticket still open. (2) pin **f_max** — resolved with
+the same ruling: 4 (the minimal band-firing constant, inside the physical 2–8 window); theta5b measures the
+window edges; structural κ_mix that would justify more at the diffuse end stays SHELVED. (3) ✅ confirmed by theta5 — the
 massive cloud hands off cleanly under `multiplier` at every boosted f (fail_repro handoff untouched by the
 boost — §10; earlier shown for the gated/default path, `fail_repro` → 500 pc). (4) ✅ **RESOLVED (same day, from committed data — `FINDINGS.md §9a`)**: the §8e⇄§9 kappa tension was
 non-monotonic breakdown windows in f_κ (fire 4–6, dead 8–12, fire 16+ on the simple_cluster cell; §8e's
@@ -146,9 +150,10 @@ interpolation-into-a-dead-window caveat. (5) decide `'auto'` (pt3): revalidate i
 **BEST PATH FORWARD (updated 2026-07-02):** (i) **Rung A `multiplier` is already in production** (gated
 default-off — `grep cooling_boost_mode trinity/`). (ii) ✅ **DONE (2026-07-02 — §10):** the 📏 theta5 matrix ran
 on Helix (32/32 compliant) and re-derived the emergent-θ calibration on the *shippable* knob — θ measured only
-as **θ_max over ≥5 Myr from `dictionary.jsonl`** (never blowout, never the observer). (iii) **Pin the single
-physical f_mix** (leading candidate 4 — NOT yet decided; gated on the fire-then-recollapse physics call, ± a
-finer f∈(2,4] bracket and the diffuse stop_t=8 spot-check) and publish the **MEASURED θ₀-based route-a split**
+as **θ_max over ≥5 Myr from `dictionary.jsonl`** (never blowout, never the observer). (iii) ✅ **PINNED
+(2026-07-02): f_mix = 4** — the recollapse gate cleared by maintainer ruling (momentum-then-recollapse is
+fine physics); theta5b refines the workable window for the referee statement. Publish the **MEASURED
+θ₀-based route-a split**
 (§10: route-a = small_1e6 + fail_repro; small_1e6 shares nCore=1e2 with the firing diffuse config, so the
 boundary is NOT a clean density threshold — the earlier "n ≳ 48 cm⁻³" framing is dropped).
 (iv) Massive clouds keep riding the PR #715 handoff untouched (§8b lesson). (v) Keep **θ_elbadry and `'auto'`
@@ -253,6 +258,16 @@ for provenance.*
 > on `dictionary.jsonl`. `F_KAPPA_FUNCTIONAL_FORM.md` §10/§14 flagged accordingly.
 
 **Status ledger (newest first):**
+- **2026-07-02 (✅ MAINTAINER RULING — momentum-then-recollapse is acceptable physics; f_mix = 4 ADOPTED).**
+  Maintainer, verbatim intent: a cloud that fires `cooling_balance`, hands off into the momentum phase, and
+  subsequently recollapses is "completely fine" — fire-then-recollapse is an **outcome**, not a failure mode.
+  Consequence: the f_mix decision gate (§10 point 5) is cleared and **f_mix = 4 is the adopted working value**
+  (minimal single constant that fires the normal-GMC band; production default stays `cooling_boost_mode='none'`
+  — 4 is the documented recommended setting). Still flagged as pathologies: the f=8 over-boost Eb-drain
+  (momentum WITHOUT firing) and the dense-edge NaN rows. theta5b (fine bracket + diffuse stop_t=8) remains
+  queued as the REFEREE-DEFENSE refinement — it measures the workable window around 4, it no longer gates the
+  decision. Docs reconciled: ⭐⭐ VERDICT/OPEN/BEST-PATH, INDEX §0/§3, FINDINGS §10, REPRODUCE #29,
+  CONTAMINATION register, storyline ch.16, figure/scorecard builder wording.
 - **2026-07-02 (✅ THETA5 MATRIX RAN — the first fully rule-compliant `multiplier` calibration →
   `FINDINGS.md §10`, `runs/data/theta5_{summary,calibration}.csv`).** 32/32 arms reached 5 Myr or a
   physics end on Helix; θ = θ_max from `dictionary.jsonl`. **OPEN(1) is CLOSED.** Results: blowout

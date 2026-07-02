@@ -1046,8 +1046,8 @@ whole normal-GMC band &mdash; including the diffuse cloud &mdash; at \(\theta_{\
 <b>(4)</b> route-a survives, de-conflated: <code>small_1e6</code> (same \(n_{\rm core}\) as the firing diffuse
 config) never fires through \(f{=}8\), and <code>fail_repro</code> rides the PR#715 handoff untouched;
 <b>(5)</b> two new failure modes: <i>fire-then-recollapse</i> (dense cores at \(f\!\ge\!4\)) and <i>over-boost
-\(E_b\)-drain</i> (momentum without firing at \(f{=}8\)). <b>\(f_{\rm mix}\) is NOT yet pinned</b> &mdash; 4 is the
-leading candidate, gated on the recollapse physics call.</p></div>
+\(E_b\)-drain</i> (momentum without firing at \(f{=}8\)). <b>\(f_{\rm mix}{=}4\) was ADOPTED on 2026-07-02</b> &mdash; the maintainer ruled that firing into the
+momentum phase and then recollapsing is acceptable physics (an outcome, not a failure mode).</p></div>
 
 <figure>__FIG_T5ARMS__<figcaption><b>The matrix.</b> Emergent \(\theta_{\max}\) (5 Myr) vs \(f_{\rm mix}\), all 8
 configs, colored by outcome class; filled markers fired <code>cooling_balance</code>. At \(f_{\rm mix}{=}4\) every
@@ -1112,11 +1112,13 @@ predicts nothing. The referee-grade test: fit the law on a config subset, <b>pre
 \(f_{\rm fire}\) brackets from \(\theta_0\) alone, and show the constant-\(f\)+law model matches the measurements
 as well as any multi-parameter \(f(\text{properties})\) fit.</p>
 
-<div class="box over"><span class="lab">Open &mdash; what still gates the pin</span> (1) the
-<b>fire-then-recollapse physics call</b>: at \(f{=}4\) every dense-core config fires then shell-collapses within
-0.05&ndash;2.5 Myr &mdash; acceptable re-accretion physics, or over-boost? (2) the theta5b fine bracket + long
-diffuse arm; (3) the dense-edge (\(n_{\rm core}{=}10^6\)) NaN-loss stiffness diagnosis. Until then every doc
-phrases \(f_{\rm mix}{=}4\) as the <i>leading candidate</i>, not the decision.</div>
+<div class="box find"><span class="lab">Resolved &mdash; the pin (2026-07-02)</span> (1) the
+<b>fire-then-recollapse physics call is CLEARED</b>: the maintainer ruled that firing into the momentum phase
+and then recollapsing is acceptable physics &mdash; so <b>\(f_{\rm mix}{=}4\) is the adopted working value</b>
+(production default stays <code>none</code>; 4 is the documented recommended setting). Still open: (2) the
+theta5b fine bracket + long diffuse arm &mdash; now a <i>referee sensitivity refinement</i> (window edges), not a
+gate; (3) the dense-edge (\(n_{\rm core}{=}10^6\)) NaN-loss stiffness diagnosis; and the \(f{=}8\)
+\(E_b\)-drain (momentum <i>without</i> firing) remains the real over-boost pathology.</div>
 """
 
 SEC_REPRO = r"""

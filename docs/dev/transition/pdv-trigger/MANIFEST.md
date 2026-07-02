@@ -17,10 +17,55 @@
 |---|---|---|
 | 2026-07-02 `057cd96` | `data/fkappa_auto_verify.csv` | by `make_fkappa_auto_verify.py` |
 | 2026-07-02 `eb3fe6d` | `data/kappa_stability_map.csv` | by `make_kappa_stability_map.py` · 🕐 generated 2026-07-02T12:05:54Z | builder make_kappa_stability_map.py | code 8a27ba9 |
+| 2026-07-02 `9666e45` | `pdvtrigger_report.html` | by `make_pdvtrigger_report.py` |
 | 2026-07-02 `cc479ba` | `runs/data/theta5_calibration.csv` | by `make_theta5_calibration.py` · 🕐 generated 2026-07-02T14:00:21Z | builder make_theta5_calibration.py | code ad15816 |
 | 2026-07-02 `1b9717a` | `runs/data/theta5_fmix_scorecard.csv` | producer unknown (HPC/hand-made); refs: `make_theta5_figures.py`, `make_pdvtrigger_report.py` · 🕐 generated 2026-07-02T14:23:13Z | builder make_theta5_figures.py | code cc479ba+dirty |
 | 2026-07-02 `0082bef` | `runs/data/theta5_summary.csv` | producer unknown (HPC/hand-made); refs: `make_theta5_figures.py`, `make_pdvtrigger_report.py` · 🕐 generated 2026-07-02T13:50:54Z | builder harvest_theta_max.py | code 23f623d3+dirty |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/be_sphere__mult2p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/be_sphere__mult3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/be_sphere__mult3p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/be_sphere__mult4p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/be_sphere__mult5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/fail_repro__mult2p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/fail_repro__mult3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/fail_repro__mult3p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/fail_repro__mult4p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/fail_repro__mult5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/large_diffuse_lowsfe__mult2p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/large_diffuse_lowsfe__mult3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/large_diffuse_lowsfe__mult3p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/large_diffuse_lowsfe__mult4p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/large_diffuse_lowsfe__mult5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/large_diffuse_lowsfe_t8__mult2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/large_diffuse_lowsfe_t8__mult2p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/large_diffuse_lowsfe_t8__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/midrange_pl0__mult2p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/midrange_pl0__mult3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/midrange_pl0__mult3p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/midrange_pl0__mult4p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/midrange_pl0__mult5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/pl2_steep__mult2p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/pl2_steep__mult3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/pl2_steep__mult3p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/pl2_steep__mult4p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/pl2_steep__mult5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/simple_cluster__mult2p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/simple_cluster__mult3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/simple_cluster__mult3p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/simple_cluster__mult4p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/simple_cluster__mult5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/small_1e6__mult2p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/small_1e6__mult3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/small_1e6__mult3p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/small_1e6__mult4p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/small_1e6__mult5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/small_dense_highsfe__mult2p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/small_dense_highsfe__mult3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/small_dense_highsfe__mult3p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/small_dense_highsfe__mult4p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/small_dense_highsfe__mult5.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-02 `a1501a3` | `runs/run_theta5.sbatch` | producer unknown (HPC/hand-made); refs: `make_theta5_params.py` |
+| 2026-07-02 `9666e45` | `runs/run_theta5b.sbatch` | producer unknown (HPC/hand-made); refs: `make_theta5b_params.py` |
 | 2026-07-02 `1b9717a` | `theta5_arms.png` | producer unknown (HPC/hand-made); refs: `make_theta5_figures.py`, `make_pdvtrigger_report.py` |
 | 2026-07-02 `1b9717a` | `theta5_collapse_law.png` | producer unknown (HPC/hand-made); refs: `make_theta5_figures.py`, `make_pdvtrigger_report.py` |
 | 2026-07-02 `1b9717a` | `theta5_knob_choice.png` | producer unknown (HPC/hand-made); refs: `make_theta5_figures.py`, `make_pdvtrigger_report.py` |
@@ -89,7 +134,6 @@
 | 2026-06-30 `09d3816` | `kmix_selfconsistent.png` | by `make_kmix_selfconsistent.py` |
 | 2026-06-30 `12f9ff4` | `kmix_theta_trajectory.png` | by `make_kmix_theta_trajectory.py` |
 | 2026-06-30 `25cf9bd` | `nmap_verify.png` | by `make_nmap_verify.py` |
-| 2026-06-30 `6970ecd` | `pdvtrigger_report.html` | by `make_pdvtrigger_report.py` |
 | 2026-06-30 `72d6900` | `runs/data/harvest_cal_compact__k1.csv` | producer unknown (HPC/hand-made); refs: `make_kmix_prototype.py` |
 | 2026-06-30 `72d6900` | `runs/data/harvest_cal_dense__ek1.csv` | producer unknown (HPC/hand-made); refs: `make_kmix_prototype.py` |
 | 2026-06-30 `72d6900` | `runs/data/harvest_cal_diffuse__k1.csv` | producer unknown (HPC/hand-made); refs: `make_kmix_prototype.py` |
@@ -194,47 +238,3 @@
 | 2026-06-29 `18aea49` | `storyline_figs/fig_fmix_convention.png` | producer unknown (HPC/hand-made); refs: `make_pdvtrigger_report.py`, `make_storyline_figs.py` |
 | 2026-06-29 `18aea49` | `storyline_figs/fig_regime_split.png` | producer unknown (HPC/hand-made); refs: `make_pdvtrigger_report.py`, `make_storyline_figs.py` |
 | 2026-06-29 `18aea49` | `theta_vs_density.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_overlay.py`, `make_fmix_spread_plot.py` |
-| None `None` | `runs/params/theta5b/be_sphere__mult2p5.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5b/be_sphere__mult3.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5b/be_sphere__mult3p5.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5b/be_sphere__mult4p5.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5b/be_sphere__mult5.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5b/fail_repro__mult2p5.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5b/fail_repro__mult3.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5b/fail_repro__mult3p5.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5b/fail_repro__mult4p5.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5b/fail_repro__mult5.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5b/large_diffuse_lowsfe__mult2p5.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5b/large_diffuse_lowsfe__mult3.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5b/large_diffuse_lowsfe__mult3p5.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5b/large_diffuse_lowsfe__mult4p5.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5b/large_diffuse_lowsfe__mult5.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5b/large_diffuse_lowsfe_t8__mult2.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5b/large_diffuse_lowsfe_t8__mult2p5.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5b/large_diffuse_lowsfe_t8__none.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5b/midrange_pl0__mult2p5.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5b/midrange_pl0__mult3.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5b/midrange_pl0__mult3p5.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5b/midrange_pl0__mult4p5.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5b/midrange_pl0__mult5.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5b/pl2_steep__mult2p5.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5b/pl2_steep__mult3.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5b/pl2_steep__mult3p5.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5b/pl2_steep__mult4p5.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5b/pl2_steep__mult5.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5b/simple_cluster__mult2p5.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5b/simple_cluster__mult3.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5b/simple_cluster__mult3p5.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5b/simple_cluster__mult4p5.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5b/simple_cluster__mult5.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5b/small_1e6__mult2p5.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5b/small_1e6__mult3.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5b/small_1e6__mult3p5.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5b/small_1e6__mult4p5.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5b/small_1e6__mult5.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5b/small_dense_highsfe__mult2p5.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5b/small_dense_highsfe__mult3.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5b/small_dense_highsfe__mult3p5.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5b/small_dense_highsfe__mult4p5.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5b/small_dense_highsfe__mult5.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/run_theta5b.sbatch` | producer unknown (HPC/hand-made); refs: `make_theta5b_params.py` |

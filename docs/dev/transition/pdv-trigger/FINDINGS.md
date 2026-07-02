@@ -957,9 +957,10 @@ F_KAPPA §14 (`CONTAMINATION.md` ⛔ #1–#3).
    confirming §9's de-conflation with the correct knob.
 5. **NEW failure mode — fire-then-recollapse:** at f≥4 every dense-core config that fires promptly
    shell_collapses (0.05–2.5 Myr). Only simple_cluster@2 and the diffuse@4/8 fire AND survive to
-   5 Myr. This is §8a's recollapse question resurfacing from EMERGENT cooling (not imposed θ) —
-   whether post-fire recollapse is physical (dense core re-accretes) is a **maintainer physics call**
-   before f_mix is pinned.
+   5 Myr. This is §8a's recollapse question resurfacing from EMERGENT cooling (not imposed θ).
+   **→ ✅ RULED (maintainer, 2026-07-02): acceptable physics** — firing into the momentum phase and then
+   recollapsing is "completely fine"; fire-then-recollapse is an outcome class, **not** a failure mode.
+   (The f=8 Eb-drain-without-firing of point 6 and the dense-edge NaNs remain the actual pathologies.)
 6. **NEW failure mode — over-boost Eb-drain:** midrange@8 reaches momentum via the Eb≤0 handoff
    WITHOUT the trigger firing (θ_max 0.923, `fired=False`); the dense edge does the same at every
    boosted f. `multiplier` has an over-boost ceiling — gentler than kappa's dead windows (§9a), but
@@ -972,9 +973,9 @@ matrix, outcome-classed), `theta5_collapse_law.png` (the law + kappa's for contr
 monotonicity); quantitative margins in `runs/data/theta5_fmix_scorecard.csv` (per config: θ₀, measured
 f_fire bracket, law-predicted f_fire, θ_max and fate at f=4).
 
-**Open after this section:** (a) pin f_mix — 4 fires the band but recollapses the dense cores; 2 is
-gentle but only fires the compact config; the answer depends on the recollapse physics call and/or a
-finer f∈(2,4) bracket for the 0.85–0.98 near-miss arms; (b) the dense-edge (nCore 1e6) stiffness
-under boost needs its own diagnosis (NaN loss rows on accepted steps); (c) large_diffuse@2 grazing
-0.9552 exactly at stop_t=5 suggests a t>5 Myr fire — a stop_t=8 spot-check would bracket the diffuse
-f_fire between 2 and 4.
+**Open after this section:** (a) ~~pin f_mix~~ **✅ f_mix = 4 ADOPTED (2026-07-02 maintainer ruling —
+momentum-then-recollapse is acceptable physics; PLAN ledger)**; the theta5b fine bracket
+(f∈{2.5,3,3.5,4.5,5}) remains as the referee sensitivity refinement, not a gate; (b) the dense-edge
+(nCore 1e6) stiffness under boost needs its own diagnosis (NaN loss rows on accepted steps);
+(c) large_diffuse@2 grazing 0.9552 exactly at stop_t=5 suggests a t>5 Myr fire — the committed
+theta5b stop_t=8 arms bracket the diffuse f_fire.
