@@ -32,8 +32,9 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-07-02):** mechanism identified from committed sweep data + code audit; live
-single-run reproduction in §4 (see status note there). This doc answers the maintainer's
+**Status (2026-07-02):** mechanism identified from committed sweep data + code audit, and
+**confirmed by live local reproduction** (§4: the solver converges to a *negative* dMdt root —
+condensation — and the gate refuses it). This doc answers the maintainer's
 challenge: *"are we sure f_κ is a no-go? I'm worried 'breaks non-monotonically' is a false
 inference — check vigorously, maybe assumptions/approximations/caps avoid the bugs."*
 **Verdict: the maintainer was right to be suspicious.** The "dead windows" are not physics
@@ -139,15 +140,47 @@ Two corollaries:
   eigenvalue problem — which is why theta5/theta5b arms cross θ = 0.95 and hand off cleanly
   (fire-vs-drain race aside, FINDINGS §11) while kappa arms crash at the same crossing.
 
-## 4. Live single-run reproduction
+## 4. Live single-run reproduction (ran 2026-07-02, local container; simple_cluster + `cooling_boost_kappa`, mechanism-only — θ from these runs is NOT calibration data)
 
-**Status: IN FLIGHT (2026-07-02)** — a local reproduction (simple_cluster, f_κ ∈ {1, 4, 8},
-stop_t=2, mechanism diagnosis only — θ from these runs is NOT calibration data) is running; this
-section gets its numbers when it lands. Expected signature per §2: warnings
-`beta-delta: no physical (dMdt>0) root at segment N …` starting at segment ~6, θ frozen ~0.53,
-`Implicit phase completed: max_segments` at t_final ≈ 0.44, exit 0.
+**The smoking gun, verbatim from the f_κ=8 log:**
 
-## 5. Instrumentation (added 2026-07-02, log-only, behavior-neutral)
+```
+WARNING | beta-delta: no physical (dMdt>0) root at segment 2 (t=3.410339e-03 Myr):
+non-physical dMdt=-84.76 at (beta=1…
+```
+
+The structure solve did not fail — it **converged to a negative-dMdt root** (−84.76 Msun/Myr;
+f_κ=7.5 gives −85.22, f_κ=16 gives −53.09 at the same epoch) and the acceptance gate refused it.
+The condensation branch exists and the solver finds it; the model just declines to walk it.
+
+| arm | no-root events | behavior |
+|---|---:|---|
+| f_κ=1 | 0 | healthy (wall-limited at t≈0.08 in 900 s — local runs are slow, not frozen) |
+| f_κ=4 | 0 | healthy, converged (t≈0.05 at timeout); long variant handed off Eb→0 → momentum → clean recollapse fate at t≈0.31 |
+| f_κ=7.5 | 6 | rejection burst from segment 2 (t=3.4e-3) |
+| f_κ=8 | 125 | bursts from segment 2; recovers between bursts; still implicit, θ≈0.52–0.53 through t≈0.35 (container died mid-run) — on course for the sweep's t_final≈0.44 grind exit |
+| f_κ=8 (legacy β-δ solver) | 0 | the legacy grid solver has no dMdt gate — the freeze is a hybr-gate semantic, θ 0.71 at t=0.014 |
+| f_κ=16 | 18 | same early-burst signature |
+| f_κ=8 + `MAX_SEGMENTS=40` monkeypatch | — | implicit exits early via max_segments → continues to momentum → **completes cleanly** (Eb→0, shell recollapse, proper end code). Proof-of-concept for fix #1: hand off instead of grinding and the run gets a well-formed fate. |
+
+Three readings that sharpen §3:
+
+- **The rejections are intermittent bursts, not a one-way seize** (f_κ=8: segments 2–6 at
+  t≈0.0034–0.0044, later consecutive clusters at t≈0.34–0.35). Between bursts the warm-start
+  recovers a dMdt>0 root and the run advances. The HPC "freeze" is the burst that never ends.
+- **The early-freeze mode and the on-approach mode are one mechanism.** The dMdt sign is set by
+  the *front's local* heating/cooling budget, not by global θ. Boosted κ at f≳7.5 pushes the
+  front into the condensing regime almost immediately (t≈0.003, θ still ~0.5 — the §8e
+  θ≈0.53 signature); unboosted or mildly boosted runs only get there when global θ→0.95 drags
+  the whole bubble to cooling balance (the 34/38 on-approach freezes). Same reversal, two roads.
+- **θ matches**: local f_κ=8 holds θ≈0.52–0.53 — the sweep's frozen θ_max=0.5331 on the
+  matching cell, reproduced a third time, on a third machine.
+
+Artifacts: session scratchpad `kappa_repro/` (params, logs, `interim_table.jsonl`;
+`drive_fk8_maxseg.py` for the monkeypatch driver). Scratchpad is local-only — the numbers above
+are the durable record, per the 💾 banner.
+
+## 5. Instrumentation (LANDED 2026-07-02, log-only, behavior-neutral; betadelta tests 28/28 pass)
 
 To make the freeze identifiable at a glance (and gone when fixed), the implicit runner now
 carries a **no-root streak tracker** and a **dMdt approach trace** (all logging-only; physics,

@@ -879,6 +879,11 @@ calibration contaminations (flag #1) and the dead-window interpolation risk (§9
 
 ## 9a. [data] The §8e⇄§9 kappa tension RESOLVED — breakdown is NON-MONOTONIC in f_κ (2026-07-01, no new sims)
 
+> **⚠️ Mechanism claim SUPERSEDED by §9b (2026-07-02).** The "interleaved firing bands /
+> breakdown windows" reading below over-read the data: the windows are solver crashes at the
+> evaporation→condensation domain boundary (+ an outlawed stop_t=2 horizon), not knob physics.
+> The knob-choice conclusion survives on the new grounds given in §9b.
+
 Read straight out of the committed `data/summary.csv` (the 819-run Helix sweep) — no new runs needed.
 Builder: `data/make_kappa_stability_map.py` → `data/kappa_stability_map.csv`.
 
@@ -918,6 +923,44 @@ end, still `implicit`, θ frozen sub-threshold). So:
 3. The "786/819 ok" sweep report over-reads: "ok" includes the 38 mid-implicit freezes (exit-0 runs that
    died early without firing). The fit's f_κ_fire values are unaffected (smallest *fired* f), but
    per-run health must be judged from `t_final`/`phase_final`, not the exit code.
+
+## 9b. [data+repro] §9a's "non-monotonic breakdown" re-examined — the freeze is the evaporation→condensation domain boundary, NOT physics bands (2026-07-02)
+
+The maintainer challenged §9a ("are we sure f_κ is a no-go? 'breaks non-monotonically' may be a
+false inference — check vigorously"). The challenge was **right**. Full treatment:
+`KAPPA_FREEZE_MECHANISM.md`; data: `data/make_kappa_freeze_autopsy.py` →
+`data/kappa_freeze_autopsy.csv`; live repro logs summarized in that doc's §4.
+
+1. **The freeze pre-exists the knob**: 1/819 sweep runs froze at f_κ=1.0 (unboosted). The rate
+   rises with f_κ (~1/63 → ~5–7/63): kappa aggravates, does not create.
+2. **34/38 freezes died at θ_max ≥ 0.8** (healthy no-fire median: 0.636) — crashes ON APPROACH
+   to the 0.95 crossing, i.e. would-fire runs, not cold windows.
+3. **All 23 "non-monotonic" arms decompose** into 12 froze-on-approach + 8 healthy-at-2-Myr with
+   θ_max 0.87–0.93 (stop_t=2 is an outlawed horizon; diffuse-fires-at-5.04-Myr precedent) +
+   3 froze-early. **Zero** arms ran healthy to a rule-compliant horizon and stayed cold.
+4. **Live repro smoking gun** (local, simple_cluster): at f_κ=7.5/8/16 the β–δ structure solve
+   *converges to a negative dMdt root* (−85.22/−84.76/−53.09 Msun/Myr at t≈3.4e-3 Myr) and the
+   `dMdt>0` acceptance gate (`get_betadelta.py:861-869`) refuses it; the runner holds state
+   (`run_energy_implicit_phase.py:835-845`) and, if the burst persists, grinds to `max_segments`
+   with θ frozen (f_κ=8 holds θ≈0.52–0.53 — §8e/§9a's 0.5331, reproduced a third time). The
+   legacy β–δ solver (no gate) shows zero events. A `MAX_SEGMENTS=40` monkeypatch run exits the
+   phase early and completes cleanly through momentum — proof-of-concept that
+   no-root ⇒ handoff semantics yields well-formed fates.
+5. **Physics identity**: dMdt is the eigenvalue of the conduction-front budget; when interface
+   radiative losses exceed conductive heating, evaporation physically reverses to condensation
+   (McKee & Cowie 1977; El-Badry+19 bubbles do this). Cooling balance IS that reversal condition
+   — the trigger's target regime is the gate's forbidden regime. Early-mode freezes are the same
+   reversal reached locally (boosted κ) before global θ catches up.
+
+**Supersessions (dated 2026-07-02):** §9a's *mechanism claim* ("interleaved firing bands and
+breakdown windows" as a knob property) is superseded — the windows are crash artifacts + an
+outlawed horizon. §9a's *practical conclusion* survives on new grounds: multiplier stays the
+production knob because it never touches the dMdt eigenvalue (structurally immune), and kappa
+stays un-shippable *until* the domain-boundary semantics are fixed (fix ladder in
+KAPPA_FREEZE_MECHANISM §7: no-root-streak ⇒ momentum handoff; continuation; saturated-conduction
+cap; condensation branch). Instrumentation landed (log-only): `freeze-watch` per-segment
+dMdt/θ trace, streak-demoted warnings + one-time freeze diagnosis at streak 50, frozen-state
+note on the completion line.
 
 ## 10. [data] The theta5 matrix RAN — first fully rule-compliant `multiplier` calibration (2026-07-02, Helix)
 

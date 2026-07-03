@@ -113,6 +113,11 @@ DT_SEGMENT_INIT = 5e-4  # Myr - initial segment duration
 DT_SEGMENT_MIN = 1e-4   # Myr - minimum segment duration
 DT_SEGMENT_MAX = 5e-2   # Myr - maximum segment duration
 MAX_SEGMENTS = 5000
+# No-physical-root streak logging (KAPPA_FREEZE_MECHANISM.md): loud one-time
+# diagnosis once a streak reaches FREEZE_STREAK; repeat holds re-warn every
+# REWARN_EVERY segments (DEBUG in between).
+NO_ROOT_FREEZE_STREAK = 50
+NO_ROOT_REWARN_EVERY = 500
 FOUR_PI = 4.0 * np.pi
 
 # Adaptive stepping parameters
@@ -731,6 +736,11 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
     betadelta_converged_count = 0
     betadelta_no_root_count = 0
 
+    # Consecutive no-physical-root streak (the frozen-implicit signature:
+    # docs/dev/transition/pdv-trigger/KAPPA_FREEZE_MECHANISM.md). Log-only.
+    no_root_streak = 0
+    no_root_streak_t0 = None
+
     # =============================================================================
     # Build events for safe termination
     # =============================================================================
@@ -834,15 +844,39 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         # physical segment.
         if betadelta_result.no_physical_root:
             betadelta_no_root_count += 1
-            logger.warning(
+            no_root_streak += 1
+            if no_root_streak == 1:
+                no_root_streak_t0 = t_now
+            # First hit of a streak warns (as before); repeats are DEBUG with a
+            # WARNING heartbeat, so a frozen phase no longer floods ~5000
+            # identical warnings while staying visible at the default level.
+            _nr_log = logger.warning if (
+                no_root_streak == 1 or no_root_streak % NO_ROOT_REWARN_EVERY == 0
+            ) else logger.debug
+            _nr_log(
                 f"beta-delta: no physical (dMdt>0) root at segment "
-                f"{segment_count} (t={t_now:.6e} Myr): "
+                f"{segment_count} (t={t_now:.6e} Myr, streak {no_root_streak}): "
                 f"{betadelta_result.no_root_reason}. Holding last physical "
                 f"dMdt={params['bubble_dMdt'].value:.3e} "
                 f"(Lgain={params['bubble_Lgain'].value:.3e}, "
                 f"Lloss={params['bubble_Lloss'].value:.3e}); implicit phase "
                 f"continues."
             )
+            if no_root_streak == NO_ROOT_FREEZE_STREAK:
+                logger.warning(
+                    f"beta-delta: {no_root_streak} consecutive segments with no "
+                    f"physical (dMdt>0) root since t={no_root_streak_t0:.6e} Myr "
+                    f"— the frozen-implicit signature: state (and theta) are "
+                    f"held at their last physical values (Lloss/Lgain="
+                    f"{params['bubble_Lloss'].value / max(params['bubble_Lgain'].value, 1e-300):.4f}) "
+                    f"while the phase grinds toward max_segments. The structure "
+                    f"root has likely crossed to dMdt<0 (conduction-front "
+                    f"condensation regime, McKee & Cowie 1977); see "
+                    f"docs/dev/transition/pdv-trigger/KAPPA_FREEZE_MECHANISM.md."
+                )
+        else:
+            no_root_streak = 0
+            no_root_streak_t0 = None
 
         # Update params with new beta/delta
         params['cool_beta'].value = beta
@@ -861,6 +895,13 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
             params['v_neg_frac_thick'].value = _inflow_frac_thickness(
                 getattr(bubble_props, 'bubble_v_arr', None),
                 getattr(bubble_props, 'bubble_r_arr', None))
+            # freeze-watch: grep-able approach trace for the dMdt->0 crossing
+            # (KAPPA_FREEZE_MECHANISM.md). DEBUG-only, one line per segment.
+            logger.debug(
+                f"freeze-watch: segment={segment_count} t={t_now:.6e} "
+                f"dMdt={params['bubble_dMdt'].value:.6e} "
+                f"Lloss/Lgain={params['bubble_Lloss'].value / max(params['bubble_Lgain'].value, 1e-300):.4f}"
+            )
 
         # Save residual diagnostics to dictionary (after ODE, not during)
         params['betadelta_converged'].value = betadelta_result.converged
@@ -1370,6 +1411,12 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
     completion_log = logger.warning if termination_reason == "unknown" else logger.info
     completion_log(f"Implicit phase completed: {termination_reason}")
     completion_log(f"  Final time: {t_now:.6e} Myr, Segments: {segment_count}")
+    if no_root_streak > 0:
+        completion_log(
+            f"  Phase ended during a {no_root_streak}-segment no-physical-root "
+            f"streak (since t={no_root_streak_t0:.6e} Myr): the held state is "
+            f"frozen, not solved — see KAPPA_FREEZE_MECHANISM.md"
+        )
 
     # Beta-delta solver summary: surface unconverged / no-physical-root segments
     # at phase end (per-segment detail is DEBUG, so a fully unconverged or

@@ -283,6 +283,16 @@ for provenance.*
 > on `dictionary.jsonl`. `F_KAPPA_FUNCTIONAL_FORM.md` §10/§14 flagged accordingly.
 
 **Status ledger (newest first):**
+- **2026-07-02 (✅ KAPPA FREEZE MECHANISM IDENTIFIED — §9a's "non-monotonic breakdown" was a false
+  inference, as the maintainer suspected).** The freeze is the solver hitting the McKee–Cowie
+  evaporation→condensation domain boundary: the dMdt eigenvalue physically crosses zero exactly at
+  cooling balance, the `dMdt>0` gate refuses the condensing root (live repro: hybr converges to
+  dMdt=−84.76 at f_κ=8), and the runner freezes instead of handing off. 34/38 sweep freezes were at
+  θ≥0.8 (would-fire); all 23 "non-monotonic" arms explained without physics bands; 1 freeze at f_κ=1
+  proves the mode pre-exists the knob. Multiplier stays the production knob (structurally immune —
+  it never touches the eigenvalue). Fix ladder + instrumentation: `KAPPA_FREEZE_MECHANISM.md`,
+  FINDINGS §9b, `data/kappa_freeze_autopsy.csv`. A rule-compliant kappa re-validation ("theta5k")
+  becomes worthwhile only after fix #1 (no-root-streak ⇒ momentum handoff) lands.
 - **2026-07-02 (✅ THETA5B RAN — window measured [4, 4.5]; law validated out-of-sample; the fire-vs-drain
   race → `FINDINGS.md §11`, `data/theta5_fire_map.csv`, `data/theta5_law_check.csv`).** The 43-arm referee
   matrix completed on Helix. Fine f_fire: sc 2 · mid 2.5 · dense-edge 2.5 · be 3.5 · diffuse 3.5 · pl2 4;
