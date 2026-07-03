@@ -1,0 +1,17 @@
+# generated 2026-07-03T13:30:11Z | builder harvest_theta_max.py | code c7c58738+dirty
+run_name,theta_max,t_at_theta_max,theta_first,n_impl,t_final,phase_final,reached_momentum,fired_cooling_balance,outcome,detail
+normal_n1e3__kappa12,1.1402982172351175,0.6242002591480524,0.2775361049744834,80,4.048379783597972,momentum,True,True,shell_collapsed,Small radius reached (event)
+normal_n1e3__kappa16,0.9159502579052126,0.40661233954624115,0.31466567647314636,125,5.0,momentum,True,False,stopping_time,Stopping time reached
+normal_n1e3__kappa2,0.9626150102079087,2.156538796700256,0.11698546938301316,113,5.0,momentum,True,True,stopping_time,Stopping time reached
+normal_n1e3__kappa4,1.0433178528026463,2.0778329111215177,0.16610515788827074,110,5.0,momentum,True,True,stopping_time,Stopping time reached
+normal_n1e3__kappa6,1.0723353483804214,1.5351788374916444,0.20202683414624048,100,4.314717688021154,momentum,True,True,shell_collapsed,Small radius reached (event)
+normal_n1e3__kappa8,0.9838736027831501,0.7485155277041045,0.23102901751308502,84,4.018799001169104,momentum,True,True,shell_collapsed,Small radius reached (event)
+normal_n1e3__mult2,0.9660943190290373,2.0778329111215177,0.16286022175134246,110,5.0,momentum,True,True,stopping_time,Stopping time reached
+normal_n1e3__mult2p5,0.9976203740941241,2.099099035376705,0.20404488649125,110,4.899515138005907,momentum,True,True,shell_collapsed,Small radius reached (event)
+normal_n1e3__mult3,0.9936582413039574,1.7639166708842675,0.24544054793188447,103,4.4313289379653025,momentum,True,True,shell_collapsed,Small radius reached (event)
+normal_n1e3__mult3p5,0.993943579649417,1.1726240001211068,0.28706161855883905,91,4.176172091382466,momentum,True,True,shell_collapsed,Small radius reached (event)
+normal_n1e3__mult4,0.9813916738966338,0.7799699264912334,0.32895264096184895,83,4.090317031864095,momentum,True,True,shell_collapsed,Small radius reached (event)
+normal_n1e3__mult4p5,0.9602892337676799,0.6507935973000111,0.37112261424802556,79,4.120916154543449,momentum,True,True,shell_collapsed,Small radius reached (event)
+normal_n1e3__mult5,1.1110244975135466,0.6147588700796704,0.41359462608713626,78,4.167473380786131,momentum,True,True,shell_collapsed,Small radius reached (event)
+normal_n1e3__mult8,1.1408073097564788,0.3212601299850052,0.6769389684026055,68,4.845258475210987,momentum,True,True,shell_collapsed,Small radius reached (event)
+normal_n1e3__none,1.0469907276674018,2.5436091388038595,0.08107272768500201,121,5.0,momentum,True,True,stopping_time,Stopping time reached
