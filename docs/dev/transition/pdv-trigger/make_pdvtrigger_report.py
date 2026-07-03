@@ -143,7 +143,7 @@ FIGURES = {
     ),
     "__FIG_T5KNOB__": (
         "theta5_knob_choice.png",
-        "knob comparison: the kappa knob's theta_max vs f_kappa for one sweep cell shows firing bands interleaved with freeze windows (dead windows), while the multiplier knob's theta_max rises monotonically with f_mix with no dead windows",
+        "knob comparison: the kappa knob's theta_max vs f_kappa for one sweep cell shows firing bands interleaved with what section 16.4 re-diagnoses as solver crashes at the condensation boundary (fixed by the no-root handoff), while the multiplier knob's theta_max rises monotonically with f_mix",
     ),
     "__FIG_T5BMAP__": (
         "theta5b_fire_map.png",
@@ -152,6 +152,14 @@ FIGURES = {
     "__FIG_T5BLAW__": (
         "theta5b_law_check.png",
         "predicted vs measured f_fire for the six firing configs: the theta5-fit collapse law predicts the theta5b fine bracket out-of-sample with rms 0.064 dex",
+    ),
+    "__FIG_T5KMAP__": (
+        "theta5k_fire_map.png",
+        "theta5k fire map: outcome per config and f_kappa on the first rule-compliant kappa matrix, post no-root handoff -- 56/56 proper fates, zero freezes, five condensation handoffs on the old dead-window cells, and no single f_kappa fires the whole band",
+    ),
+    "__FIG_T5KRISE__": (
+        "theta5k_theta_rise.png",
+        "theta_max versus f_kappa per config: theta rises near-monotonically with f_kappa even where the fire set does not -- open markers are runs ended by the condensation handoff or drain before theta could cross 0.95",
     ),
 }
 
@@ -1149,6 +1157,31 @@ energy-driven; the shaded strip is the measured whole-band window.</figcaption><
 \(f_{\rm fire}=1.4\,(0.95/\theta_0)^{1.82}\) vs the theta5b fine measurements: rms 0.064 dex &mdash; the
 one-parameter constant-\(f\) model predicts, a per-cloud \(f(\text{properties})\) fit could only chase.
 </figcaption></figure>
+
+<h3>16.4 &middot; theta5k &mdash; the kappa knob retried honestly, and the freeze solved (2026-07-03)</h3>
+<p>The maintainer challenged &sect;16.2's "kappa breaks non-monotonically": <i>is that physics, or a bug we
+mis-read?</i> It was a bug with a physical cause. The autopsy of the 819-run sweep + a live local reproduction
+(<code>KAPPA_FREEZE_MECHANISM.md</code>) showed the "dead windows" were the solver <b>crashing at the
+evaporation&rarr;condensation boundary of the conduction front</b> (McKee &amp; Cowie 1977): approaching cooling
+balance, the structure solve's mass-flux eigenvalue physically goes negative (the hybr solver literally converges
+to \(\dot M = -85\,M_\odot/\mathrm{Myr}\) at \(f_\kappa{=}8\)), the dMdt&gt;0 acceptance gate refuses it, and the
+runner froze holding its last state &mdash; 34/38 frozen sweep runs died at \(\theta \geq 0.8\), i.e. <i>on approach to
+the trigger</i>. The fix (landed 2026-07-03): a persistent no-root streak now <b>hands off to the momentum phase</b>
+&mdash; the standard semi-analytic treatment of catastrophic-cooling onset (Silich/Tenorio-Tagle lineage) &mdash;
+and theta5k, the first rule-compliant kappa matrix (56 arms, 5 Myr, dictionary \(\theta_{\max}\)), validates it
+at scale: <b>zero freezes; every arm ends in a proper fate</b>.</p>
+<figure>__FIG_T5KMAP__<figcaption><b>The rule-compliant kappa verdict.</b> The five condensation handoffs (diamonds)
+land exactly on the old "dead window" cells &mdash; simple_cluster 8/12/16 (\(\theta\) held at 0.533/0.587/0.624;
+&sect;8e's famous 0.53), dense 6, pl2 16 &mdash; and the old "fires at \(f_\kappa{=}16\)" on simple_cluster is exposed
+as a pre-fix artifact. The fire set is <i>still</i> non-monotonic, but now for an honest physical reason (the front
+condenses, or the shell drains/dissolves, before global \(\theta\) crosses). The headline: <b>no single
+\(f_\kappa\) fires the whole band</b> (best: \(f_\kappa{=}12\) at 5/6) &mdash; the multiplier's measured
+[4,&nbsp;4.5] window (6/6) is now the production-knob argument on crash-free, like-for-like data.</figcaption></figure>
+<figure>__FIG_T5KRISE__<figcaption><b>Reach vs race.</b> \(\theta_{\max}\) rises with \(f_\kappa\) essentially
+monotonically everywhere it can be measured; where the fire set has holes, an open marker shows the run ended
+(condensation handoff / drain) before \(\theta\) could cross &mdash; the knob's <i>reach</i> is fine, the
+<i>race</i> is what it keeps losing. Fired-arm \(\theta_{\max}\) magnitudes above ~1.2 (dense: 1.99) are
+structural-boost distortion &mdash; quote fire/no-fire from this matrix, not those values.</figcaption></figure>
 """
 
 SEC_REPRO = r"""

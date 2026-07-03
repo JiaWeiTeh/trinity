@@ -295,9 +295,17 @@ Exact lines: see `run_energy_implicit_phase.py` around the `no_physical_root` bl
 - `'auto'` interpolation risk (§9a.2) is *downgraded but not cleared*: interpolated f_κ values
   no longer face physics dead bands, but they still face a crash-prone crossing until fix #1
   lands.
-- If fix #1 (streak ⇒ handoff) is implemented, a **rule-compliant kappa re-validation** (5 Myr,
-  θ_max, the 8 configs — "theta5k") becomes cheap and would test whether kappa fires
-  monotonically once the solver is allowed to leave the energy phase at the physical boundary.
+- ~~If fix #1 (streak ⇒ handoff) is implemented, a rule-compliant kappa re-validation becomes
+  cheap~~ **DONE — theta5k RAN (2026-07-03, Helix, FINDINGS §12)**: 56/56 proper fates, **zero
+  freezes** (5 arms exit via the condensation handoff — exactly the old "dead window" cells,
+  validating both the fix and this doc's mechanism at scale). Answer to the monotonicity
+  question: the fire set is *still* non-monotonic, but honestly so — the front condenses (or
+  the shell drains/dissolves) before global θ crosses; θ_max itself rises ~monotonically. **No
+  single f_κ fires the whole band** (best: f_κ=12, 5/6) vs the multiplier's [4, 4.5] at 6/6 —
+  the production-knob choice is now measured on crash-free, rule-compliant, like-for-like data.
+  The old sweep's simple_cluster "fires at f_κ=16" was a solver artifact (rule-compliant it
+  CONDENSES at θ=0.624), which also hardens the `'auto'` demotion (its lookup grid embeds
+  pre-fix artifacts).
 
 ## 9. Reproduce
 
