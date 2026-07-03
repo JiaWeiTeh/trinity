@@ -161,6 +161,14 @@ FIGURES = {
         "theta5k_theta_rise.png",
         "theta_max versus f_kappa per config: theta rises near-monotonically with f_kappa even where the fire set does not -- open markers are runs ended by the condensation handoff or drain before theta could cross 0.95",
     ),
+    "__FIG_DMDTDIP__": (
+        "dmdt_dip_traces.png",
+        "the dMdt dip: per-segment mass-flux eigenvalue of the beta-delta solve for the dense controlled pair -- both arms dip below zero into the condensation branch the gate forbids; f_kappa=8 recovers through zero and fires while f_kappa=6 second-dives and is handed off",
+    ),
+    "__FIG_DMDTFLOW__": (
+        "dmdt_tackle_flow.png",
+        "flow diagram of how the dMdt dip was tackled: symptom (silent freeze) to diagnosis (negative eigenvalue refused by the gate) to physics identity (McKee-Cowie condensation reversal) to the three literature treatments, with the adopted path (energy-to-momentum regime switch) and the theta5k verdict",
+    ),
 }
 
 
@@ -1182,6 +1190,56 @@ monotonically everywhere it can be measured; where the fire set has holes, an op
 (condensation handoff / drain) before \(\theta\) could cross &mdash; the knob's <i>reach</i> is fine, the
 <i>race</i> is what it keeps losing. Fired-arm \(\theta_{\max}\) magnitudes above ~1.2 (dense: 1.99) are
 structural-boost distortion &mdash; quote fire/no-fire from this matrix, not those values.</figcaption></figure>
+
+<h3>16.5 &middot; The dMdt dip, start to finish &mdash; the story of one bug that turned out to be physics (2026-07-03)</h3>
+<p>This subsection collects the whole arc in one place, because it is the cleanest single narrative in the
+workstream: <i>a symptom that looked like solver chaos, a diagnosis that found a physical boundary, a fix taken
+from the literature's own playbook, and a verdict that settled the knob choice.</i></p>
+<p><b>Act 1 &mdash; the symptom.</b> Sweep runs at certain \(f_\kappa\) "froze": they ended mid&ndash;energy-phase at
+\(t\approx0.4\) Myr with \(\theta\) stuck near 0.53 and exit code 0, and the fire set looked non-monotonic
+("dead windows", &sect;16.2). The maintainer challenged the reading: <i>too much cooling should give a
+monotonic-ish trend &mdash; is this a bug? a stale state?</i></p>
+<p><b>Act 2 &mdash; the diagnosis.</b> The autopsy of the 819-run sweep showed 34/38 freezes died at
+\(\theta\geq0.8\) &mdash; <i>on approach to the trigger</i> &mdash; and one froze at \(f_\kappa{=}1\) (unboosted:
+the mode pre-exists the knob). A live instrumented run then caught the mechanism red-handed: the bubble-structure
+solve's mass-flux eigenvalue <b>converged to a negative value</b> (\(\dot M_b=-85\,M_\odot\)/Myr) and the
+dMdt&gt;0 acceptance gate refused it, leaving the runner to grind frozen state to its segment cap. The figure below
+shows the decisive controlled pair: identical clouds, identical early timesteps, \(f_\kappa=6\) vs 8.</p>
+<figure>__FIG_DMDTDIP__<figcaption><b>The dMdt dip.</b> Per-segment eigenvalue of the \(\beta\)&ndash;\(\delta\)
+structure solve. Both arms accept an evaporative solve at birth (+320, off scale), then dip into the
+<i>condensation branch</i> (shaded) that the model cannot represent &mdash; the closure \(T\propto\dot M^{2/5}\)
+(Weaver Eq.&nbsp;44) simply has no \(\dot M&lt;0\) profile family. The arcs are smooth (solver exonerated &mdash;
+consistent with the planar-analogue uniqueness of Tan, Oh &amp; Gronke 2021); the two fates differ only in whether
+the front's budget <i>recovers to evaporation in time</i>: \(f_\kappa{=}8\) climbs back through zero at segment 28
+and fires; \(f_\kappa{=}6\) nearly recovers (&minus;4.0), second-dives, and is handed off. The photo-finish is
+physical; its exact \(f_\kappa\) edge is discretization-sensitive (one jump per trace correlates with segment-loop
+events), so per-config \(f_{\kappa,\rm fire}\) values are razor-edge quantities.</figcaption></figure>
+<p><b>Act 3 &mdash; the physics.</b> The reversal is textbook: when radiative losses in the conduction front exceed
+the conductive heat supply, evaporation stops and the hot gas condenses onto the shell (McKee &amp; Cowie 1977).
+Weaver's own Paper II already put the classical front budget at 60/40 (40% of the conductive flux radiated in the
+interface) &mdash; the boundary was always nearby, and cooling balance, the very condition the transition trigger
+waits for, <i>is</i> the reversal condition. A cooling-boosted bubble must pass through it.</p>
+<p><b>Act 4 &mdash; the fix, from the literature's own playbook.</b> Codes that "just follow the sign" are
+Lagrangian hydro (El-Badry+19; Vieser &amp; Hensler 07), where the interface flux is an emergent PDE outcome &mdash;
+adopting that means a new profile family, a research project. Saturated conduction (Cowie &amp; McKee 77) caps the
+runaway but does not remove the reversal. Semi-analytic models in TRINITY's own lineage (Weaver; Mac Low &amp;
+McCray; Silich &amp; Tenorio-Tagle's catastrophic cooling) never integrate through the boundary &mdash; they
+<b>switch regimes</b>. That is what shipped: a persistent no-physical-root streak now ends the energy phase as
+<code>no_physical_root_handoff</code> (a <i>fate</i>, routed like the cooling-balance exit, never counted as a
+\(\theta\) transition).</p>
+<figure>__FIG_DMDTFLOW__<figcaption><b>The resolution at a glance.</b> Symptom &rarr; diagnosis &rarr; physics
+identity &rarr; the three literature treatments &rarr; the adopted regime switch, validated by theta5k: 56/56
+proper fates, zero freezes, the old "dead windows" reborn as labeled condensation fates &mdash; and still no
+whole-band \(f_\kappa\) (best 5/6), which is what finally settles the production choice on the
+\(f_{\rm mix}\) multiplier (window [4,&nbsp;4.5] fires 6/6, backed by the \(\theta_1\)-collapse law at
+0.064 dex out-of-sample). The multiplier dodges the boundary <i>by construction</i>: it scales the cooling
+luminosity after the structure solve and never touches the \(\dot M_b\) eigenvalue.</figcaption></figure>
+<p><b>Epilogue &mdash; what we ended up going with.</b> Production: <code>cooling_boost_mode=multiplier</code>,
+\(f_{\rm mix}=4\), cooling_balance trigger &mdash; every GMC-band cloud enters the momentum phase at
+\(\theta\geq0.95\), with recollapse-after-transition accepted physics. The kappa knob survives as an honest
+structural probe (its runs now end in proper fates), the condensation branch is documented as the model's domain
+edge with a research-grade upgrade path, and the whole chain &mdash; autopsy CSV, trace CSV, freeze-watch
+instrumentation, fix, and the 56-run validation &mdash; is committed and reproducible without re-running anything.</p>
 """
 
 SEC_REPRO = r"""

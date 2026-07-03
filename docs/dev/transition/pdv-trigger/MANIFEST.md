@@ -11,7 +11,7 @@
 > are exact; stamp-less artifacts predate the convention (2026-07-02) — for those, only
 > the commit date is known. **Every new/edited builder must write the stamp.**
 
-307 artifacts · 0 stale-risk · 0 untracked · 11 stamped 🕐
+312 artifacts · 0 stale-risk · 0 untracked · 12 stamped 🕐
 
 | last updated (commit) | artifact | producer / flags |
 |---|---|---|
@@ -322,3 +322,8 @@
 | 2026-06-29 `18aea49` | `storyline_figs/fig_fmix_convention.png` | producer unknown (HPC/hand-made); refs: `make_pdvtrigger_report.py`, `make_storyline_figs.py` |
 | 2026-06-29 `18aea49` | `storyline_figs/fig_regime_split.png` | producer unknown (HPC/hand-made); refs: `make_pdvtrigger_report.py`, `make_storyline_figs.py` |
 | 2026-06-29 `18aea49` | `theta_vs_density.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_overlay.py`, `make_fmix_spread_plot.py` |
+| None `None` | `data/dmdt_trace_dense.csv` | producer unknown (HPC/hand-made); refs: `make_dmdt_dip_figures.py` · 🕐 generated 2026-07-03T12:33:07Z | builder make_dmdt_dip_figures.py | code 4568aa4+dirty |
+| None `None` | `dmdt_dip_traces.png` | producer unknown (HPC/hand-made); refs: `make_dmdt_dip_figures.py`, `make_pdvtrigger_report.py` |
+| None `None` | `dmdt_tackle_flow.png` | producer unknown (HPC/hand-made); refs: `make_dmdt_dip_figures.py`, `make_pdvtrigger_report.py` |
+| None `None` | `runs/params/dmdt_trace/dense_k6.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/dmdt_trace/dense_k8.param` | — (hand-made/HPC, unreferenced) |
