@@ -1,4 +1,4 @@
-# generated 2026-07-03T11:52:37Z | builder make_theta5k_analysis.py | code a43119a+dirty
+# generated 2026-07-03T13:33:46Z | builder make_theta5k_analysis.py | code 4b5fa32+dirty
 # first RULE-COMPLIANT kappa matrix (stop_t=5, theta_max from dictionary), post fix #1: 56/56 proper fates, ZERO freezes (the sec9a freeze class is extinct; 5 arms exit via the condensation handoff instead). Whole-band f_kappa (all 6 fireable configs FIRED): NONE — no single f_kappa fires the band (multiplier window [4,4.5] does; PLAN referee Q2). Do NOT count CONDENSE/DRAIN as theta transitions.
 config,k1,k2,k4,k6,k8,k12,k16
 fail_repro,DRAIN:0.003,DRAIN:0.005,DRAIN:0.007,DRAIN:0.008,DRAIN:0.009,DRAIN:0.011,DRAIN:0.011
@@ -9,3 +9,4 @@ large_diffuse_lowsfe,NOFIRE:0.535,NOFIRE:0.696,FIRED:1.091,FIRED:1.077,FIRED:0.9
 midrange_pl0,NOFIRE:0.636,NOFIRE:0.745,FIRED:0.952,FIRED:1.171,FIRED:1.110,FIRED:1.016,FIRED:1.051
 small_dense_highsfe,NOFIRE:0.717,DRAIN:0.833,FIRED:1.990,CONDENSE:0.578,FIRED:1.493,FIRED:1.463,FIRED:1.822
 simple_cluster,NOFIRE:0.676,DRAIN:0.779,FIRED:1.024,FIRED:1.041,CONDENSE:0.533,CONDENSE:0.587,CONDENSE:0.624
+normal_n1e3,FIRED:1.047,FIRED:0.963,FIRED:1.043,FIRED:1.072,FIRED:0.984,FIRED:1.140,DRAIN:0.916

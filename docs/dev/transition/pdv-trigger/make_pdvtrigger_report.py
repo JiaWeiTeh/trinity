@@ -1240,6 +1240,66 @@ luminosity after the structure solve and never touches the \(\dot M_b\) eigenval
 structural probe (its runs now end in proper fates), the condensation branch is documented as the model's domain
 edge with a research-grade upgrade path, and the whole chain &mdash; autopsy CSV, trace CSV, freeze-watch
 instrumentation, fix, and the 56-run validation &mdash; is committed and reproducible without re-running anything.</p>
+
+<h3>16.6 &middot; theta5n &mdash; the maintainer's ninth config fires <i>natively</i>, and the law calls it (2026-07-03)</h3>
+<p>The maintainer added a "normal cloud" to the standard band: \(M_{\rm cloud}=10^6\,M_\odot\),
+\(n_{\rm core}=10^3\,{\rm cm^{-3}}\), \(\varepsilon_\star=0.01\) (so \(M_\star=10^4\,M_\odot\) &mdash;
+the weakest driver in the band), flat profile. Fifteen arms ran (both knobs, standard rules). The headline:
+<b>the unboosted arm fires on its own</b> &mdash; \(\theta\) crosses 0.95 at \(t\approx2.5\) Myr with
+<code>cooling_boost_mode=none</code> (\(\theta_0=1.047\)). This is the route-a picture live: a normal
+weak-feedback GMC transitions to momentum through the cooling-balance trigger with <i>no help</i>; the
+\(f_{\rm mix}\) boost exists for the stronger-feedback/denser corners of the band, and \(f_{\rm mix}=4\)
+does not break the natural transitioner (every multiplier arm 2&ndash;8 fires; boost simply moves the crossing
+earlier, from 2.5 Myr at \(f{=}1\) to 0.3 Myr at \(f{=}8\); all arms then recollapse &mdash; accepted physics).
+The \(\theta_1\)-collapse law scores its <b>seventh out-of-sample point at the opposite extreme</b>: predicted
+\(f_{\rm fire}=1.4\,(0.95/1.047)^{1.82}=1.16\), measured 1.0 &mdash; residual 0.065 dex, exactly at the law's
+rms (0.064 dex, unchanged with the new point folded in). The kappa knob shows one more race loss at the top
+(\(f_\kappa{=}16\) DRAINs at \(\theta_{\max}=0.916\), fires 2&ndash;12) &mdash; the same non-monotonicity
+story as &sect;16.4. Updated fire maps and law-check figure above include the ninth row.</p>
+"""
+
+SEC_SHIPPED = r"""
+<h2 id="shipped">The shipped model &mdash; what \(f_{\rm mix}\) is, the equation it acts on, and how to run it</h2>
+<p>Mirroring the \(f_\kappa\) definition section (&sect;13), here is the same treatment for the knob that
+actually ships. The bubble-structure solve is <b>untouched</b>: at every implicit-phase segment the
+\(\beta\)&ndash;\(\delta\) solver computes the Weaver-type structure and from it the bubble's intrinsic cooling
+luminosity \(L_{\rm cool}\) (the \(n_e n_i\,\Lambda(T)\) integral over the bubble + conduction zone) and the
+leakage term \(L_{\rm leak}\). The mixing boost is applied <i>after</i> the solve, as a scalar on the loss
+budget (<code>get_betadelta.py::effective_Lloss</code>):</p>
+<p style="text-align:center; font-size:1.15em">
+\( L_{\rm loss} \;=\; L_{\rm leak} \;+\; f_{\rm mix}\, L_{\rm cool} \)
+</p>
+<p>and the energy phase ends &mdash; the run hands off to the momentum phase &mdash; when the cooling-balance
+trigger fires (<code>run_energy_implicit_phase.py</code>):</p>
+<p style="text-align:center; font-size:1.15em">
+\( \dfrac{L_{\rm gain}-L_{\rm loss}}{L_{\rm gain}} \,&lt;\, 0.05
+\;\;\Longleftrightarrow\;\;
+\theta \equiv \dfrac{L_{\rm loss}}{L_{\rm gain}} \,\geq\, 0.95 \)
+</p>
+<p><b>What \(f_{\rm mix}\) stands for physically:</b> the 1D solve feeds the hot/cold interface with Spitzer
+conduction only; real interfaces are turbulent fractal mixing layers with far more radiating surface
+(Lancaster+21) &mdash; equivalently a turbulent diffusivity \(\lambda\,\delta v\) on top of Spitzer (El-Badry+19).
+\(f_{\rm mix}\) is that unresolved enhancement as one constant. Because it multiplies \(L_{\rm cool}\)
+<i>after</i> the structure solve, it never touches the \(\dot M_b\) eigenvalue &mdash; it is structurally immune
+to the condensation-boundary problem of &sect;16.5 by construction.</p>
+<p><b>The adopted value and its defense, all measured:</b> \(f_{\rm mix}=4\), the interior-bottom of the
+measured whole-band window <b>[4, 4.5]</b> (theta5b; 4.5 works, 5 already drops midrange to an \(E_b\) drain;
+2.5&ndash;3.5 miss part of the band). Per-cloud behavior collapses onto the one-parameter law
+\( f_{\rm fire} = 1.4\,(0.95/\theta_0)^{1.82} \), validated out-of-sample at <b>0.064 dex rms over seven
+configs</b> spanning \(\theta_0=0.51\) to \(1.05\) &mdash; including the ninth config that fires natively at
+\(f{=}1\) (&sect;16.6). All cloud-property dependence flows through \(\theta_0\) (residuals show no
+\(n\), \(M\), or SFE trend; the \(\theta_0\)-matched trio bounds \(|\partial\log f/\partial\log n|\lesssim0.02\)).
+Momentum-then-recollapse is accepted physics (maintainer ruling 2026-07-02).</p>
+<div class="box" style="border-left:4px solid #2a8aa8"><b>To run it, add to any <code>.param</code>:</b>
+<pre>cooling_boost_mode     multiplier
+cooling_boost_fmix     4</pre>
+Everything else is already the default: <code>transition_trigger&nbsp;=&nbsp;cooling_balance</code> and
+<code>phaseSwitch_LlossLgain&nbsp;=&nbsp;0.05</code> (i.e. the \(\theta\geq0.95\) trigger) ship as defaults, and
+<code>cooling_boost_mode&nbsp;=&nbsp;none</code> is the byte-identical off state, so an unmodified run is
+untouched. Worked examples: <code>runs/params/theta5b/*__mult4.param</code> (any config), or the ninth-config
+set <code>runs/params/theta5n/</code>. The knob taxonomy stays: <code>cooling_boost_kappa</code> is a structural
+probe (proper fates post fix #1, but no whole-band value exists and its fire edges are razor-thin);
+<code>theta_target</code> and <code>'auto'</code> are demoted/opt-in.</div>
 """
 
 SEC_REPRO = r"""
@@ -1313,6 +1373,7 @@ def main():
         SEC_TAXONOMY,
         SEC_SWEEP,
         SEC_THETA5,
+        SEC_SHIPPED,
         SEC_REPRO,
     ]
     parts.append("</div></body></html>")

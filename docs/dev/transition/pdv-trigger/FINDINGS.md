@@ -1159,3 +1159,22 @@ freezes** — the §9a freeze class is extinct; every arm ends in a proper fate.
    discretization-sensitive; treat per-config f_κ_fire as razor-edge, not law-grade** (the
    multiplier's f_fire sits on the smooth θ₁-collapse law instead). Full trace excerpts:
    KAPPA_FREEZE_MECHANISM §5.
+
+## 13. [data] theta5n RAN — the ninth config fires NATIVELY; the law's 7th out-of-sample point; window intact (2026-07-03, Helix)
+
+15/15 arms (normal_n1e3: mCloud 1e6, nCore 1e3, sfe 0.01, PL0 — M_cluster 1e4, the weakest
+driver in the band; both knobs, standard rules). Data `runs/data/theta5n_summary.csv`; folded
+into `data/make_theta5{b,k}_analysis.py` (9-row fire maps + 7-point law check regenerated).
+
+1. **The unboosted arm FIRES**: θ crosses 0.95 at t≈2.54 Myr with `cooling_boost_mode=none`
+   (θ₀ = 1.047, momentum, recollapse at stop). Route-a live: a normal weak-feedback GMC
+   transitions through cooling_balance with NO boost — the f_mix knob exists for the
+   stronger-feedback/denser corners, exactly as the θ₁-collapse picture says.
+2. **Law point 7, at the opposite extreme**: predicted f_fire = 1.4(0.95/1.047)^1.82 = 1.16,
+   measured 1.0 → resid 0.065 dex; combined out-of-sample rms UNCHANGED at 0.064 dex over
+   seven configs spanning θ₀ 0.51–1.05.
+3. **f_mix=4 verdict strengthened**: every multiplier arm 2–8 fires (boost only moves the
+   crossing earlier: 2.5 Myr at f=1 → 0.3 Myr at f=8; all recollapse — accepted physics). The
+   whole-band window [4, 4.5] now fires **7/7** fireable configs.
+4. **Kappa races again at the top**: fires 2–12, DRAINs at 16 (θ_max 0.916, Eb-drain, n_impl
+   125 ≠ 50) — one more non-monotonic race loss; still no whole-band f_κ.

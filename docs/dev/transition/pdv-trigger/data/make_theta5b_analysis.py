@@ -47,7 +47,8 @@ ORDER = [
     "midrange_pl0",
     "small_dense_highsfe",
     "simple_cluster",
-]  # by theta0, outliers first
+    "normal_n1e3",
+]  # by theta0, outliers first; normal_n1e3 (theta5n, 2026-07-03) fires natively
 THETA0 = {
     "simple_cluster": 0.676,
     "small_dense_highsfe": 0.717,
@@ -57,6 +58,7 @@ THETA0 = {
     "pl2_steep": 0.511,
     "small_1e6": 0.297,
     "fail_repro": 0.003,
+    "normal_n1e3": 1.047,
 }
 SHORT = {"large_diffuse_lowsfe": "large_diffuse", "small_dense_highsfe": "small_dense"}
 
@@ -98,6 +100,7 @@ def classify(r):
 def load():
     rows = read_summary(os.path.join(_PDV, "runs", "data", "theta5_summary.csv"))
     rows += read_summary(os.path.join(_PDV, "runs", "data", "theta5b_summary.csv"))
+    rows += read_summary(os.path.join(_PDV, "runs", "data", "theta5n_summary.csv"))
     cells, t8 = {}, {}
     for r in rows:
         cfg, mode = r["run_name"].rsplit("__", 1)
@@ -143,7 +146,8 @@ def law_check(cells):
         th0 = THETA0[cfg]
         fired = sorted(f for (c, f), (o, _, _) in cells.items() if c == cfg and o == "FIRED")
         f_meas = fired[0] if fired else None
-        pred = 10 ** (LAW_C + LAW_S * math.log10(TRIGGER / th0)) if th0 < TRIGGER else None
+        # theta0 > trigger (normal_n1e3 fires natively): the law still predicts, f_fire ~ 1.4*(0.95/th0)^1.82
+        pred = 10 ** (LAW_C + LAW_S * math.log10(TRIGGER / th0))
         resid = (
             math.log10(pred / f_meas)
             if pred and f_meas and cfg not in ("fail_repro", "small_1e6")
@@ -278,7 +282,7 @@ def fig_fire_map(cells, t8, fs):
 
 def fig_law_check(law, rms):
     fig, ax = plt.subplots(figsize=(4.9, 4.6))
-    lo, hi = 1.5, 6
+    lo, hi = 0.85, 6
     xs = np.array([lo, hi])
     ax.plot(xs, xs, color="0.4", lw=1.2)
     ax.fill_between(
@@ -299,7 +303,7 @@ def fig_law_check(law, rms):
         )
     ax.set_xscale("log")
     ax.set_yscale("log")
-    ticks = [2, 2.5, 3, 4, 5]
+    ticks = [1, 1.5, 2, 2.5, 3, 4, 5]
     for a in (ax.xaxis, ax.yaxis):
         a.set_major_locator(plt.FixedLocator(ticks))
         a.set_major_formatter(plt.FixedFormatter([str(t) for t in ticks]))

@@ -11,13 +11,19 @@
 > are exact; stamp-less artifacts predate the convention (2026-07-02) — for those, only
 > the commit date is known. **Every new/edited builder must write the stamp.**
 
-312 artifacts · 0 stale-risk · 0 untracked · 12 stamped 🕐
+313 artifacts · 0 stale-risk · 0 untracked · 13 stamped 🕐
 
 | last updated (commit) | artifact | producer / flags |
 |---|---|---|
-| 2026-07-03 `9706c6a` | `data/theta5k_fire_map.csv` | producer unknown (HPC/hand-made); refs: `make_theta5k_analysis.py` · 🕐 generated 2026-07-03T11:52:37Z | builder make_theta5k_analysis.py | code a43119a+dirty |
-| 2026-07-03 `9706c6a` | `pdvtrigger_report.html` | by `make_pdvtrigger_report.py` |
+| 2026-07-03 `e0e3b1d` | `data/dmdt_trace_dense.csv` | producer unknown (HPC/hand-made); refs: `make_dmdt_dip_figures.py` · 🕐 generated 2026-07-03T12:33:07Z | builder make_dmdt_dip_figures.py | code 4568aa4+dirty |
+| 2026-07-03 `9706c6a` | `data/theta5k_fire_map.csv` | producer unknown (HPC/hand-made); refs: `make_theta5k_analysis.py` · 🕐 generated 2026-07-03T13:33:46Z | builder make_theta5k_analysis.py | code 4b5fa32+dirty |
+| 2026-07-03 `e0e3b1d` | `dmdt_dip_traces.png` | producer unknown (HPC/hand-made); refs: `make_dmdt_dip_figures.py`, `make_pdvtrigger_report.py` |
+| 2026-07-03 `e0e3b1d` | `dmdt_tackle_flow.png` | producer unknown (HPC/hand-made); refs: `make_dmdt_dip_figures.py`, `make_pdvtrigger_report.py` |
+| 2026-07-03 `e0e3b1d` | `pdvtrigger_report.html` | by `make_pdvtrigger_report.py` |
 | 2026-07-03 `a43119a` | `runs/data/theta5k_summary.csv` | producer unknown (HPC/hand-made); refs: `make_theta5k_analysis.py`, `make_theta5k_params.py` · 🕐 generated 2026-07-03T11:48:20Z | builder harvest_theta_max.py | code fa9dc7ed+dirty |
+| 2026-07-03 `52b1a12` | `runs/data/theta5n_summary.csv` | producer unknown (HPC/hand-made); refs: `make_theta5b_analysis.py`, `make_theta5k_analysis.py` · 🕐 generated 2026-07-03T13:30:11Z | builder harvest_theta_max.py | code c7c58738+dirty |
+| 2026-07-03 `e0e3b1d` | `runs/params/dmdt_trace/dense_k6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `e0e3b1d` | `runs/params/dmdt_trace/dense_k8.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-03 `f622515` | `runs/params/theta5k/be_sphere__kappa12.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-03 `f622515` | `runs/params/theta5k/be_sphere__kappa16.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-03 `f622515` | `runs/params/theta5k/be_sphere__kappa2.param` | — (hand-made/HPC, unreferenced) |
@@ -96,8 +102,8 @@
 | 2026-07-02 `057cd96` | `data/fkappa_auto_verify.csv` | by `make_fkappa_auto_verify.py` |
 | 2026-07-02 `abc9a26` | `data/kappa_freeze_autopsy.csv` | by `make_kappa_freeze_autopsy.py` · 🕐 generated 2026-07-02T22:05:48Z | builder make_kappa_freeze_autopsy.py | code d8ec046+dirty |
 | 2026-07-02 `eb3fe6d` | `data/kappa_stability_map.csv` | by `make_kappa_stability_map.py` · 🕐 generated 2026-07-02T12:05:54Z | builder make_kappa_stability_map.py | code 8a27ba9 |
-| 2026-07-02 `7d58480` | `data/theta5_fire_map.csv` | producer unknown (HPC/hand-made); refs: `make_theta5b_analysis.py`, `make_pdvtrigger_report.py` · 🕐 generated 2026-07-02T21:20:45Z | builder make_theta5b_analysis.py | code c1b364a+dirty |
-| 2026-07-02 `7d58480` | `data/theta5_law_check.csv` | producer unknown (HPC/hand-made); refs: `make_theta5b_analysis.py`, `make_pdvtrigger_report.py` · 🕐 generated 2026-07-02T21:20:45Z | builder make_theta5b_analysis.py | code c1b364a+dirty |
+| 2026-07-02 `7d58480` | `data/theta5_fire_map.csv` | producer unknown (HPC/hand-made); refs: `make_theta5b_analysis.py`, `make_pdvtrigger_report.py` · 🕐 generated 2026-07-03T13:33:45Z | builder make_theta5b_analysis.py | code 4b5fa32+dirty |
+| 2026-07-02 `7d58480` | `data/theta5_law_check.csv` | producer unknown (HPC/hand-made); refs: `make_theta5b_analysis.py`, `make_pdvtrigger_report.py` · 🕐 generated 2026-07-03T13:33:45Z | builder make_theta5b_analysis.py | code 4b5fa32+dirty |
 | 2026-07-02 `cc479ba` | `runs/data/theta5_calibration.csv` | by `make_theta5_calibration.py` · 🕐 generated 2026-07-02T14:00:21Z | builder make_theta5_calibration.py | code ad15816 |
 | 2026-07-02 `7d58480` | `runs/data/theta5_fmix_scorecard.csv` | producer unknown (HPC/hand-made); refs: `make_theta5_figures.py`, `make_pdvtrigger_report.py` · 🕐 generated 2026-07-02T21:22:42Z | builder make_theta5_figures.py | code c1b364a+dirty |
 | 2026-07-02 `0082bef` | `runs/data/theta5_summary.csv` | producer unknown (HPC/hand-made); refs: `make_theta5_figures.py`, `make_theta5b_analysis.py` · 🕐 generated 2026-07-02T13:50:54Z | builder harvest_theta_max.py | code 23f623d3+dirty |
@@ -322,8 +328,3 @@
 | 2026-06-29 `18aea49` | `storyline_figs/fig_fmix_convention.png` | producer unknown (HPC/hand-made); refs: `make_pdvtrigger_report.py`, `make_storyline_figs.py` |
 | 2026-06-29 `18aea49` | `storyline_figs/fig_regime_split.png` | producer unknown (HPC/hand-made); refs: `make_pdvtrigger_report.py`, `make_storyline_figs.py` |
 | 2026-06-29 `18aea49` | `theta_vs_density.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_overlay.py`, `make_fmix_spread_plot.py` |
-| None `None` | `data/dmdt_trace_dense.csv` | producer unknown (HPC/hand-made); refs: `make_dmdt_dip_figures.py` · 🕐 generated 2026-07-03T12:33:07Z | builder make_dmdt_dip_figures.py | code 4568aa4+dirty |
-| None `None` | `dmdt_dip_traces.png` | producer unknown (HPC/hand-made); refs: `make_dmdt_dip_figures.py`, `make_pdvtrigger_report.py` |
-| None `None` | `dmdt_tackle_flow.png` | producer unknown (HPC/hand-made); refs: `make_dmdt_dip_figures.py`, `make_pdvtrigger_report.py` |
-| None `None` | `runs/params/dmdt_trace/dense_k6.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/dmdt_trace/dense_k8.param` | — (hand-made/HPC, unreferenced) |
