@@ -50,16 +50,23 @@ DURATION_FILE = '.duration'
 # mirroring the in-process runner's per-worker environment. Paths are absolute
 # so the task is independent of the directory the array runs in.
 _SBATCH_TEMPLATE = """\
-#!/bin/bash
-#SBATCH --job-name=trinity_sweep
+#!/bin/bash -l
+#SBATCH --job-name=trinity-{name}
+#SBATCH --partition=cpu-single
+#SBATCH --account=bw22J006
+#SBATCH --export=NONE
 #SBATCH --array=1-{n}{throttle}
 #SBATCH --cpus-per-task=1
-#SBATCH --time=24:00:00
-#SBATCH --mem=4G
+#SBATCH --mem=1024M
+#SBATCH --time=1:15:00
 #SBATCH --output={logs_dir}/%A_%a.out
-# --- EDIT for your cluster (e.g. bwForCluster Helix / bwUniCluster): ---
-# #SBATCH --account=YOUR_ACCOUNT
-# #SBATCH --partition=cpu
+# Defaults target bwForCluster Helix (same conventions as paper/ + pdv-trigger
+# sbatchs) so the bundle runs straight from --emit-jobs, no patch step. Edit
+# account/partition/time/mem for another cluster or for longer-running sweeps.
+
+module load devel/miniforge
+source "$(conda info --base)/etc/profile.d/conda.sh" 2>/dev/null || true
+conda activate trinity
 
 export OMP_NUM_THREADS=1
 export MKL_NUM_THREADS=1
@@ -194,8 +201,16 @@ def emit_jobs(config, base_output_dir, jobs_dir, trinity_root,
     }
     manifest_path.write_text(json.dumps(manifest, indent=2), encoding='utf-8')
 
+    # --job-name auto-derived from the sweep param file (falls back to the jobs
+    # dir), sanitised to SLURM-safe characters — e.g. trinity-paperII_grid_sweep.
+    raw_name = Path(sweep_file).stem if sweep_file else jobs_dir.name
+    job_name = "".join(
+        c if (c.isalnum() or c in "_.-") else "_" for c in raw_name
+    )[:60] or "sweep"
+
     sbatch_path = jobs_dir / SBATCH_NAME
     sbatch_path.write_text(_SBATCH_TEMPLATE.format(
+        name=job_name,
         n=n_jobs,
         throttle=throttle,
         logs_dir=logs_dir,
