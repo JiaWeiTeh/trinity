@@ -28,8 +28,9 @@ canonical diffuse GMC *fires* at f_mix=4; route-a = `small_1e6` + `fail_repro`, 
 density-set one — §10); massive/PdV clouds ride the PR #715 `Eb≤0→momentum` handoff. The tentative mechanism knob is
 **`cooling_boost_mode='multiplier'`** (stable, radiative-only) — **its calibration was re-derived 2026-07-02**
 (the 📏 theta5 matrix on Helix; `FINDINGS.md §10`, `runs/data/theta5_calibration.csv`): θ₁-collapse law
-**f_fire ≈ 1.4·(0.95/θ₀)^1.82**, and **f_mix=4 fires the whole normal-GMC band** — but **f_mix is NOT yet
-pinned** (leading candidate 4, gated on the fire-then-recollapse physics call). The earlier θ₀/p had been fit
+**f_fire ≈ 1.4·(0.95/θ₀)^1.82**, and **f_mix=4 fires the whole normal-GMC band** — **f_mix = 4 ADOPTED
+(2026-07-02 maintainer ruling: momentum-then-recollapse is acceptable physics)**; theta5b refines the
+workable window for the referee statement. The earlier θ₀/p had been fit
 on the *other* knob, `cooling_boost_kappa`, which breaks down at f_κ=8 (FINDINGS §8e).
 *History:* PdV question → f_κ Rung-A → structural κ_mix Rung-B (**shelved**, saturates) → impose-El-Badry-θ
 detour (**demoted to opt-in**, double-counts PdV) → emergent-θ correction + knob correction (2026-07-01) →
@@ -131,8 +132,8 @@ the canonical 8-config base params live in `../cleanroom/configs/` (6) + `runs/m
 | direction | θ is an OUTPUT; mechanism boost; El-Badry/Lancaster = calibration target; single physical f; route-a | ✅ decided 07-01 | PLAN ⭐⭐, FINDINGS §8c |
 | knob choice | `multiplier` tentative (kappa breaks @8 + slow; κ_mix shelved; theta_target double-counts) | 🟡 tentative | FINDINGS §8e |
 | re-derive the `multiplier` calibration | **RAN on Helix 2026-07-02, 32/32 compliant**: θ₁-collapse law f_fire ≈ 1.4·(0.95/θ₀)^1.8; **f_mix=4 fires the whole normal-GMC band incl. the diffuse cloud** (blowout had under-read diffuse θ by 2×); route-a = small_1e6 + fail_repro | ✅ **done** | `FINDINGS.md §10`, `runs/data/theta5_calibration.csv` |
-| **→ NEXT: pin the single f_mix** | 4 fires the band but dense cores fire-then-recollapse; 2 is gentle but compact-only — needs the **recollapse physics call** (§8a, now emergent) ± the theta5b bracket + diffuse stop_t=8 spot-check; dense-edge (nCore 1e6) NaN stiffness ticket | ⏳ **the decision point** | `FINDINGS.md §10` open items |
-| referee defense: "why exactly 4" + "why a constant" | fine-bracket matrix **committed & validated** (`runs/params/theta5b/`, 43 arms: f∈{2.5,3,3.5,4.5,5}×8 + diffuse stop_t=8); model-comparison table + out-of-sample law test designed | ⏳ **READY — run theta5b on HPC** (`runs/run_theta5b.sbatch`) | PLAN "REFEREE DEFENSE"; `pdvtrigger_report.html` §16.2 |
+| pin the single f_mix | **✅ f_mix = 4 ADOPTED (2026-07-02)** — maintainer ruling: momentum-then-recollapse is acceptable physics (an outcome, not a failure); still pathological: f=8 Eb-drain-without-firing + dense-edge NaN (ticket open) | ✅ decided | PLAN ledger 07-02 ruling; `FINDINGS.md §10` |
+| referee defense: "why exactly 4" + "why a constant" | **✅ MEASURED (theta5b ran 2026-07-02):** whole-band window **[4, 4.5]**; law out-of-sample rms **0.064 dex**; fire-vs-drain race documented (fire set non-monotonic in f — corrects the "no dead windows" phrasing); diffuse f=2 fires at t≈5.04 Myr | ✅ done | `FINDINGS.md §11`; PLAN "REFEREE DEFENSE"; `pdvtrigger_report.html` §16.3 |
 | resolve the §8e⇄§9 tension | both right: kappa breakdown is **non-monotonic in f_κ** (dead windows between firing bands; §8e's θ≈0.53 freeze reproduced on Helix) | ✅ resolved 07-01 from committed data | `FINDINGS.md §9a`, `data/kappa_stability_map.csv` |
 | revalidate `'auto'` (pt3) | re-measure the 63-cell grid under the 📏 protocol (5 Myr, θ_max) or keep 'auto' opt-in-provisional | ⏳ open | FINDINGS §9 flags |
 | acceptance target | normal-GMC-band clouds fire `cooling_balance` with emergent θ_max ∈ 0.9–0.99 and reach momentum; route-a clouds stay energy-driven **by design** (the boundary = the falsifiable output). **Measured 2026-07-02 (§10 point 4): the boundary is θ₀-based, NOT a clean density threshold** — small_1e6 (n=100) never fires through f=8 while large_diffuse (same n=100) fires at f=4 | the goal (boundary now measured) | LANCASTER_REFERENCE §7 + FINDINGS §10 |

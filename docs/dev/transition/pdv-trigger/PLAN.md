@@ -115,8 +115,11 @@ primary) ≠ Rung B (structural κ_mix, SHELVED) — they are different mechanis
 established real value — a verified closed form, the n-mapping, the source-verified `(1−θ)` budget, and the
 proof that *enforcing* θ double-counts PdV — but its conclusion is that enforcement is the wrong primitive.
 Rung A (`multiplier`) is already shipped in production, gated default-off byte-identical. **The calibration ran
-(§10, 2026-07-02); the remaining work is the f_mix pin** — gated on the fire-then-recollapse physics call
-(+ the diffuse stop_t=8 spot-check and the dense-edge NaN ticket) — not a new mechanism.
+(§10, 2026-07-02) and the recollapse gate is CLEARED (maintainer ruling, same day: firing into the momentum
+phase and then recollapsing is acceptable physics — an outcome, not a failure mode). f_mix = 4 is the ADOPTED
+working value** (production default stays `cooling_boost_mode='none'`; 4 is the documented recommended
+setting), subject only to the theta5b fine bracket (the referee sensitivity statement) and the diffuse
+stop_t=8 arm — not a new mechanism.
 
 **SETTLED (2026-07-01):** θ is the master parameter (3-way identical) & is an **output** · knob = cooling
 **mechanism** (`multiplier`/f_κ), not enforced θ · El-Badry/Lancaster = **calibration target** for emergent θ ·
@@ -131,11 +134,12 @@ re-derived on the `multiplier` knob.** The 📏 standard-protocol matrix (8 conf
 `multiplier`: **f_fire ≈ 1.4·(0.95/θ₀)^1.8**; **f_mix=4 fires the whole normal-GMC band incl. the diffuse
 cloud**; route-a = small_1e6 + fail_repro (θ₀-based, not a density threshold). (The §14 θ₀/p — fit on
 `cooling_boost_kappa`, blowout snapshot, falsified slope, R6 observer — remain void, `CONTAMINATION.md`
-⛔ #1–#2.) **Residue, now the open item: pin the single f_mix (2 vs 4 vs a finer (2,4] bracket), gated on the
-fire-then-recollapse physics call** (§10 point 5) — plus the diffuse stop_t=8 spot-check and the dense-edge
-(nCore 1e6) NaN stiffness ticket. (2) pin **f_max** — concrete state after §10: the bracket is **2-vs-4**
-(4 fires the band but dense cores fire-then-recollapse; 2 fires only the compact config), recollapse-gated;
-structural κ_mix that would justify more at the diffuse end stays SHELVED. (3) ✅ confirmed by theta5 — the
+⛔ #1–#2.) **Residue → ✅ gate CLEARED (2026-07-02, maintainer ruling): momentum-then-recollapse is
+acceptable physics ("completely fine"), so f_mix = 4 is ADOPTED as the working value**; the theta5b fine
+bracket + diffuse stop_t=8 arm remain as the referee sensitivity refinement (they may sharpen the window,
+not the decision). Dense-edge (nCore 1e6) NaN stiffness ticket still open. (2) pin **f_max** — resolved with
+the same ruling: 4 (the minimal band-firing constant, inside the physical 2–8 window); theta5b measures the
+window edges; structural κ_mix that would justify more at the diffuse end stays SHELVED. (3) ✅ confirmed by theta5 — the
 massive cloud hands off cleanly under `multiplier` at every boosted f (fail_repro handoff untouched by the
 boost — §10; earlier shown for the gated/default path, `fail_repro` → 500 pc). (4) ✅ **RESOLVED (same day, from committed data — `FINDINGS.md §9a`)**: the §8e⇄§9 kappa tension was
 non-monotonic breakdown windows in f_κ (fire 4–6, dead 8–12, fire 16+ on the simple_cluster cell; §8e's
@@ -146,9 +150,10 @@ interpolation-into-a-dead-window caveat. (5) decide `'auto'` (pt3): revalidate i
 **BEST PATH FORWARD (updated 2026-07-02):** (i) **Rung A `multiplier` is already in production** (gated
 default-off — `grep cooling_boost_mode trinity/`). (ii) ✅ **DONE (2026-07-02 — §10):** the 📏 theta5 matrix ran
 on Helix (32/32 compliant) and re-derived the emergent-θ calibration on the *shippable* knob — θ measured only
-as **θ_max over ≥5 Myr from `dictionary.jsonl`** (never blowout, never the observer). (iii) **Pin the single
-physical f_mix** (leading candidate 4 — NOT yet decided; gated on the fire-then-recollapse physics call, ± a
-finer f∈(2,4] bracket and the diffuse stop_t=8 spot-check) and publish the **MEASURED θ₀-based route-a split**
+as **θ_max over ≥5 Myr from `dictionary.jsonl`** (never blowout, never the observer). (iii) ✅ **PINNED
+(2026-07-02): f_mix = 4** — the recollapse gate cleared by maintainer ruling (momentum-then-recollapse is
+fine physics); theta5b refines the workable window for the referee statement. Publish the **MEASURED
+θ₀-based route-a split**
 (§10: route-a = small_1e6 + fail_repro; small_1e6 shares nCore=1e2 with the firing diffuse config, so the
 boundary is NOT a clean density threshold — the earlier "n ≳ 48 cm⁻³" framing is dropped).
 (iv) Massive clouds keep riding the PR #715 handoff untouched (§8b lesson). (v) Keep **θ_elbadry and `'auto'`
@@ -163,15 +168,17 @@ Committed, ready-to-run ammunition: the **theta5b matrix** (`runs/make_theta5b_p
 `runs/params/theta5b/`, 43 params validated through `read_param`; `runs/run_theta5b.sbatch`, array 1-43,
 ~same cost as theta5). Storyline treatment: `pdvtrigger_report.html` §16.2.
 
-*Q1 — "why exactly f_mix=4? are 2.5/3.4/4.7 workable?"* Today's honest answer: 4 is a **grid point**, defended
-by the law (the hardest configs need 4.3/4.0/3.9) as the **minimal single constant that fires the band**, with
-a workable window [~4, <8) bounded above by the over-boost ceiling. theta5b turns that into measurement:
+*Q1 — "why exactly f_mix=4? are 2.5/3.4/4.7 workable?"* **ANSWERED BY MEASUREMENT (theta5b, 2026-07-02 —
+FINDINGS §11, `data/theta5_fire_map.csv`):** 2.5 and 3.4 measurably miss part of the band (pl2_steep fires
+only at 4; be/diffuse at 3.5); 4.5 works; **5 already drops midrange_pl0** (over-boost Eb-drain). **The
+whole-band window is [4, 4.5]** and 4 sits inside it — a measured choice, no longer a grid-point argument.
+The matrix as designed:
 
 | theta5b arm | what it measures | referee answer it produces |
 |---|---|---|
-| f ∈ {2.5, 3, 3.5} × 8 configs | does anything below 4 fire pl2_steep/be_sphere (law says no: 4.3/4.0)? does 2.5–3 fire midrange (law says yes: 2.9)? | per-config f_fire to ±0.25–0.5 → the measured **window lower edge**; tests the law's out-of-sample accuracy |
-| f ∈ {4.5, 5} × 8 configs | window upper side: same fire set as 4? recollapse worsens? Eb-drain onset? | "conclusions are insensitive to f within [win_lo, win_hi]; 4 is a round representative" — the sentence the paper needs |
-| large_diffuse stop_t=8 at f ∈ {1, 2, 2.5} | the θ=0.9552-at-exactly-t=5 graze; native peak t≈4.9 | whether the diffuse f_fire is really (2,4] or drops to ≈2 given time — and whether stop_t=5 truncates the diffuse peak (📏 rule-1 check on itself) |
+| f ∈ {2.5, 3, 3.5} × 8 configs | window lower edge + law accuracy | **MEASURED:** pl2 needs 4 (3.5 → drain); be/diffuse fire at 3.5; mid/dense at 2.5; law rms **0.064 dex** out-of-sample (`data/theta5_law_check.csv`) |
+| f ∈ {4.5, 5} × 8 configs | window upper side | **MEASURED:** 4.5 keeps the full fire set; **5 drops midrange** (Eb-drain) → the paper sentence is "any f∈[4, 4.5] gives identical conclusions; 4 adopted" |
+| large_diffuse stop_t=8 at f ∈ {1, 2, 2.5} | the t=5 graze + peak capture | **MEASURED:** f=2 fires at t≈5.04 Myr (horizon-dependent threshold — state 5 Myr as the operational GMC-lifetime horizon); f=1@8Myr: native peak t≈4.86, unchanged — **5 Myr captures it**; f=2.5 still drains |
 
 *Q2 — "why a constant f and not f(cloud properties)?"* Four rows, each independently sufficient; the decisive
 test is out-of-sample prediction (fit the θ₁-collapse law on a config subset, predict the held-out f_fire
@@ -187,6 +194,29 @@ brackets from θ₀ alone — a per-cloud f(properties) fit cannot beat it witho
 The constant-f story the paper can defend: *all cloud-property dependence flows through θ₀, which the solved
 bubble already computes; a single physical f then lets the physics select the fire set (route-a) instead of
 forcing it — one parameter, one falsifiable prediction.*
+
+**Q2 MEASURED (theta5b residual test, 2026-07-02).** Does f need a density (or temperature) term? Two
+independent checks on the fine bracket say no at grid resolution:
+
+1. **Residual correlations** (law residuals from `data/theta5_law_check.csv` vs config properties, 6 fired
+   configs — indicative, not conclusive, at N=6): resid vs log n_core Pearson r=−0.39 (p=0.45), slope
+   **−0.013 dex/dex**; vs log M_cloud r=+0.42 (p=0.40), slope +0.019; vs log SFE r=−0.25 (p=0.63), slope
+   −0.020. Every slope is far below the grid step (0.079 dex) over the sampled range; no property survives
+   as a predictor once θ₀ is used.
+2. **The θ₀-matched trio** (the sharper argument — density varied at *fixed* θ₀): large_diffuse (n=1e2,
+   θ₀=0.535), be_sphere (n=1e4, θ₀=0.529), pl2_steep (n=1e5, θ₀=0.511) share θ₀ to ±0.013 while spanning
+   **3 dex in density**; their measured f_fire are 3.5 / 3.5 / 4.0 — a spread of 0.058 dex, *below* the
+   0.079 dex grid step. Bound: **|∂log f_fire/∂log n| ≲ 0.02 at fixed θ₀** — a density term is unresolved.
+
+**Temperature is the untested axis.** The 8-config suite never varies Λ(T) independently — the interface
+temperature is emergent, so f_k's T-dependence is degenerate with the cooling table already inside L_cool.
+Cheapest falsification test (**theta5c**, zero code changes): re-run 2–3 configs × `path_cooling_CIE ∈
+{1,2,3}` (bundled Cloudy / Cloudy+grains / Gnat–Ferland 2012 tables — different Λ(T) shapes) at f ∈
+{1, 3.5, 4}. If the swapped Λ(T) shifts θ₀ and the law still predicts the shifted f_fire from θ₀ alone,
+all T-dependence flows through θ₀ and constant-f stands; if f_fire moves at *fixed* θ₀, f_k needs a
+T-term. (A metallicity lever also exists — Z=0.15 auto-pins a Sutherland–Dopita table in
+`read_param.py` — but `_validate_ZCloud` currently locks Z=1, so that arm needs a validator decision
+first.)
 
 ---
 
@@ -253,6 +283,50 @@ for provenance.*
 > on `dictionary.jsonl`. `F_KAPPA_FUNCTIONAL_FORM.md` §10/§14 flagged accordingly.
 
 **Status ledger (newest first):**
+- **2026-07-03 (✅ FIX #1 LANDED — no-root streak ⇒ momentum handoff; theta5k READY).** A
+  50-segment no-physical-root streak now ends the implicit phase like `cooling_balance` does
+  (`termination_reason="no_physical_root_handoff"`; a *fate*, not a trigger — harvest counts it
+  like DRAIN). Verified: handoff demo (`runs/drive_noroot_handoff_check.py`, threshold 3, f_κ=8 →
+  diagnosis → transition → momentum → clean end) + structural inertness + full pytest 614/614.
+  NB: local byte-identity gates are UNATTAINABLE without pinned BLAS threads — an A/A control
+  (identical code, two runs) differs at the SN noise floor from row 1; any future local
+  byte-identity claim needs a same-code A/A companion (KAPPA_FREEZE_MECHANISM §7.1b).
+  The rule-compliant kappa re-validation is committed ready-to-run: **theta5k** (8 configs ×
+  f_κ {1,2,4,6,8,12,16}, stop_t=5; `runs/make_theta5k_params.py` 56/56 validate,
+  `runs/run_theta5k.sbatch` array 1-56). KAPPA_FREEZE_MECHANISM §7.1 has the details.
+- **2026-07-02 (✅ KAPPA FREEZE MECHANISM IDENTIFIED — §9a's "non-monotonic breakdown" was a false
+  inference, as the maintainer suspected).** The freeze is the solver hitting the McKee–Cowie
+  evaporation→condensation domain boundary: the dMdt eigenvalue physically crosses zero exactly at
+  cooling balance, the `dMdt>0` gate refuses the condensing root (live repro: hybr converges to
+  dMdt=−84.76 at f_κ=8), and the runner freezes instead of handing off. 34/38 sweep freezes were at
+  θ≥0.8 (would-fire); all 23 "non-monotonic" arms explained without physics bands; 1 freeze at f_κ=1
+  proves the mode pre-exists the knob. Multiplier stays the production knob (structurally immune —
+  it never touches the eigenvalue). Fix ladder + instrumentation: `KAPPA_FREEZE_MECHANISM.md`,
+  FINDINGS §9b, `data/kappa_freeze_autopsy.csv`. A rule-compliant kappa re-validation ("theta5k")
+  becomes worthwhile only after fix #1 (no-root-streak ⇒ momentum handoff) lands.
+- **2026-07-02 (✅ THETA5B RAN — window measured [4, 4.5]; law validated out-of-sample; the fire-vs-drain
+  race → `FINDINGS.md §11`, `data/theta5_fire_map.csv`, `data/theta5_law_check.csv`).** The 43-arm referee
+  matrix completed on Helix. Fine f_fire: sc 2 · mid 2.5 · dense-edge 2.5 · be 3.5 · diffuse 3.5 · pl2 4;
+  small_1e6 never (≤8). **The whole-band window is [4, 4.5]** (3.5 misses pl2; 5 drops midrange via over-boost
+  Eb-drain — its ceiling moved down from theta5's 8). The θ₁-collapse law predicted every fine threshold at
+  **rms 0.064 dex out-of-sample** — the constant-f + law model stands the referee test. **NEW systematic
+  (corrects §10/ch.16 "no dead windows" phrasing):** below threshold, boost can PREVENT firing — Eb-drain
+  hands off to momentum before θ crosses (sc fires at 2, NOT at 2.5–3, again at 3.5+); healthy runs, real
+  fire-set gaps, mechanistically transparent (unlike kappa's §9a solver freezes). Diffuse long arms: f=2 fires
+  at t≈5.04 Myr (horizon-dependence — 5 Myr is an operational choice); f=1@8Myr confirms the native peak is
+  captured by 5 Myr (📏 rule-1 self-check ✅). Dense edge fires at every fine arm (θ 0.95–1.01) — theta5's
+  NaNs were intermittent, ticket downgraded. **f_mix=4 adoption unchanged and strengthened** (now measured as
+  the window's interior).
+- **2026-07-02 (✅ MAINTAINER RULING — momentum-then-recollapse is acceptable physics; f_mix = 4 ADOPTED).**
+  Maintainer, verbatim intent: a cloud that fires `cooling_balance`, hands off into the momentum phase, and
+  subsequently recollapses is "completely fine" — fire-then-recollapse is an **outcome**, not a failure mode.
+  Consequence: the f_mix decision gate (§10 point 5) is cleared and **f_mix = 4 is the adopted working value**
+  (minimal single constant that fires the normal-GMC band; production default stays `cooling_boost_mode='none'`
+  — 4 is the documented recommended setting). Still flagged as pathologies: the f=8 over-boost Eb-drain
+  (momentum WITHOUT firing) and the dense-edge NaN rows. theta5b (fine bracket + diffuse stop_t=8) remains
+  queued as the REFEREE-DEFENSE refinement — it measures the workable window around 4, it no longer gates the
+  decision. Docs reconciled: ⭐⭐ VERDICT/OPEN/BEST-PATH, INDEX §0/§3, FINDINGS §10, REPRODUCE #29,
+  CONTAMINATION register, storyline ch.16, figure/scorecard builder wording.
 - **2026-07-02 (✅ THETA5 MATRIX RAN — the first fully rule-compliant `multiplier` calibration →
   `FINDINGS.md §10`, `runs/data/theta5_{summary,calibration}.csv`).** 32/32 arms reached 5 Myr or a
   physics end on Helix; θ = θ_max from `dictionary.jsonl`. **OPEN(1) is CLOSED.** Results: blowout

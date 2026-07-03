@@ -145,6 +145,14 @@ FIGURES = {
         "theta5_knob_choice.png",
         "knob comparison: the kappa knob's theta_max vs f_kappa for one sweep cell shows firing bands interleaved with freeze windows (dead windows), while the multiplier knob's theta_max rises monotonically with f_mix with no dead windows",
     ),
+    "__FIG_T5BMAP__": (
+        "theta5b_fire_map.png",
+        "fire map over theta5+theta5b: per config and f_mix the outcome class (fires in band / momentum without firing via Eb drain / stays energy-driven / NaN); the measured whole-band window 4 to 4.5 is shaded; the diffuse 8-Myr arms shown above the diffuse row",
+    ),
+    "__FIG_T5BLAW__": (
+        "theta5b_law_check.png",
+        "predicted vs measured f_fire for the six firing configs: the theta5-fit collapse law predicts the theta5b fine bracket out-of-sample with rms 0.064 dex",
+    ),
 }
 
 
@@ -1046,8 +1054,8 @@ whole normal-GMC band &mdash; including the diffuse cloud &mdash; at \(\theta_{\
 <b>(4)</b> route-a survives, de-conflated: <code>small_1e6</code> (same \(n_{\rm core}\) as the firing diffuse
 config) never fires through \(f{=}8\), and <code>fail_repro</code> rides the PR#715 handoff untouched;
 <b>(5)</b> two new failure modes: <i>fire-then-recollapse</i> (dense cores at \(f\!\ge\!4\)) and <i>over-boost
-\(E_b\)-drain</i> (momentum without firing at \(f{=}8\)). <b>\(f_{\rm mix}\) is NOT yet pinned</b> &mdash; 4 is the
-leading candidate, gated on the recollapse physics call.</p></div>
+\(E_b\)-drain</i> (momentum without firing at \(f{=}8\)). <b>\(f_{\rm mix}{=}4\) was ADOPTED on 2026-07-02</b> &mdash; the maintainer ruled that firing into the
+momentum phase and then recollapsing is acceptable physics (an outcome, not a failure mode).</p></div>
 
 <figure>__FIG_T5ARMS__<figcaption><b>The matrix.</b> Emergent \(\theta_{\max}\) (5 Myr) vs \(f_{\rm mix}\), all 8
 configs, colored by outcome class; filled markers fired <code>cooling_balance</code>. At \(f_{\rm mix}{=}4\) every
@@ -1084,9 +1092,9 @@ behave oppositely &mdash; the fire/route-a boundary is set by \(\theta_0\) (mass
 alone.</figcaption></figure>
 
 <figure>__FIG_T5KNOB__<figcaption><b>Why the multiplier knob.</b> The structural kappa knob interleaves firing
-bands with freeze windows (dead windows, &sect;9a of <code>FINDINGS.md</code>); the multiplier is monotonic in
-\(f\) with no dead windows &mdash; but it has its own gentler over-boost ceiling (\(E_b\)-drain at
-\(f{=}8\)).</figcaption></figure>
+bands with <i>solver-freeze</i> windows (&sect;9a of <code>FINDINGS.md</code>); the multiplier never freezes a
+run. <b>Correction (&sect;16.3):</b> on the fine grid its fire <i>set</i> is also non-monotonic &mdash; a
+fire-vs-\(E_b\)-drain race &mdash; but the failure mode is a healthy handoff, not a breakdown.</figcaption></figure>
 
 <h3>16.2 &middot; Referee robustness &mdash; why 4, and why a constant?</h3>
 <p><b>Why 4 and not 2.5 / 3.4 / 4.7?</b> Honestly: 4 is a <i>grid point</i>, not a fitted optimum. Its defense is
@@ -1112,11 +1120,35 @@ predicts nothing. The referee-grade test: fit the law on a config subset, <b>pre
 \(f_{\rm fire}\) brackets from \(\theta_0\) alone, and show the constant-\(f\)+law model matches the measurements
 as well as any multi-parameter \(f(\text{properties})\) fit.</p>
 
-<div class="box over"><span class="lab">Open &mdash; what still gates the pin</span> (1) the
-<b>fire-then-recollapse physics call</b>: at \(f{=}4\) every dense-core config fires then shell-collapses within
-0.05&ndash;2.5 Myr &mdash; acceptable re-accretion physics, or over-boost? (2) the theta5b fine bracket + long
-diffuse arm; (3) the dense-edge (\(n_{\rm core}{=}10^6\)) NaN-loss stiffness diagnosis. Until then every doc
-phrases \(f_{\rm mix}{=}4\) as the <i>leading candidate</i>, not the decision.</div>
+<div class="box find"><span class="lab">Resolved &mdash; the pin (2026-07-02)</span> (1) the
+<b>fire-then-recollapse physics call is CLEARED</b>: the maintainer ruled that firing into the momentum phase
+and then recollapsing is acceptable physics &mdash; so <b>\(f_{\rm mix}{=}4\) is the adopted working value</b>
+(production default stays <code>none</code>; 4 is the documented recommended setting). Still open: (2) the
+theta5b fine bracket + long diffuse arm &mdash; now a <i>referee sensitivity refinement</i> (window edges), not a
+gate; (3) the dense-edge (\(n_{\rm core}{=}10^6\)) NaN-loss stiffness diagnosis; and the \(f{=}8\)
+\(E_b\)-drain (momentum <i>without</i> firing) remains the real over-boost pathology.</div>
+
+<h3>16.3 &middot; theta5b &mdash; the fine bracket answers the referee (2026-07-02)</h3>
+<div class="tldr"><p style="margin:0"><b>TL;DR.</b> The 43-arm referee matrix ran. <b>(1) The whole-band window
+is measured: \(f_{\rm mix}\in[4,4.5]\)</b> &mdash; 3.5 misses pl2_steep, 5 drops midrange_pl0 (over-boost
+\(E_b\)-drain). \(f_{\rm mix}{=}4\) is confirmed, now as a <i>measured</i> choice. <b>(2) The collapse law holds
+out-of-sample at rms 0.064 dex</b> over six configs &mdash; one parameter (\(\theta_0\)) predicts every fine
+firing threshold. <b>(3) A new systematic &mdash; the fire-vs-drain race:</b> below threshold, extra boost often
+<i>prevents</i> firing (the boosted \(E_b\) drain hands off to momentum before \(\theta\) crosses) &mdash;
+simple_cluster fires at \(f{=}2\), not at 2.5&ndash;3, again at 3.5+. Healthy runs, real gaps; this corrects
+&sect;16's &ldquo;no dead windows&rdquo; phrasing (no <i>solver</i> freezes remains true). <b>(4) The diffuse
+cloud at \(f{=}2\) fires at \(t\!\approx\!5.04\) Myr</b> &mdash; the theta5 graze was real; the \(f{=}1\) 8-Myr
+arm shows the native peak (\(t\!\approx\!4.86\)) IS captured by the 5 Myr window. <b>(5) The dense edge fires at
+every fine arm</b> (\(\theta\) 0.95&ndash;1.01) &mdash; theta5's NaNs were intermittent stiffness, not a wall.
+Artifacts: <code>data/theta5_fire_map.csv</code>, <code>data/theta5_law_check.csv</code>,
+<code>theta5b_fire_map.png</code>, <code>theta5b_law_check.png</code> (REPRODUCE #30).</p></div>
+<figure>__FIG_T5BMAP__<figcaption><b>The fire map.</b> Outcome per (config, \(f_{\rm mix}\)) over both matrices:
+filled = fires in the Lancaster band; triangles = momentum <i>without</i> firing (drain won); squares = healthy
+energy-driven; the shaded strip is the measured whole-band window.</figcaption></figure>
+<figure>__FIG_T5BLAW__<figcaption><b>Out-of-sample law check.</b> The theta5-fit
+\(f_{\rm fire}=1.4\,(0.95/\theta_0)^{1.82}\) vs the theta5b fine measurements: rms 0.064 dex &mdash; the
+one-parameter constant-\(f\) model predicts, a per-cloud \(f(\text{properties})\) fit could only chase.
+</figcaption></figure>
 """
 
 SEC_REPRO = r"""

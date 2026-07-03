@@ -879,6 +879,11 @@ calibration contaminations (flag #1) and the dead-window interpolation risk (§9
 
 ## 9a. [data] The §8e⇄§9 kappa tension RESOLVED — breakdown is NON-MONOTONIC in f_κ (2026-07-01, no new sims)
 
+> **⚠️ Mechanism claim SUPERSEDED by §9b (2026-07-02).** The "interleaved firing bands /
+> breakdown windows" reading below over-read the data: the windows are solver crashes at the
+> evaporation→condensation domain boundary (+ an outlawed stop_t=2 horizon), not knob physics.
+> The knob-choice conclusion survives on the new grounds given in §9b.
+
 Read straight out of the committed `data/summary.csv` (the 819-run Helix sweep) — no new runs needed.
 Builder: `data/make_kappa_stability_map.py` → `data/kappa_stability_map.csv`.
 
@@ -919,6 +924,58 @@ end, still `implicit`, θ frozen sub-threshold). So:
    died early without firing). The fit's f_κ_fire values are unaffected (smallest *fired* f), but
    per-run health must be judged from `t_final`/`phase_final`, not the exit code.
 
+## 9b. [data+repro] §9a's "non-monotonic breakdown" re-examined — the freeze is the evaporation→condensation domain boundary, NOT physics bands (2026-07-02)
+
+The maintainer challenged §9a ("are we sure f_κ is a no-go? 'breaks non-monotonically' may be a
+false inference — check vigorously"). The challenge was **right**. Full treatment:
+`KAPPA_FREEZE_MECHANISM.md`; data: `data/make_kappa_freeze_autopsy.py` →
+`data/kappa_freeze_autopsy.csv`; live repro logs summarized in that doc's §4.
+
+1. **The freeze pre-exists the knob**: 1/819 sweep runs froze at f_κ=1.0 (unboosted). The rate
+   rises with f_κ (~1/63 → ~5–7/63): kappa aggravates, does not create.
+2. **34/38 freezes died at θ_max ≥ 0.8** (healthy no-fire median: 0.636) — crashes ON APPROACH
+   to the 0.95 crossing, i.e. would-fire runs, not cold windows.
+3. **All 23 "non-monotonic" arms decompose** into 12 froze-on-approach + 8 healthy-at-2-Myr with
+   θ_max 0.87–0.93 (stop_t=2 is an outlawed horizon; diffuse-fires-at-5.04-Myr precedent) +
+   3 froze-early. **Zero** arms ran healthy to a rule-compliant horizon and stayed cold.
+4. **Live repro smoking gun** (local, simple_cluster): at f_κ=7.5/8/16 the β–δ structure solve
+   *converges to a negative dMdt root* (−85.22/−84.76/−53.09 Msun/Myr at t≈3.4e-3 Myr) and the
+   `dMdt>0` acceptance gate (`get_betadelta.py:861-869`) refuses it; the runner holds state
+   (`run_energy_implicit_phase.py:835-845`) and, if the burst persists, grinds to `max_segments`
+   with θ frozen (f_κ=8 holds θ≈0.52–0.53 — §8e/§9a's 0.5331, reproduced a third time). The
+   legacy β–δ solver (no gate) shows zero events. A `MAX_SEGMENTS=40` monkeypatch run exits the
+   phase early and completes cleanly through momentum — proof-of-concept that
+   no-root ⇒ handoff semantics yields well-formed fates.
+5. **Physics identity**: dMdt is the eigenvalue of the conduction-front budget; when interface
+   radiative losses exceed conductive heating, evaporation physically reverses to condensation
+   (McKee & Cowie 1977; El-Badry+19 bubbles do this). Cooling balance IS that reversal condition
+   — the trigger's target regime is the gate's forbidden regime. Early-mode freezes are the same
+   reversal reached locally (boosted κ) before global θ catches up.
+
+**Supersessions (dated 2026-07-02):** §9a's *mechanism claim* ("interleaved firing bands and
+breakdown windows" as a knob property) is superseded — the windows are crash artifacts + an
+outlawed horizon. §9a's *practical conclusion* survives on new grounds: multiplier stays the
+production knob because it never touches the dMdt eigenvalue (structurally immune), and kappa
+stays un-shippable *until* the domain-boundary semantics are fixed (fix ladder in
+KAPPA_FREEZE_MECHANISM §7: no-root-streak ⇒ momentum handoff; continuation; saturated-conduction
+cap; condensation branch). Instrumentation landed (log-only): `freeze-watch` per-segment
+dMdt/θ trace, streak-demoted warnings, frozen-state note on the completion line.
+
+**Fix #1 LANDED (2026-07-03):** a 50-segment no-root streak now hands the phase off to momentum
+(`termination_reason="no_physical_root_handoff"`, routed exactly like `cooling_balance`; the
+handoff is a *fate*, not a trigger — harvest classifies it like DRAIN, θ<0.95). Verified by
+`runs/drive_noroot_handoff_check.py` (threshold 3, f_κ=8: diagnosis → handoff → transition →
+momentum → clean STOPPING_TIME end), full pytest 614/614, and structural inertness (the branch
+cannot execute below a 50-streak; observed healthy bursts ≤ 8). NB a local byte-identity gate
+proved unattainable: an A/A control (same code, two runs) differs from row 1 at the SN noise
+floor + ULP level — pre-existing local FP nondeterminism (unpinned BLAS threads suspected; HPC
+pins OMP_NUM_THREADS=1), which exonerates the fix and flags that future LOCAL byte-identity
+claims need a same-code A/A companion run (KAPPA_FREEZE_MECHANISM §7.1b). The
+rule-compliant re-validation matrix is committed and ready: **theta5k** = 8 configs ×
+f_κ {1,2,4,6,8,12,16} at stop_t=5 (`runs/make_theta5k_params.py`, 56/56 validate through
+`read_param`; `runs/run_theta5k.sbatch`, array 1-56). It asks the corrected question: does
+kappa fire monotonically once the solver may leave the energy phase at the physical boundary?
+
 ## 10. [data] The theta5 matrix RAN — first fully rule-compliant `multiplier` calibration (2026-07-02, Helix)
 
 The 📏 standard-protocol matrix (8 configs × f_mix {none,2,4,8} × stop_t 5) ran on Helix — **32/32 arms
@@ -957,13 +1014,16 @@ F_KAPPA §14 (`CONTAMINATION.md` ⛔ #1–#3).
    confirming §9's de-conflation with the correct knob.
 5. **NEW failure mode — fire-then-recollapse:** at f≥4 every dense-core config that fires promptly
    shell_collapses (0.05–2.5 Myr). Only simple_cluster@2 and the diffuse@4/8 fire AND survive to
-   5 Myr. This is §8a's recollapse question resurfacing from EMERGENT cooling (not imposed θ) —
-   whether post-fire recollapse is physical (dense core re-accretes) is a **maintainer physics call**
-   before f_mix is pinned.
+   5 Myr. This is §8a's recollapse question resurfacing from EMERGENT cooling (not imposed θ).
+   **→ ✅ RULED (maintainer, 2026-07-02): acceptable physics** — firing into the momentum phase and then
+   recollapsing is "completely fine"; fire-then-recollapse is an outcome class, **not** a failure mode.
+   (The f=8 Eb-drain-without-firing of point 6 and the dense-edge NaNs remain the actual pathologies.)
 6. **NEW failure mode — over-boost Eb-drain:** midrange@8 reaches momentum via the Eb≤0 handoff
    WITHOUT the trigger firing (θ_max 0.923, `fired=False`); the dense edge does the same at every
    boosted f. `multiplier` has an over-boost ceiling — gentler than kappa's dead windows (§9a), but
-   the same lesson: more boost ≠ more transition.
+   the same lesson: more boost ≠ more transition. **→ refined by §11:** this is the general
+   fire-vs-drain race; the fine bracket shows per-config no-fire GAPS (e.g. simple_cluster at
+   f=2.5–3) and pulls midrange's ceiling down to f=5.
 
 **Figures (2026-07-02, `data/make_theta5_figures.py` → REPRODUCE #29):** `theta5_arms.png` (the full
 matrix, outcome-classed), `theta5_collapse_law.png` (the law + kappa's for contrast),
@@ -972,9 +1032,66 @@ matrix, outcome-classed), `theta5_collapse_law.png` (the law + kappa's for contr
 monotonicity); quantitative margins in `runs/data/theta5_fmix_scorecard.csv` (per config: θ₀, measured
 f_fire bracket, law-predicted f_fire, θ_max and fate at f=4).
 
-**Open after this section:** (a) pin f_mix — 4 fires the band but recollapses the dense cores; 2 is
-gentle but only fires the compact config; the answer depends on the recollapse physics call and/or a
-finer f∈(2,4) bracket for the 0.85–0.98 near-miss arms; (b) the dense-edge (nCore 1e6) stiffness
-under boost needs its own diagnosis (NaN loss rows on accepted steps); (c) large_diffuse@2 grazing
-0.9552 exactly at stop_t=5 suggests a t>5 Myr fire — a stop_t=8 spot-check would bracket the diffuse
-f_fire between 2 and 4.
+**Open after this section:** (a) ~~pin f_mix~~ **✅ f_mix = 4 ADOPTED (2026-07-02 maintainer ruling —
+momentum-then-recollapse is acceptable physics; PLAN ledger)**; the theta5b fine bracket
+(f∈{2.5,3,3.5,4.5,5}) remains as the referee sensitivity refinement, not a gate; (b) the dense-edge
+(nCore 1e6) stiffness under boost needs its own diagnosis (NaN loss rows on accepted steps);
+(c) large_diffuse@2 grazing 0.9552 exactly at stop_t=5 suggests a t>5 Myr fire — the committed
+theta5b stop_t=8 arms bracket the diffuse f_fire.
+
+## 11. [data] theta5b — the fine bracket + long diffuse arms: window [4, 4.5], law validated, and the fire-vs-drain race (2026-07-02, Helix)
+
+The 43-arm referee matrix ran (fine f_mix ∈ {2.5, 3, 3.5, 4.5, 5} × 8 configs + large_diffuse
+stop_t=8 at f ∈ {1, 2, 2.5}); all arms reached stop_t or a physics end. Combined analysis with
+theta5: `data/make_theta5b_analysis.py` → `data/theta5_fire_map.csv`, `data/theta5_law_check.csv`,
+`theta5b_fire_map.png`, `theta5b_law_check.png`.
+
+1. **Fine f_fire per config (5 Myr):** simple_cluster **2**, midrange_pl0 **2.5**,
+   small_dense_highsfe **2.5**, be_sphere **3.5**, large_diffuse **3.5**, pl2_steep **4**;
+   small_1e6 never (through 8); fail_repro n/a (PdV handoff at all f).
+2. **The θ₁-collapse law survives out-of-sample: rms 0.064 dex (~16%) over 6 configs.** The
+   theta5-fit law f_fire = 1.4·(0.95/θ₀)^1.82 predicted every fine-measured f_fire within one
+   half-grid-step (worst: simple_cluster, +0.11 dex). One parameter (θ₀, which the solved bubble
+   supplies) carries all the cloud-property dependence — the referee-grade argument for the
+   constant-f prescription.
+3. **The whole-band window is [4, 4.5] — measured, and narrower than assumed.** At f=3.5,
+   pl2_steep does not fire (0.850, Eb-drains); at f=5, midrange_pl0 stops firing (0.927,
+   Eb-drains — theta5 had put its ceiling at 8; the fine scan pulls it to 5). **f_mix=4 is not
+   just the minimal band-firing constant — it sits inside a narrow measured window**, bounded
+   below by pl2_steep's threshold and above by midrange's over-boost drain. Referee answer:
+   2.5 and 3.4 measurably miss part of the band; 4.5 works; 5 already drops a config.
+4. **NEW SYSTEMATIC — the fire-vs-drain race (supersedes §10's "multiplier has no dead
+   windows" phrasing and the ch.16/F5 claim).** Below a config's f_fire, extra boost often
+   *prevents* firing: the boosted Eb drain reaches Eb≤0 and hands off to momentum BEFORE θ
+   crosses 0.95 (DRAIN cells in the fire map). simple_cluster fires at f=2, then does NOT at
+   2.5–3 (θ_max 0.67–0.81, handoff at t≈0.13), then fires again at 3.5+ — a real per-config
+   no-fire gap. Unlike kappa's §9a dead windows these are NOT solver pathologies: every run is
+   healthy, completes, and still reaches momentum — just via Eb≤0 with θ_max < 0.95 instead of
+   via the trigger in the Lancaster band. The corrected statement: *the multiplier knob has no
+   solver breakdowns; its fire SET is non-monotonic in f because firing races Eb-drain.*
+5. **Diffuse long arms:** (a) f=2 @ stop_t=8 **fires at t≈5.04 Myr** (θ_max 0.960) — the
+   theta5 graze (0.9552 at exactly t=5) was a real near-fire; the diffuse f_fire is
+   horizon-dependent: 3.5 within 5 Myr, 2 within ~5.1 Myr. The 5 Myr protocol horizon is an
+   operational choice and should be stated as such (GMC lifetime scale), not physics.
+   (b) f=1 @ stop_t=8: θ_max identical to the 5 Myr run (0.535, peak t≈4.86, no later growth) —
+   **the 5 Myr window does capture the native diffuse peak**; 📏 rule 1 self-check passes.
+   (c) f=2.5 @ stop_t=8 still DRAINs (θ_max 0.828 at t≈2.56) — the gap is not time-limited.
+6. **The dense edge fires after all:** small_dense_highsfe fires at every fine arm
+   (2.5→0.950, 3→1.009, 3.5→0.975, 4.5→0.991, 5→0.960; collapse t≈0.04–0.05). theta5's NaN
+   arms at exactly f=4 and 8 were erratic stiffness draws, not a wall — the nCore=1e6 ticket
+   stays open but is downgraded from "breaks under boost" to "intermittently NaNs".
+
+**Consequences for the f_mix=4 adoption (ledger 07-02):** unchanged and strengthened — 4 is
+measured to be in the window's interior-bottom; the paper sentence is now "any f in [4, 4.5]
+gives identical conclusions; 4 adopted" with the fire map as evidence. The DRAIN phenomenology
+should be mentioned wherever over-boost is discussed (it replaces "more boost = more
+transition" intuition).
+
+7. **No density/mass/SFE term survives at grid resolution (residual test, 2026-07-02):** the law
+   residuals correlate with nothing — vs log n_core r=−0.39 (p=0.45, slope −0.013 dex/dex), vs
+   log M_cloud r=+0.42 (p=0.40), vs log SFE r=−0.25 (p=0.63); all slopes are below the 0.079 dex
+   grid step. Sharper: the **θ₀-matched trio** (diffuse n=1e2 / be n=1e4 / pl2 n=1e5, θ₀ all
+   0.51–0.54) spans 3 dex in density yet their f_fire spread is 0.058 dex (3.5/3.5/4.0) →
+   **|∂log f_fire/∂log n| ≲ 0.02 at fixed θ₀**. All cloud-property dependence flows through θ₀.
+   Temperature/Λ(T) is the one *untested* axis (never varied independently); the theta5c design
+   — swap `path_cooling_CIE ∈ {1,2,3}` at fixed config — is specced in PLAN → REFEREE DEFENSE Q2.

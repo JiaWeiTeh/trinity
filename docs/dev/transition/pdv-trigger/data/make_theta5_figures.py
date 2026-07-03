@@ -13,8 +13,8 @@ Figures (workstream root):
   theta5_target_vs_emergent.png F4 El-Badry target vs native and f=4 emergent θ(n)
   theta5_knob_choice.png       F5 kappa breakdown windows vs multiplier monotonicity
 Also writes runs/data/theta5_fmix_scorecard.csv — the quantitative per-config margin table
-for the f_mix pin (NOT a decision: f_mix=4 is the leading candidate, gated on the
-fire-then-recollapse physics call — FINDINGS §10 open items).
+for the f_mix pin. f_mix=4 was ADOPTED 2026-07-02 (maintainer ruling: firing into momentum
+and then recollapsing is acceptable physics — PLAN ledger); theta5b refines the window.
 
 REPRODUCE:
     python docs/dev/transition/pdv-trigger/data/make_theta5_figures.py
@@ -618,7 +618,7 @@ def fig_knob(runs):
     ax.set_xticklabels(["1", "2", "4", "8"])
     ax.set_xlim(0.9, 17)
     ax.set_xlabel("$f_{\\rm mix}$ (multiplier, post-solve)")
-    ax.set_title("multiplier knob (theta5):\nmonotonic in $f$, no dead windows")
+    ax.set_title("multiplier knob (theta5 coarse grid):\nno solver freezes; but see the fire map —\nthe fire SET is non-monotonic (FINDINGS §11)")
     axes[0].set_ylim(0, 1.52)
     fig.savefig(os.path.join(_PDV, "theta5_knob_choice.png"))
     plt.close(fig)

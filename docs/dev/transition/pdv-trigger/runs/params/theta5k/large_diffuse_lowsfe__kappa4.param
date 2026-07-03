@@ -1,0 +1,12 @@
+model_name             large_diffuse_lowsfe__kappa4
+mCloud                 1e7
+nCore                  1e2
+rCore                  1
+sfe                    0.01
+dens_profile           densPL
+densPL_alpha           0
+stop_t                 5
+cooling_boost_kappa    4
+log_console            False
+log_file               True
+path2output            outputs/theta5k/large_diffuse_lowsfe__kappa4
