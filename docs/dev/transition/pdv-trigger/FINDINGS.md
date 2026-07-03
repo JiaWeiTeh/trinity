@@ -1146,3 +1146,16 @@ freezes** — the §9a freeze class is extinct; every arm ends in a proper fate.
    Discriminating trace (dense k6 vs k8 freeze-watch) queued; 9th config (normal_n1e3:
    mCloud 1e6, nCore 1e3, sfe 0.01, PL0) added via `runs/make_theta5n_params.py` (15 arms,
    both knobs — the law predicts its f_fire from θ₀ before the fine arms are read).
+
+7. **The discriminating trace RAN (2026-07-03, dense k6 vs k8, controlled pair — identical
+   early dt sequences).** The rejected eigenvalue evolves *smoothly* in both arms (no bracket
+   chaos, no branch-hopping): k8's root decays −36→−15, dips, then RECOVERS through zero
+   (+65.3 at segment 28) → structure accepted → fires (matches HPC n_impl=28, θ_first=0.617);
+   k6 nearly recovers early (−4.0 at segment 8), second-dives to −37.9, and never recovers in
+   the 50-segment window → handoff. Verdict: solver exonerated — fire-vs-condense is decided by
+   whether the front budget recovers to evaporation, i.e. trajectory physics. Caveat kept: one
+   discontinuous jump per trace correlates with segment-loop discrete events (cooling-table
+   refresh suspected) → **the race is physical but its exact f_κ edge is
+   discretization-sensitive; treat per-config f_κ_fire as razor-edge, not law-grade** (the
+   multiplier's f_fire sits on the smooth θ₁-collapse law instead). Full trace excerpts:
+   KAPPA_FREEZE_MECHANISM §5.

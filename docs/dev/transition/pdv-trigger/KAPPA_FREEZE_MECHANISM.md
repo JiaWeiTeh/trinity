@@ -217,6 +217,29 @@ root-finder bracket behavior. TRINITY's spherical v(R1)=0 problem is not literal
 one, so multiplicity stays a caveat, not a hypothesis. The freeze-watch trace on a
 condense-vs-fire pair (dense k6 vs k8) is the discriminating experiment.
 
+**Trace verdict (RAN 2026-07-03, dense nCore=1e6, k6=condense-arm vs k8=fire-arm, identical
+early dt sequences — a controlled pair):**
+
+- **The rejected root evolves smoothly — no bracket chaos.** k8's negative eigenvalue walks a
+  continuous arc: −17.7 → −36 → decaying steadily to −14.8 over segments 2–21, a wobble, a dip
+  to −5.3, then at segment 28 the root **recovers through zero to +65.3**, the structure solve
+  is accepted, and cooling_balance fires within that segment (matches the HPC arm: n_impl=28,
+  θ_first=0.617). k6 walks the same early arc but nearly recovers *early* (−16 → −4.0 by
+  segment 8), then takes a **second dive** (−37.9 at segment 9) and decays only to ~−24 by
+  segment 23 (local timeout) — on HPC it never recovers within the 50-segment window → handoff.
+- **Verdict on the maintainer's bug question:** the solver is finding a well-defined,
+  continuously-evolving eigenvalue every segment and the gate refuses it — consistent with the
+  Tan–Oh–Gronke uniqueness prior; no erratic sign-flipping, no branch-hopping signature. The
+  fire-vs-condense outcome is decided by whether the front's budget *recovers to evaporation*
+  within the streak window — real trajectory physics, not solver noise.
+- **One honest numerics caveat:** each trace has one discontinuous jump in the rejected-root
+  sequence (k6: −4.0→−37.9 at segment 9; k8: −15.3→−5.3→−20.5 around segments 25–27). These
+  correlate with discrete events in the segment loop (the `COOLING_UPDATE_INTERVAL`=5e-3 Myr
+  table refresh is the prime suspect, not pinned). So: **the race is physical, but the exact
+  f_κ location of its edge is sensitive to loop discretization** — per-config f_κ_fire values
+  are razor-edge quantities; don't over-interpret them (unlike the multiplier's f_fire, which
+  sits on the smooth θ₁-collapse law).
+
 To make the freeze identifiable at a glance (and gone when fixed), the implicit runner now
 carries a **no-root streak tracker** and a **dMdt approach trace** (all logging-only; physics,
 outputs, and the `betadelta_phase_summary` signature untouched):

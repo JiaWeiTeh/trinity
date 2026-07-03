@@ -74,7 +74,23 @@
 | 2026-07-03 `f622515` | `runs/params/theta5k/small_dense_highsfe__kappa6.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-03 `f622515` | `runs/params/theta5k/small_dense_highsfe__kappa8.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-03 `f622515` | `runs/params/theta5k/small_dense_highsfe__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `9d54221` | `runs/params/theta5n/normal_n1e3__kappa12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `9d54221` | `runs/params/theta5n/normal_n1e3__kappa16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `9d54221` | `runs/params/theta5n/normal_n1e3__kappa2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `9d54221` | `runs/params/theta5n/normal_n1e3__kappa4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `9d54221` | `runs/params/theta5n/normal_n1e3__kappa6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `9d54221` | `runs/params/theta5n/normal_n1e3__kappa8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `9d54221` | `runs/params/theta5n/normal_n1e3__mult2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `9d54221` | `runs/params/theta5n/normal_n1e3__mult2p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `9d54221` | `runs/params/theta5n/normal_n1e3__mult3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `9d54221` | `runs/params/theta5n/normal_n1e3__mult3p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `9d54221` | `runs/params/theta5n/normal_n1e3__mult4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `9d54221` | `runs/params/theta5n/normal_n1e3__mult4p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `9d54221` | `runs/params/theta5n/normal_n1e3__mult5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `9d54221` | `runs/params/theta5n/normal_n1e3__mult8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `9d54221` | `runs/params/theta5n/normal_n1e3__none.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-03 `f622515` | `runs/run_theta5k.sbatch` | producer unknown (HPC/hand-made); refs: `make_theta5k_params.py` |
+| 2026-07-03 `9d54221` | `runs/run_theta5n.sbatch` | producer unknown (HPC/hand-made); refs: `make_theta5n_params.py` |
 | 2026-07-03 `9706c6a` | `theta5k_fire_map.png` | producer unknown (HPC/hand-made); refs: `make_theta5k_analysis.py`, `make_pdvtrigger_report.py` |
 | 2026-07-03 `9706c6a` | `theta5k_theta_rise.png` | producer unknown (HPC/hand-made); refs: `make_theta5k_analysis.py`, `make_pdvtrigger_report.py` |
 | 2026-07-02 `057cd96` | `data/fkappa_auto_verify.csv` | by `make_fkappa_auto_verify.py` |
@@ -306,19 +322,3 @@
 | 2026-06-29 `18aea49` | `storyline_figs/fig_fmix_convention.png` | producer unknown (HPC/hand-made); refs: `make_pdvtrigger_report.py`, `make_storyline_figs.py` |
 | 2026-06-29 `18aea49` | `storyline_figs/fig_regime_split.png` | producer unknown (HPC/hand-made); refs: `make_pdvtrigger_report.py`, `make_storyline_figs.py` |
 | 2026-06-29 `18aea49` | `theta_vs_density.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_overlay.py`, `make_fmix_spread_plot.py` |
-| None `None` | `runs/params/theta5n/normal_n1e3__kappa12.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5n/normal_n1e3__kappa16.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5n/normal_n1e3__kappa2.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5n/normal_n1e3__kappa4.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5n/normal_n1e3__kappa6.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5n/normal_n1e3__kappa8.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5n/normal_n1e3__mult2.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5n/normal_n1e3__mult2p5.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5n/normal_n1e3__mult3.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5n/normal_n1e3__mult3p5.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5n/normal_n1e3__mult4.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5n/normal_n1e3__mult4p5.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5n/normal_n1e3__mult5.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5n/normal_n1e3__mult8.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/params/theta5n/normal_n1e3__none.param` | — (hand-made/HPC, unreferenced) |
-| None `None` | `runs/run_theta5n.sbatch` | producer unknown (HPC/hand-made); refs: `make_theta5n_params.py` |
