@@ -182,6 +182,16 @@ are the durable record, per the 💾 banner.
 
 ## 5. Instrumentation (LANDED 2026-07-02, log-only, behavior-neutral; betadelta tests 28/28 pass)
 
+**Demo (f_κ=8, `stop_t 0.006`, `log_level DEBUG`, exit 0):** segment 1 solves cleanly at
+dMdt=+1.121e3 with Lloss/Lgain=0.5316 — **the frozen θ≈0.53 is literally segment 1's ratio,
+held from the first rejection onward**. From segment 2 the streak counter tracks the gate
+refusals, each reporting the *negative root the solver actually found*: −84.76, −99.82, −75.99,
+−56.05, −40.6, −29.24, −20.75, −279.7 … — the front hovers around the reversal (roots decaying
+toward 0 = drifting back toward evaporation, then a deeper condensing excursion). The abrupt
++1121 → −85 swing between consecutive segments is worth keeping in mind: it may be a genuine
+stiff crossing or a two-branch eigenvalue with the root-finder switching branches — the
+freeze-watch trace is exactly the tool to distinguish these on a longer run.
+
 To make the freeze identifiable at a glance (and gone when fixed), the implicit runner now
 carries a **no-root streak tracker** and a **dMdt approach trace** (all logging-only; physics,
 outputs, and the `betadelta_phase_summary` signature untouched):
