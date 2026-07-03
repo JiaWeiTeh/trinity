@@ -46,7 +46,8 @@ ORDER = [
     "midrange_pl0",
     "small_dense_highsfe",
     "simple_cluster",
-]  # by theta0, outliers first (same as theta5b figures)
+    "normal_n1e3",
+]  # by theta0, outliers first (same as theta5b figures); normal_n1e3 fires natively
 THETA0 = {
     "simple_cluster": 0.676,
     "small_dense_highsfe": 0.717,
@@ -56,6 +57,7 @@ THETA0 = {
     "pl2_steep": 0.511,
     "small_1e6": 0.297,
     "fail_repro": 0.003,
+    "normal_n1e3": 1.047,
 }
 SHORT = {"large_diffuse_lowsfe": "large_diffuse", "small_dense_highsfe": "small_dense"}
 
@@ -96,6 +98,7 @@ def classify(r):
 
 def load():
     rows = read_summary(os.path.join(_PDV, "runs", "data", "theta5k_summary.csv"))
+    rows += read_summary(os.path.join(_PDV, "runs", "data", "theta5n_summary.csv"))
     cells = {}
     for r in rows:
         cfg, mode = r["run_name"].rsplit("__", 1)
@@ -210,7 +213,7 @@ def fig_fire_map(cells, fs):
 
 def fig_theta_rise(cells, fs):
     fig, ax = plt.subplots(figsize=(6.4, 4.6))
-    palette = ["#0072B2", "#E69F00", "#009E73", "#CC79A7", "#56B4E9", "#D55E00"]
+    palette = ["#0072B2", "#E69F00", "#009E73", "#CC79A7", "#56B4E9", "#D55E00", "0.4"]
     band = [c for c in ORDER if c not in ("fail_repro", "small_1e6")]
     for i, cfg in enumerate(band):
         pts = sorted((f, cells[(cfg, f)][1], cells[(cfg, f)][0]) for f in fs if (cfg, f) in cells)

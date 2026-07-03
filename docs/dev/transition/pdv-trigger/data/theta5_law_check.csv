@@ -1,5 +1,5 @@
-# generated 2026-07-02T21:20:45Z | builder make_theta5b_analysis.py | code c1b364a+dirty
-# out-of-sample check of f_fire = 1.4*(0.95/theta0)^1.82 (fit on the coarse theta5 grid) against the theta5b fine bracket: rms = 0.0642 dex over 6 configs
+# generated 2026-07-03T13:59:45Z | builder make_theta5b_analysis.py | code 5762c05+dirty
+# out-of-sample check of f_fire = 1.4*(0.95/theta0)^1.82 (fit on the coarse theta5 grid) against the theta5b fine bracket: rms = 0.0643 dex over 7 configs
 config,theta0,f_fire_measured,f_fire_predicted,resid_dex
 fail_repro,0.003,,50477.6,
 small_1e6,0.297,,11.56,
@@ -9,3 +9,4 @@ large_diffuse_lowsfe,0.535,3.5,3.95,0.0528
 midrange_pl0,0.636,2.5,2.88,0.0619
 small_dense_highsfe,0.717,2.5,2.32,-0.033
 simple_cluster,0.676,2.0,2.58,0.1105
+normal_n1e3,1.047,1.0,1.16,0.065
