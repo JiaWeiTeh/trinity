@@ -140,6 +140,7 @@ Status legend: **CLEAN** (quotable for its stated question) · **FLAG-x** (usabl
 | ⚡ small_1e6 ⇄ large_diffuse early-time degeneracy (found 07-03, FINDINGS §12.6) | — | — | both configs have M_cluster=1e5, nCore=1e2, flat profile → **bit-identical early trajectories** (theta_first identical in all theta5k arm pairs). NOT a harvest bug — but for any early-time (t ≲ 1 Myr) claim they count as ONE check, not two |
 | `dmdt_trace_dense.csv` + `dmdt_dip_traces.png` + `dmdt_tackle_flow.png` (built 07-03, `data/make_dmdt_dip_figures.py`; params `runs/params/dmdt_trace/`) | E8 | kappa 6/8, stop_t=0.08 local | ⛔ **mechanism diagnosis ONLY** — per-segment eigenvalue traces; never quote θ or timings from these short local runs as calibration |
 | `theta5n_summary.csv` (RAN Helix 2026-07-03) | E8 | multiplier 2–8 + kappa 2–16 + none | ✅ CLEAN rule-compliant (15/15 proper fates, stop_t=5, θ_max from dictionary). The none arm FIRES natively (θ₀=1.047) — quote as route-a evidence; kappa-16 DRAIN is a fate, not a θ transition |
+| ⛔ all-NaN θ arms (theta5 dense mult4/mult8 pattern) | — | any | **never a physics outcome**: NaN = `bubble_Lloss` registry default, written because the β–δ solve never succeeded (root at the integrable-domain edge, machine-flippable — FINDINGS §14). Use the finite-θ neighboring arms; never average or interpret NaN arms |
 
 ### `runs/data/`
 

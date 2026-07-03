@@ -68,7 +68,7 @@ OUTLABEL = {
     "FIRED": "fires cooling_balance ($\\theta\\geq0.95$)",
     "DRAIN": "momentum WITHOUT firing ($E_b\\leq0$ drain won the race)",
     "NOFIRE": "stays energy-driven (healthy to stop_t)",
-    "NAN": "NaN loss rows (dense-edge stiffness)",
+    "NAN": "solve never succeeds: $L_{\\rm loss}$ stays at its NaN default (root at domain edge)",
 }
 
 

@@ -1178,3 +1178,35 @@ into `data/make_theta5{b,k}_analysis.py` (9-row fire maps + 7-point law check re
    whole-band window [4, 4.5] now fires **7/7** fireable configs.
 4. **Kappa races again at the top**: fires 2–12, DRAINs at 16 (θ_max 0.916, Eb-drain, n_impl
    125 ≠ 50) — one more non-monotonic race loss; still no whole-band f_κ.
+
+## 14. [repro] The dense-edge NaN ticket RESOLVED-AS-UNDERSTOOD — never-solved default + a machine-flippable root at the domain edge (2026-07-03, local DEBUG repro)
+
+The maintainer asked why small_dense shows NaN at f_mix=4 (and 8) in the fire map. DEBUG-level
+reproduction (params in the session scratchpad; mechanism-only, no θ quotes) answered it:
+
+1. **The NaN is not a computed value going bad — it is the never-written default.**
+   `bubble_Lloss` (and `bubble_Lgain`) default to `np.nan` in the registry; the dictionary
+   writes them verbatim every snapshot. In the HPC NaN arms the β–δ solve NEVER succeeded
+   (no_root_reason: "structure solve failed" — hybr wanders to unintegrable (β,δ), e.g.
+   β=−0.04), so all 16/13 implicit rows carry the uninitialized default. θ_first=nan from row 1
+   is the tell (a mid-run failure would leave finite early rows).
+2. **Why f=4/8 and not the neighbors: the boost moves the root to the integrable-domain edge.**
+   The multiplier enters the g-residual's energy balance (Edot_from_balance uses
+   L_loss = L_leak + f·L_cool), so larger f displaces the (β,δ) root; on this extreme config
+   (nCore=1e6, bubble born tiny/dense) f≈4–8 puts it right at the edge where the structure
+   integration fails.
+3. **The edge is machine-flippable — proven by direct repro.** Locally (same params, same
+   code): mult4 fails once then FIRES at segment 3 (θ 0.896→trigger; momentum t≈0.042);
+   mult8 fails 9 segments then FIRES (Lloss/Lmech 1.009 at t≈0.0034; momentum t≈0.039). On
+   Helix the identical arms never recovered (all-NaN, Eb drain to the same shell_collapsed
+   fate at the same t≈0.04–0.05). With run-to-run ULP nondeterminism measured even on one
+   machine (§9b A/A), which side of the razor a given run lands on is effectively a coin flip.
+4. **Consequences.** (a) The theta5b asterisk stands but is now mechanistic: dense at f=4 is
+   at the domain edge — quote the fine arms (3.5/4.5/5, finite θ, FIRED) as the dense
+   calibration evidence, and treat any all-NaN dense arm as "root lost at the edge", not as a
+   physics outcome. (b) The fire-map NAN legend is corrected ("solve never succeeds — L_loss
+   stays at its NaN default"). (c) Post-fix-#1 code turns a persistent solve-fail streak into
+   the condensation handoff at streak 50, so future editions of this failure get a labeled
+   fate instead of NaN-grind (the local repros recovered before 50, hence fired). (d) The
+   final dynamical fate was never affected: the Eb ODE runs off the β-side Edot, so HPC and
+   local runs collapse at the same t despite opposite θ bookkeeping.

@@ -285,6 +285,14 @@ for provenance.*
 > on `dictionary.jsonl`. `F_KAPPA_FUNCTIONAL_FORM.md` §10/§14 flagged accordingly.
 
 **Status ledger (newest first):**
+- **2026-07-03 (✅ DENSE-EDGE NaN TICKET RESOLVED-AS-UNDERSTOOD — never-solved default + machine-flippable
+  root at the domain edge).** DEBUG repro of theta5's small_dense mult4/mult8 NaN arms: the NaN is the
+  registry DEFAULT (`bubble_Lloss=np.nan`) written verbatim because the β–δ solve never succeeds ("structure
+  solve failed", hybr pushed to unintegrable (β,δ) by the boosted balance). Locally the SAME arms recover and
+  FIRE (mult4 at segment 3; mult8 after 9 fails) — the f≈4–8 root sits on the integrable-domain edge and ULP
+  nondeterminism picks the side. Dynamical fate unaffected (same collapse t either way — Eb ODE uses β-side
+  Edot). Fire-map NAN legend corrected; quote the theta5b fine arms as the dense calibration evidence.
+  FINDINGS §14.
 - **2026-07-03 (✅ THETA5N RAN — the ninth config fires NATIVELY; law point 7; window [4, 4.5] now 7/7).**
   normal_n1e3 (1e6, n1e3, sfe 0.01 — M_cluster 1e4) crosses θ=0.95 unboosted at t≈2.5 Myr
   (θ₀=1.047): route-a demonstrated live. Law predicts f_fire=1.16, measured 1.0 (resid 0.065

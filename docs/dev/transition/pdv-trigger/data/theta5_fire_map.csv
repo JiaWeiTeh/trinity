@@ -1,4 +1,4 @@
-# generated 2026-07-03T13:33:45Z | builder make_theta5b_analysis.py | code 4b5fa32+dirty
+# generated 2026-07-03T13:59:45Z | builder make_theta5b_analysis.py | code 5762c05+dirty
 config,f1,f2,f2.5,f3,f3.5,f4,f4.5,f5,f8,f8Myr_arms
 fail_repro,DRAIN:0.003,DRAIN:0.006,DRAIN:0.008,DRAIN:0.010,DRAIN:0.011,DRAIN:0.013,DRAIN:0.014,DRAIN:0.016,DRAIN:0.025,
 small_1e6,NOFIRE:0.297,NOFIRE:0.484,NOFIRE:0.555,NOFIRE:0.612,NOFIRE:0.648,NOFIRE:0.682,NOFIRE:0.711,NOFIRE:0.742,NOFIRE:0.835,
