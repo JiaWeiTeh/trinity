@@ -83,6 +83,19 @@ def test_emit_concurrency_sets_array_throttle(tmp_path) -> None:
     assert '#SBATCH --array=1-4%4' in (jobs / 'submit_sweep.sbatch').read_text()
 
 
+def test_emit_sbatch_has_helix_defaults(tmp_path) -> None:
+    """Emitted sbatch is Helix-ready out of the box (no patch step): cluster
+    directives, conda activation, and a job-name derived from the sweep file."""
+    _s, _o, jobs, _n, _i = _emit(tmp_path)  # _make_sweep writes sweep.param
+    sbatch = (jobs / 'submit_sweep.sbatch').read_text()
+    assert '#!/bin/bash -l' in sbatch
+    assert '#SBATCH --job-name=trinity-sweep' in sbatch   # from sweep.param stem
+    assert '#SBATCH --partition=cpu-single' in sbatch
+    assert '#SBATCH --account=bw22J006' in sbatch
+    assert '#SBATCH --export=NONE' in sbatch
+    assert 'conda activate trinity' in sbatch
+
+
 def test_emit_sbatch_is_offset_aware(tmp_path) -> None:
     """Emitted sbatch shifts the runs.tsv line by $OFFSET (chunked submission
     under a MaxSubmitJobs cap) and fails loud on an out-of-range line."""
