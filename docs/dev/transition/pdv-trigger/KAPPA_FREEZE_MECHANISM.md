@@ -129,6 +129,27 @@ So the freeze is a **model-domain boundary**, not a bug in the integrator: the c
 bubble-structure formulation (Weaver Eq. 33/44 anchoring, evaporation-only) has no condensation
 branch, and the code's only response to reaching that boundary is to stop updating.
 
+**Primary-source recheck (maintainer, 2026-07-03) — three sharpenings:**
+
+- **Weaver himself already had 40% interface cooling.** Weaver et al. 1977 Paper II (§V) state
+  that ~40% of the conductive heat flux is radiated in the interface (O VI-type resonance
+  lines) and only ~60% drives evaporation — Paper I's neglect of front radiative losses was an
+  approximation they removed for the ionization structure (not the dynamics); saturation is
+  negligible at the interface for their fiducial bubble. **The classical benchmark front budget
+  is already 60/40**: a κ boost that raises supply *and* interior density (with n² cooling
+  responding) tipping it past 100% is a modest push, not exotica. This is the quantitative
+  anchor for why the reversal is close by.
+- **TRINITY's closure literally has no condensation branch.** The TRINITY method paper's
+  Eq. 15 family gives T ∝ Ṁ^{2/5} (visible in the code: the Eq. 44 IC at
+  `bubble_luminosity.py:377-388` computes `T = (const · dMdt · dR2 / 4πR2²)^{2/5}`) — the
+  Weaver similarity profile does not exist for Ṁ < 0. The dMdt>0 gate is not a bolted-on
+  sanity check; it marks the edge of the profile family the whole β–δ structure is built from.
+  This confirms fix #4's ranking: a condensation branch needs a *different profile family*,
+  not a relaxed gate.
+- **The planar analogue's eigenvalue is unique** (Tan, Oh & Gronke 2021 §2.2, citing Kim & Kim
+  2013; sign set by pressure vs P_crit, Zel'dovich & Pikel'ner 1969). See §5 for what this does
+  to the branch-multiplicity caveat.
+
 Two corollaries:
 
 - **The 3 froze-early runs** (θ 0.52–0.59, incl. §8e's f_κ=8 simple_cluster signature) are the
@@ -188,9 +209,36 @@ held from the first rejection onward**. From segment 2 the streak counter tracks
 refusals, each reporting the *negative root the solver actually found*: −84.76, −99.82, −75.99,
 −56.05, −40.6, −29.24, −20.75, −279.7 … — the front hovers around the reversal (roots decaying
 toward 0 = drifting back toward evaporation, then a deeper condensing excursion). The abrupt
-+1121 → −85 swing between consecutive segments is worth keeping in mind: it may be a genuine
-stiff crossing or a two-branch eigenvalue with the root-finder switching branches — the
-freeze-watch trace is exactly the tool to distinguish these on a longer run.
++1121 → −85 swing between consecutive segments: the planar analogue's mass-flux eigenvalue is
+**unique** for given boundary conditions (Tan, Oh & Gronke 2021 §2.2; maintainer recheck
+2026-07-03), so genuine two-branch multiplicity is now the *disfavored* explanation — the
+prior favors **fast-moving control parameters** (interior n, P between segments) or
+root-finder bracket behavior. TRINITY's spherical v(R1)=0 problem is not literally the planar
+one, so multiplicity stays a caveat, not a hypothesis. The freeze-watch trace on a
+condense-vs-fire pair (dense k6 vs k8) is the discriminating experiment.
+
+**Trace verdict (RAN 2026-07-03, dense nCore=1e6, k6=condense-arm vs k8=fire-arm, identical
+early dt sequences — a controlled pair):**
+
+- **The rejected root evolves smoothly — no bracket chaos.** k8's negative eigenvalue walks a
+  continuous arc: −17.7 → −36 → decaying steadily to −14.8 over segments 2–21, a wobble, a dip
+  to −5.3, then at segment 28 the root **recovers through zero to +65.3**, the structure solve
+  is accepted, and cooling_balance fires within that segment (matches the HPC arm: n_impl=28,
+  θ_first=0.617). k6 walks the same early arc but nearly recovers *early* (−16 → −4.0 by
+  segment 8), then takes a **second dive** (−37.9 at segment 9) and decays only to ~−24 by
+  segment 23 (local timeout) — on HPC it never recovers within the 50-segment window → handoff.
+- **Verdict on the maintainer's bug question:** the solver is finding a well-defined,
+  continuously-evolving eigenvalue every segment and the gate refuses it — consistent with the
+  Tan–Oh–Gronke uniqueness prior; no erratic sign-flipping, no branch-hopping signature. The
+  fire-vs-condense outcome is decided by whether the front's budget *recovers to evaporation*
+  within the streak window — real trajectory physics, not solver noise.
+- **One honest numerics caveat:** each trace has one discontinuous jump in the rejected-root
+  sequence (k6: −4.0→−37.9 at segment 9; k8: −15.3→−5.3→−20.5 around segments 25–27). These
+  correlate with discrete events in the segment loop (the `COOLING_UPDATE_INTERVAL`=5e-3 Myr
+  table refresh is the prime suspect, not pinned). So: **the race is physical, but the exact
+  f_κ location of its edge is sensitive to loop discretization** — per-config f_κ_fire values
+  are razor-edge quantities; don't over-interpret them (unlike the multiplier's f_fire, which
+  sits on the smooth θ₁-collapse law).
 
 To make the freeze identifiable at a glance (and gone when fixed), the implicit runner now
 carries a **no-root streak tracker** and a **dMdt approach trace** (all logging-only; physics,
@@ -295,9 +343,17 @@ Exact lines: see `run_energy_implicit_phase.py` around the `no_physical_root` bl
 - `'auto'` interpolation risk (§9a.2) is *downgraded but not cleared*: interpolated f_κ values
   no longer face physics dead bands, but they still face a crash-prone crossing until fix #1
   lands.
-- If fix #1 (streak ⇒ handoff) is implemented, a **rule-compliant kappa re-validation** (5 Myr,
-  θ_max, the 8 configs — "theta5k") becomes cheap and would test whether kappa fires
-  monotonically once the solver is allowed to leave the energy phase at the physical boundary.
+- ~~If fix #1 (streak ⇒ handoff) is implemented, a rule-compliant kappa re-validation becomes
+  cheap~~ **DONE — theta5k RAN (2026-07-03, Helix, FINDINGS §12)**: 56/56 proper fates, **zero
+  freezes** (5 arms exit via the condensation handoff — exactly the old "dead window" cells,
+  validating both the fix and this doc's mechanism at scale). Answer to the monotonicity
+  question: the fire set is *still* non-monotonic, but honestly so — the front condenses (or
+  the shell drains/dissolves) before global θ crosses; θ_max itself rises ~monotonically. **No
+  single f_κ fires the whole band** (best: f_κ=12, 5/6) vs the multiplier's [4, 4.5] at 6/6 —
+  the production-knob choice is now measured on crash-free, rule-compliant, like-for-like data.
+  The old sweep's simple_cluster "fires at f_κ=16" was a solver artifact (rule-compliant it
+  CONDENSES at θ=0.624), which also hardens the `'auto'` demotion (its lookup grid embeds
+  pre-fix artifacts).
 
 ## 9. Reproduce
 

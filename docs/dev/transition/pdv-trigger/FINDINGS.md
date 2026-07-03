@@ -1095,3 +1095,67 @@ transition" intuition).
    **|∂log f_fire/∂log n| ≲ 0.02 at fixed θ₀**. All cloud-property dependence flows through θ₀.
    Temperature/Λ(T) is the one *untested* axis (never varied independently); the theta5c design
    — swap `path_cooling_CIE ∈ {1,2,3}` at fixed config — is specced in PLAN → REFEREE DEFENSE Q2.
+
+## 12. [data] theta5k RAN — first rule-compliant kappa matrix: ZERO freezes, but NO whole-band f_κ exists (2026-07-03, Helix)
+
+56/56 arms (8 configs × f_κ ∈ {1,2,4,6,8,12,16}, stop_t=5, θ_max from dictionary rows), run on
+the post-fix-#1 branch. Data `runs/data/theta5k_summary.csv`; analysis
+`data/make_theta5k_analysis.py` → `data/theta5k_fire_map.csv`, `theta5k_fire_map.png`,
+`theta5k_theta_rise.png`. Outcome counts: 21 FIRED / 18 NOFIRE / 12 DRAIN / 5 CONDENSE / **0
+freezes** — the §9a freeze class is extinct; every arm ends in a proper fate.
+
+1. **Fix #1 validated at scale.** The five CONDENSE arms (n_impl pinned at the 50-segment
+   handoff cap) are exactly where §9a saw "dead windows": simple_cluster 8/12/16 (θ held
+   0.533/0.587/0.624 — the §8e 0.5331, now a *fate* instead of a crash), dense 6, pl2 16.
+   The old sweep's simple_cluster "fire at f_κ=16" is exposed as a solver artifact: rule-
+   compliant, it CONDENSES at 0.624 (the old θ_max=4.55 spike was the ⛔ #3 observer).
+2. **The fire set is still non-monotonic — but now it is honest physics of the knob, not a
+   crash.** sc fires 4–6 then condenses 8+; dense fires 4, condenses 6, fires 8–16; pl2 drains
+   4–6, fires 8–12, condenses 16; be fires 6, drains 8 (θ 0.833, shell dissolves t≈4.86),
+   fires 12+. Structural boosting loses a *race*: the front goes condensing (or the shell
+   dissolves/drains) before global θ crosses. diffuse and midrange are cleanly monotonic
+   (fire 4+). θ_max itself rises ~monotonically with f_κ everywhere it can be measured
+   (`theta5k_theta_rise.png`) — the race, not the knob's reach, decides.
+3. **HEADLINE — no single f_κ fires the whole band.** Best column: f_κ=12 fires 5/6 (misses
+   sc, which condenses). The multiplier's measured window [4, 4.5] fires 6/6. The production-
+   knob choice (multiplier) now rests on rule-compliant, crash-free, like-for-like data — the
+   strongest form of the §9a.1 argument, with the mechanism correctly attributed.
+4. **`'auto'` demotion hardens.** The 819-grid f_κ_fire values that `'auto'` resolves from
+   were measured pre-fix at stop_t=2; theta5k shows at least one cell's grid value (sc 16)
+   doesn't fire at all under the rules. 'auto' stays opt-in/PROVISIONAL and should be
+   re-derived from theta5k-class data if it is ever promoted.
+5. Controls behave: fail_repro DRAINs immediately at all f_κ (PdV regime, θ≤0.011);
+   small_1e6 climbs 0.297→0.680 without firing. Caveat: fired-arm θ_max up to 1.99 (dense
+   4/16) — structural boosting distorts θ en route (known kappa pathology, ⛔ #3-adjacent);
+   quote fire/no-fire from this matrix, not θ magnitudes above ~1.2.
+
+6. **Maintainer primary-source recheck + non-monotonicity bug-hunt (2026-07-03).** (a) Weaver II
+   §V: the classical front budget is already 60/40 (≈40% of conductive flux radiated in the
+   interface) — the reversal is *close by* even unboosted; (b) TRINITY's closure T ∝ Ṁ^{2/5}
+   has no Ṁ<0 profile family — the gate is the closure's domain edge (KAPPA_FREEZE_MECHANISM
+   §3); (c) planar-analogue eigenvalue uniqueness (Tan–Oh–Gronke §2.2) demotes branch
+   multiplicity below fast-moving boundary conditions as the +1121→−85 explanation. Bug-hunt on
+   the flip arms: the feared stale-dictionary signature WAS found — small_1e6 ⇄ large_diffuse
+   share bit-identical theta_first in all 7 arm pairs — and resolved as real physics (both have
+   M_cluster=1e5, nCore=1e2, flat profile → identical early trajectories; register ⚡ note: they
+   are ONE check, not two, for early-time claims). Everything monotone IS monotone in f_κ
+   (theta_first per config; the CONDENSE-held θ: sc 0.533/0.587/0.624); only the discrete
+   outcome flips, always decided within the first ~30–50 segments (dense t<0.06 Myr) — a
+   photo-finish between the trigger clock and the condensation/dissolution clocks, both
+   accelerated by f. be k8 is a different racer: shell DISSOLVED at t≈4.86 with θ=0.833.
+   Discriminating trace (dense k6 vs k8 freeze-watch) queued; 9th config (normal_n1e3:
+   mCloud 1e6, nCore 1e3, sfe 0.01, PL0) added via `runs/make_theta5n_params.py` (15 arms,
+   both knobs — the law predicts its f_fire from θ₀ before the fine arms are read).
+
+7. **The discriminating trace RAN (2026-07-03, dense k6 vs k8, controlled pair — identical
+   early dt sequences).** The rejected eigenvalue evolves *smoothly* in both arms (no bracket
+   chaos, no branch-hopping): k8's root decays −36→−15, dips, then RECOVERS through zero
+   (+65.3 at segment 28) → structure accepted → fires (matches HPC n_impl=28, θ_first=0.617);
+   k6 nearly recovers early (−4.0 at segment 8), second-dives to −37.9, and never recovers in
+   the 50-segment window → handoff. Verdict: solver exonerated — fire-vs-condense is decided by
+   whether the front budget recovers to evaporation, i.e. trajectory physics. Caveat kept: one
+   discontinuous jump per trace correlates with segment-loop discrete events (cooling-table
+   refresh suspected) → **the race is physical but its exact f_κ edge is
+   discretization-sensitive; treat per-config f_κ_fire as razor-edge, not law-grade** (the
+   multiplier's f_fire sits on the smooth θ₁-collapse law instead). Full trace excerpts:
+   KAPPA_FREEZE_MECHANISM §5.

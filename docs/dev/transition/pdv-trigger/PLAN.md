@@ -77,7 +77,9 @@ folder) — do **not** re-run the hours-long sims to recover them; reproduce onl
 > (enters the structure ODE). With Rung-B κ_mix also SHELVED, the **tentative decision is `multiplier` as the
 > production mechanism** — stable, fast, still radiative-only (no PdV double-count), θ emerges from the
 > structural L_cool (just scaled). **Confirmed since (2026-07-02):** kappa=2 impractically slow (§8e), kappa
-> dead windows (§9a), and the 32/32-stable theta5 matrix on the multiplier knob (§10).
+> dead windows (§9a — re-diagnosed §9b/§12: crashes at the evaporation→condensation boundary,
+> fixed by the no-root handoff; even crash-free, no whole-band f_κ exists), and the 32/32-stable
+> theta5 matrix on the multiplier knob (§10).
 
 *This single block replaces the older layered ⭐/⚡/⚡⚡ synthesis. It reflects the grand view across
 `ELBADRY_REFERENCE.md`, `LANCASTER_REFERENCE.md`, `F_KAPPA_FUNCTIONAL_FORM.md`, and all the κ_mix work.
@@ -188,7 +190,7 @@ brackets from θ₀ alone — a per-cloud f(properties) fit cannot beat it witho
 |---|---|---|---|---|---|
 | **constant f (+ θ₁-collapse law)** | 1 | n/a (physical cap 2–8, F_KAPPA §11) | fires the normal-GMC band at f=4; route-a emerges from θ₀ (§10) | yes: θ₀ > 0.95/f^0.55 ⇒ fires | **current choice** |
 | f(n_H) power law | 2 | ❌ wrong sign (κ_mix/κ_Sp ∝ n RISES; the chase-target f(n) falls) | REFUTED by the 819-sweep: 32× spread at fixed n (§9) | weakly | dead |
-| `'auto'` 3-axis lookup | 63 cells | ❌ chases the target (fires everything by construction) | interpolates into kappa dead windows (§9a); calibrated at stop_t=2 (⛔ #4) | no (fits anything) | opt-in convenience only |
+| `'auto'` 3-axis lookup | 63 cells | ❌ chases the target (fires everything by construction) | grid embeds PRE-FIX artifacts (§9b/§12: old sc "fire at k16" is rule-compliant CONDENSE; freezes were crashes at the condensation boundary); calibrated at stop_t=2 (⛔ #4) | no (fits anything) | opt-in convenience only — re-derive from theta5k-class data before any promotion |
 | local κ_mix(n,T) (Rung B) | 1 (λδv=3 pinned) | ✅ the physically faithful form | port SHELVED (saturation, solver failures — KMIX_SELFCONSISTENT); S0–S4 re-port ladder exists | yes | the *physics narrative*; revisit only if multiplier fails a gate |
 
 The constant-f story the paper can defend: *all cloud-property dependence flows through θ₀, which the solved
@@ -283,6 +285,26 @@ for provenance.*
 > on `dictionary.jsonl`. `F_KAPPA_FUNCTIONAL_FORM.md` §10/§14 flagged accordingly.
 
 **Status ledger (newest first):**
+- **2026-07-03 (🔍 PRIMARY-SOURCE RECHECK + NON-MONOTONICITY BUG-HUNT + 9th CONFIG).** Maintainer
+  verified the freeze doc against Weaver II (§V: classical front budget already 60/40 — the
+  reversal is close by), the TRINITY method paper (T ∝ Ṁ^{2/5}: no Ṁ<0 profile family — the
+  gate is the closure's domain edge; fix #4 = new profile family, confirmed research-grade), and
+  Tan–Oh–Gronke §2.2 (unique planar eigenvalue → the +1121→−85 swing is more likely fast-moving
+  BCs / bracket behavior than two branches). theta5k flip-arm audit: stale-dict hypothesis tested
+  and REFUTED (the found bit-identical theta_first pairs are the small_1e6⇄large_diffuse
+  M_cluster/nCore degeneracy — registered as ⚡ ONE-check note); all monotone quantities monotone
+  in f_κ; outcome flips are photo-finish races decided in the first ~30–50 segments. Band
+  extended to NINE configs: normal_n1e3 (1e6, n1e3, sfe 0.01, PL0) via `runs/make_theta5n_params.py`
+  (15 arms, both knobs, REPRODUCE #34, ⬜ ready). Dense k6-vs-k8 freeze-watch trace queued as the
+  bracket-vs-physics discriminator.
+- **2026-07-03 (✅ THETA5K RAN — zero freezes; fix #1 validated at scale; NO whole-band f_κ).**
+  First rule-compliant kappa matrix (56 arms, stop_t=5): 21 FIRED / 18 NOFIRE / 12 DRAIN /
+  5 CONDENSE (the no-root handoff, landing exactly on §9a's old "dead window" cells — sc
+  8/12/16 at θ 0.533/0.587/0.624, dense 6, pl2 16). Fire set non-monotonic for *physical*
+  reasons (fire-vs-condensation race); θ_max rises ~monotonically. Best single f_κ fires 5/6
+  (k12, misses sc); multiplier [4, 4.5] fires 6/6 → production-knob choice now measured
+  like-for-like. Old sc "fires at k16" exposed as pre-fix artifact → 'auto' demotion hardened.
+  FINDINGS §12; `data/theta5k_fire_map.csv`; `theta5k_{fire_map,theta_rise}.png`.
 - **2026-07-03 (✅ FIX #1 LANDED — no-root streak ⇒ momentum handoff; theta5k READY).** A
   50-segment no-physical-root streak now ends the implicit phase like `cooling_balance` does
   (`termination_reason="no_physical_root_handoff"`; a *fate*, not a trigger — harvest counts it
@@ -304,6 +326,12 @@ for provenance.*
   it never touches the eigenvalue). Fix ladder + instrumentation: `KAPPA_FREEZE_MECHANISM.md`,
   FINDINGS §9b, `data/kappa_freeze_autopsy.csv`. A rule-compliant kappa re-validation ("theta5k")
   becomes worthwhile only after fix #1 (no-root-streak ⇒ momentum handoff) lands.
+  **UPDATE 2026-07-03: theta5k RAN (FINDINGS §12)** — 56/56 proper fates, zero freezes (fix #1
+  validated at scale; the 5 condensation handoffs are the old "dead window" cells). Kappa's
+  fire set stays non-monotonic for physical reasons (fire-vs-condensation race) and **no single
+  f_κ fires the whole band** (best 5/6 at f_κ=12) — the multiplier window [4, 4.5] (6/6) is now
+  the measured, like-for-like production-knob argument. 'auto' demotion hardened (its grid
+  embeds pre-fix artifacts, e.g. sc f_κ=16 "fire" → rule-compliant CONDENSE at θ=0.624).
 - **2026-07-02 (✅ THETA5B RAN — window measured [4, 4.5]; law validated out-of-sample; the fire-vs-drain
   race → `FINDINGS.md §11`, `data/theta5_fire_map.csv`, `data/theta5_law_check.csv`).** The 43-arm referee
   matrix completed on Helix. Fine f_fire: sc 2 · mid 2.5 · dense-edge 2.5 · be 3.5 · diffuse 3.5 · pl2 4;
