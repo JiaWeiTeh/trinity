@@ -1,0 +1,13 @@
+model_name             normal_n1e3__mult2
+mCloud                 1e6
+nCore                  1e3
+rCore                  1
+sfe                    0.01
+dens_profile           densPL
+densPL_alpha           0
+stop_t                 5
+cooling_boost_mode     multiplier
+cooling_boost_fmix     2
+log_console            False
+log_file               True
+path2output            outputs/theta5n/normal_n1e3__mult2

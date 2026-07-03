@@ -129,6 +129,27 @@ So the freeze is a **model-domain boundary**, not a bug in the integrator: the c
 bubble-structure formulation (Weaver Eq. 33/44 anchoring, evaporation-only) has no condensation
 branch, and the code's only response to reaching that boundary is to stop updating.
 
+**Primary-source recheck (maintainer, 2026-07-03) — three sharpenings:**
+
+- **Weaver himself already had 40% interface cooling.** Weaver et al. 1977 Paper II (§V) state
+  that ~40% of the conductive heat flux is radiated in the interface (O VI-type resonance
+  lines) and only ~60% drives evaporation — Paper I's neglect of front radiative losses was an
+  approximation they removed for the ionization structure (not the dynamics); saturation is
+  negligible at the interface for their fiducial bubble. **The classical benchmark front budget
+  is already 60/40**: a κ boost that raises supply *and* interior density (with n² cooling
+  responding) tipping it past 100% is a modest push, not exotica. This is the quantitative
+  anchor for why the reversal is close by.
+- **TRINITY's closure literally has no condensation branch.** The TRINITY method paper's
+  Eq. 15 family gives T ∝ Ṁ^{2/5} (visible in the code: the Eq. 44 IC at
+  `bubble_luminosity.py:377-388` computes `T = (const · dMdt · dR2 / 4πR2²)^{2/5}`) — the
+  Weaver similarity profile does not exist for Ṁ < 0. The dMdt>0 gate is not a bolted-on
+  sanity check; it marks the edge of the profile family the whole β–δ structure is built from.
+  This confirms fix #4's ranking: a condensation branch needs a *different profile family*,
+  not a relaxed gate.
+- **The planar analogue's eigenvalue is unique** (Tan, Oh & Gronke 2021 §2.2, citing Kim & Kim
+  2013; sign set by pressure vs P_crit, Zel'dovich & Pikel'ner 1969). See §5 for what this does
+  to the branch-multiplicity caveat.
+
 Two corollaries:
 
 - **The 3 froze-early runs** (θ 0.52–0.59, incl. §8e's f_κ=8 simple_cluster signature) are the
@@ -188,9 +209,13 @@ held from the first rejection onward**. From segment 2 the streak counter tracks
 refusals, each reporting the *negative root the solver actually found*: −84.76, −99.82, −75.99,
 −56.05, −40.6, −29.24, −20.75, −279.7 … — the front hovers around the reversal (roots decaying
 toward 0 = drifting back toward evaporation, then a deeper condensing excursion). The abrupt
-+1121 → −85 swing between consecutive segments is worth keeping in mind: it may be a genuine
-stiff crossing or a two-branch eigenvalue with the root-finder switching branches — the
-freeze-watch trace is exactly the tool to distinguish these on a longer run.
++1121 → −85 swing between consecutive segments: the planar analogue's mass-flux eigenvalue is
+**unique** for given boundary conditions (Tan, Oh & Gronke 2021 §2.2; maintainer recheck
+2026-07-03), so genuine two-branch multiplicity is now the *disfavored* explanation — the
+prior favors **fast-moving control parameters** (interior n, P between segments) or
+root-finder bracket behavior. TRINITY's spherical v(R1)=0 problem is not literally the planar
+one, so multiplicity stays a caveat, not a hypothesis. The freeze-watch trace on a
+condense-vs-fire pair (dense k6 vs k8) is the discriminating experiment.
 
 To make the freeze identifiable at a glance (and gone when fixed), the implicit runner now
 carries a **no-root streak tracker** and a **dMdt approach trace** (all logging-only; physics,

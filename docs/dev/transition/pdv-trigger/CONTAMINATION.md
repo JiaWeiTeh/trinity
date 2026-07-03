@@ -137,6 +137,7 @@ Status legend: **CLEAN** (quotable for its stated question) · **FLAG-x** (usabl
 | local freeze-repro runs (07-02, session scratchpad `kappa_repro/`, simple_cluster f_κ∈{1,4,7.5,8,16} + legacy solver + MAX_SEGMENTS=40 driver) | E8 | kappa 1–16 | ⛔ **mechanism diagnosis ONLY** — never quote θ from these (short horizons, monkeypatched driver, local wall-limits); durable record = KAPPA_FREEZE_MECHANISM §4 table |
 | `theta5k_summary.csv` (RAN Helix 2026-07-03, post fix #1) | E8 | kappa 1–16 | ✅ CLEAN rule-compliant for FIRE/NO-FIRE classification (56/56 proper fates, stop_t=5, θ_max from dictionary). ⚠️ do NOT quote fired-arm θ_max magnitudes above ~1.2 (structural-boost distortion, e.g. dense 1.99); CONDENSE/DRAIN are fates, never θ transitions |
 | `theta5k_fire_map.csv` + `theta5k_{fire_map,theta_rise}.png` (built 07-03, `data/make_theta5k_analysis.py`) | E8 | — (re-read of `theta5k_summary.csv`) | CLEAN re-analysis (FINDINGS §12): no whole-band f_κ; CONDENSE detected via n_impl==50 streak-cap heuristic |
+| ⚡ small_1e6 ⇄ large_diffuse early-time degeneracy (found 07-03, FINDINGS §12.6) | — | — | both configs have M_cluster=1e5, nCore=1e2, flat profile → **bit-identical early trajectories** (theta_first identical in all theta5k arm pairs). NOT a harvest bug — but for any early-time (t ≲ 1 Myr) claim they count as ONE check, not two |
 
 ### `runs/data/`
 

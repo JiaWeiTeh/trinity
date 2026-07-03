@@ -1128,3 +1128,21 @@ freezes** — the §9a freeze class is extinct; every arm ends in a proper fate.
    small_1e6 climbs 0.297→0.680 without firing. Caveat: fired-arm θ_max up to 1.99 (dense
    4/16) — structural boosting distorts θ en route (known kappa pathology, ⛔ #3-adjacent);
    quote fire/no-fire from this matrix, not θ magnitudes above ~1.2.
+
+6. **Maintainer primary-source recheck + non-monotonicity bug-hunt (2026-07-03).** (a) Weaver II
+   §V: the classical front budget is already 60/40 (≈40% of conductive flux radiated in the
+   interface) — the reversal is *close by* even unboosted; (b) TRINITY's closure T ∝ Ṁ^{2/5}
+   has no Ṁ<0 profile family — the gate is the closure's domain edge (KAPPA_FREEZE_MECHANISM
+   §3); (c) planar-analogue eigenvalue uniqueness (Tan–Oh–Gronke §2.2) demotes branch
+   multiplicity below fast-moving boundary conditions as the +1121→−85 explanation. Bug-hunt on
+   the flip arms: the feared stale-dictionary signature WAS found — small_1e6 ⇄ large_diffuse
+   share bit-identical theta_first in all 7 arm pairs — and resolved as real physics (both have
+   M_cluster=1e5, nCore=1e2, flat profile → identical early trajectories; register ⚡ note: they
+   are ONE check, not two, for early-time claims). Everything monotone IS monotone in f_κ
+   (theta_first per config; the CONDENSE-held θ: sc 0.533/0.587/0.624); only the discrete
+   outcome flips, always decided within the first ~30–50 segments (dense t<0.06 Myr) — a
+   photo-finish between the trigger clock and the condensation/dissolution clocks, both
+   accelerated by f. be k8 is a different racer: shell DISSOLVED at t≈4.86 with θ=0.833.
+   Discriminating trace (dense k6 vs k8 freeze-watch) queued; 9th config (normal_n1e3:
+   mCloud 1e6, nCore 1e3, sfe 0.01, PL0) added via `runs/make_theta5n_params.py` (15 arms,
+   both knobs — the law predicts its f_fire from θ₀ before the fine arms are read).

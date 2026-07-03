@@ -285,6 +285,18 @@ for provenance.*
 > on `dictionary.jsonl`. `F_KAPPA_FUNCTIONAL_FORM.md` §10/§14 flagged accordingly.
 
 **Status ledger (newest first):**
+- **2026-07-03 (🔍 PRIMARY-SOURCE RECHECK + NON-MONOTONICITY BUG-HUNT + 9th CONFIG).** Maintainer
+  verified the freeze doc against Weaver II (§V: classical front budget already 60/40 — the
+  reversal is close by), the TRINITY method paper (T ∝ Ṁ^{2/5}: no Ṁ<0 profile family — the
+  gate is the closure's domain edge; fix #4 = new profile family, confirmed research-grade), and
+  Tan–Oh–Gronke §2.2 (unique planar eigenvalue → the +1121→−85 swing is more likely fast-moving
+  BCs / bracket behavior than two branches). theta5k flip-arm audit: stale-dict hypothesis tested
+  and REFUTED (the found bit-identical theta_first pairs are the small_1e6⇄large_diffuse
+  M_cluster/nCore degeneracy — registered as ⚡ ONE-check note); all monotone quantities monotone
+  in f_κ; outcome flips are photo-finish races decided in the first ~30–50 segments. Band
+  extended to NINE configs: normal_n1e3 (1e6, n1e3, sfe 0.01, PL0) via `runs/make_theta5n_params.py`
+  (15 arms, both knobs, REPRODUCE #34, ⬜ ready). Dense k6-vs-k8 freeze-watch trace queued as the
+  bracket-vs-physics discriminator.
 - **2026-07-03 (✅ THETA5K RAN — zero freezes; fix #1 validated at scale; NO whole-band f_κ).**
   First rule-compliant kappa matrix (56 arms, stop_t=5): 21 FIRED / 18 NOFIRE / 12 DRAIN /
   5 CONDENSE (the no-root handoff, landing exactly on §9a's old "dead window" cells — sc
