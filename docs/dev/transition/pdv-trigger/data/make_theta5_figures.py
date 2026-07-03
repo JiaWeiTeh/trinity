@@ -564,7 +564,7 @@ def fig_knob(runs):
     ax.axhline(TRIGGER, color="0.35", lw=1.0, ls="--")
     for f0, f1 in [(1.8, 3.4), (7, 13.5), (20, 28)]:
         ax.axvspan(f0, f1, color="#D55E00", alpha=0.08, zorder=0)
-    ax.text(2.45, 0.10, "dead\nwindows", fontsize=8.5, color="#a34700", ha="center")
+    ax.text(2.45, 0.10, "crash\nwindows\n(pre-fix)", fontsize=8, color="#a34700", ha="center")
     hs = [
         plt.Line2D([], [], marker="o", lw=0, ms=7.5, color="#0072B2", label="fired"),
         plt.Line2D([], [], marker="x", lw=0, ms=8, mew=2, color="#D55E00", label="froze mid-run"),
@@ -578,7 +578,10 @@ def fig_knob(runs):
     ax.set_xticklabels(["1", "2", "4", "8", "16", "32", "64"])
     ax.set_xlabel("$f_\\kappa$ (structural, in-ODE)")
     ax.set_ylabel("$\\theta_{\\max}$")
-    ax.set_title("kappa knob, cell (1e5, 0.3, 1e5):\nfiring bands interleave with freezes (§9a)")
+    ax.set_title(
+        "kappa knob, cell (1e5, 0.3, 1e5)\npre-fix stop_t=2 sweep: crashes at the\ncondensation boundary (§9b; f=16 'fire' = artifact, §12)",
+        fontsize=9,
+    )
 
     ax = axes[1]
     for cfg in ("simple_cluster", "midrange_pl0", "small_1e6"):
@@ -618,7 +621,10 @@ def fig_knob(runs):
     ax.set_xticklabels(["1", "2", "4", "8"])
     ax.set_xlim(0.9, 17)
     ax.set_xlabel("$f_{\\rm mix}$ (multiplier, post-solve)")
-    ax.set_title("multiplier knob (theta5 coarse grid):\nno solver freezes; but see the fire map —\nthe fire SET is non-monotonic (FINDINGS §11)")
+    ax.set_title(
+        "multiplier knob (theta5 coarse grid)\nno solver freezes; fire SET still\nnon-monotonic — drain race (§11)",
+        fontsize=9,
+    )
     axes[0].set_ylim(0, 1.52)
     fig.savefig(os.path.join(_PDV, "theta5_knob_choice.png"))
     plt.close(fig)

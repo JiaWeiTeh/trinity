@@ -143,7 +143,7 @@ FIGURES = {
     ),
     "__FIG_T5KNOB__": (
         "theta5_knob_choice.png",
-        "knob comparison: the kappa knob's theta_max vs f_kappa for one sweep cell shows firing bands interleaved with what section 16.4 re-diagnoses as solver crashes at the condensation boundary (fixed by the no-root handoff), while the multiplier knob's theta_max rises monotonically with f_mix",
+        "two-panel knob comparison with distinct x-axes: LEFT the structural f_kappa on one pre-fix sweep cell (crash windows at the condensation boundary, f=16 fire an artifact), RIGHT the post-solve f_mix multiplier (theta5) whose theta_max rises smoothly with no freezes",
     ),
     "__FIG_T5BMAP__": (
         "theta5b_fire_map.png",
@@ -1107,10 +1107,15 @@ emergent \(\theta\) into the El-Badry/Lancaster band for GMCs; two configs at th
 behave oppositely &mdash; the fire/route-a boundary is set by \(\theta_0\) (mass, SFE, structure), not by density
 alone.</figcaption></figure>
 
-<figure>__FIG_T5KNOB__<figcaption><b>Why the multiplier knob.</b> The structural kappa knob interleaves firing
-bands with <i>solver-freeze</i> windows (&sect;9a of <code>FINDINGS.md</code>); the multiplier never freezes a
-run. <b>Correction (&sect;16.3):</b> on the fine grid its fire <i>set</i> is also non-monotonic &mdash; a
-fire-vs-\(E_b\)-drain race &mdash; but the failure mode is a healthy handoff, not a breakdown.</figcaption></figure>
+<figure>__FIG_T5KNOB__<figcaption><b>Why the multiplier knob &mdash; two panels, two DIFFERENT knobs and
+x-axes.</b> Left: the structural \(f_\kappa\) (in-ODE) on one pre-fix 819-sweep cell &mdash; the apparent
+"windows" were later re-diagnosed as solver crashes at the condensation boundary (&sect;9b) and the \(f_\kappa{=}16\)
+"fire" as an artifact (rule-compliant it CONDENSES, &sect;12); kept here as the historical evidence that
+motivated the knob choice. Right: the post-solve \(f_{\rm mix}\) multiplier (theta5) &mdash; \(\theta_{\max}\)
+rises smoothly, no freezes. <b>Correction (&sect;16.3):</b> the multiplier's fire <i>set</i> is also
+non-monotonic &mdash; a fire-vs-\(E_b\)-drain race &mdash; but the failure mode is a healthy handoff, not a
+breakdown; and the definitive like-for-like comparison is the rule-compliant theta5k matrix
+(&sect;16.4).</figcaption></figure>
 
 <h3>16.2 &middot; Referee robustness &mdash; why 4, and why a constant?</h3>
 <p><b>Why 4 and not 2.5 / 3.4 / 4.7?</b> Honestly: 4 is a <i>grid point</i>, not a fitted optimum. Its defense is
