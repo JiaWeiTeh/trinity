@@ -1279,7 +1279,11 @@ while Helix never recovered &mdash; opposite \(\theta\) bookkeeping, same dynami
 (the \(E_b\) ODE runs off the \(\beta\)-side \(\dot E\)). Rules of use (CONTAMINATION): an all-NaN arm is
 never a physics outcome &mdash; quote the finite-\(\theta\) neighbors (dense's calibration evidence is the fine
 arms 3.5/4.5/5, all fired); post&ndash;fix-#1 code turns any persistent solve-fail streak into the labeled
-condensation handoff instead of a NaN grind. FINDINGS &sect;14.</p>
+condensation handoff instead of a NaN grind. <b>And fixed at the root (2026-07-03):</b> a structure-failure
+no-root now triggers a <i>rescue ladder</i> &mdash; the bounded legacy grid proposes a domain-respecting seed and
+hybr re-runs from it (gate and threshold unchanged; found \(\dot M{<}0\) condensation roots never enter the
+ladder) &mdash; verified live on this very config: the segment-1 failure that poisoned the HPC arms is rescued and
+the run fires. The all-NaN class should now be extinct. FINDINGS &sect;14.</p>
 """
 
 SEC_SHIPPED = r"""
