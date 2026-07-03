@@ -147,7 +147,7 @@ FIGURES = {
     ),
     "__FIG_T5BMAP__": (
         "theta5b_fire_map.png",
-        "fire map over theta5+theta5b: per config and f_mix the outcome class (fires in band / momentum without firing via Eb drain / stays energy-driven / NaN); the measured whole-band window 4 to 4.5 is shaded; the diffuse 8-Myr arms shown above the diffuse row",
+        "fire map over theta5+theta5b: per config and f_mix the outcome class (fires in band / momentum without firing via Eb drain / stays energy-driven / NaN = solve never succeeded, L_loss stayed at its NaN default); the measured whole-band window 4 to 4.5 is shaded; the diffuse 8-Myr arms shown above the diffuse row",
     ),
     "__FIG_T5BLAW__": (
         "theta5b_law_check.png",
@@ -1088,7 +1088,7 @@ physics, not by tuning. From <code>data/make_theta5_figures.py</code> (REPRODUCE
 <tr><td>large_diffuse_lowsfe</td><td>1e2</td><td>0.535</td><td>(2,4]</td><td>3.9</td><td>0.957</td><td><b>fires; survives to 5 Myr</b></td></tr>
 <tr><td>small_1e6 (control)</td><td>1e2</td><td>0.297</td><td>&gt;8</td><td>11.6</td><td>0.682</td><td>route-a (healthy)</td></tr>
 <tr><td>fail_repro (5e9)</td><td>1e2</td><td>0.003</td><td>n/a</td><td>&mdash;</td><td>0.013</td><td>PR#715 handoff, boost-invariant</td></tr>
-<tr><td>small_dense_highsfe</td><td>1e6</td><td>0.717</td><td>n/a</td><td>2.3</td><td>NaN</td><td>dense-edge stiffness; \(E_b\!\le\!0\) handoff</td></tr>
+<tr><td>small_dense_highsfe</td><td>1e6</td><td>0.717</td><td>n/a</td><td>2.3</td><td>NaN</td><td>solve never succeeded &mdash; NaN default, domain-edge root (&sect;16.7); \(E_b\!\le\!0\) handoff</td></tr>
 </table></div>
 <p class="sub">Full margins: <code>runs/data/theta5_fmix_scorecard.csv</code>; per-run record:
 <code>runs/data/theta5_summary.csv</code> (stamped, 32 rows).</p>
@@ -1141,7 +1141,9 @@ as well as any multi-parameter \(f(\text{properties})\) fit.</p>
 and then recollapsing is acceptable physics &mdash; so <b>\(f_{\rm mix}{=}4\) is the adopted working value</b>
 (production default stays <code>none</code>; 4 is the documented recommended setting). Still open: (2) the
 theta5b fine bracket + long diffuse arm &mdash; now a <i>referee sensitivity refinement</i> (window edges), not a
-gate; (3) the dense-edge (\(n_{\rm core}{=}10^6\)) NaN-loss stiffness diagnosis; and the \(f{=}8\)
+gate; (3) the dense-edge (\(n_{\rm core}{=}10^6\)) NaN-loss diagnosis &mdash; <b>RESOLVED 2026-07-03
+(&sect;16.7)</b>: the NaN is the never-written \(L_{\rm loss}\) default from a solve that never succeeds
+(domain-edge root, machine-flippable); and the \(f{=}8\)
 \(E_b\)-drain (momentum <i>without</i> firing) remains the real over-boost pathology.</div>
 
 <h3>16.3 &middot; theta5b &mdash; the fine bracket answers the referee (2026-07-02)</h3>
@@ -1155,7 +1157,8 @@ simple_cluster fires at \(f{=}2\), not at 2.5&ndash;3, again at 3.5+. Healthy ru
 &sect;16's &ldquo;no dead windows&rdquo; phrasing (no <i>solver</i> freezes remains true). <b>(4) The diffuse
 cloud at \(f{=}2\) fires at \(t\!\approx\!5.04\) Myr</b> &mdash; the theta5 graze was real; the \(f{=}1\) 8-Myr
 arm shows the native peak (\(t\!\approx\!4.86\)) IS captured by the 5 Myr window. <b>(5) The dense edge fires at
-every fine arm</b> (\(\theta\) 0.95&ndash;1.01) &mdash; theta5's NaNs were intermittent stiffness, not a wall.
+every fine arm</b> (\(\theta\) 0.95&ndash;1.01) &mdash; theta5's NaNs were later traced (&sect;16.7) to a
+never-succeeding solve at a machine-flippable domain-edge root, not a wall.
 Artifacts: <code>data/theta5_fire_map.csv</code>, <code>data/theta5_law_check.csv</code>,
 <code>theta5b_fire_map.png</code>, <code>theta5b_law_check.png</code> (REPRODUCE #30).</p></div>
 <figure>__FIG_T5BMAP__<figcaption><b>The fire map.</b> Outcome per (config, \(f_{\rm mix}\)) over both matrices:
@@ -1256,6 +1259,22 @@ The \(\theta_1\)-collapse law scores its <b>seventh out-of-sample point at the o
 rms (0.064 dex, unchanged with the new point folded in). The kappa knob shows one more race loss at the top
 (\(f_\kappa{=}16\) DRAINs at \(\theta_{\max}=0.916\), fires 2&ndash;12) &mdash; the same non-monotonicity
 story as &sect;16.4. Updated fire maps and law-check figure above include the ninth row.</p>
+
+<h3>16.7 &middot; The dense-edge NaN cross, closed &mdash; a never-written default at a machine-flippable root (2026-07-03)</h3>
+<p>The last open ticket. The fire map's NaN crosses (small_dense at \(f_{\rm mix}{=}4,8\)) turned out to be
+bookkeeping honesty, not physics: <code>bubble_Lloss</code> defaults to NaN in the parameter registry, and in
+those HPC arms the \(\beta\)&ndash;\(\delta\) solve <b>never succeeded once</b> (log: <i>structure solve
+failed</i> at wandering \((\beta,\delta)\) like \(\beta{=}-0.04\)) &mdash; every snapshot faithfully wrote
+the untouched default (\(\theta_{\rm first}={\rm nan}\) from row 1 is the tell). Mechanism: the boost enters
+the energy-balance residual (\(L_{\rm loss}=L_{\rm leak}+f\,L_{\rm cool}\)), so raising \(f\) displaces the
+root; on the band's most extreme config (\(n_{\rm core}{=}10^6\)) \(f\approx4\)&ndash;\(8\) lands it on the
+edge of the integrable domain. DEBUG reproduction proved the edge is <b>machine-flippable</b>: the identical
+params fire locally (mult4 recovers after one failed segment; mult8 after nine, \(L_{\rm loss}/L_{\rm mech}=1.01\))
+while Helix never recovered &mdash; opposite \(\theta\) bookkeeping, same dynamical fate and collapse time
+(the \(E_b\) ODE runs off the \(\beta\)-side \(\dot E\)). Rules of use (CONTAMINATION): an all-NaN arm is
+never a physics outcome &mdash; quote the finite-\(\theta\) neighbors (dense's calibration evidence is the fine
+arms 3.5/4.5/5, all fired); post&ndash;fix-#1 code turns any persistent solve-fail streak into the labeled
+condensation handoff instead of a NaN grind. FINDINGS &sect;14.</p>
 """
 
 SEC_SHIPPED = r"""
