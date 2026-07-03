@@ -1,0 +1,7 @@
+model_name             simple_cluster__none
+mCloud                 1e5
+sfe                    0.3
+stop_t                 5
+log_console            False
+log_file               True
+path2output            outputs/theta5k/simple_cluster__none

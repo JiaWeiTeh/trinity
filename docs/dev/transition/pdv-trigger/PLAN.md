@@ -283,6 +283,17 @@ for provenance.*
 > on `dictionary.jsonl`. `F_KAPPA_FUNCTIONAL_FORM.md` §10/§14 flagged accordingly.
 
 **Status ledger (newest first):**
+- **2026-07-03 (✅ FIX #1 LANDED — no-root streak ⇒ momentum handoff; theta5k READY).** A
+  50-segment no-physical-root streak now ends the implicit phase like `cooling_balance` does
+  (`termination_reason="no_physical_root_handoff"`; a *fate*, not a trigger — harvest counts it
+  like DRAIN). Verified: handoff demo (`runs/drive_noroot_handoff_check.py`, threshold 3, f_κ=8 →
+  diagnosis → transition → momentum → clean end) + structural inertness + full pytest 614/614.
+  NB: local byte-identity gates are UNATTAINABLE without pinned BLAS threads — an A/A control
+  (identical code, two runs) differs at the SN noise floor from row 1; any future local
+  byte-identity claim needs a same-code A/A companion (KAPPA_FREEZE_MECHANISM §7.1b).
+  The rule-compliant kappa re-validation is committed ready-to-run: **theta5k** (8 configs ×
+  f_κ {1,2,4,6,8,12,16}, stop_t=5; `runs/make_theta5k_params.py` 56/56 validate,
+  `runs/run_theta5k.sbatch` array 1-56). KAPPA_FREEZE_MECHANISM §7.1 has the details.
 - **2026-07-02 (✅ KAPPA FREEZE MECHANISM IDENTIFIED — §9a's "non-monotonic breakdown" was a false
   inference, as the maintainer suspected).** The freeze is the solver hitting the McKee–Cowie
   evaporation→condensation domain boundary: the dMdt eigenvalue physically crosses zero exactly at

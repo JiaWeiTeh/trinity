@@ -1,0 +1,8 @@
+model_name             simple_cluster__kappa12
+mCloud                 1e5
+sfe                    0.3
+stop_t                 5
+cooling_boost_kappa    12
+log_console            False
+log_file               True
+path2output            outputs/theta5k/simple_cluster__kappa12

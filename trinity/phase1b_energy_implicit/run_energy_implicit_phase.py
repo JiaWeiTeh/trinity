@@ -113,11 +113,13 @@ DT_SEGMENT_INIT = 5e-4  # Myr - initial segment duration
 DT_SEGMENT_MIN = 1e-4   # Myr - minimum segment duration
 DT_SEGMENT_MAX = 5e-2   # Myr - maximum segment duration
 MAX_SEGMENTS = 5000
-# No-physical-root streak logging (KAPPA_FREEZE_MECHANISM.md): loud one-time
-# diagnosis once a streak reaches FREEZE_STREAK; repeat holds re-warn every
-# REWARN_EVERY segments (DEBUG in between).
-NO_ROOT_FREEZE_STREAK = 50
-NO_ROOT_REWARN_EVERY = 500
+# Persistent loss of the dMdt>0 structure root marks the evaporation->
+# condensation domain boundary of the conduction-front model (McKee & Cowie
+# 1977) -- the energy-driven solution has physically ended. After this many
+# consecutive no-root segments the phase hands off to momentum instead of
+# grinding frozen state to max_segments (KAPPA_FREEZE_MECHANISM.md fix #1;
+# healthy rejection bursts observed so far are <= 8 segments and recover).
+NO_ROOT_HANDOFF_STREAK = 50
 FOUR_PI = 4.0 * np.pi
 
 # Adaptive stepping parameters
@@ -847,12 +849,10 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
             no_root_streak += 1
             if no_root_streak == 1:
                 no_root_streak_t0 = t_now
-            # First hit of a streak warns (as before); repeats are DEBUG with a
-            # WARNING heartbeat, so a frozen phase no longer floods ~5000
-            # identical warnings while staying visible at the default level.
-            _nr_log = logger.warning if (
-                no_root_streak == 1 or no_root_streak % NO_ROOT_REWARN_EVERY == 0
-            ) else logger.debug
+            # First hit of a streak warns (as before); repeats are DEBUG, so a
+            # rejection burst no longer floods identical warnings while staying
+            # visible at the default level.
+            _nr_log = logger.warning if no_root_streak == 1 else logger.debug
             _nr_log(
                 f"beta-delta: no physical (dMdt>0) root at segment "
                 f"{segment_count} (t={t_now:.6e} Myr, streak {no_root_streak}): "
@@ -862,18 +862,21 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
                 f"Lloss={params['bubble_Lloss'].value:.3e}); implicit phase "
                 f"continues."
             )
-            if no_root_streak == NO_ROOT_FREEZE_STREAK:
+            if no_root_streak >= NO_ROOT_HANDOFF_STREAK:
+                termination_reason = "no_physical_root_handoff"
                 logger.warning(
                     f"beta-delta: {no_root_streak} consecutive segments with no "
                     f"physical (dMdt>0) root since t={no_root_streak_t0:.6e} Myr "
-                    f"— the frozen-implicit signature: state (and theta) are "
-                    f"held at their last physical values (Lloss/Lgain="
-                    f"{params['bubble_Lloss'].value / max(params['bubble_Lgain'].value, 1e-300):.4f}) "
-                    f"while the phase grinds toward max_segments. The structure "
-                    f"root has likely crossed to dMdt<0 (conduction-front "
-                    f"condensation regime, McKee & Cowie 1977); see "
-                    f"docs/dev/transition/pdv-trigger/KAPPA_FREEZE_MECHANISM.md."
+                    f"(state and theta held at their last physical values, "
+                    f"Lloss/Lgain="
+                    f"{params['bubble_Lloss'].value / max(params['bubble_Lgain'].value, 1e-300):.4f}). "
+                    f"The structure root has crossed to dMdt<0 — the "
+                    f"conduction-front condensation regime (McKee & Cowie 1977): "
+                    f"the energy-driven solution has physically ended. Handing "
+                    f"off to the momentum phase (KAPPA_FREEZE_MECHANISM.md "
+                    f"fix #1) instead of grinding frozen state to max_segments."
                 )
+                break
         else:
             no_root_streak = 0
             no_root_streak_t0 = None

@@ -242,12 +242,33 @@ Exact lines: see `run_energy_implicit_phase.py` around the `no_physical_root` bl
 1. **Semantic fix (LOW effort, near-zero risk): `no_physical_root` persistence ⇒ transition.**
    dMdt ≤ 0 at every reachable (β, δ) is not "no answer" — it is the physics saying the
    energy-driven conductive solution has ended (condensation onset ≈ cooling balance). Route a
-   *persistent* no-root streak to the same handoff as `energy_to_momentum`
-   (`run_energy_implicit_phase.py:1120-1131`) instead of grinding to `max_segments` with a
-   misleading clean exit. This alone likely closes most "dead windows" (34/38 were en route to
-   firing) *without touching the physics*. Guard: require a streak (e.g. 50 segments) so a
-   transient rejection still recovers, and record a distinct termination_reason
-   (`no_physical_root_handoff`) so it is auditable.
+   *persistent* no-root streak to the same handoff as `cooling_balance` (break without
+   `EndSimulationDirectly` → main runs 1c → momentum) instead of grinding to `max_segments` with
+   a misleading clean exit. This alone likely closes most "dead windows" (34/38 were en route to
+   firing) *without touching the physics*. Guard: require a streak (50 segments;
+   observed healthy bursts are ≤ 8) so a transient rejection still recovers, and record a
+   distinct termination_reason (`no_physical_root_handoff`) so it is auditable.
+
+   **LANDED 2026-07-03** (`NO_ROOT_HANDOFF_STREAK = 50`, `run_energy_implicit_phase.py`).
+   Verification: (a) handoff demo — `runs/drive_noroot_handoff_check.py` (threshold
+   monkeypatched to 3, simple_cluster f_κ=8): streak 3 → condensation diagnosis →
+   `Implicit phase completed: no_physical_root_handoff` → transition phase → momentum entry →
+   clean `STOPPING_TIME` end code. The run that used to freeze flows through the phase
+   machinery. (b) inertness — structural: the branch cannot execute below a 50-streak (observed
+   healthy bursts ≤ 8); full pytest 614/614 green. A cross-process byte-identity gate proved
+   **unattainable in the local container**: two runs of IDENTICAL code differ from dictionary
+   row 1 at the same byte offset (`Lmech_SN` ~1e-18 — cubic-spline ringing on the SN noise
+   floor — plus single-ULP wobbles in bubble-structure arrays; measured 2026-07-03, control
+   experiment `fk8_identity` vs `fk8_identity2`). That is *pre-existing run-to-run FP
+   nondeterminism* (prime suspect: unpinned OpenBLAS/OMP threading — the HPC sbatch pins
+   `OMP_NUM_THREADS=1`, local runs don't; PYTHONHASHSEED ruled out by direct SPS-interpolator
+   probe), and it exonerates the fix by direct A/A comparison. ⚠️ Consequence for the
+   workstream's rule-5 "byte-identical `dictionary.jsonl`" gates: pin BLAS/OMP threads to 1
+   (as on HPC) or expect ULP-level drift — a same-code A/A control run is now the mandatory
+   companion to any local byte-identity claim. (c) harvest semantics — a handoff reaches
+   momentum with θ<0.95, so `harvest_theta_max.py` classifies it like DRAIN, never as a θ
+   transition. Note the handoff does NOT count as `cooling_fired` — it is a fate, not a
+   trigger.
 2. **Continuation in f_κ across sweep arms (LOW-MED):** warm-start (β, δ, dMdt) from the previous
    f_κ arm — kills the branch-selection component of the bands. Sweep-harness change only.
 3. **Saturated-conduction cap (MED-HIGH, PHYSICAL):** `min(κ_S|∇T|, q_sat)` in the ODE + a

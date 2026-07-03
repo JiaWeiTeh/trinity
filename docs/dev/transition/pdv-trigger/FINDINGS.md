@@ -959,8 +959,22 @@ production knob because it never touches the dMdt eigenvalue (structurally immun
 stays un-shippable *until* the domain-boundary semantics are fixed (fix ladder in
 KAPPA_FREEZE_MECHANISM §7: no-root-streak ⇒ momentum handoff; continuation; saturated-conduction
 cap; condensation branch). Instrumentation landed (log-only): `freeze-watch` per-segment
-dMdt/θ trace, streak-demoted warnings + one-time freeze diagnosis at streak 50, frozen-state
-note on the completion line.
+dMdt/θ trace, streak-demoted warnings, frozen-state note on the completion line.
+
+**Fix #1 LANDED (2026-07-03):** a 50-segment no-root streak now hands the phase off to momentum
+(`termination_reason="no_physical_root_handoff"`, routed exactly like `cooling_balance`; the
+handoff is a *fate*, not a trigger — harvest classifies it like DRAIN, θ<0.95). Verified by
+`runs/drive_noroot_handoff_check.py` (threshold 3, f_κ=8: diagnosis → handoff → transition →
+momentum → clean STOPPING_TIME end), full pytest 614/614, and structural inertness (the branch
+cannot execute below a 50-streak; observed healthy bursts ≤ 8). NB a local byte-identity gate
+proved unattainable: an A/A control (same code, two runs) differs from row 1 at the SN noise
+floor + ULP level — pre-existing local FP nondeterminism (unpinned BLAS threads suspected; HPC
+pins OMP_NUM_THREADS=1), which exonerates the fix and flags that future LOCAL byte-identity
+claims need a same-code A/A companion run (KAPPA_FREEZE_MECHANISM §7.1b). The
+rule-compliant re-validation matrix is committed and ready: **theta5k** = 8 configs ×
+f_κ {1,2,4,6,8,12,16} at stop_t=5 (`runs/make_theta5k_params.py`, 56/56 validate through
+`read_param`; `runs/run_theta5k.sbatch`, array 1-56). It asks the corrected question: does
+kappa fire monotonically once the solver may leave the energy phase at the physical boundary?
 
 ## 10. [data] The theta5 matrix RAN — first fully rule-compliant `multiplier` calibration (2026-07-02, Helix)
 
