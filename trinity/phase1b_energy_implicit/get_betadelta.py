@@ -638,9 +638,41 @@ def solve_betadelta_pure(
     if solver == 'legacy':
         return _solve_betadelta_legacy(beta_guess, delta_guess, params, method)
     if solver == 'hybr':
-        return _solve_betadelta_hybr(beta_guess, delta_guess, params, method)
+        result = _solve_betadelta_hybr(beta_guess, delta_guess, params, method)
+        if result.no_physical_root and 'structure solve failed' in (result.no_root_reason or ''):
+            return _rescue_structure_failure(result, beta_guess, delta_guess, params, method)
+        return result
     # The param validator guards user input; this guards programmatic misuse.
     raise ValueError(f"Unknown betadelta_solver '{solver}'.")
+
+
+def _rescue_structure_failure(result, beta_guess, delta_guess, params, method):
+    """Re-seed hybr from the bounded legacy grid when the search wandered out of domain.
+
+    A 'structure solve failed' no-root is a wandering artifact candidate: hybr walked into
+    unintegrable (beta, delta) and aborted, and because the warm-start guesses only update on
+    success, the failure can repeat every segment — the run then never writes bubble_Lloss and
+    every dictionary row carries its NaN default (the dense-edge all-NaN arms, FINDINGS §14).
+    The legacy grid search is bounded and penalty-guarded (structure failures score a plateau
+    value instead of aborting), so its optimum is a domain-respecting seed; hybr from there
+    re-applies the standard g threshold and dMdt>0 gate, so acceptance semantics are unchanged.
+    A found *condensation* root ('non-physical dMdt=…') is real physics and must NOT be retried
+    away — the caller only routes 'structure solve failed' reasons here, keeping the
+    no-root-streak => momentum handoff semantics for genuine dMdt<=0 (KAPPA_FREEZE_MECHANISM).
+    Engages only on an already-failed segment: the healthy path is byte-identical.
+    """
+    rescue = _solve_betadelta_legacy(beta_guess, delta_guess, params, method)
+    if (rescue.beta, rescue.delta) == (beta_guess, delta_guess):
+        return result  # grid found nothing better than the failing seed
+    retried = _solve_betadelta_hybr(rescue.beta, rescue.delta, params, method)
+    if retried.no_physical_root:
+        return result  # keep the original diagnosis (incl. its reason string)
+    logger.info(
+        f"beta-delta: structure-failure rescue succeeded — legacy grid re-seeded hybr from "
+        f"(beta={rescue.beta:.4f}, delta={rescue.delta:.4f}) after failure at "
+        f"(beta={beta_guess:.4f}, delta={delta_guess:.4f})"
+    )
+    return retried
 
 
 def _solve_betadelta_legacy(

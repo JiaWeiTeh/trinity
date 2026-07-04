@@ -96,7 +96,9 @@ def test_dispatch_missing_key_routes_to_legacy(monkeypatch):
 
 
 def test_dispatch_hybr_calls_hybr_impl(monkeypatch):
-    sentinel = object()
+    # The dispatcher inspects no_physical_root (the structure-failure rescue
+    # ladder), so the stub must quack like a healthy BetaDeltaResult.
+    sentinel = SimpleNamespace(no_physical_root=False, no_root_reason=None)
     seen = {}
 
     def fake_hybr(beta, delta, params, method):

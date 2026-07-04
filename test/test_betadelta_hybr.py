@@ -180,3 +180,71 @@ def test_hybr_converges_through_the_f_pole(monkeypatch):
     assert res.converged
     assert res.beta == pytest.approx(0.7, abs=1e-6)
     assert abs(res.Edot_from_beta) < 1e-12  # the pole the f metric chokes on
+
+
+# =============================================================================
+# Structure-failure rescue ladder (solve_betadelta_pure hybr path)
+# =============================================================================
+
+
+def make_hybr_params(Lmech_total: float = 1.0) -> dict:
+    p = make_params(Lmech_total)
+    p["betadelta_solver"] = SimpleNamespace(value="hybr")
+    return p
+
+
+def test_rescue_reseeds_hybr_after_structure_failure(monkeypatch):
+    # Structure integrable only for beta > 1.5; warm seed (0.5) wanders and
+    # aborts. The (patched) legacy grid proposes a seed inside the good
+    # region; hybr from there must find the gated root.
+    install_landscape(
+        monkeypatch,
+        gE=lambda b, d: b - 2.0,
+        gT=lambda b, d: d + 0.3,
+        dmdt=lambda b, d: 1.0 if b > 1.5 else None,
+    )
+    monkeypatch.setattr(
+        GBD, "_solve_betadelta_legacy",
+        lambda bg, dg, params, method="grid": GBD.BetaDeltaResult(
+            beta=1.8, delta=-0.3, Edot_residual=0.0, T_residual=0.0,
+            total_residual=0.0, converged=False, iterations=1,
+            bubble_properties=None),
+    )
+    res = GBD.solve_betadelta_pure(0.5, -0.5, make_hybr_params())
+    assert not res.no_physical_root
+    assert res.converged
+    assert res.beta == pytest.approx(2.0, abs=1e-6)
+
+
+def test_rescue_skipped_for_condensation_root(monkeypatch):
+    # A found dMdt<0 root is real physics (the condensation branch): the
+    # ladder must NOT engage -- the legacy solver must never be consulted.
+    install_landscape(
+        monkeypatch, gE=lambda b, d: b - 0.7, gT=lambda b, d: d + 0.3,
+        dmdt=lambda b, d: -5.0,
+    )
+    def _boom(*a, **kw):
+        raise AssertionError("legacy rescue must not run for a condensation root")
+    monkeypatch.setattr(GBD, "_solve_betadelta_legacy", _boom)
+    res = GBD.solve_betadelta_pure(0.5, -0.5, make_hybr_params())
+    assert res.no_physical_root
+    assert "dMdt" in res.no_root_reason
+
+
+def test_rescue_keeps_original_diagnosis_when_retry_fails(monkeypatch):
+    # Structure fails everywhere: grid proposes a different seed, hybr fails
+    # again -> the ORIGINAL structure-failure no-root is returned.
+    install_landscape(
+        monkeypatch, gE=lambda b, d: b - 0.7, gT=lambda b, d: d + 0.3,
+        dmdt=lambda b, d: None,
+    )
+    monkeypatch.setattr(
+        GBD, "_solve_betadelta_legacy",
+        lambda bg, dg, params, method="grid": GBD.BetaDeltaResult(
+            beta=1.8, delta=-0.3, Edot_residual=0.0, T_residual=0.0,
+            total_residual=0.0, converged=False, iterations=1,
+            bubble_properties=None),
+    )
+    res = GBD.solve_betadelta_pure(0.5, -0.5, make_hybr_params())
+    assert res.no_physical_root
+    assert "structure" in res.no_root_reason

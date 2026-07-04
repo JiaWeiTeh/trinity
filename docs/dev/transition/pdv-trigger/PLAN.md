@@ -285,6 +285,13 @@ for provenance.*
 > on `dictionary.jsonl`. `F_KAPPA_FUNCTIONAL_FORM.md` §10/§14 flagged accordingly.
 
 **Status ledger (newest first):**
+- **2026-07-03 (✅ RESCUE LADDER SHIPPED — the never-succeeds solve class fixed; F5 de-mixed).**
+  A 'structure solve failed' no-root now re-seeds hybr from the bounded legacy grid optimum
+  (found-dMdt<0 roots excluded — handoff semantics intact; healthy path byte-identical). Live
+  verification: dense mult4's segment-1 failure (the all-NaN mechanism, FINDINGS §14) is rescued
+  and the run fires. Full pytest 617 green. Also: theta5_knob_choice.png had colliding panel
+  titles that read as f_κ/f_mix mixing — retitled, 'crash windows (pre-fix)', caption states the
+  two panels are two different knobs; theta5k remains the like-for-like comparison.
 - **2026-07-03 (✅ DENSE-EDGE NaN TICKET RESOLVED-AS-UNDERSTOOD — never-solved default + machine-flippable
   root at the domain edge).** DEBUG repro of theta5's small_dense mult4/mult8 NaN arms: the NaN is the
   registry DEFAULT (`bubble_Lloss=np.nan`) written verbatim because the β–δ solve never succeeds ("structure

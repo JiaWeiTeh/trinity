@@ -1210,3 +1210,14 @@ reproduction (params in the session scratchpad; mechanism-only, no θ quotes) an
    fate instead of NaN-grind (the local repros recovered before 50, hence fired). (d) The
    final dynamical fate was never affected: the Eb ODE runs off the β-side Edot, so HPC and
    local runs collapse at the same t despite opposite θ bookkeeping.
+
+5. **FIXED (2026-07-03): the structure-failure rescue ladder.** `solve_betadelta_pure` (hybr
+   path) now rescues a 'structure solve failed' no-root — the wandering artifact, NOT a found
+   condensation root — by re-seeding hybr from the bounded legacy grid's optimum (penalty-
+   guarded, cannot wander); the retry re-applies the standard g threshold and dMdt>0 gate, so
+   acceptance semantics are unchanged, and found dMdt<0 roots never enter the ladder (the
+   condensation handoff stays intact). Healthy path byte-identical (engages only after a failed
+   segment). Verified: 3 unit tests + full pytest (617 passed); LIVE on the dense mult4 repro —
+   the exact segment-1 failure that poisoned the HPC arms now logs 'structure-failure rescue
+   succeeded' and the run fires cooling_balance. The all-NaN arm class should now be extinct;
+   any future one means the grid ALSO found nothing — a genuinely unintegrable segment.
