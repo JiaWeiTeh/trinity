@@ -114,11 +114,17 @@ direction/knob/θ_max corrections + pt2⇄pt3 reconciliation (07-01) · **E8** t
 | `SESSION_HANDOFF_2026-07-01.md` | 07-01 | E7 | the pt2 session handoff (self-declared speculation + retractions R1–R6) | historical snapshot |
 | `CONTAMINATION.md` | 07-01 | E7 | ⛔ the register: rules (a)–(e), per-artifact status, tensions (⚡ #1 resolved) | **live — read first** |
 | `SOURCE_TERM_DESIGN.md` | 07-06 | E8 | the in-ODE **source-term** knob f_A (physical + tunable + robust: the fourth corner of the knob 2×2), the generalized near-front IC (★) that unlocks saturation cap / κ_mix boundary / condensation branch, lit-anchored f_κ ranges, and the L0–L4 ladder off the multiplier | **live** |
+| `MANIFEST.md` | 07-02 | E8 | generated which-version ledger (`python make_manifest.py`): per-artifact last-update + ⚠️ STALE-RISK flags | **generated** — regenerate with every artifact change |
+| `KAPPA_FREEZE_MECHANISM.md` | 07-03 | E8 | the kappa freeze diagnosis: evaporation→condensation domain boundary (dMdt eigenvalue), fixed by the no-root⇒momentum handoff | **done** (FINDINGS §9b) |
 | `INDEX.md` (this file) | 06-30 | all | the map | **live** |
 
-**Precursors one level up** (`docs/dev/transition/`): `P0.md`, `TRIGGER_PLAN.md`, `pshadow-design.md` — the
-pre-pdv-trigger trigger-characterization story (F0–F5), each self-bannered ⛔ SUPERSEDED; and
-**`PROVENANCE_PROTOCOL.md`** — the clean-baseline / separate-process contamination guard this workstream inherits.
+*(2026-07-06: added the missing `MANIFEST.md` and `KAPPA_FREEZE_MECHANISM.md` rows — the table had
+drifted to 21 rows vs the 22 `.md` files on disk.)*
+
+**Precursors, now archived** (`docs/dev/archive/transition/`): `P0.md`, `TRIGGER_PLAN.md`, `pshadow-design.md` — the
+pre-pdv-trigger trigger-characterization story (F0–F5), each self-bannered ⛔ SUPERSEDED (moved 2026-07-06); and,
+one level up (`docs/dev/transition/`), **`PROVENANCE_PROTOCOL.md`** — the clean-baseline / separate-process
+contamination guard this workstream inherits.
 Shared tooling: `../harness/` (`run_stamped.py` provenance-stamped launcher, `harvest.py` P0 trigger harvester);
 the canonical 8-config base params live in `../cleanroom/configs/` (6) + `runs/make_theta5_params.py` (all 8).
 

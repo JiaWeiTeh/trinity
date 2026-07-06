@@ -22,6 +22,14 @@
 > local-only `scratch/`, or an untracked `outputs/`. A future visit must be able
 > to reproduce or compare against the numbers **without re-running**; record the
 > exact config + command that produced each artifact.
+>
+> 🔗 **Cross-check the sibling docs — keep the workstream self-consistent.** This file is one of
+> several living docs for its workstream (its `PLAN.md`, `FINDINGS.md`, `runs/README.md`, `NOTE_PATCHES.md`,
+> and any other notes in the same folder). They drift out of sync *with each other* as fast as they drift
+> from the code. Any agent or person editing one MUST, as part of the visit, circle back through the
+> siblings and reconcile: if a number, status, claim, or line reference here contradicts a sibling — or a
+> sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
+> update one in isolation.
 
 **Status (2026-06-20):** 🟡 **AUDIT COMPLETE — findings triaged & source-verified. #1 measured & FIXED**
 (file-tied T-floor, gated bit-identical — see `TCLAMP_PLAN.md`); **#2–#5 still open** (each remaining fix is
@@ -53,7 +61,7 @@ flag does not hold, so the next visit need not re-litigate them.
 | 2 | `bubble_structure/get_bubbleParams.py:367` | `dt_switchon = 1e-3` Myr | Uncalibrated inherited "switch-on": for `t ≤ tSF + 1e-3` it ramps `R1_tmp = (t−tSF)/1e-3 · R1` into `bubble_E2P`, shaping the effective bubble pressure for the first ~1000 yr. No physics reference, no sensitivity note. Flagged independently by agents A **and** D. | MED | YES (early-`t` bubble pressure) | ✅ lead-read |
 | 3 | `sps/update_feedback.py:184` | `dt = 1e-9` Myr | Hardcoded central-difference step for `pdotdot_total = d(pdot)/dt` on the SPS spline, evaluated **every** `get_current_sps_feedback` call. `1e-9` Myr (~9 hr) is ~10⁶× below the table grid; uncalibrated, can sample spline noise across a knot. | MED | YES (per ODE eval) | ✅ lead-read |
 | 4 | `phase1_energy/energy_phase_ODEs.py:270` | `vd = -1e8` | Magic override of the velocity derivative when `EarlyPhaseApproximation` (default **True**, `_input/registry.py:381`). **Bounded:** flipped False after `loop_count==0` (`run_energy_phase.py:317-318`), so it hits only the first energy segment — but `-1e8` pc/Myr² is undocumented (what does it represent? why this value?). | MED (bounded to 1st segment) | YES (1st segment RHS) | ✅ lead-read |
-| 5 | `phase1b_energy_implicit/run_energy_implicit_phase.py:1093` **+** `phase_general/phase_events.py` (`cooling_balance`); and `phase1c_transition/run_transition_phase.py:747` (`0.9`) | `0.05`, `0.9` | Physics-gating thresholds for the energy→transition / transition-exit handoffs. The `0.05` cooling-balance margin is **duplicated** in two files (no single source of truth). **Owned by the transition workstream** (`docs/dev/transition/TRIGGER_PLAN.md`) — record here, resolve there; do **not** re-open the F0–F5 trigger choice in this audit. | MED | YES (per-segment gate) | `[agent]` |
+| 5 | `phase1b_energy_implicit/run_energy_implicit_phase.py:1093` **+** `phase_general/phase_events.py` (`cooling_balance`); and `phase1c_transition/run_transition_phase.py:747` (`0.9`) | `0.05`, `0.9` | Physics-gating thresholds for the energy→transition / transition-exit handoffs. The `0.05` cooling-balance margin is **duplicated** in two files (no single source of truth). **Owned by the transition workstream** (entry point now archived: `docs/dev/archive/transition/TRIGGER_PLAN.md`) — record here, resolve there; do **not** re-open the F0–F5 trigger choice in this audit. | MED | YES (per-segment gate) | `[agent]` |
 
 ## Already known — cross-referenced, not new
 - `get_bubbleParams.py:224` `r2 += 1e-10` (cm) — the original unit-mismatch **dud**; A & D both reconfirm it is inert and the *real* guard is the `1e-13·r2³` volume floor at `:235`. Documented in `docs/dev/failed-large-clouds/PLAN.md §2`.
@@ -87,5 +95,6 @@ in separate processes at matched `t`, smallest diff, re-verify (gate + `pytest` 
 3. **#3 `dt=1e-9` pdotdot step** — cheap to test: compare `pdotdot` from the analytic spline derivative vs the
    FD across configs; replace the FD with the spline's own derivative if available.
 4. **#4 `vd=-1e8`** — trace what the first-segment override represents; document or derive it.
-5. **#5 transition `0.05`/`0.9`** — hand to `docs/dev/transition/TRIGGER_PLAN.md`; at minimum de-duplicate the
+5. **#5 transition `0.05`/`0.9`** — hand to the transition workstream (entry point now archived:
+   `docs/dev/archive/transition/TRIGGER_PLAN.md`); at minimum de-duplicate the
    `0.05` to one source of truth.

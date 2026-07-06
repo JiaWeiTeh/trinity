@@ -23,6 +23,14 @@
 > untracked `outputs/`. A future visit must be able to reproduce or compare
 > against the numbers **without re-running**; record the exact config + command
 > that produced each artifact.
+>
+> 🔗 **Cross-check the sibling docs — keep the workstream self-consistent.** This file is one of
+> several living docs for its workstream (its `PLAN.md`, `FINDINGS.md`, `runs/README.md`, `NOTE_PATCHES.md`,
+> and any other notes in the same folder). They drift out of sync *with each other* as fast as they drift
+> from the code. Any agent or person editing one MUST, as part of the visit, circle back through the
+> siblings and reconcile: if a number, status, claim, or line reference here contradicts a sibling — or a
+> sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
+> update one in isolation.
 
 **About this document**  (last updated 2026-06-17 — the 🔄 banner *requires* refreshing this on every visit; it is a living doc, not frozen.)
 - **Status (verified 2026-06-18):** 🟠 **CORRECTION — the shipped `mxstep` change does NOT fix the user-visible warning.** The matrix here characterised the Python `ODEintWarning("Excess work")` (mxstep ceiling). The warning users actually see on `simple_cluster` is LSODA's **Fortran `t+h=t` step-underflow flood**, a *different* warning driven by a **float64 overflow** of `nShell²` in code units (`1/pc³`). `mxstep` is bit-identical but does **not** silence that flood (confirmed: it persists on `main` after PR #691). Root cause + the recommended fix (evaluate the shell RHS in **cgs** — an exact identity) are in **`OVERFLOW_FIX_PLAN.md`**. The migration findings below still stand (equivalence is universal; `solve_ivp` is not a speedup; the φ-event win is energy-phase-only) — only the "warning fixed for free by mxstep" conclusion is retracted. The `insights.html` and plot 5 likewise overstate the mxstep fix and need regenerating once the real (cgs) fix lands.

@@ -13,23 +13,11 @@
 > be stale and re-check each claim, snippet, and line reference against the
 > current source before relying on it.**
 >
-> 🔄 **Living plan — recheck and refine on every visit.** This is an evolving
-> strategy doc, not a frozen record. Any agent or person who opens this file
-> must, as part of the visit: (1) re-verify the claims and line references above
-> against current source; (2) update anything that has drifted; (3) **rethink the
-> strategy itself** — if a better ordering, gate, candidate, or experiment
-> exists, revise the doc and note what changed and why (date it). Leave it better
-> than you found it. **Keep all banner paragraphs at the top of every plan and
-> analysis doc.**
->
-> 💾 **Persist diagnostics — commit, don't re-run.** The container is ephemeral
-> and full runs cost minutes-to-hours, so any diagnostic worth keeping must be
-> saved as a committed artifact under `docs/dev/` (a CSV/table in
-> `docs/dev/performance/data/`, or a harness/figure in
-> `docs/dev/performance/harness/`) — never left in `/tmp`, the local-only
-> `scratch/`, or an untracked `outputs/`. A future visit must be able to reproduce
-> or compare against the numbers **without re-running**; record the exact config +
-> command that produced each artifact.
+> 🧊 **Frozen historical record — do not extend.** This workstream shipped or was
+> superseded (see the Status line below); the doc is kept as evidence/history. Do
+> not update or extend it — new work gets a new doc in an active workstream. The
+> ⚠️ caveat above still applies: paths and line references reflect the code as it
+> was when this was written.
 
 **About this document**  (created 2026-06-18 — the 🔄 banner *requires* refreshing this on every visit.)
 - **Status (2026-06-19):** 🟢 **F1 CLEARED — P3 applied (`24c6914`) and validated end-to-end. Ships.** Per-call (P0–P2) was necessary-not-sufficient; the **full-run equivalence gate (P5) is the decider, and F1 PASSES it on every config tested**: `mock_hybr` (~5e-6) plus the three stiff/sharp edge cases via the **matched-`t`** original-60k-vs-F1-coarse comparison (`data/f1edge_matched_comparison.csv`) — worst R2/Eb/rShell ≈ **6e-6** (`edge_hidens`, the dense/stiff case), ~500× inside the 0.3% gate; `simple_cluster` 5.7e-8, `edge_lowdens` 6.5e-9. **The convergence concern was physically sound but doesn't bite:** LSODA's adaptive stepping (rtol=1e-6) already resolves the stiff solution, so a 500-pt `t_eval` converges the `min_T`/`monotonic` gates to the same `dMdt` — the 60k was output over-resolution. **Two lessons recorded:** (a) the per-call gate could NOT have caught a full-run divergence — full-run is mandatory for changes to the residual; (b) the P4 `ab_fullrun` "divergence" was a harness artifact (two full sims in one process → trinity global-state leakage) — A/B must use SEPARATE processes (`harness/f1_fullrun_equiv.sh`), and that script's *final-state* comparison must use matched-`t` (its raw verdict false-flagged `simple` because the runs truncated at different times).

@@ -29,8 +29,6 @@ import warnings
 import contextlib
 from pathlib import Path
 
-sys.path.insert(0, os.getcwd())
-
 import numpy as np
 
 TRINITY_ROOT = Path(__file__).resolve().parents[4]

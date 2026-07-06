@@ -145,9 +145,13 @@ suite). Trivial one-liners need no test.
 The plan, audit, and write-up docs under `docs/dev/` (the old top-level `analysis/` directory was
 folded in here) are point-in-time audits/plans, not a maintained spec. They go stale fast — paths, line numbers, and "what shipped"
 status drift as the code moves. When reading one: do not treat it as ground truth — flag that it may
-be outdated and re-verify every claim, snippet, and line reference against current source. Every such
-doc must carry **all four** banner paragraphs below at the top, right under the H1, and any new
-`docs/dev/` doc must include them. The 🔄 paragraph makes these docs *living* —
+be outdated and re-verify every claim, snippet, and line reference against current source. Every
+**active** such doc must carry **all four** banner paragraphs below at the top, right under the H1,
+and any new `docs/dev/` doc must include them; docs under `docs/dev/archive/` (frozen —
+shipped/superseded) keep the ⚠️ paragraph but replace 🔄/💾/🔗 with the single 🧊 banner at the end
+of this section. The on-tree conventions (Status-line format, workstream folder template, naming,
+citation rules, banner-exempt how-to READMEs) live in `docs/dev/CONVENTIONS.md`, enforced by
+`test/test_docs_dev_conventions.py`. The 🔄 paragraph makes these docs *living* —
 whoever opens one rechecks it, updates drift, and rethinks the strategy before relying on or
 extending it. The 💾 paragraph makes them *durable* — diagnostics worth keeping are committed as
 CSV/tables (`docs/dev/data/`) or harnesses/figures in the relevant `docs/dev/<workstream>/` folder, so a future session reproduces or compares
@@ -188,6 +192,16 @@ docs never silently drift apart from one another:
 > siblings and reconcile: if a number, status, claim, or line reference here contradicts a sibling — or a
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
+```
+
+For **archived** docs (`docs/dev/archive/`), the 🔄/💾/🔗 paragraphs are replaced by this one:
+
+```markdown
+> 🧊 **Frozen historical record — do not extend.** This workstream shipped or was
+> superseded (see the Status line below); the doc is kept as evidence/history. Do
+> not update or extend it — new work gets a new doc in an active workstream. The
+> ⚠️ caveat above still applies: paths and line references reflect the code as it
+> was when this was written.
 ```
 
 ---

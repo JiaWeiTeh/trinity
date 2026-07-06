@@ -23,12 +23,20 @@
 > an untracked `outputs/`. A future visit must be able to reproduce or compare
 > against the numbers **without re-running**; record the exact config + command
 > that produced each artifact.
+>
+> 🔗 **Cross-check the sibling docs — keep the workstream self-consistent.** This file is one of
+> several living docs for its workstream (its `PLAN.md`, `FINDINGS.md`, `runs/README.md`, `NOTE_PATCHES.md`,
+> and any other notes in the same folder). They drift out of sync *with each other* as fast as they drift
+> from the code. Any agent or person editing one MUST, as part of the visit, circle back through the
+> siblings and reconcile: if a number, status, claim, or line reference here contradicts a sibling — or a
+> sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
+> update one in isolation.
 
 **About this document**
 - **Status (2026-06-20):** 🟢 **C0 + H0/G0 COMPLETE.** Substrate **fully certified**: C0.3 ✅, `res_T0_struct` ✅, **`res_beta` ✅** (4× refinement 6.65%→1.74% ∝ Δt = truncation), C0.1 adiabatic null infeasible → C0.1b Weaver-corroborated. **6/6 physics:** unanimous under-cooling (`f_ret` 0.25–0.40, none reach 0.01–0.1), steep blowout, negative β in 6/6. **6/6 G0 (trigger harvest):** UNANIMOUS — no cooling family (F0, F1 any η) ever fires, no force family (F3) fires, F2 fires at t≈0 (artifact), Eb-peak oracle barely exists (5/6 monotone Eb); **only F4 blowout fires, geometric epoch (0.01–3.66 Myr ∝ cloud size).** Structural: `Pb≡P_HII` by construction. **VERDICT: the energy→momentum transition is not a cooling/energy event for these under-cooled bubbles — no scalar threshold works; the only physical transition is geometric blowout. F0 tests for an event that doesn't occur. Pragmatic fix = F4 trigger; root fix = cooling physics (mixing layer).** Figures: `figures/{fret_verdict,beta_repressurization,cert_residuals,f0_pathology,g0_divergence}`. No production change.
 - **Type:** plan + pre-registration — a *clean-room* redo of the implicit→momentum transition-trigger investigation that deliberately does **not** inherit prior numerical results/rankings/verdicts (see §1).
 - **Workstream:** `transition/` (clean-room subdir `cleanroom/`).
-- **Where it sits:** supersedes-as-entry-point the **quarantined** `docs/dev/transition/{TRIGGER_PLAN,P0,pshadow-design}.md` and the background `docs/dev/archive/betadelta/*`. Those remain on disk as prior art; their *conclusions* are quarantined (§1), their *methodology and candidate menu* are reused.
+- **Where it sits:** supersedes-as-entry-point the **quarantined** `docs/dev/archive/transition/{TRIGGER_PLAN,P0,pshadow-design}.md` (archived 2026-07-06) and the background `docs/dev/archive/betadelta/*`. Those remain on disk as prior art; their *conclusions* are quarantined (§1), their *methodology and candidate menu* are reused.
 - **Code it concerns:** the implicit-phase terminator `trinity/phase1b_energy_implicit/run_energy_implicit_phase.py:1095` (the `(Lgain−Lloss)/Lgain < threshold` trigger); the betadelta solver `trinity/phase1b_energy_implicit/get_betadelta.py`; bubble cooling `trinity/bubble_structure/bubble_luminosity.py`; the transition phase `trinity/phase1c_transition/run_transition_phase.py`.
 - **Linked files & data:** harness `docs/dev/transition/cleanroom/c0_consistency.py`; data `docs/dev/transition/cleanroom/data/`.
 
@@ -170,7 +178,7 @@ build on any of them.
 > prior conclusions.
 
 **Quarantine inventory (paths only; do not read for their numbers/verdicts):**
-- Docs: `docs/dev/transition/P0.md` (all results/verdict sections), `docs/dev/transition/TRIGGER_PLAN.md` (firing claims), `docs/dev/transition/pshadow-design.md` (evidence section); `docs/dev/archive/betadelta/{PHASE2_ARMS,stalling-energy-phase,HYBR_PLAN,PHASE0_BASELINES}.md` (results/verdict sections).
+- Docs: `docs/dev/archive/transition/P0.md` (all results/verdict sections), `docs/dev/archive/transition/TRIGGER_PLAN.md` (firing claims), `docs/dev/archive/transition/pshadow-design.md` (evidence section); `docs/dev/archive/betadelta/{PHASE2_ARMS,stalling-energy-phase,HYBR_PLAN,PHASE0_BASELINES}.md` (results/verdict sections).
 - Prior harness (do not reuse/extend): `docs/dev/transition/harness/` (`harvest.py`, `psens.py`, `heartbeat.py`, `*.param`).
 - Data CSV/JSONL: `docs/dev/data/transition_*.csv`, `docs/dev/data/hunt_h*.csv`, `docs/dev/data/stalling_*.csv`, `docs/dev/archive/betadelta/diagnostics/*.{jsonl,csv,csv.gz}`.
 - Figures: `docs/dev/archive/betadelta/diagnostics/*.png`, `*.gif`.

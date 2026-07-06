@@ -48,7 +48,9 @@ CSV = os.path.join(DATA, "discriminator.csv")
 # Run batch (ephemeral). Point DISC_BATCH at a provenance-stamped batch from
 # docs/dev/transition/harness/run_stamped.py. The DURABLE artifact is data/discriminator.csv
 # (it carries the commit it was generated from); the figure regenerates when a batch is present.
-BATCH = os.environ.get("DISC_BATCH", "/tmp/tbase")
+# DISC_BATCH keeps precedence (it is named in the committed CSV provenance line);
+# TRINITY_FLC_RUNROOT is the workstream-wide fallback; default unchanged.
+BATCH = os.environ.get("DISC_BATCH") or os.environ.get("TRINITY_FLC_RUNROOT", "/tmp/tbase")
 
 # (label, kind, color)
 RUNS = [
@@ -160,8 +162,8 @@ def figure():
 if __name__ == "__main__":
     if not any(os.path.exists(src(l)) for l, _, _ in RUNS):
         raise SystemExit(
-            f"No run dicts under BATCH={BATCH}. Set DISC_BATCH to a stamped batch "
-            "(see docs/dev/transition/PROVENANCE_PROTOCOL.md). The committed "
+            f"No run dicts under BATCH={BATCH}. Set DISC_BATCH (or TRINITY_FLC_RUNROOT) to a "
+            "stamped batch (see docs/dev/transition/PROVENANCE_PROTOCOL.md). The committed "
             "data/discriminator.csv is the durable record; refusing to clobber outputs with empty data.")
     rows = metrics()
     for r in rows:

@@ -23,6 +23,18 @@
 > `/tmp`, the local-only `scratch/`, or an untracked `outputs/`. A future visit must be able to reproduce or compare
 > against the numbers **without re-running**; record the exact config + command
 > that produced each artifact.
+>
+> 🔗 **Cross-check the sibling docs — keep the workstream self-consistent.** This file is one of
+> several living docs for its workstream (its `PLAN.md`, `FINDINGS.md`, `runs/README.md`, `NOTE_PATCHES.md`,
+> and any other notes in the same folder). They drift out of sync *with each other* as fast as they drift
+> from the code. Any agent or person editing one MUST, as part of the visit, circle back through the
+> siblings and reconcile: if a number, status, claim, or line reference here contradicts a sibling — or a
+> sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
+> update one in isolation.
+
+**Status update (2026-07-01): ⛔ the 1b case below is SUPERSEDED — a finite `Eb<=0` collapse in phase 1b now
+ROUTES to the momentum phase instead of ending `ENERGY_COLLAPSED`; only non-finite `Eb` and phase-1a collapses
+still end code 51. "Permanent fate" framings below are stale — see the ⛔ note under the table.**
 
 **Status (2026-06-19):** 🟢 **FIX COMPLETE — all three failing configs terminate cleanly; healthy no-op
 confirmed (byte-identical); `pytest` 555 passed.** Shipped G+F+ the phase-1a collapse coverage (below).
@@ -79,7 +91,7 @@ into NEGATIVE (`+7.4e8 → −9.1e8 → −1.0e12`) and grinds (timed out 320 s;
 
 **DECISION (maintainer, 2026-06-19): fix the crash *maximally* without touching transition mechanics.**
 Family **T** (the principled `Eb`-peak → momentum handoff) is **DEFERRED** — it requires the physics
-investigation owned by `docs/dev/transition/TRIGGER_PLAN.md` and is future work. This branch ships only the
+investigation owned by `docs/dev/archive/transition/TRIGGER_PLAN.md` and is future work. This branch ships only the
 **robustness fix**: **G (geometry guard so the divide can never blow up) + F (detect the non-physical
 energy-driven state — non-finite `Pb`/`T` or `Eb`≤0 — and *terminate the run cleanly* with a recorded
 `SimulationEndReason`, instead of crashing / emitting NaN / grinding forever).** It must **not** change
@@ -129,7 +141,7 @@ HEAD` *and* byte-identical `dictionary.jsonl`) — by construction for the clamp
 `R1≪R2`), to be proven for any transition change. Edge configs to use: `param/simple_cluster.param` +
 `docs/dev/performance/f1edge_{lowdens,hidens}*.param`, **plus** the `5e9/n1e2` crash band itself.
 
-**Relationship to the `docs/dev/transition/` workstream (`TRIGGER_PLAN.md`) — important, do not collide.**
+**Relationship to the `docs/dev/transition/` workstream (`docs/dev/archive/transition/TRIGGER_PLAN.md`) — important, do not collide.**
 That is a *measurement-first* investigation of *when* the **normal** implicit→momentum transition should
 fire (candidate families F0–F5; not yet wired to production; default stays F0 `instantaneous`). Three
 facts from it bear directly on this fix:
@@ -463,7 +475,7 @@ deferred T work; until then these points are cleanly flagged `energy_collapsed` 
   phase 1c `phase1c_transition/run_transition_phase.py:505,750,835`; bubble solve
   `bubble_structure/bubble_luminosity.py:175,181`.
 - Existing energy→momentum transition (family T context): `run_energy_implicit_phase.py:1077-1078`
-  (`cooling_balance`); the principled `Eb`-peak / net-energy event is owned by `docs/dev/transition/TRIGGER_PLAN.md`.
+  (`cooling_balance`); the principled `Eb`-peak / net-energy event is owned by `docs/dev/archive/transition/TRIGGER_PLAN.md`.
 - `BubbleSolverError` (family F target): `bubble_structure/bubble_luminosity.py:105(class),298,428(except),361,569,584(raise)`.
 - The benign `Rejected. min T` branch: `bubble_luminosity.py:308-311`; `_T_INIT_BOUNDARY=3e4 :51`;
   boundary-transient note `:867,:918`.
@@ -472,7 +484,7 @@ deferred T work; until then these points are cleanly flagged `energy_collapsed` 
   for the standard high-Pb large cloud, but covered by family F.
 - Repro configs: `harness/params/fail_repro.param` (sfe0.1/PISM1e4), `harness/params/fail_helix.param`
   (the real Helix sfe0.05/PISM0 point), healthy controls `harness/params/small_1e{5,6,7}.param`.
-- Sibling workstream: `docs/dev/transition/TRIGGER_PLAN.md` (+`P0.md`,`pshadow-design.md`) — the normal
+- Sibling workstream: `docs/dev/archive/transition/TRIGGER_PLAN.md` (+`P0.md`,`pshadow-design.md`) — the normal
   implicit→momentum trigger study (families F0–F5); align family T with its `Eb`-peak event, don't collide.
 
 

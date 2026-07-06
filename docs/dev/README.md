@@ -7,98 +7,120 @@
 > be stale and re-check each claim, snippet, and line reference against the
 > current source before relying on it.**
 >
-> 🔄 **Living index — recheck and refine on every visit.** This map drifts as
-> docs are added, superseded, or moved. Anyone who adds/removes a doc under
-> `docs/dev/` should update this index (and move retired docs to `archive/`).
+> 🔄 **Living plan — recheck and refine on every visit.** This is an evolving
+> strategy doc, not a frozen record. Any agent or person who opens this file
+> must, as part of the visit: (1) re-verify the claims and line references above
+> against current source; (2) update anything that has drifted; (3) **rethink the
+> strategy itself** — if a better ordering, gate, candidate, or experiment
+> exists, revise the doc and note what changed and why (date it). Leave it better
+> than you found it. **Keep all banner paragraphs at the top of every plan and
+> analysis doc.**
+>
+> 💾 **Persist diagnostics — commit, don't re-run.** The container is ephemeral
+> and full/hybr runs cost hours, so any diagnostic worth keeping must be saved as
+> a committed artifact under `docs/dev/` (a CSV/table in `docs/dev/data/`, or a
+> harness/figure in the relevant `docs/dev/<workstream>/` folder) — never left in
+> `/tmp`, the local-only `scratch/`, or an untracked `outputs/`. A future visit must be able to reproduce or compare
+> against the numbers **without re-running**; record the exact config + command
+> that produced each artifact.
+>
+> 🔗 **Cross-check the sibling docs — keep the workstream self-consistent.** This file is one of
+> several living docs for its workstream (its `PLAN.md`, `FINDINGS.md`, `runs/README.md`, `NOTE_PATCHES.md`,
+> and any other notes in the same folder). They drift out of sync *with each other* as fast as they drift
+> from the code. Any agent or person editing one MUST, as part of the visit, circle back through the
+> siblings and reconcile: if a number, status, claim, or line reference here contradicts a sibling — or a
+> sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
+> update one in isolation.
+
+**Status (2026-07-06):** 📘 navigation index — rebuilt by the docs/dev housekeeping pass.
 
 ## What this is
 
-Internal **plan / audit / diagnostic** write-ups for TRINITY development, grouped
-one folder per **workstream**. This tree is **not** part of the rendered
-documentation (Sphinx builds only `docs/source/`) and is **not** packaged
-(`pyproject` excludes `docs*`) — it is a working record of investigations, not a
-maintained spec. The user-facing docs live in `docs/source/` and the project site.
+Internal **plan / audit / diagnostic** write-ups for TRINITY development, grouped one folder per
+**workstream**. This tree is **not** part of the rendered documentation (Sphinx builds only
+`docs/source/`) and is **not** packaged (`pyproject` excludes `docs*`) — it is a working record of
+investigations, not a maintained spec.
 
-**Status-driven layout.** **Active** workstreams (work still pending) sit at the
-top; workstreams whose work has **shipped or been superseded** are moved under
-`archive/`. The per-doc verdicts (with `trinity/…:line` evidence) live in
-[`DOC_STATUS.md`](DOC_STATUS.md) — start there to see what's done vs. live.
+**Where things are recorded** (exactly one place each):
 
-**Banner convention.** Every plan/analysis doc carries **three** banner paragraphs
-right under its H1 — ⚠️ *verify* (staleness), 🔄 *living* (recheck & refine on every
-visit), 💾 *persist diagnostics* (commit results under `docs/dev/`, don't re-run).
-Canonical banner text is in `CLAUDE.md`. (This index carries the first two.) Each
-doc's "About this document" block also carries a verified **Status** line.
-
-**Naming.** Each workstream folder is self-contained (writeups **+** its harnesses
-and figures); the folder name gives the context, so filenames inside drop the
-workstream prefix (e.g. `transition/TRIGGER_PLAN.md`, not `transition/TRANSITION_TRIGGER_PLAN.md`).
-*Case style* (not a filename): `ALL_CAPS_SNAKE` marks a major plan/spec/overview
-(e.g. `HYBR_PLAN.md`, `MIGRATION_PLAN.md`); `kebab-case` marks an audit/results note
-(e.g. `refactor-audit.md`, `pshadow-design.md`).
-
-**Referencing convention (future-proofing).** Because the prefix-drop makes bare basenames
-ambiguous (a `P0.md` or `audit.md` can't be located or machine-checked on its own — this is
-what made the cross-reference audit noisy), **cite another doc by its repo-relative path**
-(`docs/dev/transition/P0.md`), not by bare name. For **code** citations, line numbers drift, so
-pin an **absolute anchor**: a commit SHA (and optionally the branch for context, e.g.
-`feature/grouped-insights@c1b6a15`) rather than relying on the line number alone — the ⚠️ banner
-already warns the reader to re-verify against current source.
+- **How to write/maintain docs here** → [`CONVENTIONS.md`](CONVENTIONS.md) — banners (four for
+  active docs, ⚠️+🧊 for archived), Status-line format, workstream folder template, naming,
+  citation and provenance rules. Canonical banner text is in `CLAUDE.md`;
+  `test/test_docs_dev_conventions.py` enforces the mechanical parts.
+- **Per-workstream verdicts** → [`DOC_STATUS.md`](DOC_STATUS.md) (one row per workstream).
+- **Per-doc status** → each doc's own dated `**Status (…):**` line, under its banners.
+- **Navigation** → this README, and nothing else. Adding a workstream? Follow the checklist in
+  `CONVENTIONS.md` (README line + DOC_STATUS row + entry-point README).
 
 ## Layout
 
 ```
 docs/dev/
-├── CODEBASE_REVIEW.md + codebase_review/   fresh-clone consistency review (this audit)
-├── DOC_STATUS.md                           per-doc verified status (shipped / actionable / superseded)
-├── html-insights/                          📖 storyline books — workstream reports merged into chaptered HTML
-├── data/                                   committed diagnostic CSVs (provenance for writeups)
-├── transition/   implicit→momentum transition trigger   (🔵 ACTIVE)
-├── cooling/      cooling-table refactor                 (🔵 ACTIVE)
-├── performance/  hot-path cost & conditioning           (🔵 ACTIVE)
-├── misc/         standalone audits / notes              (🟡 mixed)
-└── archive/      shipped / superseded / historical:
-    ├── betadelta/        β–δ implicit solver / hybr      (✅ shipped)
-    ├── bubble/           bubble solver / integrator      (✅/⛔ done)
-    ├── n-consistency/    n ≡ n_H & pressure terms        (✅/⛔ done)
-    └── restructure-audit.md, sb99-refactor-audit.md, …   (older history)
+├── README.md              this index (navigation only)
+├── CONVENTIONS.md         how to add/maintain docs here — read before writing
+├── DOC_STATUS.md          per-workstream status ledger
+├── CODEBASE_REVIEW.md + codebase_review/   fresh-clone consistency review (2026-06-16, concluded)
+├── transition/            implicit→momentum transition trigger (🔵 ACTIVE — see transition/README.md)
+│   ├── pdv-trigger/       the active front: PdV/f_κ mechanism + θ calibration (start: INDEX.md)
+│   ├── cleanroom/         substrate certification (concluded — the "transition is geometric" verdict)
+│   ├── pt4/               hypothesis audits H1–H5 + R1 shadow (concluded, feeds pdv-trigger)
+│   └── harness/ + PROVENANCE_PROTOCOL.md    shared run-stamping tooling
+├── cooling/               cooling-table refactor (🟡 partial)
+├── performance/           hot-path cost & conditioning (📘 reference + 🟡 open items)
+├── shell-solver/          shell ODE migration + float64 overflow fix (🟡 mixed)
+├── magic-numbers/         hardcoded-constant audit (🟡 #1 fixed, #2–#5 open)
+├── failed-large-clouds/   1b collapse of large clouds (✅ shipped; 1b routing superseded 2026-07-01)
+├── misc/                  standalone audits / notes (🟡 mixed)
+├── cluster/               on-cluster plotting workflow guide (📘 operational)
+├── html-insights/         📖 storyline books + verification ledgers
+├── data/                  legacy transition-era harvest CSVs (see data/README.md)
+├── to-be-removed/         deletion candidates staged for the maintainer's personal review
+└── archive/               🧊 frozen: shipped/superseded workstreams (see archive/README.md)
 ```
 
 The top-level `scratch/` (repo root) is separate, git-ignored, local-only.
 
 ## Active workstreams
 
-### `transition/` — implicit→momentum transition trigger
-- `TRIGGER_PLAN.md` — **plan** (🔵 actionable): characterize the transition trigger, then decide.
-- `P0.md` — **results** (✅): P0 harvest (both clocks + candidate divergence).
-- `pshadow-design.md` — **design** (🔵 actionable): two-criterion (F0 ∨ F4) trigger, unbuilt.
-- `harness/` — offline harvest / P-sensitivity harnesses + README.
-- Data: `data/transition_*.csv`.
+- **`transition/`** — the umbrella for the transition-trigger program; start at
+  [`transition/README.md`](transition/README.md). The live front is `pdv-trigger/`
+  (entry: `pdv-trigger/INDEX.md`; check `pdv-trigger/CONTAMINATION.md` before quoting numbers).
+- **`cooling/`** — [`refactor-audit.md`](cooling/refactor-audit.md): decouple the cooling-table
+  loaders from hardcoded SB99/OPIATE/CLOUDY. Two side items shipped; core PR-1–4 pending.
+- **`performance/`** — start at
+  [`BUBBLE_LUMINOSITY_PERFORMANCE.md`](performance/BUBBLE_LUMINOSITY_PERFORMANCE.md) (the
+  consolidated perf/robustness history + **Methodology**). `HOTPATH_PLAN.md` carries the open
+  items (§F1-cousin, §F5); `F1_SUMMARY.md` + `F1_REPORT.html` are the F1 reference;
+  `BUBBLE_CONDUCTION_STIFFNESS.md` documents the diagnosed stiffness cause (descoped §F3).
+- **`shell-solver/`** — [`OVERFLOW_FIX_PLAN.md`](shell-solver/OVERFLOW_FIX_PLAN.md) (🟢 the real
+  fix, implemented) and [`MIGRATION_PLAN.md`](shell-solver/MIGRATION_PLAN.md) (🟠 correction:
+  its `mxstep` diagnosis was retracted — read OVERFLOW first).
+- **`magic-numbers/`** — [`AUDIT.md`](magic-numbers/AUDIT.md) (triaged findings; #2–#5 open) and
+  [`TCLAMP_PLAN.md`](magic-numbers/TCLAMP_PLAN.md) (✅ #1 fixed & gated).
+- **`failed-large-clouds/`** — [`PLAN.md`](failed-large-clouds/PLAN.md): the 1b
+  collapse investigation (✅ fix shipped 2026-06-19; the "permanent fate" framing was superseded
+  2026-07-01 — 1b collapses now route to momentum). Data manifest: `data/PROVENANCE.md`.
+- **`misc/`** — standalone: `backward-compat-audit.md` (🔵 ~95% pending),
+  `tinit-sensitivity.md` (🟡 rec #3 open), `TERMINATION_EVENTS.md` (📘 reference),
+  `LEAKING_LUMINOSITIES_SKELETON.md` (🟡 D/F/G open).
 
-### `cooling/` — cooling-table refactor
-- `refactor-audit.md` — **plan** (🔵 actionable): decouple the loaders from hardcoded SB99/OPIATE/CLOUDY. Nothing shipped yet.
+## References / operational
 
-### `performance/` — hot-path cost & conditioning
-- `BUBBLE_LUMINOSITY_PERFORMANCE.md` — **reference** (📘): the consolidated history of every perf/robustness change to `bubble_luminosity.py` — Era A (odeint→solve_ivp, which demoted the 60k) → B (conduction K=2000) → C (F2 free wins) → D (**F1 shipped**) — plus a **Methodology** section (our testing/planning conventions). Start here.
-- `F1_SUMMARY.md` — **reference** (📘): F1 changes / tests / defaults / efficiency tables. `F1_REPORT.html` — self-contained illustrated report (MathJax + embedded figures). `harness/` + `figs/` + `data/f1edge_*` regenerate both.
-- `HOTPATH_PLAN.md` — **plan** (🟡 partial): solver-class wins after hybr/shell. **§F1 SHIPPED** (`24c6914` → `BUBBLE_LUMINOSITY_PERFORMANCE.md`), **§F2 free wins SHIPPED** (`4a13075`). Open: §F1-cousin (shrink the *final*-solve grid), §F5. §F3 descoped to `shell-solver/`. Carries the measured-results ledger.
-- *(archived)* `archive/bubble/{RESAMPLE_PLAN,P3_PRODUCTION_PATCH}.md` — the F1 planning + patch docs (shipped 2026-06-19).
+- **`cluster/PLOTTING_WORKFLOW.md`** — how to visualize runs on the cluster (📘 guide).
+- **`html-insights/`** — chaptered HTML storyline books merged from workstream reports, plus
+  `verification/` line-by-line verification ledgers (see its README).
+- **`CODEBASE_REVIEW.md` + `codebase_review/01…07`** — the 2026-06-16 fresh-clone consistency
+  review (52 findings; concluded, kept as reference).
+- **`data/`** — legacy transition-era harvest CSVs; new artifacts belong in
+  `<workstream>/data/` (see `data/README.md`).
 
-### `misc/` — standalone audits / notes
-- `backward-compat-audit.md` — (🔵 actionable) backward-compat / stale-code cleanup; ~95% pending.
-- `tinit-sensitivity.md` — (🟡 partial) is `T_init = 3e4` a relabel-only knob? Study done; one open rec.
-- `TERMINATION_EVENTS.md` — (📘 reference) current per-phase termination-events reference.
-- `LEAKING_LUMINOSITIES_SKELETON.md` — (🟡 partial) `coverFraction` leak; A–C shipped, D/F/G open.
+## Archive & staging
 
-## Archived (shipped / superseded — see `DOC_STATUS.md`)
-
-Moved under `archive/` once their work landed; kept as historical record (harnesses + data move with them).
-
-- `archive/betadelta/` — β–δ solver repair: `HYBR_PLAN`, `PHASE0_BASELINES`, `PHASE2_ARMS`, `stalling-energy-phase` + `diagnostics/`, `velstruct/`, and the illustrated report `insights_betadelta_illustrated.html`. ✅ shipped, incl. the Phase-4 default flip — `betadelta_solver` now defaults to `hybr` (`registry.py:307`).
-- `archive/bubble/` — `integrator-robustness` (⛔ superseded by the `solve_ivp` migration), `conduction-convergence` (✅ shipped).
-- `archive/n-consistency/` — `audit`, `implementation-plan` (✅ shipped, pinned by `test_mu_audit_drift.py`), `pressure-terms-audit` (⛔ superseded).
-- `archive/restructure-audit.md`, `archive/sb99-refactor-audit.md` — older completed restructures.
-
----
-
-*This index lives alongside the docs it maps; keep it in sync when docs change.*
+- **`archive/`** — 🧊 frozen history (see [`archive/README.md`](archive/README.md)):
+  `betadelta/` (β–δ hybr solver program, ✅ shipped incl. the hybr default flip),
+  `bubble/` (integrator robustness ⛔ superseded · conduction convergence ✅),
+  `n-consistency/` (n ≡ n_H program, ✅ shipped),
+  `transition/` (the superseded trigger trio: `TRIGGER_PLAN.md`, `P0.md`, `pshadow-design.md`),
+  `restructure-audit.md`, `sb99-refactor-audit.md`.
+- **`to-be-removed/`** — deletion candidates staged for the maintainer's personal review
+  (see its README for the why-list). Nothing is deleted directly.
