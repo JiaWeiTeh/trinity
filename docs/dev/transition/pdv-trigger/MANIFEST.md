@@ -12,10 +12,326 @@
 > are exact; stamp-less artifacts predate the convention (2026-07-02) — for those, only
 > the commit date is known. **Every new/edited builder must write the stamp.**
 
-313 artifacts · 0 stale-risk · 0 untracked · 13 stamped 🕐
+316 artifacts · 0 stale-risk · 0 untracked · 13 stamped 🕐
 
 | last updated (commit) | artifact | producer / flags |
 |---|---|---|
+| 2026-07-06 `487f2ed` | `data/fA_source_boost.csv` | by `make_fA_source_boost.py` |
+| 2026-07-06 `487f2ed` | `data/fA_source_boost_summary.csv` | by `make_fA_source_boost.py` |
+| 2026-07-06 `487f2ed` | `fA_source_boost.png` | by `make_fA_source_boost.py` |
+| 2026-07-03 `e0e3b1d` | `data/dmdt_trace_dense.csv` | producer unknown (HPC/hand-made); refs: `make_dmdt_dip_figures.py` · 🕐 generated 2026-07-03T12:33:07Z | builder make_dmdt_dip_figures.py | code 4568aa4+dirty |
+| 2026-07-03 `8c11e9a` | `data/theta5_fire_map.csv` | producer unknown (HPC/hand-made); refs: `make_theta5b_analysis.py`, `make_pdvtrigger_report.py` · 🕐 generated 2026-07-03T13:59:45Z | builder make_theta5b_analysis.py | code 5762c05+dirty |
+| 2026-07-03 `8c11e9a` | `data/theta5_law_check.csv` | producer unknown (HPC/hand-made); refs: `make_theta5b_analysis.py`, `make_pdvtrigger_report.py` · 🕐 generated 2026-07-03T13:59:45Z | builder make_theta5b_analysis.py | code 5762c05+dirty |
+| 2026-07-03 `5762c05` | `data/theta5k_fire_map.csv` | producer unknown (HPC/hand-made); refs: `make_theta5k_analysis.py` · 🕐 generated 2026-07-03T13:33:46Z | builder make_theta5k_analysis.py | code 4b5fa32+dirty |
+| 2026-07-03 `e0e3b1d` | `dmdt_dip_traces.png` | producer unknown (HPC/hand-made); refs: `make_dmdt_dip_figures.py`, `make_pdvtrigger_report.py` |
+| 2026-07-03 `e0e3b1d` | `dmdt_tackle_flow.png` | producer unknown (HPC/hand-made); refs: `make_dmdt_dip_figures.py`, `make_pdvtrigger_report.py` |
+| 2026-07-03 `4418c38` | `pdvtrigger_report.html` | by `make_pdvtrigger_report.py` |
+| 2026-07-03 `92d22a1` | `runs/data/theta5_fmix_scorecard.csv` | producer unknown (HPC/hand-made); refs: `make_theta5_figures.py`, `make_pdvtrigger_report.py` · 🕐 generated 2026-07-03T21:58:20Z | builder make_theta5_figures.py | code f667df5+dirty |
+| 2026-07-03 `a43119a` | `runs/data/theta5k_summary.csv` | producer unknown (HPC/hand-made); refs: `make_theta5k_analysis.py`, `make_theta5k_params.py` · 🕐 generated 2026-07-03T11:48:20Z | builder harvest_theta_max.py | code fa9dc7ed+dirty |
+| 2026-07-03 `52b1a12` | `runs/data/theta5n_summary.csv` | producer unknown (HPC/hand-made); refs: `make_theta5b_analysis.py`, `make_theta5k_analysis.py` · 🕐 generated 2026-07-03T13:30:11Z | builder harvest_theta_max.py | code c7c58738+dirty |
+| 2026-07-03 `e0e3b1d` | `runs/params/dmdt_trace/dense_k6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `e0e3b1d` | `runs/params/dmdt_trace/dense_k8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/be_sphere__kappa12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/be_sphere__kappa16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/be_sphere__kappa2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/be_sphere__kappa4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/be_sphere__kappa6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/be_sphere__kappa8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/be_sphere__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/fail_repro__kappa12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/fail_repro__kappa16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/fail_repro__kappa2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/fail_repro__kappa4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/fail_repro__kappa6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/fail_repro__kappa8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/fail_repro__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/large_diffuse_lowsfe__kappa12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/large_diffuse_lowsfe__kappa16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/large_diffuse_lowsfe__kappa2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/large_diffuse_lowsfe__kappa4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/large_diffuse_lowsfe__kappa6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/large_diffuse_lowsfe__kappa8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/large_diffuse_lowsfe__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/midrange_pl0__kappa12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/midrange_pl0__kappa16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/midrange_pl0__kappa2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/midrange_pl0__kappa4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/midrange_pl0__kappa6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/midrange_pl0__kappa8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/midrange_pl0__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/pl2_steep__kappa12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/pl2_steep__kappa16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/pl2_steep__kappa2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/pl2_steep__kappa4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/pl2_steep__kappa6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/pl2_steep__kappa8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/pl2_steep__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/simple_cluster__kappa12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/simple_cluster__kappa16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/simple_cluster__kappa2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/simple_cluster__kappa4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/simple_cluster__kappa6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/simple_cluster__kappa8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/simple_cluster__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/small_1e6__kappa12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/small_1e6__kappa16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/small_1e6__kappa2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/small_1e6__kappa4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/small_1e6__kappa6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/small_1e6__kappa8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/small_1e6__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/small_dense_highsfe__kappa12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/small_dense_highsfe__kappa16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/small_dense_highsfe__kappa2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/small_dense_highsfe__kappa4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/small_dense_highsfe__kappa6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/small_dense_highsfe__kappa8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/params/theta5k/small_dense_highsfe__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `9d54221` | `runs/params/theta5n/normal_n1e3__kappa12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `9d54221` | `runs/params/theta5n/normal_n1e3__kappa16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `9d54221` | `runs/params/theta5n/normal_n1e3__kappa2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `9d54221` | `runs/params/theta5n/normal_n1e3__kappa4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `9d54221` | `runs/params/theta5n/normal_n1e3__kappa6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `9d54221` | `runs/params/theta5n/normal_n1e3__kappa8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `9d54221` | `runs/params/theta5n/normal_n1e3__mult2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `9d54221` | `runs/params/theta5n/normal_n1e3__mult2p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `9d54221` | `runs/params/theta5n/normal_n1e3__mult3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `9d54221` | `runs/params/theta5n/normal_n1e3__mult3p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `9d54221` | `runs/params/theta5n/normal_n1e3__mult4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `9d54221` | `runs/params/theta5n/normal_n1e3__mult4p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `9d54221` | `runs/params/theta5n/normal_n1e3__mult5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `9d54221` | `runs/params/theta5n/normal_n1e3__mult8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `9d54221` | `runs/params/theta5n/normal_n1e3__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-03 `f622515` | `runs/run_theta5k.sbatch` | producer unknown (HPC/hand-made); refs: `make_theta5k_params.py` |
+| 2026-07-03 `9d54221` | `runs/run_theta5n.sbatch` | producer unknown (HPC/hand-made); refs: `make_theta5n_params.py` |
+| 2026-07-03 `92d22a1` | `theta5_knob_choice.png` | producer unknown (HPC/hand-made); refs: `make_theta5_figures.py`, `make_pdvtrigger_report.py` |
+| 2026-07-03 `8c11e9a` | `theta5b_fire_map.png` | producer unknown (HPC/hand-made); refs: `make_theta5b_analysis.py`, `make_pdvtrigger_report.py` |
+| 2026-07-03 `5762c05` | `theta5b_law_check.png` | producer unknown (HPC/hand-made); refs: `make_theta5b_analysis.py`, `make_pdvtrigger_report.py` |
+| 2026-07-03 `5762c05` | `theta5k_fire_map.png` | producer unknown (HPC/hand-made); refs: `make_theta5k_analysis.py`, `make_pdvtrigger_report.py` |
+| 2026-07-03 `5762c05` | `theta5k_theta_rise.png` | producer unknown (HPC/hand-made); refs: `make_theta5k_analysis.py`, `make_pdvtrigger_report.py` |
+| 2026-07-02 `057cd96` | `data/fkappa_auto_verify.csv` | by `make_fkappa_auto_verify.py` |
+| 2026-07-02 `abc9a26` | `data/kappa_freeze_autopsy.csv` | by `make_kappa_freeze_autopsy.py` · 🕐 generated 2026-07-02T22:05:48Z | builder make_kappa_freeze_autopsy.py | code d8ec046+dirty |
+| 2026-07-02 `eb3fe6d` | `data/kappa_stability_map.csv` | by `make_kappa_stability_map.py` · 🕐 generated 2026-07-02T12:05:54Z | builder make_kappa_stability_map.py | code 8a27ba9 |
+| 2026-07-02 `cc479ba` | `runs/data/theta5_calibration.csv` | by `make_theta5_calibration.py` · 🕐 generated 2026-07-02T14:00:21Z | builder make_theta5_calibration.py | code ad15816 |
+| 2026-07-02 `0082bef` | `runs/data/theta5_summary.csv` | producer unknown (HPC/hand-made); refs: `make_theta5_figures.py`, `make_theta5b_analysis.py` · 🕐 generated 2026-07-02T13:50:54Z | builder harvest_theta_max.py | code 23f623d3+dirty |
+| 2026-07-02 `9bdf2b9` | `runs/data/theta5b_calibration.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-02T21:13:23Z | builder make_theta5_calibration.py | code 049d3905+dirty |
+| 2026-07-02 `9bdf2b9` | `runs/data/theta5b_summary.csv` | producer unknown (HPC/hand-made); refs: `make_theta5b_analysis.py`, `make_theta5b_params.py` · 🕐 generated 2026-07-02T21:13:23Z | builder harvest_theta_max.py | code 049d3905+dirty |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/be_sphere__mult2p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/be_sphere__mult3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/be_sphere__mult3p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/be_sphere__mult4p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/be_sphere__mult5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/fail_repro__mult2p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/fail_repro__mult3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/fail_repro__mult3p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/fail_repro__mult4p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/fail_repro__mult5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/large_diffuse_lowsfe__mult2p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/large_diffuse_lowsfe__mult3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/large_diffuse_lowsfe__mult3p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/large_diffuse_lowsfe__mult4p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/large_diffuse_lowsfe__mult5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/large_diffuse_lowsfe_t8__mult2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/large_diffuse_lowsfe_t8__mult2p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/large_diffuse_lowsfe_t8__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/midrange_pl0__mult2p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/midrange_pl0__mult3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/midrange_pl0__mult3p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/midrange_pl0__mult4p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/midrange_pl0__mult5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/pl2_steep__mult2p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/pl2_steep__mult3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/pl2_steep__mult3p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/pl2_steep__mult4p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/pl2_steep__mult5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/simple_cluster__mult2p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/simple_cluster__mult3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/simple_cluster__mult3p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/simple_cluster__mult4p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/simple_cluster__mult5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/small_1e6__mult2p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/small_1e6__mult3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/small_1e6__mult3p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/small_1e6__mult4p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/small_1e6__mult5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/small_dense_highsfe__mult2p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/small_dense_highsfe__mult3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/small_dense_highsfe__mult3p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/small_dense_highsfe__mult4p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `9666e45` | `runs/params/theta5b/small_dense_highsfe__mult5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-02 `a1501a3` | `runs/run_theta5.sbatch` | producer unknown (HPC/hand-made); refs: `make_theta5_params.py` |
+| 2026-07-02 `9666e45` | `runs/run_theta5b.sbatch` | producer unknown (HPC/hand-made); refs: `make_theta5b_params.py` |
+| 2026-07-02 `1b9717a` | `theta5_arms.png` | producer unknown (HPC/hand-made); refs: `make_theta5_figures.py`, `make_pdvtrigger_report.py` |
+| 2026-07-02 `1b9717a` | `theta5_collapse_law.png` | producer unknown (HPC/hand-made); refs: `make_theta5_figures.py`, `make_pdvtrigger_report.py` |
+| 2026-07-02 `1b9717a` | `theta5_metric_correction.png` | producer unknown (HPC/hand-made); refs: `make_theta5_figures.py`, `make_pdvtrigger_report.py` |
+| 2026-07-02 `1b9717a` | `theta5_target_vs_emergent.png` | producer unknown (HPC/hand-made); refs: `make_theta5_figures.py`, `make_pdvtrigger_report.py` |
+| 2026-07-01 `e38fa7a` | `ELBADRY_THETA_STORY.html` | producer unknown (HPC/hand-made); refs: `make_elbadry_story_figs.py` |
+| 2026-07-01 `a5cdf63` | `data/fkappa_emergent_calibration.csv` | by `make_fkappa_emergent_calibration.py` |
+| 2026-07-01 `ca3b4c7` | `data/fkappa_theta1_collapse.csv` | by `make_fkappa_theta1_collapse.py` |
+| 2026-07-01 `8d8bd18` | `data/gate_prototype.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-01 `718dc24` | `data/live_pdv_decomp.csv` | by `make_live_pdv_decomp.py` |
+| 2026-07-01 `86950d2` | `data/newcode_default_vs_theta.csv` | producer unknown (HPC/hand-made); refs: `make_elbadry_story_figs.py` |
+| 2026-07-01 `d7b93ea` | `data/sweep_tmax_fate.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-01 `a5cdf63` | `fkappa_emergent_calibration.png` | by `make_fkappa_emergent_calibration.py` |
+| 2026-07-01 `a5cdf63` | `fkappa_emergent_routea.png` | producer unknown (HPC/hand-made); refs: `make_fkappa_emergent_calibration.py` |
+| 2026-07-01 `ca3b4c7` | `fkappa_theta1_collapse.png` | by `make_fkappa_theta1_collapse.py` |
+| 2026-07-01 `01b9616` | `runs/params/fkauto_verify.param` | producer unknown (HPC/hand-made); refs: `make_fkappa_auto_verify.py` |
+| 2026-07-01 `cf0469c` | `runs/params/theta5/be_sphere__mult2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-01 `cf0469c` | `runs/params/theta5/be_sphere__mult4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-01 `cf0469c` | `runs/params/theta5/be_sphere__mult8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-01 `cf0469c` | `runs/params/theta5/be_sphere__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-01 `cf0469c` | `runs/params/theta5/fail_repro__mult2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-01 `cf0469c` | `runs/params/theta5/fail_repro__mult4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-01 `cf0469c` | `runs/params/theta5/fail_repro__mult8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-01 `cf0469c` | `runs/params/theta5/fail_repro__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-01 `cf0469c` | `runs/params/theta5/large_diffuse_lowsfe__mult2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-01 `cf0469c` | `runs/params/theta5/large_diffuse_lowsfe__mult4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-01 `cf0469c` | `runs/params/theta5/large_diffuse_lowsfe__mult8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-01 `cf0469c` | `runs/params/theta5/large_diffuse_lowsfe__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-01 `cf0469c` | `runs/params/theta5/midrange_pl0__mult2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-01 `cf0469c` | `runs/params/theta5/midrange_pl0__mult4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-01 `cf0469c` | `runs/params/theta5/midrange_pl0__mult8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-01 `cf0469c` | `runs/params/theta5/midrange_pl0__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-01 `cf0469c` | `runs/params/theta5/pl2_steep__mult2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-01 `cf0469c` | `runs/params/theta5/pl2_steep__mult4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-01 `cf0469c` | `runs/params/theta5/pl2_steep__mult8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-01 `cf0469c` | `runs/params/theta5/pl2_steep__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-01 `cf0469c` | `runs/params/theta5/simple_cluster__mult2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-01 `cf0469c` | `runs/params/theta5/simple_cluster__mult4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-01 `cf0469c` | `runs/params/theta5/simple_cluster__mult8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-01 `cf0469c` | `runs/params/theta5/simple_cluster__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-01 `cf0469c` | `runs/params/theta5/small_1e6__mult2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-01 `cf0469c` | `runs/params/theta5/small_1e6__mult4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-01 `cf0469c` | `runs/params/theta5/small_1e6__mult8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-01 `cf0469c` | `runs/params/theta5/small_1e6__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-01 `cf0469c` | `runs/params/theta5/small_dense_highsfe__mult2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-01 `cf0469c` | `runs/params/theta5/small_dense_highsfe__mult4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-01 `cf0469c` | `runs/params/theta5/small_dense_highsfe__mult8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-01 `cf0469c` | `runs/params/theta5/small_dense_highsfe__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-01 `104be88` | `story_elbadry_f1_closedform.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_story_figs.py` |
+| 2026-07-01 `104be88` | `story_elbadry_f2_impose.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_story_figs.py` |
+| 2026-07-01 `104be88` | `story_elbadry_f3_check.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_story_figs.py` |
+| 2026-07-01 `104be88` | `story_elbadry_f4_fatemap.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_story_figs.py` |
+| 2026-07-01 `104be88` | `story_elbadry_f5_reversal.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_story_figs.py` |
+| 2026-07-01 `104be88` | `story_elbadry_f6_regime.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_story_figs.py` |
+| 2026-06-30 `4e65c0a` | `closure_stage1_gate.png` | producer unknown (HPC/hand-made); refs: `make_closure_plots.py` |
+| 2026-06-30 `4e65c0a` | `closure_stage2_heatmap.png` | producer unknown (HPC/hand-made); refs: `make_closure_plots.py` |
+| 2026-06-30 `4e65c0a` | `closure_stage2_heatmap_theta.png` | producer unknown (HPC/hand-made); refs: `make_closure_plots.py` |
+| 2026-06-30 `4e65c0a` | `closure_stage2_sweep.png` | producer unknown (HPC/hand-made); refs: `make_closure_plots.py` |
+| 2026-06-30 `4e65c0a` | `closure_stage2_theta.png` | producer unknown (HPC/hand-made); refs: `make_closure_plots.py` |
+| 2026-06-30 `4e65c0a` | `closure_stage3_doublecount.png` | producer unknown (HPC/hand-made); refs: `make_closure_plots.py` |
+| 2026-06-30 `4e65c0a` | `closure_stage4_summary.png` | producer unknown (HPC/hand-made); refs: `make_closure_plots.py` |
+| 2026-06-30 `4e65c0a` | `da_replay.png` | by `make_da_replay.py` |
+| 2026-06-30 `4e65c0a` | `da_screen.png` | by `make_da_screen.py` |
+| 2026-06-30 `4e65c0a` | `data/closure_test.csv` | by `make_closure_test.py` |
+| 2026-06-30 `4e65c0a` | `data/da_replay.csv` | by `make_da_replay.py` |
+| 2026-06-30 `4e65c0a` | `data/da_screen.csv` | by `make_da_screen.py` |
+| 2026-06-30 `4e65c0a` | `data/dense_stiffness_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `data/doublecount_mc.csv` | by `make_doublecount_mc.py` |
+| 2026-06-30 `4e65c0a` | `data/ebpeak_8config_xcheck.csv` | by `make_ebpeak_8config_xcheck.py` |
+| 2026-06-30 `4e65c0a` | `data/ebpeak_trigger_test.csv` | by `make_ebpeak_trigger_test.py` |
+| 2026-06-30 `0a1b9b8` | `data/elbadry_theta.csv` | by `make_elbadry_theta.py` |
+| 2026-06-30 `4e65c0a` | `data/fkappa_cliff_metric.csv` | by `make_fkappa_cliff_metric.py` |
+| 2026-06-30 `4e65c0a` | `data/fkappa_functional_form.csv` | by `make_fkappa_functional_form.py` |
+| 2026-06-30 `4e65c0a` | `data/fkappa_leverage.csv` | by `make_fkappa_leverage.py` |
+| 2026-06-30 `4e65c0a` | `data/fkappa_nH_sweep.csv` | by `make_fkappa_nH_sweep.py` |
+| 2026-06-30 `4e65c0a` | `data/fkappa_physical_cap.csv` | by `make_fkappa_physical_cap.py` |
+| 2026-06-30 `4e65c0a` | `data/fkappa_physical_derivation.csv` | by `make_fkappa_physical_derivation.py` |
+| 2026-06-30 `4e65c0a` | `data/fkappa_sweep_scorecard.csv` | producer unknown (HPC/hand-made); refs: `make_fkappa_sweep_analysis.py`, `make_pdvtrigger_report.py` |
+| 2026-06-30 `4e65c0a` | `data/fm1_rootcheck.csv` | by `make_fm1_rootcheck.py` |
+| 2026-06-30 `4e65c0a` | `data/fm1b_evapsign.csv` | by `make_fm1b_evapsign.py` |
+| 2026-06-30 `4e65c0a` | `data/fmix_table.csv` | by `make_fmix_table.py` |
+| 2026-06-30 `4e65c0a` | `data/kappa_backreaction.csv` | by `make_kappa_backreaction.py` |
+| 2026-06-30 `4e65c0a` | `data/kappa_blowout_calibration.csv` | by `make_kappa_blowout_calibration.py` |
+| 2026-06-30 `4e65c0a` | `data/kappa_calibration_estimate.csv` | by `make_kappa_calibration_estimate.py` |
+| 2026-06-30 `4e65c0a` | `data/kmix_prototype.csv` | by `make_kmix_prototype.py` |
+| 2026-06-30 `4e65c0a` | `data/kmix_selfconsistent.csv` | by `make_kmix_selfconsistent.py` |
+| 2026-06-30 `12f9ff4` | `data/kmix_theta_trajectory.csv` | by `make_kmix_theta_trajectory.py` |
+| 2026-06-30 `12f9ff4` | `data/kmix_theta_trajectory_summary.csv` | by `make_kmix_theta_trajectory.py` |
+| 2026-06-30 `25cf9bd` | `data/nmap_verify.csv` | by `make_nmap_verify.py` |
+| 2026-06-30 `4e65c0a` | `data/pdv_combined_trigger.csv` | producer unknown (HPC/hand-made); refs: `make_combined_trigger_table.py`, `make_ebpeak_8config_xcheck.py` |
+| 2026-06-30 `4e65c0a` | `data/pdv_regime_budget.csv` | producer unknown (HPC/hand-made); refs: `make_ebpeak_8config_xcheck.py`, `make_pdv_regime_table.py` |
+| 2026-06-30 `4e65c0a` | `data/pdv_trigger_compare.csv` | by `make_pdv_trigger_compare.py` |
+| 2026-06-30 `4069e4a` | `data/shadow_te_fate.csv` | by `harvest_shadow.py` |
+| 2026-06-30 `4e65c0a` | `data/summary.csv` | producer unknown (HPC/hand-made); refs: `make_closure_test.py`, `make_combined_trigger_table.py` |
+| 2026-06-30 `4e65c0a` | `data/sweep_report.txt` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `ebpeak_8config_xcheck.png` | by `make_ebpeak_8config_xcheck.py` |
+| 2026-06-30 `4e65c0a` | `ebpeak_trigger_test.png` | by `make_ebpeak_trigger_test.py` |
+| 2026-06-30 `0a1b9b8` | `elbadry_theta.png` | by `make_elbadry_theta.py` |
+| 2026-06-30 `4e65c0a` | `fkappa_cliff_metric.png` | by `make_fkappa_cliff_metric.py` |
+| 2026-06-30 `4e65c0a` | `fkappa_definition.png` | by `make_fkappa_definition.py` |
+| 2026-06-30 `4e65c0a` | `fkappa_functional_form.png` | by `make_fkappa_functional_form.py` |
+| 2026-06-30 `4e65c0a` | `fkappa_leverage.png` | by `make_fkappa_leverage.py` |
+| 2026-06-30 `4e65c0a` | `fkappa_nH_sweep.png` | by `make_fkappa_nH_sweep.py` |
+| 2026-06-30 `4e65c0a` | `fkappa_physical_cap.png` | by `make_fkappa_physical_cap.py` |
+| 2026-06-30 `4e65c0a` | `fkappa_physical_derivation.png` | by `make_fkappa_physical_derivation.py` |
+| 2026-06-30 `4e65c0a` | `fkappa_sweep_analysis.png` | by `make_fkappa_sweep_analysis.py` |
+| 2026-06-30 `4e65c0a` | `fm1_rootcheck.png` | by `make_fm1_rootcheck.py` |
+| 2026-06-30 `4e65c0a` | `fm1b_evapsign.png` | by `make_fm1b_evapsign.py` |
+| 2026-06-30 `4e65c0a` | `fmix_vs_density.png` | producer unknown (HPC/hand-made); refs: `make_fmix_spread_plot.py`, `make_pdvtrigger_report.py` |
+| 2026-06-30 `4e65c0a` | `ideas_comparison.png` | by `make_ideas_comparison.py` |
+| 2026-06-30 `4e65c0a` | `kappa_backreaction.png` | by `make_kappa_backreaction.py` |
+| 2026-06-30 `4e65c0a` | `kappa_blowout_calibration.png` | by `make_kappa_blowout_calibration.py` |
+| 2026-06-30 `4e65c0a` | `kappa_calibration_estimate.png` | by `make_kappa_calibration_estimate.py` |
+| 2026-06-30 `4e65c0a` | `kmix_prototype.png` | by `make_kmix_prototype.py` |
+| 2026-06-30 `4e65c0a` | `kmix_selfconsistent.png` | by `make_kmix_selfconsistent.py` |
+| 2026-06-30 `12f9ff4` | `kmix_theta_trajectory.png` | by `make_kmix_theta_trajectory.py` |
+| 2026-06-30 `25cf9bd` | `nmap_verify.png` | by `make_nmap_verify.py` |
+| 2026-06-30 `4e65c0a` | `pdv_combined_trigger.png` | producer unknown (HPC/hand-made); refs: `make_combined_trigger_table.py` |
+| 2026-06-30 `4e65c0a` | `pdv_trigger_compare.png` | by `make_pdv_trigger_compare.py` |
+| 2026-06-30 `4e65c0a` | `runs/data/compare_f1edge_hidens_theta90.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/data/compare_f1edge_hidens_theta95.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/data/harvest_cal_compact__k1.csv` | producer unknown (HPC/hand-made); refs: `make_kmix_prototype.py` |
+| 2026-06-30 `4e65c0a` | `runs/data/harvest_cal_dense__ek1.csv` | producer unknown (HPC/hand-made); refs: `make_kmix_prototype.py` |
+| 2026-06-30 `4e65c0a` | `runs/data/harvest_cal_diffuse__k1.csv` | producer unknown (HPC/hand-made); refs: `make_kmix_prototype.py` |
+| 2026-06-30 `4e65c0a` | `runs/data/harvest_cal_mid__ek1.csv` | producer unknown (HPC/hand-made); refs: `make_kmix_prototype.py` |
+| 2026-06-30 `4e65c0a` | `runs/data/harvest_f1edge_hidens__mult2.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/data/harvest_f1edge_hidens__none.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/data/harvest_f1edge_lowdens__mult2.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/data/harvest_f1edge_lowdens__mult3.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/data/harvest_f1edge_lowdens__none.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/data/harvest_fail_repro__mult2.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/data/harvest_fail_repro__none.csv` | producer unknown (HPC/hand-made); refs: `make_kmix_prototype.py` |
+| 2026-06-30 `4e65c0a` | `runs/data/harvest_simple_cluster__mult2.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/data/harvest_simple_cluster__none.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/data/live_compare.csv` | producer unknown (HPC/hand-made); refs: `make_pdvtrigger_report.py` |
+| 2026-06-30 `4e65c0a` | `runs/params/cal_compact__ebpeak.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/cal_compact__k1.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/cal_compact__k2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/cal_compact__k4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/cal_dense__ek1.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/cal_dense__ek2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/cal_dense__ek4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/cal_diffuse__ebpeak.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/cal_diffuse__k1.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/cal_diffuse__k2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/cal_diffuse__k4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/cal_mid__ek1.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/cal_mid__ek2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/cal_mid__ek4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/diag_dense_hybr.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/diag_dense_legacy.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/f1edge_hidens__kappa2.param` | producer unknown (HPC/hand-made); refs: `make_kappa_backreaction.py`, `make_pdvtrigger_report.py` |
+| 2026-06-30 `4e65c0a` | `runs/params/f1edge_hidens__mult2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/f1edge_hidens__none.param` | producer unknown (HPC/hand-made); refs: `make_kappa_backreaction.py` |
+| 2026-06-30 `4e65c0a` | `runs/params/f1edge_hidens__theta90.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/f1edge_hidens__theta95.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/f1edge_lowdens__mult2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/f1edge_lowdens__mult3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/f1edge_lowdens__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/fail_repro__mult2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/fail_repro__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/simple_cluster__mult2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/simple_cluster__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/sweep_fkappa_nH.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/run_fkappa.sbatch` | producer unknown (HPC/hand-made); refs: `make_fkappa_nH_sweep.py` |
+| 2026-06-30 `4e65c0a` | `storyline_figs/fig_closure_heatmap.png` | producer unknown (HPC/hand-made); refs: `make_pdvtrigger_report.py`, `make_storyline_figs.py` |
+| 2026-06-30 `4e65c0a` | `storyline_figs/fig_doublecount.png` | producer unknown (HPC/hand-made); refs: `make_pdvtrigger_report.py`, `make_storyline_figs.py` |
+| 2026-06-30 `4e65c0a` | `storyline_figs/fig_fmix_convention.png` | producer unknown (HPC/hand-made); refs: `make_pdvtrigger_report.py`, `make_storyline_figs.py` |
+| 2026-06-30 `4e65c0a` | `storyline_figs/fig_regime_split.png` | producer unknown (HPC/hand-made); refs: `make_pdvtrigger_report.py`, `make_storyline_figs.py` |
+| 2026-06-30 `4e65c0a` | `theta_vs_density.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_overlay.py`, `make_fmix_spread_plot.py` |
+| 2026-06-29 `24ca0e9` | `data/elbadry_overlay.csv` | by `make_elbadry_overlay.py` |
+| 2026-06-29 `24ca0e9` | `elbadry_overlay.png` | by `make_elbadry_overlay.py` |
 | 2026-07-03 `e0e3b1db` | `data/dmdt_trace_dense.csv` | producer unknown (HPC/hand-made); refs: `make_dmdt_dip_figures.py` · 🕐 generated 2026-07-03T12:33:07Z | builder make_dmdt_dip_figures.py | code 4568aa4+dirty |
 | 2026-07-03 `8c11e9aa` | `data/theta5_fire_map.csv` | producer unknown (HPC/hand-made); refs: `make_theta5b_analysis.py`, `make_pdvtrigger_report.py` · 🕐 generated 2026-07-03T13:59:45Z | builder make_theta5b_analysis.py | code 5762c05+dirty |
 | 2026-07-03 `8c11e9aa` | `data/theta5_law_check.csv` | producer unknown (HPC/hand-made); refs: `make_theta5b_analysis.py`, `make_pdvtrigger_report.py` · 🕐 generated 2026-07-03T13:59:45Z | builder make_theta5b_analysis.py | code 5762c05+dirty |
