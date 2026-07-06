@@ -9,10 +9,15 @@ import os
 HERE = os.path.dirname(os.path.abspath(__file__))
 PARAMS = os.path.join(HERE, "params")
 
+# Where the runs write their output. Default keeps the historical /tmp/flc
+# location (ephemeral by design; the durable artifacts are the committed CSVs).
+# ponytail: one env knob, no CLI flag -- override with TRINITY_FLC_RUNROOT.
+RUNROOT = os.environ.get("TRINITY_FLC_RUNROOT", "/tmp/flc")
+
 TEMPLATE = """\
 # {comment}
 model_name      {name}
-path2output     /tmp/flc/{name}
+path2output     {runroot}/{name}
 
 sfe             {sfe}
 mCloud          {mCloud}
@@ -63,7 +68,7 @@ CONFIGS = [
 def main():
     os.makedirs(PARAMS, exist_ok=True)
     for name, comment, sfe, mCloud, nCore, PISM, nISM in CONFIGS:
-        body = TEMPLATE.format(name=name, comment=comment, sfe=sfe,
+        body = TEMPLATE.format(name=name, comment=comment, sfe=sfe, runroot=RUNROOT,
                                mCloud=mCloud, nCore=nCore, PISM=PISM, nISM=nISM)
         with open(os.path.join(PARAMS, name + ".param"), "w") as f:
             f.write(body)

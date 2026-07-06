@@ -23,6 +23,14 @@
 > an untracked `outputs/`. A future visit must be able to reproduce or compare
 > against the numbers **without re-running**; record the exact config + command
 > that produced each artifact.
+>
+> 🔗 **Cross-check the sibling docs — keep the workstream self-consistent.** This file is one of
+> several living docs for its workstream (its `PLAN.md`, `FINDINGS.md`, `runs/README.md`, `NOTE_PATCHES.md`,
+> and any other notes in the same folder). They drift out of sync *with each other* as fast as they drift
+> from the code. Any agent or person editing one MUST, as part of the visit, circle back through the
+> siblings and reconcile: if a number, status, claim, or line reference here contradicts a sibling — or a
+> sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
+> update one in isolation.
 
 **About this document**
 - **Status (updated 2026-07-01):** 📘 **REFERENCE** — accurate against `phase_events.py` / `simulation_end.py`; keep as a current reference. (2026-06-22: added `energy_collapsed` / `SimulationEndCode.ENERGY_COLLAPSED` (51), which shipped with the failed-large-clouds fix after the 2026-06-16 pass. 2026-07-01: a **finite** Eb≤0 collapse in phase **1b** now routes to momentum (`energy_to_momentum`, `EndSimulationDirectly` stays False) instead of `ENERGY_COLLAPSED` — see the two rows below and `docs/dev/transition/pdv-trigger/HIMASS_HANDOFF_PLAN.md`.)

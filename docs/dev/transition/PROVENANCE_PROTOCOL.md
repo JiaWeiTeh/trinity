@@ -12,7 +12,8 @@
 > it came from are ephemeral.
 >
 > 🔗 **Cross-check the sibling docs — keep the workstream self-consistent.** This file is one of
-> several living docs for its workstream (`TRIGGER_PLAN.md`, `P0.md`, `pshadow-design.md`,
+> several living docs for its workstream (the archived trio
+> `docs/dev/archive/transition/{TRIGGER_PLAN,P0,pshadow-design}.md`,
 > and the `pdv-trigger/` successor docs in this folder). They drift out of sync *with each
 > other* as fast as they drift from the code. Any agent or person editing one MUST, as part of the visit,
 > circle back through the siblings and reconcile: if a number, status, claim, or line reference here

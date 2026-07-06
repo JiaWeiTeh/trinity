@@ -8,6 +8,14 @@
 >
 > 💾 **Persist diagnostics — commit, don't re-run.** The per-report ledgers (01–05) carry the
 > `file:line` evidence so a future visit need not re-derive it.
+>
+> 🔗 **Cross-check the sibling docs — keep the workstream self-consistent.** This file is one of
+> several living docs for its workstream (its `PLAN.md`, `FINDINGS.md`, `runs/README.md`, `NOTE_PATCHES.md`,
+> and any other notes in the same folder). They drift out of sync *with each other* as fast as they drift
+> from the code. Any agent or person editing one MUST, as part of the visit, circle back through the
+> siblings and reconcile: if a number, status, claim, or line reference here contradicts a sibling — or a
+> sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
+> update one in isolation.
 
 Verified 2026-06-22 on branch `claude/exciting-gates-mkxqn6`.
 
@@ -30,7 +38,7 @@ feedback table, and substrate residual table cross-checks exactly. The one ❓ i
 "6.65%→1.74%" refinement claim: the 1.74% is traced to `c0_be_sphere_refine4b_st1.csv`
 (median 1.74% ✓) but no committed CSV shows 6.65% as a baseline; the closest is
 `c0_pl2_steep_st0p05.csv` (6.55%) or the span-wide range 5.5–6.1% cited in PLAN.md.
-The three ⚠️ items are all line-number drifts in `pshadow-design.md` (not in the HTML report).
+The three ⚠️ items are all line-number drifts in `docs/dev/archive/transition/pshadow-design.md` (not in the HTML report).
 
 **pshadow/P0 verdict (2 lines):** pshadow is SUPERSEDED, not vindicated. Its §1 assumption
 ("flat configs transition by cooling — F0 fires at the Eb-peak") was true only for the
@@ -84,7 +92,7 @@ from a two-config split. The clean-room falsified the "flat → F0 fires" half: 
 while F0 never reaches 0.05 (f_ret floors at 0.40). The dense-flat config is exceptional
 (n_core=1e5, compact, high-density), not representative of the baseline.
 
-For the storyline book: pshadow and P0.md document the *history* of the investigation —
+For the storyline book: pshadow and P0.md (both now in `docs/dev/archive/transition/`) document the *history* of the investigation —
 that an earlier narrower harvest suggested a profile-dependent cooling/blowout split — and
 are worth a one-line mention ("an earlier 5-config P0 harvest found F0 firing in a
 high-density compact flat config, which informed the pshadow design; the clean-room 6-config

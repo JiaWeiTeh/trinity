@@ -22,6 +22,14 @@
 > local-only `scratch/`, or an untracked `outputs/`. A future visit must be able
 > to reproduce or compare against the numbers **without re-running**; record the
 > exact config + command that produced each artifact.
+>
+> 🔗 **Cross-check the sibling docs — keep the workstream self-consistent.** This file is one of
+> several living docs for its workstream (its `PLAN.md`, `FINDINGS.md`, `runs/README.md`, `NOTE_PATCHES.md`,
+> and any other notes in the same folder). They drift out of sync *with each other* as fast as they drift
+> from the code. Any agent or person editing one MUST, as part of the visit, circle back through the
+> siblings and reconcile: if a number, status, claim, or line reference here contradicts a sibling — or a
+> sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
+> update one in isolation.
 
 **Status (2026-06-20):** 🟢 **CAUSE diagnosed; symptom mitigated; full run now confirmed HEALTHY
 end-to-end — and the unfloored treatment is characterised (a floor would HURT, not help).** The
@@ -39,6 +47,9 @@ perf/noise tweak that holds `L_bubble` fixed. **New (2026-06-20, end-to-end):** 
 section confirms the *full run* of this flood regime is healthy — 180 segments, `t→1.34 Myr`, **zero**
 flood lines, **zero** crashes/`ENERGY_COLLAPSED`, `Eb` grows ~2900× and `v2` decelerates 3739→78 km/s
 (the *healthy* Weaver branch, not the failed-large-clouds collapse band).
+
+Cross-ref (2026-07-06): this tracked item is `docs/dev/performance/HOTPATH_PLAN.md` §F3, descoped
+there to `docs/dev/shell-solver/` — check that ledger for its current status before working it here.
 
 ## Symptom
 ```

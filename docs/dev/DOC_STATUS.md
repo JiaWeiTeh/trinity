@@ -1,4 +1,4 @@
-# docs/dev — document status (verified against code)
+# docs/dev — workstream status ledger
 
 > ⚠️ **This document may be out of date — verify before trusting it.** It is a
 > point-in-time analysis/audit, not a maintained spec; the code moves faster
@@ -7,171 +7,70 @@
 > be stale and re-check each claim, snippet, and line reference against the
 > current source before relying on it.**
 >
-> 🔄 **Living index — recheck and refine on every visit.** Re-run the verdicts
-> below against current source when you touch the relevant code; move SHIPPED /
-> SUPERSEDED docs to `archive/` once their open tails are extracted.
+> 🔄 **Living plan — recheck and refine on every visit.** This is an evolving
+> strategy doc, not a frozen record. Any agent or person who opens this file
+> must, as part of the visit: (1) re-verify the claims and line references above
+> against current source; (2) update anything that has drifted; (3) **rethink the
+> strategy itself** — if a better ordering, gate, candidate, or experiment
+> exists, revise the doc and note what changed and why (date it). Leave it better
+> than you found it. **Keep all banner paragraphs at the top of every plan and
+> analysis doc.**
 >
-> 💾 **Persist diagnostics — commit, don't re-run.** The verification evidence
-> (per-doc `trinity/…:line` citations) lives in this file so a future visit need
-> not re-derive it.
+> 💾 **Persist diagnostics — commit, don't re-run.** The container is ephemeral
+> and full/hybr runs cost hours, so any diagnostic worth keeping must be saved as
+> a committed artifact under `docs/dev/` (a CSV/table in `docs/dev/data/`, or a
+> harness/figure in the relevant `docs/dev/<workstream>/` folder) — never left in
+> `/tmp`, the local-only `scratch/`, or an untracked `outputs/`. A future visit must be able to reproduce or compare
+> against the numbers **without re-running**; record the exact config + command
+> that produced each artifact.
+>
+> 🔗 **Cross-check the sibling docs — keep the workstream self-consistent.** This file is one of
+> several living docs for its workstream (its `PLAN.md`, `FINDINGS.md`, `runs/README.md`, `NOTE_PATCHES.md`,
+> and any other notes in the same folder). They drift out of sync *with each other* as fast as they drift
+> from the code. Any agent or person editing one MUST, as part of the visit, circle back through the
+> siblings and reconcile: if a number, status, claim, or line reference here contradicts a sibling — or a
+> sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
+> update one in isolation.
 
-**Verified:** 2026-06-16 · **Method:** 10 parallel read-only agents, each checking one or
-two docs **line-by-line against current `trinity/` source** (HEAD of `fix/code-hygiene`),
-cross-checked with `CHANGELOG.md` and `git log`.
+**Status (2026-07-06):** 📘 rebuilt at **workstream level** by the docs/dev housekeeping pass.
+Per-doc verdicts live only in each doc's own dated Status line (see `CONVENTIONS.md`); the old
+per-doc evidence ledger (verified 2026-06-16/22) is parked in
+`to-be-removed/DOC_STATUS_per-doc-ledger_2026-06-22.md` pending the maintainer's review.
 
 ### Legend
-- ✅ **SHIPPED** — the planned work landed; the doc is now a historical record → **archive candidate**.
-- ⛔ **SUPERSEDED** — replaced by a newer doc / a different approach that shipped.
-- 🔵 **ACTIONABLE** — the described work has **not** shipped; still relevant/pending.
-- 🟡 **PARTIAL** — some shipped, some still open.
-- 📘 **REFERENCE** — a current, accurate reference (not a plan); keep as-is.
-- ⚠️ **STALE-REFS** — cited paths/symbols/line-numbers have drifted (fix before relying).
 
-## Summary
+✅ SHIPPED · ⛔ SUPERSEDED · 🔵 ACTIVE/actionable · 🟡 PARTIAL · 📘 REFERENCE · 🧊 FROZEN (archive)
 
-| Doc | Verdict | Stale refs | Recommendation |
-|-----|---------|:---------:|----------------|
-| `archive/betadelta/HYBR_PLAN.md` | ✅ SHIPPED (Phases 0–4) + live tail | ⚠️ | Archive after extracting open tail (Phase-5 study; Phase-4 hybr-default flip now shipped) |
-| `archive/betadelta/PHASE0_BASELINES.md` | ✅ SHIPPED (record) | — | **Archive** |
-| `archive/betadelta/PHASE2_ARMS.md` | ✅ SHIPPED (arm D / hybr landed) | — | **Archive** (forward item lives in stalling + HYBR Phase 5) |
-| `archive/betadelta/stalling-energy-phase.md` | ✅ SHIPPED (settled study) | minor | Fix 1 parenthetical → **archive** |
-| `transition/TRIGGER_PLAN.md` | ⛔ SUPERSEDED (concluded → `cleanroom/FINDINGS.md`) | line drift | **Keep** (historical entry point) |
-| `transition/P0.md` | ⛔ SUPERSEDED (G0 verdict overturned by 6-config cleanroom) | — | **Keep** (offline results record) |
-| `transition/pshadow-design.md` | ⛔ SUPERSEDED (F0-fires premise falsified; never built) | ⚠️ (line drift) | **Keep** (historical design) |
-| `archive/bubble/integrator-robustness.md` | ⛔ SUPERSEDED (by the `solve_ivp` migration) | ⚠️ (heavy) | Add "superseded" banner → **archive** |
-| `archive/bubble/conduction-convergence.md` | ✅ SHIPPED (sign-off; switch landed) | minor | **Archive** |
-| `cooling/refactor-audit.md` | 🟡 PARTIAL (T-floor `cc8ae76` + NameError→ValueError `3deec3d` shipped; core PR-1–4 pending) | ⚠️ (5–45 lines) | **Keep** |
-| `performance/HOTPATH_PLAN.md` | 🟡 PARTIAL (F1 + F2 SHIPPED; F1-cousin + F5 open) | accurate (fresh) | **Keep** |
-| `performance/BUBBLE_LUMINOSITY_PERFORMANCE.md` | 📘 REFERENCE (consolidated bubble-perf history A→D + methodology) | fresh (2026-06-19) | **Keep** (canonical) |
-| `performance/F1_SUMMARY.md` + `F1_REPORT.html` | 📘 REFERENCE (F1 tables + illustrated report) | fresh | **Keep** |
-| `archive/bubble/RESAMPLE_PLAN.md` + `P3_PRODUCTION_PATCH.md` | ✅ SHIPPED (F1, `24c6914`, 2026-06-19) | superseded banner added | **Archived** |
-| `archive/n-consistency/audit.md` | ✅ SHIPPED (pinned by `test_mu_audit_drift`) | by-design | **Archive** |
-| `archive/n-consistency/implementation-plan.md` | ✅ SHIPPED (all phases landed) | ⚠️ (flat→subdir) | **Archive** |
-| `archive/n-consistency/pressure-terms-audit.md` | ⛔ SUPERSEDED (self-declared, confirmed) | historical | **Archive** |
-| `misc/backward-compat-audit.md` | 🔵 ACTIONABLE (~95% un-executed) | ⚠️ (heavy) | Refresh refs, mark Tier-4 done → **keep** |
-| `misc/tinit-sensitivity.md` | 🟡 PARTIAL (study done; rec #3 open) | — | **Keep** (one open physics rec) |
-| `misc/TERMINATION_EVENTS.md` | 📘 REFERENCE (accurate) | — | **Keep** (current reference) |
-| `misc/LEAKING_LUMINOSITIES_SKELETON.md` | 🟡 PARTIAL (A–C shipped; D/F/G open) | — | **Keep** |
+## Workstreams
 
-**Tally (21 rows):** 8 ✅ shipped · 5 ⛔ superseded · 1 🔵 actionable · 4 🟡 partial · 3 📘 reference.
+| Workstream | Verdict | Entry point | Verified |
+|---|---|---|:---:|
+| `transition/pdv-trigger/` | 🔵 ACTIVE — PdV/f_κ mechanism + θ calibration | `INDEX.md` | 2026-07-06 |
+| `transition/cleanroom/` | ✅ concluded — "transition is geometric, not thermal" (live evidence for pdv-trigger) | `FINDINGS.md` | 2026-07-06 |
+| `transition/pt4/` | ✅ concluded audits (H1–H5 + R1 shadow) — feed pdv-trigger | `README.md` | 2026-07-06 |
+| `cooling/` | 🟡 PARTIAL — two side items shipped; loader refactor PR-1–4 pending | `refactor-audit.md` | 2026-06-22 |
+| `performance/` | 📘 reference (perf history A→D + F1) · 🟡 HOTPATH §F1-cousin/§F5 open | `BUBBLE_LUMINOSITY_PERFORMANCE.md` | 2026-06-22 |
+| `shell-solver/` | 🟡 MIXED — overflow fix ✅ shipped; MIGRATION doc is a 🟠 correction (mxstep diagnosis retracted) | `OVERFLOW_FIX_PLAN.md` | 2026-07-06 |
+| `magic-numbers/` | 🟡 PARTIAL — audit done; #1 fixed & gated, #2–#5 open | `AUDIT.md` | 2026-06-22 |
+| `failed-large-clouds/` | ✅ SHIPPED (2026-06-19) — 1b fate routing superseded 2026-07-01 (now → momentum) | `PLAN.md` | 2026-07-06 |
+| `misc/` | 🟡 MIXED — backward-compat ~95% open · tinit rec #3 open · leak D/F/G open · TERMINATION_EVENTS 📘 | per-doc Status lines | 2026-06-22 |
+| `cluster/` | 📘 operational guide (on-cluster plotting) | `PLOTTING_WORKFLOW.md` | 2026-06-19 |
+| `html-insights/` | 📘 storyline books + verification ledgers (fix-list partially open) | `README.md` | 2026-06-22 |
+| `codebase_review/` | 📘 concluded point-in-time audit (52 findings, 2026-06-16) | `../CODEBASE_REVIEW.md` | 2026-06-16 |
+| `archive/` | 🧊 FROZEN — betadelta ✅ · bubble ✅/⛔ · n-consistency ✅ · transition trio ⛔ · older audits | `archive/README.md` | 2026-07-06 |
 
-> **Update 2026-06-22 (consistency pass).** A full docs/dev/ consistency audit reconciled status
-> drift against current source. Changes: the transition trio (`TRIGGER_PLAN`, `P0`, `pshadow-design`)
-> → ⛔ **SUPERSEDED** by `cleanroom/FINDINGS.md` (the F0-cooling-trigger premise was falsified; the
-> transition is geometric, nothing shipped); `cooling/refactor-audit` → 🟡 PARTIAL (two side items
-> shipped); the β–δ **Phase-4 hybr default flip shipped** (`registry.py:307`); `TERMINATION_EVENTS`
-> gained `ENERGY_COLLAPSED` (51); `HOTPATH §F1` marked shipped in its own doc; broken archive-reorg
-> cross-references (old flat filenames) fixed; the five `html-insights/verification/` ledgers gained
-> banners. The remaining 🔵 actionable doc is `misc/backward-compat-audit.md`.
+## Open items carried forward
 
-> **Acted on (2026-06-16):** the shipped/superseded workstreams were moved to
-> `docs/dev/archive/` (`betadelta/`, `bubble/`, `n-consistency/` — writeups +
-> harnesses), each doc carries a verified **Status** line, and the two precise
-> stale refs (`pshadow-design` `stop_r`, `stalling` velstruct note) were fixed.
+One bullet per open tail, pointing at the doc that owns it — details live there, not here.
 
-## Open items carried forward (from archived docs)
-
-- **β–δ Phase-4 — default-solver flip (✅ SHIPPED; verified 2026-06-22).**
-  `betadelta_solver` now defaults to **`hybr`** (`trinity/_input/registry.py:307`,
-  `trinity/_input/default.param:49`); `legacy` remains a selectable fallback. The
-  formerly-deferred flip has landed (`archive/betadelta/HYBR_PLAN.md` Phase 4).
-- **β–δ Phase-5 — transition criterion.** The "is the fixed 0.05 cooling-balance
-  trigger right (esp. steep r⁻²)?" question was investigated clean-room: under the
-  hybr default **no cooling-balance event fires** (0/6 configs) — the transition is
-  **geometric (blowout), not thermal** (`transition/cleanroom/FINDINGS.md`). The
-  `pshadow-design.md` two-criterion (F0 ∨ F4) proposal and `P0.md` are **superseded**
-  by that result (their "flat configs cool" premise was falsified) and nothing shipped.
-  Open: the root fix (mixing-layer cooling / leakage) and the regime-spanning Eb-peak
-  handoff remain unbuilt.
-
-## Per-doc detail (decisive evidence)
-
-### `archive/betadelta/HYBR_PLAN.md` — ✅ SHIPPED (Phases 0–3), live tail, ⚠️ stale-refs
-Phase 1.1 shared `solve_R1` bracket (`get_bubbleParams.py:433-457`, 6 call sites), Phase 1.2
-convergence-flag persistence + dt mitigation (`run_energy_implicit_phase.py:283-316`,
-`registry.py:481-482`), Phase 3 hybr behind `betadelta_solver` (`get_betadelta.py:583-601,795-833`)
-all **shipped**, and Phase 4 has now landed too — `default.param:49` / `registry.py:307` default is
-**`hybr`** (verified 2026-06-22). **Open tail:** only the Phase-5 transition-criterion study (now the
-clean-room result: transition is geometric, not thermal). Stale: `bubble_E2P:229`→`:198`;
-the §3 `compute_R1_Pb` `[1e-3·R2,R2]` bracket no longer exists (replaced by the Phase-1.1 fix).
-
-### `archive/betadelta/PHASE0_BASELINES.md` — ✅ SHIPPED (record)
-Baselined the legacy solver (`GRID_EPSILON=0.02` `get_betadelta.py:57`; bounds `:41-43`); the
-`BETADELTA_DT_SHRINK_MAX_STREAK=10` response shipped (`run_energy_implicit_phase.py:129`). Gate-G0 evidence
-for a program now through Phase 3. The uncommitted `scratch/phase0/` harness it cites is gone (self-disclosed).
-
-### `archive/betadelta/PHASE2_ARMS.md` — ✅ SHIPPED (arm D promoted)
-hybr arm landed: `betadelta_solver` (`registry.py:307`), `_solve_betadelta_hybr` (`get_betadelta.py:874`),
-`dMdt>0` acceptance gate (`:170,796`). Harness/data present. §2.3 self-marked "superseded in part" by its
-own Phase-3 section; the forward item (steep r⁻² cooling-balance) lives in `stalling-energy-phase.md` + HYBR Phase 5.
-
-### `archive/betadelta/stalling-energy-phase.md` — ✅ SHIPPED (settled "Problem 2" study)
-`v_neg_frac_thick` + `_inflow_frac_thickness` shipped (`registry.py:463`,
-`run_energy_implicit_phase.py:175-193`); "v absent from cooling integrals" verified in
-`bubble_luminosity.py`; reject-and-hold remains harness-only (`velstruct/hunt.py`) by design. One stale
-parenthetical: it calls `velstruct/` + data "gitignored scratch" but they are **committed**.
-
-### `transition/TRIGGER_PLAN.md` — 🔵 ACTIONABLE
-Clocks A/B and `phaseSwitch_LlossLgain` param verified (`run_energy_implicit_phase.py:1070-1079`,
-`registry.py:346`); **no** candidate F0–F5 is wired into production (`git grep transition_trigger|blowout` → empty).
-Plan is current and accurate; the next live step (P-shadow) is unbuilt.
-
-### `transition/P0.md` — ✅ SHIPPED (results record)
-Offline harvest record; harness (`transition/harness/harvest.py,psens.py`) + 5 `data/transition_*.csv` all present
-and match. Complete by its own terms; keep with the plan until P-shadow ships.
-
-### `transition/pshadow-design.md` — 🔵 ACTIONABLE, ⚠️ 1 stale ref
-Entirely unbuilt (accurate "awaiting sign-off"): no `transition_trigger` param, no blowout/shadow code.
-Routing `main.py:283,303,343` and the F0 terminator verified. Stale: §3 says `stop_r` default `None`; actual `'500'` (`registry.py:316`).
-
-### `archive/bubble/integrator-robustness.md` — ⛔ SUPERSEDED, ⚠️ heavy stale-refs
-The `_odeint_checked` wrapper it documents was **removed**; the structure solve is now
-`solve_ivp(LSODA, dense_output=True)` via `_solve_bubble_structure` (`bubble_luminosity.py:106-166`, PRs #666/#678).
-`BubbleSolverError` + the shape-aware guard shipped; the `sys.exit` it flags as pending is now fixed (`:1129-1136`).
-Value is historical.
-
-### `archive/bubble/conduction-convergence.md` — ✅ SHIPPED
-The `solve_ivp(dense_output=True)` switch it signs off **landed** (`bubble_luminosity.py:143-151`); conduction band
-sampled from dense output at `_CONDUCTION_NPTS=2000` (`:632-641`); tool `tools/bubble_conduction_convergence.py` exists
-(its header still says "production odeint" — now stale).
-
-### `cooling/refactor-audit.md` — 🔵 ACTIONABLE, ⚠️ ~1–3 line drift
-**Nothing shipped:** the non-CIE loader is still hardcoded (`read_cloudy.py:48-49,267-343,183-188`); no `cool_col_*`
-keys; CIE still integer-index with silent fall-through (`read_param.py:417-429`); unused `metallicity` arg
-(`read_coolingcurve.py:25`). SPS side did land as `_resolve_sps_bundle` (`registry.py:216`), not the named helper.
-Faithful, implementable plan; line numbers drifted +1..+5.
-
-### `archive/n-consistency/audit.md` — ✅ SHIPPED
-`n ≡ n_H`, He-aware μ's, `chi_e`/`chi_e_shell`, `mu_ion_shell`, Phase-A bubble-vs-shell split all implemented
-(`read_param.py:302-324`, `registry.py:327-375`, `bubble_luminosity.py:539-1160`, `get_shellODE.py:63-66`) and pinned by
-`test/test_mu_audit_drift.py`. `get_shellParams.py` removed. The audit's pre-fix line table is intentionally a snapshot.
-
-### `archive/n-consistency/implementation-plan.md` — ✅ SHIPPED, ⚠️ stale-refs
-Every phase (0–6 + A) landed (#657); pinned by `test_mu_audit_drift.py` (14 tests). Stale: before/after tables use
-**flat filenames** (files now live in `phase1_energy/`, `phase1b_energy_implicit/`, `phase1c_transition/`,
-`phase2_momentum/`) and pre-Phase-A line numbers.
-
-### `archive/n-consistency/pressure-terms-audit.md` — ⛔ SUPERSEDED
-Self-declared first pass; its `n_tot`-leaning fix is **not** what shipped (`n ≡ n_H` did). Superseded by `audit.md`
-+ `implementation-plan.md` (both present). Kept only as a reasoning trail.
-
-### `misc/backward-compat-audit.md` — 🔵 ACTIONABLE, ⚠️ heavy line-drift
-Only the Tier-4 `unit_conversions` relabel shipped (`unit_conversions.py:233-254`); **~95% pending** — every Tier-1/2/3/5
-shim still present (`_create_adaptive_radius_grid:875`, `_solve_bubble_ode_with_ivp:1002`,
-`get_beta_delta_wrapper_pure` `get_betadelta.py:1078`, Phase-6 `DeprecationWarning` shims, `load_output=read` `trinity_reader.py:1095`).
-The `feature/remove-backward-compat-codeblocks` branch doesn't exist. Re-anchor lines, mark Tier-4 done, keep.
-
-### `misc/tinit-sensitivity.md` — 🟡 PARTIAL
-`_T_INIT_BOUNDARY=3e4` (`bubble_luminosity.py:52`) and the `tools/tinit_sweep/` harness all present; the study
-concluded (3e4 conservative). **Open:** recommendation #3 (drop the linear L3 patch over `[1e4,T_init]`, `:665-671`) is
-not implemented. No stale refs.
-
-### `misc/TERMINATION_EVENTS.md` — 📘 REFERENCE (accurate)
-Every event factory, per-phase list, threshold, and `SimulationEndCode`/`EventResult` field matches
-`phase_events.py:69-586` + `simulation_end.py`. A current, accurate reference — keep.
-
-### `misc/LEAKING_LUMINOSITIES_SKELETON.md` — 🟡 PARTIAL
-Phases A–C shipped: `coverFraction` param + `_validate_coverFraction` (`registry.py:305,153-165`), `get_leak_luminosity`
-(`get_bubbleParams.py:261-303`), `L_leak` wired through energy + implicit phases, `test/test_cf_leak.py`. **Open:** Phase D
-(mass sink) / Phase G (photon/X-ray) not started; audit findings #7/#8 (transition leak uses effective pressure + stale
-diagnostic) still valid (`run_transition_phase.py` has no `bubble_Leak` refresh).
+- **β–δ Phase-5 root fix** (mixing-layer cooling/leakage + regime-spanning Eb-peak handoff) —
+  now owned by the active `transition/pdv-trigger/` program (`PLAN.md`); historical context in
+  `archive/betadelta/HYBR_PLAN.md` Phase 5.
+- **Backward-compat cleanup** ~95% un-executed → `misc/backward-compat-audit.md`.
+- **Magic numbers #2–#5** → `magic-numbers/AUDIT.md`.
+- **HOTPATH §F1-cousin + §F5** → `performance/HOTPATH_PLAN.md`.
+- **Leaking luminosities Phase D/F/G + findings #7/#8** → `misc/LEAKING_LUMINOSITIES_SKELETON.md`.
+- **Cooling loader refactor PR-1–4** → `cooling/refactor-audit.md`.
+- **T_init recommendation #3** (drop the linear L3 patch over `[1e4, T_init]`) → `misc/tinit-sensitivity.md`.
+- **`caseB_alpha` stored in AU** (mixed-unit conditioning/correctness item, ownership unclear) →
+  `shell-solver/OVERFLOW_FIX_PLAN.md`.

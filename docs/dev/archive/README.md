@@ -6,6 +6,12 @@
 > **Any agent or person reading this: treat it as unverified. Flag that it may
 > be stale and re-check each claim, snippet, and line reference against the
 > current source before relying on it.**
+>
+> 🧊 **Frozen historical record — do not extend.** This workstream shipped or was
+> superseded (see the Status line below); the doc is kept as evidence/history. Do
+> not update or extend it — new work gets a new doc in an active workstream. The
+> ⚠️ caveat above still applies: paths and line references reflect the code as it
+> was when this was written.
 
 Completed or superseded analysis docs, kept for historical reference only.
 
@@ -28,6 +34,11 @@ per-doc verdicts.
 - `n-consistency/` — the `n ≡ n_H` / He-aware-μ convention. `audit.md`,
   `implementation-plan.md` (✅ shipped, pinned by `test/test_mu_audit_drift.py`),
   `pressure-terms-audit.md` (⛔ superseded first pass).
+- `transition/` — the superseded transition-trigger trio: `TRIGGER_PLAN.md`,
+  `P0.md`, `pshadow-design.md` (⛔ nothing shipped from these designs). The
+  premise ("flat configs cool") was falsified by
+  `docs/dev/transition/cleanroom/FINDINGS.md` — the transition is
+  geometric/blowout, not thermal (verdict 2026-06-22; moved here 2026-07-06).
 
 ## Older restructures
 

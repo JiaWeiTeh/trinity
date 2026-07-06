@@ -1,10 +1,17 @@
 # docs/dev/transition/harness — implicit→momentum transition-trigger harness
 
+> ⚠️ **This document may be out of date — verify before trusting it.** It is a
+> point-in-time analysis/audit, not a maintained spec; the code moves faster
+> than these notes (paths, line numbers, and "what shipped" status drift).
+> **Any agent or person reading this: treat it as unverified. Flag that it may
+> be stale and re-check each claim, snippet, and line reference against the
+> current source before relying on it.**
+
 Offline harness/tooling for the **transition-trigger** investigation: when (and
 on what criterion) should the implicit energy phase hand off to the momentum
 phase? **Not source — regenerable.** Canonical writeups:
-`docs/dev/transition/TRIGGER_PLAN.md` (plan), `docs/dev/transition/P0.md`
-(P0 results), `docs/dev/transition/pshadow-design.md` (design).
+`docs/dev/archive/transition/TRIGGER_PLAN.md` (plan), `docs/dev/archive/transition/P0.md`
+(P0 results), `docs/dev/archive/transition/pshadow-design.md` (design).
 
 ## Files
 

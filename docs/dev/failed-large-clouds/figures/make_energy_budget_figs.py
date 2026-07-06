@@ -20,6 +20,7 @@ Reproduce:
   #   fail_repro : docs/dev/failed-large-clouds/harness/run_variant.py --variant V0 \
   #                  --param params/fail_repro.param --out /tmp/flc_fix3/fail_repro
   #   small_1e6  : ... --param params/small_1e6.param --out /tmp/ver/small_1e6
+  # (or set TRINITY_FLC_RUNROOT to one root holding <config>/dictionary.jsonl)
   python docs/dev/failed-large-clouds/figures/make_energy_budget_figs.py
 """
 import csv
@@ -53,10 +54,15 @@ DATA = os.path.normpath(os.path.join(HERE, "..", "data"))
 FIG = HERE
 PC_PER_MYR_TO_KMS = 0.977813  # 1 pc/Myr in km/s
 
-# run dictionaries (ephemeral); fall back to the committed CSV if absent
+# run dictionaries (ephemeral); fall back to the committed CSV if absent.
+# TRINITY_FLC_RUNROOT points at ONE root holding <config>/dictionary.jsonl; unset,
+# the historical two-root /tmp layout (flc_fix3 + ver) is kept so behaviour is unchanged.
+_RUNROOT = os.environ.get("TRINITY_FLC_RUNROOT")
 SOURCES = {
-    "fail_repro": "/tmp/flc_fix3/fail_repro/dictionary.jsonl",
-    "small_1e6": "/tmp/ver/small_1e6/dictionary.jsonl",
+    "fail_repro": (os.path.join(_RUNROOT, "fail_repro", "dictionary.jsonl") if _RUNROOT
+                   else "/tmp/flc_fix3/fail_repro/dictionary.jsonl"),
+    "small_1e6": (os.path.join(_RUNROOT, "small_1e6", "dictionary.jsonl") if _RUNROOT
+                  else "/tmp/ver/small_1e6/dictionary.jsonl"),
 }
 COLS = ["t", "Eb", "R1", "R2", "v2", "Pb", "Lmech", "Lcool", "Lleak"]
 
@@ -84,6 +90,11 @@ def load(name):
             w.writerow(COLS)
             for i in range(len(rows)):
                 w.writerow([out[c][i] for c in COLS])
+    if not os.path.exists(csv_path):
+        raise SystemExit(
+            f"Neither the run dictionary ({src}) nor the committed CSV ({csv_path}) exists. "
+            "Set TRINITY_FLC_RUNROOT to the root holding <config>/dictionary.jsonl "
+            "(runs from harness/run_variant.py; see harness/README.md).")
     rd = {c: [] for c in COLS}
     with open(csv_path) as f:
         for row in csv.DictReader(f):

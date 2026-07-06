@@ -1,5 +1,18 @@
 # Phase 2.3 four-arm statistics
 
+> ⚠️ **This document may be out of date — verify before trusting it.** It is a
+> point-in-time analysis/audit, not a maintained spec; the code moves faster
+> than these notes (paths, line numbers, and "what shipped" status drift).
+> **Any agent or person reading this: treat it as unverified. Flag that it may
+> be stale and re-check each claim, snippet, and line reference against the
+> current source before relying on it.**
+>
+> 🧊 **Frozen historical record — do not extend.** This workstream shipped or was
+> superseded (see the Status line below); the doc is kept as evidence/history. Do
+> not update or extend it — new work gets a new doc in an active workstream. The
+> ⚠️ caveat above still applies: paths and line references reflect the code as it
+> was when this was written.
+
 ### arms_mock4e3
 
 | arm | segs | conv f | conv g | short% | med ev | max ev | aborts (kind) | out-of-box |

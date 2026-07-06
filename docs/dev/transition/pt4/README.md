@@ -23,6 +23,14 @@
 > `/tmp` or an untracked `outputs/`. A future visit must be able to reproduce or
 > compare against the numbers **without re-running**; record the exact config +
 > command that produced each artifact.
+>
+> 🔗 **Cross-check the sibling docs — keep the workstream self-consistent.** This file is one of
+> several living docs for its workstream (its `PLAN.md`, `FINDINGS.md`, `runs/README.md`, `NOTE_PATCHES.md`,
+> and any other notes in the same folder). They drift out of sync *with each other* as fast as they drift
+> from the code. Any agent or person editing one MUST, as part of the visit, circle back through the
+> siblings and reconcile: if a number, status, claim, or line reference here contradicts a sibling — or a
+> sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
+> update one in isolation.
 
 **Date:** 2026-06-22. **Branch:** `fix/transition-trigger-problem-pt4`.
 **Scope:** read-only investigation of H1–H4 — those four experiments changed **no production code**
@@ -128,3 +136,6 @@ maintainer call (none implemented):
 - **Regenerate all figures:** `python docs/dev/transition/pt4/make_pt4_figures.py` (pure reads of the committed CSVs).
 - **Caveat on H3/H4:** both *inject non-conserved energy* (floor Eb / cap PdV) — they are **diagnostics** that
   isolate the failure mode, **not** production-fix candidates.
+- The `h3/h4/h5*_run_variant.py` scripts write their scratch run output to `/tmp` by default.
+  `ponytail: /tmp scratch by design — these experiments are concluded and the harvested CSVs/figures are
+  committed; add an env override only if these experiments are ever re-run.`

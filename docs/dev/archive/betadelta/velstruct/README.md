@@ -1,5 +1,18 @@
 # docs/dev/archive/betadelta/velstruct — velocity-structure ("Problem 2") hunt & treatment tooling
 
+> ⚠️ **This document may be out of date — verify before trusting it.** It is a
+> point-in-time analysis/audit, not a maintained spec; the code moves faster
+> than these notes (paths, line numbers, and "what shipped" status drift).
+> **Any agent or person reading this: treat it as unverified. Flag that it may
+> be stale and re-check each claim, snippet, and line reference against the
+> current source before relying on it.**
+>
+> 🧊 **Frozen historical record — do not extend.** This workstream shipped or was
+> superseded (see the Status line below); the doc is kept as evidence/history. Do
+> not update or extend it — new work gets a new doc in an active workstream. The
+> ⚠️ caveat above still applies: paths and line references reflect the code as it
+> was when this was written.
+
 Harness/tooling for **Phase 6** of the β–δ hybr study: does the transient inner
 inflow (negative interior velocity during a feedback re-pressurisation) ever
 contaminate anything? **Not source.** Canonical writeup:

@@ -7,33 +7,14 @@
 > be stale and re-check each claim, snippet, and line reference against the
 > current source before relying on it.**
 >
-> 🔄 **Living plan — recheck and refine on every visit.** This is an evolving
-> strategy doc, not a frozen record. Any agent or person who opens this file
-> must, as part of the visit: (1) re-verify the claims and line references above
-> against current source; (2) update anything that has drifted; (3) **rethink the
-> strategy itself** — if a better ordering, gate, candidate, or experiment
-> exists, revise the plan and note what changed and why (date it). Leave the plan
-> better than you found it. **Keep all banner paragraphs at the top of every
-> plan and analysis doc.**
->
-> 💾 **Persist diagnostics — commit, don't re-run.** The container is ephemeral
-> and full/hybr runs cost hours, so any diagnostic worth keeping must be saved as
-> a committed artifact (a CSV/table under `docs/dev/data/`, or a force-added
-> harness/figure in the relevant `docs/dev/<workstream>/` folder as the hybr work did) — never left in `/tmp` or
-> an untracked `outputs/`. A future visit must be able to reproduce or compare
-> against the numbers **without re-running**; record the exact config + command
-> that produced each artifact.
->
-> 🔗 **Cross-check the sibling docs — keep the workstream self-consistent.** This file is one of
-> several living docs for its workstream (`P0.md`, `pshadow-design.md`, `PROVENANCE_PROTOCOL.md`,
-> and the `pdv-trigger/` successor docs in this folder). They drift out of sync *with each
-> other* as fast as they drift from the code. Any agent or person editing one MUST, as part of the visit,
-> circle back through the siblings and reconcile: if a number, status, claim, or line reference here
-> contradicts a sibling — or a sibling has gone stale — fix it (or flag it, dated) so no two docs in the
-> workstream disagree. Never update one in isolation.
+> 🧊 **Frozen historical record — do not extend.** This workstream shipped or was
+> superseded (see the Status line below); the doc is kept as evidence/history. Do
+> not update or extend it — new work gets a new doc in an active workstream. The
+> ⚠️ caveat above still applies: paths and line references reflect the code as it
+> was when this was written.
 
 **About this document**
-- **Status (updated 2026-06-22):** ⛔ **SUPERSEDED** by `cleanroom/FINDINGS.md` — this investigation has concluded: under the hybr default **no cooling-balance event fires (0/6 configs)**, so the transition is **geometric (blowout), not thermal**. The "F0 fires for flat configs" hypothesis was falsified and no trigger candidate shipped. Kept as the program's entry point / historical record.
+- **Status (updated 2026-06-22):** ⛔ **SUPERSEDED** by `docs/dev/transition/cleanroom/FINDINGS.md` — this investigation has concluded: under the hybr default **no cooling-balance event fires (0/6 configs)**, so the transition is **geometric (blowout), not thermal**. The "F0 fires for flat configs" hypothesis was falsified and no trigger candidate shipped. Kept as the program's entry point / historical record.
 - **Type:** plan — characterize the implicit→momentum transition trigger (clocks A/B, candidate families F0–F5) and decide via pre-registered gates before changing production.
 - **Workstream:** `transition/` — the implicit→momentum transition trigger.
 - **Where it sits:** promoted from Phase 5 of `docs/dev/archive/betadelta/HYBR_PLAN.md` → **this (entry point)** → `P0.md` (P0/P-sens results) → `pshadow-design.md` (design).

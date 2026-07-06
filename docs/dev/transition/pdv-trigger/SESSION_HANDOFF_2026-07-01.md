@@ -1,5 +1,12 @@
 # TRINITY pdv-trigger — session handoff / summary (2026-07-01)
 
+> ⚠️ **This document may be out of date — verify before trusting it.** It is a
+> point-in-time analysis/audit, not a maintained spec; the code moves faster
+> than these notes (paths, line numbers, and "what shipped" status drift).
+> **Any agent or person reading this: treat it as unverified. Flag that it may
+> be stale and re-check each claim, snippet, and line reference against the
+> current source before relying on it.**
+
 > 🚨 **READ THIS FIRST — THIS IS SPECULATION, NOT VERIFIED TRUTH.** Everything below is the *reasoning and
 > partial results of one working session*, much of it **single-config, early-time, or interrupted by a
 > restart-prone, slow compute environment**. Several claims in this session were **stated confidently and then
