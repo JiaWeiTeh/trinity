@@ -1221,3 +1221,38 @@ reproduction (params in the session scratchpad; mechanism-only, no θ quotes) an
    the exact segment-1 failure that poisoned the HPC arms now logs 'structure-failure rescue
    succeeded' and the run fires cooling_balance. The all-NaN arm class should now be extinct;
    any future one means the grid ALSO found nothing — a genuinely unintegrable segment.
+
+## 15. [data] The f_A interface source-term screen — the fourth knob corner PASSES all four predictions (2026-07-06, offline replay, no sims)
+
+The queued-but-never-run "second offline prototype" of the KAPPA_EFF_SCOPING §6.2 redirect,
+generalized into a design: boost the net radiative source `dudt` INSIDE `_get_bubble_ODE`, only
+in the interface band (T < 10^5.5 K), leaving the conduction operator, the Eq-44 IC family, and
+the Eq-33 seed untouched; read the emergent loss as L_eff = L1 + f_A·(L2+L3). This is the 1-D
+projection of Lancaster's fractal-area interface enhancement on the SOURCE side (El-Badry result
+vi: mixing sets the cooling; Spitzer sets interior T/evaporation) — the corner of the knob 2×2
+(κ vs source × scalar vs state-coupled) nothing had probed. Full analysis + literature anchors +
+the ladder off the multiplier: `SOURCE_TERM_DESIGN.md`. Builder:
+`data/make_fA_source_boost.py` → `data/fA_source_boost{,_summary}.csv` + `fA_source_boost.png`
+(6 cleanroom configs × ~10 trajectory rows × f_A ∈ {1,2,4,8,16}; monkeypatch, replayed committed
+C0 states; G1 bit-identity 6/6 [≤1.8e-16], G2 replay 6/6 [≤3.1e-7]).
+
+**Result — all four registered predictions pass 6/6 (300/300 solves):**
+
+1. **Dial:** θ_max rises smoothly/monotonically over the whole f_A ∈ [1,16] (e.g. diffuse
+   0.52→1.21, dense 0.55→1.10) — no κ_mix born-saturation, no κ_mix dense ceiling.
+2. **El-Badry sign:** the solved dMdt eigenvalue FALLS monotonically (×0.97–0.98 at f_A=2 →
+   ×0.85–0.90 at f_A=16) in every config — the first TRINITY knob measured to suppress
+   evaporation while cooling rises (f_κ measured the opposite, ×1.08–1.17 UP at f_κ=2).
+3. **Stability:** zero failures, including the early high-Pb epochs that NaN'd hard-max κ_mix,
+   at twice the f_κ≈8 crash point (the stiff operator is untouched).
+4. **Domain edge:** no dMdt≤0 in range — the McKee–Cowie condensation edge is approached
+   gradually via prediction 2's slope, not cliff-jumped as with f_κ.
+
+Calibration-relevant readings: response is sub-linear (θ_max ∝ f_A^{~0.30}: layer thinning
+self-limits, so a physical f_A ~ 8–16 lands where the no-back-reaction f_mix ~ 4 does); on
+replayed states 4/6 configs cross 0.95 by f_A=16 (others 0.85/0.89) — screen-grade hint that a
+whole-band f_A may exist where theta5k found no whole-band f_κ (§12).
+
+⛔ CONTAMINATION note: structural-response screens on replayed C0 states (logged β, δ, Eb, R2) —
+NOT live coupled runs, NOT ≥5 Myr θ_max calibration data; no fire threshold is quotable from
+this section. The live theta5-protocol matrix is ladder step L2 (`SOURCE_TERM_DESIGN.md §6`).

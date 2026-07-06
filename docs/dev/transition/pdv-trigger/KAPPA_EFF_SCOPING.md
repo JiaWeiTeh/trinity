@@ -122,7 +122,9 @@ developing mixing layer** — the validation is itself the argument for Rung B. 
    on real captured stiff states, `dMdt` is pinned by `v(R1)=0` and has no replacement eigenvalue — `dTdr_front`
    has no leverage. **Redirect:** keep `dMdt` as the Weaver eigenvalue, add mixing-layer `L_mix` only to the
    **in-structure loss integrand** (~10⁵ K band, κ unchanged), and **measure ΔL_cool vs ΔdMdt** (the new
-   make-or-break). Still standing: the mix-branch near-front IC is **numerical** (`p=−1` not front-regular), and
+   make-or-break). **→ RUN 2026-07-06** as the f_A interface source boost
+   (`data/make_fA_source_boost.py`, `SOURCE_TERM_DESIGN.md`, `FINDINGS.md §15`): ΔdMdt has the
+   El-Badry sign (falls as cooling rises) — the decoupling this section called the crux. Still standing: the mix-branch near-front IC is **numerical** (`p=−1` not front-regular), and
    `κ_mix`'s magnitude needs an efficiency `α_mix≪1` (literal `R2·v2` gives `T_cross~10¹²` K). Remaining steps:
    (a) the second offline prototype (in-structure `L_mix` → ΔdMdt sign); (b) the `v_entrain`/`α_mix` model
    (calibrate to El-Badry/Lancaster); (c) full rule-5 ladder — per-call → full-run equivalence on

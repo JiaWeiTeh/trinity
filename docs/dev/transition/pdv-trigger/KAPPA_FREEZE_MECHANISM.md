@@ -323,9 +323,16 @@ Exact lines: see `run_energy_implicit_phase.py` around the `no_physical_root` bl
    numerical near-front IC (the closed-form Eq. 44 IC assumes pure T^{5/2}). Physically the
    right ceiling (Cowie & McKee 1977; Vieser & Hensler 2007) and also what F_KAPPA §11 assumed;
    bounds dMdt growth with f_κ. This is the real cure if kappa is ever to be a production knob.
+   **2026-07-06: a closed-form generalized front IC that admits the cap (and any κ(T)) is derived
+   in `SOURCE_TERM_DESIGN.md §5` (payoff 3).**
 4. **Condensation branch (HIGH, the faithful model):** allow dMdt < 0 (El-Badry-style interface),
    i.e. replace the evaporation-only Weaver anchoring. Research-grade; only worth it if the
    El-Badry coupling (evaporation suppression) gets ported (KMIX_SELFCONSISTENT ladder).
+   **2026-07-06: `SOURCE_TERM_DESIGN.md §5` (payoff 4) reduces this from "new profile family" to
+   an increment — the same first integral stays defined for Ṁ<0 whenever the wall radiative flux
+   q_w exceeds the advected enthalpy release (the McKee–Cowie criterion); Weaver (q_w=0, T∝x^{2/5})
+   and El-Badry (q_w-dominated, T∝x^{2/7}) are its two poles. Also note the *source-term* knob f_A
+   measured there approaches this edge the honest way (evaporation falls as cooling rises).**
 5. **Solver-hygiene items (LOW, incremental):** fallback ladder on no-root (cold-restart the dMdt
    fsolve before giving up); bound single-point spike depth in the tolerant monotonic guard;
    restrict θ observers to accepted segments (already the standing rule for harvesting).
