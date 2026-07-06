@@ -1,2 +1,0 @@
-{"arm": "A", "segment": 2, "t_now": 0.0034101606231784296, "n_evals": 24, "wall": 54.563, "beta": 0.76, "delta": -0.13142857142857145, "f": 2.296141883160363, "g": 0.09261494291428439, "conv_f": false, "conv_g": false, "short_circuit": false}
-{"arm": "B", "segment": 2, "t_now": 0.0034101606231784296, "n_evals": 25, "wall": 54.894, "beta": 0.76, "delta": -0.17142857142857143, "f": 2.347279199120157, "g": 0.09233688041309367, "conv_f": false, "conv_g": false, "short_circuit": false, "would_fallback": false}
