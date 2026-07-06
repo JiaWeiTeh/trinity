@@ -285,6 +285,17 @@ for provenance.*
 > on `dictionary.jsonl`. `F_KAPPA_FUNCTIONAL_FORM.md` §10/§14 flagged accordingly.
 
 **Status ledger (newest first):**
+- **2026-07-06 (🟢 THE PHYSICAL IN-ODE SUCCESSOR IDENTIFIED — f_A source-term screen passes 4/4
+  predictions 6/6; design doc landed).** The maintainer's standing wish (an in-ODE knob more
+  physical than the output multiplier) is answered by moving the boost from the CONDUCTIVITY to
+  the interface COOLING SOURCE (`dudt`, T<10^5.5 band only): `SOURCE_TERM_DESIGN.md` (the knob
+  2×2, the lit anchors incl. the Gupta+18 f_T precedent and the f_κ = f_mix^{7/5} inconsistency
+  algebra, the generalized near-front IC (★) unlocking saturation-cap/κ_mix-boundary/condensation
+  branch, and the L0–L4 ladder). Offline screen (FINDINGS §15, `data/make_fA_source_boost.py`):
+  continuous dial (no κ_mix saturation, no dense ceiling), dMdt FALLS as cooling rises (the
+  El-Badry sign f_κ provably violates), 300/300 stable to f_A=16, no domain-edge cliff.
+  Production untouched; multiplier f_mix=4 stays the shipped knob. Next: L1 stiff-fixture screen,
+  then the gated param + theta5-protocol live matrix (L2).
 - **2026-07-03 (✅ RESCUE LADDER SHIPPED — the never-succeeds solve class fixed; F5 de-mixed).**
   A 'structure solve failed' no-root now re-seeds hybr from the bounded legacy grid optimum
   (found-dMdt<0 roots excluded — handoff semantics intact; healthy path byte-identical). Live

@@ -190,7 +190,11 @@ negative. **This supersedes §2's "only 1/6 fires."**
      floor (diffuse/mid) with the gated `theta_target` cap (dense) — each for what it does well.
   2. ✅ **Re-metric — DONE (§2b).** The single-row metric understated θ badly; the trajectory view is the
      measurement to trust.
-  3. **Boundary re-derivation** stays a lower-priority lever for the dense ceiling.
+  3. **Boundary re-derivation** stays a lower-priority lever for the dense ceiling. **Update
+     2026-07-06:** a concrete closed form now exists — the generalized near-front first integral
+     `κ(T)·dT/dx = q_w + c_p·F_ṁ·(T−T_w)` (`SOURCE_TERM_DESIGN.md §5`, payoff 2): the §2
+     finding-4 divergence came from scaling the Spitzer `dR2 ∝ C` closure instead of re-deriving
+     the quadrature, which converges for κ_mix ∝ 1/T once T_w = 1e4 K (the physical wall) > 0.
 - **Production status: still untouched.** Offline measurements that *change the plan*, not the code; no
   registry params added. The maintainer's call: authorize the route-0 revised-injection re-run (recommended —
   it's what stands between "mid clouds plausibly fire" and a confirmed answer), or pick the combine-vs-cap
