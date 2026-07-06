@@ -11,17 +11,20 @@
 > are exact; stamp-less artifacts predate the convention (2026-07-02) — for those, only
 > the commit date is known. **Every new/edited builder must write the stamp.**
 
-313 artifacts · 0 stale-risk · 0 untracked · 13 stamped 🕐
+316 artifacts · 0 stale-risk · 0 untracked · 13 stamped 🕐
 
 | last updated (commit) | artifact | producer / flags |
 |---|---|---|
+| 2026-07-06 `487f2ed` | `data/fA_source_boost.csv` | by `make_fA_source_boost.py` |
+| 2026-07-06 `487f2ed` | `data/fA_source_boost_summary.csv` | by `make_fA_source_boost.py` |
+| 2026-07-06 `487f2ed` | `fA_source_boost.png` | by `make_fA_source_boost.py` |
 | 2026-07-03 `e0e3b1d` | `data/dmdt_trace_dense.csv` | producer unknown (HPC/hand-made); refs: `make_dmdt_dip_figures.py` · 🕐 generated 2026-07-03T12:33:07Z | builder make_dmdt_dip_figures.py | code 4568aa4+dirty |
 | 2026-07-03 `8c11e9a` | `data/theta5_fire_map.csv` | producer unknown (HPC/hand-made); refs: `make_theta5b_analysis.py`, `make_pdvtrigger_report.py` · 🕐 generated 2026-07-03T13:59:45Z | builder make_theta5b_analysis.py | code 5762c05+dirty |
 | 2026-07-03 `8c11e9a` | `data/theta5_law_check.csv` | producer unknown (HPC/hand-made); refs: `make_theta5b_analysis.py`, `make_pdvtrigger_report.py` · 🕐 generated 2026-07-03T13:59:45Z | builder make_theta5b_analysis.py | code 5762c05+dirty |
 | 2026-07-03 `5762c05` | `data/theta5k_fire_map.csv` | producer unknown (HPC/hand-made); refs: `make_theta5k_analysis.py` · 🕐 generated 2026-07-03T13:33:46Z | builder make_theta5k_analysis.py | code 4b5fa32+dirty |
 | 2026-07-03 `e0e3b1d` | `dmdt_dip_traces.png` | producer unknown (HPC/hand-made); refs: `make_dmdt_dip_figures.py`, `make_pdvtrigger_report.py` |
 | 2026-07-03 `e0e3b1d` | `dmdt_tackle_flow.png` | producer unknown (HPC/hand-made); refs: `make_dmdt_dip_figures.py`, `make_pdvtrigger_report.py` |
-| 2026-07-03 `92d22a1` | `pdvtrigger_report.html` | by `make_pdvtrigger_report.py` |
+| 2026-07-03 `4418c38` | `pdvtrigger_report.html` | by `make_pdvtrigger_report.py` |
 | 2026-07-03 `92d22a1` | `runs/data/theta5_fmix_scorecard.csv` | producer unknown (HPC/hand-made); refs: `make_theta5_figures.py`, `make_pdvtrigger_report.py` · 🕐 generated 2026-07-03T21:58:20Z | builder make_theta5_figures.py | code f667df5+dirty |
 | 2026-07-03 `a43119a` | `runs/data/theta5k_summary.csv` | producer unknown (HPC/hand-made); refs: `make_theta5k_analysis.py`, `make_theta5k_params.py` · 🕐 generated 2026-07-03T11:48:20Z | builder harvest_theta_max.py | code fa9dc7ed+dirty |
 | 2026-07-03 `52b1a12` | `runs/data/theta5n_summary.csv` | producer unknown (HPC/hand-made); refs: `make_theta5b_analysis.py`, `make_theta5k_analysis.py` · 🕐 generated 2026-07-03T13:30:11Z | builder harvest_theta_max.py | code c7c58738+dirty |
@@ -210,121 +213,121 @@
 | 2026-07-01 `104be88` | `story_elbadry_f4_fatemap.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_story_figs.py` |
 | 2026-07-01 `104be88` | `story_elbadry_f5_reversal.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_story_figs.py` |
 | 2026-07-01 `104be88` | `story_elbadry_f6_regime.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_story_figs.py` |
+| 2026-06-30 `4e65c0a` | `closure_stage1_gate.png` | producer unknown (HPC/hand-made); refs: `make_closure_plots.py` |
+| 2026-06-30 `4e65c0a` | `closure_stage2_heatmap.png` | producer unknown (HPC/hand-made); refs: `make_closure_plots.py` |
+| 2026-06-30 `4e65c0a` | `closure_stage2_heatmap_theta.png` | producer unknown (HPC/hand-made); refs: `make_closure_plots.py` |
+| 2026-06-30 `4e65c0a` | `closure_stage2_sweep.png` | producer unknown (HPC/hand-made); refs: `make_closure_plots.py` |
+| 2026-06-30 `4e65c0a` | `closure_stage2_theta.png` | producer unknown (HPC/hand-made); refs: `make_closure_plots.py` |
+| 2026-06-30 `4e65c0a` | `closure_stage3_doublecount.png` | producer unknown (HPC/hand-made); refs: `make_closure_plots.py` |
+| 2026-06-30 `4e65c0a` | `closure_stage4_summary.png` | producer unknown (HPC/hand-made); refs: `make_closure_plots.py` |
+| 2026-06-30 `4e65c0a` | `da_replay.png` | by `make_da_replay.py` |
+| 2026-06-30 `4e65c0a` | `da_screen.png` | by `make_da_screen.py` |
+| 2026-06-30 `4e65c0a` | `data/closure_test.csv` | by `make_closure_test.py` |
+| 2026-06-30 `4e65c0a` | `data/da_replay.csv` | by `make_da_replay.py` |
+| 2026-06-30 `4e65c0a` | `data/da_screen.csv` | by `make_da_screen.py` |
+| 2026-06-30 `4e65c0a` | `data/dense_stiffness_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `data/doublecount_mc.csv` | by `make_doublecount_mc.py` |
+| 2026-06-30 `4e65c0a` | `data/ebpeak_8config_xcheck.csv` | by `make_ebpeak_8config_xcheck.py` |
+| 2026-06-30 `4e65c0a` | `data/ebpeak_trigger_test.csv` | by `make_ebpeak_trigger_test.py` |
 | 2026-06-30 `0a1b9b8` | `data/elbadry_theta.csv` | by `make_elbadry_theta.py` |
-| 2026-06-30 `1242e29` | `data/fkappa_physical_derivation.csv` | by `make_fkappa_physical_derivation.py` |
-| 2026-06-30 `bb44abc` | `data/kmix_prototype.csv` | by `make_kmix_prototype.py` |
-| 2026-06-30 `09d3816` | `data/kmix_selfconsistent.csv` | by `make_kmix_selfconsistent.py` |
+| 2026-06-30 `4e65c0a` | `data/fkappa_cliff_metric.csv` | by `make_fkappa_cliff_metric.py` |
+| 2026-06-30 `4e65c0a` | `data/fkappa_functional_form.csv` | by `make_fkappa_functional_form.py` |
+| 2026-06-30 `4e65c0a` | `data/fkappa_leverage.csv` | by `make_fkappa_leverage.py` |
+| 2026-06-30 `4e65c0a` | `data/fkappa_nH_sweep.csv` | by `make_fkappa_nH_sweep.py` |
+| 2026-06-30 `4e65c0a` | `data/fkappa_physical_cap.csv` | by `make_fkappa_physical_cap.py` |
+| 2026-06-30 `4e65c0a` | `data/fkappa_physical_derivation.csv` | by `make_fkappa_physical_derivation.py` |
+| 2026-06-30 `4e65c0a` | `data/fkappa_sweep_scorecard.csv` | producer unknown (HPC/hand-made); refs: `make_fkappa_sweep_analysis.py`, `make_pdvtrigger_report.py` |
+| 2026-06-30 `4e65c0a` | `data/fm1_rootcheck.csv` | by `make_fm1_rootcheck.py` |
+| 2026-06-30 `4e65c0a` | `data/fm1b_evapsign.csv` | by `make_fm1b_evapsign.py` |
+| 2026-06-30 `4e65c0a` | `data/fmix_table.csv` | by `make_fmix_table.py` |
+| 2026-06-30 `4e65c0a` | `data/kappa_backreaction.csv` | by `make_kappa_backreaction.py` |
+| 2026-06-30 `4e65c0a` | `data/kappa_blowout_calibration.csv` | by `make_kappa_blowout_calibration.py` |
+| 2026-06-30 `4e65c0a` | `data/kappa_calibration_estimate.csv` | by `make_kappa_calibration_estimate.py` |
+| 2026-06-30 `4e65c0a` | `data/kmix_prototype.csv` | by `make_kmix_prototype.py` |
+| 2026-06-30 `4e65c0a` | `data/kmix_selfconsistent.csv` | by `make_kmix_selfconsistent.py` |
 | 2026-06-30 `12f9ff4` | `data/kmix_theta_trajectory.csv` | by `make_kmix_theta_trajectory.py` |
 | 2026-06-30 `12f9ff4` | `data/kmix_theta_trajectory_summary.csv` | by `make_kmix_theta_trajectory.py` |
 | 2026-06-30 `25cf9bd` | `data/nmap_verify.csv` | by `make_nmap_verify.py` |
+| 2026-06-30 `4e65c0a` | `data/pdv_combined_trigger.csv` | producer unknown (HPC/hand-made); refs: `make_combined_trigger_table.py`, `make_ebpeak_8config_xcheck.py` |
+| 2026-06-30 `4e65c0a` | `data/pdv_regime_budget.csv` | producer unknown (HPC/hand-made); refs: `make_ebpeak_8config_xcheck.py`, `make_pdv_regime_table.py` |
+| 2026-06-30 `4e65c0a` | `data/pdv_trigger_compare.csv` | by `make_pdv_trigger_compare.py` |
 | 2026-06-30 `4069e4a` | `data/shadow_te_fate.csv` | by `harvest_shadow.py` |
+| 2026-06-30 `4e65c0a` | `data/summary.csv` | producer unknown (HPC/hand-made); refs: `make_closure_test.py`, `make_combined_trigger_table.py` |
+| 2026-06-30 `4e65c0a` | `data/sweep_report.txt` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `ebpeak_8config_xcheck.png` | by `make_ebpeak_8config_xcheck.py` |
+| 2026-06-30 `4e65c0a` | `ebpeak_trigger_test.png` | by `make_ebpeak_trigger_test.py` |
 | 2026-06-30 `0a1b9b8` | `elbadry_theta.png` | by `make_elbadry_theta.py` |
-| 2026-06-30 `1242e29` | `fkappa_physical_derivation.png` | by `make_fkappa_physical_derivation.py` |
-| 2026-06-30 `bb44abc` | `kmix_prototype.png` | by `make_kmix_prototype.py` |
-| 2026-06-30 `09d3816` | `kmix_selfconsistent.png` | by `make_kmix_selfconsistent.py` |
+| 2026-06-30 `4e65c0a` | `fkappa_cliff_metric.png` | by `make_fkappa_cliff_metric.py` |
+| 2026-06-30 `4e65c0a` | `fkappa_definition.png` | by `make_fkappa_definition.py` |
+| 2026-06-30 `4e65c0a` | `fkappa_functional_form.png` | by `make_fkappa_functional_form.py` |
+| 2026-06-30 `4e65c0a` | `fkappa_leverage.png` | by `make_fkappa_leverage.py` |
+| 2026-06-30 `4e65c0a` | `fkappa_nH_sweep.png` | by `make_fkappa_nH_sweep.py` |
+| 2026-06-30 `4e65c0a` | `fkappa_physical_cap.png` | by `make_fkappa_physical_cap.py` |
+| 2026-06-30 `4e65c0a` | `fkappa_physical_derivation.png` | by `make_fkappa_physical_derivation.py` |
+| 2026-06-30 `4e65c0a` | `fkappa_sweep_analysis.png` | by `make_fkappa_sweep_analysis.py` |
+| 2026-06-30 `4e65c0a` | `fm1_rootcheck.png` | by `make_fm1_rootcheck.py` |
+| 2026-06-30 `4e65c0a` | `fm1b_evapsign.png` | by `make_fm1b_evapsign.py` |
+| 2026-06-30 `4e65c0a` | `fmix_vs_density.png` | producer unknown (HPC/hand-made); refs: `make_fmix_spread_plot.py`, `make_pdvtrigger_report.py` |
+| 2026-06-30 `4e65c0a` | `ideas_comparison.png` | by `make_ideas_comparison.py` |
+| 2026-06-30 `4e65c0a` | `kappa_backreaction.png` | by `make_kappa_backreaction.py` |
+| 2026-06-30 `4e65c0a` | `kappa_blowout_calibration.png` | by `make_kappa_blowout_calibration.py` |
+| 2026-06-30 `4e65c0a` | `kappa_calibration_estimate.png` | by `make_kappa_calibration_estimate.py` |
+| 2026-06-30 `4e65c0a` | `kmix_prototype.png` | by `make_kmix_prototype.py` |
+| 2026-06-30 `4e65c0a` | `kmix_selfconsistent.png` | by `make_kmix_selfconsistent.py` |
 | 2026-06-30 `12f9ff4` | `kmix_theta_trajectory.png` | by `make_kmix_theta_trajectory.py` |
 | 2026-06-30 `25cf9bd` | `nmap_verify.png` | by `make_nmap_verify.py` |
-| 2026-06-30 `72d6900` | `runs/data/harvest_cal_compact__k1.csv` | producer unknown (HPC/hand-made); refs: `make_kmix_prototype.py` |
-| 2026-06-30 `72d6900` | `runs/data/harvest_cal_dense__ek1.csv` | producer unknown (HPC/hand-made); refs: `make_kmix_prototype.py` |
-| 2026-06-30 `72d6900` | `runs/data/harvest_cal_diffuse__k1.csv` | producer unknown (HPC/hand-made); refs: `make_kmix_prototype.py` |
-| 2026-06-30 `72d6900` | `runs/data/harvest_cal_mid__ek1.csv` | producer unknown (HPC/hand-made); refs: `make_kmix_prototype.py` |
-| 2026-06-30 `72d6900` | `runs/data/harvest_fail_repro__none.csv` | producer unknown (HPC/hand-made); refs: `make_kmix_prototype.py` |
-| 2026-06-29 `18aea49` | `closure_stage1_gate.png` | producer unknown (HPC/hand-made); refs: `make_closure_plots.py` |
-| 2026-06-29 `18aea49` | `closure_stage2_heatmap.png` | producer unknown (HPC/hand-made); refs: `make_closure_plots.py` |
-| 2026-06-29 `18aea49` | `closure_stage2_heatmap_theta.png` | producer unknown (HPC/hand-made); refs: `make_closure_plots.py` |
-| 2026-06-29 `18aea49` | `closure_stage2_sweep.png` | producer unknown (HPC/hand-made); refs: `make_closure_plots.py` |
-| 2026-06-29 `18aea49` | `closure_stage2_theta.png` | producer unknown (HPC/hand-made); refs: `make_closure_plots.py` |
-| 2026-06-29 `18aea49` | `closure_stage3_doublecount.png` | producer unknown (HPC/hand-made); refs: `make_closure_plots.py` |
-| 2026-06-29 `18aea49` | `closure_stage4_summary.png` | producer unknown (HPC/hand-made); refs: `make_closure_plots.py` |
-| 2026-06-29 `18aea49` | `da_replay.png` | by `make_da_replay.py` |
-| 2026-06-29 `18aea49` | `da_screen.png` | by `make_da_screen.py` |
-| 2026-06-29 `18aea49` | `data/closure_test.csv` | by `make_closure_test.py` |
-| 2026-06-29 `18aea49` | `data/da_replay.csv` | by `make_da_replay.py` |
-| 2026-06-29 `18aea49` | `data/da_screen.csv` | by `make_da_screen.py` |
-| 2026-06-29 `18aea49` | `data/dense_stiffness_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-06-29 `18aea49` | `data/doublecount_mc.csv` | by `make_doublecount_mc.py` |
-| 2026-06-29 `18aea49` | `data/ebpeak_8config_xcheck.csv` | by `make_ebpeak_8config_xcheck.py` |
-| 2026-06-29 `18aea49` | `data/ebpeak_trigger_test.csv` | by `make_ebpeak_trigger_test.py` |
+| 2026-06-30 `4e65c0a` | `pdv_combined_trigger.png` | producer unknown (HPC/hand-made); refs: `make_combined_trigger_table.py` |
+| 2026-06-30 `4e65c0a` | `pdv_trigger_compare.png` | by `make_pdv_trigger_compare.py` |
+| 2026-06-30 `4e65c0a` | `runs/data/compare_f1edge_hidens_theta90.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/data/compare_f1edge_hidens_theta95.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/data/harvest_cal_compact__k1.csv` | producer unknown (HPC/hand-made); refs: `make_kmix_prototype.py` |
+| 2026-06-30 `4e65c0a` | `runs/data/harvest_cal_dense__ek1.csv` | producer unknown (HPC/hand-made); refs: `make_kmix_prototype.py` |
+| 2026-06-30 `4e65c0a` | `runs/data/harvest_cal_diffuse__k1.csv` | producer unknown (HPC/hand-made); refs: `make_kmix_prototype.py` |
+| 2026-06-30 `4e65c0a` | `runs/data/harvest_cal_mid__ek1.csv` | producer unknown (HPC/hand-made); refs: `make_kmix_prototype.py` |
+| 2026-06-30 `4e65c0a` | `runs/data/harvest_f1edge_hidens__mult2.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/data/harvest_f1edge_hidens__none.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/data/harvest_f1edge_lowdens__mult2.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/data/harvest_f1edge_lowdens__mult3.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/data/harvest_f1edge_lowdens__none.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/data/harvest_fail_repro__mult2.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/data/harvest_fail_repro__none.csv` | producer unknown (HPC/hand-made); refs: `make_kmix_prototype.py` |
+| 2026-06-30 `4e65c0a` | `runs/data/harvest_simple_cluster__mult2.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/data/harvest_simple_cluster__none.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/data/live_compare.csv` | producer unknown (HPC/hand-made); refs: `make_pdvtrigger_report.py` |
+| 2026-06-30 `4e65c0a` | `runs/params/cal_compact__ebpeak.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/cal_compact__k1.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/cal_compact__k2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/cal_compact__k4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/cal_dense__ek1.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/cal_dense__ek2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/cal_dense__ek4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/cal_diffuse__ebpeak.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/cal_diffuse__k1.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/cal_diffuse__k2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/cal_diffuse__k4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/cal_mid__ek1.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/cal_mid__ek2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/cal_mid__ek4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/diag_dense_hybr.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/diag_dense_legacy.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/f1edge_hidens__kappa2.param` | producer unknown (HPC/hand-made); refs: `make_kappa_backreaction.py`, `make_pdvtrigger_report.py` |
+| 2026-06-30 `4e65c0a` | `runs/params/f1edge_hidens__mult2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/f1edge_hidens__none.param` | producer unknown (HPC/hand-made); refs: `make_kappa_backreaction.py` |
+| 2026-06-30 `4e65c0a` | `runs/params/f1edge_hidens__theta90.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/f1edge_hidens__theta95.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/f1edge_lowdens__mult2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/f1edge_lowdens__mult3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/f1edge_lowdens__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/fail_repro__mult2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/fail_repro__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/simple_cluster__mult2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/simple_cluster__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/params/sweep_fkappa_nH.param` | — (hand-made/HPC, unreferenced) |
+| 2026-06-30 `4e65c0a` | `runs/run_fkappa.sbatch` | producer unknown (HPC/hand-made); refs: `make_fkappa_nH_sweep.py` |
+| 2026-06-30 `4e65c0a` | `storyline_figs/fig_closure_heatmap.png` | producer unknown (HPC/hand-made); refs: `make_pdvtrigger_report.py`, `make_storyline_figs.py` |
+| 2026-06-30 `4e65c0a` | `storyline_figs/fig_doublecount.png` | producer unknown (HPC/hand-made); refs: `make_pdvtrigger_report.py`, `make_storyline_figs.py` |
+| 2026-06-30 `4e65c0a` | `storyline_figs/fig_fmix_convention.png` | producer unknown (HPC/hand-made); refs: `make_pdvtrigger_report.py`, `make_storyline_figs.py` |
+| 2026-06-30 `4e65c0a` | `storyline_figs/fig_regime_split.png` | producer unknown (HPC/hand-made); refs: `make_pdvtrigger_report.py`, `make_storyline_figs.py` |
+| 2026-06-30 `4e65c0a` | `theta_vs_density.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_overlay.py`, `make_fmix_spread_plot.py` |
 | 2026-06-29 `24ca0e9` | `data/elbadry_overlay.csv` | by `make_elbadry_overlay.py` |
-| 2026-06-29 `1075f00` | `data/fkappa_cliff_metric.csv` | by `make_fkappa_cliff_metric.py` |
-| 2026-06-29 `18aea49` | `data/fkappa_functional_form.csv` | by `make_fkappa_functional_form.py` |
-| 2026-06-29 `18aea49` | `data/fkappa_leverage.csv` | by `make_fkappa_leverage.py` |
-| 2026-06-29 `fb3f405` | `data/fkappa_nH_sweep.csv` | by `make_fkappa_nH_sweep.py` |
-| 2026-06-29 `28a4aa0` | `data/fkappa_physical_cap.csv` | by `make_fkappa_physical_cap.py` |
-| 2026-06-29 `fb3f405` | `data/fkappa_sweep_scorecard.csv` | producer unknown (HPC/hand-made); refs: `make_fkappa_sweep_analysis.py`, `make_pdvtrigger_report.py` |
-| 2026-06-29 `18aea49` | `data/fm1_rootcheck.csv` | by `make_fm1_rootcheck.py` |
-| 2026-06-29 `18aea49` | `data/fm1b_evapsign.csv` | by `make_fm1b_evapsign.py` |
-| 2026-06-29 `18aea49` | `data/fmix_table.csv` | by `make_fmix_table.py` |
-| 2026-06-29 `18aea49` | `data/kappa_backreaction.csv` | by `make_kappa_backreaction.py` |
-| 2026-06-29 `18aea49` | `data/kappa_blowout_calibration.csv` | by `make_kappa_blowout_calibration.py` |
-| 2026-06-29 `18aea49` | `data/kappa_calibration_estimate.csv` | by `make_kappa_calibration_estimate.py` |
-| 2026-06-29 `18aea49` | `data/pdv_combined_trigger.csv` | producer unknown (HPC/hand-made); refs: `make_combined_trigger_table.py`, `make_ebpeak_8config_xcheck.py` |
-| 2026-06-29 `18aea49` | `data/pdv_regime_budget.csv` | producer unknown (HPC/hand-made); refs: `make_ebpeak_8config_xcheck.py`, `make_pdv_regime_table.py` |
-| 2026-06-29 `18aea49` | `data/pdv_trigger_compare.csv` | by `make_pdv_trigger_compare.py` |
-| 2026-06-29 `880334f` | `data/summary.csv` | producer unknown (HPC/hand-made); refs: `make_closure_test.py`, `make_combined_trigger_table.py` |
-| 2026-06-29 `880334f` | `data/sweep_report.txt` | — (hand-made/HPC, unreferenced) |
-| 2026-06-29 `18aea49` | `ebpeak_8config_xcheck.png` | by `make_ebpeak_8config_xcheck.py` |
-| 2026-06-29 `18aea49` | `ebpeak_trigger_test.png` | by `make_ebpeak_trigger_test.py` |
 | 2026-06-29 `24ca0e9` | `elbadry_overlay.png` | by `make_elbadry_overlay.py` |
-| 2026-06-29 `1075f00` | `fkappa_cliff_metric.png` | by `make_fkappa_cliff_metric.py` |
-| 2026-06-29 `18aea49` | `fkappa_definition.png` | by `make_fkappa_definition.py` |
-| 2026-06-29 `18aea49` | `fkappa_functional_form.png` | by `make_fkappa_functional_form.py` |
-| 2026-06-29 `18aea49` | `fkappa_leverage.png` | by `make_fkappa_leverage.py` |
-| 2026-06-29 `880334f` | `fkappa_nH_sweep.png` | by `make_fkappa_nH_sweep.py` |
-| 2026-06-29 `28a4aa0` | `fkappa_physical_cap.png` | by `make_fkappa_physical_cap.py` |
-| 2026-06-29 `fb3f405` | `fkappa_sweep_analysis.png` | by `make_fkappa_sweep_analysis.py` |
-| 2026-06-29 `18aea49` | `fm1_rootcheck.png` | by `make_fm1_rootcheck.py` |
-| 2026-06-29 `18aea49` | `fm1b_evapsign.png` | by `make_fm1b_evapsign.py` |
-| 2026-06-29 `18aea49` | `fmix_vs_density.png` | producer unknown (HPC/hand-made); refs: `make_fmix_spread_plot.py`, `make_pdvtrigger_report.py` |
-| 2026-06-29 `18aea49` | `ideas_comparison.png` | by `make_ideas_comparison.py` |
-| 2026-06-29 `18aea49` | `kappa_backreaction.png` | by `make_kappa_backreaction.py` |
-| 2026-06-29 `18aea49` | `kappa_blowout_calibration.png` | by `make_kappa_blowout_calibration.py` |
-| 2026-06-29 `18aea49` | `kappa_calibration_estimate.png` | by `make_kappa_calibration_estimate.py` |
-| 2026-06-29 `18aea49` | `pdv_combined_trigger.png` | producer unknown (HPC/hand-made); refs: `make_combined_trigger_table.py` |
-| 2026-06-29 `18aea49` | `pdv_trigger_compare.png` | by `make_pdv_trigger_compare.py` |
-| 2026-06-29 `18aea49` | `runs/data/compare_f1edge_hidens_theta90.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-06-29 `18aea49` | `runs/data/compare_f1edge_hidens_theta95.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-06-29 `18aea49` | `runs/data/harvest_f1edge_hidens__mult2.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-06-29 `18aea49` | `runs/data/harvest_f1edge_hidens__none.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-06-29 `18aea49` | `runs/data/harvest_f1edge_lowdens__mult2.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-06-29 `18aea49` | `runs/data/harvest_f1edge_lowdens__mult3.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-06-29 `18aea49` | `runs/data/harvest_f1edge_lowdens__none.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-06-29 `18aea49` | `runs/data/harvest_fail_repro__mult2.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-06-29 `18aea49` | `runs/data/harvest_simple_cluster__mult2.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-06-29 `18aea49` | `runs/data/harvest_simple_cluster__none.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-06-29 `18aea49` | `runs/data/live_compare.csv` | producer unknown (HPC/hand-made); refs: `make_pdvtrigger_report.py` |
-| 2026-06-29 `18aea49` | `runs/params/cal_compact__ebpeak.param` | — (hand-made/HPC, unreferenced) |
-| 2026-06-29 `18aea49` | `runs/params/cal_compact__k1.param` | — (hand-made/HPC, unreferenced) |
-| 2026-06-29 `18aea49` | `runs/params/cal_compact__k2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-06-29 `18aea49` | `runs/params/cal_compact__k4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-06-29 `18aea49` | `runs/params/cal_dense__ek1.param` | — (hand-made/HPC, unreferenced) |
-| 2026-06-29 `18aea49` | `runs/params/cal_dense__ek2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-06-29 `18aea49` | `runs/params/cal_dense__ek4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-06-29 `18aea49` | `runs/params/cal_diffuse__ebpeak.param` | — (hand-made/HPC, unreferenced) |
-| 2026-06-29 `18aea49` | `runs/params/cal_diffuse__k1.param` | — (hand-made/HPC, unreferenced) |
-| 2026-06-29 `18aea49` | `runs/params/cal_diffuse__k2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-06-29 `18aea49` | `runs/params/cal_diffuse__k4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-06-29 `18aea49` | `runs/params/cal_mid__ek1.param` | — (hand-made/HPC, unreferenced) |
-| 2026-06-29 `18aea49` | `runs/params/cal_mid__ek2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-06-29 `18aea49` | `runs/params/cal_mid__ek4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-06-29 `18aea49` | `runs/params/diag_dense_hybr.param` | — (hand-made/HPC, unreferenced) |
-| 2026-06-29 `18aea49` | `runs/params/diag_dense_legacy.param` | — (hand-made/HPC, unreferenced) |
-| 2026-06-29 `18aea49` | `runs/params/f1edge_hidens__kappa2.param` | producer unknown (HPC/hand-made); refs: `make_kappa_backreaction.py`, `make_pdvtrigger_report.py` |
-| 2026-06-29 `18aea49` | `runs/params/f1edge_hidens__mult2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-06-29 `18aea49` | `runs/params/f1edge_hidens__none.param` | producer unknown (HPC/hand-made); refs: `make_kappa_backreaction.py` |
-| 2026-06-29 `18aea49` | `runs/params/f1edge_hidens__theta90.param` | — (hand-made/HPC, unreferenced) |
-| 2026-06-29 `18aea49` | `runs/params/f1edge_hidens__theta95.param` | — (hand-made/HPC, unreferenced) |
-| 2026-06-29 `18aea49` | `runs/params/f1edge_lowdens__mult2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-06-29 `18aea49` | `runs/params/f1edge_lowdens__mult3.param` | — (hand-made/HPC, unreferenced) |
-| 2026-06-29 `18aea49` | `runs/params/f1edge_lowdens__none.param` | — (hand-made/HPC, unreferenced) |
-| 2026-06-29 `18aea49` | `runs/params/fail_repro__mult2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-06-29 `18aea49` | `runs/params/fail_repro__none.param` | — (hand-made/HPC, unreferenced) |
-| 2026-06-29 `18aea49` | `runs/params/simple_cluster__mult2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-06-29 `18aea49` | `runs/params/simple_cluster__none.param` | — (hand-made/HPC, unreferenced) |
-| 2026-06-29 `18aea49` | `runs/params/sweep_fkappa_nH.param` | — (hand-made/HPC, unreferenced) |
-| 2026-06-29 `18aea49` | `runs/run_fkappa.sbatch` | producer unknown (HPC/hand-made); refs: `make_fkappa_nH_sweep.py` |
-| 2026-06-29 `18aea49` | `storyline_figs/fig_closure_heatmap.png` | producer unknown (HPC/hand-made); refs: `make_pdvtrigger_report.py`, `make_storyline_figs.py` |
-| 2026-06-29 `18aea49` | `storyline_figs/fig_doublecount.png` | producer unknown (HPC/hand-made); refs: `make_pdvtrigger_report.py`, `make_storyline_figs.py` |
-| 2026-06-29 `18aea49` | `storyline_figs/fig_fmix_convention.png` | producer unknown (HPC/hand-made); refs: `make_pdvtrigger_report.py`, `make_storyline_figs.py` |
-| 2026-06-29 `18aea49` | `storyline_figs/fig_regime_split.png` | producer unknown (HPC/hand-made); refs: `make_pdvtrigger_report.py`, `make_storyline_figs.py` |
-| 2026-06-29 `18aea49` | `theta_vs_density.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_overlay.py`, `make_fmix_spread_plot.py` |
