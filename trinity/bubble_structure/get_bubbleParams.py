@@ -427,12 +427,20 @@ def solve_R1(R2, Eb, Lmech_total, v_mech_total):
     the run (see docs/dev/failed-large-clouds).
 
     Raises on root-finding failure for a physical bubble instead of
-    fabricating a value.
+    fabricating a value. Non-finite Eb/Lmech/v_mech with a physical R2 raise
+    explicitly: scipy < 1.11 brentq silently converges on a NaN-poisoned
+    function (returns ~1e-12 instead of raising), so the no-fabrication
+    guarantee must not depend on the scipy version.
     """
     if Lmech_total <= 0:
         return 0.0
     if not (R2 > 0):  # R2 <= 0 or NaN: non-physical radius, no wind shock
         return 0.0
+    if not (np.isfinite(Eb) and np.isfinite(Lmech_total) and np.isfinite(v_mech_total)):
+        raise ValueError(
+            f"solve_R1 got non-finite input for a physical R2={R2:.6e}: Eb={Eb}, "
+            f"Lmech_total={Lmech_total}, v_mech_total={v_mech_total}"
+        )
     try:
         return scipy.optimize.brentq(
             get_r1, 0.0, R2,

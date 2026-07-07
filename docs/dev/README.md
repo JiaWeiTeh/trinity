@@ -60,6 +60,8 @@ docs/dev/
 ├── CONVENTIONS.md         how to add/maintain docs here — read before writing
 ├── DOC_STATUS.md          per-workstream status ledger
 ├── CODEBASE_REVIEW.md + codebase_review/   fresh-clone consistency review (2026-06-16, concluded)
+├── roadmap/               repo-wide execution queue + solver audit + reorg spec (🔵 ACTIVE — start: roadmap/README.md)
+├── test-suite/            test-suite remediation plan from the 2026-07-06 four-slice audit (🔵 — PLAN.md)
 ├── transition/            implicit→momentum transition trigger (🔵 ACTIVE — see transition/README.md)
 │   ├── pdv-trigger/       the active front: PdV/f_κ mechanism + θ calibration (start: INDEX.md)
 │   ├── cleanroom/         substrate certification (concluded — the "transition is geometric" verdict)
@@ -82,6 +84,10 @@ The top-level `scratch/` (repo root) is separate, git-ignored, local-only.
 
 ## Active workstreams
 
+- **`roadmap/`** — the repo-wide **execution queue**: every open item sequenced with pass/fail
+  gates and execution-tier tags ([`roadmap/PLAN.md`](roadmap/PLAN.md)); seeded by the
+  2026-07-06 solver audit ([`solver-audit.md`](roadmap/solver-audit.md)) with the mechanical
+  hand-off spec in [`REORG.md`](roadmap/REORG.md).
 - **`transition/`** — the umbrella for the transition-trigger program; start at
   [`transition/README.md`](transition/README.md). The live front is `pdv-trigger/`
   (entry: `pdv-trigger/INDEX.md`; check `pdv-trigger/CONTAMINATION.md` before quoting numbers).
