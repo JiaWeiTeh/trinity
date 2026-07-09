@@ -33,7 +33,9 @@
 > update one in isolation.
 
 **Status (2026-07-06):** design analysis + first offline prototype (`FINDINGS.md §15`,
-`data/make_fA_source_boost.py`). Answers the maintainer's standing question: *"I want an f_κ that
+`data/make_fA_source_boost.py`); ladder steps L1/L2 expanded to an executor-grade spec the same
+day (**`FA_IMPLEMENTATION_SPEC.md`** — start there to implement; maintainer endorsed the
+back-reacting in-ODE direction 2026-07-06). Answers the maintainer's standing question: *"I want an f_κ that
 increases the Spitzer C inside the ODE — more physical than the output-side multiplier because it
 also moves conductive evaporation — but it breaks the solver. Find a solution; take inspiration
 from papers."* The short answer: **boosting C was the right instinct pointed at the wrong term.**
@@ -147,6 +149,31 @@ the physically-plausible f_max ≈ 2–8 of `F_KAPPA_FUNCTIONAL_FORM.md §11`.
   conduction untouched; its only route to the condensation edge is the honest one — genuinely
   radiating away the front's budget — which is (a) the physics we *want* represented and (b)
   already routed to the momentum handoff by fix #1 (`no_physical_root_handoff`).
+
+## 2b. FAQ (maintainer, 2026-07-06) — f_A vs f_mix in one table, and why κ_mix can't be rescued with small λδv
+
+| | `f_mix` (production) | `f_A` (this doc) |
+|---|---|---|
+| multiplies | the finished number L_cool, *after* the solve | the emissivity `dudt` *inside* the ODE, interface band only |
+| T(r), n(r) | never feel it | re-arrange (radiating layer thins) |
+| evaporation ṁ | untouched by construction | **falls** as cooling rises (El-Badry sign) |
+| CIE interior L₁ | boosted too (unphysical) | untouched |
+| response | exactly linear | sub-linear, θ ∝ f_A^~0.3 (structure self-limits) |
+| θ | emergent-then-scaled | emergent **with back-reaction** |
+
+f_mix=4 says "whatever the bubble radiates, call it 4×." f_A=4 says "the interface radiates 4×
+per unit volume" — and the bubble answers: layer thins, ṁ drops, interior state shifts, net θ
+rises ≪4×. Hence f_A ≈ 8–16 ≈ f_mix 4: the structure absorbs part of the boost, which is exactly
+the physics f_mix skips.
+
+**Why not just run κ_mix at small λδv (a 0–1 range)?** The κ_mix knee sits at λδv ≈ 0.01 — 300×
+below the physical λδv ≈ 3 — because in the cool layer κ_S = C·T^{5/2} collapses and R =
+κ_mix/κ_S is already 10⁵–10⁸ at any plausible magnitude (`KMIX_SELFCONSISTENT.md §2a`). Operating
+on the rising part means λδv ~ 0.001–0.01: (a) the parameter loses its physical meaning (a fudge
+with units); (b) the whole θ range is traversed in ~half a dex — a razor-steep, uncontrollable
+dial (the same razor-edge disease as f_κ's fire thresholds); (c) the saturation is structural,
+not a normalization: *any* appreciable T-flat floor swamps a T^{5/2} law at low T. The
+enhancement cannot live in the diffusion coefficient — that is why it was moved to the source.
 
 ## 3. The offline prototype — measured (2026-07-06)
 
@@ -282,16 +309,16 @@ Payoffs, in increasing order of ambition (each recoverable/testable in isolation
 
 - **L0 (done, this doc):** offline f_A prototype on replayed states; gates G1/G2; predictions
   P1–P4. Artifacts: `data/fA_source_boost{,_summary}.csv`, `fA_source_boost.png`, FINDINGS §15.
-- **L1 (cheap, next):** extend the screen to the 2 captured stiff fixtures (5e9, mild cluster) +
-  the θ-peak early epochs; probe f_A up to the condensation onset per config and record the
-  (f_A, epoch) edge map — the honest domain boundary, expected to land near θ≈1 (McKee–Cowie).
-- **L2 (the real gate):** wire `cooling_boost_mode='source'` + `cooling_boost_fA` as a gated
-  registry param (default 1.0, **byte-identical off** — same standard as `cooling_boost_kappa`,
-  sha-gated over a stiff-config run), then the 📏 theta5-protocol matrix (9 configs × f_A grid,
-  ≥5 Myr, θ_max, separate processes, `OMP_NUM_THREADS=1`) on HPC — the like-for-like shootout
-  against `FINDINGS.md §10–§13`: does a single f_A fire the whole normal-GMC band (multiplier
-  [4,4.5] 6/6, kappa best 5/6)? Also read the emergent dMdt(t) suppression against El-Badry
-  Eq. 47 — the first *fidelity* measurement, impossible for the multiplier by construction.
+- **L1 + L2 — now specified executor-grade in `FA_IMPLEMENTATION_SPEC.md` (2026-07-06): start
+  there, not here.** Summary: L1 = fixture screen + condensation-edge map (offline, no production
+  edit; edge predicted near local θ≈1). L2 = `cooling_boost_fA` registry param (standalone,
+  default 1.0 byte-identical, NOT a new mode) + two edit sites (RHS dudt band-multiply; L₂/L₃
+  component scaling before L_total) + the gate ladder (pytest → byte-identity with A/A control →
+  screen re-run → live smoke) + the theta5s HPC matrix with two registered predictions: a
+  collapse-law exponent p_source ≈ 3.3 (vs multiplier 1.82), and the emergent dMdt(t)
+  suppression vs El-Badry Eq. 47 — the fidelity measurement f_mix cannot make. The spec pins the
+  traps (don't touch get_dudt, don't scale L₁, don't go near κ/ICs, expected string-pin
+  collateral) and a pre-committed decision tree over the matrix outcomes.
 - **L3 (structural, separate workstream):** the (★) IC behind a flag: first as pure refactor at
   q_w=0 proving bit-identity (rule-5 "free win" standard: value-diff vs `git show HEAD` + A/A
   control for FP nondeterminism, matched t, separate processes), then q_w>0 + the condensation
@@ -365,6 +392,8 @@ diffusivity magnitude; Lancaster 2021a's v_in equation numbers.
 
 ## 8. Sibling reconciliation (done with this commit — keep true)
 
+- `FA_IMPLEMENTATION_SPEC.md` (added 2026-07-06): the executor-grade L1/L2 expansion — any change
+  to §6's ladder or §3's numbers must be reconciled there (and vice versa).
 - `INDEX.md` §2 table + §3 thread: this doc + FINDINGS §15 registered.
 - `KAPPA_EFF_SCOPING.md §6.2`: the "second offline prototype (in-structure L_mix → ΔdMdt sign)"
   is now RUN — pointer here.

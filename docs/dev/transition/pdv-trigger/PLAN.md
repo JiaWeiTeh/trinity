@@ -285,6 +285,15 @@ for provenance.*
 > on `dictionary.jsonl`. `F_KAPPA_FUNCTIONAL_FORM.md` §10/§14 flagged accordingly.
 
 **Status ledger (newest first):**
+- **2026-07-06 (📋 f_A L1/L2 EXECUTOR SPEC LANDED; direction endorsed).** Maintainer confirmed
+  the goal is a back-reacting in-ODE factor (not the post-hoc f_mix) and asked for an
+  execution-ready plan: `FA_IMPLEMENTATION_SPEC.md` pins the two production edit sites (RHS dudt
+  band-multiply + L₂/L₃ component scaling), the `cooling_boost_fA` registry wiring (standalone
+  param, default 1.0 byte-identical, NOT a mode), the gate ladder with pass bars (pytest →
+  byte-identity + A/A control → screen re-run → live smoke → theta5s HPC matrix), two registered
+  predictions (collapse-law p_source ≈ 3.3 vs multiplier 1.82; emergent dMdt suppression vs
+  El-Badry Eq 47), the traps, and a pre-committed decision tree. SOURCE_TERM_DESIGN gains §2b
+  (f_mix-vs-f_A FAQ + why small-λδv cannot rescue κ_mix). No production code touched.
 - **2026-07-06 (🟢 THE PHYSICAL IN-ODE SUCCESSOR IDENTIFIED — f_A source-term screen passes 4/4
   predictions 6/6; design doc landed).** The maintainer's standing wish (an in-ODE knob more
   physical than the output multiplier) is answered by moving the boost from the CONDUCTIVITY to
