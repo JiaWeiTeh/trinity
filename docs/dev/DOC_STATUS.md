@@ -34,8 +34,8 @@
 
 **Status (2026-07-06):** 📘 rebuilt at **workstream level** by the docs/dev housekeeping pass.
 Per-doc verdicts live only in each doc's own dated Status line (see `CONVENTIONS.md`); the old
-per-doc evidence ledger (verified 2026-06-16/22) is parked in
-`to-be-removed/DOC_STATUS_per-doc-ledger_2026-06-22.md` pending the maintainer's review.
+per-doc evidence ledger (verified 2026-06-16/22) was parked in `to-be-removed/`, reviewed, and
+deleted by the maintainer (`9459234a`, 2026-07-06).
 
 ### Legend
 
@@ -45,6 +45,8 @@ per-doc evidence ledger (verified 2026-06-16/22) is parked in
 
 | Workstream | Verdict | Entry point | Verified |
 |---|---|---|:---:|
+| `roadmap/` | 🔵 ACTIVE — repo-wide execution queue + solver audit (F1 ✅ fixed; B/C lanes open) + REORG hand-off spec | `README.md` | 2026-07-06 |
+| `test-suite/` | 🔵 ACTIVE — test-suite remediation plan (2026-07-06 four-slice audit @ `70f07532`) | `PLAN.md` | 2026-07-06 |
 | `transition/pdv-trigger/` | 🔵 ACTIVE — PdV/f_κ mechanism + θ calibration | `INDEX.md` | 2026-07-06 |
 | `transition/cleanroom/` | ✅ concluded — "transition is geometric, not thermal" (live evidence for pdv-trigger) | `FINDINGS.md` | 2026-07-06 |
 | `transition/pt4/` | ✅ concluded audits (H1–H5 + R1 shadow) — feed pdv-trigger | `README.md` | 2026-07-06 |
@@ -62,6 +64,8 @@ per-doc evidence ledger (verified 2026-06-16/22) is parked in
 ## Open items carried forward
 
 One bullet per open tail, pointing at the doc that owns it — details live there, not here.
+(These tails are also sequenced — with gates and execution-tier tags — in `roadmap/PLAN.md`
+lane C; keep the two lists reconciled.)
 
 - **β–δ Phase-5 root fix** (mixing-layer cooling/leakage + regime-spanning Eb-peak handoff) —
   now owned by the active `transition/pdv-trigger/` program (`PLAN.md`); historical context in
