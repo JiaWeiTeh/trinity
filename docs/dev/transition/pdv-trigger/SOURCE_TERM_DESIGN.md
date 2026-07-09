@@ -103,19 +103,19 @@ controls, and the dropped ṁ factor has the wrong sign anyway. f_A drops neithe
 linear in the RHS → no κ_mix-style saturation), and no stiff-machinery perturbation (dR2, anchor
 gradient, hot-interior conduction untouched → no f_κ-style crash chain; its only route to the
 condensation edge is genuinely radiating the front's budget away — which fix #1's
-`no_physical_root_handoff` already routes to momentum).
+`no_physical_root_handoff` (`KAPPA_FREEZE_MECHANISM.md §7`) already routes to momentum).
 
 f_κ itself stays available as the genuine *conduction* knob — suppression f_κ ∈ [~1e-3, 1]
 (Markevitch & Vikhlinin 2007 draped interfaces ≤1e-2; Chandran & Cowley 1998 tangled fields;
 Narayan & Medvedev 2001 ~0.2), enhancement only as a bounded area factor ≲30 under a
 Cowie–McKee saturation cap with a Dalton–Balbus *smooth* limiter (never a hard min — the κ_mix
-hard-max lesson). That, plus the generalized front IC, lives in the deferred track (§5).
+hard-max lesson). That, plus the generalized front IC, lives in the deferred track (§4).
 
 ## 2. Evidence to date (Phase 0, measured 2026-07-06 — `FINDINGS.md §15`)
 
 Offline screen `data/make_fA_source_boost.py` (6 cleanroom configs × ~10 replayed C0 rows ×
-f_A ∈ {1,2,4,8,16}; monkeypatch, no production edit; G1 bit-identity 6/6 ≤1.8e-16, G2 replay 6/6
-≤3.1e-7). All four registered predictions passed 6/6:
+f_A ∈ {1,2,4,8,16}; monkeypatch, no production edit; G1 identity 6/6 (≤1.8e-16 = 1-ULP equivalence, NOT literal byte-identity: the screen
+assembles L1+f_A·(L2+L3) vs production's (L1+L2)+L3 association), G2 replay 6/6 ≤3.1e-7). All four registered predictions passed 6/6:
 
 | config | n | θ_max @ f_A=1→2→4→8→16 | ṁ @ 2→16 | solves |
 |---|---:|---|---|---|
@@ -154,11 +154,11 @@ only, **no fire threshold quotable**.
 
 > Executor notes that apply to every phase: shadow-first (harnesses before production edits);
 > separate processes, `OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1` for any byte/A-A comparison
-> (§9b ULP lesson); θ only from `dictionary.jsonl` accepted rows via `runs/harvest_theta_max.py`
-> (never call-level observers — Retraction R6); every artifact committed with its builder +
+> (FINDINGS.md §9b ULP lesson); θ only from `dictionary.jsonl` accepted rows via `runs/harvest_theta_max.py`
+> (never call-level observers — Retraction R6, `SESSION_HANDOFF_2026-07-01.md §6`); every artifact committed with its builder +
 > command; reconcile siblings + regenerate `MANIFEST.md` in a follow-up commit (after any merge,
-> check MANIFEST `rows == unique rows` — the 2026-07-06 de-dup lesson); re-verify the "618
-> passed" pytest baseline and all line references at execution time.
+> check MANIFEST `rows == unique rows` — the 2026-07-06 de-dup lesson); re-verify the pytest baseline (733 selected at the 2026-07-06 post-merge HEAD; PLAN's older
+> entries say 617/618 — counts move with main) and all line references at execution time.
 
 ### Phase 0 ✅ — offline screen (done; §2 above)
 
@@ -180,8 +180,9 @@ only, **no fire threshold quotable**.
    **Row selection** (audit G10): the ~10 even rows PLUS force-include the first 3 accepted
    implicit rows (dense race window, t<0.06 Myr) and each config's documented θ-peak epoch
    (diffuse: t≈4.9 Myr) — the same force-include pattern `make_da_replay` uses for blowout.
-3. Artifacts: `data/fA_edge_map.csv` + `fA_edge_map.png` + the new fixtures; FINDINGS §15a;
-   REPRODUCE row. Same ⛔ grade as §2 (replayed states).
+3. Builder: `data/make_fA_edge_map.py` (may import/extend `make_fA_source_boost.py`; env knobs
+   documented in its docstring). Artifacts: `data/fA_edge_map.csv` + `fA_edge_map.png` + the new
+   fixtures; FINDINGS §15a; REPRODUCE row. Same ⛔ grade as §2 (replayed states).
 
 ### Phase 2 ⬜ — production wiring (two edit sites + registry + tests)
 
@@ -190,8 +191,14 @@ same ParamSpec shape: `category='input_solver'`, `unit=None`, `exclude_from_snap
 `run_const=True`, no resolver):
 
 ```python
-ParamSpec(name='cooling_boost_fA', default='1.0', info='Interface source-term boost f_A (docs/dev/transition/pdv-trigger/SOURCE_TERM_DESIGN.md): multiplies the net radiative dudt inside the bubble-structure ODE and the resolved L2+L3 loss integrals, ONLY in the interface band T < 10^5.5 K (the non-CIE regime). The 1-D projection of fractal-interface mixing (Lancaster) on the SOURCE side: cooling rises THROUGH the structure and evaporation dMdt FALLS (El-Badry Eq 47 coupling; contrast cooling_boost_kappa, which raises it). L_leak is deliberately NOT scaled (leakage is bulk escape, not interface radiation). Requires f_A > 0; values < 1 are untested suppression territory. Default 1.0 = byte-identical. Single-knob use intended: combining with cooling_boost_mode != none or cooling_boost_kappa != 1 warns at load (double-boost / cross-knob).', category='input_solver', unit=None, exclude_from_snapshot=True, run_const=True),
+ParamSpec(name='cooling_boost_fA', default='1.0', info='Interface source-term boost f_A (docs/dev/transition/pdv-trigger/SOURCE_TERM_DESIGN.md): multiplies the net radiative dudt inside the bubble-structure ODE and the resolved L2+L3 loss integrals, ONLY in the interface band T < 10^5.5 K (the non-CIE regime). The 1-D projection of fractal-interface mixing (Lancaster) on the SOURCE side: cooling rises THROUGH the structure and evaporation dMdt FALLS (El-Badry Eq 47 coupling; contrast cooling_boost_kappa, which raises it). L_leak is deliberately NOT scaled (leakage is bulk escape, not interface radiation). Requires f_A > 0; values < 1 are untested suppression territory. Default 1.0 = byte-identical. Single-knob use intended: combining with cooling_boost_mode != none or cooling_boost_kappa != 1 warns at load (double-boost / cross-knob).', category='input_solver', unit=None, exclude_from_snapshot=True, run_const=True, validator=_validate_cooling_boost_fA),
 ```
+
+Define `_validate_cooling_boost_fA(value, params)` next to `_validate_dens_profile`
+(`registry.py:108` — validators receive `(value, params)`): raise on f_A ≤ 0, and emit the
+required cross-knob WARNING there too (f_A ≠ 1 with `cooling_boost_mode != 'none'` or
+`cooling_boost_kappa != 1`/`'auto'`) — one home for both; if load ordering bites (kappa-'auto'
+resolves at load), move the warning to the end of the `read_param` load path and note it.
 
 Mirror the text into `default.param` next to the kappa block (currently :293–294). **Required
 (audit G6, promoted from optional): a load-time WARNING** when `cooling_boost_fA != 1` and
@@ -244,9 +251,11 @@ lives in the solved profile).
    triplet; T=1e5 → `dvdr` identical, `dTdrr` differs.
 3. component scaling: with `get_dudt` monkeypatched constant, L₂ and L₃ double at fA=2, L₁
    unchanged (frozen-state solve acceptable, `pytest.mark.slow`).
-4. **band-edge pin** (audit G9): assert `10**5.5 ==` the default bundle's non-CIE cutoff from
-   `net_coolingcurve._noncie_cutoffs` — a future cooling-table swap (theta5c) fails loudly
-   instead of silently splitting the f_A band from the L₂ mask.
+4. **band-edge pin** (audit G9): `_noncie_cutoffs` returns **log10** grid values (verified:
+   `(5.5, 3.5)` on the default bundle, compared against `np.log10(T)` at
+   `net_coolingcurve.py:138`) — so assert IN LOG SPACE:
+   `_noncie_cutoffs(cube)[0] == np.log10(_T_INTERFACE_BAND)`. A future cooling-table swap
+   (theta5c) then fails loudly instead of silently splitting the f_A band from the L₂ mask.
 5. interaction warning fires (fA=2 + mode='multiplier'), and the double-boosted L_loss is what
    the docs say it is.
 6. expected string-pin collateral (verified live): `test_dR2min_magic_number.py:98`
@@ -260,12 +269,12 @@ conduction prefactor :413); introduce a third 10^5.5 literal.
 
 ### Phase 3 ⬜ — gates (in order; pass bars pinned)
 
-1. **Full pytest** green (baseline 618 — re-verify count at execution).
+1. **Full pytest** green (baseline 733 selected at 2026-07-06 HEAD — re-verify at execution).
 2. **Byte-identity at default**: `param/simple_cluster.param` +
    `docs/dev/performance/f1edge_hidens*.param`, pre- vs post-patch, separate processes, pinned
    threads, `sha256sum dictionary.jsonl`, **plus a mandatory A/A control** (same code twice; if
-   A/A differs, judge by value-diff and record). Budget note: simple_cluster at default stop_t is
-   ~90 min/run in-container × 4 runs. **Coverage justification (audit G7):** f1edge_lowdens is
+   A/A differs, judge by value-diff and record). Budget note: simple_cluster at default stop_t is ~90 min/run
+   in-container; pre + post + the mandatory A/A pair = 4–6 runs (~6–9 h serial). **Coverage justification (audit G7):** f1edge_lowdens is
    omitted because the default path is unreachable-branch-inert and the screen's G1 covers
    diffuse states; if a reviewer objects, add lowdens at matched `stop_t 0.7` (past its ~0.61 Myr
    blowout) to both sides.
@@ -287,7 +296,8 @@ conduction prefactor :413); introduce a third 10^5.5 literal.
   (pre-committed):** if any fireable config is NOFIRE at 32, submit {48, 64} for that config
   before reading the decision tree.
 - **Wall-time armor** (audit G4): `--time=6:00:00` minimum (f_A is in-ODE → early-segment cost
-  like §8d's f_κ, AND Eb-back-reacting → dt shrink like R4's f_mix; fA=24–32 exceeds any boost
+  like FINDINGS.md §8d's f_κ, AND Eb-back-reacting → dt shrink like Retraction R4's f_mix
+  [`SESSION_HANDOFF_2026-07-01.md §6`]; fA=24–32 exceeds any boost
   run live; diffuse arms are the long pole). Keep `.exit_code`/`.duration` writes. **Mandatory
   post-harvest compliance gate**: every arm shows `t_final ≥ 5` or a physics termination; any
   wall-kill/nonzero-exit arm is re-run longer before ANY θ is quoted (protocol rule 2) — report
@@ -339,6 +349,10 @@ RMHD scored at ~25%).
 **⚠ Pre-step (blocking):** the mapping below rests on suite details recovered by web search
 (M_* = 5000 M⊙; V_w = 3230/1759 km/s; exact M–R pairings) — **verify against the L21b PDF
 Table 1 and add to `LANCASTER_REFERENCE.md`** (imprint protocol) before freezing the .params.
+**Fallback if PDFs are unreachable in the environment (they were on 2026-07-06 — proxy blocks
+non-GitHub):** ask the maintainer to supply Table 1 (values needed: M_*, V_w, the M–R pairings),
+or freeze the .params from the search-snippet values above with an explicit [I]-grade provenance
+note in `runs/params/bench5/README` — do NOT silently treat them as verified.
 
 **Benchmark configs** (5 bespoke `.param`s, `runs/params/bench5/` — flat profile `densPL`
 α=0 ⇒ nCore = n̄ exactly; sfe = 5000/M_cl; check `rCloud_max` plausibility validation passes):
@@ -354,29 +368,38 @@ Table 1 and add to `LANCASTER_REFERENCE.md`** (imprint protocol) before freezing
 Run the bespoke params — the standard band members are only loose stand-ins (mass/density
 mismatches up to 200×).
 
-**Protocol.** Per benchmark × f_A ∈ {1, 4, 6, 8, 12, 16} (+ the Phase-4 winner): two arms —
-(a) **diagnostic** with the trigger disabled/unreachable so θ(t) logs uncensored, (b)
-**production** with the trigger live for fire time/fate. Comparison window
-W = [t_shell-formation, min(3 Myr, t(R2=R_cloud), stop_t)] — the 3 Myr cap keeps
+**Protocol.** Per benchmark × f_A ∈ {1, 4, 6, 8, 12, 16} (+ the Phase-4 winner), `stop_t 5`:
+two arms — (a) **diagnostic** with the cooling trigger disabled via
+`transition_trigger blowout` (a legal token set, `run_energy_implicit_phase.py:249`; blowout
+still transitions at R2 > rCloud, which is W's upper cap anyway) so θ(t) logs uncensored through
+the energy phase, (b) **production** with the default `cooling_balance` trigger live for fire
+time/fate. Comparison window W = [t_first (the first accepted implicit row — TRINITY logs no
+explicit shell-formation time), min(3 Myr, t(R2=R_cloud), stop_t)] — the 3 Myr cap keeps
 `Lmech_total` ≈ L_wind so the Θ definitions align (SB99 SNe start ~3–4 Myr); if the SB99 reader
 exposes the wind-only channel, prefer θ_w = Lloss/L_wind and drop the cap.
 
 **Metrics & pass bands** (compute both statistics — L21b's headline Θ is *cumulative*, TRINITY's
 θ is *instantaneous*):
-1. Θ_cum(t_end) = ∫_W L_loss dt / ∫_W L_mech dt ∈ **[0.9, 0.99]** for every benchmark — the
-   primary band.
+1. Θ_cum(t_end) = ∫_W L_loss dt / ∫_W L_mech dt ∈ **[0.9, 0.99]** — THE primary pass band; a
+   benchmark passes iff Θ_cum is in-band (Phase 6 references this criterion, stated only here).
+   Bench-1 caveat (t_ff ≈ 6.6 Myr): all matched epochs collapse to the single 3 Myr cap, so
+   bench-1 contributes Θ_cum only, not the trajectory statistic.
 2. Trajectory, in 1−θ space (absolute-θ tolerances are meaninglessly tight near 1):
    **|log₁₀(1−θ_TRINITY) − log₁₀(1−Θ_L21b)| ≤ 0.5 dex** at matched epochs
    t* ∈ {0.5, 1, 2}·t_ff (capped at 3 Myr); fitted slope d log(1−θ)/d log t ∈ [−1, 0]
    (L21b: −0.5).
 3. Optional dynamics cross-check: shell momentum / ṗ_w·t within α_p ∈ [1.2, 4].
-4. **Censoring rule:** production-arm fire before t* is *Lancaster-consistent*, not failure —
-   score censored epochs as θ(t*) ≥ 0.95 = in-band and use the diagnostic arm for trajectories.
-   An arm that Eb-drains to momentum *without* firing (θ_max < 0.9) is a miss (the over-boost
-   mode).
-5. **El-Badry overlay** (cheap, offline): θ(t) from diagnostic arms vs
-   θ_EB(λδv=3, n_amb(R2(t))) via the `make_elbadry_theta.py` machinery; require ±0.1 agreement
-   only where n_amb ∈ [1e2, 1e5] and t ≳ 3 Myr (his validity); flag, don't fail, outside.
+4. **Censoring rule** (applies ONLY if a diagnostic arm is missing — with one, trajectories
+   always come from it): a production-arm fire before t* is *Lancaster-consistent*, not failure;
+   score the censored epoch against the Θ_cum band (a fired arm pins θ ≥ 0.95, inside [0.9,
+   0.99]) — do NOT apply the dex-trajectory tolerance to a censored point (0.95 vs Θ = 0.99 is
+   0.7 dex in 1−θ and would spuriously fail). An arm that Eb-drains to momentum *without* firing
+   (θ_max < 0.9) is a miss (the over-boost mode).
+5. **El-Badry overlay** (cheap, offline; NOTE it evaluates OUTSIDE W by construction — his
+   validity needs t ≳ 3 Myr, past the SNe-safe cap — so it runs on the diagnostic arms'
+   full-length θ(t) and is **flag-only, never a pass/fail bar**): θ(t) vs
+   θ_EB(λδv=3, n_amb(R2(t))) via the `make_elbadry_theta.py` machinery; expect ±0.1 agreement
+   where n_amb ∈ [1e2, 1e5] (bench-1's n̄=43 sits below the floor — exclude it).
 6. **Report the Lcool/Lleak split** alongside every θ (Rogers & Pittard 2013: in porous 3D
    clouds 60–75% of wind energy *leaks* rather than radiates — a θ match with the wrong channel
    split would be a false positive).
@@ -396,8 +419,9 @@ REPRODUCE rows.
 
 | outcome | verdict | action |
 |---|---|---|
-| single f_A fires 7/7 fireable + controls unchanged + ≥4/5 benchmarks in-band | **f_A is the production-candidate successor** | maintainer ruling on default flip; paper narrative: physical knob calibrated on L21b, f_mix = its frozen-structure limit |
+| single f_A fires 7/7 fireable + controls unchanged + benchmarks pass Phase 5 metric 1 | **f_A is the production-candidate successor** | maintainer ruling on default flip; paper narrative: physical knob calibrated on L21b, f_mix = its frozen-structure limit |
 | 7/7 but benchmarks miss low (Θ_cum < 0.9) | knob right, magnitude short — likely the 1D leak/geometry gap | keep f_mix production; publish f_A + benchmark gap as the honest fidelity statement |
+| 7/7 only at high f_A (≈24–32) and benchmarks overshoot there (Θ_cum > 0.99 or Eb-drain misses) | the single-scalar compromise fails calibration: band-fire and benchmark-match want different f_A | keep f_mix production; next rung = the state-coupled f_A (§4 — density dependence emerges, one value no longer needs to serve all clouds) |
 | no whole-band f_A within grid ∪ bracket | calibrated per-config knob (like κ but honest fates) | keep f_mix; f_A becomes the fidelity/appendix knob; record windows |
 | dense arms condense-first across the grid | the McKee–Cowie edge IS the dense transition | acceptable physics (2026-07-02 ruling precedent); document band-fire + condense-handoff split |
 | freezes / no-root grind | P3 falsified live | full stop; freeze-watch instrumentation (`KAPPA_FREEZE_MECHANISM.md §5`); do NOT tune around it |
@@ -413,7 +437,9 @@ ANY κ(T):
 ```
 dR2 = ∫_{T_w}^{T_init}  κ(T) / (q_w + c_p·F_ṁ·(T − T_w))  dT ,   F_ṁ = ṁ/4πR2², c_p = (5/2)k_B/μ
 dT/dr|_anchor = −(q_w + c_p·F_ṁ·(T_init − T_w)) / κ(T_init)
-``` Four payoffs: recovers Weaver exactly (q_w=0, T_w=0 — verified against
+```
+
+Four payoffs: recovers Weaver exactly (q_w=0, T_w=0 — verified against
 `bubble_luminosity.py:380–388`); fixes the κ_mix boundary divergence (quadrature converges for
 κ_mix ∝ 1/T once T_w = 1e4 > 0); admits the saturation cap; and **stays defined for ṁ < 0**
 whenever q_w exceeds the advected enthalpy release — the condensation branch (fix #4) as an
