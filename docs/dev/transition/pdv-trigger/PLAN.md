@@ -285,7 +285,25 @@ for provenance.*
 > on `dictionary.jsonl`. `F_KAPPA_FUNCTIONAL_FORM.md` §10/§14 flagged accordingly.
 
 **Status ledger (newest first):**
-- **2026-07-06 (📋 f_A L1/L2 EXECUTOR SPEC LANDED; direction endorsed).** Maintainer confirmed
+- **2026-07-06 (🧩 PLAN CONSOLIDATED TO ONE DOC + LITERATURE-CALIBRATION PHASE; 2-agent review).**
+  Maintainer directives: one source of truth (no parallel plan docs), comprehensive coverage of
+  ALL 9 configs, and calibration against published sims ("similar θ at similar time").
+  `FA_IMPLEMENTATION_SPEC.md` was folded into `SOURCE_TERM_DESIGN.md §3` (Phases 0–6) and
+  DELETED. Two agents reviewed the plan: the coverage audit produced the per-config
+  expected-outcome/acceptance table (7/7 *fireable* + 2 controls-unchanged replaces the
+  unsatisfiable "9/9 fire"), the grid extension {…,24,32} + bracket rule (screen laggards
+  midrange/pl2 extrapolate to ~20–32), offline fixtures for the never-screened small_1e6 +
+  normal_n1e3, wall-time/compliance armor, the L_leak not-scaled statement, required interaction
+  warnings (incl. kappa-'auto' grid invalidation), the band-edge↔cooling-table pin test, epoch
+  force-includes, and found a pre-existing latent fallback double-boost (FINDINGS §16, flagged
+  not fixed). The literature agent produced Phase 5: five bespoke Lancaster-2021b-matched
+  bench5 configs (n̄ 43→2.2e5), the operationalized metric (cumulative Θ_cum ∈ [0.9,0.99] +
+  instantaneous 1−θ tracks ≤0.5 dex at {0.5,1,2}·t_ff capped 3 Myr; censoring + leak-split
+  rules; El-Badry overlay), the predicted whole-band f_A ∈ [8,13] (vs laggard 20–32 tension the
+  matrix resolves), and the circularity honesty clause. Blocking pre-step registered: PDF-verify
+  L21b Table 1 into `LANCASTER_REFERENCE.md` before freezing bench params.
+- **2026-07-06 (📋 f_A L1/L2 EXECUTOR SPEC LANDED; direction endorsed — spec since folded into
+  `SOURCE_TERM_DESIGN.md` and deleted, see the entry above).** Maintainer confirmed
   the goal is a back-reacting in-ODE factor (not the post-hoc f_mix) and asked for an
   execution-ready plan: `FA_IMPLEMENTATION_SPEC.md` pins the two production edit sites (RHS dudt
   band-multiply + L₂/L₃ component scaling), the `cooling_boost_fA` registry wiring (standalone

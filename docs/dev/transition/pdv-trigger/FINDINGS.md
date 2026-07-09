@@ -1255,4 +1255,17 @@ whole-band f_A may exist where theta5k found no whole-band f_κ (§12).
 
 ⛔ CONTAMINATION note: structural-response screens on replayed C0 states (logged β, δ, Eb, R2) —
 NOT live coupled runs, NOT ≥5 Myr θ_max calibration data; no fire threshold is quotable from
-this section. The live theta5-protocol matrix is ladder step L2 (`SOURCE_TERM_DESIGN.md §6`).
+this section. The live theta5-protocol matrix is Phase 4 of the consolidated workflow (`SOURCE_TERM_DESIGN.md §3`).
+
+## 16. [flag] Pre-existing latent double-boost in the trigger fallback (found 2026-07-06 during the f_A plan audit; NOT fixed)
+
+`run_energy_implicit_phase.py:1245-1247`: when `bubble_props is None`, the trigger path reads
+`_Lcool` from `bubble_Lloss` — which is ALREADY the effective loss (`effective_Lloss` output,
+written at `:930`, = boosted Lcool + Lleak) — and then applies `effective_Lloss_from_params`
+to it AGAIN with leak=0. Under `cooling_boost_mode='multiplier'` that is f_mix²·Lcool (+ leak
+boosted once more); under 'none' (and under the planned f_A, which boosts inside the bubble
+solve) it is the identity, so today's production default is unaffected, and every theta5
+multiplier arm had `bubble_props` populated on accepted segments — the branch fires only on the
+fallback path. Verified against source 2026-07-06. Outside the f_A diff by design (surgical-
+change rule); fix candidate: pass the raw components (or skip the re-application) in the
+fallback. Registered here so the next multiplier-mode work knows.
