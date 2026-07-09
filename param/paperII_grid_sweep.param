@@ -4,15 +4,14 @@
 #
 # Full Cartesian (grid) sweep over the six axes below. Each `key [list]` is one
 # sweep dimension; the runner expands the product of all of them.
-#
-#   sfe            11 values
-#   mCloud         10 values
-#   nCore           3 values
-#   PISM            4 values
-#   nISM            2 values
-#   (coverFraction fixed at 1.0 — sealed Weaver bubble, not swept)
-#   -----------------------------------------------------------------
-#   total          11 x 10 x 3 x 4 x 2 = 2,640 combinations
+# runs: 10560 
+#   (note: >grid — duplicates or extra axes)
+# axes:
+#   sfe    11 values: ['0.01', '0.05', '0.1', '0.2', '0.3', '0.4', '0.5', '0.6', '0.7', '0.8', '0.9']
+#   mCloud 12 values: ['1e4', '5e4', '1e5', '5e5', '1e6', '5e6', '1e7', '5e7', '1e8', '5e8', '1e9', '5e9']
+#   nCore   5 values: ['50', '100', '1000', '1e4', '1e5']
+#   PISM    4 values: ['0', '1e4', '1e5', '1e6']
+#   nISM    2 values: ['0.1', '1']
 #
 # Usage:
 #   python run.py param/paperII_grid_sweep.param --dry-run        # list, run nothing
@@ -28,16 +27,19 @@
 sfe             [0.01, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 
 # Cloud mass [Msun]: 1e5..5e9 in 1,5 x decade steps
-mCloud          [1e5, 5e5, 1e6, 5e6, 1e7, 5e7, 1e8, 5e8, 1e9, 5e9]
+mCloud          [1e4, 5e4, 1e5, 5e5, 1e6, 5e6, 1e7, 5e7, 1e8, 5e8, 1e9, 5e9]
 
 # Core number density [cm^-3]: decade spacing
-nCore           [1e2, 1e3, 1e4]
+nCore           [50, 1e2, 1e3, 1e4, 1e5]
 
 # ISM pressure P/k [K cm^-3]
 PISM            [0, 1e4, 1e5, 1e6]
 
 # ISM number density [cm^-3]
 nISM            [0.1, 1]
+
+cooling_boost_mode     multiplier
+cooling_boost_fmix     4
 
 # =============================================================================
 # Fixed parameters (constant across all runs)
@@ -72,7 +74,7 @@ stop_at_rCloud_nSnap    None
 log_level    INFO
 
 # P_HII
-include_PHII    True
+include_PHII    [True, False]
 
 # Output (each run writes a subfolder under this directory)
 path2output    outputs/gridsweep/

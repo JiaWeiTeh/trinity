@@ -76,6 +76,39 @@ class ColoredFormatter(logging.Formatter):
         return formatted
 
 
+class DedupWarningFilter(logging.Filter):
+    """Collapse identical repeated log messages to a single line.
+
+    On large parameter sweeps a per-step warning — a super-critical Bonnor-Ebert
+    sphere, ``nEdge < nISM``, ``rCloud > rCloud_max``, etc. — can fire thousands
+    of times in one run and bury the log. This filter passes the FIRST occurrence
+    of each unique message (at ``min_level`` and above) and drops exact repeats.
+
+    Only *identical rendered text* collapses: a warning that carries a changing
+    value (e.g. ``... at t=3.7e-3 Myr``) stays distinct and is NOT suppressed, so
+    genuinely evolving diagnostics still stream. Attach ONE instance per handler
+    (each output stream dedups independently). State is per-process, so it resets
+    every run/task — no cross-run leakage.
+    """
+
+    def __init__(self, min_level: int = logging.WARNING):
+        super().__init__()
+        self._min_level = min_level
+        self._seen: set = set()
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if record.levelno < self._min_level:
+            return True
+        try:
+            key = (record.levelno, record.getMessage())
+        except Exception:            # malformed %-args -> never suppress
+            return True
+        if key in self._seen:
+            return False
+        self._seen.add(key)
+        return True
+
+
 def setup_logging(
     log_level: Union[str, int] = 'INFO',
     console_output: bool = True,
@@ -230,6 +263,10 @@ def setup_logging(
             console_formatter = logging.Formatter(format_string, datefmt=date_format)
 
         console_handler.setFormatter(console_formatter)
+        # Collapse identical repeated warnings. One instance per handler so the
+        # console and file streams dedup independently (first occurrence shows
+        # in both; exact repeats are dropped).
+        console_handler.addFilter(DedupWarningFilter())
         root_logger.addHandler(console_handler)
 
     # =============================================================================
@@ -260,6 +297,7 @@ def setup_logging(
         # Use plain formatter for file (no colors)
         file_formatter = logging.Formatter(format_string, datefmt=date_format)
         file_handler.setFormatter(file_formatter)
+        file_handler.addFilter(DedupWarningFilter())
 
         root_logger.addHandler(file_handler)
 
