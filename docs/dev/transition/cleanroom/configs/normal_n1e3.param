@@ -1,0 +1,9 @@
+# normal_n1e3 -- native-fire config (fires at f=1). NOT one of the canonical 6
+# cleanroom configs; added 2026-07-06 for f_A Phase-1 offline coverage
+# (SOURCE_TERM_DESIGN.md §3 Phase 1). Overrides from runs/make_theta5n_params.py.
+mCloud         1e6
+nCore          1e3
+rCore          1
+sfe            0.01
+dens_profile   densPL
+densPL_alpha   0

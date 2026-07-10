@@ -36,9 +36,12 @@
 directive: one stream of workflow, no parallel plan docs. The former `FA_IMPLEMENTATION_SPEC.md`
 was folded into §3 here and **deleted** the same day; if you find a reference to it, it means
 this doc. Design (§1) and screen evidence (§2) are settled; the workflow (§3) is the execution
-stream for the next sessions: Phase 0 ✅ done, Phases 1–6 ⬜ open. Two review agents audited this
-plan on 2026-07-06 (config-coverage audit; literature-benchmark extraction) — their findings are
-integrated throughout and marked "(audit)" / "(lit)".
+stream for the next sessions: Phase 0 ✅ done, **Phase 1 ✅ done (2026-07-06, `FINDINGS.md §15a`)**,
+Phases 2–6 ⬜ open. Two review agents audited this plan on 2026-07-06 (config-coverage audit;
+literature-benchmark extraction) — their findings are integrated throughout and marked "(audit)" /
+"(lit)". **Phase 1 headline: the condensation-edge prediction (edges near θ≈1) was FALSIFIED in the
+SAFE direction — no dMdt≤0 edge exists for f_A even at 512 (16× the physical range); the source knob
+structurally cannot reach the f_κ condensation crash. All 9 configs now have offline coverage.**
 
 ---
 
@@ -180,7 +183,19 @@ only, **no fire threshold quotable**.
 
 ### Phase 0 ✅ — offline screen (done; §2 above)
 
-### Phase 1 ⬜ — offline completeness: all-9 coverage + the condensation-edge map (local, no production edit)
+### Phase 1 ✅ — offline completeness: all-9 coverage + the condensation-edge map (done 2026-07-06, `FINDINGS.md §15a`)
+
+> RESULT: all 9 configs + 2 FM1 fixtures now have offline f_A coverage (2 new committed
+> trajectories `data/traj_{normal_n1e3,small_1e6}.csv`, both PARTIAL/early-epoch — the §8d cliff
+> makes ≥5 Myr infeasible in-container). Both controls stay far below fire (small_1e6 θ_max=0.25
+> @ fA=16; stiff-5e9 fixture θ≈0.02). Condensation-edge map: **0/50 states reach dMdt≤0 within
+> f_A≤128, and a probe to f_A=512 finds no edge** (θ driven to 6–26, dMdt stays positive). The
+> registered θ≈1 edge prediction is FALSIFIED — but in the safe direction: the source knob has no
+> reachable condensation edge (it never touches the evaporative eigenvalue), so it cannot hit the
+> f_κ crash. Builder `data/make_fA_edge_map.py`. **Consequence for Phase 6:** the "dense arms
+> condense-first" row means DRAIN or stay-energy-driven, not an f_A-driven condensation.
+
+Original spec (kept for provenance):
 
 1. **Extend the screen to the missing configs** (audit G3). The §2 screen covered only the 6
    cleanroom configs. Add: (a) the 2 captured FM1 fixtures (stiff 5e9 ≈ fail_repro **with the

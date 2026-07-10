@@ -285,6 +285,20 @@ for provenance.*
 > on `dictionary.jsonl`. `F_KAPPA_FUNCTIONAL_FORM.md` §10/§14 flagged accordingly.
 
 **Status ledger (newest first):**
+- **2026-07-06 (✅ f_A PHASE 1 RAN — all-9 offline coverage + edge map; θ≈1 edge prediction
+  FALSIFIED in the SAFE direction).** Executor session (Opus) ran Phase 1 of `SOURCE_TERM_DESIGN.md
+  §3`. (a) Coverage closed: committed partial trajectories for the two never-screened configs
+  (`data/traj_normal_n1e3.csv` 61 rows, `data/traj_small_1e6.csv` 56 rows — both early-epoch, the
+  §8d cliff blocks ≥5 Myr in-container) + the 2 FM1 fixtures; both new configs reproduce the §15
+  dial/sign/stability, both controls stay far below fire (small_1e6 θ_max 0.25 @ fA16; stiff-5e9
+  θ≈0.02). (b) Condensation-edge map (`data/make_fA_edge_map.py` → `fA_edge_map.csv`/`.png`,
+  `fA_coverage9.csv`): **0/50 states reach dMdt≤0 within f_A≤128; a probe to f_A=512 finds NO edge**
+  (θ driven to 6–26, dMdt stays large-positive). Per the STOP rule this falsification was written up
+  (`FINDINGS.md §15a`), not tuned around: the θ≈1 edge is a *conduction-knob* (f_κ/McKee–Cowie)
+  phenomenon; the source knob never touches the evaporative eigenvalue, so it has no reachable
+  condensation edge — a strengthening of the solver-safety case. Phase-6 note added: "dense
+  condense-first" now reads as DRAIN/stay-energy-driven, not f_A-driven condensation. No production
+  code touched. Phase 1 ✅; Phase 2 (wiring) is next.
 - **2026-07-06 (🧩 PLAN CONSOLIDATED TO ONE DOC + LITERATURE-CALIBRATION PHASE; 2-agent review).**
   Maintainer directives: one source of truth (no parallel plan docs), comprehensive coverage of
   ALL 9 configs, and calibration against published sims ("similar θ at similar time").

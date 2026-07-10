@@ -1257,6 +1257,66 @@ whole-band f_A may exist where theta5k found no whole-band f_κ (§12).
 NOT live coupled runs, NOT ≥5 Myr θ_max calibration data; no fire threshold is quotable from
 this section. The live theta5-protocol matrix is Phase 4 of the consolidated workflow (`SOURCE_TERM_DESIGN.md §3`).
 
+## 15a. [data] Phase 1 — all-9 offline coverage + condensation-edge map: the θ≈1 edge prediction FALSIFIED in the safe direction (2026-07-06, offline replay, no sims)
+
+Phase 1 of the consolidated workflow (`SOURCE_TERM_DESIGN.md §3`) closes the two coverage gaps the
+§15 six-config screen left, and runs the condensation-edge map. Builder:
+`data/make_fA_edge_map.py` → `data/fA_edge_map.csv` (edge per config×epoch),
+`data/fA_coverage9.csv` (θ-response for the new configs), `fA_edge_map.png`. Reuses the §15
+monkeypatch `_solve` (production untouched; f_A=1 is 1-ULP-equivalent). ⛔ Same grade as §15:
+replayed frozen states — no fire threshold quotable.
+
+**(1) Coverage now spans all 9 standard configs + 2 fixtures.** The two configs with no committed
+trajectory were run locally to the §8d diffuse cliff and their partial trajectories committed:
+`data/traj_normal_n1e3.csv` (61 rows, t≤0.154 Myr) and `data/traj_small_1e6.csv` (56 rows,
+t≤0.109 Myr) — both PARTIAL (early-epoch only; the cliff makes ≥5 Myr infeasible in-container,
+which is itself the §8d runtime long-pole confirmed, and the reason Phase 4 needs HPC). Plus the 2
+FM1 fixtures (stiff 5e9/sfe0.01 ≈ the fail_repro control — NOTE sfe 0.01 ≠ fail_repro's 0.1 — and
+a mild cluster). New-config θ-response (θ_max over sampled rows; ṁ = median dMdt/dMdt(fA=1)):
+
+| config | class | θ_max @ fA=1→2→4→8→16 | ṁ @ 16 | solves |
+|---|---|---|---|---|
+| normal_n1e3 (n1e3) | native-fire | 0.36→0.39→0.44→0.53→0.70 | 0.92 | 6/6 |
+| small_1e6 (n1e2) | route-a control | 0.13→0.14→0.16→0.20→0.25 | 0.95 | 6/6 |
+| fixture stiff-5e9 | PdV control | 0.009→…→0.02 | 1.00 | 5/5 |
+| fixture mild cluster | — | 0.001→…→0.01 | 1.00 | 5/5 |
+
+Both new configs reproduce the §15 structural verdicts (smooth dial, ṁ falls, 6/6 stable); the two
+controls stay **far below fire** and f_A can't lift them (small_1e6 θ_max=0.25 at fA=16; the
+PdV/stiff-5e9 fixture is θ≈0.02 — nothing in its interface band to boost, ṁ flat). This is the
+control-class behavior Phase 4 requires, now confirmed offline. (θ values are on the *early*
+truncated trajectories, so lower than the documented 5-Myr θ₀; the STRUCTURE — dial/sign/stability
+— is the screen's verdict, not the magnitude.)
+
+**(2) Condensation-edge map — the registered prediction is FALSIFIED, in the SAFE direction.**
+Registered prediction (§3 Phase 1): edges sit near local θ≈1 (the McKee–Cowie reversal). Result:
+**0/50 replayed states reach dMdt≤0 within f_A ≤ 128** (`fA_edge_map.csv`, reason="no_edge_in_range"
+for every state). A targeted high-f_A probe on the four most-driven states (max-R2 rows, reproducible
+via `FA_EDGE=16,32,64,128,256,512 python data/make_fA_edge_map.py` on those rows) pushes to
+**f_A = 512** and STILL finds no edge — dMdt stays large and positive while θ is driven far past 1:
+
+| state | θ @ fA=512 | dMdt @ 512 / baseline |
+|---|---|---|
+| large_diffuse_lowsfe (t=6) | 25.6 | +2735 (~0.5×) |
+| small_dense_highsfe (t=6) | 10.6 | +668 |
+| normal_n1e3 (t=0.15) | 9.3 | +321 |
+| simple_cluster (t=6) | 6.6 | +3242 (~0.58×) |
+
+**Interpretation (per the STOP rule — written up, not tuned around).** The θ≈1 edge prediction was
+imported from the *conduction* knob (f_κ), where the McKee–Cowie reversal occurs because boosting κ
+raises evaporation *and* cooling together and flips the front's local budget near cooling balance
+(`KAPPA_FREEZE_MECHANISM.md §3`). The **source** knob f_A has no such edge: it never touches the
+conduction operator or the v(R1)=0 evaporative eigenvalue, so ṁ only declines *gradually*
+(sub-linearly, asymptoting toward but not reaching zero) as the source is boosted. So the falsified
+prediction is a **strengthening of the solver-safety case**, not a problem: f_A structurally
+**cannot** walk the solver into the condensation domain edge that crashed f_κ — not at the physical
+[8,13], not at the Phase-4 grid top (32), not even at 512. It also confirms and extends §15 P4
+("no condensation cliff in range") to 16× the physical range. Consequence for the workflow: the
+Phase-6 decision-tree rows keyed on "dense arms condense-first" and the P4/edge reasoning should
+read this as *the edge is unreachable for f_A* — dense configs that fail to fire will DRAIN (Eb→0)
+or stay energy-driven, not condense. (The fix-#1 no-root handoff remains the safety net for any live
+surprise, but Phase 1 predicts it will not trigger via an f_A-driven condensation.)
+
 ## 16. [flag] Pre-existing latent double-boost in the trigger fallback (found 2026-07-06 during the f_A plan audit; NOT fixed)
 
 `run_energy_implicit_phase.py:1245-1247`: when `bubble_props is None`, the trigger path reads
