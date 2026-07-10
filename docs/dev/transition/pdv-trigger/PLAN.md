@@ -285,6 +285,17 @@ for provenance.*
 > on `dictionary.jsonl`. `F_KAPPA_FUNCTIONAL_FORM.md` §10/§14 flagged accordingly.
 
 **Status ledger (newest first):**
+- **2026-07-06 (✅ f_A PHASE 3 RAN — all 4 gates pass; default LITERAL byte-identity; first LIVE
+  El-Badry sign).** Executor session (Opus) ran Phase 3 gates of `SOURCE_TERM_DESIGN.md §3`.
+  (1) pytest 742. (2) **Byte-identity is literal, not value-diff**: pre (git worktree @919feaec,
+  pre-Phase-2) == postA == postB, identical sha256 of `dictionary.jsonl` (simple_cluster,
+  stop_t 0.03, pinned OMP/OPENBLAS/MKL=1); the A/A control is itself bit-identical (thread pinning
+  removed the §9b FP wobble) — the `fA != 1.0` guards proven inert to the byte. (3) Screen re-run
+  reproduces §2 (6/6 gates, zero git diff). (4) Live smoke fA=8 (stop_t 0.03, DEBUG): clean, 0
+  freeze/no-root events, dMdt(8)<dMdt(1) and θ(8)>θ(1) in 29/29 matched segments — the El-Badry
+  ṁ-suppression sign surviving the FULL COUPLED run (all prior evidence was replayed states).
+  FINDINGS §15c. Phase 3 ✅; **Phase 4 (theta5s HPC matrix) next — the first maintainer-gated
+  phase (sbatch submission + sync).**
 - **2026-07-06 (✅ f_A PHASE 2 RAN — production wiring landed, gated default-1.0 byte-identical).**
   Executor session (Opus) ran Phase 2 of `SOURCE_TERM_DESIGN.md §3`. `cooling_boost_fA` wired into
   production: two edit sites in `bubble_luminosity.py` behind `fA != 1.0` guards (RHS `dudt`

@@ -37,7 +37,10 @@ directive: one stream of workflow, no parallel plan docs. The former `FA_IMPLEME
 was folded into §3 here and **deleted** the same day; if you find a reference to it, it means
 this doc. Design (§1) and screen evidence (§2) are settled; the workflow (§3) is the execution
 stream for the next sessions: Phase 0 ✅ done, **Phase 1 ✅ done (2026-07-06, `FINDINGS.md §15a`)**,
-**Phase 2 ✅ done (2026-07-06, `FINDINGS.md §15b`)**, Phases 3–6 ⬜ open. Two review agents audited this plan on 2026-07-06 (config-coverage audit;
+**Phase 2 ✅ done (2026-07-06, `FINDINGS.md §15b`)**,
+**Phase 3 ✅ done (2026-07-06, `FINDINGS.md §15c` — all 4 gates pass; default LITERAL
+byte-identity; first live El-Badry sign)**, Phases 4–6 ⬜ open (Phase 4 is the first
+maintainer-gated phase: HPC sbatch). Two review agents audited this plan on 2026-07-06 (config-coverage audit;
 literature-benchmark extraction) — their findings are integrated throughout and marked "(audit)" /
 "(lit)". **Phase 1 headline: the condensation-edge prediction (edges near θ≈1) was FALSIFIED in the
 SAFE direction — no dMdt≤0 edge exists for f_A even at 512 (16× the physical range); the source knob
@@ -313,7 +316,14 @@ production caller today, but harnesses import it; the band cut is bubble-model l
 or L_leak; put f_A near κ (not the Eq-44 IC :377–388, not the Eq-33 seed :297, not the RHS
 conduction prefactor :413); introduce a third 10^5.5 literal.
 
-### Phase 3 ⬜ — gates (in order; pass bars pinned)
+### Phase 3 ✅ — gates (done 2026-07-06, `FINDINGS.md §15c` — all 4 pass)
+
+> RESULT: (1) pytest 742 green. (2) **Byte-identity is LITERAL** — pre (worktree @919feaec) ==
+> postA == postB, identical sha256 of `dictionary.jsonl` at `stop_t 0.03`, pinned threads; the A/A
+> control is itself bit-identical (no §9b FP wobble). (3) Screen reproduces §2 (6/6 gates, zero git
+> diff). (4) Live smoke fA=8 runs clean (0 freezes), dMdt<fA=1 and θ>fA=1 in 29/29 matched segments
+> — the El-Badry sign surviving the full coupled run. **Phase 4 is the first maintainer-gated phase
+> (HPC sbatch).** Below is the original spec, kept for provenance.
 
 1. **Full pytest** green (baseline 733 selected at 2026-07-06 HEAD — re-verify at execution).
 2. **Byte-identity at default**: `param/simple_cluster.param` +

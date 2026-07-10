@@ -1354,6 +1354,37 @@ fails the byte-identity gate, so it was regenerated via `python -m tools.gen_def
 after the registry spec landed (not hand-edited — a correction to the plan's "mirror the text into
 default.param" step). Full pytest green; the rigorous cross-process byte-identity gate is Phase 3.
 
+## 15c. [gate] Phase 3 — all four gates PASS; default is LITERAL byte-identity; first LIVE El-Badry sign (2026-07-06)
+
+Phase 3 of the consolidated workflow (`SOURCE_TERM_DESIGN.md §3`) — the rule-5 gate ladder before
+f_A is trusted. All four gates pass:
+
+1. **Full pytest**: 742 passed, 3 deselected (unchanged from Phase 2).
+2. **Byte-identity at default — LITERAL, not just value-diff.** `param/simple_cluster.param`,
+   `stop_t 0.03` (131 rows), separate processes, `OMP_NUM_THREADS=OPENBLAS_NUM_THREADS=MKL_NUM_THREADS=1`.
+   Three runs: **pre** (worktree at 919feaec, the pre-Phase-2 parent — 0 f_A code), **postA**,
+   **postB** (current HEAD, `cooling_boost_fA=1` default). All three produced the **identical
+   sha256** of `dictionary.jsonl` (`64542c10…`). So: the **A/A control is bit-identical** (thread
+   pinning eliminated the §9b FP nondeterminism — no ULP wobble at all), AND **pre==post is
+   bit-identical** — the Phase-2 change is provably inert at the default (the `fA != 1.0` guards
+   are unreachable, confirmed to the byte). This clears the strictest rung of the ladder (a "free
+   win" ⇒ bit-identical, CLAUDE.md rule 5).
+3. **Screen re-run**: `python data/make_fA_source_boost.py` reproduced §2 exactly (G1 6/6, G2 6/6,
+   P1–P4 6/6) and left **zero git diff** on the committed CSVs — deterministic regeneration.
+4. **Live smoke — the first LIVE (fully-coupled, not replayed) El-Badry-sign confirmation.**
+   `simple_cluster`, `cooling_boost_fA 8`, `stop_t 0.03`, `log_level DEBUG`: ran clean to stop_t
+   (131 rows), **0 freeze / no_physical_root events** (consistent with Phase 1: f_A has no reachable
+   condensation edge). Against the fA=1 companion (byte_postA) at 29 matched accepted segments:
+   **dMdt(fA=8) < dMdt(fA=1) in 29/29** (ratio ~0.73–0.91) and **θ(fA=8) > θ(fA=1) in 29/29**
+   (θ raised e.g. 0.31→0.37 early, 0.49→0.58 later). Every prior ṁ-suppression result was on
+   *replayed* states; this is the sign surviving the full coupled evolution — cooling up,
+   evaporation down, live.
+
+⛔ No θ fire-threshold is quotable from gate 4 (stop_t=0.03, far short of the ≥5 Myr rule); it is a
+mechanism smoke, not calibration. Artifacts are local scratch runs (byte-identity is a pass/fail
+gate, not a diagnostic to persist); the reproduce recipe is in REPRODUCE #39. **Phase 3 ✅ →
+Phase 4 (theta5s HPC matrix) is next — the first maintainer-gated phase (sbatch submission).**
+
 ## 16. [flag] Pre-existing latent double-boost in the trigger fallback (found 2026-07-06 during the f_A plan audit; NOT fixed)
 
 `run_energy_implicit_phase.py:1245-1247`: when `bubble_props is None`, the trigger path reads
