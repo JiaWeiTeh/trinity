@@ -1385,6 +1385,50 @@ mechanism smoke, not calibration. Artifacts are local scratch runs (byte-identit
 gate, not a diagnostic to persist); the reproduce recipe is in REPRODUCE #39. **Phase 3 ✅ →
 Phase 4 (theta5s HPC matrix) is next — the first maintainer-gated phase (sbatch submission).**
 
+## 15d. [tooling] Phase 4 — theta5s matrix tooling READY, awaiting maintainer HPC submission (2026-07-06)
+
+Phase 4 of the workflow (`SOURCE_TERM_DESIGN.md §3`) is the 81-arm live matrix — but it is the
+first phase that **cannot run in-container** (HPC sbatch + sync are maintainer-only). This session
+built and committed the full tooling, verified everything runnable locally; the matrix itself is
+**NOT yet run** — no θ number is quotable until the maintainer submits and harvests.
+
+Committed tooling (all mirror the theta5k conventions verified against source 2026-07-06):
+- `runs/make_theta5s_params.py` + `runs/params/theta5s/` (**81 params generated & committed**):
+  9 configs (the 8 from `make_theta5_params.CONFIGS` + normal_n1e3) × f_A {1,2,4,6,8,12,16,24,32},
+  `stop_t 5`, single-knob (mode=none, kappa=1). Arm naming `<config>__none` (fA=1 baseline) /
+  `<config>__fa<v>`. **All 81 validated: load via `read_param`, distinct fA = {1..32}, `__none`
+  carries no fA line (default → byte-identical, Phase 3).**
+- `runs/run_theta5s.sbatch` — array 1-81, **`--time=6:00:00`** (wall-time armor, audit G4),
+  `.exit_code`/`.duration` writes, threads pinned. `bash -n` clean; array count == 81 params.
+- `runs/sync_theta5s.sh` — up/submit/watch/run/down, theta5s namespace (exec bit set, matches
+  siblings).
+- `data/make_theta5s_analysis.py` — fire map + θ_max-rise + **collapse-law fit** (registered
+  prediction p_source ≈ 3.3 vs multiplier 1.82; auto-flags OUT-OF-RANGE → STOP). Whole-band check
+  over the **7 fireable** configs; **control-fire check** (a small_1e6/fail_repro fire is a BUG,
+  not a pass). Smoke-tested against a synthetic summary (deleted) — runs end-to-end, no crash.
+- `runs/harvest_dmdt_suppression.py` — read (iii): per boosted arm, dMdt(fA) interpolated onto the
+  `__none` baseline's accepted-row grid (compare_live pattern), ratio flagged upper-limit for
+  <20-segment overlap / <0.1 Myr fires; El-Badry Eq 47 trend check. **Smoke-tested on the Phase-3
+  fA=1/fA=8 pair: median ratio 0.934 (<1, suppression), correctly flagged upper_limit (truncated
+  <0.1 Myr).**
+
+**Handoff to the maintainer (the only way Phase 4 completes):**
+```
+git pull on Helix (needs the Phase-2 f_A wiring)              # ./sync_theta5s.sh up
+./sync_theta5s.sh submit          # sbatch the 81-arm array (ARRAY=1-81%16 to throttle)
+./sync_theta5s.sh watch           # queue + newest log
+./sync_theta5s.sh run             # harvest theta_max -> theta5s_summary.csv (on HPC)
+./sync_theta5s.sh down            # rsync the summary to runs/data/, commit it
+# then a follow-up session runs:
+python data/make_theta5s_analysis.py
+python runs/harvest_dmdt_suppression.py "$WS"/outputs/theta5s/* --csv data/theta5s_dmdt_suppression.csv
+```
+Post-harvest compliance gate (protocol rule 2): every arm must show `t_final ≥ 5` or a physics
+termination; re-run any wall-killed/nonzero-exit arm at a longer limit before quoting θ; report
+"N/81 compliant". Bracket rule: if any FIREABLE config is NOFIRE at fA=32, submit {48,64} for that
+config only — never widen the grid to force a control to fire. **Phase 4 status: 🟡 tooling ready,
+awaiting HPC.** The analysis-session read-out feeds the Phase-6 decision tree.
+
 ## 16. [flag] Pre-existing latent double-boost in the trigger fallback (found 2026-07-06 during the f_A plan audit; NOT fixed)
 
 `run_energy_implicit_phase.py:1245-1247`: when `bubble_props is None`, the trigger path reads

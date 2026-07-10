@@ -1,0 +1,12 @@
+model_name             large_diffuse_lowsfe__fa6
+mCloud                 1e7
+nCore                  1e2
+rCore                  1
+sfe                    0.01
+dens_profile           densPL
+densPL_alpha           0
+stop_t                 5
+cooling_boost_fA       6
+log_console            False
+log_file               True
+path2output            outputs/theta5s/large_diffuse_lowsfe__fa6

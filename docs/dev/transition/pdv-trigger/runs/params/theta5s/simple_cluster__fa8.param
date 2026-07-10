@@ -1,0 +1,8 @@
+model_name             simple_cluster__fa8
+mCloud                 1e5
+sfe                    0.3
+stop_t                 5
+cooling_boost_fA       8
+log_console            False
+log_file               True
+path2output            outputs/theta5s/simple_cluster__fa8

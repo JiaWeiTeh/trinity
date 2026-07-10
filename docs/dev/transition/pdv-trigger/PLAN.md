@@ -285,6 +285,18 @@ for provenance.*
 > on `dictionary.jsonl`. `F_KAPPA_FUNCTIONAL_FORM.md` §10/§14 flagged accordingly.
 
 **Status ledger (newest first):**
+- **2026-07-06 (🟡 f_A PHASE 4 TOOLING READY — 81-arm theta5s matrix built & committed, awaiting
+  maintainer HPC submission).** Executor session (Opus) built Phase-4 tooling per
+  `SOURCE_TERM_DESIGN.md §3`, mirroring the theta5k conventions (studied `runs/` on maintainer
+  request). Committed: `runs/make_theta5s_params.py` + **81 validated params** (`runs/params/theta5s/`;
+  9 configs × f_A {1,2,4,6,8,12,16,24,32}, single-knob, `__none` = byte-identical baseline);
+  `runs/run_theta5s.sbatch` (array 1-81, `--time=6:00:00` wall-armor); `runs/sync_theta5s.sh`;
+  `data/make_theta5s_analysis.py` (fire map + θ-rise + collapse-law fit, registered p_source≈3.3,
+  whole-band over 7 fireable + control-fire-is-a-bug check; smoke-tested on synthetic data);
+  `runs/harvest_dmdt_suppression.py` (read iii; smoke-tested on the Phase-3 fA=1/fA=8 pair → median
+  ratio 0.934). **The matrix is NOT run — no θ quotable.** Maintainer runs
+  `./sync_theta5s.sh {up,submit,watch,run,down}` on Helix; a follow-up session analyzes the
+  harvest. FINDINGS §15d. Phase 4 🟡 awaiting HPC; then Phase 5 (bench5) / Phase 6 (decision).
 - **2026-07-06 (✅ f_A PHASE 3 RAN — all 4 gates pass; default LITERAL byte-identity; first LIVE
   El-Badry sign).** Executor session (Opus) ran Phase 3 gates of `SOURCE_TERM_DESIGN.md §3`.
   (1) pytest 742. (2) **Byte-identity is literal, not value-diff**: pre (git worktree @919feaec,

@@ -39,8 +39,10 @@ this doc. Design (§1) and screen evidence (§2) are settled; the workflow (§3)
 stream for the next sessions: Phase 0 ✅ done, **Phase 1 ✅ done (2026-07-06, `FINDINGS.md §15a`)**,
 **Phase 2 ✅ done (2026-07-06, `FINDINGS.md §15b`)**,
 **Phase 3 ✅ done (2026-07-06, `FINDINGS.md §15c` — all 4 gates pass; default LITERAL
-byte-identity; first live El-Badry sign)**, Phases 4–6 ⬜ open (Phase 4 is the first
-maintainer-gated phase: HPC sbatch). Two review agents audited this plan on 2026-07-06 (config-coverage audit;
+byte-identity; first live El-Badry sign)**,
+**Phase 4 🟡 tooling READY, awaiting maintainer HPC submission (2026-07-06, `FINDINGS.md §15d` —
+81 params + sbatch + sync + analysis + dMdt reducer committed & locally validated; the matrix is
+NOT yet run)**, Phases 5–6 ⬜ open. Two review agents audited this plan on 2026-07-06 (config-coverage audit;
 literature-benchmark extraction) — their findings are integrated throughout and marked "(audit)" /
 "(lit)". **Phase 1 headline: the condensation-edge prediction (edges near θ≈1) was FALSIFIED in the
 SAFE direction — no dMdt≤0 edge exists for f_A even at 512 (16× the physical range); the source knob
@@ -342,7 +344,15 @@ conduction prefactor :413); introduce a third 10^5.5 literal.
    NOT plain run.py defaults): runs clean; `bubble_dMdt` visibly below the fA=1 companion at
    matched segments; θ visibly above. No θ quotes (stop_t rule).
 
-### Phase 4 ⬜ — theta5s: the all-9-config live matrix (HPC)
+### Phase 4 🟡 — theta5s: the all-9-config live matrix (HPC) — TOOLING READY, AWAITING MAINTAINER SUBMISSION (2026-07-06, `FINDINGS.md §15d`)
+
+> STATE: all builders committed & locally validated (`runs/make_theta5s_params.py` + 81 committed
+> params, `runs/run_theta5s.sbatch` array 1-81 @6h, `runs/sync_theta5s.sh`,
+> `data/make_theta5s_analysis.py`, `runs/harvest_dmdt_suppression.py`). The **matrix is NOT run**
+> — the maintainer must `./sync_theta5s.sh {up,submit,watch,run,down}` on Helix (needs the Phase-2
+> f_A wiring pulled). A follow-up session runs the analysis on the harvested `theta5s_summary.csv`
+> and the dMdt reducer on the raw arms, then feeds the Phase-6 tree. No θ quotable until then.
+> Original spec below (kept for provenance).
 
 - **Grid** (audit G2 ⊕ lit prediction): f_A ∈ **{1, 2, 4, 6, 8, 12, 16, 24, 32}** × 9 configs =
   81 arms, `stop_t 5`, mode=none, kappa=1 (single-knob by construction — say so in the sbatch

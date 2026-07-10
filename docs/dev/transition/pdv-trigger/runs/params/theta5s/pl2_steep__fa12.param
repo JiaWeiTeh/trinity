@@ -1,0 +1,12 @@
+model_name             pl2_steep__fa12
+mCloud                 1e6
+nCore                  1e5
+rCore                  1
+sfe                    0.1
+dens_profile           densPL
+densPL_alpha           -2
+stop_t                 5
+cooling_boost_fA       12
+log_console            False
+log_file               True
+path2output            outputs/theta5s/pl2_steep__fa12
