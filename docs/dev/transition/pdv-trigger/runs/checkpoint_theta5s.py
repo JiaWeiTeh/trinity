@@ -57,6 +57,15 @@ def main(argv):
     with open(args.summary, "w", newline="") as fh:
         fh.write("# theta5s cumulative summary (merged across container restarts by "
                  "checkpoint_theta5s.py). theta from bubble_Lloss/Lmech_total on accepted rows.\n")
+        fh.write("# ⚠️ PROVISIONAL / IN-CONTAINER — NOT HPC. These arms were run in Claude's "
+                 "ephemeral container (maintainer had no HPC access), which is restart-prone and "
+                 "compute-limited: only the fastest-firing arms complete; slow __none/low-fA "
+                 "baselines and diffuse configs wall-kill and are ABSENT or TRUNCATED. This matrix "
+                 "is INCOMPLETE and biased toward fast arms, so any fire-map / collapse-law / dMdt "
+                 "conclusion drawn from it is ASSUMED, not authoritative. ACTION: once HPC is "
+                 "available, re-run the full 81-arm matrix via runs/run_theta5s.sbatch (the "
+                 "authoritative path) and RE-CHECK everything downstream against it — see "
+                 "FINDINGS.md §15e.\n")
         w = csv.DictWriter(fh, fieldnames=COLS, extrasaction="ignore")
         w.writeheader()
         w.writerows(rows)

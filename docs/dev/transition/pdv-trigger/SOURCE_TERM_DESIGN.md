@@ -42,7 +42,12 @@ stream for the next sessions: Phase 0 ✅ done, **Phase 1 ✅ done (2026-07-06, 
 byte-identity; first live El-Badry sign)**,
 **Phase 4 🟡 tooling READY, awaiting maintainer HPC submission (2026-07-06, `FINDINGS.md §15d` —
 81 params + sbatch + sync + analysis + dMdt reducer committed & locally validated; the matrix is
-NOT yet run)**, Phases 5–6 ⬜ open. Two review agents audited this plan on 2026-07-06 (config-coverage audit;
+NOT yet run on HPC)**, Phases 5–6 ⬜ open.
+**⚠️ A PROVISIONAL in-container fallback run is in progress (2026-07-10, `FINDINGS.md §15e`) because
+the maintainer had no HPC access — it is restart-limited and fast-arm-biased (baselines + diffuse
+configs wall-kill), so its fire-map/collapse-law/dMdt numbers are ASSUMED, NOT authoritative. Once
+HPC is available the full matrix must be re-run via `run_theta5s.sbatch` and EVERYTHING downstream
+(analysis, controls, Phases 5–6, paper numbers) re-checked against it.** Two review agents audited this plan on 2026-07-06 (config-coverage audit;
 literature-benchmark extraction) — their findings are integrated throughout and marked "(audit)" /
 "(lit)". **Phase 1 headline: the condensation-edge prediction (edges near θ≈1) was FALSIFIED in the
 SAFE direction — no dMdt≤0 edge exists for f_A even at 512 (16× the physical range); the source knob
@@ -353,6 +358,16 @@ conduction prefactor :413); introduce a third 10^5.5 literal.
 > f_A wiring pulled). A follow-up session runs the analysis on the harvested `theta5s_summary.csv`
 > and the dMdt reducer on the raw arms, then feeds the Phase-6 tree. No θ quotable until then.
 > Original spec below (kept for provenance).
+>
+> ⚠️ **PROVISIONAL in-container fallback (2026-07-10, `FINDINGS.md §15e`).** Because the maintainer
+> had no HPC access, the matrix is being run *in-container* via `runs/run_theta5s_local.py` +
+> `runs/checkpoint_theta5s.py` instead of on Helix. This is **restart-limited and fast-arm-biased**:
+> only the fastest-firing arms complete; `__none`/low-fA baselines and diffuse configs wall-kill and
+> are absent/truncated. **Its fire-map / collapse-law / dMdt numbers are ASSUMED, not authoritative
+> — this run does NOT satisfy Phase 4 and must NOT feed the Phase-6 decision as final.** Phase 4 is
+> complete only when the full 81-arm matrix runs on HPC via `run_theta5s.sbatch`; at that point every
+> downstream read (analysis, both controls, Phases 5–6, paper numbers) is re-checked against the HPC
+> summary and §15e is superseded.
 
 - **Grid** (audit G2 ⊕ lit prediction): f_A ∈ **{1, 2, 4, 6, 8, 12, 16, 24, 32}** × 9 configs =
   81 arms, `stop_t 5`, mode=none, kappa=1 (single-knob by construction — say so in the sbatch

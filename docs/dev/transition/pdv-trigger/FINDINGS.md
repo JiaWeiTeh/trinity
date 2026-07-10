@@ -1429,6 +1429,47 @@ termination; re-run any wall-killed/nonzero-exit arm at a longer limit before qu
 config only — never widen the grid to force a control to fire. **Phase 4 status: 🟡 tooling ready,
 awaiting HPC.** The analysis-session read-out feeds the Phase-6 decision tree.
 
+## 15e. [PROVISIONAL — in-container, NOT HPC] theta5s partial matrix, assumed pending HPC re-run (2026-07-10)
+
+> ⚠️ **These numbers are ASSUMED, not authoritative.** The maintainer had no HPC access, so — at
+> their request — the 81-arm theta5s matrix was run **in Claude's ephemeral container**, not on
+> Helix via `run_theta5s.sbatch`. The container is **restart-prone (windows of ~2–13 min) and
+> single-node compute-limited**, which biases the sample hard: only the **fastest-firing arms
+> complete**, while the **`__none`/low-fA baselines and the diffuse configs** (§8d cliff) **wall-kill
+> and are absent or truncated**. So this is a **partial, fast-arm-biased** matrix, and every
+> conclusion below is **provisional**. **Do not quote it as the whole-band result; do not let it
+> feed the Phase-6 decision as if final.**
+
+**Why in-container at all.** Phase 4 (§15d) is HPC-gated by design. This run is a *fallback* the
+maintainer explicitly asked for while HPC was unavailable, via `runs/run_theta5s_local.py` (resumable;
+skips compliant arms across restarts) + `runs/checkpoint_theta5s.py` (merges each container's completed
+arms into the committed summary, which survives restarts). Per-arm limit ≥20 min (maintainer ruling
+2026-07-10; set to 30 min) before an arm is called non-compliant. The committed
+`runs/data/theta5s_summary.csv` carries the same PROVISIONAL banner in its header.
+
+**What completed so far (provisional, 18 compliant of 81):**
+- **`fail_repro` control — all 9 arms, never fires** (θ_max 0.003 → 0.014 across fA 1→32, ≪ 0.95).
+  The control staying cold even at fA=32 is the most robust in-container result.
+- **`small_dense_highsfe` — fires at fA≥4** (θ_max ≥ 0.95); dose-dependent (fA4–8 shell-dissolved,
+  fA12+ shell-collapsed). Baseline (`__none`) + fA2 wall-killed → fire *threshold* not yet bracketed.
+- **`normal_n1e3` — fires at fA12/16**; high-fA arms (fa24/32) are compute-heavy (dt-shrink) and slow
+  even here; low-fA/baseline wall-kill.
+- Everything else (`simple_cluster`, `pl2_steep`, `be_sphere`, `midrange_pl0`, `large_diffuse_lowsfe`,
+  `small_1e6`) + all `__none` baselines: **not yet completed in-container** (compute/​restart limited).
+  `small_1e6` (the second control) is therefore **not yet checked** — its no-fire requirement is still open.
+
+**⛔ MANDATORY future action — revisit once HPC is available.** This is not optional cleanup; the
+in-container matrix is a placeholder to be **replaced**, not confirmed:
+1. Re-run the **full 81-arm matrix** on HPC via `runs/run_theta5s.sbatch` (the authoritative path) →
+   harvest a fresh `theta5s_summary.csv` (its `harvest_theta_max.py` header replaces the PROVISIONAL
+   banner). Every arm must clear the compliance gate (`t_final ≥ 5` or physics termination).
+2. **Re-check everything downstream against the HPC result** — treat the in-container numbers as
+   unverified until each is reproduced: `data/make_theta5s_analysis.py` (fire map, θ_max-rise,
+   collapse-law fit vs the registered p_source≈3.3), `runs/harvest_dmdt_suppression.py` (Eq-47 ṁ
+   trend), the fire/no-fire calls above, **both controls** (`fail_repro`, `small_1e6`), Phase 5
+   (bench5 Lancaster calibration), the **Phase-6 decision**, and any number that reaches the paper.
+   If HPC contradicts an in-container call, the HPC value wins and this section is superseded.
+
 ## 16. [flag] Pre-existing latent double-boost in the trigger fallback (found 2026-07-06 during the f_A plan audit; NOT fixed)
 
 `run_energy_implicit_phase.py:1245-1247`: when `bubble_props is None`, the trigger path reads

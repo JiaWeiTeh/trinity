@@ -285,6 +285,19 @@ for provenance.*
 > on `dictionary.jsonl`. `F_KAPPA_FUNCTIONAL_FORM.md` §10/§14 flagged accordingly.
 
 **Status ledger (newest first):**
+- **2026-07-10 (⚠️ f_A PHASE 4 PROVISIONAL in-container fallback — NOT HPC, ASSUMED not
+  authoritative).** Maintainer had no HPC access and asked the session to run the theta5s matrix
+  in-container instead of on Helix. Built `runs/run_theta5s_local.py` (resumable, high-fA-first
+  ordering, ≥20-min/arm per maintainer ruling — set to 30 min) + `runs/checkpoint_theta5s.py`
+  (merges each ephemeral container's completed arms into the committed
+  `runs/data/theta5s_summary.csv`, which carries a PROVISIONAL header). The container is
+  **restart-prone (~2–13 min) and compute-limited**, so the sample is **fast-arm-biased**: only the
+  fastest-firing arms complete (fail_repro control never fires ✓, small_dense fires fA≥4,
+  normal_n1e3 fA12/16), while `__none`/low-fA baselines and diffuse configs wall-kill and are
+  absent/truncated. **This does NOT satisfy Phase 4 and its fire-map/collapse-law/dMdt numbers must
+  NOT feed the Phase-6 decision as final.** ⛔ Once HPC is available: re-run the full 81-arm matrix
+  via `run_theta5s.sbatch` and RE-CHECK every downstream read (analysis, both controls, Phases 5–6,
+  paper numbers) against the HPC summary; §15e is then superseded. FINDINGS §15e, REPRODUCE row 41.
 - **2026-07-06 (🟡 f_A PHASE 4 TOOLING READY — 81-arm theta5s matrix built & committed, awaiting
   maintainer HPC submission).** Executor session (Opus) built Phase-4 tooling per
   `SOURCE_TERM_DESIGN.md §3`, mirroring the theta5k conventions (studied `runs/` on maintainer
