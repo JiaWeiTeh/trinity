@@ -37,7 +37,7 @@ directive: one stream of workflow, no parallel plan docs. The former `FA_IMPLEME
 was folded into §3 here and **deleted** the same day; if you find a reference to it, it means
 this doc. Design (§1) and screen evidence (§2) are settled; the workflow (§3) is the execution
 stream for the next sessions: Phase 0 ✅ done, **Phase 1 ✅ done (2026-07-06, `FINDINGS.md §15a`)**,
-Phases 2–6 ⬜ open. Two review agents audited this plan on 2026-07-06 (config-coverage audit;
+**Phase 2 ✅ done (2026-07-06, `FINDINGS.md §15b`)**, Phases 3–6 ⬜ open. Two review agents audited this plan on 2026-07-06 (config-coverage audit;
 literature-benchmark extraction) — their findings are integrated throughout and marked "(audit)" /
 "(lit)". **Phase 1 headline: the condensation-edge prediction (edges near θ≈1) was FALSIFIED in the
 SAFE direction — no dMdt≤0 edge exists for f_A even at 512 (16× the physical range); the source knob
@@ -217,7 +217,20 @@ Original spec (kept for provenance):
    documented in its docstring). Artifacts: `data/fA_edge_map.csv` + `fA_edge_map.png` + the new
    fixtures; FINDINGS §15a; REPRODUCE row. Same ⛔ grade as §2 (replayed states).
 
-### Phase 2 ⬜ — production wiring (two edit sites + registry + tests)
+### Phase 2 ✅ — production wiring (two edit sites + registry + tests) (done 2026-07-06, `FINDINGS.md §15b`)
+
+> RESULT: `cooling_boost_fA` wired into production, gated default-1.0 byte-identical. Both edit
+> sites landed (RHS `dudt` band-multiply at `bubble_luminosity.py:416`; L₂/L₃ component scaling at
+> `:811`; `_T_INTERFACE_BAND=10**5.5` constant at `:59`), registry ParamSpec + validator
+> (rejects ≤0, cross-knob warning). New `test/test_fA_source_boost.py` (9 tests) green; full pytest
+> green. fA=1 reproduces the pre-patch solve exactly; fA=4 raises LTotal ×1.35, lowers dMdt ×0.934.
+> **Two plan corrections (FINDINGS §15b):** (1) `default.param` is auto-generated — regenerate with
+> `python -m tools.gen_default_param --write` after the registry edit, do NOT hand-edit (byte gate
+> `test_gen_default_param`). (2) The predicted string-pin collateral (`_scalar_params`,
+> `test_metadata`, `test_mu_audit_drift`) did NOT break — no collateral edits were needed.
+> The rigorous cross-process byte-identity gate is Phase 3.
+
+Original spec (kept for provenance):
 
 **Registry** (`trinity/_input/registry.py`, insert after `cooling_boost_kappa`, currently :353;
 same ParamSpec shape: `category='input_solver'`, `unit=None`, `exclude_from_snapshot=True`,

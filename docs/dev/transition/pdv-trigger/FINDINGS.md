@@ -1317,6 +1317,43 @@ read this as *the edge is unreachable for f_A* — dense configs that fail to fi
 or stay energy-driven, not condense. (The fix-#1 no-root handoff remains the safety net for any live
 surprise, but Phase 1 predicts it will not trigger via an f_A-driven condensation.)
 
+## 15b. [code] Phase 2 — f_A production wiring landed, gated default-1.0 byte-identical (2026-07-06)
+
+Phase 2 of the consolidated workflow (`SOURCE_TERM_DESIGN.md §3`) wired `cooling_boost_fA` into
+production. Two edit sites in `trinity/bubble_structure/bubble_luminosity.py` (behind `fA != 1.0`
+guards → default path is the literal production float ops):
+- **Edit site 1** (`_get_bubble_ODE` RHS, after the `dudt =` line, now :416): `dudt → fA·dudt`
+  when `T < _T_INTERFACE_BAND` (`10**5.5`, a new module constant next to `_T_INIT_BOUNDARY`).
+- **Edit site 2** (`_bubble_luminosity`, before `L_total`, now :811): `L_conduction, L_intermediate
+  → fA·(...)`. L₁ (CIE interior) and L_leak deliberately unscaled; `|∫f·g| = f·|∫g|` so this
+  equals the screen's `L_eff = L1 + fA·(L2+L3)` and flows consistently into the dataclass, the
+  β–δ residual (Lcool), dictionary logging, and the harvest chain.
+Registry: `cooling_boost_fA` ParamSpec after `cooling_boost_kappa` (`registry.py`), with
+`validator=_validate_cooling_boost_fA` — rejects f_A ≤ 0 and emits a load-time WARNING when
+f_A ≠ 1 combines with `cooling_boost_mode != none` or an active `cooling_boost_kappa`
+(incl. `'auto'`; validators run *before* resolvers, so kappa is read raw). Added "grid measured at
+cooling_boost_fA=1" to the kappa-`'auto'` text.
+
+**Production-path check (replayed simple_cluster blowout state, real param not monkeypatch):**
+fA=1 reproduces the pre-patch solve exactly (LTotal 2.3271e8, dMdt 5630.0 — matches the Phase-0
+value); fA=4 raises LTotal ×1.35 and lowers dMdt ×0.934 (the El-Badry sign), with L₂/L₃ scaled and
+L₁ shifting only via back-reaction. A short live default run (`stop_t 0.03`) produces sane rows and
+does not crash.
+
+Tests: new `test/test_fA_source_boost.py` (9 tests — registry default/reject-≤0/run_const,
+cross-knob warning fires & silent at default, band-limited RHS + default-inertness triplet,
+edit-site-2 component scaling via a frozen profile (`_T_INTERFACE_BAND→0`) showing L₂/L₃ scale ×fA
+exactly and L₁ unchanged, and the log-space band-edge pin `_noncie_cutoffs[0]==log10(10**5.5)`).
+
+**Deviation from the plan (recorded per the honesty rule):** the plan predicted string-pin
+collateral breakage in `test_dR2min_magic_number.py:98` `_scalar_params`, `test_metadata.py`,
+`test_mu_audit_drift.py`. **None broke** — those params come from `read_param` (which now carries
+the default) and `_scalar_params` feeds only the Eq-44 IC (a trap site, untouched), not the RHS.
+Separately, `default.param` is an **auto-generated artifact** (`test_gen_default_param`): a hand-edit
+fails the byte-identity gate, so it was regenerated via `python -m tools.gen_default_param --write`
+after the registry spec landed (not hand-edited — a correction to the plan's "mirror the text into
+default.param" step). Full pytest green; the rigorous cross-process byte-identity gate is Phase 3.
+
 ## 16. [flag] Pre-existing latent double-boost in the trigger fallback (found 2026-07-06 during the f_A plan audit; NOT fixed)
 
 `run_energy_implicit_phase.py:1245-1247`: when `bubble_props is None`, the trigger path reads

@@ -114,6 +114,40 @@ def _validate_dens_profile(value, params) -> None:
         )
 
 
+def _validate_cooling_boost_fA(value, params) -> None:
+    """f_A > 0 required; warn on cross-knob combinations (double-boost).
+
+    f_A is the interface source-term boost (SOURCE_TERM_DESIGN.md). It is
+    intended as a SINGLE knob: combining it with cooling_boost_mode != none or
+    an active cooling_boost_kappa double-counts interface cooling. Validators
+    run BEFORE resolvers (read_param Steps 5 vs 7), so cooling_boost_kappa is
+    still its raw value here -- a number or the string 'auto'; both count as
+    'kappa active'. cooling_boost_mode's 'none' default parses to Python None.
+    """
+    from trinity._input.errors import ParameterFileError
+    try:
+        fA = float(value)
+    except (TypeError, ValueError):
+        raise ParameterFileError(
+            f"cooling_boost_fA={value!r} must be a positive number.")
+    if not (fA > 0):
+        raise ParameterFileError(
+            f"cooling_boost_fA={value} must be > 0 (values < 1 are untested "
+            f"suppression territory; default 1.0 = off, byte-identical).")
+    if fA != 1.0:
+        mode = params['cooling_boost_mode'].value if 'cooling_boost_mode' in params else None
+        kappa = params['cooling_boost_kappa'].value if 'cooling_boost_kappa' in params else 1.0
+        kappa_active = ((isinstance(kappa, str) and kappa.strip().lower() == 'auto')
+                        or (not isinstance(kappa, str) and kappa != 1.0))
+        if mode not in (None, 'none', '') or kappa_active:
+            logger.warning(
+                f"cooling_boost_fA={fA} combined with cooling_boost_mode={mode!r} / "
+                f"cooling_boost_kappa={kappa!r}: f_A is intended as a SINGLE knob. "
+                f"Combining boosts double-counts interface cooling (and the "
+                f"cooling_boost_kappa='auto' 819-run grid was measured at "
+                f"cooling_boost_fA=1); the result is NOT the calibrated f_A.")
+
+
 def _validate_betadelta_solver(value, params) -> None:
     """Selects the energy-implicit (beta, delta) solver. 'hybr' (default)
     is the unbounded scipy root-finder with a physical dMdt>0 acceptance
@@ -350,7 +384,8 @@ SPECS: tuple[ParamSpec, ...] = (
     ParamSpec(name='cooling_boost_mode', default='none', info="Opt-in unresolved-interface-cooling boost (Paper-II note, docs/dev/transition/pdv-trigger/PLAN.md). 'none' (default) = resolved cooling unchanged, BYTE-IDENTICAL. 'multiplier' = Lleak + cooling_boost_fmix*Lcool. 'theta_target' = max(Lcool+Lleak, cooling_boost_theta*Lmech) (tops up to a target loss fraction, single-count). The boosted loss feeds the beta-delta residual, the energy ODE, AND the transition trigger consistently. Never a (1-theta)*Lmech input rescale on top of Lcool -- that double-counts.", category='input_solver', unit=None, exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='cooling_boost_fmix', default='1.0', info='Multiplier on the resolved cooling integral when cooling_boost_mode=multiplier (f_mix >= 1). Default 1.0 = no boost.', category='input_solver', unit=None, exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='cooling_boost_theta', default='0.0', info='Target loss fraction theta = Lloss/Lmech when cooling_boost_mode=theta_target (0..1, with a ceiling theta_max<1 at GMC-core density). Default 0.0 = off.', category='input_solver', unit=None, exclude_from_snapshot=True, run_const=True),
-    ParamSpec(name='cooling_boost_kappa', default='1.0', info='Rung-A probe (docs/dev/transition/pdv-trigger/KAPPA_EFF_SCOPING.md): multiplier f_kappa on the Spitzer conduction coefficient C_thermal in the bubble-structure solve (f_kappa >= 1). Inflates conduction-zone cooling THROUGH the structure (theta emerges as an output), unlike the scalar cooling_boost on Lcool. Default 1.0 = byte-identical. NOTE it also RAISES the evaporative mass flux -- the El-Badry coupling a faithful kappa_eff must instead suppress -- so it is a structural probe, not the final model. Set to \'auto\' to resolve at load time to the measured f_kappa that fires the cooling_balance trigger for this (mCloud, sfe, nCore), from the 819-run sweep grid (trinity/_input/fkappa_auto.py; docs/dev/transition/pdv-trigger/data/fkappa_nH_sweep.csv).', category='input_solver', unit=None, exclude_from_snapshot=True, run_const=True, resolver=resolve_fkappa_auto),
+    ParamSpec(name='cooling_boost_kappa', default='1.0', info='Rung-A probe (docs/dev/transition/pdv-trigger/KAPPA_EFF_SCOPING.md): multiplier f_kappa on the Spitzer conduction coefficient C_thermal in the bubble-structure solve (f_kappa >= 1). Inflates conduction-zone cooling THROUGH the structure (theta emerges as an output), unlike the scalar cooling_boost on Lcool. Default 1.0 = byte-identical. NOTE it also RAISES the evaporative mass flux -- the El-Badry coupling a faithful kappa_eff must instead suppress -- so it is a structural probe, not the final model. Set to \'auto\' to resolve at load time to the measured f_kappa that fires the cooling_balance trigger for this (mCloud, sfe, nCore), from the 819-run sweep grid (trinity/_input/fkappa_auto.py; docs/dev/transition/pdv-trigger/data/fkappa_nH_sweep.csv). The \'auto\' grid was measured at cooling_boost_fA=1; combining with f_A!=1 silently invalidates the lookup.', category='input_solver', unit=None, exclude_from_snapshot=True, run_const=True, resolver=resolve_fkappa_auto),
+    ParamSpec(name='cooling_boost_fA', default='1.0', info='Interface source-term boost f_A (docs/dev/transition/pdv-trigger/SOURCE_TERM_DESIGN.md): multiplies the net radiative dudt inside the bubble-structure ODE and the resolved L2+L3 loss integrals, ONLY in the interface band T < 10^5.5 K (the non-CIE regime). The 1-D projection of fractal-interface mixing (Lancaster) on the SOURCE side: cooling rises THROUGH the structure and evaporation dMdt FALLS (El-Badry Eq 47 coupling; contrast cooling_boost_kappa, which raises it). L_leak is deliberately NOT scaled (leakage is bulk escape, not interface radiation). Requires f_A > 0; values < 1 are untested suppression territory. Default 1.0 = byte-identical. Single-knob use intended: combining with cooling_boost_mode != none or cooling_boost_kappa != 1 warns at load (double-boost / cross-knob).', category='input_solver', unit=None, exclude_from_snapshot=True, run_const=True, validator=_validate_cooling_boost_fA),
     ParamSpec(name='cool_alpha', default='0.6', info='Cooling related values. alpha = v2*t_now/R2', category='input_solver', unit=None),
     ParamSpec(name='cool_beta', default='0.8', info='Cooling related values. beta = - dPb/dt.', category='input_solver', unit=None),
     ParamSpec(name='cool_delta', default='-6/35', info='Cooling related values. delta = dT/dt.', category='input_solver', unit=None),

@@ -285,6 +285,18 @@ for provenance.*
 > on `dictionary.jsonl`. `F_KAPPA_FUNCTIONAL_FORM.md` §10/§14 flagged accordingly.
 
 **Status ledger (newest first):**
+- **2026-07-06 (✅ f_A PHASE 2 RAN — production wiring landed, gated default-1.0 byte-identical).**
+  Executor session (Opus) ran Phase 2 of `SOURCE_TERM_DESIGN.md §3`. `cooling_boost_fA` wired into
+  production: two edit sites in `bubble_luminosity.py` behind `fA != 1.0` guards (RHS `dudt`
+  band-multiply at :416; L₂/L₃ component scaling at :811; `_T_INTERFACE_BAND=10**5.5` at :59),
+  registry ParamSpec + `_validate_cooling_boost_fA` (rejects ≤0, cross-knob double-boost warning),
+  kappa-`'auto'` text note. New `test/test_fA_source_boost.py` (9 tests); full pytest **742 green**
+  (was 733; +9). fA=1 reproduces the pre-patch solve exactly (2.3271e8/5630); fA=4 raises LTotal
+  ×1.35, lowers dMdt ×0.934 (El-Badry sign). Two plan corrections recorded (FINDINGS §15b): (1)
+  `default.param` is auto-generated — regenerated via `python -m tools.gen_default_param --write`,
+  NOT hand-edited (byte gate `test_gen_default_param`); (2) the predicted string-pin collateral did
+  NOT break (fixture params come from `read_param`; `_scalar_params` feeds only the untouched IC).
+  The rigorous cross-process byte-identity gate is Phase 3 (next session). Phase 2 ✅; Phase 3 next.
 - **2026-07-06 (✅ f_A PHASE 1 RAN — all-9 offline coverage + edge map; θ≈1 edge prediction
   FALSIFIED in the SAFE direction).** Executor session (Opus) ran Phase 1 of `SOURCE_TERM_DESIGN.md
   §3`. (a) Coverage closed: committed partial trajectories for the two never-screened configs
