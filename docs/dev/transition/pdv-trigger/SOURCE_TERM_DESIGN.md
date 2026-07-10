@@ -71,6 +71,24 @@ parameter meaningless (a fudge with units) and razor-steep (whole θ range in ~h
 saturation is structural — any T-flat floor swamps a T^{5/2} law at low T. The enhancement cannot
 live in the diffusion coefficient; that is why it lives in the source.
 
+**Session kickoff template (paste to start any executor session on this workstream):**
+
+> Read `docs/dev/transition/pdv-trigger/SOURCE_TERM_DESIGN.md` in full — it is the single source
+> of truth for the f_A workstream. Then execute **the next open phase of §3 only** (one phase per
+> session; the Status line and INDEX say which). Before coding, honor the ⚠️/🔄 banners:
+> re-verify the phase's cited line references against current source and update the doc where it
+> drifted. Branch: `git fetch origin`; if the workstream branch's PR has merged, restart it from
+> `origin/main` (same name), else continue on it. Hard rules: no production edits outside the
+> phase's specified sites; θ only from `dictionary.jsonl` accepted rows; every artifact committed
+> with its builder + exact command; on completion write the FINDINGS entry, add the REPRODUCE
+> row, reconcile INDEX/PLAN, regenerate MANIFEST.md in a follow-up commit, run full pytest + the
+> docs-conventions test; commits carry no AI attribution. **If a result falsifies a registered
+> prediction, STOP and write the finding up — do not tune around it.** End by updating this doc's
+> Status line and phase checkboxes.
+
+Maintainer-only inputs (the executor must ask, not guess): HPC sbatch submission + sync (Phases
+4–5), the L21b Table-1 values (Phase 5 pre-step), and the rulings in Phase 6.
+
 ## 1. Design rationale (settled 2026-07-06 — do not relitigate; §2 is the evidence)
 
 The knob 2×2 (κ vs source × scalar vs state-coupled): f_κ (κ×scalar) is tunable but couples
