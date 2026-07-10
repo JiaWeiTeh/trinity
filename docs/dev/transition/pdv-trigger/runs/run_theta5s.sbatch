@@ -10,9 +10,9 @@
 #              --csv docs/dev/transition/pdv-trigger/runs/data/theta5s_summary.csv
 #
 # NB requires the branch with cooling_boost_fA wired (SOURCE_TERM_DESIGN Phase 2) AND the
-# no_physical_root=>momentum handoff (KAPPA_FREEZE_MECHANISM fix #1). --time bumped to 6h
-# (wall-time armor, SOURCE_TERM_DESIGN §3 Phase 4): f_A is in-ODE (early-segment cost, FINDINGS
-# §8d) and Eb-back-reacting (dt shrink, R4); fA=24-32 exceeds any boost run live; the diffuse
+# no_physical_root=>momentum handoff (KAPPA_FREEZE_MECHANISM fix #1). --time=1:30:00 (maintainer
+# ruling 2026-07-06: 90 min is plenty per arm on Helix): f_A is in-ODE (early-segment cost,
+# FINDINGS §8d) and Eb-back-reacting (dt shrink, R4); fA=24-32 exceeds any boost run live; the diffuse
 # arms (large_diffuse, small_1e6) are the long pole. Post-harvest, every arm must show t_final>=5
 # or a physics termination; re-run any wall-killed / nonzero-exit arm at a longer limit BEFORE
 # quoting any theta (protocol rule 2). Report "N/81 compliant" like theta5's 32/32.
@@ -24,7 +24,7 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=2G
 #SBATCH --array=1-81
-#SBATCH --time=6:00:00
+#SBATCH --time=1:30:00
 #SBATCH --output=/gpfs/bwfor/work/ws/hd_cq295-trinity/jobs_theta5s/logs/%A_%a.out
 
 module load devel/miniforge
