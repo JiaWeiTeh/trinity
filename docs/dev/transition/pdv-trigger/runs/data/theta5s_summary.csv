@@ -1,0 +1,11 @@
+# generated 2026-07-10T17:20:08Z | builder harvest_theta_max.py | code 03d2c0cf
+run_name,theta_max,t_at_theta_max,theta_first,n_impl,t_final,phase_final,reached_momentum,fired_cooling_balance,outcome,detail
+fail_repro__fa12,0.008457630978984991,0.0034132236381263295,0.008457630978984991,1,5.0,momentum,True,False,stopping_time,Stopping time reached
+fail_repro__fa16,0.009804847396113996,0.0034132236381263295,0.009804847396113996,1,5.0,momentum,True,False,stopping_time,Stopping time reached
+fail_repro__fa2,0.0038526089831987915,0.0034132236381263295,0.0038526089831987915,1,5.0,momentum,True,False,stopping_time,Stopping time reached
+fail_repro__fa24,0.012102768422404845,0.0034132236381263295,0.012102768422404845,1,5.0,momentum,True,False,stopping_time,Stopping time reached
+fail_repro__fa32,0.014044157972100712,0.0034132236381263295,0.014044157972100712,1,5.0,momentum,True,False,stopping_time,Stopping time reached
+fail_repro__fa4,0.005011255787262981,0.0034132236381263295,0.005011255787262981,1,5.0,momentum,True,False,stopping_time,Stopping time reached
+fail_repro__fa6,0.006010482340886517,0.0034132236381263295,0.006010482340886517,1,5.0,momentum,True,False,stopping_time,Stopping time reached
+fail_repro__fa8,0.006901398389134135,0.0034132236381263295,0.006901398389134135,1,5.0,momentum,True,False,stopping_time,Stopping time reached
+fail_repro__none,0.0031833766398842696,0.0034132236381263295,0.0031833766398842696,1,5.0,momentum,True,False,stopping_time,Stopping time reached
