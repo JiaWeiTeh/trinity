@@ -35,10 +35,20 @@ _CONFIG_ORDER = [
 ]
 
 
+def _fa_of(stem):
+    tag = stem.rsplit("__", 1)[1]  # 'none' (fA=1 baseline) or 'fa<v>'
+    return 1 if tag == "none" else int(tag[2:])
+
+
 def _order_key(param_path):
+    # config fast->slow, then HIGH-fA first: a strong boost fires (and terminates) early, so the
+    # completable arms run before the slow low-fA / __none baselines (which grind the implicit
+    # phase without early collapse and wall-kill in-container). Verified in-container: __none/__fa2
+    # of dense configs hit exit 124 at 900s while __fa12+ complete in minutes. Baselines are the
+    # normalization reference but are un-completable in-container regardless of order -> HPC.
     cfg = param_path.stem.rsplit("__", 1)[0]
     ci = _CONFIG_ORDER.index(cfg) if cfg in _CONFIG_ORDER else len(_CONFIG_ORDER)
-    return (ci, param_path.stem)
+    return (ci, -_fa_of(param_path.stem), param_path.stem)
 
 
 def run_arm(param_path, out_root, timeout, env):
