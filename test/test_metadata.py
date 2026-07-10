@@ -16,7 +16,6 @@ Coverage:
 from __future__ import annotations
 
 import json
-import warnings
 from pathlib import Path
 
 import numpy as np
@@ -427,7 +426,6 @@ class TestSize:
         """Writing 6 snapshots with run-constants split out should be
         meaningfully smaller than writing them inline.  This is the
         core regression test for the feature."""
-        _make_params  # ensure fixture import resolves
         d = _make_params(tmp_path)
         for i in range(6):
             _save_snapshot_with(d, t_now=float(i), R2=0.1 * (i + 1))
@@ -879,6 +877,27 @@ class TestReadSimulationEndMigration:
         assert result["detail"] == "Legacy text-parsed reason"
         assert result["model"] == "legacy_run"
 
+    def test_v1_metadata_without_termination_falls_back_to_text(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        from trinity._output.simulation_end import read_simulation_end
+        (tmp_path / METADATA_FILENAME).write_text(json.dumps({
+            "_metadata_version": 1,
+            "model_name": "legacy_v1",
+        }))
+        (tmp_path / "simulationEnd.txt").write_text(
+            "Model: legacy_v1\n"
+            "Outcome: stopping_time\n"
+            "Detail: Legacy text-only reason\n"
+            "Exit Code: 1\n"
+        )
+        with pytest.warns(DeprecationWarning, match="simulationEnd.txt"):
+            result = read_simulation_end(str(tmp_path))
+        assert result is not None
+        assert result["exit_code"] == 1
+        assert result["detail"] == "Legacy text-only reason"
+        assert result["model"] == "legacy_v1"
+
     def test_returns_none_when_both_sources_missing(
         self, tmp_path, disable_crash_handlers,
     ):
@@ -930,6 +949,13 @@ class TestTerminationDebugBlock:
         """Phase 5: no text file is ever created."""
         self._make_run_with_debug(tmp_path)
         assert not (tmp_path / "termination_debug.txt").exists()
+
+    def test_only_v4_artefacts_remain(
+        self, tmp_path, disable_crash_handlers,
+    ):
+        self._make_run_with_debug(tmp_path)
+        names = {p.name for p in tmp_path.iterdir() if p.is_file()}
+        assert names == {"metadata.json", "dictionary.jsonl"}
 
     def test_termination_debug_in_metadata(
         self, tmp_path, disable_crash_handlers,

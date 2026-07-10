@@ -1,8 +1,9 @@
 """Unit tests for the R1 transition SHADOW criterion (docs/dev/transition/pt4).
 
 `evaluate_r1_shadow` is pure and must never depend on global state. It is the
-criterion a future *flip* would act on; here it only feeds shadow logging, so the
-truth table is the contract.
+criterion used when non-default transition trigger sets enable R1-driven
+transitions; the default set still keeps R1 in shadow-only mode. The truth table
+below is the contract.
 """
 import numpy as np
 

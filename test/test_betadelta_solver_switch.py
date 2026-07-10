@@ -1,11 +1,9 @@
-"""Phase-3 scaffolding: the ``betadelta_solver`` param switch.
+"""Tests for the ``betadelta_solver`` param switch.
 
-Commit 1 wires a solver-selection param (``legacy`` default, ``hybr``
-reserved) into ``solve_betadelta_pure`` without changing legacy behaviour.
-These tests pin the switch contract: the validator's allowed set, the
-dispatch routing (legacy default, missing key -> legacy, hybr stubbed),
-and the byte-identical guarantee that the default path is exactly the
-pre-switch legacy implementation.
+The registry default is now ``hybr``.  ``legacy`` remains an accepted
+value, and a missing key still falls back to legacy for old unit-test
+fixtures.  These tests pin the validator's allowed set, the registry
+default, the compatibility fallback, and dispatch routing.
 """
 
 from types import SimpleNamespace

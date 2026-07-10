@@ -24,11 +24,14 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 ENERGY_COLLAPSED_CODE = 51
 
 
+@pytest.mark.stress
 def test_energy_collapse_emits_no_negative_Pb(tmp_path):
     """The heavy cloud that used to dead-stop now hands off to momentum with clean Pb."""
     param = tmp_path / "collapse.param"

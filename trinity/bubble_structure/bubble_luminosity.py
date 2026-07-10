@@ -325,10 +325,22 @@ def _get_velocity_residuals(dMdt_init, params, Pb: float, R1: float) -> float:
     # dMdt instead of falsely converging on garbage (a zero tail -> residual ~0).
     if not np.all(np.isfinite([v_init, T_init, dTdr_init])):
         return _SOLVER_FAIL_RESIDUAL
+    rhs_error = None
+
+    def _rhs(r, y):
+        nonlocal rhs_error
+        if rhs_error is not None:
+            return np.zeros_like(y, dtype=float)
+        try:
+            return _get_bubble_ODE(r, y, params, Pb)
+        except BubbleSolverError as e:
+            rhs_error = str(e)
+            return np.zeros_like(y, dtype=float)
+
     try:
         with _quiet_lsoda_fortran():
             sol = scipy.integrate.solve_ivp(
-                fun=lambda r, y: _get_bubble_ODE(r, y, params, Pb),
+                fun=_rhs,
                 t_span=(r2Prime_val, R1),
                 y0=[v_init, T_init, dTdr_init],
                 method='LSODA',
@@ -337,6 +349,8 @@ def _get_velocity_residuals(dMdt_init, params, Pb: float, R1: float) -> float:
                 atol=_BUBBLE_ATOL,
             )
     except BubbleSolverError:
+        return _SOLVER_FAIL_RESIDUAL
+    if rhs_error is not None:
         return _SOLVER_FAIL_RESIDUAL
     if not sol.success:
         return _SOLVER_FAIL_RESIDUAL
@@ -457,10 +471,22 @@ def _solve_bubble_structure(initial_conditions, r_array, params, Pb,
     # The RHS raises BubbleSolverError when T collapses to ~zero mid-solve
     # (see _get_bubble_ODE); solve_ivp propagates RHS exceptions raw, so
     # convert that abort into the same ok=False contract as a solver failure.
+    rhs_error = None
+
+    def _rhs(r, y):
+        nonlocal rhs_error
+        if rhs_error is not None:
+            return np.zeros_like(y, dtype=float)
+        try:
+            return _get_bubble_ODE(r, y, params, Pb)
+        except BubbleSolverError as e:
+            rhs_error = str(e)
+            return np.zeros_like(y, dtype=float)
+
     try:
         with _quiet_lsoda_fortran():
             sol = scipy.integrate.solve_ivp(
-                fun=lambda r, y: _get_bubble_ODE(r, y, params, Pb),
+                fun=_rhs,
                 t_span=(r_array[0], r_array[-1]),
                 y0=initial_conditions,
                 method='LSODA',
@@ -471,6 +497,9 @@ def _solve_bubble_structure(initial_conditions, r_array, params, Pb,
     except BubbleSolverError as e:
         psoln = np.full((len(r_array), 3), np.nan)
         return psoln, False, {'message': str(e)}, None
+    if rhs_error is not None:
+        psoln = np.full((len(r_array), 3), np.nan)
+        return psoln, False, {'message': rhs_error}, None
     # On success sol.sol is the continuous solution; if the solve failed before
     # any step it can be None, in which case there is nothing to sample.
     psoln = (sol.sol(r_array).T if sol.sol is not None

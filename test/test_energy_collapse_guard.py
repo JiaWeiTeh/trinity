@@ -68,9 +68,8 @@ def test_solve_R1_returns_zero_for_nonphysical_R2():
     assert get_bubbleParams.solve_R1(-154.0, -4.4e31, 5e12, 3739.0) == 0.0
     assert get_bubbleParams.solve_R1(0.0, 1e5, 1.0, 1.0) == 0.0
     assert get_bubbleParams.solve_R1(np.nan, 1e5, 1.0, 1.0) == 0.0
-    # A physical R2 > 0 with NaN Eb must STILL raise (real failure, not fabricated)
-    with pytest.raises(ValueError):
-        get_bubbleParams.solve_R1(10.0, np.nan, 1.0, 1.0)
+    # Physical R2 + NaN Eb is pinned in
+    # test_r1_bracket.py::test_failure_raises_instead_of_fabricating.
 
 
 def test_energy_collapsed_endcode_is_inspection_required():

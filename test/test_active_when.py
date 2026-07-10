@@ -27,7 +27,7 @@ def _item(v):
 
 # Subset of registry names this phase manages.
 _BE_RUNTIME_ADDS = (
-    "densBE_Teff", "densBE_xi_arr", "densBE_u_arr", "densBE_dudxi_arr",
+    "densBE_Teff", "densBE_sigma", "densBE_xi_arr", "densBE_u_arr", "densBE_dudxi_arr",
     "densBE_rho_rhoc_arr", "densBE_f_rho_rhoc", "densBE_f_m", "densBE_xi_out",
 )
 
@@ -48,7 +48,7 @@ def test_active_densPL_true_only_for_densPL() -> None:
 
 
 # ---------------------------------------------------------------------------
-# densBE branch: prune densPL_alpha, add the 8 densBE_* runtime
+# densBE branch: prune densPL_alpha, add the 9 densBE_* runtime
 # ---------------------------------------------------------------------------
 def test_densBE_branch_pops_densPL_alpha() -> None:
     params = {
@@ -77,7 +77,7 @@ def test_densBE_branch_adds_all_runtime_with_spec_metadata() -> None:
         assert item.ori_units == (spec.unit if spec.unit is not None else "N/A")
         # The driver sets exclude_from_snapshot at creation; Step 9 would set
         # it for any non-time-varying key anyway, but the spec already says
-        # True for all 8 so end-state and creation-state agree here.
+        # True for all 9 so end-state and creation-state agree here.
         assert item.exclude_from_snapshot is spec.exclude_from_snapshot
         assert item.value == spec.default or (
             # np.nan / [] etc. — equality is enough for the current defaults

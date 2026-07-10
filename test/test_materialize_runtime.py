@@ -55,7 +55,7 @@ def test_skip_active_when_specs() -> None:
     params: dict = {}
     materialize_runtime(params)
     for name in ("densBE_Omega", "densPL_alpha",
-                 "densBE_Teff", "densBE_xi_arr", "densBE_u_arr",
+                 "densBE_Teff", "densBE_sigma", "densBE_xi_arr", "densBE_u_arr",
                  "densBE_dudxi_arr", "densBE_rho_rhoc_arr",
                  "densBE_f_rho_rhoc", "densBE_f_m", "densBE_xi_out"):
         assert name not in params, f"{name} (active_when) should be skipped"
@@ -93,7 +93,7 @@ def _step10_entry_state(profile: str) -> dict:
 def test_live_flow_adds_exactly_106(profile: str) -> None:
     """At Step 10 entry on a real read_param run (densPL or densBE),
     materialize_runtime adds exactly 106 items.  Both branches converge
-    because the 8 densBE_* runtime are owned by Phase 8 either way --
+    because the 9 densBE_* runtime are owned by Phase 8 either way --
     materialize_runtime sees them and skips.
 
     106 = the original 105-param fidelity audit + 1: the snapshot-included

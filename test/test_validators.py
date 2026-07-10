@@ -5,11 +5,15 @@ verbatim error messages the pre-Phase-6 Step-5 block produced.  These
 catch any drift if a validator is rewritten or a spec loses its
 ``validator=`` attachment.
 """
+
 from __future__ import annotations
+
+from pathlib import Path
 
 import pytest
 
 from trinity._input.errors import ParameterFileError
+from trinity._input.read_param import read_param
 from trinity._input.registry import (
     COMPANION_RULES,
     REGISTRY,
@@ -19,6 +23,12 @@ from trinity._input.registry import (
     validate_all,
     validate_companions,
 )
+
+
+def _write_param(tmp_path: Path, name: str, body: str) -> Path:
+    path = tmp_path / name
+    path.write_text(body, encoding="utf-8")
+    return path
 
 
 # ---------------------------------------------------------------------------
@@ -34,6 +44,37 @@ def test_dens_profile_spec_has_validator() -> None:
 
 def test_stop_at_rCloud_nSnap_spec_has_validator() -> None:
     assert REGISTRY["stop_at_rCloud_nSnap"].validator is _validate_stop_at_rCloud_nSnap
+
+
+# ---------------------------------------------------------------------------
+# read_param malformed .param trust boundary
+# ---------------------------------------------------------------------------
+@pytest.mark.parametrize(
+    ("body", "message"),
+    [
+        ("not_a_param 1\n", r"Invalid parameter\(s\) in bad\.param: not_a_param"),
+        ("mCloud\n", r"bad\.param, line 1: Expected format 'key value', got: 'mCloud'"),
+    ],
+)
+def test_read_param_rejects_malformed_user_param(tmp_path: Path, body: str, message: str) -> None:
+    path = _write_param(tmp_path, "bad.param", body)
+
+    with pytest.raises(ParameterFileError, match=message):
+        read_param(path)
+
+
+def test_read_param_duplicate_user_key_uses_later_value(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    duplicate = _write_param(tmp_path, "duplicate.param", "mCloud 1e5\nmCloud 2e5\n")
+    first_only = _write_param(tmp_path, "first.param", "mCloud 1e5\n")
+    later_only = _write_param(tmp_path, "later.param", "mCloud 2e5\n")
+
+    # Current behavior, not an endorsement; PLAN P5-T6 flags this as a fix candidate.
+    duplicate_value = read_param(duplicate)["mCloud"].value
+    assert duplicate_value == read_param(later_only)["mCloud"].value
+    assert duplicate_value != read_param(first_only)["mCloud"].value
 
 
 # ---------------------------------------------------------------------------
@@ -67,6 +108,7 @@ def test_dens_profile_rejects_other() -> None:
 class _Item:
     """Minimal stand-in for DescribedItem so the validator can mutate
     ``params['stop_at_rCloud_nSnap'].value`` without a real run."""
+
     def __init__(self, value):
         self.value = value
 

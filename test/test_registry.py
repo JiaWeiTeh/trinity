@@ -2,7 +2,7 @@
 
 Phase 1 added the construction-time invariants (frozen, identifier
 names, deprecated-needs-note); Phase 2 populated ``SPECS`` with all
-187 parameters; Phase 5 swapped ``run_constants`` to derive its lists
+registered parameters; Phase 5 swapped ``run_constants`` to derive its lists
 from the registry; Phases 6/7/8 wired the ``validator`` / ``resolver``
 + ``consumed_by`` / ``active_when`` axes into ``read_param`` Steps
 5/7/8.  The reconciliation tests below pin the registry against a

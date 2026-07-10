@@ -3,22 +3,21 @@
 """Regression guard for the F1 "residual resample" hot-path optimization.
 
 `_get_velocity_residuals` is the velocity-residual that the dMdt fsolve drives
-thousands of times per run. Today it builds the ~60k-point `_create_radius_grid`
-and resamples a dense `solve_ivp` solution onto it; the staged P3 patch
-(docs/dev/performance/P3_PRODUCTION_PATCH.md) integrates ONCE on a coarse
-`t_eval=linspace(r2Prime, R1, _RESIDUAL_NPTS=500)` and drops the resample.
+thousands of times per run. Production now integrates once on a coarse
+`t_eval=linspace(r2Prime, R1, _RESIDUAL_NPTS=500)` path rather than building
+the old ~60k-point `_create_radius_grid` and resampling a dense `solve_ivp`
+solution onto it (see docs/dev/archive/bubble/P3_PRODUCTION_PATCH.md).
 
-This test pins the residual CONTRACT so applying P3 is a guarded drop-in:
+This test pins the residual CONTRACT for that coarse path:
 
   * `_reference_residual` reproduces the residual formula + all gate branches at
     a high resolution (npts=20000) using the SAME production helpers
     (`_get_bubble_ODE_initial_conditions`, `_get_bubble_ODE`) and the SAME
     solver/tolerances. It is independent of how production samples the path.
   * The primary test asserts `_get_velocity_residuals` matches that reference
-    within 1e-3 (abs-or-rel) for several trial dMdt. This passes PRE-patch
-    (60k dense vs 20k dense) AND POST-patch (500 coarse vs 20k dense) -- so it
-    guards specifically against a too-small `_RESIDUAL_NPTS`. P0 saw ~1e-6, so
-    1e-3 has huge margin while still catching a coarse-grid regression.
+    within 1e-3 (abs-or-rel) for several trial dMdt. This guards specifically
+    against a too-small `_RESIDUAL_NPTS`. P0 saw ~1e-6, so 1e-3 has huge
+    margin while still catching a coarse-grid regression.
   * A sanity check that at the converged dMdt the residual is ~0 (the fsolve
     root), and a deterministic non-finite-IC branch check (-> _SOLVER_FAIL_RESIDUAL).
 

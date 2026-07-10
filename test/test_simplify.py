@@ -772,6 +772,7 @@ class TestSolverArtefacts:
 # work it has to do (curvature, prominence, bisection are all O(n log n)).
 # ---------------------------------------------------------------------------
 
+@pytest.mark.stress
 class TestTiming:
 
     @pytest.mark.parametrize("size,budget_seconds", [

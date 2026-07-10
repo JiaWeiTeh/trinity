@@ -32,6 +32,9 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
+**Status (2026-07-10):** 🟢 complete — P0 through P5-T6 are complete; no open phase remains in
+this plan.
+
 ## Provenance & scope
 
 Audit performed 2026-07-06 at commit `70f07532` (clean tree) by four parallel subagent passes:
@@ -44,6 +47,74 @@ Appendix B.
 **This doc is the frozen output of that audit.** The executor's job is to apply each phase's
 CHANGE and clear its GATE — not to re-derive the reasoning. If HEAD has moved past `70f07532`,
 re-verify only the specific line references a phase touches (the ⚠️ banner), not the whole audit.
+
+2026-07-09 drift check at `9410212d`: P1's production `solve_R1` non-finite guard is already
+present in `trinity/bubble_structure/get_bubbleParams.py`; the remaining P1 work was the duplicate
+assertion cleanup in `test/test_energy_collapse_guard.py`. Local `.venv` gate used Python 3.9.6,
+numpy 1.26.4, scipy 1.13.1, astropy 6.0.1, pandas 2.3.3, matplotlib 3.9.4, pytest 8.4.2.
+The pre-existing `test_bubble_solver_failures.py::test_rhs_collapse_returns_ok_false` native
+LSODA/RHS-exception abort was fixed by catching `BubbleSolverError` inside the Python RHS callbacks
+before control returns to LSODA. Targeted P1 tests and full default pytest now pass in the local
+`.venv`.
+
+2026-07-09 P2 execution: the four redundant test files were deleted/merged. Count accounting:
+751 collected before P2 - 15 removed nodes + 6 relocated/salvaged/merged nodes = 742 collected
+after P2, with the same 3 deselected stress tests. Targeted recipient tests and full default
+pytest pass in the local `.venv`.
+
+2026-07-10 P3 execution: `test_energy_collapse_snapshot.py::test_energy_collapse_emits_no_negative_Pb`
+and `test_simplify.py::TestTiming` are now `stress` tests. Default collection still has 742 total
+nodes, with selected tests dropping from 739 to 733 and deselected stress nodes increasing from
+3 to 9. Full default pytest wall time dropped from 118.53s at P2 to 77.64s.
+
+2026-07-10 P4 execution: added `densBE_sigma` to the active-when skip coverage in
+`test_active_when.py` and `test_materialize_runtime.py`, removed the unused `warnings` import and
+dead `_make_params` no-op from `test_metadata.py`, and refreshed the four stale test docstrings
+called out below. This was test/prose only; collection stayed at 742 total / 733 selected /
+9 deselected.
+
+2026-07-10 P5-T1 drift check: the cited JSONL parsing pattern still lives at
+`test/test_betadelta_hybr_stress.py:88-100`, and the cited snapshot-key units still live at
+`trinity/_input/registry.py:391-395`. The smoke-test header was stale as predicted and was
+updated. Golden capture used `.venv` (Python 3.9.6, numpy 1.26.4, scipy 1.13.1, astropy 6.0.1,
+pandas 2.3.3, matplotlib 3.9.4, pytest 8.4.2): final row `R2=0.2857315185200479`,
+`v2=44.73918438203256`, `Eb=778236.3470566473`. The required mutation check intentionally
+changed the `R2` golden to `2.857315185200479` and `pytest test/test_run_smoke.py -q` failed on
+the new approximate comparison before the correct golden was restored. Targeted smoke, collection,
+docs convention, and full default pytest gates all pass after the restore.
+
+2026-07-10 P5-T2 drift/capture check: the cited stress `_PARAM`, `_GOLDEN`, and `_run` anchors
+still live at `test/test_betadelta_hybr_stress.py:46-63` and `:74-85`; `current_phase` is still
+registered at `trinity/_input/registry.py:384`; and `main.py:244,278` still stamps `energy` then
+`implicit`. A canonical-env shortened `stop_t=0.004` run produced 101 rows, de-duplicated phases
+`['energy', 'implicit']`, and 3 implicit rows. The first two `(cool_beta, cool_delta)` pairs
+(`0.7592595923944201, -0.03538910029989962` at `t=0.0034103388192113612`; same pair at
+`t=0.003807502936573502`) match the stress goldens within `abs=2e-3`, so no dedicated shortened-run
+goldens were needed. The required mutation check changed the first beta golden to `7.59260`, and
+`pytest test/test_phase_boundary.py -q` failed on the new approximate comparison before the correct
+golden was restored.
+Targeted boundary, collection, docs convention, and full default pytest gates all pass after the
+restore.
+
+2026-07-10 P5-T3 drift check: `trinity/phase_general/phase_events.py` still had no direct tests
+before this phase. The event factories currently live at `phase_events.py:99-356`; event-result
+checking and application live at `:363-416` and `:588-631`; the same module also has phase-specific
+event-list builders at `:423-581`, which remain outside this phase's narrow factory/result scope.
+The required mutation check changed the min-radius threshold-zero fixture from `R2=2.0` to `R2=2.1`,
+and `pytest test/test_phase_events.py -q` failed on the zero-crossing assertion before the correct
+fixture was restored.
+Targeted phase-events, collection, docs convention, and full default pytest gates all pass after
+the restore.
+
+2026-07-10 P5-T4 drift check: `trinity/cloud_properties/validate_gmc.py` is now 717 lines, not
+`~650`; there were still no direct `validate_gmc` tests before this phase. The `rCloud_max`,
+edge-density, and mass-consistency reject conditions live at `validate_gmc.py:229-256`; the
+`densPL` and `densBE` validator paths live at `:400-466` and `:473-542`. Low-level callers must
+pass densities in `pc^-3` and `mu_convert` in `Msun`, matching the conversion convention documented
+in `trinity/_input/sweep_runner.py:108-116`. The required mutation check changed the reject test's
+`r_max` from `accepted.rCloud * 0.9` to `* 1.1`, and `pytest test/test_validate_gmc.py -q` failed
+for both reject cases before the boundary was restored.
+Targeted validate-gmc, collection, and full default pytest gates all pass after the restore.
 
 ## Executor ground rules
 
@@ -62,17 +133,17 @@ re-verify only the specific line references a phase touches (the ⚠️ banner),
 
 | Phase | What | Status | Gate result (actual) |
 |---|---|---|---|
-| P0 | Capture baseline counts | TODO | — |
-| P1 | `solve_R1` non-finite guard + test dedupe | TODO | — |
-| P2 | Delete/merge 4 test files | TODO | — |
-| P3 | Stress-mark 2 slow tests | TODO | — |
-| P4 | Cheap batch: coverage holes + stale prose | TODO | — |
-| P5-T1 | Smoke golden values | TODO | — |
-| P5-T2 | Default-CI phase-boundary golden | TODO | — |
-| P5-T3 | `phase_events` unit tests | TODO | — |
-| P5-T4 | `validate_gmc` accept/reject | TODO | — |
-| P5-T5 | `read_sps` known-value | TODO | — |
-| P5-T6 | Malformed-`.param` trust boundary | TODO | — |
+| P0 | Capture baseline counts | [x] DONE | 2026-07-09 working tree based on `9410212d`: `pytest --collect-only -q` → 748/751 collected, 3 deselected; after LSODA callback fix, full default `pytest` → 748 passed, 3 deselected |
+| P1 | `solve_R1` non-finite guard + test dedupe | [x] DONE | 2026-07-09 working tree based on `9410212d`: source guard already present; duplicate test assertion removed; `pytest test/test_r1_bracket.py test/test_energy_collapse_guard.py` → 14 passed; full default `pytest` → 748 passed, 3 deselected |
+| P2 | Delete/merge 4 test files | [x] DONE | 2026-07-09: removed 15 nodes, relocated/salvaged/merged 6 nodes; `pytest test/test_cloudy_run_loader.py test/test_metadata.py -q` → 87 passed; `pytest --collect-only -q` → 739/742 collected, 3 deselected; full default `pytest` → 739 passed, 3 deselected |
+| P3 | Stress-mark 2 slow tests | [x] DONE | 2026-07-10: `pytest --collect-only -q -m stress` → 9/742 collected, 733 deselected, including `test_energy_collapse_snapshot.py::test_energy_collapse_emits_no_negative_Pb` and `test_simplify.py::TestTiming`; default `pytest --collect-only -q` → 733/742 collected, 9 deselected; full default `pytest` → 733 passed, 9 deselected in 77.64s |
+| P4 | Cheap batch: coverage holes + stale prose | [x] DONE | 2026-07-10: `pytest test/test_active_when.py test/test_materialize_runtime.py test/test_metadata.py test/test_betadelta_solver_switch.py test/test_residual_resample.py test/test_r1_shadow.py test/test_registry.py -q` → 119 passed; full default `pytest` → 733 passed, 9 deselected in 74.89s |
+| P5-T1 | Smoke golden values | [x] DONE | 2026-07-10: captured canonical final-row goldens from `pytest test/test_run_smoke.py -q` after verifying the new test fails when the `R2` golden is intentionally broken; restored goldens; `pytest test/test_run_smoke.py -q` → 1 passed; full default `pytest` → 733 passed, 9 deselected in 93.95s |
+| P5-T2 | Default-CI phase-boundary golden | [x] DONE | 2026-07-10: added `test/test_phase_boundary.py`; shortened `stop_t=0.004` capture matches stress `_GOLDEN[:2]`; mutation of first beta golden failed as expected; restored; `pytest test/test_phase_boundary.py -q` → 1 passed; `pytest --collect-only -q` → 734/743 collected, 9 deselected; full default `pytest` → 734 passed, 9 deselected in 191.99s |
+| P5-T3 | `phase_events` unit tests | [x] DONE | 2026-07-10: added `test/test_phase_events.py`; mutation of min-radius zero fixture failed as expected; restored; `pytest test/test_phase_events.py -q` → 10 passed; `pytest --collect-only -q` → 744/753 collected, 9 deselected; full default `pytest` → 744 passed, 9 deselected in 199.90s |
+| P5-T4 | `validate_gmc` accept/reject | [x] DONE | 2026-07-10: added `test/test_validate_gmc.py`; plausible `densPL`/`densBE` clouds are accepted, and otherwise-identical clouds with `r_max` below computed `rCloud` are rejected; mutation of the `r_max` boundary failed as expected; restored; `pytest test/test_validate_gmc.py -q` → 4 passed; `pytest --collect-only -q` → 748/757 collected, 9 deselected; full default `pytest` → 748 passed, 9 deselected in 181.84s |
+| P5-T5 | `read_sps` known-value | [x] DONE | 2026-07-10: added `test/test_read_sps.py`; mutation of the `Qi` first-row golden failed as expected; restored; `pytest test/test_read_sps.py test/test_docs_dev_conventions.py -q` → 110 passed; `pytest --collect-only -q` → 749/758 collected, 9 deselected; full default `pytest` → 749 passed, 9 deselected in 186.80s |
+| P5-T6 | Malformed-`.param` trust boundary | [x] DONE | 2026-07-10: extended `test/test_validators.py`; unknown keys and valueless lines are pinned as `ParameterFileError`, duplicate user keys are pinned as current later-value-wins behavior; mutation of the duplicate-key expectation failed as expected; restored; `pytest test/test_validators.py test/test_docs_dev_conventions.py -q` → 135 passed; `pytest --collect-only -q` → 752/761 collected, 9 deselected; full default `pytest` → 752 passed, 9 deselected in 181.68s |
 
 ---
 
@@ -137,6 +208,26 @@ green and the ledger records it.
 
 Every removed test node must land in the table below as either **deleted** (with the frozen
 evidence) or **relocated to** `<file>::<test>`. No silent drops.
+
+2026-07-09 accounting:
+
+| Removed node | Disposition |
+|---|---|
+| `test_tavg_volume.py::test_abs_volume_telescopes_to_full_domain` | Deleted: tautological local-helper arithmetic |
+| `test_tavg_volume.py::test_signed_volume_undercounts_due_to_sign_bug` | Deleted: tautological local-helper arithmetic |
+| `test_phase4_consumer_migration.py::TestRcloudSmoothingMigration::test_end_reason_resolved_from_v3_termination` | Deleted: strict subset of metadata termination-block coverage |
+| `test_phase4_consumer_migration.py::TestRcloudSmoothingMigration::test_end_reason_resolved_from_legacy_text` | Relocated to `test_metadata.py::TestReadSimulationEndMigration::test_v1_metadata_without_termination_falls_back_to_text` |
+| `test_phase5_text_drop.py::TestNoLegacyTextWrites::test_no_simulation_end_txt` | Deleted: covered by `test_metadata.py::TestReadSimulationEndMigration::test_reads_from_metadata_block` |
+| `test_phase5_text_drop.py::TestNoLegacyTextWrites::test_no_termination_debug_txt` | Deleted: already covered by `test_metadata.py::TestTerminationDebugBlock::test_no_termination_debug_txt_written` |
+| `test_phase5_text_drop.py::TestNoLegacyTextWrites::test_no_summary_txt` | Deleted: tautological signature check |
+| `test_phase5_text_drop.py::TestNoLegacyTextWrites::test_only_v4_artefacts_remain` | Relocated to `test_metadata.py::TestTerminationDebugBlock::test_only_v4_artefacts_remain` |
+| `test_phase5_text_drop.py::TestDeprecationWarnings::test_read_simulation_end_warns_on_text_fallback` | Deleted: subset of `test_metadata.py::TestReadSimulationEndMigration::test_falls_back_to_text_for_legacy_runs` |
+| `test_phase5_text_drop.py::TestDeprecationWarnings::test_cloudy_parse_summary_txt_warns` | Relocated to `test_cloudy_run_loader.py::test_parse_summary_txt_warns_on_legacy_text` |
+| `test_phase5_text_drop.py::TestDeprecationWarnings::test_cloudy_parse_simulation_end_warns` | Relocated to `test_cloudy_run_loader.py::test_parse_simulation_end_warns_on_legacy_text` |
+| `test_phase5_text_drop.py::TestDeprecationWarnings::test_cloudy_load_run_v4_emits_no_warnings` | Relocated to `test_cloudy_run_loader.py::test_load_run_v4_emits_no_deprecation_warnings` |
+| `test_cloudy_package_exports.py::test_package_reexports_public_api` | Merged into `test_cloudy_run_loader.py::test_package_reexports_public_api` |
+| `test_cloudy_package_exports.py::test_package_all_matches_exports` | Merged into `test_cloudy_run_loader.py::test_package_reexports_public_api` |
+| `test_cloudy_package_exports.py::test_package_re_exports_are_the_same_objects` | Merged into `test_cloudy_run_loader.py::test_package_reexports_public_api` |
 
 **2a. `test_tavg_volume.py` — DELETE (tautological).** It never imports `trinity`:
 `_vol_signed`/`_vol_abs` at `test:13-22` are local re-implementations, so reverting the real fix
@@ -231,6 +322,10 @@ env comment (python/numpy/scipy versions). **Fallback (frozen):** if a future in
 patch shifts last bits past 1e-6, loosen to `rel=1e-4` with a dated comment — never delete the
 assertion. Also fix the stale "~2.5 min" header docstring while in the file.
 
+2026-07-10 DONE: `test_run_smoke.py` now parses the existing run's final `dictionary.jsonl`
+row and checks `R2`, `v2`, and `Eb` are finite, positive, and equal to canonical-env goldens
+at `rel=1e-6`; no new subprocess or test node was added.
+
 ### T2 — Default-CI phase-boundary golden (new `test/test_phase_boundary.py`)
 
 **Gap (frozen):** the phase sequence (energy → implicit) and `main.run_expansion` orchestration
@@ -246,6 +341,11 @@ pairs match `_GOLDEN[:2]` from the stress file (t=0.00341, 0.00381 — both < 0.
 verify once on the canonical env that the two rows match the stress goldens; if dt-boundary
 effects shift them, record dedicated goldens for `stop_t=0.004` and note that here, dated.
 
+2026-07-10 DONE: `test/test_phase_boundary.py` now runs one default-suite `run.py` subprocess with
+`stop_t=0.004`, asserts the ordered phase sequence is `['energy', 'implicit']`, requires at least
+two converged implicit rows with finite beta/delta, and compares the first two beta/delta pairs to
+the existing stress goldens at `abs=2e-3`.
+
 ### T3 — `phase_events` factories (new `test/test_phase_events.py`)
 
 **Gap:** `trinity/phase_general/phase_events.py` — the event factories that decide phase-ending vs
@@ -255,22 +355,49 @@ parametrized test that each factory's event function crosses zero exactly at its
 threshold (evaluate at threshold ± ε), plus one test that `check_event_termination` /
 `apply_event_result` classify a minimal synthetic `sol` correctly. ~1 test per factory, no more.
 
+2026-07-10 DONE: `test/test_phase_events.py` now checks threshold signs, zero crossing, direction,
+terminal status, and run-ending classification for the event factories, plus synthetic
+`check_event_termination`/`apply_event_result` handling for both simulation-ending and phase-ending
+events.
+
 ### T4 — `validate_gmc` accept/reject (new `test/test_validate_gmc.py`)
 
-**Gap:** `cloud_properties/validate_gmc.py` (~650 lines; the `rCloud_max` plausibility trust
-boundary CLAUDE.md names) has zero tests. **Change:** four cases — a plausible GMC accepted and an
-implausible one rejected, for each of `densPL` and `densBE`. Use physically plausible values per
-project convention (mCloud ~1e5 Msun, sfe 0.01–0.3, nCore ~1e3 cm⁻³, rCore ~1 pc); read the
-module's actual reject conditions to build the implausible cases — don't guess thresholds.
+**Gap:** `cloud_properties/validate_gmc.py` (717 lines as of 2026-07-10; the `rCloud_max`
+plausibility trust boundary CLAUDE.md names) had zero direct tests before P5-T4. **Change:** four
+cases — a plausible GMC accepted and an implausible one rejected, for each of `densPL` and
+`densBE`. Use physically plausible values per project convention (mCloud ~1e5 Msun,
+sfe 0.01–0.3, nCore ~1e3 cm⁻³, rCore ~1 pc); read the module's actual reject conditions to build
+the implausible cases — don't guess thresholds.
+
+2026-07-10 DONE: `test/test_validate_gmc.py` now covers four direct validator cases: accepted
+`densPL` and `densBE` GMCs with physically plausible mass/core-density values, plus targeted
+`rCloud_max` rejections for each profile using the same computed clouds with the maximum radius
+lowered below `rCloud`. `sfe` is not an input to this validator.
 
 ### T5 — `read_sps` known-value (new `test/test_read_sps.py`)
 
-**Gap:** `sps/read_sps.py` + `update_feedback.py` load the SB99 tables feeding every run's source
-terms (Lw, Qi, pdot); only implicit coverage is the smoke exit code — classic silent-corruption
-surface (units are the project's recurring bug class). **Change:** load the bundled default table
-from `lib/default/` through `read_sps`, assert the time grid is strictly monotonic, and one known
-value per key column at the first grid point (captured once on the canonical env, committed with
-an env comment), with units cross-checked via `sps_columns`.
+**Gap:** `trinity/sps/read_sps.py` + `trinity/sps/update_feedback.py` load the SB99 tables feeding
+every run's source terms (Lw, Qi, pdot); only implicit coverage is the smoke exit code — classic
+silent-corruption surface (units are the project's recurring bug class). **Change:** load the
+bundled default table from `lib/default/` through `read_sps`, assert the time grid is strictly
+monotonic, and one known value per key column at the first grid point (captured once on the
+canonical env, committed with an env comment), with units cross-checked via `sps_columns`.
+
+2026-07-10 drift check before coding: the loader entry point is still `read_sps.read_sps`
+(`trinity/sps/read_sps.py:38-131`), with conversion/monotonic validation/t=0 prepend in
+`_read_sps_user` (`:134-282`). The default canonical unit registry and bundled SB99 column map are
+still in `trinity/sps/sps_columns.py:65-174`; monotonic-time validation is at `:334-372`.
+`trinity/sps/update_feedback.py:98-185` consumes the interpolators built from these arrays. The
+phase remains test-only; no production edit is needed.
+
+2026-07-10 P5-T5 execution: `test/test_read_sps.py` now resolves the bundled default SPS file,
+loads it through `read_sps.read_sps`, checks the prepended/strictly increasing time grid, verifies
+the default column map/canonical units via `sps_columns`, and pins the first file row for all
+returned source-term arrays. The required mutation check changed the captured `Qi` golden by a
+factor of 10, and `pytest test/test_read_sps.py -q` failed on the known-value assertion before the
+golden was restored.
+Targeted read-sps, docs convention, collection, and full default pytest gates all pass after the
+restore.
 
 ### T6 — Malformed-`.param` trust boundary (extend `test_validators.py`)
 
@@ -281,6 +408,21 @@ it**. First check what `read_param` actually does for each case, then write one 
 asserting exactly that (raise → `pytest.raises(ParameterFileError)`; documented ignore → assert
 the ignore). If the discovered behavior looks wrong (e.g. unknown keys silently dropped), flag it
 in this doc, dated — fixing it is a separate, user-approved change.
+
+2026-07-10 drift check before coding: user-line parsing still lives in
+`trinity/_input/read_param.py:181-206`; valueless user lines raise `ParameterFileError` at
+`:198-202`; unknown keys raise `ParameterFileError` at `:214-225`; duplicate user keys currently
+overwrite earlier values via `user_dict[key] = value` at `:204-206`. The duplicate-key overwrite is
+current behavior, not an endorsement: silently masking an earlier user value looks like a separate
+trust-boundary fix candidate, but this phase only pins it.
+
+2026-07-10 P5-T6 execution: `test/test_validators.py` now pins three malformed-user-`.param`
+cases: unknown keys raise `ParameterFileError`, valueless lines raise `ParameterFileError`, and
+duplicate user keys currently take the later value. The required mutation check inverted the
+duplicate-key expectation to first-value-wins, and
+`pytest test/test_validators.py::test_read_param_duplicate_user_key_uses_later_value -q` failed
+before the correct current-behavior assertion was restored. Targeted validators/docs, collection,
+and full default pytest gates all pass after the restore.
 
 ---
 
@@ -350,7 +492,7 @@ slice-audit detail lives in the phase sections above where action is required.
 | test_registry.py | KEEP (P4 prose) | byte-identical reconciliation gate for the registry |
 | test_residual_resample.py | KEEP (P4 prose) | guards `_RESIDUAL_NPTS` against too-small regression |
 | test_resolvers.py | KEEP | no duplicated assertions vs test_registry |
-| test_run_smoke.py | KEEP (P5-T1 extends) | only e2e install check; zero value asserts today |
+| test_run_smoke.py | KEEP (P5-T1 done) | e2e install check now pins final-row `R2`/`v2`/`Eb` goldens |
 | test_shell_overflow_guard.py | KEEP | `_NSHELL_MAX` bounds consistent |
 | test_show_run.py | KEEP | CLI semantics verified |
 | test_simplify.py | KEEP (P3b mark) | simplify is live in the snapshot-writer hot path; TestTiming unmarked |
@@ -359,7 +501,7 @@ slice-audit detail lives in the phase sections above where action is required.
 | test_tavg_volume.py | **P2a delete** | tautological — never imports trinity |
 | test_theta5_harvest.py | KEEP | only test targeting docs/dev scripts; path-coupled to doc reorgs |
 | test_unit_conversions.py | KEEP | `convert2au` parser characterization |
-| test_validators.py | KEEP (P5-T6 extends) | only coverage of the bare-trigger companion trap |
+| test_validators.py | KEEP (P5-T6 done) | covers validator wiring/companion traps and now pins malformed `.param` unknown-key, valueless-line, and duplicate-key behavior |
 
 `test/data/`: 2 small JSON fixtures, both referenced, none orphaned.
 
@@ -367,9 +509,10 @@ slice-audit detail lives in the phase sections above where action is required.
 
 Uncovered at audit time: `phase1_energy/run_energy_phase` + `energy_phase_ODEs`,
 `phase1c_transition/run_transition_phase`, `phase2_momentum/run_momentum_phase`,
-`phase_general/phase_events` (→T3), `phase0_init/get_InitCloudProp`/`get_InitCloudyDens`,
-`cloud_properties/validate_gmc` (→T4) + `density_profile`/`mass_profile`/`initial_profile`/
-`powerLawSphere` (backlog), `cooling/CIE/read_coolingcurve` (backlog), `sps/read_sps`/
-`update_feedback` (→T5), `_output/header`, `_functions/logging_setup`/`extract_example_snapshots`,
-`_analysis/check_yesno`. Config finding: `pyproject.toml` `addopts = "-m 'not stress'"` means the
-only boundary-crossing pipeline tests never run by default (→T2).
+`phase0_init/get_InitCloudProp`/`get_InitCloudyDens`,
+`density_profile`/`mass_profile`/`initial_profile`/
+`powerLawSphere` (backlog), `cooling/CIE/read_coolingcurve` (backlog), `_output/header`,
+`_functions/logging_setup`/`extract_example_snapshots`,
+`_analysis/check_yesno`. Config finding at audit time: `pyproject.toml` `addopts = "-m 'not
+stress'"` meant the only boundary-crossing pipeline tests never ran by default; P5-T2 now adds one
+default-suite boundary-crossing golden.

@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import math
+import warnings
 from pathlib import Path
 
 import pytest
@@ -33,6 +34,31 @@ from trinity._output.cloudy.run_loader import (
 
 
 MOCK_FULLRUN = Path(__file__).resolve().parents[1] / "outputs" / "mockOutput" / "mockFullrun"
+
+
+def test_package_reexports_public_api():
+    import trinity._output.cloudy as cloudy
+    from trinity._output.cloudy.dlaw import DlawError, build_dlaw_block
+    from trinity._output.cloudy.run_loader import RunBundle, RunLoadError, load_run
+    from trinity._output.cloudy.snapshot_to_deck import (
+        SnapshotInvalid,
+        snapshot_to_values,
+    )
+
+    expected = {
+        "DlawError", "RunBundle", "RunLoadError", "SnapshotInvalid",
+        "build_dlaw_block", "load_run", "snapshot_to_values",
+    }
+    assert expected.issubset(set(dir(cloudy)))
+    assert expected.issubset(set(cloudy.__all__))
+    assert all(hasattr(cloudy, name) for name in cloudy.__all__)
+    assert cloudy.build_dlaw_block is build_dlaw_block
+    assert cloudy.DlawError is DlawError
+    assert cloudy.load_run is load_run
+    assert cloudy.RunBundle is RunBundle
+    assert cloudy.RunLoadError is RunLoadError
+    assert cloudy.snapshot_to_values is snapshot_to_values
+    assert cloudy.SnapshotInvalid is SnapshotInvalid
 
 
 # --------------------------------------------------------------------------- #
@@ -144,6 +170,13 @@ def test_parse_summary_txt_empty_value():
     assert parsed["current_phase"] == ""
 
 
+def test_parse_summary_txt_warns_on_legacy_text():
+    with pytest.warns(DeprecationWarning, match="<model>_summary.txt"):
+        parsed = _parse_summary_txt("ZCloud 1.0\nmCloud 1e6\n")
+    assert parsed["ZCloud"] == 1.0
+    assert parsed["mCloud"] == 1e6
+
+
 # --------------------------------------------------------------------------- #
 # _parse_simulation_end
 # --------------------------------------------------------------------------- #
@@ -235,6 +268,15 @@ def test_parse_simulation_end_legacy_back_compat():
     assert out["outcome"] == "legacy_success"
 
 
+def test_parse_simulation_end_warns_on_legacy_text():
+    with pytest.warns(DeprecationWarning, match="simulationEnd.txt"):
+        out = _parse_simulation_end(
+            "Model: legacy\nOutcome: stopping_time\nExit Code: 1\n"
+        )
+    assert out["exit_code"] == 1
+    assert out["outcome"] == "stopping_time"
+
+
 # --------------------------------------------------------------------------- #
 # Error paths (synthesise broken run dirs in tmp_path)
 # --------------------------------------------------------------------------- #
@@ -242,16 +284,19 @@ def test_parse_simulation_end_legacy_back_compat():
 def _make_minimal_run_dir(tmp_path: Path, *, write_metadata=True,
                           write_summary=True, write_end=True,
                           write_jsonl=True, dens_profile="densPL",
-                          model_name="m"):
+                          model_name="m", metadata_extra=None):
     """Build a minimal run dir; toggle which files are present."""
     rd = tmp_path / "run"
     rd.mkdir()
     if write_metadata:
-        (rd / "metadata.json").write_text(json.dumps({
+        metadata = {
             "model_name": model_name,
             "dens_profile": dens_profile,
             "tSF": 0,
-        }))
+        }
+        if metadata_extra:
+            metadata.update(metadata_extra)
+        (rd / "metadata.json").write_text(json.dumps(metadata))
     if write_summary:
         (rd / f"{model_name}_summary.txt").write_text(
             "ZCloud  1.0\n"
@@ -332,3 +377,29 @@ def test_load_run_returns_frozen_bundle(tmp_path):
         bundle.model_name = "other"
     # Sanity: VALID_DENS_PROFILES is what we expect
     assert VALID_DENS_PROFILES == frozenset({"densBE", "densPL"})
+
+
+def test_load_run_v4_emits_no_deprecation_warnings(tmp_path):
+    rd = _make_minimal_run_dir(
+        tmp_path,
+        write_summary=False,
+        write_end=False,
+        metadata_extra={
+            "_metadata_version": 4,
+            "ZCloud": 1.0,
+            "termination": {
+                "exit_code": 1,
+                "outcome": "stopping_time",
+                "detail": "ok",
+                "timestamp": "2026-01-01T00:00:00",
+                "model_name": "m",
+            },
+        },
+    )
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", DeprecationWarning)
+        bundle = load_run(rd)
+    assert bundle.model_name == "m"
+    assert bundle.summary["ZCloud"] == 1.0
+    assert "termination" not in bundle.summary
+    assert bundle.end_state["exit_code"] == 1
