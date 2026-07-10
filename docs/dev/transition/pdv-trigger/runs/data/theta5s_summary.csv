@@ -1,4 +1,4 @@
-# generated 2026-07-10T17:45:30Z | builder harvest_theta_max.py | code c24f64cb
+# generated 2026-07-10T17:52:35Z | builder harvest_theta_max.py | code f1b45a6b
 run_name,theta_max,t_at_theta_max,theta_first,n_impl,t_final,phase_final,reached_momentum,fired_cooling_balance,outcome,detail
 fail_repro__fa12,0.008457630978984991,0.0034132236381263295,0.008457630978984991,1,5.0,momentum,True,False,stopping_time,Stopping time reached
 fail_repro__fa16,0.009804847396113996,0.0034132236381263295,0.009804847396113996,1,5.0,momentum,True,False,stopping_time,Stopping time reached
