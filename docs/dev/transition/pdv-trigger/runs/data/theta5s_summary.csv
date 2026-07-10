@@ -1,4 +1,4 @@
-# generated 2026-07-10T17:20:08Z | builder harvest_theta_max.py | code 03d2c0cf
+# generated 2026-07-10T17:25:09Z | builder harvest_theta_max.py | code 7eeff382
 run_name,theta_max,t_at_theta_max,theta_first,n_impl,t_final,phase_final,reached_momentum,fired_cooling_balance,outcome,detail
 fail_repro__fa12,0.008457630978984991,0.0034132236381263295,0.008457630978984991,1,5.0,momentum,True,False,stopping_time,Stopping time reached
 fail_repro__fa16,0.009804847396113996,0.0034132236381263295,0.009804847396113996,1,5.0,momentum,True,False,stopping_time,Stopping time reached
@@ -9,3 +9,6 @@ fail_repro__fa4,0.005011255787262981,0.0034132236381263295,0.005011255787262981,
 fail_repro__fa6,0.006010482340886517,0.0034132236381263295,0.006010482340886517,1,5.0,momentum,True,False,stopping_time,Stopping time reached
 fail_repro__fa8,0.006901398389134135,0.0034132236381263295,0.006901398389134135,1,5.0,momentum,True,False,stopping_time,Stopping time reached
 fail_repro__none,0.0031833766398842696,0.0034132236381263295,0.0031833766398842696,1,5.0,momentum,True,False,stopping_time,Stopping time reached
+small_dense_highsfe__fa12,1.004082811900627,0.009404600836228754,0.6383598189376627,9,0.13276665893115566,momentum,True,True,shell_collapsed,Small radius reached
+small_dense_highsfe__fa16,1.1199172063251834,0.004307207858734244,0.7590116704252458,4,0.04887466782701301,momentum,True,True,shell_collapsed,Small radius reached
+small_dense_highsfe__fa24,0.9913120026334238,0.0034100437413721032,0.9913120026334238,2,0.043122917790921506,momentum,True,True,shell_collapsed,Small radius reached
