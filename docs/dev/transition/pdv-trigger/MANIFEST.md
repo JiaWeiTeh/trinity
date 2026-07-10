@@ -12,7 +12,7 @@
 > are exact; stamp-less artifacts predate the convention (2026-07-02) — for those, only
 > the commit date is known. **Every new/edited builder must write the stamp.**
 
-321 artifacts · 0 stale-risk · 0 untracked · 13 stamped 🕐
+403 artifacts · 0 stale-risk · 0 untracked · 13 stamped 🕐
 
 | last updated (commit) | artifact | producer / flags |
 |---|---|---|
@@ -21,6 +21,88 @@
 | 2026-07-10 `494bed75` | `data/traj_normal_n1e3.csv` | — (hand-made/HPC, unreferenced) |
 | 2026-07-10 `494bed75` | `data/traj_small_1e6.csv` | producer unknown (HPC/hand-made); refs: `make_fA_edge_map.py` |
 | 2026-07-10 `494bed75` | `fA_edge_map.png` | by `make_fA_edge_map.py` |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/be_sphere__fa12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/be_sphere__fa16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/be_sphere__fa2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/be_sphere__fa24.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/be_sphere__fa32.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/be_sphere__fa4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/be_sphere__fa6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/be_sphere__fa8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/be_sphere__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/fail_repro__fa12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/fail_repro__fa16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/fail_repro__fa2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/fail_repro__fa24.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/fail_repro__fa32.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/fail_repro__fa4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/fail_repro__fa6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/fail_repro__fa8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/fail_repro__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/large_diffuse_lowsfe__fa12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/large_diffuse_lowsfe__fa16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/large_diffuse_lowsfe__fa2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/large_diffuse_lowsfe__fa24.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/large_diffuse_lowsfe__fa32.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/large_diffuse_lowsfe__fa4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/large_diffuse_lowsfe__fa6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/large_diffuse_lowsfe__fa8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/large_diffuse_lowsfe__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/midrange_pl0__fa12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/midrange_pl0__fa16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/midrange_pl0__fa2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/midrange_pl0__fa24.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/midrange_pl0__fa32.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/midrange_pl0__fa4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/midrange_pl0__fa6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/midrange_pl0__fa8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/midrange_pl0__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/normal_n1e3__fa12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/normal_n1e3__fa16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/normal_n1e3__fa2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/normal_n1e3__fa24.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/normal_n1e3__fa32.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/normal_n1e3__fa4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/normal_n1e3__fa6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/normal_n1e3__fa8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/normal_n1e3__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/pl2_steep__fa12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/pl2_steep__fa16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/pl2_steep__fa2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/pl2_steep__fa24.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/pl2_steep__fa32.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/pl2_steep__fa4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/pl2_steep__fa6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/pl2_steep__fa8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/pl2_steep__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/simple_cluster__fa12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/simple_cluster__fa16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/simple_cluster__fa2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/simple_cluster__fa24.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/simple_cluster__fa32.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/simple_cluster__fa4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/simple_cluster__fa6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/simple_cluster__fa8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/simple_cluster__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/small_1e6__fa12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/small_1e6__fa16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/small_1e6__fa2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/small_1e6__fa24.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/small_1e6__fa32.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/small_1e6__fa4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/small_1e6__fa6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/small_1e6__fa8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/small_1e6__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/small_dense_highsfe__fa12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/small_dense_highsfe__fa16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/small_dense_highsfe__fa2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/small_dense_highsfe__fa24.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/small_dense_highsfe__fa32.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/small_dense_highsfe__fa4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/small_dense_highsfe__fa6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/small_dense_highsfe__fa8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/params/theta5s/small_dense_highsfe__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-10 `7e42278f` | `runs/run_theta5s.sbatch` | producer unknown (HPC/hand-made); refs: `make_theta5s_params.py` |
 | 2026-07-06 `487f2edd` | `data/fA_source_boost.csv` | by `make_fA_source_boost.py` |
 | 2026-07-06 `487f2edd` | `data/fA_source_boost_summary.csv` | by `make_fA_source_boost.py` |
 | 2026-07-06 `487f2edd` | `fA_source_boost.png` | by `make_fA_source_boost.py` |
