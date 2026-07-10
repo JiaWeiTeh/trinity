@@ -17,6 +17,7 @@ fail_repro__fa4,0.005011255787262981,0.0034132236381263295,0.005011255787262981,
 fail_repro__fa6,0.006010482340886517,0.0034132236381263295,0.006010482340886517,1,5.0,momentum,True,False,stopping_time,Stopping time reached
 fail_repro__fa8,0.006901398389134135,0.0034132236381263295,0.006901398389134135,1,5.0,momentum,True,False,stopping_time,Stopping time reached
 fail_repro__none,0.0031833766398842696,0.0034132236381263295,0.0031833766398842696,1,5.0,momentum,True,False,stopping_time,Stopping time reached
+large_diffuse_lowsfe__fa16,1.0536682192238207,2.3928880469017657,0.05875441030076953,119,5.0,transition,True,True,stopping_time,Stopping time reached
 large_diffuse_lowsfe__fa24,1.033221601079654,2.2428880469017662,0.06972734827500425,116,5.0,momentum,True,True,stopping_time,Stopping time reached
 large_diffuse_lowsfe__fa32,1.0019357806245766,2.107545096956617,0.07922015819896928,113,5.0,momentum,True,True,stopping_time,Stopping time reached
 midrange_pl0__fa12,1.0940294187189512,0.3960277437933927,0.17476778729464748,73,1.7166298151059098,momentum,True,True,shell_collapsed,Small radius reached (event)
