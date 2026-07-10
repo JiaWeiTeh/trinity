@@ -1,4 +1,4 @@
-# generated 2026-07-10T17:40:12Z | builder harvest_theta_max.py | code 266bf765
+# generated 2026-07-10T17:45:30Z | builder harvest_theta_max.py | code c24f64cb
 run_name,theta_max,t_at_theta_max,theta_first,n_impl,t_final,phase_final,reached_momentum,fired_cooling_balance,outcome,detail
 fail_repro__fa12,0.008457630978984991,0.0034132236381263295,0.008457630978984991,1,5.0,momentum,True,False,stopping_time,Stopping time reached
 fail_repro__fa16,0.009804847396113996,0.0034132236381263295,0.009804847396113996,1,5.0,momentum,True,False,stopping_time,Stopping time reached
@@ -15,3 +15,4 @@ small_dense_highsfe__fa24,0.9913120026334238,0.0034100437413721032,0.99131200263
 small_dense_highsfe__fa32,1.5856218863197047,0.003807207858734244,0.9092670707878409,3,0.04053917665234116,momentum,True,True,shell_collapsed,Small radius reached
 small_dense_highsfe__fa4,0.9802457648571627,0.017195427719622212,0.6000338717271345,15,2.747595316674234,momentum,True,True,shell_dissolved,Shell dissolved
 small_dense_highsfe__fa6,1.1084920603119914,0.013239314039552173,0.4969741021455843,12,2.84218195047284,momentum,True,True,shell_dissolved,Shell dissolved
+small_dense_highsfe__fa8,1.2122099961244344,0.011658175209467983,0.5372969025709904,11,2.979747022943638,momentum,True,True,shell_dissolved,Shell dissolved
