@@ -48,7 +48,11 @@ def _order_key(param_path):
     # normalization reference but are un-completable in-container regardless of order -> HPC.
     cfg = param_path.stem.rsplit("__", 1)[0]
     ci = _CONFIG_ORDER.index(cfg) if cfg in _CONFIG_ORDER else len(_CONFIG_ORDER)
-    return (ci, -_fa_of(param_path.stem), param_path.stem)
+    fa = _fa_of(param_path.stem)
+    low = 1 if fa <= 2 else 0  # fA<=2 baselines grind the implicit phase -> run them LAST, globally,
+    #                            so no slow baseline of an early config starves a completable high-fA
+    #                            arm of a later one. Baselines are un-completable in-container anyway.
+    return (low, ci, -fa, param_path.stem)
 
 
 def run_arm(param_path, out_root, timeout, env):
