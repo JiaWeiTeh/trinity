@@ -285,6 +285,18 @@ for provenance.*
 > on `dictionary.jsonl`. `F_KAPPA_FUNCTIONAL_FORM.md` §10/§14 flagged accordingly.
 
 **Status ledger (newest first):**
+- **2026-07-11 (🟢 f_A PHASE 4 in-container COMPLETE 81/81 — PROVISIONAL, HPC confirmation pending).**
+  The in-container theta5s matrix reached 81/81 compliant over ~11 h across ~dozen container restarts
+  (runner + repo autocommitter + send_later heartbeat + hourly cron; 2 h/arm; each arm got its full
+  budget, only restarts cut arms short). Ran `data/make_theta5s_analysis.py`. **HEADLINE: collapse-law
+  p=3.330 (rms 0.055 dex, n=6) CONFIRMS the registered prediction p_source≈3.3;** both controls
+  (`fail_repro`, `small_1e6`) never fire at any fA; 3-class structure (fires-unmodified `normal_n1e3` /
+  needs-f_A {small_dense 4, simple_cluster 4, midrange 6, large_diffuse 8, pl2_steep 12, be_sphere 12} /
+  controls). Corrected two θ_max-vs-FIRED threshold errors (simple_cluster fa4 not fa6; large_diffuse fa8
+  not fa6). Artifacts: `data/theta5s_{fire_map,collapse_law}.csv` + `theta5s_{fire_map,theta_rise}.png`.
+  Still ASSUMED (not HPC) — §15e mandatory action stands: re-run on `run_theta5s.sbatch`, re-check
+  downstream. Wrote the next-chat handoff into `SOURCE_TERM_DESIGN.md`. FINDINGS §15e (final), REPRODUCE
+  row 41. **Phases 5 (bench5 Lancaster calibration) + 6 (decision) open.**
 - **2026-07-10 (⚠️ f_A PHASE 4 PROVISIONAL in-container fallback — NOT HPC, ASSUMED not
   authoritative).** Maintainer had no HPC access and asked the session to run the theta5s matrix
   in-container instead of on Helix. Built `runs/run_theta5s_local.py` (resumable, high-fA-first
