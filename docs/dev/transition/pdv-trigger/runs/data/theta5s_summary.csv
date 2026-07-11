@@ -35,6 +35,7 @@ midrange_pl0__fa32,1.3201259331619006,0.09648511993571791,0.23981629860406306,52
 midrange_pl0__fa4,0.7245319260413651,0.4487649882304748,0.14167925322671265,167,5.0,implicit,False,False,stopping_time,Stopping time reached
 midrange_pl0__fa6,1.0704264966289028,0.638481399966689,0.15071714284198653,80,5.0,momentum,True,True,stopping_time,Stopping time reached
 midrange_pl0__fa8,1.1349728067088805,0.4884813999666889,0.15916159155629098,77,5.0,momentum,True,True,stopping_time,Stopping time reached
+midrange_pl0__none,0.6355290016238132,0.43187417106131554,0.1267904374806232,166,5.0,implicit,False,False,stopping_time,Stopping time reached
 normal_n1e3__fa12,1.0519176528813472,0.8181813053965904,0.13756544333657605,87,3.9779394843982585,momentum,True,True,shell_collapsed,Small radius reached (event)
 normal_n1e3__fa16,1.020198342949005,0.4673571535314063,0.15210913833763542,78,3.9595126350284815,momentum,True,True,shell_collapsed,Small radius reached (event)
 normal_n1e3__fa2,1.0882709178811467,2.2936091388038604,0.08869175600126335,116,5.0,momentum,True,True,stopping_time,Stopping time reached
