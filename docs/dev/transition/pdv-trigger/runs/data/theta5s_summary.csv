@@ -55,6 +55,7 @@ simple_cluster__fa32,1.337797223437117,0.018029923149383023,0.6542755318730439,2
 simple_cluster__fa4,1.0558081658856995,0.16219594449999164,0.33529720906724464,60,5.0,momentum,True,True,stopping_time,Stopping time reached
 simple_cluster__fa6,1.0989177846879998,0.08462280323327585,0.3533325941479119,47,0.5817933125457327,momentum,True,True,shell_collapsed,Small radius reached (event)
 simple_cluster__fa8,1.251349906814607,0.09184222763029887,0.3718467097805181,48,0.6956040435992689,momentum,True,True,shell_collapsed,Small radius reached (event)
+simple_cluster__none,0.6759707636447871,0.09810730361753958,0.3116237395065309,163,5.0,implicit,False,False,stopping_time,Stopping time reached
 small_1e6__fa12,0.4349632661026239,1.0600021096108447,0.052392715608864396,173,5.0,implicit,False,False,stopping_time,Stopping time reached
 small_1e6__fa16,0.4712842283460255,1.0928880469017663,0.05875442291949286,173,5.0,implicit,False,False,stopping_time,Stopping time reached
 small_1e6__fa24,0.532668950372455,1.1428880469017664,0.06972734827500425,173,5.0,implicit,False,False,stopping_time,Stopping time reached
