@@ -399,6 +399,48 @@ and write it up before touching code. For long unattended runs, use the PLAN.md 
 NEVER premature-stop a running arm; report every tick).
 ```
 
+### Generic phase-runner prompt (paste after EVERY completed phase/item — self-renewing)
+
+```
+Run the NEXT open phase/item of the f_A workstream (JiaWeiTeh/trinity, assigned branch only).
+
+RE-ENTRY (every time, no exceptions): read docs/dev/transition/pdv-trigger/SOURCE_TERM_DESIGN.md
+(Status line + "Next-chat handoff" block + the relevant §3 phase spec), the newest FINDINGS.md §, and
+the top PLAN.md ledger entry. Honor the ⚠️/🔄/💾/🔗 banners — re-verify claims, line refs, and status
+words against current source; fix any drift you find AS PART of the visit (dated). Identify the single
+next open item from the Status line; if it is ambiguous or maintainer-gated, say so and ask — do not
+pick silently and do not fake a gated step.
+
+EXECUTE per the phase spec, sized per CLAUDE.md's planning protocol (risky/iterative ⇒ gate first:
+define pass/fail BEFORE editing; capture a baseline; full-run equivalence on stiff regimes in separate
+processes at matched t; byte-identity for any "free win").
+
+STANDING RULES: θ only as θ_max over ≥5 Myr from dictionary.jsonl accepted rows via
+runs/harvest_theta_max.py (never blowout, never the R6 observer); FIRE = the trigger actually fired
+(analysis CSV's FIRED/NOFIRE), NOT θ_max≥0.95; no number quoted before its compliance gate (t_final≥5
+or physics end; ≥1.5 h/arm before any wall-kill verdict); single-knob arms; thresholds from incomplete
+data are upper bounds, not results; a control that fires is a BUG to flag, never a pass; if a
+registered prediction is falsified, STOP and write it up before touching code; measure, don't
+extrapolate; after any tool error, verify state (git log / sync) before retrying. Long unattended
+runs ⇒ the ops playbook above (resumable runner + repo autocommitter + re-arming heartbeat w/
+context+terminal clause + hourly cron; NEVER premature-stop a running arm; report every tick; delete
+triggers at terminal).
+
+CLOSE-OUT (this is what makes this prompt reusable — leave the docs so the SAME prompt works again):
+1. Commit every artifact WITH its builder script + the exact command (💾; nothing left in /tmp).
+2. Dated FINDINGS.md entry + REPRODUCE.md row for the result.
+3. Reconcile ALL siblings same-visit (🔗): SOURCE_TERM_DESIGN Status line + phase header + handoff
+   block (advance it to the new state), INDEX.md row, PLAN.md ledger (newest-first entry; mark
+   superseded claims).
+4. Regenerate MANIFEST (python make_manifest.py) in the same commit as new artifacts.
+5. Run pytest + test/test_docs_dev_conventions.py; fix before declaring done.
+6. Milestone stale-doc sweep: grep the workstream for old status words ("awaiting", "in progress",
+   "incomplete", old counts/thresholds) and reconcile every hit.
+7. Push (no --force). Commits: no AI attribution, no session links, no co-author trailers.
+8. Report: what ran, the numbers (with their provisional/authoritative status), what is now the next
+   open item.
+```
+
 **Status ledger (newest first):**
 - **2026-07-11 (🟢 f_A PHASE 4 in-container COMPLETE 81/81 — PROVISIONAL, HPC confirmation pending).**
   The in-container theta5s matrix reached 81/81 compliant over ~11 h across ~dozen container restarts
