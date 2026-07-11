@@ -1447,16 +1447,36 @@ arms into the committed summary, which survives restarts). Per-arm limit ≥20 m
 2026-07-10; set to 30 min) before an arm is called non-compliant. The committed
 `runs/data/theta5s_summary.csv` carries the same PROVISIONAL banner in its header.
 
-**What completed so far (provisional, 18 compliant of 81):**
-- **`fail_repro` control — all 9 arms, never fires** (θ_max 0.003 → 0.014 across fA 1→32, ≪ 0.95).
-  The control staying cold even at fA=32 is the most robust in-container result.
-- **`small_dense_highsfe` — fires at fA≥4** (θ_max ≥ 0.95); dose-dependent (fA4–8 shell-dissolved,
-  fA12+ shell-collapsed). Baseline (`__none`) + fA2 wall-killed → fire *threshold* not yet bracketed.
-- **`normal_n1e3` — fires at fA12/16**; high-fA arms (fa24/32) are compute-heavy (dt-shrink) and slow
-  even here; low-fA/baseline wall-kill.
-- Everything else (`simple_cluster`, `pl2_steep`, `be_sphere`, `midrange_pl0`, `large_diffuse_lowsfe`,
-  `small_1e6`) + all `__none` baselines: **not yet completed in-container** (compute/​restart limited).
-  `small_1e6` (the second control) is therefore **not yet checked** — its no-fire requirement is still open.
+**What completed (provisional, 47 compliant of 81 as of 2026-07-11 ~08:30):** the fire map for the
+physically-FAST regime is complete — **all 7 fireable configs fire under sufficient boost, and the
+fire threshold tracks density**:
+
+| config | fires at fA≥ | θ_max at fire | note |
+|---|---|---|---|
+| `fail_repro` (CONTROL) | never (θ 0.003–0.014) | — | cold at every fA incl. 32 ✓ |
+| `small_dense_highsfe` | 4 | 0.98–1.59 | densest → lowest threshold |
+| `normal_n1e3` | 4 | 0.99–1.25 | |
+| `simple_cluster` | 6 | 0.98–1.34 | |
+| `midrange_pl0` | 6 | 1.07–1.32 | |
+| `be_sphere` | 12 | 1.05–1.19 | |
+| `pl2_steep` | 12 | 1.01–1.24 | steep profile |
+| `large_diffuse_lowsfe` | 12 | 0.98–1.05 | diffuse §8d config — *does* fire at fA≥12 |
+| `small_1e6` (CONTROL) | — | — | **not yet completed** (see below) |
+
+**⚠️ Why in-container cannot finish all 81 (measured 2026-07-11, do not assume otherwise).** The 47
+that completed are exactly the arms that **fire early** (θ crosses 0.95 → fast collapse/handoff → they
+terminate in minutes). Every one of the **34 remaining arms is a slow implicit grinder**: 25 are
+**below their config's fire threshold** (e.g. `simple_cluster__fa4`, `pl2_steep__fa6/8`) so they never
+fire and must integrate the full energy-driven phase to `stop_t=5`; 9 are the **`small_1e6` control**
+(a control by definition does not fire → same slow path). Live `t_now` on three of them after ~15 min
+of wall-clock: `simple_cluster__fa4` t=0.13/5, `pl2_steep__fa8` t=0.21/5, `pl2_steep__fa6` t=0.54/5 —
+linear extrapolation ≈ **2–9 h each**. The container has **only 4 cores** (3 workers saturate them; no
+parallelism headroom) and restarts every few-to-~40 min (resets in-flight arms). 34 arms × multi-hour
+each on 4 cores ≫ any realistic in-container window. **Conclusion: the below-threshold + control +
+baseline arms are not completable in-container; they need HPC (the sbatch is ready, §15d).** The
+in-container run maximally salvages the fast-firing arms and is being left running to capture whatever
+stragglers hand off to the momentum phase early; `small_1e6` (the 2nd control) was reprioritized to run
+next so at least the control is attempted, but it too may not finish here.
 
 **⛔ MANDATORY future action — revisit once HPC is available.** This is not optional cleanup; the
 in-container matrix is a placeholder to be **replaced**, not confirmed:
