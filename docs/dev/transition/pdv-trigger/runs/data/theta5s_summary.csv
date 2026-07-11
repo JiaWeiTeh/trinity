@@ -48,6 +48,7 @@ pl2_steep__fa32,1.234895132986369,0.0252974785405632,0.48186042687617053,29,0.25
 pl2_steep__fa4,0.5530678552839103,0.048281571710121894,0.2890726697461165,153,5.0,implicit,False,False,stopping_time,Stopping time reached
 pl2_steep__fa6,0.591465461577229,0.04363749499334544,0.3018426490866697,153,5.0,implicit,False,False,stopping_time,Stopping time reached
 pl2_steep__fa8,0.632014687209691,0.04363749499334544,0.31479852773750877,153,5.0,implicit,False,False,stopping_time,Stopping time reached
+pl2_steep__none,0.5107525274937346,0.037183502640478115,0.2717092811396527,153,5.0,implicit,False,False,stopping_time,Stopping time reached
 simple_cluster__fa12,0.9768602746919743,0.04917317137394542,0.40989580736577097,38,0.2051771353213331,momentum,True,True,shell_collapsed,Small radius reached (event)
 simple_cluster__fa16,1.0477706402053915,0.03954080730978669,0.4500838741094811,35,0.1569296347976583,momentum,True,True,shell_collapsed,Small radius reached (event)
 simple_cluster__fa2,0.6994428774659273,0.09884189625455227,0.3183923965752554,163,5.0,implicit,False,False,stopping_time,Stopping time reached
