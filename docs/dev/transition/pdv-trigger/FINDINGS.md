@@ -1447,8 +1447,10 @@ arms into the committed summary, which survives restarts). Per-arm limit ≥20 m
 2026-07-10; set to 30 min) before an arm is called non-compliant. The committed
 `runs/data/theta5s_summary.csv` carries the same PROVISIONAL banner in its header.
 
-**What completed (provisional, 57 compliant of 81 as of 2026-07-11 ~12:00):** all 7 fireable configs
-fire under sufficient boost. As the below-threshold arms (fa4/6/8) complete they confirm **no-fire**
+**What completed (provisional, 60 compliant of 81 as of 2026-07-11 ~13:35):** all 7 fireable configs
+fire under sufficient boost, and **BOTH controls (`fail_repro`, `small_1e6`) stay cold at every fA up
+to max boost (32)** — the f_A knob does not spuriously fire a config that shouldn't fire. As the
+below-threshold arms (fa4/6/8) complete they confirm **no-fire**
 and tighten each config's threshold — which **varies by profile shape, NOT purely density** (diffuse
 `large_diffuse` fires at fA≥6 while steeper `pl2_steep`/`be_sphere` need fA≥12). An earlier version of
 this table (47 compliant, high-fA arms only) put `large_diffuse` at fA≥12; completing its fa6/fa8 arms
@@ -1464,22 +1466,23 @@ corrected that to fA≥6 — a caution that thresholds read off incomplete data 
 | `midrange_pl0` | 6 | (4,6] | fa4 no-fire (θ0.73); fa6/8 fire (θ1.07/1.14) |
 | `pl2_steep` | 12 | (8,12] | fa4/6/8 no-fire (θ0.55–0.63) |
 | `be_sphere` | 12 | (8,12] | fa4/6/8 no-fire (θ0.60–0.69) |
-| `small_1e6` (CONTROL) | — | — | **not yet completed** (~30× slower, needs HPC) |
+| `small_1e6` (CONTROL) | never (fa24 θ0.53, fa32 θ0.60) | — | 2nd control COLD at max boost ✓ |
 
-**⚠️ Why in-container cannot finish all 81 (measured 2026-07-11, do not assume otherwise).** The 47
-that completed are exactly the arms that **fire early** (θ crosses 0.95 → fast collapse/handoff → they
-terminate in minutes). Every one of the **34 remaining arms is a slow implicit grinder**: 25 are
-**below their config's fire threshold** (e.g. `simple_cluster__fa4`, `pl2_steep__fa6/8`) so they never
-fire and must integrate the full energy-driven phase to `stop_t=5`; 9 are the **`small_1e6` control**
-(a control by definition does not fire → same slow path). Live `t_now` on three of them after ~15 min
-of wall-clock: `simple_cluster__fa4` t=0.13/5, `pl2_steep__fa8` t=0.21/5, `pl2_steep__fa6` t=0.54/5 —
-linear extrapolation ≈ **2–9 h each**. The container has **only 4 cores** (3 workers saturate them; no
-parallelism headroom) and restarts every few-to-~40 min (resets in-flight arms). 34 arms × multi-hour
-each on 4 cores ≫ any realistic in-container window. **Conclusion: the below-threshold + control +
-baseline arms are not completable in-container; they need HPC (the sbatch is ready, §15d).** The
-in-container run maximally salvages the fast-firing arms and is being left running to capture whatever
-stragglers hand off to the momentum phase early; `small_1e6` (the 2nd control) was reprioritized to run
-next so at least the control is attempted, but it too may not finish here.
+**What actually limits in-container completion (measured 2026-07-11, corrected).** The fast-firing arms
+(θ crosses 0.95 → collapse/handoff) finish in minutes. The below-threshold + control + baseline arms
+run the full energy phase to `stop_t=5` and are slower, BUT they complete in **~40 min each in a stable
+window** — NOT the 2–9 h an earlier version of this section extrapolated. That extrapolation was wrong:
+it linearly projected from the slow *initialization* phase, but the implicit integrator **accelerates
+sharply near the end**, so `t_now` after 15 min badly under-predicts completion (confirmed by
+`pl2_steep`/`be_sphere`/`large_diffuse`/`midrange` fa4/6/8 and `small_1e6` fa24/fa32 all finishing in
+~40 min once the container held still). The real limiter is therefore **stable-window length, not
+per-arm compute**: the container has only 4 cores (3 workers) and restarts every few-to-~40 min, and a
+restart resets any in-flight arm to `t=0`. So arms complete steadily during long quiet stretches and
+stall (repeatedly reset) during rapid-restart patches. The slowest baselines (`__none`/fa2) and any arm
+that never gets a ~40-min uninterrupted window may still not finish here — those, plus the whole matrix
+for HPC-fidelity confirmation, remain the HPC job (§15d, sbatch ready). Each arm is given its full 2 h
+budget before any wall-kill; nothing is premature-stopped by the harness — only container restarts cut
+arms short.
 
 **⛔ MANDATORY future action — revisit once HPC is available.** This is not optional cleanup; the
 in-container matrix is a placeholder to be **replaced**, not confirmed:
