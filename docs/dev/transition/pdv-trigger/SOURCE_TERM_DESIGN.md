@@ -73,10 +73,12 @@ the output-side `f_mix` multiplier and the solver-breaking `f_κ` (§1–2).
 **Phase 4 result (in-container, PROVISIONAL — `FINDINGS.md §15e`).** All 81 arms of the theta5s matrix
 (9 configs × f_A {1,2,4,6,8,12,16,24,32}, stop_t 5, single-knob) completed in-container. Authoritative
 data: `data/theta5s_fire_map.csv` + `data/theta5s_collapse_law.csv` (regenerate with
-`python data/make_theta5s_analysis.py`). THREE classes: (1) `normal_n1e3` fires UNMODIFIED at fA=1;
+`python data/make_theta5s_analysis.py`) + `data/theta5s_dmdt_suppression.csv` (read iii). THREE classes:
+(1) `normal_n1e3` fires UNMODIFIED at fA=1;
 (2) needs f_A — fire threshold `small_dense` 4, `simple_cluster` 4, `midrange` 6, `large_diffuse` 8,
 `pl2_steep` 12, `be_sphere` 12; (3) CONTROLS `fail_repro` + `small_1e6` never fire at any fA. **Collapse
-law p=3.330 (rms 0.055 dex) CONFIRMS the registered prediction p_source≈3.3.** FIRE = the run actually
+law p=3.330 (rms 0.055 dex) CONFIRMS the registered prediction p_source≈3.3; dMdt suppression <1 falling
+with f_A matrix-wide (Eq-47 sign — the measurement f_mix cannot produce).** FIRE = the run actually
 fired the trigger (STRICTER than θ_max≥0.95 — quote the CSV's FIRED/NOFIRE).
 
 **Next steps (Phases 5–6 + HPC):**
@@ -400,25 +402,23 @@ conduction prefactor :413); introduce a third 10^5.5 literal.
    NOT plain run.py defaults): runs clean; `bubble_dMdt` visibly below the fA=1 companion at
    matched segments; θ visibly above. No θ quotes (stop_t rule).
 
-### Phase 4 🟡 — theta5s: the all-9-config live matrix (HPC) — TOOLING READY, AWAITING MAINTAINER SUBMISSION (2026-07-06, `FINDINGS.md §15d`)
+### Phase 4 🟢 — theta5s: the all-9-config live matrix — in-container COMPLETE 81/81 2026-07-11 (PROVISIONAL, `FINDINGS.md §15e`); HPC confirmation pending (`§15d` tooling)
 
-> STATE: all builders committed & locally validated (`runs/make_theta5s_params.py` + 81 committed
-> params, `runs/run_theta5s.sbatch` array 1-81 @6h, `runs/sync_theta5s.sh`,
-> `data/make_theta5s_analysis.py`, `runs/harvest_dmdt_suppression.py`). The **matrix is NOT run**
-> — the maintainer must `./sync_theta5s.sh {up,submit,watch,run,down}` on Helix (needs the Phase-2
-> f_A wiring pulled). A follow-up session runs the analysis on the harvested `theta5s_summary.csv`
-> and the dMdt reducer on the raw arms, then feeds the Phase-6 tree. No θ quotable until then.
-> Original spec below (kept for provenance).
->
-> ⚠️ **PROVISIONAL in-container fallback (2026-07-10, `FINDINGS.md §15e`).** Because the maintainer
-> had no HPC access, the matrix is being run *in-container* via `runs/run_theta5s_local.py` +
-> `runs/checkpoint_theta5s.py` instead of on Helix. This is **restart-limited and fast-arm-biased**:
-> only the fastest-firing arms complete; `__none`/low-fA baselines and diffuse configs wall-kill and
-> are absent/truncated. **Its fire-map / collapse-law / dMdt numbers are ASSUMED, not authoritative
-> — this run does NOT satisfy Phase 4 and must NOT feed the Phase-6 decision as final.** Phase 4 is
-> complete only when the full 81-arm matrix runs on HPC via `run_theta5s.sbatch`; at that point every
-> downstream read (analysis, both controls, Phases 5–6, paper numbers) is re-checked against the HPC
-> summary and §15e is superseded.
+> STATE (2026-07-11): **in-container run COMPLETE — 81/81 arms compliant** (`FINDINGS.md §15e`), via
+> the maintainer-requested fallback `runs/run_theta5s_local.py` + `runs/autocommit_theta5s.sh` +
+> `runs/checkpoint_theta5s.py` (HPC was unavailable). Analysis ran
+> (`python data/make_theta5s_analysis.py`): **collapse-law p=3.330 CONFIRMS the registered
+> p_source≈3.3; both controls never fire; 3 classes** — authoritative read is
+> `data/theta5s_fire_map.csv` + `data/theta5s_collapse_law.csv` (FIRE = actually triggered,
+> stricter than θ_max≥0.95). **Still PROVISIONAL: in-container-vs-HPC fidelity unverified** — the
+> matrix must be re-run on HPC via `sbatch runs/run_theta5s.sbatch` (tooling ready, `§15d`;
+> `./sync_theta5s.sh {up,submit,watch,run,down}`) and every downstream read re-checked against the
+> HPC summary before the Phase-6 decision is final. The dMdt fidelity read (read iii) also ran
+> in-container (2026-07-11, salvaged from /tmp before a restart wiped the raw arms):
+> `data/theta5s_dmdt_suppression.csv` — 72 arm ratios, 49 quotable, **ALL < 1 and falling with f_A**
+> (≈0.99 at fa2 → ≈0.85 at fa32) = the El-Badry Eq-47 evaporation-suppression sign, matrix-wide —
+> the measurement the f_mix multiplier structurally cannot produce. Re-derive it on the HPC arms
+> too. Original spec below (kept for provenance).
 
 - **Grid** (audit G2 ⊕ lit prediction): f_A ∈ **{1, 2, 4, 6, 8, 12, 16, 24, 32}** × 9 configs =
   81 arms, `stop_t 5`, mode=none, kappa=1 (single-knob by construction — say so in the sbatch

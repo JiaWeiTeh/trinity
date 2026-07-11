@@ -1469,6 +1469,14 @@ configs gives **p = 3.330** (A=1.463, rms=0.0554 dex, n=6). The registered predi
 behaves as designed. Analysis also verifies **control fires: none** (no BUG) and **CONDENSE/dMdt≤0 arms: 0**
 (matches the Phase-1 §15a prediction that a source knob never reaches the condensation crash).
 
+**dMdt fidelity (read iii — the measurement `f_mix` structurally cannot produce):**
+`runs/harvest_dmdt_suppression.py` over all 81 raw arms (salvaged from /tmp 2026-07-11 before a restart)
+→ `data/theta5s_dmdt_suppression.csv`: 72 arm ratios, 49 quotable (n_overlap≥20, not upper-limit),
+**every quotable median ratio dMdt(fA)/dMdt(1) < 1 and falling with f_A** (≈0.99 at fa2 → ≈0.82–0.87 at
+fa32 across configs) — the **El-Badry Eq-47 evaporation-suppression sign holds matrix-wide** in the full
+coupled run. `fail_repro` is correctly un-quotable (collapses at t≈0.003, no overlap). Trend check, not a
+fit (state divergence at matched t is conflated in the ratio).
+
 **Threshold-correction lesson (do not repeat):** thresholds read off *incomplete* data or *raw θ_max*
 were wrong twice — `large_diffuse` looked like fa12 (only high-fA done), then fa6 (θ_max≥0.95), and is
 actually **fa8** (FIRED); `simple_cluster` looked like fa6 and is actually **fa4**. Always take f_fire
