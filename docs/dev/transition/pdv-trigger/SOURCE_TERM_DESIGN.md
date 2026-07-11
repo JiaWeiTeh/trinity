@@ -40,18 +40,69 @@ stream for the next sessions: Phase 0 ✅ done, **Phase 1 ✅ done (2026-07-06, 
 **Phase 2 ✅ done (2026-07-06, `FINDINGS.md §15b`)**,
 **Phase 3 ✅ done (2026-07-06, `FINDINGS.md §15c` — all 4 gates pass; default LITERAL
 byte-identity; first live El-Badry sign)**,
-**Phase 4 🟡 tooling READY, awaiting maintainer HPC submission (2026-07-06, `FINDINGS.md §15d` —
-81 params + sbatch + sync + analysis + dMdt reducer committed & locally validated; the matrix is
-NOT yet run on HPC)**, Phases 5–6 ⬜ open.
-**⚠️ A PROVISIONAL in-container fallback run is in progress (2026-07-10, `FINDINGS.md §15e`) because
-the maintainer had no HPC access — it is restart-limited and fast-arm-biased (baselines + diffuse
-configs wall-kill), so its fire-map/collapse-law/dMdt numbers are ASSUMED, NOT authoritative. Once
-HPC is available the full matrix must be re-run via `run_theta5s.sbatch` and EVERYTHING downstream
-(analysis, controls, Phases 5–6, paper numbers) re-checked against it.** Two review agents audited this plan on 2026-07-06 (config-coverage audit;
+**Phase 4 🟢 in-container COMPLETE 81/81 (2026-07-11, `FINDINGS.md §15e`) — PROVISIONAL, HPC
+confirmation still pending.** Tooling (`FINDINGS.md §15d`, 2026-07-06) was HPC-gated; because the
+maintainer had no HPC access, the full 81-arm matrix was run in Claude's ephemeral container instead
+(`runs/run_theta5s_local.py` + `runs/autocommit_theta5s.sh` + watchdogs). All 81 arms compliant.
+**Headline: collapse-law p=3.330 CONFIRMS the registered prediction p_source≈3.3; both controls
+(`fail_repro`, `small_1e6`) stay cold at every fA; 3-class structure (fires-unmodified / needs-f_A /
+control).** These numbers are ASSUMED (in-container, not HPC) — the full matrix must still be re-run on
+`run_theta5s.sbatch` and everything downstream re-checked (§15e mandatory action). **Phases 5–6 ⬜ open**
+(see the handoff block below). Two review agents audited this plan on 2026-07-06 (config-coverage audit;
 literature-benchmark extraction) — their findings are integrated throughout and marked "(audit)" /
 "(lit)". **Phase 1 headline: the condensation-edge prediction (edges near θ≈1) was FALSIFIED in the
 SAFE direction — no dMdt≤0 edge exists for f_A even at 512 (16× the physical range); the source knob
 structurally cannot reach the f_κ condensation crash. All 9 configs now have offline coverage.**
+
+---
+
+## Next-chat handoff (2026-07-11) — f_A workstream state + how to continue in a fresh session
+
+> For a fresh Opus/Sonnet picking this up in a NEW chatroom. Read this, then §1–3 of this doc and
+> `FINDINGS.md §15` (a–e). **Everything needed is durable in git; this session's conversation is not** —
+> do not rely on chat memory, re-derive from the docs + CSVs below.
+
+**What f_A is / what shipped (Phases 0–3 ✅).** `cooling_boost_fA` (default 1.0 = byte-identical inert)
+multiplies the net radiative source inside the bubble-structure ODE + the resolved interface losses, only
+in the interface band (T < 10^5.5 K). Wired at 2 edit sites in
+`trinity/bubble_structure/bubble_luminosity.py` + a registry ParamSpec/validator in
+`trinity/_input/registry.py`; test `test/test_fA_source_boost.py`. Gate proven: default is LITERAL
+byte-identical (pre==postA==postB `dictionary.jsonl` sha256). It is the physically-correct successor to
+the output-side `f_mix` multiplier and the solver-breaking `f_κ` (§1–2).
+
+**Phase 4 result (in-container, PROVISIONAL — `FINDINGS.md §15e`).** All 81 arms of the theta5s matrix
+(9 configs × f_A {1,2,4,6,8,12,16,24,32}, stop_t 5, single-knob) completed in-container. Authoritative
+data: `data/theta5s_fire_map.csv` + `data/theta5s_collapse_law.csv` (regenerate with
+`python data/make_theta5s_analysis.py`). THREE classes: (1) `normal_n1e3` fires UNMODIFIED at fA=1;
+(2) needs f_A — fire threshold `small_dense` 4, `simple_cluster` 4, `midrange` 6, `large_diffuse` 8,
+`pl2_steep` 12, `be_sphere` 12; (3) CONTROLS `fail_repro` + `small_1e6` never fire at any fA. **Collapse
+law p=3.330 (rms 0.055 dex) CONFIRMS the registered prediction p_source≈3.3.** FIRE = the run actually
+fired the trigger (STRICTER than θ_max≥0.95 — quote the CSV's FIRED/NOFIRE).
+
+**Next steps (Phases 5–6 + HPC):**
+1. **HPC confirmation (§15e mandatory).** Re-run the full matrix on HPC via `runs/run_theta5s.sbatch`
+   (authoritative); re-check fire map, p=3.33, both controls, dMdt (`runs/harvest_dmdt_suppression.py`),
+   Phases 5–6, and any paper number against it. HPC wins any disagreement.
+2. **Phase 5 — literature calibration (§3 Phase 5).** bench5 Lancaster/El-Badry: an f_A value is "good"
+   if it yields similar θ at similar time to the published bubble sims. Configs + benchmarks in §3.
+3. **Phase 6 — decision (§3 Phase 6).** Does f_A ship as the transition-trigger fix? Feed the 3-class
+   result + p=3.33 + controls into the decision tree.
+4. Paper: the p_source≈3.3 collapse law + the 3-class fire map are the f_A story.
+
+**In-container run machinery (FALLBACK only; authoritative path is the HPC sbatch).** Committed & reusable:
+`runs/run_theta5s_local.py` (resumable runner, 2h/arm), `runs/autocommit_theta5s.sh` (repo committer,
+commits every ~2 min), `runs/checkpoint_theta5s.py` (merge helper). Driven this session by a send_later
+heartbeat + an hourly cron that fired into THIS session_id — **both deleted at handoff** (run is done,
+runner/committer stopped). A fresh chat starts clean: nothing pending. If you re-run in-container, re-arm
+your own watchdogs.
+
+**Pitfalls learned (do not repeat):** (a) thresholds from INCOMPLETE arms or raw θ_max are wrong — take
+f_fire from the analysis CSV on the COMPLETE matrix (`large_diffuse` looked fa12→fa6, is fa8;
+`simple_cluster` looked fa6, is fa4). (b) implicit-phase wall-time extrapolated from early `t_now`
+massively over-predicts (guessed 2–9 h / 67 h; real ~40–60 min) — the integrator accelerates near the end.
+(c) git commits and `send_later` calls sometimes return "stream closed" right as the container restarts,
+but usually landed — always re-verify `git log` / sync after. (d) `FINDINGS.md §16` flags a pre-existing
+latent double-boost in the trigger fallback (not on the f_A path, not fixed).
 
 ---
 
