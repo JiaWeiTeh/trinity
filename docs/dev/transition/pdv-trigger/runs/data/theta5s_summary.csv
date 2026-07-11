@@ -9,6 +9,7 @@ be_sphere__fa32,1.1904277179398477,0.08518991992675637,0.2688456231308962,49,1.9
 be_sphere__fa4,0.5960824768648858,0.8245678473600216,0.15551702896388217,164,5.0,implicit,False,False,stopping_time,Stopping time reached
 be_sphere__fa6,0.6243176992260432,0.6495727943606087,0.16598696041336813,163,5.0,implicit,False,False,stopping_time,Stopping time reached
 be_sphere__fa8,0.6921041476531498,0.8995727943606089,0.17577792320552374,163,5.0,implicit,False,False,stopping_time,Stopping time reached
+be_sphere__none,0.5286222841783738,0.5561157145840312,0.13836428592694502,164,5.0,implicit,False,False,stopping_time,Stopping time reached
 fail_repro__fa12,0.008457630978984991,0.0034132236381263295,0.008457630978984991,1,5.0,momentum,True,False,stopping_time,Stopping time reached
 fail_repro__fa16,0.009804847396113996,0.0034132236381263295,0.009804847396113996,1,5.0,momentum,True,False,stopping_time,Stopping time reached
 fail_repro__fa2,0.0038526089831987915,0.0034132236381263295,0.0038526089831987915,1,5.0,momentum,True,False,stopping_time,Stopping time reached
