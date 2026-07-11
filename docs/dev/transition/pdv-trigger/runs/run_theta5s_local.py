@@ -29,12 +29,13 @@ REPO = HERE.parents[4]
 PARAMS = HERE / "params" / "theta5s"
 
 # fast -> slow (by expected terminate time): dense collapse & PdV handoff first, diffuse cliff last.
-# small_1e6 (the 2nd CONTROL) moved up to 4th: once the fast fireable arms are done, everything left
-# is a slow implicit grinder, so run the highest-VALUE remaining arm (the control's no-fire test)
-# before the below-threshold arms that only tighten already-bracketed fire thresholds.
+# small_1e6 stays LAST: measured 2026-07-11 it grinds the implicit phase ~30x slower per sim-time than
+# the other below-threshold arms (t_now=0.003/5 after 2.5 min => ~67 h extrapolated), so it is
+# effectively uncomputable in-container even at the 2h budget. Running it earlier would starve the
+# faster arms that might actually finish; the small_1e6 control result must come from HPC (§15e).
 _CONFIG_ORDER = [
-    "fail_repro", "small_dense_highsfe", "normal_n1e3", "small_1e6",
-    "simple_cluster", "pl2_steep", "be_sphere", "midrange_pl0", "large_diffuse_lowsfe",
+    "fail_repro", "small_dense_highsfe", "normal_n1e3", "simple_cluster",
+    "pl2_steep", "be_sphere", "midrange_pl0", "large_diffuse_lowsfe", "small_1e6",
 ]
 
 
