@@ -1429,72 +1429,57 @@ termination; re-run any wall-killed/nonzero-exit arm at a longer limit before qu
 config only — never widen the grid to force a control to fire. **Phase 4 status: 🟡 tooling ready,
 awaiting HPC.** The analysis-session read-out feeds the Phase-6 decision tree.
 
-## 15e. [PROVISIONAL — in-container, NOT HPC] theta5s partial matrix, assumed pending HPC re-run (2026-07-10)
+## 15e. [PROVISIONAL — in-container, NOT HPC] theta5s COMPLETE 81/81 matrix, assumed pending HPC confirmation (run 2026-07-10 → completed 2026-07-11)
 
-> ⚠️ **These numbers are ASSUMED, not authoritative.** The maintainer had no HPC access, so — at
-> their request — the 81-arm theta5s matrix was run **in Claude's ephemeral container**, not on
-> Helix via `run_theta5s.sbatch`. The container is **restart-prone (windows of ~2–13 min) and
-> single-node compute-limited**, which biases the sample hard: only the **fastest-firing arms
-> complete**, while the **`__none`/low-fA baselines and the diffuse configs** (§8d cliff) **wall-kill
-> and are absent or truncated**. So this is a **partial, fast-arm-biased** matrix, and every
-> conclusion below is **provisional**. **Do not quote it as the whole-band result; do not let it
-> feed the Phase-6 decision as if final.**
+> ⚠️ **COMPLETE (81/81) but still ASSUMED, not authoritative.** The maintainer had no HPC access, so —
+> at their request — the full 81-arm theta5s matrix was run **in Claude's ephemeral container**, not on
+> Helix via `run_theta5s.sbatch`. All 81 arms now clear the compliance gate (`t_final ≥ 5`), so the
+> earlier "partial / fast-arm-biased" caveat is **resolved** — but the **in-container-vs-HPC numerical
+> fidelity is still unverified**. Treat every number below as **provisional pending an HPC re-run**;
+> the Phase-6 decision may lean on it but must be reconfirmed against HPC (mandatory action below).
 
-**Why in-container at all.** Phase 4 (§15d) is HPC-gated by design. This run is a *fallback* the
-maintainer explicitly asked for while HPC was unavailable, via `runs/run_theta5s_local.py` (resumable;
-skips compliant arms across restarts) + `runs/checkpoint_theta5s.py` (merges each container's completed
-arms into the committed summary, which survives restarts). Per-arm limit ≥20 min (maintainer ruling
-2026-07-10; set to 30 min) before an arm is called non-compliant. The committed
-`runs/data/theta5s_summary.csv` carries the same PROVISIONAL banner in its header.
+**How it ran.** Phase 4 (§15d) is HPC-gated by design; this was the maintainer-requested *fallback*
+while HPC was unavailable. Tooling (all committed): `runs/run_theta5s_local.py` (resumable runner,
+high-fA-first + fA≤2-last ordering, `--per-arm-timeout 7200` = 2 h/arm), `runs/autocommit_theta5s.sh`
+(repo-side committer, merges + pushes every ~2 min so a restart loses ≤2 min), `runs/checkpoint_theta5s.py`
+(merge helper). Watchdogs (send_later ~20-min heartbeat + hourly cron) relaunched runner/committer after
+each container restart. Wall-clock ≈ 11 h across ~dozen restarts. **Ceiling learned:** completion is
+gated by **stable-window length, not per-arm compute** — arms finish in ~40–60 min of *uninterrupted*
+running (the implicit integrator accelerates sharply near the end, so early-`t_now` linear extrapolation
+badly over-predicts time — an earlier version of this section wrongly guessed 2–9 h and 67 h). A restart
+resets any in-flight arm to `t=0`, so progress stalls during rapid-restart patches and resumes in quiet
+stretches. Each arm got its full 2 h before any wall-kill; only container restarts cut arms short.
 
-**What completed (provisional, 60 compliant of 81 as of 2026-07-11 ~13:35):** all 7 fireable configs
-fire under sufficient boost, and **BOTH controls (`fail_repro`, `small_1e6`) stay cold at every fA up
-to max boost (32)** — the f_A knob does not spuriously fire a config that shouldn't fire. As the
-below-threshold arms (fa4/6/8) complete they confirm **no-fire**
-and tighten each config's threshold — which **varies by profile shape, NOT purely density** (diffuse
-`large_diffuse` fires at fA≥6 while steeper `pl2_steep`/`be_sphere` need fA≥12). An earlier version of
-this table (47 compliant, high-fA arms only) put `large_diffuse` at fA≥12; completing its fa6/fa8 arms
-corrected that to fA≥6 — a caution that thresholds read off incomplete data are upper bounds.
+**RESULTS — authoritative source is `data/theta5s_fire_map.csv` + `data/theta5s_collapse_law.csv`**
+(regenerate: `python data/make_theta5s_analysis.py`; figures `theta5s_fire_map.png`,
+`theta5s_theta_rise.png`). **FIRE = the run actually fired the cooling_balance trigger (left the energy
+phase with θ crossing), which is STRICTER than θ_max ≥ 0.95** — a transient θ peak that does not sustain
+the transition is NOFIRE (e.g. `large_diffuse__fa6` peaks θ_max=1.029 but NOFIRE; it fires at fa8). Quote
+the CSV's FIRED/NOFIRE, **not** raw θ_max. Three clean classes:
 
-| config | fires at fA≥ | threshold bracket | note |
-|---|---|---|---|
-| `fail_repro` (CONTROL) | never (θ 0.003–0.014) | — | cold at every fA incl. 32 ✓ |
-| `small_dense_highsfe` | 4 | ≤4 | densest → lowest threshold |
-| `normal_n1e3` | 4 | ≤4 | |
-| `simple_cluster` | 6 | (4,6] | fa4 no-fire |
-| `large_diffuse_lowsfe` | 6 | (4,6] | fa4 no-fire (θ0.61); fa6/8 fire (θ1.03/1.07) |
-| `midrange_pl0` | 6 | (4,6] | fa4 no-fire (θ0.73); fa6/8 fire (θ1.07/1.14) |
-| `pl2_steep` | 12 | (8,12] | fa4/6/8 no-fire (θ0.55–0.63) |
-| `be_sphere` | 12 | (8,12] | fa4/6/8 no-fire (θ0.60–0.69) |
-| `small_1e6` (CONTROL) | never (fa24 θ0.53, fa32 θ0.60) | — | 2nd control COLD at max boost ✓ |
+| class | configs | behavior |
+|---|---|---|
+| **1. Fires UNMODIFIED** (fA=1) | `normal_n1e3` | baseline already fires (θ0=1.05); does NOT need f_A |
+| **2. Needs f_A** (fire threshold f_fire) | `small_dense` 4, `simple_cluster` 4, `midrange` 6, `large_diffuse` 8, `pl2_steep` 12, `be_sphere` 12 | NOFIRE at baseline → FIRED at f_fire; the configs f_A is FOR |
+| **3. CONTROL — never fires** | `fail_repro` (θ 0.003→0.014, DRAIN), `small_1e6` (θ 0.297→0.600, NOFIRE, monotonic in fA) | stays cold at every fA incl. max boost 32 ✓✓ |
 
-**What actually limits in-container completion (measured 2026-07-11, corrected).** The fast-firing arms
-(θ crosses 0.95 → collapse/handoff) finish in minutes. The below-threshold + control + baseline arms
-run the full energy phase to `stop_t=5` and are slower, BUT they complete in **~40 min each in a stable
-window** — NOT the 2–9 h an earlier version of this section extrapolated. That extrapolation was wrong:
-it linearly projected from the slow *initialization* phase, but the implicit integrator **accelerates
-sharply near the end**, so `t_now` after 15 min badly under-predicts completion (confirmed by
-`pl2_steep`/`be_sphere`/`large_diffuse`/`midrange` fa4/6/8 and `small_1e6` fa24/fa32 all finishing in
-~40 min once the container held still). The real limiter is therefore **stable-window length, not
-per-arm compute**: the container has only 4 cores (3 workers) and restarts every few-to-~40 min, and a
-restart resets any in-flight arm to `t=0`. So arms complete steadily during long quiet stretches and
-stall (repeatedly reset) during rapid-restart patches. The slowest baselines (`__none`/fa2) and any arm
-that never gets a ~40-min uninterrupted window may still not finish here — those, plus the whole matrix
-for HPC-fidelity confirmation, remain the HPC job (§15d, sbatch ready). Each arm is given its full 2 h
-budget before any wall-kill; nothing is premature-stopped by the harness — only container restarts cut
-arms short.
+**Headline (pre-registered prediction CONFIRMED):** fitting `f_fire = A·(0.95/θ0)^p` over the 6 class-2
+configs gives **p = 3.330** (A=1.463, rms=0.0554 dex, n=6). The registered prediction was **p_source ≈ 3.3**
+(the source-term collapse law, vs the multiplier's 1.82). Confirmed almost exactly — the f_A source term
+behaves as designed. Analysis also verifies **control fires: none** (no BUG) and **CONDENSE/dMdt≤0 arms: 0**
+(matches the Phase-1 §15a prediction that a source knob never reaches the condensation crash).
 
-**⛔ MANDATORY future action — revisit once HPC is available.** This is not optional cleanup; the
-in-container matrix is a placeholder to be **replaced**, not confirmed:
-1. Re-run the **full 81-arm matrix** on HPC via `runs/run_theta5s.sbatch` (the authoritative path) →
-   harvest a fresh `theta5s_summary.csv` (its `harvest_theta_max.py` header replaces the PROVISIONAL
-   banner). Every arm must clear the compliance gate (`t_final ≥ 5` or physics termination).
-2. **Re-check everything downstream against the HPC result** — treat the in-container numbers as
-   unverified until each is reproduced: `data/make_theta5s_analysis.py` (fire map, θ_max-rise,
-   collapse-law fit vs the registered p_source≈3.3), `runs/harvest_dmdt_suppression.py` (Eq-47 ṁ
-   trend), the fire/no-fire calls above, **both controls** (`fail_repro`, `small_1e6`), Phase 5
-   (bench5 Lancaster calibration), the **Phase-6 decision**, and any number that reaches the paper.
-   If HPC contradicts an in-container call, the HPC value wins and this section is superseded.
+**Threshold-correction lesson (do not repeat):** thresholds read off *incomplete* data or *raw θ_max*
+were wrong twice — `large_diffuse` looked like fa12 (only high-fA done), then fa6 (θ_max≥0.95), and is
+actually **fa8** (FIRED); `simple_cluster` looked like fa6 and is actually **fa4**. Always take f_fire
+from the analysis CSV on the COMPLETE matrix.
+
+**⛔ MANDATORY future action — confirm on HPC.** This complete in-container matrix is still a placeholder
+to be **confirmed**, not the authoritative record. Re-run the full 81-arm matrix on HPC via
+`runs/run_theta5s.sbatch`, harvest a fresh `theta5s_summary.csv` (its `harvest_theta_max.py` header
+replaces the PROVISIONAL banner), and re-check every downstream number against it — the fire map, the
+p=3.33 collapse law, both controls, `runs/harvest_dmdt_suppression.py` (Eq-47 ṁ trend), Phase 5, the
+Phase-6 decision, and any paper number. If HPC disagrees, HPC wins and this section is superseded.
 
 ## 16. [flag] Pre-existing latent double-boost in the trigger fallback (found 2026-07-06 during the f_A plan audit; NOT fixed)
 
