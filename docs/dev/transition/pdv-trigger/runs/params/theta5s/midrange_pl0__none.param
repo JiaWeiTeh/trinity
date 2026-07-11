@@ -1,0 +1,10 @@
+model_name             midrange_pl0__none
+mCloud                 1e6
+nCore                  1e4
+sfe                    0.1
+dens_profile           densPL
+densPL_alpha           0
+stop_t                 5
+log_console            False
+log_file               True
+path2output            outputs/theta5s/midrange_pl0__none

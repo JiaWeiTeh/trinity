@@ -57,6 +57,13 @@ _T_INIT_BOUNDARY = 3e4
 # See docs/dev/transition/pdv-trigger/FINDINGS.md §8d.
 _MINT_LOG_TOL = 1.0  # K below _T_INIT_BOUNDARY before the rejection is worth logging
 
+# Interface band top for the f_A source boost (cooling_boost_fA, SOURCE_TERM_DESIGN.md)
+# = the non-CIE/CIE switch. THREE places must stay in lockstep: this constant, the
+# local _CIEswitch in _bubble_luminosity, and the cooling-table-derived nonCIE_Tcutoff
+# in net_coolingcurve._noncie_cutoffs (they coincide on the default bundle; a table swap
+# moves the third -- see the pinning test in test/test_fA_source_boost.py).
+_T_INTERFACE_BAND = 10**5.5
+
 # =============================================================================
 # Deterministic handling of stiff-solver failures.
 #
@@ -421,6 +428,13 @@ def _get_bubble_ODE(r_arr, initial_ODEs, params, Pb: float):
     phi = params['Qi'].value / (4 * np.pi * r_arr**2)
 
     dudt = net_coolingcurve.get_dudt(params['t_now'].value, ndens, T, phi, params)
+
+    # f_A source-term boost (SOURCE_TERM_DESIGN.md): scale the net radiative source in
+    # the interface band ONLY. The fA != 1.0 guard leaves the default path the literal
+    # production float ops (byte-identical). Conduction, ICs and the dMdt seed untouched.
+    fA = params['cooling_boost_fA'].value
+    if fA != 1.0 and T < _T_INTERFACE_BAND:
+        dudt = fA * dudt
 
     v_term = params['cool_alpha'].value * r_arr / params['t_now'].value
 
@@ -821,6 +835,17 @@ def _bubble_luminosity(params, R1, Pb, r2Prime, initial_conditions,
         L_intermediate += np.abs(_trapezoid(integrand_int, x=r_interm[mask]))
 
     Tavg_intermediate = np.abs(_trapezoid(r_interm**2 * T_interm, x=r_interm))
+
+    # f_A scales the interface-band losses consistently with the in-ODE source boost
+    # (edit site 1). L1 (CIE interior) and L_leak are deliberately NOT scaled (no mixing
+    # interface there / bulk escape). |int f*g| = f*|int g| for constant f, so component
+    # scaling equals the screen's L_eff = L1 + fA*(L2+L3) while keeping the dataclass,
+    # the beta-delta residual (Lcool), dictionary logging and the harvest chain consistent.
+    # The fA != 1.0 guard keeps the default path byte-identical.
+    fA = params['cooling_boost_fA'].value
+    if fA != 1.0:
+        L_conduction = fA * L_conduction
+        L_intermediate = fA * L_intermediate
 
     # Total luminosity
     L_total = L_bubble + L_conduction + L_intermediate

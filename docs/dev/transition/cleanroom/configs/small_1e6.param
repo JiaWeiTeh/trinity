@@ -1,0 +1,8 @@
+# small_1e6 -- route-a control (energy-driven boundary definer). NOT one of the
+# canonical 6 cleanroom configs; added 2026-07-06 for f_A Phase-1 offline coverage
+# (SOURCE_TERM_DESIGN.md §3 Phase 1). Overrides from runs/make_theta5_params.py.
+mCloud         1e6
+sfe            0.1
+nCore          1e2
+PISM           1e4
+nISM           0.1

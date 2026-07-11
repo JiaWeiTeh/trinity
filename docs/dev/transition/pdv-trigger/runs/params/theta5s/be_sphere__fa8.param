@@ -1,0 +1,12 @@
+model_name             be_sphere__fa8
+mCloud                 1e6
+nCore                  1e4
+rCore                  1
+sfe                    0.05
+dens_profile           densBE
+densBE_Omega           14.0
+stop_t                 5
+cooling_boost_fA       8
+log_console            False
+log_file               True
+path2output            outputs/theta5s/be_sphere__fa8
