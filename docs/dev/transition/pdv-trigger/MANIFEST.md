@@ -12,10 +12,16 @@
 > are exact; stamp-less artifacts predate the convention (2026-07-02) — for those, only
 > the commit date is known. **Every new/edited builder must write the stamp.**
 
-403 artifacts · 0 stale-risk · 0 untracked · 13 stamped 🕐
+409 artifacts · 0 stale-risk · 0 untracked · 15 stamped 🕐
 
 | last updated (commit) | artifact | producer / flags |
 |---|---|---|
+| 2026-07-11 `5f00eb87` | `data/theta5s_collapse_law.csv` | producer unknown (HPC/hand-made); refs: `make_theta5s_analysis.py` · 🕐 generated 2026-07-11T19:47:34Z | builder make_theta5s_analysis.py | code b9ec5355+dirty |
+| 2026-07-11 `c6ed90fb` | `data/theta5s_dmdt_suppression.csv` | producer unknown (HPC/hand-made); refs: `make_theta5s_analysis.py`, `harvest_dmdt_suppression.py` |
+| 2026-07-11 `5f00eb87` | `data/theta5s_fire_map.csv` | producer unknown (HPC/hand-made); refs: `make_theta5s_analysis.py` · 🕐 generated 2026-07-11T19:47:34Z | builder make_theta5s_analysis.py | code b9ec5355+dirty |
+| 2026-07-11 `c6ed90fb` | `runs/data/theta5s_summary.csv` | producer unknown (HPC/hand-made); refs: `make_theta5s_analysis.py`, `checkpoint_theta5s.py` |
+| 2026-07-11 `5f00eb87` | `theta5s_fire_map.png` | producer unknown (HPC/hand-made); refs: `make_theta5s_analysis.py` |
+| 2026-07-11 `5f00eb87` | `theta5s_theta_rise.png` | producer unknown (HPC/hand-made); refs: `make_theta5s_analysis.py` |
 | 2026-07-10 `494bed75` | `data/fA_coverage9.csv` | producer unknown (HPC/hand-made); refs: `make_fA_edge_map.py` |
 | 2026-07-10 `494bed75` | `data/fA_edge_map.csv` | by `make_fA_edge_map.py` |
 | 2026-07-10 `494bed75` | `data/traj_normal_n1e3.csv` | — (hand-made/HPC, unreferenced) |
@@ -102,7 +108,7 @@
 | 2026-07-10 `7e42278f` | `runs/params/theta5s/small_dense_highsfe__fa6.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-10 `7e42278f` | `runs/params/theta5s/small_dense_highsfe__fa8.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-10 `7e42278f` | `runs/params/theta5s/small_dense_highsfe__none.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-10 `7e42278f` | `runs/run_theta5s.sbatch` | producer unknown (HPC/hand-made); refs: `make_theta5s_params.py` |
+| 2026-07-10 `03d2c0cf` | `runs/run_theta5s.sbatch` | producer unknown (HPC/hand-made); refs: `checkpoint_theta5s.py`, `make_theta5s_params.py` |
 | 2026-07-06 `487f2edd` | `data/fA_source_boost.csv` | by `make_fA_source_boost.py` |
 | 2026-07-06 `487f2edd` | `data/fA_source_boost_summary.csv` | by `make_fA_source_boost.py` |
 | 2026-07-06 `487f2edd` | `fA_source_boost.png` | by `make_fA_source_boost.py` |
