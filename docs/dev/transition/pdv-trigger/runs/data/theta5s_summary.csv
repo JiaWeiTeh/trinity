@@ -66,6 +66,7 @@ simple_cluster__fa8,1.251349906814607,0.09184222763029887,0.3718467097805181,48,
 simple_cluster__none,0.6759707636447871,0.09810730361753958,0.3116237395065309,163,5.0,implicit,False,False,stopping_time,Stopping time reached
 small_1e6__fa12,0.4349632661026239,1.0600021096108447,0.052392715608864396,173,5.0,implicit,False,False,stopping_time,Stopping time reached
 small_1e6__fa16,0.4712842283460255,1.0928880469017663,0.05875442291949286,173,5.0,implicit,False,False,stopping_time,Stopping time reached
+small_1e6__fa2,0.3129570192866361,1.0100021096108447,0.030139922617749903,173,5.0,implicit,False,False,stopping_time,Stopping time reached
 small_1e6__fa24,0.532668950372455,1.1428880469017664,0.06972734827500425,173,5.0,implicit,False,False,stopping_time,Stopping time reached
 small_1e6__fa32,0.5998724831845184,1.2075450969566168,0.07922015819896928,171,5.0,implicit,False,False,stopping_time,Stopping time reached
 small_1e6__fa4,0.34266205172066194,1.0100021096108447,0.036019910085512814,173,5.0,implicit,False,False,stopping_time,Stopping time reached
