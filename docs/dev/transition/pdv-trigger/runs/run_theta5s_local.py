@@ -28,10 +28,13 @@ HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[4]
 PARAMS = HERE / "params" / "theta5s"
 
-# fast -> slow (by expected terminate time): dense collapse & PdV handoff first, diffuse cliff last
+# fast -> slow (by expected terminate time): dense collapse & PdV handoff first, diffuse cliff last.
+# small_1e6 (the 2nd CONTROL) moved up to 4th: once the fast fireable arms are done, everything left
+# is a slow implicit grinder, so run the highest-VALUE remaining arm (the control's no-fire test)
+# before the below-threshold arms that only tighten already-bracketed fire thresholds.
 _CONFIG_ORDER = [
-    "fail_repro", "small_dense_highsfe", "normal_n1e3", "simple_cluster",
-    "pl2_steep", "be_sphere", "midrange_pl0", "large_diffuse_lowsfe", "small_1e6",
+    "fail_repro", "small_dense_highsfe", "normal_n1e3", "small_1e6",
+    "simple_cluster", "pl2_steep", "be_sphere", "midrange_pl0", "large_diffuse_lowsfe",
 ]
 
 
