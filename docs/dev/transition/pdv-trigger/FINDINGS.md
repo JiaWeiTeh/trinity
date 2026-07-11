@@ -1447,21 +1447,24 @@ arms into the committed summary, which survives restarts). Per-arm limit ≥20 m
 2026-07-10; set to 30 min) before an arm is called non-compliant. The committed
 `runs/data/theta5s_summary.csv` carries the same PROVISIONAL banner in its header.
 
-**What completed (provisional, 47 compliant of 81 as of 2026-07-11 ~08:30):** the fire map for the
-physically-FAST regime is complete — **all 7 fireable configs fire under sufficient boost, and the
-fire threshold tracks density**:
+**What completed (provisional, 57 compliant of 81 as of 2026-07-11 ~12:00):** all 7 fireable configs
+fire under sufficient boost. As the below-threshold arms (fa4/6/8) complete they confirm **no-fire**
+and tighten each config's threshold — which **varies by profile shape, NOT purely density** (diffuse
+`large_diffuse` fires at fA≥6 while steeper `pl2_steep`/`be_sphere` need fA≥12). An earlier version of
+this table (47 compliant, high-fA arms only) put `large_diffuse` at fA≥12; completing its fa6/fa8 arms
+corrected that to fA≥6 — a caution that thresholds read off incomplete data are upper bounds.
 
-| config | fires at fA≥ | θ_max at fire | note |
+| config | fires at fA≥ | threshold bracket | note |
 |---|---|---|---|
 | `fail_repro` (CONTROL) | never (θ 0.003–0.014) | — | cold at every fA incl. 32 ✓ |
-| `small_dense_highsfe` | 4 | 0.98–1.59 | densest → lowest threshold |
-| `normal_n1e3` | 4 | 0.99–1.25 | |
-| `simple_cluster` | 6 | 0.98–1.34 | |
-| `midrange_pl0` | 6 | 1.07–1.32 | |
-| `be_sphere` | 12 | 1.05–1.19 | |
-| `pl2_steep` | 12 | 1.01–1.24 | steep profile |
-| `large_diffuse_lowsfe` | 12 | 0.98–1.05 | diffuse §8d config — *does* fire at fA≥12 |
-| `small_1e6` (CONTROL) | — | — | **not yet completed** (see below) |
+| `small_dense_highsfe` | 4 | ≤4 | densest → lowest threshold |
+| `normal_n1e3` | 4 | ≤4 | |
+| `simple_cluster` | 6 | (4,6] | fa4 no-fire |
+| `large_diffuse_lowsfe` | 6 | (4,6] | fa4 no-fire (θ0.61); fa6/8 fire (θ1.03/1.07) |
+| `midrange_pl0` | 6 | (4,6] | fa4 no-fire (θ0.73); fa6/8 fire (θ1.07/1.14) |
+| `pl2_steep` | 12 | (8,12] | fa4/6/8 no-fire (θ0.55–0.63) |
+| `be_sphere` | 12 | (8,12] | fa4/6/8 no-fire (θ0.60–0.69) |
+| `small_1e6` (CONTROL) | — | — | **not yet completed** (~30× slower, needs HPC) |
 
 **⚠️ Why in-container cannot finish all 81 (measured 2026-07-11, do not assume otherwise).** The 47
 that completed are exactly the arms that **fire early** (θ crosses 0.95 → fast collapse/handoff → they
