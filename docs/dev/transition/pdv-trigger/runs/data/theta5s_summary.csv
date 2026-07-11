@@ -28,6 +28,7 @@ large_diffuse_lowsfe__fa6,1.0290245737837478,5.0,0.04084210019078843,172,5.0,imp
 large_diffuse_lowsfe__fa8,1.0721292174959949,4.849718521347049,0.04506658912051103,169,5.0,transition,True,True,stopping_time,Stopping time reached
 midrange_pl0__fa12,1.0940294187189512,0.3960277437933927,0.17476778729464748,73,1.7166298151059098,momentum,True,True,shell_collapsed,Small radius reached (event)
 midrange_pl0__fa16,1.1355815152358268,0.30609830337531563,0.18912486345150126,69,1.2526497331741933,momentum,True,True,shell_collapsed,Small radius reached (event)
+midrange_pl0__fa2,0.6548549271752943,0.4487649882304748,0.1318941805659182,167,5.0,implicit,False,False,stopping_time,Stopping time reached
 midrange_pl0__fa24,1.1931595787167282,0.12970437915692343,0.21549150510949674,57,1.1307962295143943,momentum,True,True,shell_collapsed,Small radius reached (event)
 midrange_pl0__fa32,1.3201259331619006,0.09648511993571791,0.23981629860406306,52,1.1463197572748791,momentum,True,True,shell_collapsed,Small radius reached (event)
 midrange_pl0__fa4,0.7245319260413651,0.4487649882304748,0.14167925322671265,167,5.0,implicit,False,False,stopping_time,Stopping time reached
