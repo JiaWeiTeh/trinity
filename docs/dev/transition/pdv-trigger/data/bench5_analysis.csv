@@ -1,5 +1,8 @@
 # bench5 Phase-5 analysis (PROVISIONAL / IN-CONTAINER, NOT HPC — HPC down 2026-07-12). FIRE MAP + theta_max + pre-fire theta_cum from COMPLETED arms only. The Lancaster Theta_cum-over-window + dex metric need the DIAGNOSTIC (blowout) arms = HPC-deferred (none completed in-container). theta_cum_prefire is the PRE-FIRE trapezoid only, a lower bound, NOT the L21b window metric. theta_EB from data/bench5_elbadry_prediction.csv (registered, sim-free). L21b band Theta in [0.90,0.99].
 run_name,bench,f_A,arm,fired,theta_max,t_fire_Myr,t_final_Myr,fate,phase_final,theta_cum_prefire,leak_frac,theta_EB_ldv3,n_bar_H
+bench2_m1e5_r10__fa12,bench2_m1e5_r10,12,prod,False,0.6567,0.3926276352395388,5.0,stopping_time,implicit,0.3167,0.000,0.9864,690
+bench2_m1e5_r10__fa16,bench2_m1e5_r10,16,prod,False,0.6865,0.5505937845774611,5.0,stopping_time,implicit,0.3504,0.000,0.9864,690
+bench2_m1e5_r10__fa8,bench2_m1e5_r10,8,prod,False,0.5846,0.47602161798473097,5.0,stopping_time,implicit,0.2766,0.000,0.9864,690
 bench3_m1e5_r5__fa12,bench3_m1e5_r5,12,prod,True,0.9812,0.19855077387223838,5.0,stopping_time,momentum,0.6207,0.000,0.9951,5.52e+03
 bench3_m1e5_r5__fa16,bench3_m1e5_r5,16,prod,True,1.3397,0.17043222345185585,5.0,stopping_time,momentum,0.6738,0.000,0.9951,5.52e+03
 bench3_m1e5_r5__fa4,bench3_m1e5_r5,4,prod,False,0.6430,0.3156440483212128,5.0,stopping_time,implicit,0.2312,0.000,0.9951,5.52e+03
