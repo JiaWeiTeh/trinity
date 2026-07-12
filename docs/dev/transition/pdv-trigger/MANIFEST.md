@@ -12,10 +12,26 @@
 > are exact; stamp-less artifacts predate the convention (2026-07-02) — for those, only
 > the commit date is known. **Every new/edited builder must write the stamp.**
 
-469 artifacts · 0 stale-risk · 0 untracked · 15 stamped 🕐
+485 artifacts · 0 stale-risk · 0 untracked · 15 stamped 🕐
 
 | last updated (commit) | artifact | producer / flags |
 |---|---|---|
+| 2026-07-12 `509402e` | `bench5_theta_tracks.png` | producer unknown (HPC/hand-made); refs: `make_bench5_analysis.py` |
+| 2026-07-12 `509402e` | `data/bench5_analysis.csv` | by `make_bench5_analysis.py` |
+| 2026-07-12 `41cc40c` | `data/bench5_elbadry_prediction.csv` | by `make_bench5_elbadry_prediction.py` |
+| 2026-07-12 `5ade31d` | `runs/data/bench5_summary.csv` | by `harvest_bench5.py` |
+| 2026-07-12 `5ade31d` | `runs/data/bench5_traj/bench3_m1e5_r5__fa12.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `a34e5c6` | `runs/data/bench5_traj/bench3_m1e5_r5__fa16.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `939e1af` | `runs/data/bench5_traj/bench4_m1e5_r2p5__fa12.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `acfe30c` | `runs/data/bench5_traj/bench4_m1e5_r2p5__fa16.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `4ffda1d` | `runs/data/bench5_traj/bench4_m1e5_r2p5__fa4.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `5712142` | `runs/data/bench5_traj/bench4_m1e5_r2p5__fa6.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `08df62e` | `runs/data/bench5_traj/bench4_m1e5_r2p5__fa8.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `a536fca` | `runs/data/bench5_traj/bench5_m5e5_r2p5__fa12.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `a536fca` | `runs/data/bench5_traj/bench5_m5e5_r2p5__fa16.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `0ce8495` | `runs/data/bench5_traj/bench5_m5e5_r2p5__fa4.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `0ce8495` | `runs/data/bench5_traj/bench5_m5e5_r2p5__fa6.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `1817207` | `runs/data/bench5_traj/bench5_m5e5_r2p5__fa8.csv` | — (hand-made/HPC, unreferenced) |
 | 2026-07-12 `a491b12` | `runs/params/bench5/bench1_m5e4_r20__fa12.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-12 `a491b12` | `runs/params/bench5/bench1_m5e4_r20__fa12_diag.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-12 `a491b12` | `runs/params/bench5/bench1_m5e4_r20__fa16.param` | — (hand-made/HPC, unreferenced) |
@@ -136,7 +152,7 @@
 | 2026-07-10 `b94b09d` | `data/pdv_regime_budget.csv` | producer unknown (HPC/hand-made); refs: `make_ebpeak_8config_xcheck.py`, `make_pdv_regime_table.py` |
 | 2026-07-10 `b94b09d` | `data/pdv_trigger_compare.csv` | by `make_pdv_trigger_compare.py` |
 | 2026-07-10 `b94b09d` | `data/shadow_te_fate.csv` | by `harvest_shadow.py` |
-| 2026-07-10 `b94b09d` | `data/summary.csv` | producer unknown (HPC/hand-made); refs: `make_closure_test.py`, `make_combined_trigger_table.py` |
+| 2026-07-10 `b94b09d` | `data/summary.csv` | producer unknown (HPC/hand-made); refs: `make_bench5_analysis.py`, `make_closure_test.py` |
 | 2026-07-10 `b94b09d` | `data/sweep_report.txt` | — (hand-made/HPC, unreferenced) |
 | 2026-07-10 `b94b09d` | `data/sweep_tmax_fate.csv` | — (hand-made/HPC, unreferenced) |
 | 2026-07-10 `b94b09d` | `data/theta5_fire_map.csv` | producer unknown (HPC/hand-made); refs: `make_theta5b_analysis.py`, `make_pdvtrigger_report.py` · 🕐 generated 2026-07-03T13:59:45Z | builder make_theta5b_analysis.py | code 5762c05+dirty |
