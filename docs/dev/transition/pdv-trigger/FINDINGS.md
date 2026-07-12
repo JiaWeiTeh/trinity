@@ -1489,6 +1489,43 @@ replaces the PROVISIONAL banner), and re-check every downstream number against i
 p=3.33 collapse law, both controls, `runs/harvest_dmdt_suppression.py` (Eq-47 ṁ trend), Phase 5, the
 Phase-6 decision, and any paper number. If HPC disagrees, HPC wins and this section is superseded.
 
+## 15f. [visit] Re-entry 2026-07-12 — next open item is Phase 5, its pre-step gate RE-VERIFIED still blocking; no execution (maintainer input required)
+
+> Session outcome, no sims run. A fresh executor session picked up the f_A workstream per the
+> re-entry protocol. The single next open item from the Status line is **Phase 5 (bench5 literature
+> calibration)** — Phase 4 is in-container-complete/PROVISIONAL (§15e, HPC still pending), Phase 6 is
+> a maintainer decision. Phase 5 could not be started: its **blocking pre-step (the L21b/Lancaster
+> 2021b Table-1 values — M_*, V_w, the M–R pairings) is an explicit maintainer-only "ask, don't guess"
+> input** (SOURCE_TERM_DESIGN §0 + §3 Phase 5 ⚠ pre-step).
+
+**Gate re-verified, not trusted (⚠️ banner).** The 2026-07-06 claim was "PDFs unreachable — proxy
+blocks non-GitHub." Re-tested this visit: `WebFetch` of arXiv (`abs/2104.07691`), IOPscience
+(`10.3847/1538-4357/abf8ac`), and NSF-PAR full text all return **HTTP 403** — the agent-proxy status
+(`recentRelayFailures: []`) + README class these as organization-policy denials ("do not retry —
+report"). `WebSearch` returns only abstract-level snippets, **not Table 1**. So the blocker still
+holds; the note is current, not stale.
+
+**Source re-verification (banner obligation).** f_A production wiring re-checked present in current
+source, only line numbers drifted: RHS band-multiply `bubble_luminosity.py:435-436`, L₂/L₃ scaling
+`:845-848`, `_T_INTERFACE_BAND` `:65` (Phase-2 provenance + §15b cite the as-landed `:416/:811/:59`).
+Recorded as a dated pointer in SOURCE_TERM_DESIGN's handoff block. theta5s CSVs present
+(`data/theta5s_{fire_map,collapse_law,dmdt_suppression}.csv`); `runs/params/bench5/` absent (Phase 5
+unstarted) — all consistent with the documented state.
+
+**Deliberately NOT done (would fake the gate):** did not freeze the 5 bench5 `.param`s from the
+search-snippet values, did not build the generator with those values embedded, quoted no physics
+number. Per the standing rule, a maintainer-only input is asked, not guessed — and the interactive
+ask channel was unavailable this session (tool stream closed on both attempts), so the decision is
+recorded here + in the handoff for the maintainer.
+
+**Maintainer decision needed (either unblocks Phase 5):**
+1. **Supply L21b Table 1** (M_*, V_w, the (M_cl, R_cl) pairings) → freeze the 5 bench5 params from
+   verified numbers, run Phase 5 in-container (the fallback used for Phase 4).
+2. **Authorize the documented [I]-grade fallback** (§3 Phase 5): freeze from the search-snippet values
+   already in §3 with an explicit `[I]`-grade provenance note, run, and reconcile against the PDF later.
+3. Or provide HPC access to run the mandatory Phase-4 HPC confirmation first (§15e), which the
+   Phase-5/6 numbers ultimately depend on.
+
 ## 16. [flag] Pre-existing latent double-boost in the trigger fallback (found 2026-07-06 during the f_A plan audit; NOT fixed)
 
 `run_energy_implicit_phase.py:1245-1247`: when `bubble_props is None`, the trigger path reads

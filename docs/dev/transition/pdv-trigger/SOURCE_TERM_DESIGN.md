@@ -48,7 +48,10 @@ maintainer had no HPC access, the full 81-arm matrix was run in Claude's ephemer
 (`fail_repro`, `small_1e6`) stay cold at every fA; 3-class structure (fires-unmodified / needs-f_A /
 control).** These numbers are ASSUMED (in-container, not HPC) — the full matrix must still be re-run on
 `run_theta5s.sbatch` and everything downstream re-checked (§15e mandatory action). **Phases 5–6 ⬜ open**
-(see the handoff block below). Two review agents audited this plan on 2026-07-06 (config-coverage audit;
+(see the handoff block below). **Re-entry 2026-07-12 (`FINDINGS.md §15f`): next open item = Phase 5;
+its pre-step gate (L21b Table-1, maintainer-only input) RE-VERIFIED still blocking (proxy 403 on
+arXiv/IOP/NSF-PAR; WebSearch = abstract snippets only). No execution — awaiting maintainer to supply
+Table-1 OR authorize the [I]-grade fallback (§3 Phase 5). Line-ref drift fixed (handoff block).** Two review agents audited this plan on 2026-07-06 (config-coverage audit;
 literature-benchmark extraction) — their findings are integrated throughout and marked "(audit)" /
 "(lit)". **Phase 1 headline: the condensation-edge prediction (edges near θ≈1) was FALSIFIED in the
 SAFE direction — no dMdt≤0 edge exists for f_A even at 512 (16× the physical range); the source knob
@@ -85,7 +88,10 @@ law p=3.330 (rms 0.055 dex) CONFIRMS the registered prediction p_source≈3.3; d
 with f_A matrix-wide (Eq-47 sign — the measurement f_mix cannot produce).** FIRE = the run actually
 fired the trigger (STRICTER than θ_max≥0.95 — quote the CSV's FIRED/NOFIRE).
 
-**Next steps (Phases 5–6 + HPC):**
+**Next steps (Phases 5–6 + HPC):** *(2026-07-12 re-entry, `FINDINGS.md §15f`: next open item is Phase 5;
+its Table-1 pre-step gate re-verified still blocking — proxy 403s all non-GitHub full text, WebSearch
+gives abstract snippets only. BLOCKED on maintainer: supply L21b Table-1 or authorize the §3 Phase 5
+[I]-grade fallback. No params frozen / nothing run this visit — a maintainer-only input is asked, not guessed.)*
 1. **HPC confirmation (§15e mandatory).** Re-run the full matrix on HPC via `runs/run_theta5s.sbatch`
    (authoritative); re-check fire map, p=3.33, both controls, dMdt (`runs/harvest_dmdt_suppression.py`),
    Phases 5–6, and any paper number against it. HPC wins any disagreement.

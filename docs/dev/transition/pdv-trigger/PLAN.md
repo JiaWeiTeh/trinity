@@ -99,6 +99,15 @@ folder) — do **not** re-run the hours-long sims to recover them; reproduce onl
 > (Phase 6):** whether f_A supersedes `multiplier` as the production mechanism — decided AFTER Phase 5
 > (bench5 Lancaster/El-Badry calibration) + the HPC confirmation of the in-container matrix. Do not read
 > the 2026-07-01/02 verdict above as the final mechanism ruling.
+>
+> ↳ **Re-entry 2026-07-12 (`FINDINGS.md §15f`) — Phase 5 is the next open item but is BLOCKED on a
+> maintainer-only input.** Its pre-step (the L21b/Lancaster-2021b Table-1 values needed to freeze the 5
+> bench5 params) was re-verified still unreachable in this environment (proxy returns org-policy 403 on
+> arXiv/IOPscience/NSF-PAR full text; WebSearch yields abstract snippets only, not Table 1). Per
+> `SOURCE_TERM_DESIGN §0` these are "ask, don't guess" values — so **nothing was frozen or run** this
+> visit (would fake the gate). Maintainer must either supply Table-1 or authorize the §3 Phase 5
+> [I]-grade fallback (freeze from the recorded search snippets with an explicit provenance note). Only
+> a line-ref drift-fix landed (f_A wiring now at `bubble_luminosity.py:435/845/65`; handoff block updated).
 
 *This single block (+ the dated f_A addendum) replaces the older layered ⭐/⚡/⚡⚡ synthesis. It reflects
 the grand view across `ELBADRY_REFERENCE.md`, `LANCASTER_REFERENCE.md`, `F_KAPPA_FUNCTIONAL_FORM.md`, and
