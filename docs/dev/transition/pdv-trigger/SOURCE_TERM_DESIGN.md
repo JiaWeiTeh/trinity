@@ -91,9 +91,18 @@ law p=3.330 (rms 0.055 dex) CONFIRMS the registered prediction p_source≈3.3; d
 with f_A matrix-wide (Eq-47 sign — the measurement f_mix cannot produce).** FIRE = the run actually
 fired the trigger (STRICTER than θ_max≥0.95 — quote the CSV's FIRED/NOFIRE).
 
-**Next steps (Phases 5–6 + HPC):** *(2026-07-12, later: the §15f blocker is RESOLVED — maintainer
-supplied Table-1 in-chat; pre-step ✅ done (`FINDINGS.md §15g`), 60 bench5 params frozen. Phase 5's
-remaining work is RUNNING the arms — venue ruling needed: in-container fallback vs HPC.)*
+**Next steps (Phases 5–6 + HPC):** *(2026-07-12, latest: Phase-5 pre-step ✅ (`§15g`); the maintainer
+ruled IN-CONTAINER (HPC down), so the **60-arm bench5 campaign is RUNNING in-container** as of
+2026-07-12 ~12:05Z via the proven ops playbook. Machinery: `runs/run_bench5_local.py` (resumable,
+production-before-diagnostic order) + `runs/autocommit_bench5.sh` (commits
+`runs/data/bench5_summary.csv` + `runs/data/bench5_traj/` every ~2 min) + a ~20-min send_later
+heartbeat + an hourly cron `bench5-hourly-watchdog`, both firing into the launch session with full
+relaunch context. **If you are a FRESH session and the campaign procs are dead / OUT wiped:** OUT =
+`$SCRATCH/bench5_out`; relaunch BOTH as run_in_background (no `&`): `python runs/run_bench5_local.py
+--out OUT --workers 3 --per-arm-timeout 5400 --summary runs/data/bench5_summary.csv` and `bash
+runs/autocommit_bench5.sh OUT`. Terminal work (analysis + §15h + decision) is in the heartbeat/cron
+prompt. Expect some diffuse/baseline arms to be un-completable in-container (theta5s lesson) →
+HPC-deferred; report N/60 compliant, never premature-stop a running arm.)*
 1. **HPC confirmation (§15e mandatory).** Re-run the full matrix on HPC via `runs/run_theta5s.sbatch`
    (authoritative); re-check fire map, p=3.33, both controls, dMdt (`runs/harvest_dmdt_suppression.py`),
    Phases 5–6, and any paper number against it. HPC wins any disagreement.
