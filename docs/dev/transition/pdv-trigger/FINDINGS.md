@@ -1571,10 +1571,10 @@ precedent; needs the long-run ops playbook — est. ~40–60 min/arm uninterrupt
 or on HPC together with the mandatory theta5s confirmation. **No θ/Θ number exists yet for any bench;
 nothing here is a calibration result.**
 
-## 15h. [data — IN-CONTAINER, IN PROGRESS] Phase 5 bench5 campaign — 30/60 done, running to 60 in-container (2026-07-12)
+## 15h. [data — IN-CONTAINER, IN PROGRESS] Phase 5 bench5 campaign — 31/60 done, running to 60 in-container (2026-07-12)
 
 > ⚠️ **IN-CONTAINER, IN PROGRESS (not HPC — and per the maintainer, does NOT need HPC).** As of the
-> latest tick **30/60 arms are compliant** (all production so far). **Maintainer directive 2026-07-12:
+> latest tick **31/60 arms are compliant** (all production so far). **Maintainer directive 2026-07-12:
 > run ALL 60 in-container — "it's definitely doable; anything within 2 h is runnable."** So the runner
 > uses `--per-arm-timeout 7200` (2 h/arm) and keeps grinding to 60/60; the diagnostic (blowout) arms and
 > diffuse benches are NOT HPC-deferred, they are still queued/running in-container. The Θ_cum/L21b-band
@@ -1585,11 +1585,11 @@ nothing here is a calibration result.**
 `runs/run_bench5_local.py` + `runs/autocommit_bench5.sh` (new, adapted from theta5s) + a re-arming
 send_later heartbeat + hourly cron. The container alternated ~15–40 min stable windows with
 rapid-restart storms (~1–2 min); trinity has no mid-run resume, so every restart resets in-flight arms
-to t=0. **30/60 completed** (all production; vs the prior lost pt4 session's 1–3/60 over 8 h — the
+to t=0. **31/60 completed** (all production; vs the prior lost pt4 session's 1–3/60 over 8 h — the
 container cooperated better here). The remaining un-run set: f_A=1 baselines, all diagnostic (blowout)
 arms, and the diffuse benches (bench2 in progress, bench1) — they need long uninterrupted windows.
 
-**FIRE MAP (production arms; FIRE = actually fired cooling_balance, from `data/bench5_analysis.csv`; updated 30/60):**
+**FIRE MAP (production arms; FIRE = actually fired cooling_balance, from `data/bench5_analysis.csv`; updated 31/60):**
 
 | bench | n̄_H | θ_EB(λδv3) | prod arms done | FIRE threshold f_A | θ_max(f_A 4→16) | fate |
 |---|---:|---:|---|---|---|---|
@@ -1599,7 +1599,7 @@ arms, and the diffuse benches (bench2 in progress, bench1) — they need long un
 | bench2 (m1e5, 10pc) | 690 | 0.986 | 4,6,8,12,16 (complete) | **>16** (NOFIRE ≤16) | 0.51,0.55,0.58,0.66,0.69 | all NOFIRE→energy-driven to t=5 |
 | bench1 (m5e4, 20pc) | 43.1 | 0.948 | 6,8,12,16 (fa4 running) | **>16** (all NOFIRE) | fa6/8/12/16: 0.40,0.43,0.50,0.56 | all NOFIRE→energy-driven to t=5 (most diffuse) |
 
-**Read (30/60 in-container):** a clean, steeply-rising **density gradient in the f_A fire threshold** —
+**Read (31/60 in-container):** a clean, steeply-rising **density gradient in the f_A fire threshold** —
 bench5/bench4 (densest) fire at every f_A ≥ 4 (threshold ≤4); bench3 (n̄=5520) needs **f_A ≥ 12**
 (monotonic θ_max 0.64→0.70→0.75→0.98→1.34, crossing 0.95 between f_A 8 and 12); **bench2 (n̄=690) and bench1
 (n̄=43) do NOT fire even at f_A=16** (bench2 θ_max 0.55–0.69 at fa6–16; bench1 fa16 θ_max 0.56 → both
@@ -1618,19 +1618,25 @@ The NOFIRE arms (bench3 fa≤8, all bench2) are direct in-container evidence tha
 density-dependent fire threshold — NOT "everything fires" — which is exactly the physical, calibratable
 behavior the source-term knob was designed to produce.
 
-**What the calibration still needs (the DIAGNOSTIC arms — running in-container).** The Phase-5 criterion
-is Θ_cum ∈ [0.90, 0.99] over the Lancaster window + the |Δlog(1−θ)| ≤ 0.5 dex trajectory match. Both need
-the **diagnostic arms** (`transition_trigger=blowout`) whose θ(t) logs UNCENSORED through the whole energy
-phase to 3 Myr. A *production* arm leaves the energy phase at fire (t < 0.2 Myr here), so its implicit
-θ(t) trajectory is censored at the transition — `theta_cum_prefire` in the CSV is the pre-fire trapezoid
-only, a lower bound, **not** the L21b window metric. The diagnostic arms are the slowest arms, so they land
-last; **per the maintainer they run in-container (2 h/arm is enough)** — the campaign keeps grinding until
-they complete, then `make_bench5_analysis.py` computes the real Θ_cum/dex/channel-split metrics. NOT
-HPC-deferred.
+**What the calibration needs (the DIAGNOSTIC arms — running in-container) + an important structural
+finding.** The Phase-5 criterion is Θ_cum ∈ [0.90, 0.99] over the Lancaster window + the |Δlog(1−θ)| ≤
+0.5 dex trajectory match. Both need θ(t) logged over a long window. A *production* arm leaves the energy
+phase at fire (t < 0.2 Myr), censoring its θ(t); the *diagnostic* arms (`transition_trigger=blowout`)
+disable the cooling_balance exit to log θ(t) further. **BUT (found 2026-07-12 from the first completed
+diag arm, `bench5_fa12_diag`): the DENSE benches' diagnostic arms ALSO censor early** — bench5_fa12_diag
+did not blow out; it **shell-collapsed at t=0.083** (θ_max 1.23 → momentum, via the PR#715 Eb≤0 handoff),
+exactly like the production arm. Dense clouds recollapse regardless of the trigger setting, so their θ(t)
+window is intrinsically short (t≲0.1–1 Myr). **⇒ The full-window Θ_cum-vs-L21b calibration comes ONLY from
+the DIFFUSE benches' diagnostic arms (bench1, bench2, and bench3-below-threshold), which neither fire nor
+collapse and run the implicit phase to t=5 Myr** — the uncensored θ(t) the Lancaster window needs. Those
+diffuse diag arms are the slowest (full implicit solve to t=5, ~40+ min each) but per the maintainer fit
+in-container (2 h/arm). When they land, `make_bench5_analysis.py`'s `theta_cum_prefire` (renamed/extended
+to the windowed Θ_cum) becomes the real metric. NOT HPC-deferred. (The dense diag arms still give the
+θ(t) *rise* up to collapse, useful for the early-time El-Badry overlay.)
 
 **Artifacts (all committed, updated as arms land):** `runs/params/bench5/` (60),
 `runs/{run,harvest,checkpoint}_bench5*.py` + `autocommit_bench5.sh`, `runs/data/bench5_summary.csv`
-(30 arms) + `runs/data/bench5_traj/` (30 trajectories), `data/bench5_elbadry_prediction.csv` (registered,
+(31 arms) + `runs/data/bench5_traj/` (31 trajectories), `data/bench5_elbadry_prediction.csv` (registered,
 sim-free, §15g), `data/make_bench5_analysis.py` → `data/bench5_analysis.csv` + `bench5_theta_tracks.png`.
 
 **Next.** Finish the 60 in-container (diagnostic arms give the Θ_cum calibration); rerun the analysis;
