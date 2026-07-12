@@ -1,0 +1,25 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/Users/jwt/unsync/Code/Trinity/.codex/hooks/guard-bash.sh'"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/Users/jwt/unsync/Code/Trinity/.codex/hooks/session-start.sh'"
+          }
+        ]
+      }
+    ]
+  }
+}
