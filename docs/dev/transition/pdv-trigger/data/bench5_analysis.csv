@@ -3,6 +3,7 @@ run_name,bench,f_A,arm,fired,theta_max,t_fire_Myr,t_final_Myr,fate,phase_final,t
 bench1_m5e4_r20__fa16,bench1_m5e4_r20,16,prod,False,0.5636,5.0,5.0,stopping_time,implicit,0.3740,0.000,0.9476,43.1
 bench2_m1e5_r10__fa12,bench2_m1e5_r10,12,prod,False,0.6567,0.3926276352395388,5.0,stopping_time,implicit,0.3167,0.000,0.9864,690
 bench2_m1e5_r10__fa16,bench2_m1e5_r10,16,prod,False,0.6865,0.5505937845774611,5.0,stopping_time,implicit,0.3504,0.000,0.9864,690
+bench2_m1e5_r10__fa4,bench2_m1e5_r10,4,prod,False,0.5072,0.47602161798473097,5.0,stopping_time,implicit,0.2254,0.000,0.9864,690
 bench2_m1e5_r10__fa6,bench2_m1e5_r10,6,prod,False,0.5456,0.40475733902450717,5.0,stopping_time,implicit,0.2529,0.000,0.9864,690
 bench2_m1e5_r10__fa8,bench2_m1e5_r10,8,prod,False,0.5846,0.47602161798473097,5.0,stopping_time,implicit,0.2766,0.000,0.9864,690
 bench3_m1e5_r5__fa12,bench3_m1e5_r5,12,prod,True,0.9812,0.19855077387223838,5.0,stopping_time,momentum,0.6207,0.000,0.9951,5.52e+03
