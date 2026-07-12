@@ -32,18 +32,18 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-07-06):** 📘 current — created by the docs/dev housekeeping pass.
+**Status (2026-07-12):** 📘 current — banner templates moved to docs/dev/CLAUDE.md.
 
 One page: everything a new doc or workstream under `docs/dev/` must follow. Canonical banner
-text lives in `CLAUDE.md` §"`docs/dev/` plan & audit docs are unverified" — copy it verbatim,
-never fork it. `test/test_docs_dev_conventions.py` enforces the mechanical parts.
+text lives in `docs/dev/CLAUDE.md` — copy it verbatim, never fork it.
+`test/test_docs_dev_conventions.py` enforces the mechanical parts.
 
 ## Banners
 
 - **Active** plan/audit/write-up docs: all **four** banners (⚠️ 🔄 💾 🔗), verbatim from
-  CLAUDE.md, right under the H1.
+  `docs/dev/CLAUDE.md`, right under the H1.
 - **Archived** docs (`archive/`): keep ⚠️, replace 🔄/💾/🔗 with the single 🧊 *frozen* banner
-  (text in CLAUDE.md, same section).
+  (text in `docs/dev/CLAUDE.md`).
 - **Exempt** (need only ⚠️): pure how-to-run harness READMEs, data-manifest notes, and
   machine-generated files (e.g. `MANIFEST.md`) — the list is pinned as `EXEMPT` in
   `test/test_docs_dev_conventions.py`. Anything else missing a banner fails that test.

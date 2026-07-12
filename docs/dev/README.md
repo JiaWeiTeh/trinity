@@ -45,7 +45,7 @@ investigations, not a maintained spec.
 
 - **How to write/maintain docs here** → [`CONVENTIONS.md`](CONVENTIONS.md) — banners (four for
   active docs, ⚠️+🧊 for archived), Status-line format, workstream folder template, naming,
-  citation and provenance rules. Canonical banner text is in `CLAUDE.md`;
+  citation and provenance rules. Canonical banner text is in `docs/dev/CLAUDE.md`;
   `test/test_docs_dev_conventions.py` enforces the mechanical parts.
 - **Per-workstream verdicts** → [`DOC_STATUS.md`](DOC_STATUS.md) (one row per workstream).
 - **Per-doc status** → each doc's own dated `**Status (…):**` line, under its banners.

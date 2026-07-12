@@ -3,7 +3,7 @@
 Active docs carry the four banner paragraphs (warn/living/persist/cross-check),
 archived docs are frozen (warn + frozen), exempt how-to/manifest notes carry at
 least the warn banner, and every top-level workstream dir is reachable from the
-README index. Canonical banner text lives in CLAUDE.md; here we only check the
+README index. Canonical banner text lives in docs/dev/CLAUDE.md; here we only check the
 marker emojis, not the wording.
 """
 
@@ -16,8 +16,10 @@ DOCS_DEV = Path(__file__).resolve().parents[1] / "docs" / "dev"
 WARN, LIVING, PERSIST, CROSSCHECK, FROZEN = "⚠️", "\U0001f504", "\U0001f4be", "\U0001f517", "\U0001f9ca"
 
 # ⚠️-only docs: pure how-to-run harness READMEs, data-manifest notes, and
-# machine-generated files (see CONVENTIONS.md §Banners). Paths relative to docs/dev.
+# machine-generated files (see CONVENTIONS.md §Banners). CLAUDE.md holds the
+# canonical banner templates (agent context, not a plan doc). Paths relative to docs/dev.
 EXEMPT = {
+    "CLAUDE.md",
     "data/README.md",
     "failed-large-clouds/harness/README.md",
     "magic-numbers/harness/README.md",

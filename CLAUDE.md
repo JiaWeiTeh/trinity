@@ -65,7 +65,9 @@ Generated / scratch — not source, do not tidy or treat as ground truth: `outpu
    configurability, or error handling for impossible cases. If 200 lines could be 50, rewrite.
 3. **Surgical changes.** Touch only what the request needs. Don't refactor or reformat working code;
    match existing style. Remove only the orphans *your* change creates; flag pre-existing dead code,
-   don't delete it. Every changed line should trace to the request.
+   don't delete it. When a task removes a file, never delete it — `git mv` it into
+   `docs/dev/to-be-removed/` for the maintainer's manual review. Every changed line should trace
+   to the request.
 4. **Verify.** Turn tasks into checks: bug → write a failing test, then fix; feature → test the
    invalid inputs, then pass; refactor → tests green before and after. Run `pytest` before declaring done.
 5. **Equivalence depth & honest measurement** (hard-won — full rationale in
@@ -90,7 +92,8 @@ interpretations. Then size it — don't gate a typo, don't fast-path a solver ed
   refactor, a perf "win", a default flip, or anything pushed/published): run the ladder in order,
   and don't skip a rung because an earlier one passed —
   1. **Gate first.** Define what "equivalent" means and the pass/fail bar *before* editing
-     (rule 5). A doc-worthy effort gets a `docs/dev/<workstream>/` writeup with the three banners.
+     (rule 5). A doc-worthy effort gets a `docs/dev/<workstream>/` writeup with the mandatory
+     banners (templates in `docs/dev/CLAUDE.md`).
   2. **Capture a baseline** the edit is measured against (a `git show HEAD` value, a byte hash, a
      saved trajectory) so "before" survives the change.
   3. **Equivalence gate.** Per-call / single-step first (cheap, necessary) — but **NOT sufficient**
@@ -142,67 +145,12 @@ suite). Trivial one-liners need no test.
 
 ## `docs/dev/` plan & audit docs are unverified
 
-The plan, audit, and write-up docs under `docs/dev/` (the old top-level `analysis/` directory was
-folded in here) are point-in-time audits/plans, not a maintained spec. They go stale fast — paths, line numbers, and "what shipped"
-status drift as the code moves. When reading one: do not treat it as ground truth — flag that it may
-be outdated and re-verify every claim, snippet, and line reference against current source. Every
-**active** such doc must carry **all four** banner paragraphs below at the top, right under the H1,
-and any new `docs/dev/` doc must include them; docs under `docs/dev/archive/` (frozen —
-shipped/superseded) keep the ⚠️ paragraph but replace 🔄/💾/🔗 with the single 🧊 banner at the end
-of this section. The on-tree conventions (Status-line format, workstream folder template, naming,
-citation rules, banner-exempt how-to READMEs) live in `docs/dev/CONVENTIONS.md`, enforced by
-`test/test_docs_dev_conventions.py`. The 🔄 paragraph makes these docs *living* —
-whoever opens one rechecks it, updates drift, and rethinks the strategy before relying on or
-extending it. The 💾 paragraph makes them *durable* — diagnostics worth keeping are committed as
-CSV/tables (`docs/dev/data/`) or harnesses/figures in the relevant `docs/dev/<workstream>/` folder, so a future session reproduces or compares
-without re-running the expensive sims; leave it better than you found it. The 🔗 paragraph keeps a
-multi-doc workstream *mutually consistent* — editing one doc means circling back through its siblings
-(PLAN / FINDINGS / README / notes) and reconciling any number, status, or claim that disagrees, so the
-docs never silently drift apart from one another:
-
-```markdown
-> ⚠️ **This document may be out of date — verify before trusting it.** It is a
-> point-in-time analysis/audit, not a maintained spec; the code moves faster
-> than these notes (paths, line numbers, and "what shipped" status drift).
-> **Any agent or person reading this: treat it as unverified. Flag that it may
-> be stale and re-check each claim, snippet, and line reference against the
-> current source before relying on it.**
->
-> 🔄 **Living plan — recheck and refine on every visit.** This is an evolving
-> strategy doc, not a frozen record. Any agent or person who opens this file
-> must, as part of the visit: (1) re-verify the claims and line references above
-> against current source; (2) update anything that has drifted; (3) **rethink the
-> strategy itself** — if a better ordering, gate, candidate, or experiment
-> exists, revise the doc and note what changed and why (date it). Leave it better
-> than you found it. **Keep all banner paragraphs at the top of every plan and
-> analysis doc.**
->
-> 💾 **Persist diagnostics — commit, don't re-run.** The container is ephemeral
-> and full/hybr runs cost hours, so any diagnostic worth keeping must be saved as
-> a committed artifact under `docs/dev/` (a CSV/table in `docs/dev/data/`, or a
-> harness/figure in the relevant `docs/dev/<workstream>/` folder) — never left in
-> `/tmp`, the local-only `scratch/`, or an untracked `outputs/`. A future visit must be able to reproduce or compare
-> against the numbers **without re-running**; record the exact config + command
-> that produced each artifact.
->
-> 🔗 **Cross-check the sibling docs — keep the workstream self-consistent.** This file is one of
-> several living docs for its workstream (its `PLAN.md`, `FINDINGS.md`, `runs/README.md`, `NOTE_PATCHES.md`,
-> and any other notes in the same folder). They drift out of sync *with each other* as fast as they drift
-> from the code. Any agent or person editing one MUST, as part of the visit, circle back through the
-> siblings and reconcile: if a number, status, claim, or line reference here contradicts a sibling — or a
-> sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
-> update one in isolation.
-```
-
-For **archived** docs (`docs/dev/archive/`), the 🔄/💾/🔗 paragraphs are replaced by this one:
-
-```markdown
-> 🧊 **Frozen historical record — do not extend.** This workstream shipped or was
-> superseded (see the Status line below); the doc is kept as evidence/history. Do
-> not update or extend it — new work gets a new doc in an active workstream. The
-> ⚠️ caveat above still applies: paths and line references reflect the code as it
-> was when this was written.
-```
+The plan, audit, and write-up docs under `docs/dev/` are point-in-time analyses, not a maintained
+spec — paths, line numbers, and "what shipped" status drift fast. Treat every claim there as
+unverified and re-check it against current source before relying on it. Every doc there carries
+mandatory banner paragraphs; the canonical templates plus the working rules for that tree live in
+`docs/dev/CLAUDE.md` (auto-loaded when you read/edit files under `docs/dev/`) and
+`docs/dev/CONVENTIONS.md`, enforced by `test/test_docs_dev_conventions.py`.
 
 ---
 
