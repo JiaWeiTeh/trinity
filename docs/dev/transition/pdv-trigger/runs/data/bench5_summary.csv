@@ -1,0 +1,3 @@
+# bench5 cumulative summary (Phase 5, Lancaster 2021b calibration), merged across container restarts by checkpoint_bench5.py. theta = bubble_Lloss/Lmech_total on accepted rows; per-arm trajectory in runs/data/bench5_traj/.
+# ⚠️ PROVISIONAL / IN-CONTAINER — NOT HPC (HPC was down 2026-07-12). In-container-vs-HPC numerical fidelity unverified; re-confirm on HPC before any paper number. FIRE = actually fired cooling_balance (see fired_cooling_balance), stricter than theta_max>=0.95. Production arms fire/fate; *_diag arms (transition_trigger=blowout) give uncensored theta(t).
+run_name,theta_max,t_at_theta_max,theta_first,n_impl,t_final,phase_final,reached_momentum,fired_cooling_balance,outcome,detail
