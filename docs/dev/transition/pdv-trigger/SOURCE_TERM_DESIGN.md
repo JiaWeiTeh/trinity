@@ -50,8 +50,8 @@ control).** These numbers are ASSUMED (in-container, not HPC) — the full matri
 `run_theta5s.sbatch` and everything downstream re-checked (§15e mandatory action). **Phase 5 🟡 PARTIAL / PROVISIONAL, Phase 6 ⬜ open**
 (see the handoff block below). **Re-entry 2026-07-12: pre-step ✅ (`§15g`, Table-1 [V]-verified, 60 params
 frozen); then the maintainer ruled IN-CONTAINER (HPC down) and the 60-arm campaign RAN — banking
-`FINDINGS.md §15h`: 25/60 arms compliant so far (all production; 12 FIRED + 6 NOFIRE (bench3 fa4/6/8 + bench2 fa8/12/16)). FIRE MAP: bench5(n̄=2.28e5) + bench4(n̄=4.42e4) fire at every f_A≥4; bench3(n̄=5520) at f_A≥12 (NOFIRE≤8);
-bench2(n̄=690) NOFIRE even at 16 (thr>16) — a steep density gradient (threshold rises 4→12→>16 as n̄ falls) matching El-Badry θ_EB. **Maintainer directive 2026-07-12:
+`FINDINGS.md §15h`: 27/60 arms compliant so far (all production; 12 FIRED + 6 NOFIRE (bench3 fa4/6/8 + bench2 fa8/12/16)). FIRE MAP: bench5(n̄=2.28e5) + bench4(n̄=4.42e4) fire at every f_A≥4; bench3(n̄=5520) at f_A≥12 (NOFIRE≤8);
+bench2(n̄=690) NOFIRE even at 16 (thr>16) — a steep density gradient (threshold rises 1→4→12→>16 as n̄ falls) matching El-Badry θ_EB. **Maintainer directive 2026-07-12:
 run ALL 60 IN-CONTAINER (2 h/arm is enough) — the diagnostic/blowout arms + diffuse benches are NOT
 HPC-deferred, they finish in-container; the Θ_cum/L21b calibration comes from the diagnostic arms once
 they land.** NEXT OPEN ITEM: finish the 60 in-container → Phase 6. **The ONLY HPC dependency is the
@@ -93,7 +93,7 @@ with f_A matrix-wide (Eq-47 sign — the measurement f_mix cannot produce).** FI
 fired the trigger (STRICTER than θ_max≥0.95 — quote the CSV's FIRED/NOFIRE).
 
 **Next steps (Phases 5–6 + HPC):** *(2026-07-12, latest: Phase-5 pre-step ✅ (`§15g`); in-container
-campaign RUNNING (`§15h`) → 25/60 done (all prod; 12 FIRED + 6 NOFIRE bench3+bench2). Maintainer ruled ALL 60
+campaign RUNNING (`§15h`) → 27/60 done (all prod; 12 FIRED + 6 NOFIRE bench3+bench2). Maintainer ruled ALL 60
 run IN-CONTAINER (2 h/arm); the diagnostic/blowout arms (which give the Θ_cum calibration) finish
 in-container — NOT HPC-deferred. The
 campaign may still be trickling: machinery `runs/run_bench5_local.py` + `runs/autocommit_bench5.sh` +
@@ -491,7 +491,7 @@ Headline question: does a single f_A fire **7/7 fireable** configs (the multipli
 standard was [4, 4.5] at 7/7) while both controls pass *unchanged*? **Never tune f_A to make the
 controls fire — that would itself be a bug.**
 
-### Phase 5 🟡 — literature calibration: matched-config benchmarks (pre-step ✅ + 60 params frozen `§15g`; in-container run PARTIAL 25/60 fire map `§15h` 2026-07-12; Θ_cum calibration HPC-deferred)
+### Phase 5 🟡 — literature calibration: matched-config benchmarks (pre-step ✅ + 60 params frozen `§15g`; in-container run PARTIAL 27/60 fire map `§15h` 2026-07-12; Θ_cum calibration HPC-deferred)
 
 The maintainer's criterion: *an f_A value is working well if it produces similar θ at similar
 time for a cloud config found in published bubble simulations.* Primary anchor: **Lancaster
