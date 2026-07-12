@@ -8,6 +8,7 @@ bench1_m5e4_r20__fa6,0.4011550440549624,0.6856811507607516,0.052803064904670745,
 bench1_m5e4_r20__fa8,0.43456094217613217,5.0,0.05935223182905233,173,5.0,implicit,False,False,stopping_time,Stopping time reached
 bench1_m5e4_r20__none,0.30138100809774127,0.6666734475801842,0.029842418302938198,173,5.0,implicit,False,False,stopping_time,Stopping time reached
 bench2_m1e5_r10__fa12,0.6566629526210078,0.3926276352395388,0.12543631913511938,169,5.0,implicit,False,False,stopping_time,Stopping time reached
+bench2_m1e5_r10__fa12_diag,0.6566581510201656,0.3926276352395388,0.12543631323502366,76,5.0,momentum,True,False,stopping_time,Stopping time reached
 bench2_m1e5_r10__fa16,0.686534190029693,0.5505937845774611,0.13908239074888798,168,5.0,implicit,False,False,stopping_time,Stopping time reached
 bench2_m1e5_r10__fa16_diag,0.6770419927286757,0.4042701439358736,0.13908237625226644,76,5.0,momentum,True,False,stopping_time,Stopping time reached
 bench2_m1e5_r10__fa4,0.507233980498054,0.47602161798473097,0.09100353196405758,169,5.0,implicit,False,False,stopping_time,Stopping time reached
