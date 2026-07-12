@@ -50,8 +50,8 @@ control).** These numbers are ASSUMED (in-container, not HPC) — the full matri
 `run_theta5s.sbatch` and everything downstream re-checked (§15e mandatory action). **Phase 5 🟡 PARTIAL / PROVISIONAL, Phase 6 ⬜ open**
 (see the handoff block below). **Re-entry 2026-07-12: pre-step ✅ (`§15g`, Table-1 [V]-verified, 60 params
 frozen); then the maintainer ruled IN-CONTAINER (HPC down) and the 60-arm campaign RAN — banking
-`FINDINGS.md §15h`: 12/60 arms compliant (all production, all FIRED). FIRE MAP: bench5(n̄=2.28e5) +
-bench4(n̄=4.42e4) fire at every f_A≥4; bench3(n̄=5520) fires at f_A≥12; bench2/bench1 + all diagnostic
+`FINDINGS.md §15h`: 15/60 arms compliant (all production; 12 FIRED + 3 NOFIRE bench3 fa4/6/8 = the fire threshold). FIRE MAP: bench5(n̄=2.28e5) +
+bench4(n̄=4.42e4) fire at every f_A≥4; bench3(n̄=5520) fires at f_A≥12 (NOFIRE ≤8); bench2/bench1 + all diagnostic
 + f_A=1 baselines HPC-deferred. ⛔ The core calibration (Θ_cum-over-window vs the L21b [0.9,0.99] band +
 the dex metric) needs the DIAGNOSTIC/blowout arms — none completed in-container — so it is structurally
 HPC-owed. NEXT OPEN ITEM: run the full 60-arm matrix (esp. the diagnostic arms) on HPC for the real
@@ -93,7 +93,7 @@ with f_A matrix-wide (Eq-47 sign — the measurement f_mix cannot produce).** FI
 fired the trigger (STRICTER than θ_max≥0.95 — quote the CSV's FIRED/NOFIRE).
 
 **Next steps (Phases 5–6 + HPC):** *(2026-07-12, latest: Phase-5 pre-step ✅ (`§15g`); in-container
-campaign RAN (`§15h`) → PARTIAL 12/60 (all prod, all FIRED; fire map only). The core Θ_cum calibration
+campaign RAN (`§15h`) → PARTIAL 15/60 (all prod; 12 FIRED + 3 NOFIRE bench3; fire map only). The core Θ_cum calibration
 is structurally HPC-deferred (needs the diagnostic/blowout arms — none complete in-container). The
 campaign may still be trickling: machinery `runs/run_bench5_local.py` + `runs/autocommit_bench5.sh` +
 send_later heartbeat + hourly cron `bench5-hourly-watchdog`. **Fresh session, procs dead / OUT wiped:**
@@ -492,7 +492,7 @@ Headline question: does a single f_A fire **7/7 fireable** configs (the multipli
 standard was [4, 4.5] at 7/7) while both controls pass *unchanged*? **Never tune f_A to make the
 controls fire — that would itself be a bug.**
 
-### Phase 5 🟡 — literature calibration: matched-config benchmarks (pre-step ✅ + 60 params frozen `§15g`; in-container run PARTIAL 12/60 fire map `§15h` 2026-07-12; Θ_cum calibration HPC-deferred)
+### Phase 5 🟡 — literature calibration: matched-config benchmarks (pre-step ✅ + 60 params frozen `§15g`; in-container run PARTIAL 15/60 fire map `§15h` 2026-07-12; Θ_cum calibration HPC-deferred)
 
 The maintainer's criterion: *an f_A value is working well if it produces similar θ at similar
 time for a cloud config found in published bubble simulations.* Primary anchor: **Lancaster

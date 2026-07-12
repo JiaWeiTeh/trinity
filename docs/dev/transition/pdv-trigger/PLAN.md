@@ -112,8 +112,8 @@ folder) — do **not** re-run the hours-long sims to recover them; reproduce onl
 > exact mapping mCloud=M_cl(1+ε)/sfe=ε/(1+ε), emit gates + end-to-end read_param check).
 > **↳ IN-CONTAINER RUN — PARTIAL (`FINDINGS.md §15h`, 2026-07-12):** maintainer ruled in-container (HPC
 > down). Campaign ran (`runs/{run,harvest,checkpoint}_bench5*.py` + `autocommit_bench5.sh`, adapted from
-> theta5s) → **12/60 arms compliant, all production, all FIRED.** FIRE MAP: bench5(n̄=2.28e5) +
-> bench4(n̄=4.42e4) fire at EVERY f_A≥4; bench3(n̄=5520) fires at f_A≥12; bench2/bench1 + all diagnostic +
+> theta5s) → **15/60 arms compliant (all production; 12 FIRED + 3 NOFIRE bench3 fa4/6/8 = the fire threshold).** FIRE MAP: bench5(n̄=2.28e5) +
+> bench4(n̄=4.42e4) fire at EVERY f_A≥4; bench3(n̄=5520) fires at f_A≥12 (NOFIRE ≤8); bench2/bench1 + all diagnostic +
 > f_A=1 baselines HPC-deferred (container ~15-20 min windows + rapid-restart storms reset in-flight arms).
 > Matches registered El-Badry θ_EB (`§15g`; bench5/4/3≥0.995→fire trivially; density gradient visible).
 > Fate split: dense 2.5-pc benches fire→shell_collapsed; 5-pc bench3 fires→survives to t=5. ⛔ **The core
