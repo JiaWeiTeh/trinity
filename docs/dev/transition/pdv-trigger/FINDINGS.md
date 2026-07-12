@@ -1571,10 +1571,10 @@ precedent; needs the long-run ops playbook — est. ~40–60 min/arm uninterrupt
 or on HPC together with the mandatory theta5s confirmation. **No θ/Θ number exists yet for any bench;
 nothing here is a calibration result.**
 
-## 15h. [data — IN-CONTAINER, IN PROGRESS] Phase 5 bench5 campaign — 18/60 done, running to 60 in-container (2026-07-12)
+## 15h. [data — IN-CONTAINER, IN PROGRESS] Phase 5 bench5 campaign — 20/60 done, running to 60 in-container (2026-07-12)
 
 > ⚠️ **IN-CONTAINER, IN PROGRESS (not HPC — and per the maintainer, does NOT need HPC).** As of the
-> latest tick **18/60 arms are compliant** (all production so far). **Maintainer directive 2026-07-12:
+> latest tick **20/60 arms are compliant** (all production so far). **Maintainer directive 2026-07-12:
 > run ALL 60 in-container — "it's definitely doable; anything within 2 h is runnable."** So the runner
 > uses `--per-arm-timeout 7200` (2 h/arm) and keeps grinding to 60/60; the diagnostic (blowout) arms and
 > diffuse benches are NOT HPC-deferred, they are still queued/running in-container. The Θ_cum/L21b-band
@@ -1585,27 +1585,29 @@ nothing here is a calibration result.**
 `runs/run_bench5_local.py` + `runs/autocommit_bench5.sh` (new, adapted from theta5s) + a re-arming
 send_later heartbeat + hourly cron. The container alternated ~15–40 min stable windows with
 rapid-restart storms (~1–2 min); trinity has no mid-run resume, so every restart resets in-flight arms
-to t=0. **18/60 completed** (all production; vs the prior lost pt4 session's 1–3/60 over 8 h — the
+to t=0. **20/60 completed** (all production; vs the prior lost pt4 session's 1–3/60 over 8 h — the
 container cooperated better here). The remaining un-run set: f_A=1 baselines, all diagnostic (blowout)
 arms, and the diffuse benches (bench2 in progress, bench1) — they need long uninterrupted windows.
 
-**FIRE MAP (production arms; FIRE = actually fired cooling_balance, from `data/bench5_analysis.csv`; updated 18/60):**
+**FIRE MAP (production arms; FIRE = actually fired cooling_balance, from `data/bench5_analysis.csv`; updated 20/60):**
 
 | bench | n̄_H | θ_EB(λδv3) | prod arms done | FIRE threshold f_A | θ_max(f_A 4→16) | fate |
 |---|---:|---:|---|---|---|---|
 | bench5 (m5e5, 2.5pc) | 2.28e5 | 0.999 | 4,6,8,12,16 | **≤4** (all fire) | 1.05,1.17,1.07,1.23,1.23 | fire→shell_collapsed (t_f 0.08–0.11) |
 | bench4 (m1e5, 2.5pc) | 4.42e4 | 0.998 | 4,6,8,12,16 | **≤4** (all fire) | 1.35,1.05,0.97,1.04,1.07 | fire→shell_collapsed (t_f 0.38–0.95) |
 | bench3 (m1e5, 5pc) | 5520 | 0.995 | 4,6,8,12,16 | **12** (NOFIRE ≤8) | 0.64,0.70,0.75,0.98,1.34 | fa12/16 fire→**survive to t=5**; fa4/6/8 NOFIRE→energy-driven to t=5 |
-| bench2 (m1e5, 10pc) | 690 | 0.986 | 8,12,16 (fa4/6 running) | **>16** (NOFIRE ≤16) | fa8/12/16: 0.58,0.66,0.69 | all NOFIRE→energy-driven to t=5 |
-| bench1 (m5e4, 20pc) | 43.1 | 0.948 | (fa16 running) | — | — | in progress in-container |
+| bench2 (m1e5, 10pc) | 690 | 0.986 | 6,8,12,16 (fa4 running) | **>16** (NOFIRE ≤16) | fa6/8/12/16: 0.55,0.58,0.66,0.69 | all NOFIRE→energy-driven to t=5 |
+| bench1 (m5e4, 20pc) | 43.1 | 0.948 | 16 (fa4/6/8/12 pending) | **>16** (fa16 NOFIRE θ0.56) | fa16: 0.56 | NOFIRE→energy-driven to t=5 (most diffuse) |
 
-**Read (18/60 in-container):** a clean, steeply-rising **density gradient in the f_A fire threshold** —
+**Read (20/60 in-container):** a clean, steeply-rising **density gradient in the f_A fire threshold** —
 bench5/bench4 (densest) fire at every f_A ≥ 4 (threshold ≤4); bench3 (n̄=5520) needs **f_A ≥ 12**
-(monotonic θ_max 0.64→0.70→0.75→0.98→1.34, crossing 0.95 between f_A 8 and 12); **bench2 (n̄=690) does
-NOT fire even at f_A=16** (θ_max only 0.58/0.66/0.69 at fa8/12/16 → threshold >16). So the fire threshold
-climbs roughly 4 → 12 → >16 as n̄ falls 2.28e5 → 5520 → 690 — the source-term signature (θ ∝ f_A^~0.3, so
-lower-θ₀ clouds need much larger f_A) and consistent with the registered El-Badry θ_EB falling with
-density (`§15g`; θ_EB 0.999→0.995→0.986). The fired θ_max (0.97–1.35 for the firing arms) overshoots the
+(monotonic θ_max 0.64→0.70→0.75→0.98→1.34, crossing 0.95 between f_A 8 and 12); **bench2 (n̄=690) and bench1
+(n̄=43) do NOT fire even at f_A=16** (bench2 θ_max 0.55–0.69 at fa6–16; bench1 fa16 θ_max 0.56 → both
+threshold >16). So the fire threshold climbs 4 → 12 → >16 → >16 as n̄ falls 2.28e5 → 5520 → 690 → 43 —
+the source-term signature (θ ∝ f_A^~0.3, so lower-θ₀ clouds need much larger f_A) and consistent with the
+registered El-Badry θ_EB falling with density (`§15g`; θ_EB 0.999→0.995→0.986→0.948). **The two diffuse
+benches (bench2, bench1) staying energy-driven at every tested f_A is the "route-a" result — diffuse
+clouds genuinely resist the transition even under strong source boost, the falsifiable Phase-6 boundary.** The fired θ_max (0.97–1.35 for the firing arms) overshoots the
 θ_EB equilibrium — a transient peak that trips the trigger. **Fate split:** the very dense 2.5-pc benches
 fire then shell-collapse (dense recollapse); bench3 fires (fa≥12) or stays energy-driven (fa≤8); bench2
 stays energy-driven at every tested f_A — the band-fire vs stay-energy split the Phase-6 tree anticipates.
@@ -1625,7 +1627,7 @@ HPC-deferred.
 
 **Artifacts (all committed, updated as arms land):** `runs/params/bench5/` (60),
 `runs/{run,harvest,checkpoint}_bench5*.py` + `autocommit_bench5.sh`, `runs/data/bench5_summary.csv`
-(18 arms) + `runs/data/bench5_traj/` (18 trajectories), `data/bench5_elbadry_prediction.csv` (registered,
+(20 arms) + `runs/data/bench5_traj/` (20 trajectories), `data/bench5_elbadry_prediction.csv` (registered,
 sim-free, §15g), `data/make_bench5_analysis.py` → `data/bench5_analysis.csv` + `bench5_theta_tracks.png`.
 
 **Next.** Finish the 60 in-container (diagnostic arms give the Θ_cum calibration); rerun the analysis;

@@ -113,7 +113,7 @@ folder) — do **not** re-run the hours-long sims to recover them; reproduce onl
 > **↳ IN-CONTAINER RUN — IN PROGRESS (`FINDINGS.md §15h`, 2026-07-12):** maintainer ruled **all 60 bench5
 > arms run IN-CONTAINER** (2026-07-12: "just run the 60 in-container — it's definitely doable; anything
 > within 2 h is runnable"). Campaign running (`runs/{run,harvest,checkpoint}_bench5*.py` +
-> `autocommit_bench5.sh`) at `--per-arm-timeout 7200` (2 h/arm). **18/60 done so far** (all production;
+> `autocommit_bench5.sh`) at `--per-arm-timeout 7200` (2 h/arm). **20/60 done so far** (all production;
 > 12 FIRED + 6 NOFIRE (bench3 fa4/6/8 + bench2 fa8/12/16). FIRE MAP: bench5(n̄=2.28e5) + bench4(n̄=4.42e4) fire at EVERY f_A≥4;
 > bench3(n̄=5520) fires at f_A≥12 (NOFIRE ≤8; monotonic θmax 0.64→1.34) — a clean density-dependent fire
 > threshold. Matches registered El-Badry θ_EB (`§15g`). The remaining arms (bench2/bench1 prod, all
