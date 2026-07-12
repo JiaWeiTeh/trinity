@@ -100,14 +100,17 @@ folder) — do **not** re-run the hours-long sims to recover them; reproduce onl
 > (bench5 Lancaster/El-Badry calibration) + the HPC confirmation of the in-container matrix. Do not read
 > the 2026-07-01/02 verdict above as the final mechanism ruling.
 >
-> ↳ **Re-entry 2026-07-12 (`FINDINGS.md §15f`) — Phase 5 is the next open item but is BLOCKED on a
-> maintainer-only input.** Its pre-step (the L21b/Lancaster-2021b Table-1 values needed to freeze the 5
-> bench5 params) was re-verified still unreachable in this environment (proxy returns org-policy 403 on
-> arXiv/IOPscience/NSF-PAR full text; WebSearch yields abstract snippets only, not Table 1). Per
-> `SOURCE_TERM_DESIGN §0` these are "ask, don't guess" values — so **nothing was frozen or run** this
-> visit (would fake the gate). Maintainer must either supply Table-1 or authorize the §3 Phase 5
-> [I]-grade fallback (freeze from the recorded search snippets with an explicit provenance note). Only
-> a line-ref drift-fix landed (f_A wiring now at `bubble_luminosity.py:435/845/65`; handoff block updated).
+> ↳ **Re-entry 2026-07-12 (`FINDINGS.md §15f`) — Phase 5 was BLOCKED on the L21b Table-1 maintainer
+> input** (pre-step re-verified unreachable: proxy 403 on arXiv/IOP/NSF-PAR; WebSearch = snippets only);
+> nothing frozen or run at that point, only the f_A wiring line-ref drift-fix
+> (`bubble_luminosity.py:435/845/65`).
+> **↳ RESOLVED same-day (`FINDINGS.md §15g`):** the maintainer supplied the Table-1/Eq-8–11/Fig-17
+> excerpts in-chat. Verified + imprinted (`LANCASTER_REFERENCE.md §7b`): μ_H=1.4 ⇒ n̄_H is TRINITY's
+> nCore convention; v_t = the α_vir=2 virial velocity (12/12 rows); **"M_*=5000 fixed" FALSIFIED**
+> (ε_* ∈ {0.01,0.1,1} → the spec's sfe=0.05 benches matched no published model, corrected to ε0.1);
+> §7's Eq-10 transcription corrected. **60 bench5 params frozen** (`runs/make_bench5_params.py`,
+> exact mapping mCloud=M_cl(1+ε)/sfe=ε/(1+ε), emit gates + end-to-end read_param check). **Next open:
+> RUN the 60 arms — maintainer venue ruling (in-container fallback vs HPC w/ theta5s confirmation).**
 
 *This single block (+ the dated f_A addendum) replaces the older layered ⭐/⚡/⚡⚡ synthesis. It reflects
 the grand view across `ELBADRY_REFERENCE.md`, `LANCASTER_REFERENCE.md`, `F_KAPPA_FUNCTIONAL_FORM.md`, and

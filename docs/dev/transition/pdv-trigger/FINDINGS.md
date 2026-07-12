@@ -1489,7 +1489,7 @@ replaces the PROVISIONAL banner), and re-check every downstream number against i
 p=3.33 collapse law, both controls, `runs/harvest_dmdt_suppression.py` (Eq-47 ṁ trend), Phase 5, the
 Phase-6 decision, and any paper number. If HPC disagrees, HPC wins and this section is superseded.
 
-## 15f. [visit] Re-entry 2026-07-12 — next open item is Phase 5, its pre-step gate RE-VERIFIED still blocking; no execution (maintainer input required)
+## 15f. [visit] Re-entry 2026-07-12 — next open item is Phase 5, its pre-step gate RE-VERIFIED still blocking; no execution (maintainer input required) — **SUPERSEDED same-day by §15g** (the maintainer supplied Table-1 in-chat; option 1 of the decision list below was taken)
 
 > Session outcome, no sims run. A fresh executor session picked up the f_A workstream per the
 > re-entry protocol. The single next open item from the Status line is **Phase 5 (bench5 literature
@@ -1525,6 +1525,51 @@ recorded here + in the handoff for the maintainer.
    already in §3 with an explicit `[I]`-grade provenance note, run, and reconcile against the PDF later.
 3. Or provide HPC access to run the mandatory Phase-4 HPC confirmation first (§15e), which the
    Phase-5/6 numbers ultimately depend on.
+
+## 15g. [data] Phase 5 pre-step DONE — L21b Table-1 verified from maintainer-supplied excerpts; two spec corrections; 60 bench5 params frozen (2026-07-12, no sims)
+
+**What unblocked it.** The maintainer pasted L21b (ApJ 914:90) excerpts directly in-chat — Table 1,
+the Eq 8–11 block, Figure 17 + caption — resolving the §15f blocker without the (still-403) proxy.
+Durable transcription: **`LANCASTER_REFERENCE.md §7b`** (imprint protocol; grade [V] except the
+plot-eyeball anchors and the still-missing V_w).
+
+**Verification (analyse-before-recording; all checks in one python block, command in §7b/REPRODUCE #42):**
+- Table 1 internally consistent (n ∝ M/R³ across rows); **μ_H = 1.4** reproduces R_cl exactly in 10/12
+  rows ⇒ n̄_H is TRINITY's own `nCore` convention. Exception: the 5e4/5e5 rows at R_cl=2.5 pc both
+  imply R = 2.473 pc (same 3.3% offset — Table-1 rounding); the mapping pins the published n̄_H.
+- **v_t is the α_vir = 2 virial velocity** (α_vir = 1.996–2.016, all 12 rows) — a clean physical
+  reading of the suite, newly recorded.
+- t_ff: 6.63/1.66/0.59/0.21/0.09 Myr — the spec's ≈values confirmed.
+
+**Two registered-assumption corrections (both recorded, dated):**
+1. **"M_* = 5000 M⊙ fixed" FALSIFIED** — Table-1 Notes fix ε_* ≡ M_*/M_cloud ∈ {0.01, 0.1, 1}. The
+   spec's `sfe=0.05` mapping for the three 1e5 benches matched **no published model** → corrected to
+   ε_*=0.1. (5000 M⊙ arises only at 5e4/ε0.1 and 5e5/ε0.01 — the likely snippet source.)
+2. **`LANCASTER_REFERENCE.md §7`'s Eq-10 transcription was WRONG** (`(αR·ḃ/Vw)(1+fturb)/(2(1+αp))`);
+   the excerpt gives **1−Θ = (½(1+f_turb)·α_p/α_R + S)·(Ṙ_b/V_w)** — fixed in place, dated. Also:
+   Fig-17's Θ ≡ Ė_cool/ℒ_w is an *instantaneous rate ratio* (maintainer gloss "θ = L_cool/L_gain"),
+   directly TRINITY-θ-shaped — the spec's "L21b's headline Θ is cumulative" hedge corrected (Θ_cum
+   stays as metric 1; it's the robust statistic).
+
+**Params frozen (the pre-step's deliverable).** `runs/make_bench5_params.py` →
+`runs/params/bench5/` = **60 params** (5 benches × f_A {1,4,6,8,12,16} — the Phase-4 whole-band
+winner 12 in-grid — × production/diagnostic arms; diag = `transition_trigger blowout` for uncensored
+θ(t)). **Exact mapping** (supersedes the naive draft): TRINITY's mCloud is pre-SFE while L21b *adds*
+the star particle, so **mCloud = M_cl·(1+ε_*), sfe = ε_*/(1+ε_*)** ⇒ post-SF gas = M_cl at
+nCore = n̄_H and mCluster = ε_*·M_cl, both exact. Emit gates (self-checking builder, abort on fail):
+(1) TRINITY's sweep-path GMC plausibility validation per bench; (2) rCloud(post-SF gas) = R_cl to
+<2% (slack = the Table-1 2.5-pc rounding above, which gate 1%-strict correctly caught). End-to-end
+`read_param` load-check on `bench5_m5e5_r2p5__fa12_diag`: mCloud_input 5.05e5 → gas 5.00e5 (=M_cl),
+mCluster 5000 (=ε·M_cl), fA=12, trigger=blowout — the mapping holds through the real production path.
+
+**Fig-17 anchors** (1−Θ tracks for the two 1e5 rows at all three ε_*, breakout times) are recorded in
+§7b at [V-plot-eyeball] grade (±0.2–0.3 dex) — bench-2 has a *direct published track*; re-digitize
+before any quantitative fit. The 1e5/20pc model is flagged as a cheap candidate bench-6.
+
+**NOT run: the 60 arms.** Next decision (maintainer): run bench5 in-container (the Phase-4 fallback
+precedent; needs the long-run ops playbook — est. ~40–60 min/arm uninterrupted by the §15e ceiling)
+or on HPC together with the mandatory theta5s confirmation. **No θ/Θ number exists yet for any bench;
+nothing here is a calibration result.**
 
 ## 16. [flag] Pre-existing latent double-boost in the trigger fallback (found 2026-07-06 during the f_A plan audit; NOT fixed)
 
