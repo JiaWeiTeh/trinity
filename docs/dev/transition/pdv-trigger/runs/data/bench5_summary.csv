@@ -3,4 +3,6 @@
 run_name,theta_max,t_at_theta_max,theta_first,n_impl,t_final,phase_final,reached_momentum,fired_cooling_balance,outcome,detail
 bench5_m5e5_r2p5__fa12,1.231019956364383,0.013089521729641519,0.5786876012242754,14,0.08103851420495206,momentum,True,True,shell_collapsed,Small radius reached
 bench5_m5e5_r2p5__fa16,1.2257151452548678,0.010070614787452794,0.6893920013545244,11,0.07772493454131543,momentum,True,True,shell_collapsed,Small radius reached
+bench5_m5e5_r2p5__fa4,1.0458403634943065,0.04524491803843563,0.4266208979826179,30,0.10579131703119171,momentum,True,True,shell_collapsed,Small radius reached
+bench5_m5e5_r2p5__fa6,1.1695345778966755,0.029951831083739573,0.45892494340765505,25,0.09363853112748699,momentum,True,True,shell_collapsed,Small radius reached
 bench5_m5e5_r2p5__fa8,1.0660750789008182,0.025455359062835723,0.49453447425001495,23,0.09021559258810855,momentum,True,True,shell_collapsed,Small radius reached
