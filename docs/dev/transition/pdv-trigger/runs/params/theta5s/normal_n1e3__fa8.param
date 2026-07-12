@@ -1,0 +1,12 @@
+model_name             normal_n1e3__fa8
+mCloud                 1e6
+nCore                  1e3
+rCore                  1
+sfe                    0.01
+dens_profile           densPL
+densPL_alpha           0
+stop_t                 5
+cooling_boost_fA       8
+log_console            False
+log_file               True
+path2output            outputs/theta5s/normal_n1e3__fa8

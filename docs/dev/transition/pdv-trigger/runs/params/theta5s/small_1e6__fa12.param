@@ -1,0 +1,11 @@
+model_name             small_1e6__fa12
+mCloud                 1e6
+sfe                    0.1
+nCore                  1e2
+PISM                   1e4
+nISM                   0.1
+stop_t                 5
+cooling_boost_fA       12
+log_console            False
+log_file               True
+path2output            outputs/theta5s/small_1e6__fa12

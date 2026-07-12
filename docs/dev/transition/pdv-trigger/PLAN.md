@@ -81,9 +81,28 @@ folder) — do **not** re-run the hours-long sims to recover them; reproduce onl
 > fixed by the no-root handoff; even crash-free, no whole-band f_κ exists), and the 32/32-stable
 > theta5 matrix on the multiplier knob (§10).
 
-*This single block replaces the older layered ⭐/⚡/⚡⚡ synthesis. It reflects the grand view across
-`ELBADRY_REFERENCE.md`, `LANCASTER_REFERENCE.md`, `F_KAPPA_FUNCTIONAL_FORM.md`, and all the κ_mix work.
-Whenever a decision is made, update THIS block and the affected sibling docs together.*
+> ➕ **f_A BRANCH ADDENDUM (2026-07-06 → 07-11) — a THIRD knob now exists and is fully validated
+> in-container; the mechanism decision below is therefore INCOMPLETE until Phase 6.** After this block
+> was frozen (f_mix=4 adopted 2026-07-02), the maintainer commissioned the **in-ODE source-term knob
+> `cooling_boost_fA`** (`SOURCE_TERM_DESIGN.md` — THE single plan doc for that branch): it multiplies the
+> net radiative source *inside* the bubble-structure ODE + the resolved interface losses, only in the
+> interface band (T<10^5.5 K) — the physically-correct in-structure boost that `kappa` wanted to be,
+> WITHOUT the wrong-sign evaporation coupling (its dMdt *falls* with boost, El-Badry Eq-47 sign; kappa's
+> rose → condensation crashes). Status: **Phases 0–4 ✅** — shipped gated default-1.0 LITERAL
+> byte-identical; no condensation edge even at f_A=512; **81/81 theta5s matrix complete in-container
+> (2026-07-11, PROVISIONAL pending HPC): collapse-law p=3.330 confirms the registered p_source≈3.3
+> (vs multiplier's 1.82); both controls cold at every f_A; 3 classes (normal_n1e3 fires unmodified /
+> small_dense 4, simple_cluster 4, midrange 6, large_diffuse 8, pl2_steep 12, be_sphere 12 / controls
+> never); dMdt suppression <1 matrix-wide** (`FINDINGS.md §15–§15e`,
+> `data/theta5s_{fire_map,collapse_law,dmdt_suppression}.csv`). **What stays true from the block above:**
+> f_mix=4 remains the ADOPTED production working value today (default `none`). **What is now OPEN
+> (Phase 6):** whether f_A supersedes `multiplier` as the production mechanism — decided AFTER Phase 5
+> (bench5 Lancaster/El-Badry calibration) + the HPC confirmation of the in-container matrix. Do not read
+> the 2026-07-01/02 verdict above as the final mechanism ruling.
+
+*This single block (+ the dated f_A addendum) replaces the older layered ⭐/⚡/⚡⚡ synthesis. It reflects
+the grand view across `ELBADRY_REFERENCE.md`, `LANCASTER_REFERENCE.md`, `F_KAPPA_FUNCTIONAL_FORM.md`, and
+all the κ_mix work. Whenever a decision is made, update THIS block and the affected sibling docs together.*
 
 **The goal (maintainer north star):** give TRINITY's 1D bubble cooling **comparable to 3D/obs (Lancaster
 θ~0.9–0.99) and dependent on cloud properties**, so the energy→momentum transition fires physically — and
@@ -284,7 +303,254 @@ for provenance.*
 > observer for that (it is the R6-contaminated one) — the sanctioned harvester is `runs/harvest_theta_max.py`
 > on `dictionary.jsonl`. `F_KAPPA_FUNCTIONAL_FORM.md` §10/§14 flagged accordingly.
 
+## In-container long-run ops playbook (proven on the 81/81 theta5s run, 2026-07-11)
+
+> The maintainer flagged this combination as a keeper: it let an ~11-hour, 81-simulation matrix run
+> **unattended** in the ephemeral (restart-every-few-minutes) container with zero lost results and no
+> stale silences. Reuse it for any long background run. The theta5s-specific scripts live in `runs/`
+> (`run_theta5s_local.py`, `autocommit_theta5s.sh`, `checkpoint_theta5s.py`) — adapt, don't rewrite.
+
+**The six pieces (all required — each covers a failure mode the others miss):**
+1. **Resumable runner** (`run_theta5s_local.py` pattern): every work unit writes `.exit_code`/`.duration`
+   markers; on relaunch it skips units already done *in the committed summary* (so /tmp wipes don't lose
+   ground). Order work **completable-first** (here: high-fA fires fast; baselines last). Generous per-unit
+   timeout — **≥1.5 h before any wall-kill** (maintainer floor; we used 2 h), because a killed unit's
+   number is truncated garbage. **Never premature-stop a running unit** — no reorders/tweaks that kill
+   in-flight work; apply changes on the next natural relaunch.
+2. **Repo-side autocommitter** (`autocommit_theta5s.sh`): merges fresh results into the committed CSV and
+   commits+pushes every ~2 min. Git remote is the ONLY durable store; a restart then costs ≤2 min. It is
+   the **sole committer** (watchdogs only relaunch it) — no concurrent-commit races. Lives in the repo,
+   not /tmp, so hard restarts can't erase it.
+3. **Merge-checkpoint helper** (`checkpoint_theta5s.py`): union-by-name, prefer-compliant — accumulates
+   across container generations instead of overwriting.
+4. **~20-min `send_later` heartbeat that RE-ARMS itself**: each firing checks procs alive (relaunch if
+   dead), verifies the runner is *progressing* (a running unit's `t_now`/CPU advances — not just alive),
+   reports N/total + new results to the user, then re-arms with the SAME message + updated CONTEXT line.
+   Carry the running context IN the message — the session may have compacted by the time it fires.
+   Include a **TERMINAL clause** (when done: run the analysis, finalize docs, delete triggers, report).
+5. **Hourly cron watchdog** (`create_trigger`, backs up the heartbeat): same relaunch+report duties; also
+   carries the terminal clause. Two independent wake channels + the harness's restart notifications = no
+   silent stall. **Delete both when the run completes** (terminal cleanup), or they fire into a dead task.
+6. **Live notes + honest reporting**: report every tick even if unchanged ("no change, X/81, grinding
+   <unit>"); record completions/corrections in FINDINGS/ledger as they land, not at the end.
+
+**Measured environment facts (this container):** 4 cores (3 workers saturate); restarts range ~2 min to
+~50+ min apart with no pattern; /tmp *sometimes* survives a soft restart (never rely on it); a unit needs
+~40–60 min *uninterrupted* to finish — so completion is gated by stable-window length, not compute; the
+implicit integrator accelerates near the end (early-`t_now` linear extrapolation over-predicts 5–30×).
+`git push`/`send_later` failing with "stream closed" usually still landed — **always re-verify (`git log`,
+sync counts) instead of retrying blind.**
+
+### Habits that made this work (keep them)
+
+- **Register predictions before running** (p_source≈3.3 was written down 5 days before the matrix) — that
+  is what makes "CONFIRMED" a claim instead of a story.
+- **Controls inside every matrix**, and "a control fires" = BUG to flag, never a pass.
+- **Quote only the analysis artifact** (the CSV's FIRED/NOFIRE), never a raw intermediate (θ_max) — raw
+  reads produced two wrong thresholds this run; the third read (complete data + analysis) was right.
+- **Thresholds from incomplete data are upper bounds, not results** — say "not yet" instead of guessing.
+- **Compliance gate before quoting anything** (`t_final ≥ 5` or a physics end; ≥1.5 h before deciding).
+- **Measure, don't extrapolate** — the "67 h, needs HPC" call was wrong by 30×; the fix was reading
+  `t_now` twice, 3 s apart.
+- **Every correction gets recorded where the wrong number lived** (dated, with the reason), not just fixed
+  silently — see the threshold-correction lesson in `FINDINGS §15e`.
+- **Stale-doc sweep at every milestone**: grep the workstream for the OLD status words ("awaiting",
+  "incomplete", "in progress", old counts) and reconcile every hit — this sweep found five.
+- **After any tool error, verify state before acting** — half this run's "failures" had actually landed.
+
+### Next-chat kickoff prompt (copy-paste to continue this workstream in a fresh session)
+
+```
+Continue the f_A (cooling_boost_fA) workstream in JiaWeiTeh/trinity. Work on the branch you are given
+(previously pdv-trigger-pt4); never push elsewhere without permission.
+
+READ FIRST, in order — the docs are the ground truth, chat memory does not exist:
+1. docs/dev/transition/pdv-trigger/SOURCE_TERM_DESIGN.md — the "Next-chat handoff" block at top, then
+   the Status line and §3 (THE single plan doc for f_A; maintainer directive: one workflow stream).
+2. docs/dev/transition/pdv-trigger/FINDINGS.md §15–§15e (results; §15e = the 81/81 in-container matrix).
+3. docs/dev/transition/pdv-trigger/PLAN.md — the 2026-07-11 ledger entry + the ops playbook (for any
+   long background runs) + the f_A addendum in the CANONICAL SYNTHESIS block.
+Honor the ⚠️/🔄/💾/🔗 banners: re-verify claims against current source before relying on them.
+
+STATE: Phases 0–4 ✅. Phase 4 completed IN-CONTAINER (81/81, PROVISIONAL — not HPC-verified):
+collapse-law p=3.330 confirmed the registered p_source≈3.3; both controls cold at every f_A; 3 classes
+(normal_n1e3 fires unmodified / 6 configs need f_A, f_fire 4–12 / 2 controls); dMdt suppression < 1
+matrix-wide (Eq-47 sign). Authoritative data: data/theta5s_{fire_map,collapse_law,dmdt_suppression}.csv.
+
+YOUR TASK — the next open phase, in this priority order:
+(a) If HPC (Helix) is available: run the AUTHORITATIVE matrix — ./sync_theta5s.sh {up,submit,watch,run,
+    down} (sbatch runs/run_theta5s.sbatch) — then execute the §15e mandatory re-check of everything
+    downstream (fire map, p=3.33, controls, dMdt) against the HPC summary. HPC wins any disagreement.
+(b) Else Phase 5 (SOURCE_TERM_DESIGN §3): bench5 Lancaster/El-Badry calibration — an f_A value is good
+    if the SOLVED θ matches the published bubble sims at similar time.
+(c) Then Phase 6: the decision tree — does f_A supersede cooling_boost_mode='multiplier' (f_mix=4,
+    adopted 2026-07-02) as the production mechanism? Feed it the 3-class result + p=3.33 + controls +
+    dMdt fidelity + Phase 5.
+
+STANDING RULES (unchanged): θ only as θ_max over ≥5 Myr from dictionary.jsonl accepted rows via
+runs/harvest_theta_max.py (never blowout, never the R6 observer); FIRE = the trigger actually fired
+(the analysis CSV), NOT θ_max≥0.95; every arm must clear the compliance gate before its number is
+quoted; single-knob arms (mode=none, kappa=1 when varying fA); commit every artifact WITH its builder
+script + exact command; every result gets a FINDINGS entry + REPRODUCE row and reconcile
+INDEX/PLAN/SOURCE_TERM_DESIGN same-visit; run pytest + test/test_docs_dev_conventions.py before
+declaring done; commits carry no AI attribution/links; if a registered prediction is falsified, STOP
+and write it up before touching code. For long unattended runs, use the PLAN.md ops playbook
+(resumable runner + repo autocommitter + re-arming heartbeat + hourly cron watchdog; ≥1.5 h per arm;
+NEVER premature-stop a running arm; report every tick).
+```
+
+### Generic phase-runner prompt (paste after EVERY completed phase/item — self-renewing)
+
+```
+Run the NEXT open phase/item of the f_A workstream (JiaWeiTeh/trinity, assigned branch only).
+
+RE-ENTRY (every time, no exceptions): read docs/dev/transition/pdv-trigger/SOURCE_TERM_DESIGN.md
+(Status line + "Next-chat handoff" block + the relevant §3 phase spec), the newest FINDINGS.md §, and
+the top PLAN.md ledger entry. Honor the ⚠️/🔄/💾/🔗 banners — re-verify claims, line refs, and status
+words against current source; fix any drift you find AS PART of the visit (dated). Identify the single
+next open item from the Status line; if it is ambiguous or maintainer-gated, say so and ask — do not
+pick silently and do not fake a gated step.
+
+EXECUTE per the phase spec, sized per CLAUDE.md's planning protocol (risky/iterative ⇒ gate first:
+define pass/fail BEFORE editing; capture a baseline; full-run equivalence on stiff regimes in separate
+processes at matched t; byte-identity for any "free win").
+
+STANDING RULES: θ only as θ_max over ≥5 Myr from dictionary.jsonl accepted rows via
+runs/harvest_theta_max.py (never blowout, never the R6 observer); FIRE = the trigger actually fired
+(analysis CSV's FIRED/NOFIRE), NOT θ_max≥0.95; no number quoted before its compliance gate (t_final≥5
+or physics end; ≥1.5 h/arm before any wall-kill verdict); single-knob arms; thresholds from incomplete
+data are upper bounds, not results; a control that fires is a BUG to flag, never a pass; if a
+registered prediction is falsified, STOP and write it up before touching code; measure, don't
+extrapolate; after any tool error, verify state (git log / sync) before retrying. Long unattended
+runs ⇒ the ops playbook above (resumable runner + repo autocommitter + re-arming heartbeat w/
+context+terminal clause + hourly cron; NEVER premature-stop a running arm; report every tick; delete
+triggers at terminal).
+
+CLOSE-OUT (this is what makes this prompt reusable — leave the docs so the SAME prompt works again):
+1. Commit every artifact WITH its builder script + the exact command (💾; nothing left in /tmp).
+2. Dated FINDINGS.md entry + REPRODUCE.md row for the result.
+3. Reconcile ALL siblings same-visit (🔗): SOURCE_TERM_DESIGN Status line + phase header + handoff
+   block (advance it to the new state), INDEX.md row, PLAN.md ledger (newest-first entry; mark
+   superseded claims).
+4. Regenerate MANIFEST (python make_manifest.py) in the same commit as new artifacts.
+5. Run pytest + test/test_docs_dev_conventions.py; fix before declaring done.
+6. Milestone stale-doc sweep: grep the workstream for old status words ("awaiting", "in progress",
+   "incomplete", old counts/thresholds) and reconcile every hit.
+7. Push (no --force). Commits: no AI attribution, no session links, no co-author trailers.
+8. Report: what ran, the numbers (with their provisional/authoritative status), what is now the next
+   open item.
+```
+
 **Status ledger (newest first):**
+- **2026-07-11 (🟢 f_A PHASE 4 in-container COMPLETE 81/81 — PROVISIONAL, HPC confirmation pending).**
+  The in-container theta5s matrix reached 81/81 compliant over ~11 h across ~dozen container restarts
+  (runner + repo autocommitter + send_later heartbeat + hourly cron; 2 h/arm; each arm got its full
+  budget, only restarts cut arms short). Ran `data/make_theta5s_analysis.py`. **HEADLINE: collapse-law
+  p=3.330 (rms 0.055 dex, n=6) CONFIRMS the registered prediction p_source≈3.3;** both controls
+  (`fail_repro`, `small_1e6`) never fire at any fA; 3-class structure (fires-unmodified `normal_n1e3` /
+  needs-f_A {small_dense 4, simple_cluster 4, midrange 6, large_diffuse 8, pl2_steep 12, be_sphere 12} /
+  controls). Corrected two θ_max-vs-FIRED threshold errors (simple_cluster fa4 not fa6; large_diffuse fa8
+  not fa6). Artifacts: `data/theta5s_{fire_map,collapse_law}.csv` + `theta5s_{fire_map,theta_rise}.png`.
+  Still ASSUMED (not HPC) — §15e mandatory action stands: re-run on `run_theta5s.sbatch`, re-check
+  downstream. Wrote the next-chat handoff into `SOURCE_TERM_DESIGN.md`. FINDINGS §15e (final), REPRODUCE
+  row 41. **Phases 5 (bench5 Lancaster calibration) + 6 (decision) open.**
+  **Late addition (same day): the dMdt fidelity read (read iii) salvaged from /tmp before wipe** —
+  `data/theta5s_dmdt_suppression.csv`, 49/72 quotable, **all <1 falling with f_A (0.99→~0.85)** = Eq-47
+  suppression sign matrix-wide, the measurement f_mix cannot produce. Also swept the workstream for stale
+  claims post-completion: refreshed the summary-CSV banner (was "INCOMPLETE"), SOURCE_TERM_DESIGN Phase-4
+  header/STATE ("awaiting submission" → complete-provisional), REPRODUCE row-41 typo, and added the f_A
+  addendum to the CANONICAL SYNTHESIS block above (which still read as if multiplier/f_mix=4 were the
+  final mechanism ruling — Phase 6 is the ruling).
+- **2026-07-10 (⚠️ f_A PHASE 4 PROVISIONAL in-container fallback — NOT HPC, ASSUMED not
+  authoritative; historical — superseded by the 2026-07-11 entry above: the matrix DID complete 81/81
+  and the "fast-arm-biased/uncomputable" framing was corrected).** Maintainer had no HPC access and asked the session to run the theta5s matrix
+  in-container instead of on Helix. Built `runs/run_theta5s_local.py` (resumable, high-fA-first
+  ordering, ≥20-min/arm per maintainer ruling — set to 30 min) + `runs/checkpoint_theta5s.py`
+  (merges each ephemeral container's completed arms into the committed
+  `runs/data/theta5s_summary.csv`, which carries a PROVISIONAL header). The container is
+  **restart-prone (~2–13 min) and compute-limited**, so the sample is **fast-arm-biased**: only the
+  fastest-firing arms complete (fail_repro control never fires ✓, small_dense fires fA≥4,
+  normal_n1e3 fA12/16), while `__none`/low-fA baselines and diffuse configs wall-kill and are
+  absent/truncated. **This does NOT satisfy Phase 4 and its fire-map/collapse-law/dMdt numbers must
+  NOT feed the Phase-6 decision as final.** ⛔ Once HPC is available: re-run the full 81-arm matrix
+  via `run_theta5s.sbatch` and RE-CHECK every downstream read (analysis, both controls, Phases 5–6,
+  paper numbers) against the HPC summary; §15e is then superseded. FINDINGS §15e, REPRODUCE row 41.
+- **2026-07-06 (🟡 f_A PHASE 4 TOOLING READY — 81-arm theta5s matrix built & committed, awaiting
+  maintainer HPC submission).** Executor session (Opus) built Phase-4 tooling per
+  `SOURCE_TERM_DESIGN.md §3`, mirroring the theta5k conventions (studied `runs/` on maintainer
+  request). Committed: `runs/make_theta5s_params.py` + **81 validated params** (`runs/params/theta5s/`;
+  9 configs × f_A {1,2,4,6,8,12,16,24,32}, single-knob, `__none` = byte-identical baseline);
+  `runs/run_theta5s.sbatch` (array 1-81, `--time=6:00:00` wall-armor); `runs/sync_theta5s.sh`;
+  `data/make_theta5s_analysis.py` (fire map + θ-rise + collapse-law fit, registered p_source≈3.3,
+  whole-band over 7 fireable + control-fire-is-a-bug check; smoke-tested on synthetic data);
+  `runs/harvest_dmdt_suppression.py` (read iii; smoke-tested on the Phase-3 fA=1/fA=8 pair → median
+  ratio 0.934). **The matrix is NOT run — no θ quotable.** Maintainer runs
+  `./sync_theta5s.sh {up,submit,watch,run,down}` on Helix; a follow-up session analyzes the
+  harvest. FINDINGS §15d. Phase 4 🟡 awaiting HPC; then Phase 5 (bench5) / Phase 6 (decision).
+- **2026-07-06 (✅ f_A PHASE 3 RAN — all 4 gates pass; default LITERAL byte-identity; first LIVE
+  El-Badry sign).** Executor session (Opus) ran Phase 3 gates of `SOURCE_TERM_DESIGN.md §3`.
+  (1) pytest 742. (2) **Byte-identity is literal, not value-diff**: pre (git worktree @919feaec,
+  pre-Phase-2) == postA == postB, identical sha256 of `dictionary.jsonl` (simple_cluster,
+  stop_t 0.03, pinned OMP/OPENBLAS/MKL=1); the A/A control is itself bit-identical (thread pinning
+  removed the §9b FP wobble) — the `fA != 1.0` guards proven inert to the byte. (3) Screen re-run
+  reproduces §2 (6/6 gates, zero git diff). (4) Live smoke fA=8 (stop_t 0.03, DEBUG): clean, 0
+  freeze/no-root events, dMdt(8)<dMdt(1) and θ(8)>θ(1) in 29/29 matched segments — the El-Badry
+  ṁ-suppression sign surviving the FULL COUPLED run (all prior evidence was replayed states).
+  FINDINGS §15c. Phase 3 ✅; **Phase 4 (theta5s HPC matrix) next — the first maintainer-gated
+  phase (sbatch submission + sync).**
+- **2026-07-06 (✅ f_A PHASE 2 RAN — production wiring landed, gated default-1.0 byte-identical).**
+  Executor session (Opus) ran Phase 2 of `SOURCE_TERM_DESIGN.md §3`. `cooling_boost_fA` wired into
+  production: two edit sites in `bubble_luminosity.py` behind `fA != 1.0` guards (RHS `dudt`
+  band-multiply at :416; L₂/L₃ component scaling at :811; `_T_INTERFACE_BAND=10**5.5` at :59),
+  registry ParamSpec + `_validate_cooling_boost_fA` (rejects ≤0, cross-knob double-boost warning),
+  kappa-`'auto'` text note. New `test/test_fA_source_boost.py` (9 tests); full pytest **742 green**
+  (was 733; +9). fA=1 reproduces the pre-patch solve exactly (2.3271e8/5630); fA=4 raises LTotal
+  ×1.35, lowers dMdt ×0.934 (El-Badry sign). Two plan corrections recorded (FINDINGS §15b): (1)
+  `default.param` is auto-generated — regenerated via `python -m tools.gen_default_param --write`,
+  NOT hand-edited (byte gate `test_gen_default_param`); (2) the predicted string-pin collateral did
+  NOT break (fixture params come from `read_param`; `_scalar_params` feeds only the untouched IC).
+  The rigorous cross-process byte-identity gate is Phase 3 (next session). Phase 2 ✅; Phase 3 next.
+- **2026-07-06 (✅ f_A PHASE 1 RAN — all-9 offline coverage + edge map; θ≈1 edge prediction
+  FALSIFIED in the SAFE direction).** Executor session (Opus) ran Phase 1 of `SOURCE_TERM_DESIGN.md
+  §3`. (a) Coverage closed: committed partial trajectories for the two never-screened configs
+  (`data/traj_normal_n1e3.csv` 61 rows, `data/traj_small_1e6.csv` 56 rows — both early-epoch, the
+  §8d cliff blocks ≥5 Myr in-container) + the 2 FM1 fixtures; both new configs reproduce the §15
+  dial/sign/stability, both controls stay far below fire (small_1e6 θ_max 0.25 @ fA16; stiff-5e9
+  θ≈0.02). (b) Condensation-edge map (`data/make_fA_edge_map.py` → `fA_edge_map.csv`/`.png`,
+  `fA_coverage9.csv`): **0/50 states reach dMdt≤0 within f_A≤128; a probe to f_A=512 finds NO edge**
+  (θ driven to 6–26, dMdt stays large-positive). Per the STOP rule this falsification was written up
+  (`FINDINGS.md §15a`), not tuned around: the θ≈1 edge is a *conduction-knob* (f_κ/McKee–Cowie)
+  phenomenon; the source knob never touches the evaporative eigenvalue, so it has no reachable
+  condensation edge — a strengthening of the solver-safety case. Phase-6 note added: "dense
+  condense-first" now reads as DRAIN/stay-energy-driven, not f_A-driven condensation. No production
+  code touched. Phase 1 ✅; Phase 2 (wiring) is next.
+- **2026-07-06 (🧩 PLAN CONSOLIDATED TO ONE DOC + LITERATURE-CALIBRATION PHASE; 2-agent review).**
+  Maintainer directives: one source of truth (no parallel plan docs), comprehensive coverage of
+  ALL 9 configs, and calibration against published sims ("similar θ at similar time").
+  `FA_IMPLEMENTATION_SPEC.md` was folded into `SOURCE_TERM_DESIGN.md §3` (Phases 0–6) and
+  DELETED. Two agents reviewed the plan: the coverage audit produced the per-config
+  expected-outcome/acceptance table (7/7 *fireable* + 2 controls-unchanged replaces the
+  unsatisfiable "9/9 fire"), the grid extension {…,24,32} + bracket rule (screen laggards
+  midrange/pl2 extrapolate to ~20–32), offline fixtures for the never-screened small_1e6 +
+  normal_n1e3, wall-time/compliance armor, the L_leak not-scaled statement, required interaction
+  warnings (incl. kappa-'auto' grid invalidation), the band-edge↔cooling-table pin test, epoch
+  force-includes, and found a pre-existing latent fallback double-boost (FINDINGS §16, flagged
+  not fixed). The literature agent produced Phase 5: five bespoke Lancaster-2021b-matched
+  bench5 configs (n̄ 43→2.2e5), the operationalized metric (cumulative Θ_cum ∈ [0.9,0.99] +
+  instantaneous 1−θ tracks ≤0.5 dex at {0.5,1,2}·t_ff capped 3 Myr; censoring + leak-split
+  rules; El-Badry overlay), the predicted whole-band f_A ∈ [8,13] (vs laggard 20–32 tension the
+  matrix resolves), and the circularity honesty clause. Blocking pre-step registered: PDF-verify
+  L21b Table 1 into `LANCASTER_REFERENCE.md` before freezing bench params.
+- **2026-07-06 (📋 f_A L1/L2 EXECUTOR SPEC LANDED; direction endorsed — spec since folded into
+  `SOURCE_TERM_DESIGN.md` and deleted, see the entry above).** Maintainer confirmed
+  the goal is a back-reacting in-ODE factor (not the post-hoc f_mix) and asked for an
+  execution-ready plan: `FA_IMPLEMENTATION_SPEC.md` pins the two production edit sites (RHS dudt
+  band-multiply + L₂/L₃ component scaling), the `cooling_boost_fA` registry wiring (standalone
+  param, default 1.0 byte-identical, NOT a mode), the gate ladder with pass bars (pytest →
+  byte-identity + A/A control → screen re-run → live smoke → theta5s HPC matrix), two registered
+  predictions (collapse-law p_source ≈ 3.3 vs multiplier 1.82; emergent dMdt suppression vs
+  El-Badry Eq 47), the traps, and a pre-committed decision tree. SOURCE_TERM_DESIGN gains §2b
+  (f_mix-vs-f_A FAQ + why small-λδv cannot rescue κ_mix). No production code touched.
 - **2026-07-06 (🟢 THE PHYSICAL IN-ODE SUCCESSOR IDENTIFIED — f_A source-term screen passes 4/4
   predictions 6/6; design doc landed).** The maintainer's standing wish (an in-ODE knob more
   physical than the output multiplier) is answered by moving the boost from the CONDUCTIVITY to

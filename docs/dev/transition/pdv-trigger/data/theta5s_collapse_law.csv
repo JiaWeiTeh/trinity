@@ -1,0 +1,9 @@
+# generated 2026-07-11T19:47:34Z | builder make_theta5s_analysis.py | code b9ec5355+dirty
+# fit f_fire = A*(0.95/theta0)^p : A=1.463, p=3.330, rms=0.0554 dex (n=6). REGISTERED PREDICTION p_source ~ 3.3 (multiplier was 1.82; rms 0.064). CONSISTENT.
+config,theta0,f_fire,resid_dex
+pl2_steep,0.511,12.0,0.0173
+be_sphere,0.529,12.0,0.0674
+large_diffuse_lowsfe,0.535,8.0,-0.0924
+midrange_pl0,0.636,6.0,0.0328
+small_dense_highsfe,0.717,4.0,0.0300
+simple_cluster,0.676,4.0,-0.0551
