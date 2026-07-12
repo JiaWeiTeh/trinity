@@ -15,6 +15,7 @@ bench3_m1e5_r5__fa16,bench3_m1e5_r5,16,prod,True,1.3397,0.17043222345185585,5.0,
 bench3_m1e5_r5__fa4,bench3_m1e5_r5,4,prod,False,0.6430,0.3156440483212128,5.0,stopping_time,implicit,0.2312,0.000,0.9951,5.52e+03
 bench3_m1e5_r5__fa6,bench3_m1e5_r5,6,prod,False,0.7039,0.31973276515315185,5.0,stopping_time,implicit,0.2593,0.000,0.9951,5.52e+03
 bench3_m1e5_r5__fa8,bench3_m1e5_r5,8,prod,False,0.7486,0.27476804494411333,5.0,stopping_time,implicit,0.2835,0.000,0.9951,5.52e+03
+bench3_m1e5_r5__none,bench3_m1e5_r5,1,prod,False,0.5801,0.2548679398113324,5.0,stopping_time,implicit,0.1751,0.000,0.9951,5.52e+03
 bench4_m1e5_r2p5__fa12,bench4_m1e5_r2p5,12,prod,True,1.0415,0.05629955468706625,0.3995021625901242,shell_collapsed,momentum,0.6449,0.000,0.9983,4.42e+04
 bench4_m1e5_r2p5__fa16,bench4_m1e5_r2p5,16,prod,True,1.0749,0.04917312679104388,0.3849941930959921,shell_collapsed,momentum,0.6685,0.000,0.9983,4.42e+04
 bench4_m1e5_r2p5__fa4,bench4_m1e5_r2p5,4,prod,True,1.3474,0.22036198895464199,0.9530651249791088,shell_collapsed,momentum,0.7561,0.000,0.9983,4.42e+04
