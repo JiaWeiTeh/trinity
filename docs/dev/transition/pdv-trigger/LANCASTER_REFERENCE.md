@@ -238,9 +238,9 @@ the exact one is free.)
 
 **In-container run status (`FINDINGS.md §15h`, 2026-07-12):** the 60-arm bench5 matrix ran in-container
 (HPC down) → PARTIAL 15/60 (all production; 12 FIRED + 3 NOFIRE bench3). Fire map: bench5/bench4 fire at every f_A≥4,
-bench3 fires at f_A≥12 (NOFIRE ≤8) — matches the registered θ_EB above (bench5/4/3 ≥ 0.995). ⛔ The Θ_cum/L21b-band
+bench3 fires at f_A≥12 (NOFIRE ≤8) — matches the registered θ_EB above (bench5/4/3 ≥ 0.995). The Θ_cum/L21b-band
 calibration this section anchors **needs the diagnostic (blowout) arms, none of which completed
-in-container** — it is HPC-owed. The Fig-17 direct tracks (bench-2, and the 20-pc candidate bench-6)
+in-container** — it comes from the diagnostic (blowout) arms, which run in-container too (maintainer ruled all 60 in-container 2026-07-12). The Fig-17 direct tracks (bench-2, and the 20-pc candidate bench-6)
 are the comparison targets once the diagnostic arms run on HPC.
 
 *Transcribed from ApJ 914, 90 (Lancaster+2021 Paper II) and arXiv:2505.22730v1 (Lancaster+2025) on 2026-06-30,

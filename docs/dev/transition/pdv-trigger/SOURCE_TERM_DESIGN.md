@@ -50,12 +50,13 @@ control).** These numbers are ASSUMED (in-container, not HPC) — the full matri
 `run_theta5s.sbatch` and everything downstream re-checked (§15e mandatory action). **Phase 5 🟡 PARTIAL / PROVISIONAL, Phase 6 ⬜ open**
 (see the handoff block below). **Re-entry 2026-07-12: pre-step ✅ (`§15g`, Table-1 [V]-verified, 60 params
 frozen); then the maintainer ruled IN-CONTAINER (HPC down) and the 60-arm campaign RAN — banking
-`FINDINGS.md §15h`: 15/60 arms compliant (all production; 12 FIRED + 3 NOFIRE bench3 fa4/6/8 = the fire threshold). FIRE MAP: bench5(n̄=2.28e5) +
-bench4(n̄=4.42e4) fire at every f_A≥4; bench3(n̄=5520) fires at f_A≥12 (NOFIRE ≤8); bench2/bench1 + all diagnostic
-+ f_A=1 baselines HPC-deferred. ⛔ The core calibration (Θ_cum-over-window vs the L21b [0.9,0.99] band +
-the dex metric) needs the DIAGNOSTIC/blowout arms — none completed in-container — so it is structurally
-HPC-owed. NEXT OPEN ITEM: run the full 60-arm matrix (esp. the diagnostic arms) on HPC for the real
-calibration → then Phase 6.** Two review agents audited this plan on 2026-07-06 (config-coverage audit;
+`FINDINGS.md §15h`: 15/60 arms compliant so far (all production; 12 FIRED + 3 NOFIRE bench3 fa4/6/8 = the
+fire threshold). FIRE MAP: bench5(n̄=2.28e5) + bench4(n̄=4.42e4) fire at every f_A≥4; bench3(n̄=5520) fires
+at f_A≥12 (NOFIRE ≤8) — a clean density gradient matching El-Badry θ_EB. **Maintainer directive 2026-07-12:
+run ALL 60 IN-CONTAINER (2 h/arm is enough) — the diagnostic/blowout arms + diffuse benches are NOT
+HPC-deferred, they finish in-container; the Θ_cum/L21b calibration comes from the diagnostic arms once
+they land.** NEXT OPEN ITEM: finish the 60 in-container → Phase 6. **The ONLY HPC dependency is the
+theta5s Phase-4 confirmation (§15e) — see repo-root `temporary-HPC-runs.md`; bench5 is NOT on it.** Two review agents audited this plan on 2026-07-06 (config-coverage audit;
 literature-benchmark extraction) — their findings are integrated throughout and marked "(audit)" /
 "(lit)". **Phase 1 headline: the condensation-edge prediction (edges near θ≈1) was FALSIFIED in the
 SAFE direction — no dMdt≤0 edge exists for f_A even at 512 (16× the physical range); the source knob
@@ -93,22 +94,21 @@ with f_A matrix-wide (Eq-47 sign — the measurement f_mix cannot produce).** FI
 fired the trigger (STRICTER than θ_max≥0.95 — quote the CSV's FIRED/NOFIRE).
 
 **Next steps (Phases 5–6 + HPC):** *(2026-07-12, latest: Phase-5 pre-step ✅ (`§15g`); in-container
-campaign RAN (`§15h`) → PARTIAL 15/60 (all prod; 12 FIRED + 3 NOFIRE bench3; fire map only). The core Θ_cum calibration
-is structurally HPC-deferred (needs the diagnostic/blowout arms — none complete in-container). The
+campaign RUNNING (`§15h`) → 15/60 done (all prod; 12 FIRED + 3 NOFIRE bench3). Maintainer ruled ALL 60
+run IN-CONTAINER (2 h/arm); the diagnostic/blowout arms (which give the Θ_cum calibration) finish
+in-container — NOT HPC-deferred. The
 campaign may still be trickling: machinery `runs/run_bench5_local.py` + `runs/autocommit_bench5.sh` +
 send_later heartbeat + hourly cron `bench5-hourly-watchdog`. **Fresh session, procs dead / OUT wiped:**
 OUT=`$SCRATCH/bench5_out`; relaunch run_in_background (no `&`): `python runs/run_bench5_local.py --out
 OUT --workers 3 --per-arm-timeout 5400 --summary runs/data/bench5_summary.csv` and `bash
-runs/autocommit_bench5.sh OUT`; rerun `data/make_bench5_analysis.py` if new arms land. THE real Phase-5
-deliverable now needs HPC.)*
-1. **HPC — the mandatory path for BOTH matrices.** (a) theta5s (§15e): re-run via `runs/run_theta5s.sbatch`
+runs/autocommit_bench5.sh OUT`; rerun `data/make_bench5_analysis.py` if new arms land.)*
+1. **HPC — the ONE mandatory item: theta5s (§15e) confirmation.** Re-run via `runs/run_theta5s.sbatch`
    (authoritative); re-check fire map, p=3.33, both controls, dMdt (`runs/harvest_dmdt_suppression.py`),
-   any paper number — HPC wins any disagreement. (b) bench5 (§15h): re-run all 60 via
-   `runs/run_bench5_local.py`-equivalent on HPC — **the diagnostic (blowout) arms ARE the Phase-5
-   calibration** (Θ_cum over W vs the L21b band + dex metric), and none completed in-container.
-2. **Phase 5 — literature calibration (§3 Phase 5).** bench5 Lancaster/El-Badry: an f_A value is "good"
-   if it yields similar θ at similar time to the published bubble sims. Configs + benchmarks in §3;
-   in-container fire map (`§15h`) is a partial first signal only.
+   any paper number — HPC wins any disagreement. **Checklist + commands in repo-root
+   `temporary-HPC-runs.md`.** **bench5 is NOT an HPC item** — maintainer ruled it in-container (2 h/arm).
+2. **Phase 5 — finish bench5 in-container (§3 Phase 5).** The diagnostic (blowout) arms give the Θ_cum/
+   L21b calibration; keep the campaign grinding to 60/60 in-container, then rerun
+   `data/make_bench5_analysis.py`. Current fire map (`§15h`) is the partial-in-progress result.
 3. **Phase 6 — decision (§3 Phase 6).** Does f_A ship as the transition-trigger fix? Feed the 3-class
    result + p=3.33 + controls + the bench5 Θ_cum calibration into the decision tree.
 4. Paper: the p_source≈3.3 collapse law + the 3-class fire map + the L21b bench5 calibration are the f_A story.

@@ -110,16 +110,26 @@ folder) — do **not** re-run the hours-long sims to recover them; reproduce onl
 > (ε_* ∈ {0.01,0.1,1} → the spec's sfe=0.05 benches matched no published model, corrected to ε0.1);
 > §7's Eq-10 transcription corrected. **60 bench5 params frozen** (`runs/make_bench5_params.py`,
 > exact mapping mCloud=M_cl(1+ε)/sfe=ε/(1+ε), emit gates + end-to-end read_param check).
-> **↳ IN-CONTAINER RUN — PARTIAL (`FINDINGS.md §15h`, 2026-07-12):** maintainer ruled in-container (HPC
-> down). Campaign ran (`runs/{run,harvest,checkpoint}_bench5*.py` + `autocommit_bench5.sh`, adapted from
-> theta5s) → **15/60 arms compliant (all production; 12 FIRED + 3 NOFIRE bench3 fa4/6/8 = the fire threshold).** FIRE MAP: bench5(n̄=2.28e5) +
-> bench4(n̄=4.42e4) fire at EVERY f_A≥4; bench3(n̄=5520) fires at f_A≥12 (NOFIRE ≤8); bench2/bench1 + all diagnostic +
-> f_A=1 baselines HPC-deferred (container ~15-20 min windows + rapid-restart storms reset in-flight arms).
-> Matches registered El-Badry θ_EB (`§15g`; bench5/4/3≥0.995→fire trivially; density gradient visible).
-> Fate split: dense 2.5-pc benches fire→shell_collapsed; 5-pc bench3 fires→survives to t=5. ⛔ **The core
-> Θ_cum-over-window/L21b-band calibration needs the DIAGNOSTIC (blowout) arms — none completed — so it is
-> structurally HPC-owed;** the prod-only fire map is a first signal, not the calibration. **Next open: HPC
-> (both theta5s §15e + bench5 diagnostic arms §15h) → Phase 6.**
+> **↳ IN-CONTAINER RUN — IN PROGRESS (`FINDINGS.md §15h`, 2026-07-12):** maintainer ruled **all 60 bench5
+> arms run IN-CONTAINER** (2026-07-12: "just run the 60 in-container — it's definitely doable; anything
+> within 2 h is runnable"). Campaign running (`runs/{run,harvest,checkpoint}_bench5*.py` +
+> `autocommit_bench5.sh`) at `--per-arm-timeout 7200` (2 h/arm). **15/60 done so far** (all production;
+> 12 FIRED + 3 NOFIRE bench3 fa4/6/8). FIRE MAP: bench5(n̄=2.28e5) + bench4(n̄=4.42e4) fire at EVERY f_A≥4;
+> bench3(n̄=5520) fires at f_A≥12 (NOFIRE ≤8; monotonic θmax 0.64→1.34) — a clean density-dependent fire
+> threshold. Matches registered El-Badry θ_EB (`§15g`). The remaining arms (bench2/bench1 prod, all
+> DIAGNOSTIC(blowout) arms, f_A=1 baselines) are STILL RUNNING in-container — NOT HPC-deferred; they
+> complete when the container gives a long-enough window (bench3 completed in a 42-min one). The Θ_cum/
+> L21b-band calibration comes from the diagnostic arms once they land in-container. **Next open: finish
+> the 60 in-container → Phase 6.**
+>
+> ### ⚠️⚠️ WHAT REQUIRES HPC/HELIX (be explicit — maintainer directive 2026-07-12) ⚠️⚠️
+> **Exactly ONE item needs HPC: the theta5s Phase-4 CONFIRMATION** (`FINDINGS.md §15e`). The 81-arm
+> theta5s matrix was run in Claude's ephemeral container (HPC was down) and is **PROVISIONAL** — p=3.330,
+> the controls, the 3-class result, and the dMdt trend must be reproduced on Helix (`sbatch
+> runs/run_theta5s.sbatch`; params committed) before any theta5s number is authoritative/paper-ready.
+> **bench5 (Phase 5) does NOT require HPC** — it is being run in-container per the ruling above. The
+> maintainer-facing checklist with exact commands is the repo-root file **`temporary-HPC-runs.md`**
+> (created 2026-07-12; the maintainer deletes it after running). Do not add bench5 to the HPC list.
 
 *This single block (+ the dated f_A addendum) replaces the older layered ⭐/⚡/⚡⚡ synthesis. It reflects
 the grand view across `ELBADRY_REFERENCE.md`, `LANCASTER_REFERENCE.md`, `F_KAPPA_FUNCTIONAL_FORM.md`, and
