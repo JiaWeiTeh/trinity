@@ -1571,6 +1571,59 @@ precedent; needs the long-run ops playbook — est. ~40–60 min/arm uninterrupt
 or on HPC together with the mandatory theta5s confirmation. **No θ/Θ number exists yet for any bench;
 nothing here is a calibration result.**
 
+## 15h. [data — PROVISIONAL, IN-CONTAINER] Phase 5 bench5 campaign — 12/60 arms (fire map only); the Θ_cum calibration is structurally HPC-deferred (2026-07-12)
+
+> ⚠️ **PROVISIONAL / IN-CONTAINER, NOT HPC (HPC down 2026-07-12).** Partial run: **12/60 arms
+> compliant**, ALL production, ALL FIRED. The core Phase-5 metric (Θ_cum over the Lancaster window +
+> the 1−θ dex metric) is **NOT in this result** — it needs the diagnostic/blowout arms, none of which
+> completed in-container. Treat the fire map below as a first real signal, the calibration as HPC-owed.
+
+**How it ran / why only 12.** Maintainer ruled in-container (HPC down); launched the 60-arm matrix via
+`runs/run_bench5_local.py` + `runs/autocommit_bench5.sh` (new, adapted from theta5s) + a re-arming
+send_later heartbeat + hourly cron. The container ran ~15–20 min windows punctuated by rapid-restart
+storms (~1–2 min); trinity has no mid-run resume, so every restart resets in-flight arms to t=0. Over
+~2.5 h this banked **12/60** (vs the prior lost pt4 session's 1–3/60 over 8 h — better cadence, same
+structural ceiling). The completable set is the **fast dense production arms**; the diagnostic
+(blowout) arms, f_A=1 baselines, and the two diffuse benches never fit a window.
+
+**FIRE MAP (production arms; FIRE = actually fired cooling_balance, from `data/bench5_analysis.csv`):**
+
+| bench | n̄_H | θ_EB(λδv3) | prod arms done | FIRED at f_A | fate |
+|---|---:|---:|---|---|---|
+| bench5 (m5e5, 2.5pc) | 2.28e5 | 0.999 | 4,6,8,12,16 | **all (≥4)** | fire→shell_collapsed (t_f 0.08–0.11) |
+| bench4 (m1e5, 2.5pc) | 4.42e4 | 0.998 | 4,6,8,12,16 | **all (≥4)** | fire→shell_collapsed (t_f 0.38–0.95) |
+| bench3 (m1e5, 5pc) | 5520 | 0.995 | 12,16 | **12,16** | fire→**stopping_time t=5** (survives) |
+| bench2 (m1e5, 10pc) | 690 | 0.986 | — | — | HPC-deferred |
+| bench1 (m5e4, 20pc) | 43.1 | 0.948 | — | — | HPC-deferred |
+
+**Read (provisional):** the two densest benches fire at **every f_A tested down to 4** — their fire
+threshold is ≤4 (the f_A=1 baseline, needed to see if they fire unmodified, is an HPC-deferred long-pole
+arm). This tracks the registered El-Badry prediction (`§15g`): bench5/4/3 all have θ_EB ≥ 0.995 (near-total
+cooling) → they fire trivially; the density gradient (denser → fires at lower f_A) is visible (bench3
+needs f_A ≥ 12 so far, bench4/5 fire at 4). θ_max at fire ranges 0.97–1.35, exceeding the θ_EB
+equilibrium — a transient overshoot that trips the trigger. **Fate split:** the very dense 2.5-pc benches
+fire then shell-collapse (dense recollapse); the 5-pc bench3 fires and survives to 5 Myr — the
+band-fire vs condense-handoff split the Phase-6 tree anticipates.
+
+**⛔ What this run CANNOT deliver (⇒ HPC).** The maintainer's actual Phase-5 criterion is Θ_cum ∈
+[0.90, 0.99] over the Lancaster window + the |Δlog(1−θ)| ≤ 0.5 dex trajectory match. Both need the
+**diagnostic arms** (`transition_trigger=blowout`) whose θ(t) logs UNCENSORED through the whole energy
+phase to 3 Myr. A production arm leaves the energy phase at fire (t < 0.2 Myr here), so its implicit
+θ(t) trajectory is censored at the transition — `theta_cum_prefire` in the CSV is the pre-fire trapezoid
+only, a lower bound, **not** the L21b window metric. The diagnostic arms are the slowest, most
+restart-vulnerable arms and **none completed in-container**. So the Θ_cum/L21b-band calibration — the
+Phase-6 pass/fail input — is genuinely HPC-owed, independent of how long the container grinds.
+
+**Artifacts (all committed):** `runs/params/bench5/` (60), `runs/{run,harvest,checkpoint}_bench5*.py`
++ `autocommit_bench5.sh`, `runs/data/bench5_summary.csv` (12 arms) + `runs/data/bench5_traj/` (12
+censored trajectories), `data/bench5_elbadry_prediction.csv` (registered, sim-free, §15g),
+`data/make_bench5_analysis.py` → `data/bench5_analysis.csv` + `bench5_theta_tracks.png`.
+
+**⛔ MANDATORY future action.** Re-run the full 60-arm matrix on HPC (the diagnostic arms are the point):
+harvest Θ_cum over W per bench, the dex-trajectory metric, the Lcool/Lleak split (Rogers & Pittard),
+and the El-Badry overlay vs `bench5_elbadry_prediction.csv`; then the Phase-6 decision. This partial
+fire map is a first signal, not the calibration.
+
 ## 16. [flag] Pre-existing latent double-boost in the trigger fallback (found 2026-07-06 during the f_A plan audit; NOT fixed)
 
 `run_energy_implicit_phase.py:1245-1247`: when `bubble_props is None`, the trigger path reads
