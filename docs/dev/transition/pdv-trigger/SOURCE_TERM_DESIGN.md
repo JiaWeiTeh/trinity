@@ -66,7 +66,11 @@ structurally cannot reach the f_κ condensation crash. All 9 configs now have of
 multiplies the net radiative source inside the bubble-structure ODE + the resolved interface losses, only
 in the interface band (T < 10^5.5 K). Wired at 2 edit sites in
 `trinity/bubble_structure/bubble_luminosity.py` + a registry ParamSpec/validator in
-`trinity/_input/registry.py`; test `test/test_fA_source_boost.py`. Gate proven: default is LITERAL
+`trinity/_input/registry.py`; test `test/test_fA_source_boost.py`.
+**(Line-ref drift, re-verified 2026-07-12:** the wiring now lives at `bubble_luminosity.py:435-436`
+(RHS `dudt` band-multiply), `:845-848` (L₂/L₃ component scaling), `:65` (`_T_INTERFACE_BAND`) — the
+`:416/:811/:59` in the Phase-2 provenance block + `FINDINGS §15b` are the as-landed 2026-07-06 numbers;
+code shifted, wiring unchanged and verified present.) Gate proven: default is LITERAL
 byte-identical (pre==postA==postB `dictionary.jsonl` sha256). It is the physically-correct successor to
 the output-side `f_mix` multiplier and the solver-breaking `f_κ` (§1–2).
 
