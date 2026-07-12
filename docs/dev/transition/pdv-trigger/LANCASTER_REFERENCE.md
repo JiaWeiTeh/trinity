@@ -236,5 +236,12 @@ sfe = ε_*/(1+ε_*)** ⇒ post-SF gas = M_cl at nCore = n̄_H (so rCloud = R_cl 
 mCluster = ε_*·M_cl exactly. (The naive mapping is only ~10%/3% off in gas mass/radius at ε_*=0.1, but
 the exact one is free.)
 
+**In-container run status (`FINDINGS.md §15h`, 2026-07-12):** the 60-arm bench5 matrix ran in-container
+(HPC down) → PARTIAL 12/60 (all production, all FIRED). Fire map: bench5/bench4 fire at every f_A≥4,
+bench3 at f_A≥12 — matches the registered θ_EB above (bench5/4/3 ≥ 0.995). ⛔ The Θ_cum/L21b-band
+calibration this section anchors **needs the diagnostic (blowout) arms, none of which completed
+in-container** — it is HPC-owed. The Fig-17 direct tracks (bench-2, and the 20-pc candidate bench-6)
+are the comparison targets once the diagnostic arms run on HPC.
+
 *Transcribed from ApJ 914, 90 (Lancaster+2021 Paper II) and arXiv:2505.22730v1 (Lancaster+2025) on 2026-06-30,
 `feature/PdV-trigger-term-pt2`. No production code touched.*
