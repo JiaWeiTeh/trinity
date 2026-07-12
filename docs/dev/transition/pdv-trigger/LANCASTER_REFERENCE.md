@@ -237,7 +237,7 @@ mCluster = ε_*·M_cl exactly. (The naive mapping is only ~10%/3% off in gas mas
 the exact one is free.)
 
 **In-container run status (`FINDINGS.md §15h`, 2026-07-12):** the 60-arm bench5 matrix ran in-container
-(HPC down) → PARTIAL 21/60 (all production; 12 FIRED + 6 NOFIRE (bench3 + bench2). Fire map: bench5/bench4 fire at every f_A≥4,
+(HPC down) → PARTIAL 24/60 (all production; 12 FIRED + 6 NOFIRE (bench3 + bench2). Fire map: bench5/bench4 fire at every f_A≥4,
 bench3 fires at f_A≥12 (NOFIRE ≤8) — matches the registered θ_EB above (bench5/4/3 ≥ 0.995). The Θ_cum/L21b-band
 calibration this section anchors **needs the diagnostic (blowout) arms, none of which completed
 in-container** — it comes from the diagnostic (blowout) arms, which run in-container too (maintainer ruled all 60 in-container 2026-07-12). The Fig-17 direct tracks (bench-2, and the 20-pc candidate bench-6)
