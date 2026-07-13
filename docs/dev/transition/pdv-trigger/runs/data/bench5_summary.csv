@@ -13,6 +13,7 @@ bench2_m1e5_r10__fa16,0.686534190029693,0.5505937845774611,0.13908239074888798,1
 bench2_m1e5_r10__fa16_diag,0.6770419927286757,0.4042701439358736,0.13908237625226644,76,5.0,momentum,True,False,stopping_time,Stopping time reached
 bench2_m1e5_r10__fa4,0.507233980498054,0.47602161798473097,0.09100353196405758,169,5.0,implicit,False,False,stopping_time,Stopping time reached
 bench2_m1e5_r10__fa6,0.545631914761948,0.40475733902450717,0.10102719569227404,169,5.0,implicit,False,False,stopping_time,Stopping time reached
+bench2_m1e5_r10__fa6_diag,0.5442168710600079,0.37969797734314353,0.10102719569227404,76,5.0,momentum,True,False,stopping_time,Stopping time reached
 bench2_m1e5_r10__fa8,0.584640467499813,0.47602161798473097,0.10989446657674734,169,5.0,implicit,False,False,stopping_time,Stopping time reached
 bench2_m1e5_r10__fa8_diag,0.5573008307005982,0.40475733902450717,0.10989437369784942,77,5.0,momentum,True,False,stopping_time,Stopping time reached
 bench2_m1e5_r10__none,0.44656858837733177,0.4289592798783899,0.07168535404810084,169,5.0,implicit,False,False,stopping_time,Stopping time reached
