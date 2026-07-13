@@ -26,9 +26,10 @@ fi
 # ---- Remote (web) sessions: bootstrap. --------------------------------------
 cd "${CLAUDE_PROJECT_DIR:-.}"
 
-# 1. Author commits as the repo owner (GitHub noreply; matches existing history).
+# 1. Author commits as the repo owner. Web containers otherwise default git to
+#    "Claude <noreply@anthropic.com>" — never let that authorship reach history.
 git config user.name "Jia Wei Teh"
-git config user.email "65702891+JiaWeiTeh@users.noreply.github.com"
+git config user.email "jiaweiteh.astro@gmail.com"
 
 # 2. Install the package (editable) + dev tools. Non-fatal: a resolver/network
 #    failure must not kill the bootstrap silently — surface it instead.
