@@ -3,6 +3,7 @@
 run_name,theta_max,t_at_theta_max,theta_first,n_impl,t_final,phase_final,reached_momentum,fired_cooling_balance,outcome,detail
 bench1_m5e4_r20__fa12,0.5009015838363212,5.0,0.07056953216360949,173,5.0,implicit,False,False,stopping_time,Stopping time reached
 bench1_m5e4_r20__fa16,0.563554843037243,5.0,0.08018428840230653,171,5.0,implicit,False,False,stopping_time,Stopping time reached
+bench1_m5e4_r20__fa16_diag,0.5025082087841242,0.6134423244468699,0.08018428840230653,84,2.55027673263715,momentum,True,False,shell_dissolved,Shell dissolved
 bench1_m5e4_r20__fa4,0.36689611770435593,0.6856811507607516,0.04525596200769247,173,5.0,implicit,False,False,stopping_time,Stopping time reached
 bench1_m5e4_r20__fa6,0.4011550440549624,0.6856811507607516,0.052803064904670745,173,5.0,implicit,False,False,stopping_time,Stopping time reached
 bench1_m5e4_r20__fa8,0.43456094217613217,5.0,0.05935223182905233,173,5.0,implicit,False,False,stopping_time,Stopping time reached
@@ -12,6 +13,7 @@ bench2_m1e5_r10__fa12_diag,0.6566581510201656,0.3926276352395388,0.1254363132350
 bench2_m1e5_r10__fa16,0.686534190029693,0.5505937845774611,0.13908239074888798,168,5.0,implicit,False,False,stopping_time,Stopping time reached
 bench2_m1e5_r10__fa16_diag,0.6770419927286757,0.4042701439358736,0.13908237625226644,76,5.0,momentum,True,False,stopping_time,Stopping time reached
 bench2_m1e5_r10__fa4,0.507233980498054,0.47602161798473097,0.09100353196405758,169,5.0,implicit,False,False,stopping_time,Stopping time reached
+bench2_m1e5_r10__fa4_diag,0.49890560660553007,0.37969797734314353,0.09100353196405758,76,5.0,momentum,True,False,stopping_time,Stopping time reached
 bench2_m1e5_r10__fa6,0.545631914761948,0.40475733902450717,0.10102719569227404,169,5.0,implicit,False,False,stopping_time,Stopping time reached
 bench2_m1e5_r10__fa6_diag,0.5442168710600079,0.37969797734314353,0.10102719569227404,76,5.0,momentum,True,False,stopping_time,Stopping time reached
 bench2_m1e5_r10__fa8,0.584640467499813,0.47602161798473097,0.10989446657674734,169,5.0,implicit,False,False,stopping_time,Stopping time reached
