@@ -1,11 +1,14 @@
 # bench5 Phase-5 analysis (PROVISIONAL / IN-CONTAINER, NOT HPC — HPC down 2026-07-12). FIRE MAP + theta_max + pre-fire theta_cum from COMPLETED arms only. The Lancaster Theta_cum-over-window + dex metric need the DIAGNOSTIC (blowout) arms = HPC-deferred (none completed in-container). theta_cum_prefire is the PRE-FIRE trapezoid only, a lower bound, NOT the L21b window metric. theta_EB from data/bench5_elbadry_prediction.csv (registered, sim-free). L21b band Theta in [0.90,0.99].
 run_name,bench,f_A,arm,fired,theta_max,t_fire_Myr,t_final_Myr,fate,phase_final,theta_cum_prefire,leak_frac,theta_EB_ldv3,n_bar_H
 bench1_m5e4_r20__fa12,bench1_m5e4_r20,12,prod,False,0.5009,5.0,5.0,stopping_time,implicit,0.3383,0.000,0.9476,43.1
+bench1_m5e4_r20__fa12_diag,bench1_m5e4_r20,12,diag,False,0.4788,0.5959647390245375,2.541760254337207,shell_dissolved,momentum,0.3688,0.000,0.9476,43.1
 bench1_m5e4_r20__fa16,bench1_m5e4_r20,16,prod,False,0.5636,5.0,5.0,stopping_time,implicit,0.3740,0.000,0.9476,43.1
 bench1_m5e4_r20__fa16_diag,bench1_m5e4_r20,16,diag,False,0.5025,0.6134423244468699,2.55027673263715,shell_dissolved,momentum,0.4037,0.000,0.9476,43.1
 bench1_m5e4_r20__fa4,bench1_m5e4_r20,4,prod,False,0.3669,0.6856811507607516,5.0,stopping_time,implicit,0.2389,0.000,0.9476,43.1
 bench1_m5e4_r20__fa6,bench1_m5e4_r20,6,prod,False,0.4012,0.6856811507607516,5.0,stopping_time,implicit,0.2694,0.000,0.9476,43.1
+bench1_m5e4_r20__fa6_diag,bench1_m5e4_r20,6,diag,False,0.3948,0.5959647390245375,2.6027590892223595,shell_dissolved,momentum,0.3041,0.000,0.9476,43.1
 bench1_m5e4_r20__fa8,bench1_m5e4_r20,8,prod,False,0.4346,5.0,5.0,stopping_time,implicit,0.2951,0.000,0.9476,43.1
+bench1_m5e4_r20__fa8_diag,bench1_m5e4_r20,8,diag,False,0.4087,0.5959647390245375,2.5702777033832502,shell_dissolved,momentum,0.3264,0.000,0.9476,43.1
 bench1_m5e4_r20__none,bench1_m5e4_r20,1,prod,False,0.3014,0.6666734475801842,5.0,stopping_time,implicit,0.1750,0.000,0.9476,43.1
 bench2_m1e5_r10__fa12,bench2_m1e5_r10,12,prod,False,0.6567,0.3926276352395388,5.0,stopping_time,implicit,0.3167,0.000,0.9864,690
 bench2_m1e5_r10__fa12_diag,bench2_m1e5_r10,12,diag,False,0.6567,0.3926276352395388,5.0,stopping_time,momentum,0.4953,0.000,0.9864,690
