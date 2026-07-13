@@ -51,8 +51,9 @@ wall-killed/nonzero-exit arm longer before quoting θ. Report "N/81 compliant".
 
 ## 2. (optional) bench5 — authoritative confirmation, only if you want HPC numbers too
 
-Not required — you ruled bench5 in-container and it's completing there (`§15h`). Listed only so it's
-not forgotten: if you later want Helix-grade bench5 numbers, the 60 params are committed
+Not required — you ruled bench5 in-container and it COMPLETED there (`§15h`: 60/60 ran, 59 compliant; fire
+map + Θ_cum L21b calibration done, PROVISIONAL). Listed only so it's not forgotten: if you later want
+Helix-grade bench5 numbers to confirm the in-container ones, the 60 params are committed
 (`runs/params/bench5/`); a bench5 sbatch would mirror `run_theta5s.sbatch` (array 1-60, `--time=2:00:00`).
 Ask Claude to write `run_bench5.sbatch` if/when you want this. Otherwise ignore.
 

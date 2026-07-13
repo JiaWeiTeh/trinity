@@ -49,13 +49,15 @@ maintainer had no HPC access, the full 81-arm matrix was run in Claude's ephemer
 control).** These numbers are ASSUMED (in-container, not HPC) — the full matrix must still be re-run on
 `run_theta5s.sbatch` and everything downstream re-checked (§15e mandatory action). **Phase 5 🟡 PARTIAL / PROVISIONAL, Phase 6 ⬜ open**
 (see the handoff block below). **Re-entry 2026-07-12: pre-step ✅ (`§15g`, Table-1 [V]-verified, 60 params
-frozen); then the maintainer ruled IN-CONTAINER (HPC down) and the 60-arm campaign RAN — banking
-`FINDINGS.md §15h`: 53/60 arms compliant so far (all production; 12 FIRED + 6 NOFIRE (bench3 fa4/6/8 + bench2 fa8/12/16)). FIRE MAP: bench5(n̄=2.28e5) + bench4(n̄=4.42e4) fire at every f_A≥4; bench3(n̄=5520) at f_A≥12 (NOFIRE≤8);
-bench2(n̄=690) NOFIRE even at 16 (thr>16) — a steep density gradient (threshold rises 1→4→12→>16 as n̄ falls) matching El-Badry θ_EB. **Maintainer directive 2026-07-12:
-run ALL 60 IN-CONTAINER (2 h/arm is enough) — the diagnostic/blowout arms + diffuse benches are NOT
-HPC-deferred, they finish in-container; the Θ_cum/L21b calibration comes from the diagnostic arms once
-they land.** NEXT OPEN ITEM: finish the 60 in-container → Phase 6. **The ONLY HPC dependency is the
-theta5s Phase-4 confirmation (§15e) — see repo-root `temporary-HPC-runs.md`; bench5 is NOT on it.** Two review agents audited this plan on 2026-07-06 (config-coverage audit;
+frozen); then the maintainer ruled IN-CONTAINER (HPC down) and the 60-arm campaign COMPLETED —
+`FINDINGS.md §15h`: 60/60 ran, 59 compliant (1 dense diag wall-killed, non-critical). FIRE MAP threshold
+1→4→12→>16→>16 as n̄ falls 2.28e5→4.42e4→5520→690→43 (bench5 fires UNMODIFIED, bench3 at f_A≥12, bench2/bench1
+NOFIRE ≤16). Θ_cum L21b calibration (diagnostic arms, all complete; diffuse benches blow out cleanly):
+bench3 enters the band [0.90,0.99] at f_A≈16 (Θ_cum 0.965); bench2/bench1 do NOT reach it even at f_A=16
+(max 0.54/0.40) → f_A >16 / ≫16; dex-vs-El-Badry never below 0.85. RESULT: no single global f_A reproduces
+L21b across density — the required boost climbs steeply toward low density (route-a boundary).** NEXT OPEN
+ITEM: **Phase 6 (ship decision) — three options in §15h.** **The ONLY HPC dependency is the theta5s
+Phase-4 confirmation (§15e) — see repo-root `temporary-HPC-runs.md`; bench5 is NOT on it.** Two review agents audited this plan on 2026-07-06 (config-coverage audit;
 literature-benchmark extraction) — their findings are integrated throughout and marked "(audit)" /
 "(lit)". **Phase 1 headline: the condensation-edge prediction (edges near θ≈1) was FALSIFIED in the
 SAFE direction — no dMdt≤0 edge exists for f_A even at 512 (16× the physical range); the source knob
@@ -92,25 +94,21 @@ law p=3.330 (rms 0.055 dex) CONFIRMS the registered prediction p_source≈3.3; d
 with f_A matrix-wide (Eq-47 sign — the measurement f_mix cannot produce).** FIRE = the run actually
 fired the trigger (STRICTER than θ_max≥0.95 — quote the CSV's FIRED/NOFIRE).
 
-**Next steps (Phases 5–6 + HPC):** *(2026-07-12, latest: Phase-5 pre-step ✅ (`§15g`); in-container
-campaign RUNNING (`§15h`) → 53/60 done (all prod; 12 FIRED + 6 NOFIRE bench3+bench2). Maintainer ruled ALL 60
-run IN-CONTAINER (2 h/arm); the diagnostic/blowout arms (which give the Θ_cum calibration) finish
-in-container — NOT HPC-deferred. The
-campaign may still be trickling: machinery `runs/run_bench5_local.py` + `runs/autocommit_bench5.sh` +
-send_later heartbeat + hourly cron `bench5-hourly-watchdog`. **Fresh session, procs dead / OUT wiped:**
-OUT=`$SCRATCH/bench5_out`; relaunch run_in_background (no `&`): `python runs/run_bench5_local.py --out
-OUT --workers 3 --per-arm-timeout 5400 --summary runs/data/bench5_summary.csv` and `bash
-runs/autocommit_bench5.sh OUT`; rerun `data/make_bench5_analysis.py` if new arms land.)*
+**Next steps (Phase 6 + HPC):** *(2026-07-12, latest: Phase-5 pre-step ✅ (`§15g`); in-container
+campaign COMPLETE (`§15h`) → 60/60 ran, 59 compliant (1 dense diag wall-killed). FIRE MAP threshold
+1→4→12→>16→>16; Θ_cum L21b calibration done — bench3 enters the band at f_A≈16, bench2/bench1 need >16/≫16;
+no single global f_A reproduces L21b (route-a boundary). Machinery to re-run if needed: OUT=`$SCRATCH/bench5_out`,
+`python runs/run_bench5_local.py --out OUT --workers 3 --per-arm-timeout 7200 --summary runs/data/bench5_summary.csv`
++ `bash runs/autocommit_bench5.sh OUT`; analyze `python data/make_bench5_analysis.py`.)*
 1. **HPC — the ONE mandatory item: theta5s (§15e) confirmation.** Re-run via `runs/run_theta5s.sbatch`
    (authoritative); re-check fire map, p=3.33, both controls, dMdt (`runs/harvest_dmdt_suppression.py`),
    any paper number — HPC wins any disagreement. **Checklist + commands in repo-root
-   `temporary-HPC-runs.md`.** **bench5 is NOT an HPC item** — maintainer ruled it in-container (2 h/arm).
-2. **Phase 5 — finish bench5 in-container (§3 Phase 5).** The diagnostic (blowout) arms give the Θ_cum/
-   L21b calibration; keep the campaign grinding to 60/60 in-container, then rerun
-   `data/make_bench5_analysis.py`. Current fire map (`§15h`) is the partial-in-progress result.
-3. **Phase 6 — decision (§3 Phase 6).** Does f_A ship as the transition-trigger fix? Feed the 3-class
-   result + p=3.33 + controls + the bench5 Θ_cum calibration into the decision tree.
-4. Paper: the p_source≈3.3 collapse law + the 3-class fire map + the L21b bench5 calibration are the f_A story.
+   `temporary-HPC-runs.md`.** **bench5 is NOT an HPC item** — maintainer ruled it in-container (done).
+2. **Phase 6 — decision (§3 Phase 6) [NEXT OPEN ITEM].** Does f_A ship as the transition-trigger fix? Phase-5
+   measured that a single global f_A cannot reproduce L21b across density; the three options are in `§15h`
+   (density-dependent f_A(n̄) / ship route-a boundary / do not ship). Feed the 3-class theta5s result +
+   p=3.33 + controls + the bench5 Θ_cum calibration into the decision tree.
+3. Paper: the p_source≈3.3 collapse law + the 3-class fire map + the L21b bench5 calibration are the f_A story.
 
 **In-container run machinery (FALLBACK only; authoritative path is the HPC sbatch).** Committed & reusable:
 `runs/run_theta5s_local.py` (resumable runner, 2h/arm), `runs/autocommit_theta5s.sh` (repo committer,
@@ -491,7 +489,7 @@ Headline question: does a single f_A fire **7/7 fireable** configs (the multipli
 standard was [4, 4.5] at 7/7) while both controls pass *unchanged*? **Never tune f_A to make the
 controls fire — that would itself be a bug.**
 
-### Phase 5 🟡 — literature calibration: matched-config benchmarks (pre-step ✅ + 60 params frozen `§15g`; in-container run PARTIAL 53/60 fire map `§15h` 2026-07-12; Θ_cum calibration HPC-deferred)
+### Phase 5 ✅ — literature calibration: matched-config benchmarks (pre-step ✅ + 60 params frozen `§15g`; in-container run COMPLETE 60/60, 59 compliant, fire map + Θ_cum L21b calibration `§15h` 2026-07-12)
 
 The maintainer's criterion: *an f_A value is working well if it produces similar θ at similar
 time for a cloud config found in published bubble simulations.* Primary anchor: **Lancaster

@@ -5,16 +5,19 @@ Reads the committed campaign artifacts (runs/data/bench5_summary.csv + runs/data
 and the registered sim-free prediction (data/bench5_elbadry_prediction.csv), and produces the
 Phase-5 reads that the COMPLETED arms support. Regenerable — rerun as more arms land.
 
-WHAT THE IN-CONTAINER RUN SUPPORTS (honest scope, SOURCE_TERM_DESIGN §3 Phase 5):
+WHAT THE 60/60 IN-CONTAINER CAMPAIGN SUPPORTS (honest scope, SOURCE_TERM_DESIGN §3 Phase 5):
   • FIRE MAP from the PRODUCTION arms: per (bench, f_A) — did cooling_balance fire, at what t, θ_max,
     and fate (shell_collapsed / stopping_time / momentum). This IS a real result.
-  • θ(t) up to fire (the implicit-phase trajectory is censored at the transition for a prod arm).
-  • El-Badry cross-check: θ_max vs the registered θ_EB(λδv=3, n̄) and the L21b Θ band [0.90, 0.99].
-WHAT IT DOES NOT SUPPORT (⇒ HPC-deferred, stated in the output + FINDINGS §15h):
-  • Θ_cum over the Lancaster window [t_first, min(3 Myr, …)] and the |Δlog(1−θ)| dex metric — these
-    need the DIAGNOSTIC arms (transition_trigger=blowout: uncensored θ(t) through the whole energy
-    phase). No diagnostic arm completed in-container (they are the slowest, most restart-vulnerable).
-    Θ_cum computed here is over the PRE-FIRE window only and is labelled as such — NOT the L21b metric.
+  • Θ_cum over the L21b BREAKOUT window from the DIAGNOSTIC arms (transition_trigger=blowout: uncensored
+    θ(t) through the energy phase). All 60 arms ran in-container (59 compliant; 1 dense diag wall-killed).
+    The diffuse benches (bench3/bench2/bench1) blow out cleanly (end R2 ≈ rCloud, end/rc 1.00–1.04) — their
+    Θ_cum = ∫L_loss dt/∫L_mech dt over [t_first, t_blowout] IS the L21b-comparable window metric.
+  • dex cross-check |Δlog(1−Θ_cum)−Δlog(1−θ_EB)| vs the registered El-Badry θ_EB(λδv=3, n̄), reported for
+    the clean-blowout benches, and the L21b Θ band [0.90, 0.99].
+CAVEAT (stated in the output + FINDINGS §15h):
+  • The DENSE benches bench5/bench4 censor at shell-COLLAPSE (end R2 well below rCloud), not blowout, so
+    their Θ_cum is a collapse-window value — NOT the clean L21b breakout metric. Their fire map (they fire)
+    stands from the production arms; their Θ_cum is reported for completeness with this caveat.
 
     python docs/dev/transition/pdv-trigger/data/make_bench5_analysis.py
 Deliverables: data/bench5_analysis.csv + bench5_theta_tracks.png
@@ -59,8 +62,10 @@ def _fa_of(run_name):
 
 
 def theta_cum_prefire(traj_rows):
-    """∫θ-weighted: ∫Lloss dt / ∫Lmech dt over the (pre-fire) implicit trajectory, trapezoid.
-    NOTE censored at fire — NOT the Lancaster window; a lower bound / early-epoch value only."""
+    """∫θ-weighted: ∫Lloss dt / ∫Lmech dt over the logged trajectory, trapezoid.
+    For a PRODUCTION arm the trajectory is censored at fire (a lower bound). For a DIAGNOSTIC arm
+    (transition_trigger=blowout) it runs to blowout (R2≈rCloud) or shell-collapse — for the diffuse
+    clean-blowout benches (bench3/2/1) this IS the L21b breakout-window Θ_cum."""
     ts = [_fnum(r["t_now"]) for r in traj_rows]
     Ll = [_fnum(r["Lcool"]) + (_fnum(r["Lleak"]) or 0) for r in traj_rows]  # bubble_Lloss = cool+leak
     Lm = [_fnum(r["Lmech"]) for r in traj_rows]
@@ -94,12 +99,18 @@ def main():
         if traj_path.exists():
             tcum, tfire_traj, leak_frac = theta_cum_prefire(_read_csv(traj_path))
         ebr = eb.get(bench, {})
+        eb_val = _fnum(ebr.get("theta_EB_ldv3_Amix3p5"))
+        # dex cross-check |Δlog(1−Θ_cum) − Δlog(1−θ_EB)| — only where Θ_cum<1 (else 1−Θ_cum≤0, undefined)
+        dex = ""
+        if is_diag and tcum is not None and tcum < 1 and eb_val is not None and eb_val < 1:
+            dex = f"{abs(math.log10(1 - tcum) - math.log10(1 - eb_val)):.3f}"
         rows.append({
             "run_name": name, "bench": bench, "f_A": fa, "arm": "diag" if is_diag else "prod",
             "fired": s.get("fired_cooling_balance"), "theta_max": f"{tmax:.4f}" if tmax else "",
             "t_fire_Myr": s.get("t_at_theta_max", ""), "t_final_Myr": s.get("t_final", ""),
             "fate": s.get("outcome", ""), "phase_final": s.get("phase_final", ""),
-            "theta_cum_prefire": f"{tcum:.4f}" if tcum else "", "leak_frac": f"{leak_frac:.3f}" if leak_frac is not None else "",
+            "theta_cum_prefire": f"{tcum:.4f}" if tcum else "", "dex_vs_EB": dex,
+            "leak_frac": f"{leak_frac:.3f}" if leak_frac is not None else "",
             "theta_EB_ldv3": ebr.get("theta_EB_ldv3_Amix3p5", ""), "n_bar_H": ebr.get("n_bar_H", ""),
         })
 
@@ -107,11 +118,14 @@ def main():
     cols = list(rows[0].keys())
     with out.open("w", newline="") as fh:
         fh.write("# bench5 Phase-5 analysis (PROVISIONAL / IN-CONTAINER, NOT HPC — HPC down 2026-07-12). "
-                 "FIRE MAP + theta_max + pre-fire theta_cum from COMPLETED arms only. The Lancaster "
-                 "Theta_cum-over-window + dex metric need the DIAGNOSTIC (blowout) arms = HPC-deferred "
-                 "(none completed in-container). theta_cum_prefire is the PRE-FIRE trapezoid only, a "
-                 "lower bound, NOT the L21b window metric. theta_EB from data/bench5_elbadry_prediction.csv "
-                 "(registered, sim-free). L21b band Theta in [0.90,0.99].\n")
+                 "60/60 arms ran in-container (59 compliant; 1 dense diag wall-killed). FIRE MAP + theta_max "
+                 "from the PRODUCTION arms; Theta_cum-over-window + dex_vs_EB from the DIAGNOSTIC (blowout) "
+                 "arms. For the DIFFUSE benches (bench3/2/1) the diag arm blows out cleanly (end R2 ~ rCloud) "
+                 "so theta_cum_prefire IS the L21b breakout-window Theta_cum; the DENSE benches (bench5/4) "
+                 "censor at shell-COLLAPSE (end R2 << rCloud) so their theta_cum is a collapse-window value, "
+                 "NOT the clean L21b metric (fire map stands from production). dex_vs_EB = "
+                 "|dlog10(1-Theta_cum) - dlog10(1-theta_EB)|, diag arms with Theta_cum<1 only. theta_EB from "
+                 "data/bench5_elbadry_prediction.csv (registered, sim-free). L21b band Theta in [0.90,0.99].\n")
         w = csv.DictWriter(fh, fieldnames=cols)
         w.writeheader()
         w.writerows(rows)
@@ -162,6 +176,28 @@ def main():
         fired = [fa for fa in fas if summ.get(f"{b}__" + ("none" if fa == 1 else f"fa{fa}"), {}).get("fired_cooling_balance") == "True"]
         n = eb.get(b, {}).get("n_bar_H", "?")
         print(f"  {b:20s} n={n:>8}  prod arms done: {fas or '—'}  FIRED: {fired or '—'}")
+
+    # --- Θ_cum calibration table (diagnostic arms; L21b window = clean-blowout benches) ---
+    ana = {(r["bench"], int(r["f_A"])): r for r in rows if r["arm"] == "diag"}
+    clean = [("bench3_m1e5_r5", True), ("bench2_m1e5_r10", True), ("bench1_m5e4_r20", True),
+             ("bench4_m1e5_r2p5", False), ("bench5_m5e5_r2p5", False)]
+    fas_hdr = [1, 4, 6, 8, 12, 16]
+    print("\nΘ_cum OVER BLOWOUT WINDOW (diagnostic arms; f_A to enter L21b band [0.90,0.99]):")
+    print(f"  {'bench':18s} {'n̄_H':>9s} {'θ_EB':>6s}  " + " ".join(f"fa{f:>2d}" for f in fas_hdr))
+    for b, is_clean in clean:
+        ebr = eb.get(b, {})
+        n = ebr.get("n_bar_H", "?")
+        ebv = ebr.get("theta_EB_ldv3_Amix3p5", "?")
+        cells = []
+        cal = None
+        for f in fas_hdr:
+            r = ana.get((b, f))
+            v = _fnum(r["theta_cum_prefire"]) if r and r.get("theta_cum_prefire") else None
+            cells.append(f"{v:.3f}" if v is not None else "  -  ")
+            if is_clean and cal is None and v is not None and L21B_BAND[0] <= v <= L21B_BAND[1]:
+                cal = f
+        tag = f"  → band at f_A≈{cal}" if cal else ("  → band NOT reached ≤16" if is_clean else "  (collapse-window, not clean L21b)")
+        print(f"  {b:18s} {n:>9} {ebv:>6}  " + " ".join(f"{c:>5s}" for c in cells) + tag)
 
 
 if __name__ == "__main__":

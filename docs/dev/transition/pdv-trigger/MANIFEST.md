@@ -12,26 +12,74 @@
 > are exact; stamp-less artifacts predate the convention (2026-07-02) — for those, only
 > the commit date is known. **Every new/edited builder must write the stamp.**
 
-485 artifacts · 0 stale-risk · 0 untracked · 15 stamped 🕐
+533 artifacts · 0 stale-risk · 0 untracked · 15 stamped 🕐
 
 | last updated (commit) | artifact | producer / flags |
 |---|---|---|
-| 2026-07-12 `509402e` | `bench5_theta_tracks.png` | producer unknown (HPC/hand-made); refs: `make_bench5_analysis.py` |
-| 2026-07-12 `509402e` | `data/bench5_analysis.csv` | by `make_bench5_analysis.py` |
+| 2026-07-13 `f298d12` | `bench5_theta_tracks.png` | producer unknown (HPC/hand-made); refs: `make_bench5_analysis.py` |
+| 2026-07-13 `f298d12` | `data/bench5_analysis.csv` | by `make_bench5_analysis.py` |
+| 2026-07-13 `7826031` | `runs/data/bench5_summary.csv` | by `harvest_bench5.py` |
+| 2026-07-13 `e3d53ab` | `runs/data/bench5_traj/bench1_m5e4_r20__fa12_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-13 `63bb436` | `runs/data/bench5_traj/bench1_m5e4_r20__fa16_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-13 `1343e3e` | `runs/data/bench5_traj/bench1_m5e4_r20__fa4_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-13 `f4a4dfa` | `runs/data/bench5_traj/bench1_m5e4_r20__fa6_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-13 `f4a4dfa` | `runs/data/bench5_traj/bench1_m5e4_r20__fa8_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-13 `7826031` | `runs/data/bench5_traj/bench1_m5e4_r20__none_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-13 `63bb436` | `runs/data/bench5_traj/bench2_m1e5_r10__fa4_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-13 `6676fe5` | `runs/data/bench5_traj/bench2_m1e5_r10__fa6_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-13 `7826031` | `runs/data/bench5_traj/bench2_m1e5_r10__none_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-13 `2df9dd5` | `runs/data/bench5_traj/bench3_m1e5_r5__none_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-13 `e62f5dc` | `runs/data/bench5_traj/bench4_m1e5_r2p5__none_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-13 `a2b773c` | `runs/data/bench5_traj/bench5_m5e5_r2p5__none_diag.csv` | — (hand-made/HPC, unreferenced) |
 | 2026-07-12 `41cc40c` | `data/bench5_elbadry_prediction.csv` | by `make_bench5_elbadry_prediction.py` |
-| 2026-07-12 `5ade31d` | `runs/data/bench5_summary.csv` | by `harvest_bench5.py` |
+| 2026-07-12 `9656aa1` | `runs/data/bench5_traj/bench1_m5e4_r20__fa12.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `57c02b1` | `runs/data/bench5_traj/bench1_m5e4_r20__fa16.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `e12d7d3` | `runs/data/bench5_traj/bench1_m5e4_r20__fa4.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `25e436a` | `runs/data/bench5_traj/bench1_m5e4_r20__fa6.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `d3c3c26` | `runs/data/bench5_traj/bench1_m5e4_r20__fa8.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `d3acd51` | `runs/data/bench5_traj/bench1_m5e4_r20__none.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `154b7c0` | `runs/data/bench5_traj/bench2_m1e5_r10__fa12.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `e305e82` | `runs/data/bench5_traj/bench2_m1e5_r10__fa12_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `154b7c0` | `runs/data/bench5_traj/bench2_m1e5_r10__fa16.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `f5c0360` | `runs/data/bench5_traj/bench2_m1e5_r10__fa16_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `a0965f9` | `runs/data/bench5_traj/bench2_m1e5_r10__fa4.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `909f1ee` | `runs/data/bench5_traj/bench2_m1e5_r10__fa6.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `e5f6f0d` | `runs/data/bench5_traj/bench2_m1e5_r10__fa8.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `3289513` | `runs/data/bench5_traj/bench2_m1e5_r10__fa8_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `5b804b8` | `runs/data/bench5_traj/bench2_m1e5_r10__none.csv` | — (hand-made/HPC, unreferenced) |
 | 2026-07-12 `5ade31d` | `runs/data/bench5_traj/bench3_m1e5_r5__fa12.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `4b1718d` | `runs/data/bench5_traj/bench3_m1e5_r5__fa12_diag.csv` | — (hand-made/HPC, unreferenced) |
 | 2026-07-12 `a34e5c6` | `runs/data/bench5_traj/bench3_m1e5_r5__fa16.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `a23f194` | `runs/data/bench5_traj/bench3_m1e5_r5__fa16_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `d00b7c6` | `runs/data/bench5_traj/bench3_m1e5_r5__fa4.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `6625846` | `runs/data/bench5_traj/bench3_m1e5_r5__fa4_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `a48f448` | `runs/data/bench5_traj/bench3_m1e5_r5__fa6.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `97392bf` | `runs/data/bench5_traj/bench3_m1e5_r5__fa6_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `d00b7c6` | `runs/data/bench5_traj/bench3_m1e5_r5__fa8.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `64ee3f1` | `runs/data/bench5_traj/bench3_m1e5_r5__fa8_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `2136366` | `runs/data/bench5_traj/bench3_m1e5_r5__none.csv` | — (hand-made/HPC, unreferenced) |
 | 2026-07-12 `939e1af` | `runs/data/bench5_traj/bench4_m1e5_r2p5__fa12.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `6f902cf` | `runs/data/bench5_traj/bench4_m1e5_r2p5__fa12_diag.csv` | — (hand-made/HPC, unreferenced) |
 | 2026-07-12 `acfe30c` | `runs/data/bench5_traj/bench4_m1e5_r2p5__fa16.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `85cb6f0` | `runs/data/bench5_traj/bench4_m1e5_r2p5__fa16_diag.csv` | — (hand-made/HPC, unreferenced) |
 | 2026-07-12 `4ffda1d` | `runs/data/bench5_traj/bench4_m1e5_r2p5__fa4.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `09888f4` | `runs/data/bench5_traj/bench4_m1e5_r2p5__fa4_diag.csv` | — (hand-made/HPC, unreferenced) |
 | 2026-07-12 `5712142` | `runs/data/bench5_traj/bench4_m1e5_r2p5__fa6.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `7e18d51` | `runs/data/bench5_traj/bench4_m1e5_r2p5__fa6_diag.csv` | — (hand-made/HPC, unreferenced) |
 | 2026-07-12 `08df62e` | `runs/data/bench5_traj/bench4_m1e5_r2p5__fa8.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `9ec210f` | `runs/data/bench5_traj/bench4_m1e5_r2p5__fa8_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `b0d6cd1` | `runs/data/bench5_traj/bench4_m1e5_r2p5__none.csv` | — (hand-made/HPC, unreferenced) |
 | 2026-07-12 `a536fca` | `runs/data/bench5_traj/bench5_m5e5_r2p5__fa12.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `0bfd9c2` | `runs/data/bench5_traj/bench5_m5e5_r2p5__fa12_diag.csv` | — (hand-made/HPC, unreferenced) |
 | 2026-07-12 `a536fca` | `runs/data/bench5_traj/bench5_m5e5_r2p5__fa16.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `0a72a77` | `runs/data/bench5_traj/bench5_m5e5_r2p5__fa16_diag.csv` | — (hand-made/HPC, unreferenced) |
 | 2026-07-12 `0ce8495` | `runs/data/bench5_traj/bench5_m5e5_r2p5__fa4.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `0a72a77` | `runs/data/bench5_traj/bench5_m5e5_r2p5__fa4_diag.csv` | — (hand-made/HPC, unreferenced) |
 | 2026-07-12 `0ce8495` | `runs/data/bench5_traj/bench5_m5e5_r2p5__fa6.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `86c9db9` | `runs/data/bench5_traj/bench5_m5e5_r2p5__fa6_diag.csv` | — (hand-made/HPC, unreferenced) |
 | 2026-07-12 `1817207` | `runs/data/bench5_traj/bench5_m5e5_r2p5__fa8.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `3076a72` | `runs/data/bench5_traj/bench5_m5e5_r2p5__fa8_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `a9a190e` | `runs/data/bench5_traj/bench5_m5e5_r2p5__none.csv` | — (hand-made/HPC, unreferenced) |
 | 2026-07-12 `a491b12` | `runs/params/bench5/bench1_m5e4_r20__fa12.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-12 `a491b12` | `runs/params/bench5/bench1_m5e4_r20__fa12_diag.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-12 `a491b12` | `runs/params/bench5/bench1_m5e4_r20__fa16.param` | — (hand-made/HPC, unreferenced) |

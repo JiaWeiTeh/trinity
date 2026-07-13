@@ -110,17 +110,17 @@ folder) — do **not** re-run the hours-long sims to recover them; reproduce onl
 > (ε_* ∈ {0.01,0.1,1} → the spec's sfe=0.05 benches matched no published model, corrected to ε0.1);
 > §7's Eq-10 transcription corrected. **60 bench5 params frozen** (`runs/make_bench5_params.py`,
 > exact mapping mCloud=M_cl(1+ε)/sfe=ε/(1+ε), emit gates + end-to-end read_param check).
-> **↳ IN-CONTAINER RUN — IN PROGRESS (`FINDINGS.md §15h`, 2026-07-12):** maintainer ruled **all 60 bench5
-> arms run IN-CONTAINER** (2026-07-12: "just run the 60 in-container — it's definitely doable; anything
-> within 2 h is runnable"). Campaign running (`runs/{run,harvest,checkpoint}_bench5*.py` +
-> `autocommit_bench5.sh`) at `--per-arm-timeout 7200` (2 h/arm). **53/60 done so far** (all production;
-> 12 FIRED + 6 NOFIRE (bench3 fa4/6/8 + bench2 fa8/12/16). FIRE MAP: bench5(n̄=2.28e5) + bench4(n̄=4.42e4) fire at EVERY f_A≥4;
-> bench3(n̄=5520) fires at f_A≥12 (NOFIRE ≤8; monotonic θmax 0.64→1.34) — a clean density-dependent fire
-> threshold. Matches registered El-Badry θ_EB (`§15g`). The remaining arms (bench2/bench1 prod, all
-> DIAGNOSTIC(blowout) arms, f_A=1 baselines) are STILL RUNNING in-container — NOT HPC-deferred; they
-> complete when the container gives a long-enough window (bench3 completed in a 42-min one). The Θ_cum/
-> L21b-band calibration comes from the diagnostic arms once they land in-container. **Next open: finish
-> the 60 in-container → Phase 6.**
+> **↳ IN-CONTAINER RUN — COMPLETE (`FINDINGS.md §15h`, 2026-07-12):** maintainer ruled **all 60 bench5
+> arms run IN-CONTAINER** ("just run the 60 in-container — it's definitely doable; anything within 2 h is
+> runnable"). Campaign done (`runs/{run,harvest,checkpoint}_bench5*.py` + `autocommit_bench5.sh`) at
+> `--per-arm-timeout 7200` (2 h/arm): **60/60 ran, 59 compliant** (1 dense diag wall-killed, non-critical).
+> **FIRE MAP** (production arms): threshold **1 → 4 → 12 → >16 → >16** as n̄ falls 2.28e5→4.42e4→5520→690→43
+> — bench5 fires UNMODIFIED, bench3 at f_A≥12, bench2/bench1 NOFIRE ≤16. **Θ_cum L21b calibration** (diagnostic
+> arms, all complete; diffuse benches blow out cleanly = the L21b breakout window): bench3 enters the band
+> [0.90,0.99] at **f_A≈16** (Θ_cum 0.965); bench2/bench1 do NOT reach it even at f_A=16 (max 0.54/0.40) →
+> **f_A >16 / ≫16**. dex-vs-El-Badry never below 0.85. **Result: no single global f_A reproduces L21b across
+> density; the required boost climbs steeply toward low density — the route-a boundary.** **Next open: Phase 6
+> (ship decision) — see §15h for the three options.**
 >
 > ### ⚠️⚠️ WHAT REQUIRES HPC/HELIX (be explicit — maintainer directive 2026-07-12) ⚠️⚠️
 > **Exactly ONE item needs HPC: the theta5s Phase-4 CONFIRMATION** (`FINDINGS.md §15e`). The 81-arm

@@ -236,12 +236,16 @@ sfe = ε_*/(1+ε_*)** ⇒ post-SF gas = M_cl at nCore = n̄_H (so rCloud = R_cl 
 mCluster = ε_*·M_cl exactly. (The naive mapping is only ~10%/3% off in gas mass/radius at ε_*=0.1, but
 the exact one is free.)
 
-**In-container run status (`FINDINGS.md §15h`, 2026-07-12):** the 60-arm bench5 matrix ran in-container
-(HPC down) → PARTIAL 53/60 (all production; 12 FIRED + 6 NOFIRE (bench3 + bench2). Fire map: bench5/bench4 fire at every f_A≥4,
-bench3 fires at f_A≥12 (NOFIRE ≤8) — matches the registered θ_EB above (bench5/4/3 ≥ 0.995). The Θ_cum/L21b-band
-calibration this section anchors **needs the diagnostic (blowout) arms, none of which completed
-in-container** — it comes from the diagnostic (blowout) arms, which run in-container too (maintainer ruled all 60 in-container 2026-07-12). The Fig-17 direct tracks (bench-2, and the 20-pc candidate bench-6)
-are the comparison targets once the diagnostic arms run on HPC.
+**In-container run status (`FINDINGS.md §15h`, 2026-07-12) — COMPLETE:** the 60-arm bench5 matrix ran
+in-container (HPC down) → **60/60, 59 compliant** (1 dense diag wall-killed, non-critical). **Fire map:**
+bench5(n̄=2.28e5) fires UNMODIFIED (f_A≥1), bench4(n̄=4.42e4) at f_A≥4, bench3(n̄=5520) at f_A≥12, bench2/bench1
+NOFIRE ≤16 — matches the registered θ_EB above (θ_EB falls with density). **Θ_cum/L21b-band calibration
+(from the diagnostic arms, all complete):** the diffuse benches blow out cleanly (end R2≈rCloud), giving the
+L21b breakout-window Θ_cum — bench3 enters the band [0.90,0.99] at **f_A≈16** (Θ_cum 0.965), bench2/bench1
+do NOT reach it even at f_A=16 (max 0.54/0.40) → **f_A >16 / ≫16**. The dense benches censor at
+shell-collapse (not the clean L21b window). **Result: no single global f_A reproduces L21b across density;
+the required boost climbs steeply toward low density** (feeds Phase-6 ship decision). The Fig-17 direct
+tracks (bench-2, and the 20-pc bench-1) remain the comparison targets for an HPC re-confirmation run.
 
 *Transcribed from ApJ 914, 90 (Lancaster+2021 Paper II) and arXiv:2505.22730v1 (Lancaster+2025) on 2026-06-30,
 `feature/PdV-trigger-term-pt2`. No production code touched.*
