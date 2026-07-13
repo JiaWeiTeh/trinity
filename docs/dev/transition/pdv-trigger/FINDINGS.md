@@ -1489,6 +1489,180 @@ replaces the PROVISIONAL banner), and re-check every downstream number against i
 p=3.33 collapse law, both controls, `runs/harvest_dmdt_suppression.py` (Eq-47 ṁ trend), Phase 5, the
 Phase-6 decision, and any paper number. If HPC disagrees, HPC wins and this section is superseded.
 
+## 15f. [visit] Re-entry 2026-07-12 — next open item is Phase 5, its pre-step gate RE-VERIFIED still blocking; no execution (maintainer input required) — **SUPERSEDED same-day by §15g** (the maintainer supplied Table-1 in-chat; option 1 of the decision list below was taken)
+
+> Session outcome, no sims run. A fresh executor session picked up the f_A workstream per the
+> re-entry protocol. The single next open item from the Status line is **Phase 5 (bench5 literature
+> calibration)** — Phase 4 is in-container-complete/PROVISIONAL (§15e, HPC still pending), Phase 6 is
+> a maintainer decision. Phase 5 could not be started: its **blocking pre-step (the L21b/Lancaster
+> 2021b Table-1 values — M_*, V_w, the M–R pairings) is an explicit maintainer-only "ask, don't guess"
+> input** (SOURCE_TERM_DESIGN §0 + §3 Phase 5 ⚠ pre-step).
+
+**Gate re-verified, not trusted (⚠️ banner).** The 2026-07-06 claim was "PDFs unreachable — proxy
+blocks non-GitHub." Re-tested this visit: `WebFetch` of arXiv (`abs/2104.07691`), IOPscience
+(`10.3847/1538-4357/abf8ac`), and NSF-PAR full text all return **HTTP 403** — the agent-proxy status
+(`recentRelayFailures: []`) + README class these as organization-policy denials ("do not retry —
+report"). `WebSearch` returns only abstract-level snippets, **not Table 1**. So the blocker still
+holds; the note is current, not stale.
+
+**Source re-verification (banner obligation).** f_A production wiring re-checked present in current
+source, only line numbers drifted: RHS band-multiply `bubble_luminosity.py:435-436`, L₂/L₃ scaling
+`:845-848`, `_T_INTERFACE_BAND` `:65` (Phase-2 provenance + §15b cite the as-landed `:416/:811/:59`).
+Recorded as a dated pointer in SOURCE_TERM_DESIGN's handoff block. theta5s CSVs present
+(`data/theta5s_{fire_map,collapse_law,dmdt_suppression}.csv`); `runs/params/bench5/` absent (Phase 5
+unstarted) — all consistent with the documented state.
+
+**Deliberately NOT done (would fake the gate):** did not freeze the 5 bench5 `.param`s from the
+search-snippet values, did not build the generator with those values embedded, quoted no physics
+number. Per the standing rule, a maintainer-only input is asked, not guessed — and the interactive
+ask channel was unavailable this session (tool stream closed on both attempts), so the decision is
+recorded here + in the handoff for the maintainer.
+
+**Maintainer decision needed (either unblocks Phase 5):**
+1. **Supply L21b Table 1** (M_*, V_w, the (M_cl, R_cl) pairings) → freeze the 5 bench5 params from
+   verified numbers, run Phase 5 in-container (the fallback used for Phase 4).
+2. **Authorize the documented [I]-grade fallback** (§3 Phase 5): freeze from the search-snippet values
+   already in §3 with an explicit `[I]`-grade provenance note, run, and reconcile against the PDF later.
+3. Or provide HPC access to run the mandatory Phase-4 HPC confirmation first (§15e), which the
+   Phase-5/6 numbers ultimately depend on.
+
+## 15g. [data] Phase 5 pre-step DONE — L21b Table-1 verified from maintainer-supplied excerpts; two spec corrections; 60 bench5 params frozen (2026-07-12, no sims)
+
+**What unblocked it.** The maintainer pasted L21b (ApJ 914:90) excerpts directly in-chat — Table 1,
+the Eq 8–11 block, Figure 17 + caption — resolving the §15f blocker without the (still-403) proxy.
+Durable transcription: **`LANCASTER_REFERENCE.md §7b`** (imprint protocol; grade [V] except the
+plot-eyeball anchors and the still-missing V_w).
+
+**Verification (analyse-before-recording; all checks in one python block, command in §7b/REPRODUCE #42):**
+- Table 1 internally consistent (n ∝ M/R³ across rows); **μ_H = 1.4** reproduces R_cl exactly in 10/12
+  rows ⇒ n̄_H is TRINITY's own `nCore` convention. Exception: the 5e4/5e5 rows at R_cl=2.5 pc both
+  imply R = 2.473 pc (same 3.3% offset — Table-1 rounding); the mapping pins the published n̄_H.
+- **v_t is the α_vir = 2 virial velocity** (α_vir = 1.996–2.016, all 12 rows) — a clean physical
+  reading of the suite, newly recorded.
+- t_ff: 6.63/1.66/0.59/0.21/0.09 Myr — the spec's ≈values confirmed.
+
+**Two registered-assumption corrections (both recorded, dated):**
+1. **"M_* = 5000 M⊙ fixed" FALSIFIED** — Table-1 Notes fix ε_* ≡ M_*/M_cloud ∈ {0.01, 0.1, 1}. The
+   spec's `sfe=0.05` mapping for the three 1e5 benches matched **no published model** → corrected to
+   ε_*=0.1. (5000 M⊙ arises only at 5e4/ε0.1 and 5e5/ε0.01 — the likely snippet source.)
+2. **`LANCASTER_REFERENCE.md §7`'s Eq-10 transcription was WRONG** (`(αR·ḃ/Vw)(1+fturb)/(2(1+αp))`);
+   the excerpt gives **1−Θ = (½(1+f_turb)·α_p/α_R + S)·(Ṙ_b/V_w)** — fixed in place, dated. Also:
+   Fig-17's Θ ≡ Ė_cool/ℒ_w is an *instantaneous rate ratio* (maintainer gloss "θ = L_cool/L_gain"),
+   directly TRINITY-θ-shaped — the spec's "L21b's headline Θ is cumulative" hedge corrected (Θ_cum
+   stays as metric 1; it's the robust statistic).
+
+**Params frozen (the pre-step's deliverable).** `runs/make_bench5_params.py` →
+`runs/params/bench5/` = **60 params** (5 benches × f_A {1,4,6,8,12,16} — the Phase-4 whole-band
+winner 12 in-grid — × production/diagnostic arms; diag = `transition_trigger blowout` for uncensored
+θ(t)). **Exact mapping** (supersedes the naive draft): TRINITY's mCloud is pre-SFE while L21b *adds*
+the star particle, so **mCloud = M_cl·(1+ε_*), sfe = ε_*/(1+ε_*)** ⇒ post-SF gas = M_cl at
+nCore = n̄_H and mCluster = ε_*·M_cl, both exact. Emit gates (self-checking builder, abort on fail):
+(1) TRINITY's sweep-path GMC plausibility validation per bench; (2) rCloud(post-SF gas) = R_cl to
+<2% (slack = the Table-1 2.5-pc rounding above, which gate 1%-strict correctly caught). End-to-end
+`read_param` load-check on `bench5_m5e5_r2p5__fa12_diag`: mCloud_input 5.05e5 → gas 5.00e5 (=M_cl),
+mCluster 5000 (=ε·M_cl), fA=12, trigger=blowout — the mapping holds through the real production path.
+
+**Fig-17 anchors** (1−Θ tracks for the two 1e5 rows at all three ε_*, breakout times) are recorded in
+§7b at [V-plot-eyeball] grade (±0.2–0.3 dex) — bench-2 has a *direct published track*; re-digitize
+before any quantitative fit. The 1e5/20pc model is flagged as a cheap candidate bench-6.
+
+**NOT run: the 60 arms.** Next decision (maintainer): run bench5 in-container (the Phase-4 fallback
+precedent; needs the long-run ops playbook — est. ~40–60 min/arm uninterrupted by the §15e ceiling)
+or on HPC together with the mandatory theta5s confirmation. **No θ/Θ number exists yet for any bench;
+nothing here is a calibration result.**
+
+## 15h. [data — IN-CONTAINER, COMPLETE] Phase 5 bench5 campaign — 60/60 ran in-container (59 compliant); L21b Θ_cum calibration done (2026-07-12)
+
+> ⚠️ **IN-CONTAINER, COMPLETE (not HPC — HPC was down 2026-07-12).** All **60/60 arms ran in-container**;
+> **59 compliant**, **1 dense diag wall-killed** (`bench5_fa16_diag`, exit 124 — non-critical, below).
+> **Maintainer directive 2026-07-12: run ALL 60 in-container — "it's definitely doable; anything within
+> 2 h is runnable."** Done: runner at `--per-arm-timeout 7200` (2 h/arm) + autocommitter (git = only
+> durable store) + re-arming heartbeat + hourly cron; the container's restart storms were absorbed by the
+> resumable runner. In-container-vs-HPC numerical fidelity is unverified — re-confirm on HPC before any
+> paper number. The single item that DOES need HPC is the *theta5s* Phase-4 confirmation (`§15e`) — see
+> repo-root `temporary-HPC-runs.md`; bench5 is NOT on that list.
+
+**How it ran.** Launched the 60-arm matrix (5 benches × f_A {1,4,6,8,12,16} × {production, diagnostic})
+via `runs/run_bench5_local.py` + `runs/autocommit_bench5.sh` (adapted from theta5s) + a re-arming
+send_later heartbeat + hourly cron. trinity has no mid-run resume, so every container restart reset
+in-flight arms to t=0; the runner resumes from the committed summary, so it ground to **60/60** (vs the
+prior lost pt4 session's 1–3/60 over 8 h). The last two to land were the diffuse fa1 baselines
+(`bench1/bench2_none_diag`), the slowest full-implicit-to-blowout solves.
+
+**FIRE MAP (production arms; FIRE = actually fired cooling_balance, from `data/bench5_analysis.csv`; 60/60):**
+
+| bench | n̄_H | θ_EB(λδv3) | FIRE threshold f_A | FIRED f_A | fate |
+|---|---:|---:|---|---|---|
+| bench5 (m5e5, 2.5pc) | 2.28e5 | 0.999 | **1 (fires UNMODIFIED)** | 1,4,6,8,12,16 | fire→shell_collapsed (dense recollapse) |
+| bench4 (m1e5, 2.5pc) | 4.42e4 | 0.998 | **4** (fa1 NOFIRE) | 4,6,8,12,16 | fire→shell_collapsed |
+| bench3 (m1e5, 5pc) | 5520 | 0.995 | **12** (NOFIRE ≤8) | 12,16 | fa12/16 fire→survive to t=5; fa≤8 energy-driven to t=5 |
+| bench2 (m1e5, 10pc) | 690 | 0.986 | **>16** (NOFIRE ≤16) | — | all NOFIRE→energy-driven to t=5 |
+| bench1 (m5e4, 20pc) | 43.1 | 0.948 | **>16** (all NOFIRE) | — | all NOFIRE→energy-driven to t=5 (most diffuse) |
+
+**Read (fire map, 60/60):** a clean, steeply-rising **density gradient in the f_A fire threshold** —
+**1 → 4 → 12 → >16 → >16** as n̄ falls 2.28e5 → 4.42e4 → 5520 → 690 → 43. The densest bench5 fires
+**UNMODIFIED at f_A=1** (baseline θ₀ already crosses the trigger — the "fires-without-boost" class, like
+theta5s `normal_n1e3`); bench3 (n̄=5520) needs **f_A ≥ 12**; **bench2 (n̄=690) and bench1 (n̄=43) do NOT fire
+even at f_A=16**. The source-term signature (θ ∝ f_A^~0.3, so lower-θ₀ clouds need much larger f_A),
+consistent with El-Badry θ_EB falling with density (`§15g`; 0.999→0.995→0.986→0.948). **The two diffuse
+benches staying energy-driven at every tested f_A is the "route-a" result — diffuse clouds genuinely resist
+the transition even under strong source boost, the falsifiable Phase-6 boundary.** The NOFIRE arms
+(bench3 fa≤8, all bench2/bench1) are direct evidence f_A has a real, density-dependent fire threshold —
+NOT "everything fires."
+
+**Θ_cum L21b CALIBRATION — the real Phase-5 metric (60/60, all diag arms complete).** The diagnostic arms
+(`transition_trigger=blowout`) log uncensored θ(t) and censor at their physical end. **Verified end-states
+(`data/bench5_analysis.csv`, end R2 vs rCloud):** the three DIFFUSE benches **blow out cleanly** —
+bench3 diag end R2≈5.0–5.2 pc (rCloud 5), bench2≈10.0–10.4 pc (rCloud 10), bench1≈20.2–20.7 pc (rCloud 20),
+all end/rc = 1.00–1.04. **This is exactly the window L21b uses** (Θ measured until wind breakout of the box,
+Fig-17 vertical lines), so their `theta_cum_prefire` = ∫L_loss dt/∫L_mech dt over [t_first, t_blowout]
+**IS the L21b-comparable Θ_cum**. The two DENSE benches **censor at shell-COLLAPSE** instead (bench5 end
+R2≈0.5–1.1 pc, end/rc 0.21–0.45; bench4 marginal — fa≤8 reach rCloud, fa≥12 collapse at R2 1.5–1.7 pc), so
+their Θ_cum is a **collapse-window value, NOT the clean L21b metric** — their fire map stands from
+production. The calibration reads off the clean-blowout diffuse benches:
+
+**Θ_cum over the blowout window, and the dex cross-check `dex = |Δlog₁₀(1−Θ_cum) − Δlog₁₀(1−θ_EB)|`:**
+
+| bench | n̄_H | θ_EB | fa1 | fa4 | fa6 | fa8 | fa12 | fa16 | in L21b band [0.90,0.99]? | calibrated f_A | dex@fa16 |
+|---|---:|---:|---|---|---|---|---|---|---|---|---:|
+| bench3 | 5520 | 0.995 | 0.462 | 0.520 | 0.551 | 0.584 | 0.833 | **0.965** | **yes, at fa16** | **≈16** | 0.85 |
+| bench2 | 690  | 0.986 | 0.341 | 0.391 | 0.420 | 0.453 | 0.495 | 0.540 | **no** (max 0.54) | **>16** | 1.53 |
+| bench1 | 43   | 0.948 | 0.221 | 0.276 | 0.304 | 0.326 | 0.369 | 0.404 | **no** (max 0.40) | **≫16** | 1.06 |
+
+(Dense collapse-window Θ_cum, for completeness only — NOT the clean L21b metric: bench5 fa1..16 =
+0.907/1.008/1.119/1.115/1.059/1.048; bench4 = 0.609/0.660/0.944/1.039/1.028/1.036. Θ_cum>1 = the boost
+over-drives the loss vs mech over the short collapse window.)
+
+**The calibration result (Phase 5, 60/60).** Θ_cum rises monotonically with f_A at every density, and the
+**f_A needed to land Θ_cum in the L21b band [0.90,0.99] rises steeply as density falls**: bench3 (n̄=5520)
+reaches it at **f_A≈16**; bench2 (n̄=690) and bench1 (n̄=43) do **NOT** reach it even at f_A=16 (Θ_cum maxes
+0.54 / 0.40) → calibrated f_A **>16 / ≫16**. **⇒ No single global f_A reproduces L21b across the density
+range — the required boost is density-dependent, climbing steeply toward low density.** This is the same
+route-a story the fire map tells, and it matches El-Badry θ_EB falling with density. Two further reads:
+**(i)** bench3's Θ_cum-calibrated f_A (≈16) **exceeds** its instantaneous-fire threshold (12) — the
+time-integrated cooling fraction needs more boost than the transient θ-peak that trips the trigger.
+**(ii)** the dex-vs-El-Badry cross-check **never drops below 0.85** even at f_A=16 (bench3 0.85, bench1 1.06,
+bench2 1.53) — **no arm matches El-Badry within the 0.5-dex trajectory criterion**; only bench3 fa16 lands
+inside the *L21b band* itself. The `bench5_theta_tracks.png` overlay shows θ(t) with the registered θ_EB
+dotted lines and the L21b band shaded.
+
+**Wall-kill note:** `bench5_fa16_diag` (highest-boost dense diag) **froze at t=0.037 and wall-killed at the
+2 h limit** (exit 124) — the high boost makes the dense implicit solve intractably stiff. **NON-CRITICAL:**
+a dense diag arm shell-collapses early anyway (no clean L21b window), and bench5's fire-map entry (fires at
+fa16) comes from the production arm. The calibration depends only on the diffuse diag arms, not this one.
+
+**Artifacts (all committed):** `runs/params/bench5/` (60), `runs/{run,harvest,checkpoint}_bench5*.py` +
+`autocommit_bench5.sh`, `runs/data/bench5_summary.csv` (60 arms) + `runs/data/bench5_traj/` (60
+trajectories), `data/bench5_elbadry_prediction.csv` (registered, sim-free, §15g), `data/make_bench5_analysis.py`
+→ `data/bench5_analysis.csv` (dex_vs_EB column added) + `bench5_theta_tracks.png`.
+
+**Next (Phase 6, ship decision — the open item).** Phase 5 is measured. The decision Phase 6 must make,
+now that a single global f_A demonstrably cannot reproduce L21b across density: **(a)** ship a
+density-dependent f_A(n̄) calibration (denser → smaller boost), **(b)** ship the route-a boundary as the
+physical result (diffuse clouds stay energy-driven; only n̄≳5×10³ reach the L21b Θ regime under moderate
+boost), or **(c)** do not ship the boost as calibrated. **The only HPC dependency is the theta5s Phase-4
+confirmation (`§15e`)** — repo-root `temporary-HPC-runs.md`; bench5 is not on that list.
+
 ## 16. [flag] Pre-existing latent double-boost in the trigger fallback (found 2026-07-06 during the f_A plan audit; NOT fixed)
 
 `run_energy_implicit_phase.py:1245-1247`: when `bubble_props is None`, the trigger path reads

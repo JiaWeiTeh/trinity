@@ -1,0 +1,12 @@
+model_name             bench1_m5e4_r20__fa4
+mCloud                 55000
+nCore                  43.1
+rCore                  1
+sfe                    0.09090909090909091
+dens_profile           densPL
+densPL_alpha           0
+stop_t                 5
+cooling_boost_fA       4
+log_console            False
+log_file               True
+path2output            outputs/bench5/bench1_m5e4_r20__fa4

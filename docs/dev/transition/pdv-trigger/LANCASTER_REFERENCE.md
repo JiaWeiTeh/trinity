@@ -114,8 +114,11 @@ The numbers TRINITY's calibration rests on:
 
 - **Θ ≡ Ė_cool/Lw = 0.9–0.99** (the cooling fraction). They report the *retained* fraction
   **1−Θ ~ 0.1–0.01**, decreasing in time **∝ t^{−1/2}**, **for ALL models**. (Same θ as El-Badry/TRINITY.)
-  Energy-retention formula (Eq 10): `1−Θ = (αR·ḃ/Vw)(1+fturb) / (2(1+αp))` — so 1−Θ tracks the bubble
-  expansion speed ḃ relative to the wind speed Vw; as the bubble slows (ḃ ∝ t^{−1/2}), 1−Θ → 0, Θ → 1.
+  Energy-retention formula (Eq 10, **corrected 2026-07-12 against the maintainer-supplied paper excerpt —
+  the earlier transcription here (`(αR·ḃ/Vw)(1+fturb)/(2(1+αp))`) was WRONG**):
+  `1−Θ = ( ½(1+f_turb)·(α_p/α_R) + S ) · (Ṙ_b/V_w)`, with `f_turb ≡ E_turb,sh/E_r,sh` (Eq 9) and
+  `E_r,sh = (α_p/4α_R)·ṗ_w·R_b` (Eq 8). The qualitative reading survives: 1−Θ tracks Ṙ_b/V_w, and to the
+  extent the parenthesized terms are constant, **1−Θ ∝ t^{−1/2}** (their stated expectation).
 - **EC dynamics (momentum-driven):** `p_r = αp·ṗw·t` (Eq 3), `R_b ∝ (αp ṗw/ρ̄)^{1/4} t^{1/2}` (Eq 5) —
   shallower than energy-driven t^{3/5}. **αp ≈ Ξ within 6%** (momentum enhancement ≈ energy enhancement).
 - **Measured αp ~ 1.2–4** (near the momentum-driven αp≈1, slightly enhanced). Fractal interface excess
@@ -146,6 +149,103 @@ The numbers TRINITY's calibration rests on:
   (n=100) never fires through f=8 while `large_diffuse_lowsfe` (same n=100) fires at f=4; TRINITY's emergent
   transition boundary is **θ₀-based**, not a clean n-threshold. (The λδv/El-Badry closed-form threshold above
   stands as the literature-model statement.)
+
+### 7b. Table 1 VERIFIED (2026-07-12, maintainer-supplied paper excerpts) — the Phase-5 bench5 anchor
+
+> Provenance: the maintainer pasted image excerpts of the L21b paper (ApJ 914:90) into the working chat
+> on 2026-07-12 — Table 1 (Parameters of Simulation Suite), the Eq 8–11 block, and Figure 17 with its
+> caption. This section is the durable transcription (the imprint protocol): future sessions reference
+> THIS, not the chat. Grade **[V]** for everything below except where marked.
+
+**Table 1 — Parameters of Simulation Suite** (12 models = 3 masses × 4 radii; Δx and resolution omitted
+— grid params, not physics inputs):
+
+| M_cl (M⊙) | R_cl (pc) | n̄_H (cm⁻³) | v_t (km/s) |
+|---:|---:|---:|---:|
+| 5×10⁴ | 20 | 43.1 | 3.59 |
+| 5×10⁴ | 10 | 345 | 5.08 |
+| 5×10⁴ | 5 | 2760 | 7.18 |
+| 5×10⁴ | 2.5 | 22,800 | 10.2 |
+| 10⁵ | 20 | 86.3 | 5.08 |
+| 10⁵ | 10 | 690 | 7.18 |
+| 10⁵ | 5 | 5520 | 10.2 |
+| 10⁵ | 2.5 | 44,200 | 14.4 |
+| 5×10⁵ | 20 | 431 | 11.4 |
+| 5×10⁵ | 10 | 3450 | 16.1 |
+| 5×10⁵ | 5 | 27,600 | 22.7 |
+| 5×10⁵ | 2.5 | 228,000 | 32.1 |
+
+**Table Notes (verbatim meaning):** each model is run with **three values of the wind-source-particle
+mass, M_*/M_cloud ≡ ε_* = 0.01, 0.1, and 1**. ⚠️ **This FALSIFIES the search-snippet assumption
+"M_* = 5000 M⊙ fixed"** that the pre-verification SOURCE_TERM_DESIGN §3 Phase-5 mapping rested on:
+ε_* is a fixed *ratio*, not a fixed mass (M_*=5000 arises only at 5e4/ε0.1 and 5e5/ε0.01 — presumably
+where the snippet came from). Consequence: the spec's `sfe=0.05` mapping for the three 10⁵ M⊙ benches
+matched **no published model**; corrected to ε_*=0.1 (see §3 Phase 5 in SOURCE_TERM_DESIGN).
+
+**Consistency checks run 2026-07-12 (all pass; builder command in FINDINGS §15g):**
+- n̄_H internal: n ∝ M/R³ holds across all 12 rows (e.g. 43.1×2=86.3, ×8=345, ×10=431).
+- With **μ_H = 1.4** (mean mass per H nucleus), (M_cl, n̄_H) reproduces R_cl exactly in 10 of 12 rows
+  ⇒ n̄_H is hydrogen-nucleus density, ρ = 1.4·m_H·n_H — **identical to TRINITY's `nCore` convention**
+  (`registry.py` nCore: "Hydrogen nuclei number density… rho = nCore * mu_convert * m_H", μ_convert=1.4).
+  **Exception (caught by the bench5 emit gate):** the 5×10⁴ and 5×10⁵ rows at R_cl=2.5 pc both imply
+  R = 2.473 pc — their n̄_H carries the same ~3.3% internal offset ((2.5/2.473)³ = 1.033), presumably
+  Table-1 rounding. The bench5 mapping pins the **published n̄_H** (the physically-important input;
+  spec: nCore = n̄ exactly) and accepts the 1.1% radius slack.
+- **v_t is the α_vir = 2 virial velocity**: α_vir = 5v_t²R/(3GM) = 1.996–2.016 for all 12 rows.
+- t_ff(n̄_H): 6.63 / 1.66 / 0.59 / 0.21 / 0.09 Myr for the five bench configs — matches the spec's ≈values.
+
+**Θ definition (maintainer gloss: "θ = L_cool/L_gain"):** Θ ≡ Ė_cool/ℒ_w — an *instantaneous rate
+ratio* (Fig 17 caption + Eq 10 text), measured two ways (cooling in wind-polluted f_wind>10⁻⁴ gas;
+energy-conservation residual). This aligns directly with TRINITY's instantaneous θ = L_loss/L_mech —
+closer than the "cumulative Θ" reading the Phase-5 spec hedged on. (TRINITY's numerator includes
+L_leak; L21b's is radiative — the Rogers & Pittard channel-split caveat stands.)
+
+**Equations (verified from the excerpt):** E_r,sh = (α_p/4α_R)·ṗ_w·R_b (8); f_turb ≡ E_turb,sh/E_r,sh
+(9); **1−Θ = (½(1+f_turb)·α_p/α_R + S)·(Ṙ_b/V_w)** (10), expecting 1−Θ ∝ t^{−1/2}; fractal area
+A_b(R_b;ℓ) = 4πα_A·R_b²(R_b/ℓ)^d (11).
+
+**Figure 17 (M_cl=10⁵ M⊙; rows R_cl=20/10 pc; columns ε_*=1/10/100%):** 1−Θ declines from ~0.1–0.15
+at t≈0.01 Myr to ~0.01–0.04 at late t, tracking the theory line, until wind breakout of the box
+(vertical lines), after which 1−Θ *rises*. Approximate anchor values — **⚠️ [V-plot-eyeball] grade,
+read off a low-resolution image, ±0.2–0.3 dex; re-digitize before any quantitative fit**:
+
+| panel (R_cl, ε_*) | 1−Θ @0.01 Myr | @0.1 Myr | @late (pre-breakout) | breakout ≈ |
+|---|---|---|---|---|
+| 20 pc, 1% | ~0.09 | ~0.06 | ~0.015 @ 1 Myr | ~1.1 Myr |
+| 20 pc, 10% | ~0.15 | ~0.05 | ~0.025 @ 0.5 Myr | ~0.5 Myr |
+| 20 pc, 100% | ~0.17 | ~0.05 | ~0.04 @ 0.2 Myr | ~0.2 Myr |
+| 10 pc, 1% | ~0.06 | ~0.03 (dotted; solid dips <10⁻³ transiently ~0.08 Myr) | ~0.02 @ 0.7 Myr | ~0.85 Myr |
+| 10 pc, 10% | ~0.10 | ~0.03 | ~0.015 @ 0.35 Myr | ~0.4 Myr |
+| 10 pc, 100% | ~0.12 | ~0.03 | ~0.025 @ 0.12 Myr | ~0.15 Myr |
+
+The bottom-middle panel (10 pc, ε_*=10%) is **bench-2's direct published track**. The top row
+(20 pc, ε_*=10%) is NOT in the bench set (bench-1 is 5e4/20pc) — flagged as a cheap candidate bench-6
+(direct track available) if the maintainer wants a sixth benchmark.
+
+**Still UNVERIFIED ([I]-grade, search-snippet only): V_w** (3230/1759 km/s claim) — not in the supplied
+excerpts (Table 1's v_t is the cloud *turbulent* velocity, NOT the wind velocity). Not needed to freeze
+the bench5 .params (TRINITY supplies its own SB99 wind and the metrics normalize by TRINITY's L_mech);
+needed only to overlay Eq-10 *theory* curves. Ask the maintainer for §2's wind parameters if that
+overlay is wanted.
+
+**TRINITY mapping (exact, decided 2026-07-12 — supersedes the naive mCloud=M_cl, sfe=ε_* draft):**
+TRINITY's `.param` mCloud is **pre-SFE** (`read_param.py` rebinds: mCluster = sfe·mCloud_input, residual
+gas = (1−sfe)·mCloud_input, and `get_InitCloudProp` derives rCloud from the *post-SF gas*). L21b instead
+*adds* a star particle ε_*·M_cl to an M_cl gas cloud. Exact match: **mCloud_param = M_cl·(1+ε_*),
+sfe = ε_*/(1+ε_*)** ⇒ post-SF gas = M_cl at nCore = n̄_H (so rCloud = R_cl exactly) and
+mCluster = ε_*·M_cl exactly. (The naive mapping is only ~10%/3% off in gas mass/radius at ε_*=0.1, but
+the exact one is free.)
+
+**In-container run status (`FINDINGS.md §15h`, 2026-07-12) — COMPLETE:** the 60-arm bench5 matrix ran
+in-container (HPC down) → **60/60, 59 compliant** (1 dense diag wall-killed, non-critical). **Fire map:**
+bench5(n̄=2.28e5) fires UNMODIFIED (f_A≥1), bench4(n̄=4.42e4) at f_A≥4, bench3(n̄=5520) at f_A≥12, bench2/bench1
+NOFIRE ≤16 — matches the registered θ_EB above (θ_EB falls with density). **Θ_cum/L21b-band calibration
+(from the diagnostic arms, all complete):** the diffuse benches blow out cleanly (end R2≈rCloud), giving the
+L21b breakout-window Θ_cum — bench3 enters the band [0.90,0.99] at **f_A≈16** (Θ_cum 0.965), bench2/bench1
+do NOT reach it even at f_A=16 (max 0.54/0.40) → **f_A >16 / ≫16**. The dense benches censor at
+shell-collapse (not the clean L21b window). **Result: no single global f_A reproduces L21b across density;
+the required boost climbs steeply toward low density** (feeds Phase-6 ship decision). The Fig-17 direct
+tracks (bench-2, and the 20-pc bench-1) remain the comparison targets for an HPC re-confirmation run.
 
 *Transcribed from ApJ 914, 90 (Lancaster+2021 Paper II) and arXiv:2505.22730v1 (Lancaster+2025) on 2026-06-30,
 `feature/PdV-trigger-term-pt2`. No production code touched.*
