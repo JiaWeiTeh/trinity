@@ -67,6 +67,7 @@ docs/dev/
 │   ├── cleanroom/         substrate certification (concluded — the "transition is geometric" verdict)
 │   ├── pt4/               hypothesis audits H1–H5 + R1 shadow (concluded, feeds pdv-trigger)
 │   └── harness/ + PROVENANCE_PROTOCOL.md    shared run-stamping tooling
+├── rosette-cf/            Rosette Cf scan, in-container (🔵 plan + harness committed; runs pending)
 ├── cooling/               cooling-table refactor (🟡 partial)
 ├── performance/           hot-path cost & conditioning (📘 reference + 🟡 open items)
 ├── shell-solver/          shell ODE migration + float64 overflow fix (🟡 mixed)

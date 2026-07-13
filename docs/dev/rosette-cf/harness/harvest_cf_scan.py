@@ -1,0 +1,207 @@
+#!/usr/bin/env python3
+"""Cf-scan harvest + checkpoint — summary CSV + a compact, restart-durable trajectory per arm.
+
+Both outputs are committed so matching runs OFFLINE from git, never re-running the sims (the
+theta5s lesson: raw arms lost to a /tmp wipe). Doubles as the restart checkpoint: it MERGES the
+current container's arms into the committed summary (union by run_name, prefer exit_code==0 rows)
+and refreshes each arm's trajectory CSV — call it repeatedly (the autocommit heartbeat does).
+
+1. --csv <summary>: one row per arm — axes (read from the .param copy run.py leaves in the output
+   dir, so it needs no jobs bundle and works on the maintainer's machine too), exit code, duration,
+   t_final, phase_final, final radii, quotable flag (exit_code==0; 📏 never quote a 124 arm).
+2. --traj-dir <dir>: per arm, <arm>.csv with every snapshot's (t_now, R2, v2, rShell,
+   current_phase) — the radii-only frozen matching policy needs exactly t/R2/rShell, so these
+   trajectories let the maintainer's frozen matcher (paper/rosette/matching/) be re-applied
+   offline even though the raw dictionary.jsonl stays ephemeral. Capped at 4000 rows by stride
+   downsample keeping endpoints.
+
+    python docs/dev/rosette-cf/harness/harvest_cf_scan.py "$WS"/outputs/rosette_cf_PISM1e5/* \
+        --csv docs/dev/rosette-cf/data/cf_scan_PISM1e5_summary.csv \
+        --traj-dir docs/dev/rosette-cf/data/cf_scan_PISM1e5_traj
+"""
+
+import argparse
+import csv
+import json
+import math
+import sys
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+from _stamp import stamp  # noqa: E402
+
+AXES = [
+    "mCloud",
+    "sfe",
+    "nCore",
+    "coverFraction",
+    "cooling_boost_fmix",
+    "include_PHII",
+    "PISM",
+    "stop_t",
+]
+COLUMNS = (
+    ["run_name"]
+    + AXES
+    + [
+        "exit_code",
+        "duration_s",
+        "n_snap",
+        "t_final",
+        "phase_final",
+        "R2_final",
+        "rShell_final",
+        "quotable",
+    ]
+)
+TRAJ_COLS = ["t_now", "R2", "v2", "rShell", "current_phase"]
+TRAJ_CAP = 4000
+HEADER = (
+    "# Rosette Cf scan (PISM=1e5, stop_t=3 Myr) cumulative summary, merged across container\n"
+    "# restarts by harvest_cf_scan.py. quotable = exit_code==0 (a 124 arm was wall-killed: its\n"
+    "# t_final is not a physics end — 📏 never quote its Cf). Per-arm trajectory CSVs in the\n"
+    "# sibling traj dir carry (t_now, R2, v2, rShell, phase) for offline matching.\n"
+    "# ⚠️ PROVISIONAL / IN-CONTAINER — NOT HPC (HPC down; same caveat as the theta5s/bench5\n"
+    "# campaigns). Re-confirm on HPC before any paper number.\n"
+)
+
+
+def _finite(v):
+    return (
+        v if isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v) else None
+    )
+
+
+def read_param_copy(run_dir):
+    """Axes from the .param copy run.py writes into the output dir (key/value lines)."""
+    out = {}
+    for p in sorted(run_dir.glob("*.param")):
+        for line in p.read_text().splitlines():
+            line = line.split("#", 1)[0].strip()
+            parts = line.split(None, 1)
+            if len(parts) == 2 and parts[0] in AXES:
+                out[parts[0]] = parts[1].strip()
+        if out:
+            break
+    return out
+
+
+def snapshots(run_dir):
+    rows = []
+    path = run_dir / "dictionary.jsonl"
+    if not path.exists():
+        return rows
+    with path.open() as fh:
+        for line in fh:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                d = json.loads(line)
+            except ValueError:
+                continue
+            t = _finite(d.get("t_now"))
+            if t is None:
+                continue
+            rows.append(
+                [
+                    t,
+                    _finite(d.get("R2")),
+                    _finite(d.get("v2")),
+                    _finite(d.get("rShell")),
+                    d.get("current_phase"),
+                ]
+            )
+    rows.sort(key=lambda r: r[0])
+    return rows
+
+
+def harvest(run_dir):
+    run_dir = Path(run_dir)
+    rows = snapshots(run_dir)
+    last = rows[-1] if rows else [None] * 5
+
+    def _sentinel(name):
+        f = run_dir / name
+        return f.read_text().strip() if f.exists() else ""
+
+    exit_code = _sentinel(".exit_code")
+    rec = {"run_name": run_dir.name, **read_param_copy(run_dir)}
+    rec.update(
+        exit_code=exit_code,
+        duration_s=_sentinel(".duration"),
+        n_snap=len(rows),
+        t_final=last[0],
+        phase_final=last[4],
+        R2_final=last[1],
+        rShell_final=last[3],
+        quotable=(exit_code == "0"),
+    )
+    return rec
+
+
+def write_traj(run_dir, traj_dir):
+    rows = snapshots(Path(run_dir))
+    if not rows:
+        return 0
+    if len(rows) > TRAJ_CAP:  # stride downsample, keep endpoints
+        step = len(rows) / (TRAJ_CAP - 1)
+        idx = sorted(
+            {min(int(i * step), len(rows) - 1) for i in range(TRAJ_CAP - 1)} | {len(rows) - 1}
+        )
+        rows = [rows[i] for i in idx]
+    traj_dir.mkdir(parents=True, exist_ok=True)
+    with (traj_dir / f"{Path(run_dir).name}.csv").open("w", newline="") as fh:
+        w = csv.writer(fh)
+        w.writerow(TRAJ_COLS)
+        w.writerows(rows)
+    return len(rows)
+
+
+def _read_summary(path):
+    if not path.exists():
+        return {}
+    with path.open() as fh:
+        return {
+            r["run_name"]: r
+            for r in csv.DictReader(x for x in fh if not x.lstrip().startswith("#"))
+        }
+
+
+def main(argv):
+    ap = argparse.ArgumentParser()
+    ap.add_argument("run_dirs", nargs="+")
+    ap.add_argument("--csv", required=True, help="committed summary CSV (merged, not overwritten)")
+    ap.add_argument("--traj-dir", help="committed per-arm trajectory dir")
+    args = ap.parse_args(argv)
+
+    csv_out = Path(args.csv)
+    merged = _read_summary(csv_out)
+    n_new = 0
+    for a in args.run_dirs:
+        run_dir = Path(a)
+        if not (run_dir / "dictionary.jsonl").exists():
+            continue
+        rec = {k: ("" if v is None else v) for k, v in harvest(run_dir).items()}
+        name = rec["run_name"]
+        if name not in merged or (rec["exit_code"] == "0" and merged[name].get("exit_code") != "0"):
+            merged[name] = rec
+            n_new += 1
+        if args.traj_dir:
+            write_traj(run_dir, Path(args.traj_dir))
+
+    csv_out.parent.mkdir(parents=True, exist_ok=True)
+    rows = [merged[k] for k in sorted(merged)]
+    with csv_out.open("w", newline="") as fh:
+        fh.write(stamp(str(HERE / "harvest_cf_scan.py")) + "\n")
+        fh.write(HEADER)
+        w = csv.DictWriter(fh, fieldnames=COLUMNS, extrasaction="ignore")
+        w.writeheader()
+        w.writerows(rows)
+    n_quot = sum(1 for r in rows if str(r.get("quotable")) == "True")
+    print(f"{len(rows)} arms in summary ({n_quot} quotable, {n_new} added/upgraded this pass)")
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])
