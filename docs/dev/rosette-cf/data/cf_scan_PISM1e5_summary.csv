@@ -1,4 +1,4 @@
-# generated 2026-07-13T23:41:11Z | builder harvest_cf_scan.py | code 5b0fc24b+dirty
+# generated 2026-07-13T23:43:14Z | builder harvest_cf_scan.py | code ecb77173+dirty
 # Rosette Cf scan (PISM=1e5, stop_t=3 Myr) cumulative summary, merged across container
 # restarts by harvest_cf_scan.py. quotable = exit_code==0 (a 124 arm was wall-killed: its
 # t_final is not a physics end — 📏 never quote its Cf). Per-arm trajectory CSVs in the
