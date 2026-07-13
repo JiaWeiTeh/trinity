@@ -31,15 +31,17 @@ python docs/dev/rosette-cf/harness/run_cf_scan_local.py --jobs "$WS/cf_jobs" \
 
 # 3. full campaign — resumable; re-run the same command after any restart
 python docs/dev/rosette-cf/harness/run_cf_scan_local.py --jobs "$WS/cf_jobs" \
-    --workers 3 --per-arm-timeout <6x probe> \
+    --workers 3 --per-arm-timeout 7200 \
     --summary docs/dev/rosette-cf/data/cf_scan_PISM1e5_summary.csv
-# optional heartbeat (arm only if projected wall > ~1.5 h):
-bash docs/dev/rosette-cf/harness/autocommit_cf_scan.sh "<base output dir from the bundle>"
+# heartbeat (load-bearing — commits finished arms' gzipped dicts every ~2 min; base output dir
+# is in the manifest, here outputs/rosette_cf_survey_PISM1e5_fmix):
+bash docs/dev/rosette-cf/harness/autocommit_cf_scan.sh outputs/rosette_cf_survey_PISM1e5_fmix
 
-# 4. harvest + commit (idempotent merge; safe to re-run)
-python docs/dev/rosette-cf/harness/harvest_cf_scan.py <base output dir>/* \
+# 4. harvest + commit (idempotent merge; safe to re-run; the heartbeat runs this each tick)
+python docs/dev/rosette-cf/harness/harvest_cf_scan.py outputs/rosette_cf_survey_PISM1e5_fmix/* \
     --csv docs/dev/rosette-cf/data/cf_scan_PISM1e5_summary.csv \
-    --traj-dir docs/dev/rosette-cf/data/cf_scan_PISM1e5_traj
+    --traj-dir docs/dev/rosette-cf/data/cf_scan_PISM1e5_traj \
+    --dicts-dir docs/dev/rosette-cf/data/cf_scan_PISM1e5_dicts
 
 # 5. match (fallback matcher — prefer the frozen paper/rosette/matching/match_runs.py if present)
 python docs/dev/rosette-cf/harness/match_cf_scan.py \

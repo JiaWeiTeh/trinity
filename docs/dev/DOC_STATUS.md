@@ -50,7 +50,7 @@ deleted by the maintainer (`9459234a`, 2026-07-06).
 | `transition/pdv-trigger/` | 🔵 ACTIVE — PdV/f_κ mechanism + θ calibration | `INDEX.md` | 2026-07-06 |
 | `transition/cleanroom/` | ✅ concluded — "transition is geometric, not thermal" (live evidence for pdv-trigger) | `FINDINGS.md` | 2026-07-06 |
 | `transition/pt4/` | ✅ concluded audits (H1–H5 + R1 shadow) — feed pdv-trigger | `README.md` | 2026-07-06 |
-| `rosette-cf/` | 🔵 ACTIVE — 72-run Cf scan plan + harness + param file committed (preflight 72/0-invalid); execution awaits plan approval | `README.md` | 2026-07-13 |
+| `rosette-cf/` | 🟡 RUNNING — 72-run Cf scan executing in-container (workers=3, heartbeat armed); deliverable = gzipped raw dicts committed under `data/` | `README.md` | 2026-07-13 |
 | `cooling/` | 🟡 PARTIAL — two side items shipped; loader refactor PR-1–4 pending | `refactor-audit.md` | 2026-06-22 |
 | `performance/` | 📘 reference (perf history A→D + F1) · 🟡 HOTPATH §F1-cousin/§F5 open | `BUBBLE_LUMINOSITY_PERFORMANCE.md` | 2026-06-22 |
 | `shell-solver/` | 🟡 MIXED — overflow fix ✅ shipped; MIGRATION doc is a 🟠 correction (mxstep diagnosis retracted) | `OVERFLOW_FIX_PLAN.md` | 2026-07-06 |

@@ -32,9 +32,11 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-07-13):** 🔵 Phase-1 plan + tooling + param file committed (10 harness tests
-green; preflight verified: 72 combos, 0 implausible). Phase-2 execution awaits maintainer
-approval of this plan — the former param-file blocker is resolved (§2.1).
+**Status (2026-07-13):** 🟡 Phase-2 RUNNING in-container — 72-run parallel campaign launched
+(workers=3, per-arm-timeout 7200s), autocommit heartbeat armed (commits summary + traj + gzipped
+raw dicts every ~2 min). Deliverable = the raw `dictionary.jsonl` per arm (§7). 11 harness tests
+green; preflight verified 72/0-invalid. Matcher runs against the fallback (`matching/` stays
+local per maintainer). See §10 for the in-container ops playbook.
 
 ## 1. Goal & context
 
@@ -96,21 +98,22 @@ from the 2026-07-13 task brief, not checked against source:
 1. **Preflight**: `python run.py docs/dev/rosette-cf/rosette_cf_survey_PISM1e5_fmix.param
    --dry-run` → expect 72/0-invalid (re-confirm, already verified 2026-07-13), then
    `--emit-jobs "$WS/cf_jobs"`. Any invalid combo or count ≠ 72 → STOP, report, don't run.
-2. **Timing probes** (brief's requirement — the Helix ~1 h/run figure was for full-length runs;
-   stop_t=3 Myr runs are much shorter, so **measure, don't guess**): run the 2 densest-nCore
-   (5e2), Cf=1.0, both-fmix arms via
-   `--only '*1e5_sfe001_n5e2_PL0_yesPHII*coverFraction1p0'` (matches exactly those 2, verified),
-   `--workers 1`. Set `--per-arm-timeout` ≈ 6× the measured per-arm time; workers = 3 (bench5
-   default; raise only if probe time × 72 / workers ≫ container window). Projected wall =
-   probe-mean × 72 / workers.
-3. **Campaign**: the resumable pool (`harness/run_cf_scan_local.py`) over the bundle. Arm the
-   `autocommit_cf_scan.sh` heartbeat **only if** projected wall > ~1.5 h (bench5's glue is
-   load-bearing insurance for multi-window campaigns, dead weight for a sub-hour one); otherwise
-   harvest+commit once at the end. After any restart: re-emit the bundle (deterministic) and
-   re-run the same pool command — done arms are skipped via the committed summary.
-4. **Harvest**: `harness/harvest_cf_scan.py` → committed summary + per-arm trajectory CSVs
-   (t, R2, v2, rShell, phase — everything the radii-only policy needs; raw jsonl stays
-   ephemeral). Commit + push.
+2. **Workers/timeout**: workers = 3 (bench5 default; box has 4 CPUs, leaving one for the
+   heartbeat + gzip). `--per-arm-timeout 7200` (bench5 value — generous headroom; the dense/sealed
+   long-pole corner measured ~30 min in a probe, so 2 h never premature-kills a healthy arm). Per
+   the maintainer (2026-07-13): the 72 finish in-container within ~2 h, as the 60- and 81-run
+   campaigns did — **don't obsess over per-arm time, just run them**.
+3. **Campaign**: the resumable pool (`harness/run_cf_scan_local.py`) over the bundle, PLUS the
+   `autocommit_cf_scan.sh` heartbeat — **load-bearing here** (the raw dicts are the deliverable and
+   the container is ephemeral; a restart already cost one probe). The heartbeat commits + pushes
+   finished arms every ~2 min. After any restart: re-emit the bundle (deterministic; the scratch
+   bundle may survive) and re-run the same pool command — done arms are skipped via their
+   `.exit_code` / the committed summary; already-committed `.jsonl.gz` are not re-run.
+4. **Harvest** (the heartbeat runs this every tick; also run once at the end):
+   `harness/harvest_cf_scan.py --csv <summary> --traj-dir <traj> --dicts-dir <dicts>` →
+   committed summary + per-arm trajectory CSVs (t, R2, v2, rShell, phase; a lightweight index) +
+   **the gzipped raw `dictionary.jsonl` per arm — the actual deliverable the maintainer reduces
+   later**. Commit + push.
 5. **Match**: frozen `match_runs.py` if present, else `harness/match_cf_scan.py` →
    `data/match_cf_PISM1e5.csv` + `_cells.csv`. Commit + push.
 6. **Report** (in this README, dated): §5 adjudication FIRST, then per-cell best/interpolated
@@ -140,13 +143,24 @@ parabola through the 3 (Cf, χ²) points (`cf_star_*`) as the interpolated best 
 with the caveat that it comes from 3 points, and flagged when non-convex or outside the bracket.
 No finer sweep unless the maintainer asks after seeing χ²(Cf).
 
-## 7. Artifacts & the two 💾 rules
+## 7. Artifacts & the 💾 rule
 
-`paper/rosette/plots/` (the paper folder's 💾 destination, mirroring
-`match_pilot_cf_survey_2026-07-08.csv`) is gitignored — nothing written there survives this
-container. So the committed home is **`docs/dev/rosette-cf/data/`** (summary, traj dir, match
-CSVs, each with a provenance stamp + exact command); the maintainer mirrors the match CSVs into
-`paper/rosette/plots/` on their machine. Full raw jsonl stays ephemeral/local by design.
+`paper/rosette/plots/` (the paper folder's 💾 destination) is gitignored — nothing written there
+survives this container. So the committed home is **`docs/dev/rosette-cf/data/`**:
+
+- `cf_scan_PISM1e5_summary.csv` — per-arm axes + exit/duration + final radii + quotable flag.
+- `cf_scan_PISM1e5_traj/<arm>.csv` — lightweight (t, R2, v2, rShell, phase) index.
+- `cf_scan_PISM1e5_dicts/<arm>.jsonl.gz` — **the RAW `dictionary.jsonl`, gzipped: the deliverable**
+  the maintainer reduces later (`gunzip` first). Raw dicts are large — ~10 MB/arm, ~26 KB/snapshot
+  (each snapshot carries the full shell-density arrays) → ~750 MB raw / **~280 MB gzipped** for 72.
+  That is a deliberate, maintainer-requested bloat of this feature branch (2026-07-13: "the point
+  of this rosette is so that i can have their dictionary.jsonl … save them too"). If the branch
+  size becomes a problem, the leaner fallback is to drop the per-snapshot shell-profile arrays
+  before gzip — but that is NOT done by default, since the maintainer wants the full dicts.
+- `match_cf_PISM1e5*.csv` — fallback-matcher output (maintainer re-runs the frozen matcher offline).
+
+Each CSV carries a provenance stamp + the exact command. The maintainer mirrors what they need into
+`paper/rosette/plots/` on their machine.
 
 ## 8. Honesty gates (baked into the tooling)
 
@@ -173,3 +187,22 @@ CSVs, each with a provenance stamp + exact command); the maintainer mirrors the 
    confirming diff before any paper number.
 4. Probe-arm choice (densest nCore, Cf=1.0, both fmix) assumes dense+sealed is the long pole —
    fine as a budget bound either way, but say if the pilot showed otherwise.
+
+## 10. In-container long-run ops playbook (adapted from pdv-trigger)
+
+The campaign spans an ephemeral container that WILL restart (one already did, killing the timing
+probe). The pdv-trigger bench5/theta5s pattern makes it restart-survivable:
+
+- **Resumable runner** — `run_cf_scan_local.py` skips any arm with a `.exit_code` marker or a
+  quotable row in the committed summary; `harvest_cf_scan.py --dicts-dir` skips arms whose
+  `.jsonl.gz` is already current. So re-running the exact launch command after a restart continues
+  where it left off; no arm is redone once its dict is committed.
+- **Autocommit heartbeat** — `autocommit_cf_scan.sh` is the SOLE git committer while running
+  (no manual commits during the run → no index race): every ~2 min it harvests + `git add` the
+  data dir + commits + pushes with backoff.
+- **Re-arming after a restart** — a scheduled self-poke re-clones the branch and relaunches BOTH
+  the runner and the heartbeat, so the campaign self-heals without a human. On the terminal state
+  (72/72 committed) the schedule is removed. **Never premature-stop a healthy running arm** — a
+  wall-killed arm (exit 124) is non-compliant re-run debt, not a result.
+- **Report every tick / at terminal**: progress is the committed summary's row count; the run is
+  done when all 72 arms have a `.jsonl.gz` (compliant or a flagged crash), not before.
