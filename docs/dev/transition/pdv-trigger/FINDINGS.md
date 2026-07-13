@@ -1571,10 +1571,10 @@ precedent; needs the long-run ops playbook — est. ~40–60 min/arm uninterrupt
 or on HPC together with the mandatory theta5s confirmation. **No θ/Θ number exists yet for any bench;
 nothing here is a calibration result.**
 
-## 15h. [data — IN-CONTAINER, IN PROGRESS] Phase 5 bench5 campaign — 47/60 done, running to 60 in-container (2026-07-12)
+## 15h. [data — IN-CONTAINER, IN PROGRESS] Phase 5 bench5 campaign — 50/60 done, running to 60 in-container (2026-07-12)
 
 > ⚠️ **IN-CONTAINER, IN PROGRESS (not HPC — and per the maintainer, does NOT need HPC).** As of the
-> latest tick **47/60 arms are compliant** (all production so far). **Maintainer directive 2026-07-12:
+> latest tick **50/60 arms are compliant** (all production so far). **Maintainer directive 2026-07-12:
 > run ALL 60 in-container — "it's definitely doable; anything within 2 h is runnable."** So the runner
 > uses `--per-arm-timeout 7200` (2 h/arm) and keeps grinding to 60/60; the diagnostic (blowout) arms and
 > diffuse benches are NOT HPC-deferred, they are still queued/running in-container. The Θ_cum/L21b-band
@@ -1585,11 +1585,11 @@ nothing here is a calibration result.**
 `runs/run_bench5_local.py` + `runs/autocommit_bench5.sh` (new, adapted from theta5s) + a re-arming
 send_later heartbeat + hourly cron. The container alternated ~15–40 min stable windows with
 rapid-restart storms (~1–2 min); trinity has no mid-run resume, so every restart resets in-flight arms
-to t=0. **47/60 completed** (all production; vs the prior lost pt4 session's 1–3/60 over 8 h — the
+to t=0. **50/60 completed** (all production; vs the prior lost pt4 session's 1–3/60 over 8 h — the
 container cooperated better here). The remaining un-run set: f_A=1 baselines, all diagnostic (blowout)
 arms, and the diffuse benches (bench2 in progress, bench1) — they need long uninterrupted windows.
 
-**FIRE MAP (production arms; FIRE = actually fired cooling_balance, from `data/bench5_analysis.csv`; updated 47/60):**
+**FIRE MAP (production arms; FIRE = actually fired cooling_balance, from `data/bench5_analysis.csv`; updated 50/60):**
 
 | bench | n̄_H | θ_EB(λδv3) | prod arms done | FIRE threshold f_A | θ_max(f_A 4→16) | fate |
 |---|---:|---:|---|---|---|---|
@@ -1599,7 +1599,7 @@ arms, and the diffuse benches (bench2 in progress, bench1) — they need long un
 | bench2 (m1e5, 10pc) | 690 | 0.986 | 4,6,8,12,16 (complete) | **>16** (NOFIRE ≤16) | 0.51,0.55,0.58,0.66,0.69 | all NOFIRE→energy-driven to t=5 |
 | bench1 (m5e4, 20pc) | 43.1 | 0.948 | 6,8,12,16 (fa4 running) | **>16** (all NOFIRE) | fa6/8/12/16: 0.40,0.43,0.50,0.56 | all NOFIRE→energy-driven to t=5 (most diffuse) |
 
-**Read (47/60 in-container):** a clean, steeply-rising **density gradient in the f_A fire threshold** —
+**Read (50/60 in-container):** a clean, steeply-rising **density gradient in the f_A fire threshold** —
 bench5/bench4 (densest) fire at every f_A ≥ 4 (threshold ≤4); bench3 (n̄=5520) needs **f_A ≥ 12**
 (monotonic θ_max 0.64→0.70→0.75→0.98→1.34, crossing 0.95 between f_A 8 and 12); **bench2 (n̄=690) and bench1
 (n̄=43) do NOT fire even at f_A=16** (bench2 θ_max 0.55–0.69 at fa6–16; bench1 fa16 θ_max 0.56 → both
@@ -1644,19 +1644,25 @@ and L21b censor at breakout, not at 3 Myr). (Note: the DENSE benches bench5/benc
 instead of blowout — a different physical end — so their Θ_cum is not the clean breakout metric; the
 calibration reads off the DIFFUSE benches that genuinely blow out: bench3, bench2, bench1.)
 
-**bench3 (n̄=5520) Θ_cum vs f_A** (over the blowout window, all R2→5 pc):
+**Θ_cum vs f_A over the blowout window, per diffuse bench** (the ones that blow out, R2→rCloud):
 
-| f_A | 4 | 6 | 8 | 12 | 16 |
-|---|---|---|---|---|---|
-| Θ_cum | 0.520 | 0.551 | 0.584 | 0.833 | **0.965** |
+| bench | n̄_H | fa4 | fa6 | fa8 | fa12 | fa16 | Θ_cum in L21b band [0.90,0.99]? | calibrated f_A |
+|---|---:|---|---|---|---|---|---|---|
+| bench3 | 5520 | 0.520 | 0.551 | 0.584 | 0.833 | **0.965** | yes, at fa16 | **≈16** |
+| bench2 | 690  | 0.391 | 0.420 | 0.453 | 0.495 | 0.540 | **no** (max 0.54 at fa16) | **>16** |
+| bench1 | 43   | — | — | — | — | 0.404 | **no** (0.40 at fa16) | **≫16** |
 
-Θ_cum rises monotonically and **enters the L21b band [0.90, 0.99] at f_A = 16** (fa12=0.833 just below).
-⇒ **bench3's L21b-calibrated f_A ≈ 16** — notably *distinct from* its instantaneous-fire threshold (12,
-θ_max≥0.95): the time-integrated Θ_cum needs a bit more boost than the transient θ-peak. This is the
-actual Phase-5 calibration number for bench3. When the bench2 (n̄=690) and bench1 (n̄=43) diag arms finish,
-the full **density → calibrated-f_A** curve completes (expected to rise as density falls, matching El-Badry
-θ_EB and the source-term collapse law). The dex-trajectory metric + El-Badry-overlay figure are the
-remaining analysis pieces to add at 60/60.
+**The calibration curve (2026-07-12).** Θ_cum rises monotonically with f_A at every density, and the
+**f_A needed to land Θ_cum in the L21b band [0.90,0.99] rises steeply as density falls**: bench3 (n̄=5520)
+reaches it at **f_A≈16**; bench2 (n̄=690) and bench1 (n̄=43) do **NOT** reach it even at f_A=16 (Θ_cum
+maxes at 0.54 / 0.40) → their calibrated f_A is **>16 / ≫16**. This is the same **route-a** story the fire
+map shows and matches El-Badry θ_EB falling with density (0.999→0.948): the diffuse clouds resist reaching
+the Lancaster high-Θ regime under any moderate boost. **Note bench3's Θ_cum-calibrated f_A (≈16) exceeds
+its instantaneous-fire threshold (12)** — the time-integrated cooling-fraction needs more boost than the
+transient θ-peak. (The dense benches bench5/bench4 censor at shell-collapse not blowout, so they're not on
+this L21b-window curve; their fire map stands from the production arms.) Remaining at ~51/60: bench1
+fa4/6/8/12 diag (fill the n̄=43 row) + the non-critical wall-killing fa16_diag. The dex-trajectory metric +
+El-Badry-overlay figure are the last analysis pieces to add at terminal.
 
 **Wall-kill note (2026-07-12):** `bench5_fa16_diag` (highest-boost dense diag) **froze at t=0.037 and
 wall-killed at the 2 h limit** (exit 124) — the high boost makes the dense implicit solve intractably
@@ -1668,7 +1674,7 @@ depends only on the diffuse diag arms**, not these. Flag persistent wall-killers
 
 **Artifacts (all committed, updated as arms land):** `runs/params/bench5/` (60),
 `runs/{run,harvest,checkpoint}_bench5*.py` + `autocommit_bench5.sh`, `runs/data/bench5_summary.csv`
-(47 arms) + `runs/data/bench5_traj/` (47 trajectories), `data/bench5_elbadry_prediction.csv` (registered,
+(50 arms) + `runs/data/bench5_traj/` (50 trajectories), `data/bench5_elbadry_prediction.csv` (registered,
 sim-free, §15g), `data/make_bench5_analysis.py` → `data/bench5_analysis.csv` + `bench5_theta_tracks.png`.
 
 **Next.** Finish the 60 in-container (diagnostic arms give the Θ_cum calibration); rerun the analysis;
