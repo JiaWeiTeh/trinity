@@ -21,16 +21,20 @@ cd "$(dirname "$0")" && cd "$(git rev-parse --show-toplevel)" || exit 1
 # branch history).
 git config user.email jiaweiteh.astro@gmail.com
 git config user.name "Jia Wei Teh"
-SUMMARY=docs/dev/rosette-cf/data/cf_scan_PISM1e5_summary.csv
-TRAJ=docs/dev/rosette-cf/data/cf_scan_PISM1e5_traj
-DICTS=docs/dev/rosette-cf/data/cf_scan_PISM1e5_dicts
+DATA=docs/dev/rosette-cf/data
+SUMMARY=$DATA/cf_scan_PISM1e5_summary.csv
+TRAJ=$DATA/cf_scan_PISM1e5_traj
+DICTS=$DATA/cf_scan_PISM1e5_dicts
 HARVEST=docs/dev/rosette-cf/harness/harvest_cf_scan.py
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
 for _ in $(seq 1 300); do   # 300 * 120s = 10h ceiling; relaunch if it ever exits
   sleep 120
   out=$(python "$HARVEST" "$OUT"/* --csv "$SUMMARY" --traj-dir "$TRAJ" --dicts-dir "$DICTS" 2>&1 | tail -1)
-  git add "$SUMMARY" "$TRAJ" "$DICTS" 2>/dev/null
-  if ! git diff --cached --quiet -- "$SUMMARY" "$TRAJ" "$DICTS" 2>/dev/null; then
+  # Stage the whole data dir: the dicts subdir does not exist until the first arm finishes, and a
+  # missing pathspec makes `git add a b c` abort atomically (staging nothing). Adding the parent
+  # dir is tolerant of that and picks up summary + traj + dicts together.
+  git add "$DATA" 2>/dev/null
+  if ! git diff --cached --quiet -- "$DATA" 2>/dev/null; then
     git commit -m "rosette-cf: scan checkpoint auto (${out})" >/dev/null 2>&1
     for a in 1 2 3 4; do git push -u origin "$BRANCH" >/dev/null 2>&1 && break; sleep $((2**a)); done
     echo "[autocommit] $(date -u +%H:%M:%S) pushed: ${out}"
