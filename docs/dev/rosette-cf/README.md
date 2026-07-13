@@ -83,9 +83,11 @@ from the 2026-07-13 task brief, not checked against source:
    F-12 cavity-target conflict) — unreadable here; §5 encodes the brief's summary of it.
 3. **`paper/rosette/matching/{observables.py, match_runs.py}`** — the FROZEN matching policy.
    `harness/match_cf_scan.py` is a fallback **reimplementation** of the policy as stated in the
-   brief (§4). If the frozen matcher is available in the Phase-2 container, prefer it; either
-   way, diff the fallback's `POLICY` constants against the frozen `observables.py` before
-   quoting any number.
+   brief (§4). **Maintainer ruling 2026-07-13: `matching/` stays gitignored/local for now — run
+   the sims first.** So Phase 2 in-container uses the fallback matcher (§4); the maintainer
+   re-applies the frozen `match_runs.py` to the committed trajectory CSVs offline on their
+   machine, and must diff the fallback's `POLICY` constants against the frozen `observables.py`
+   before quoting any number.
 
 ## 3. Phase-2 execution plan (pure execution; exact commands in `harness/README.md`)
 
@@ -165,7 +167,9 @@ CSVs, each with a provenance stamp + exact command); the maintainer mirrors the 
 2. ~~Cell grouping~~ **RESOLVED 2026-07-13** — maintainer confirmed **per mass-pair**: cells key
    on (mass-pair, nCore, fmix, P_HII), 24 cells of 3 Cf, exactly what
    `harness/match_cf_scan.py` (`CELL_KEYS`) already implements. No change needed.
-3. Confirm the §4 policy transcription against the frozen `observables.py`, and whether the
-   frozen `match_runs.py` will be available in the Phase-2 container.
+3. ~~Confirm the §4 policy transcription / frozen-matcher availability~~ **RESOLVED 2026-07-13**
+   — `matching/` stays local; Phase 2 uses the fallback matcher, maintainer reconciles against
+   the frozen `observables.py` offline (§2 blocker 3). The §4 transcription is still worth a
+   confirming diff before any paper number.
 4. Probe-arm choice (densest nCore, Cf=1.0, both fmix) assumes dense+sealed is the long pole —
    fine as a budget bound either way, but say if the pilot showed otherwise.
