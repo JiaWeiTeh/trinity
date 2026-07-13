@@ -16,6 +16,11 @@
 set -u
 OUT="${1:?usage: autocommit_cf_scan.sh <base_output_dir>}"
 cd "$(dirname "$0")" && cd "$(git rev-parse --show-toplevel)" || exit 1
+# Pin the committer identity here so every heartbeat commit is attributed correctly even after a
+# container reclaim wipes the session's git config (maintainer's own address, already public in the
+# branch history).
+git config user.email jiaweiteh.astro@gmail.com
+git config user.name "Jia Wei Teh"
 SUMMARY=docs/dev/rosette-cf/data/cf_scan_PISM1e5_summary.csv
 TRAJ=docs/dev/rosette-cf/data/cf_scan_PISM1e5_traj
 DICTS=docs/dev/rosette-cf/data/cf_scan_PISM1e5_dicts
