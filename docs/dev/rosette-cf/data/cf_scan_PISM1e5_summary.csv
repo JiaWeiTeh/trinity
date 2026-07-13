@@ -1,4 +1,4 @@
-# generated 2026-07-13T23:28:57Z | builder harvest_cf_scan.py | code 6bc6419d+dirty
+# generated 2026-07-13T23:31:00Z | builder harvest_cf_scan.py | code ec39f43b+dirty
 # Rosette Cf scan (PISM=1e5, stop_t=3 Myr) cumulative summary, merged across container
 # restarts by harvest_cf_scan.py. quotable = exit_code==0 (a 124 arm was wall-killed: its
 # t_final is not a physics end — 📏 never quote its Cf). Per-arm trajectory CSVs in the
@@ -6,7 +6,8 @@
 # ⚠️ PROVISIONAL / IN-CONTAINER — NOT HPC (HPC down; same caveat as the theta5s/bench5
 # campaigns). Re-confirm on HPC before any paper number.
 run_name,mCloud,sfe,nCore,coverFraction,cooling_boost_fmix,include_PHII,PISM,stop_t,exit_code,duration_s,n_snap,t_final,phase_final,R2_final,rShell_final,quotable
-1e4_sfe010_n5e2_PL0_noPHII_coolingBoostFmix1p0_coverFraction1p0,,,,,,,,,,,140,0.04716791866340765,implicit,1.9558380597192315,2.0012332383259404,False
-1e4_sfe010_n5e2_PL0_yesPHII_coolingBoostFmix1p0_coverFraction1p0,,,,,,,,,,,150,0.08881347058406702,implicit,2.8380214650311983,2.90753110593941,False
+1e4_sfe010_n5e2_PL0_noPHII_coolingBoostFmix1p0_coverFraction1p0,,,,,,,,,0,1677,225,3.0,implicit,56.50346320037213,61.95246320035943,True
+1e4_sfe010_n5e2_PL0_noPHII_coolingBoostFmix4p0_coverFraction1p0,,,,,,,,,,,90,0.0026708748274419766,energy,0.3729690090569128,0.3766052906249057,False
+1e4_sfe010_n5e2_PL0_yesPHII_coolingBoostFmix1p0_coverFraction1p0,,,,,,,,,0,1592,225,3.0,implicit,56.880806694847934,62.31380669483527,True
 1e5_sfe001_n5e2_PL0_noPHII_coolingBoostFmix1p0_coverFraction1p0,,,,,,,,,0,1372,229,3.0,implicit,35.351806374864765,41.27580637485096,True
 1e5_sfe001_n5e2_PL0_yesPHII_coolingBoostFmix1p0_coverFraction1p0,,,,,,,,,,,226,2.8835567677824203,implicit,34.11413530073446,39.59253530072169,False
