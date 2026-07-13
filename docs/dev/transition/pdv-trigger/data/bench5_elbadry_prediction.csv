@@ -1,0 +1,7 @@
+# REGISTERED (sim-free, pre-calibration) El-Badry theta prediction per bench5 config — the non-circular Phase-5 support (SOURCE_TERM_DESIGN §3 Phase 5). theta_EB = X/(2.2+X), X=A_mix*sqrt(ldv*n), El-Badry Eq 37/38 via make_elbadry_theta.py. n = bench n_bar_H (LANCASTER_REFERENCE §7b); ldv=3 adopted. Flag-only late-time check, NOT a pass/fail bar. L21b band Theta in [0.90, 0.99].
+bench,mCloud_Msun,R_cloud_pc,n_bar_H,eps_star,t_ff_Myr,theta_EB_ldv3_Amix3p5,theta_EB_ldv1_Amix3p5,theta_EB_ldv3_Amix1p7,in_L21b_band
+bench1_m5e4_r20,5e+04,20.0,43.1,0.1,6.63,0.9476,0.9126,0.8978,True
+bench2_m1e5_r10,1e+05,10.0,690,0.1,1.66,0.9864,0.9766,0.9723,True
+bench3_m1e5_r5,1e+05,5.0,5.52e+03,0.1,0.585,0.9951,0.9916,0.9900,False
+bench4_m1e5_r2p5,1e+05,2.5,4.42e+04,0.1,0.207,0.9983,0.9970,0.9965,False
+bench5_m5e5_r2p5,5e+05,2.5,2.28e+05,0.01,0.0911,0.9992,0.9987,0.9984,False

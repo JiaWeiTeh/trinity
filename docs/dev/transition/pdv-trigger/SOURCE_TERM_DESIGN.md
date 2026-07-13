@@ -47,8 +47,17 @@ maintainer had no HPC access, the full 81-arm matrix was run in Claude's ephemer
 **Headline: collapse-law p=3.330 CONFIRMS the registered prediction p_source≈3.3; both controls
 (`fail_repro`, `small_1e6`) stay cold at every fA; 3-class structure (fires-unmodified / needs-f_A /
 control).** These numbers are ASSUMED (in-container, not HPC) — the full matrix must still be re-run on
-`run_theta5s.sbatch` and everything downstream re-checked (§15e mandatory action). **Phases 5–6 ⬜ open**
-(see the handoff block below). Two review agents audited this plan on 2026-07-06 (config-coverage audit;
+`run_theta5s.sbatch` and everything downstream re-checked (§15e mandatory action). **Phase 5 🟡 PARTIAL / PROVISIONAL, Phase 6 ⬜ open**
+(see the handoff block below). **Re-entry 2026-07-12: pre-step ✅ (`§15g`, Table-1 [V]-verified, 60 params
+frozen); then the maintainer ruled IN-CONTAINER (HPC down) and the 60-arm campaign COMPLETED —
+`FINDINGS.md §15h`: 60/60 ran, 59 compliant (1 dense diag wall-killed, non-critical). FIRE MAP threshold
+1→4→12→>16→>16 as n̄ falls 2.28e5→4.42e4→5520→690→43 (bench5 fires UNMODIFIED, bench3 at f_A≥12, bench2/bench1
+NOFIRE ≤16). Θ_cum L21b calibration (diagnostic arms, all complete; diffuse benches blow out cleanly):
+bench3 enters the band [0.90,0.99] at f_A≈16 (Θ_cum 0.965); bench2/bench1 do NOT reach it even at f_A=16
+(max 0.54/0.40) → f_A >16 / ≫16; dex-vs-El-Badry never below 0.85. RESULT: no single global f_A reproduces
+L21b across density — the required boost climbs steeply toward low density (route-a boundary).** NEXT OPEN
+ITEM: **Phase 6 (ship decision) — three options in §15h.** **The ONLY HPC dependency is the theta5s
+Phase-4 confirmation (§15e) — see repo-root `temporary-HPC-runs.md`; bench5 is NOT on it.** Two review agents audited this plan on 2026-07-06 (config-coverage audit;
 literature-benchmark extraction) — their findings are integrated throughout and marked "(audit)" /
 "(lit)". **Phase 1 headline: the condensation-edge prediction (edges near θ≈1) was FALSIFIED in the
 SAFE direction — no dMdt≤0 edge exists for f_A even at 512 (16× the physical range); the source knob
@@ -66,7 +75,11 @@ structurally cannot reach the f_κ condensation crash. All 9 configs now have of
 multiplies the net radiative source inside the bubble-structure ODE + the resolved interface losses, only
 in the interface band (T < 10^5.5 K). Wired at 2 edit sites in
 `trinity/bubble_structure/bubble_luminosity.py` + a registry ParamSpec/validator in
-`trinity/_input/registry.py`; test `test/test_fA_source_boost.py`. Gate proven: default is LITERAL
+`trinity/_input/registry.py`; test `test/test_fA_source_boost.py`.
+**(Line-ref drift, re-verified 2026-07-12:** the wiring now lives at `bubble_luminosity.py:435-436`
+(RHS `dudt` band-multiply), `:845-848` (L₂/L₃ component scaling), `:65` (`_T_INTERFACE_BAND`) — the
+`:416/:811/:59` in the Phase-2 provenance block + `FINDINGS §15b` are the as-landed 2026-07-06 numbers;
+code shifted, wiring unchanged and verified present.) Gate proven: default is LITERAL
 byte-identical (pre==postA==postB `dictionary.jsonl` sha256). It is the physically-correct successor to
 the output-side `f_mix` multiplier and the solver-breaking `f_κ` (§1–2).
 
@@ -81,15 +94,21 @@ law p=3.330 (rms 0.055 dex) CONFIRMS the registered prediction p_source≈3.3; d
 with f_A matrix-wide (Eq-47 sign — the measurement f_mix cannot produce).** FIRE = the run actually
 fired the trigger (STRICTER than θ_max≥0.95 — quote the CSV's FIRED/NOFIRE).
 
-**Next steps (Phases 5–6 + HPC):**
-1. **HPC confirmation (§15e mandatory).** Re-run the full matrix on HPC via `runs/run_theta5s.sbatch`
+**Next steps (Phase 6 + HPC):** *(2026-07-12, latest: Phase-5 pre-step ✅ (`§15g`); in-container
+campaign COMPLETE (`§15h`) → 60/60 ran, 59 compliant (1 dense diag wall-killed). FIRE MAP threshold
+1→4→12→>16→>16; Θ_cum L21b calibration done — bench3 enters the band at f_A≈16, bench2/bench1 need >16/≫16;
+no single global f_A reproduces L21b (route-a boundary). Machinery to re-run if needed: OUT=`$SCRATCH/bench5_out`,
+`python runs/run_bench5_local.py --out OUT --workers 3 --per-arm-timeout 7200 --summary runs/data/bench5_summary.csv`
++ `bash runs/autocommit_bench5.sh OUT`; analyze `python data/make_bench5_analysis.py`.)*
+1. **HPC — the ONE mandatory item: theta5s (§15e) confirmation.** Re-run via `runs/run_theta5s.sbatch`
    (authoritative); re-check fire map, p=3.33, both controls, dMdt (`runs/harvest_dmdt_suppression.py`),
-   Phases 5–6, and any paper number against it. HPC wins any disagreement.
-2. **Phase 5 — literature calibration (§3 Phase 5).** bench5 Lancaster/El-Badry: an f_A value is "good"
-   if it yields similar θ at similar time to the published bubble sims. Configs + benchmarks in §3.
-3. **Phase 6 — decision (§3 Phase 6).** Does f_A ship as the transition-trigger fix? Feed the 3-class
-   result + p=3.33 + controls into the decision tree.
-4. Paper: the p_source≈3.3 collapse law + the 3-class fire map are the f_A story.
+   any paper number — HPC wins any disagreement. **Checklist + commands in repo-root
+   `temporary-HPC-runs.md`.** **bench5 is NOT an HPC item** — maintainer ruled it in-container (done).
+2. **Phase 6 — decision (§3 Phase 6) [NEXT OPEN ITEM].** Does f_A ship as the transition-trigger fix? Phase-5
+   measured that a single global f_A cannot reproduce L21b across density; the three options are in `§15h`
+   (density-dependent f_A(n̄) / ship route-a boundary / do not ship). Feed the 3-class theta5s result +
+   p=3.33 + controls + the bench5 Θ_cum calibration into the decision tree.
+3. Paper: the p_source≈3.3 collapse law + the 3-class fire map + the L21b bench5 calibration are the f_A story.
 
 **In-container run machinery (FALLBACK only; authoritative path is the HPC sbatch).** Committed & reusable:
 `runs/run_theta5s_local.py` (resumable runner, 2h/arm), `runs/autocommit_theta5s.sh` (repo committer,
@@ -153,7 +172,9 @@ live in the diffusion coefficient; that is why it lives in the source.
 > Status line and phase checkboxes.
 
 Maintainer-only inputs (the executor must ask, not guess): HPC sbatch submission + sync (Phases
-4–5), the L21b Table-1 values (Phase 5 pre-step), and the rulings in Phase 6.
+4–5), ~~the L21b Table-1 values (Phase 5 pre-step)~~ **(delivered in-chat 2026-07-12 →
+`LANCASTER_REFERENCE.md §7b`)**, the L21b §2 wind parameters V_w/Ṁ_w (only if Eq-10 theory
+overlays are wanted), and the rulings in Phase 6.
 
 ## 1. Design rationale (settled 2026-07-06 — do not relitigate; §2 is the evidence)
 
@@ -468,7 +489,7 @@ Headline question: does a single f_A fire **7/7 fireable** configs (the multipli
 standard was [4, 4.5] at 7/7) while both controls pass *unchanged*? **Never tune f_A to make the
 controls fire — that would itself be a bug.**
 
-### Phase 5 ⬜ — literature calibration: matched-config benchmarks (lit agent, 2026-07-06)
+### Phase 5 ✅ — literature calibration: matched-config benchmarks (pre-step ✅ + 60 params frozen `§15g`; in-container run COMPLETE 60/60, 59 compliant, fire map + Θ_cum L21b calibration `§15h` 2026-07-12)
 
 The maintainer's criterion: *an f_A value is working well if it produces similar θ at similar
 time for a cloud config found in published bubble simulations.* Primary anchor: **Lancaster
@@ -478,27 +499,34 @@ Secondary: El-Badry+19 closed form (shape/asymptote check, off-regime at n ≤ 1
 CEM pair (winds+radiation+B direction-of-bias bracket; also the precedent — semi-analytic vs 3D
 RMHD scored at ~25%).
 
-**⚠ Pre-step (blocking):** the mapping below rests on suite details recovered by web search
-(M_* = 5000 M⊙; V_w = 3230/1759 km/s; exact M–R pairings) — **verify against the L21b PDF
-Table 1 and add to `LANCASTER_REFERENCE.md`** (imprint protocol) before freezing the .params.
-**Fallback if PDFs are unreachable in the environment (they were on 2026-07-06 — proxy blocks
-non-GitHub):** ask the maintainer to supply Table 1 (values needed: M_*, V_w, the M–R pairings),
-or freeze the .params from the search-snippet values above with an explicit [I]-grade provenance
-note in `runs/params/bench5/README` — do NOT silently treat them as verified.
+**✅ Pre-step DONE (2026-07-12):** the maintainer supplied the L21b Table-1 excerpts (Table 1 +
+Eq 8–11 + Fig 17) directly in-chat; the verified transcription + consistency checks (μ_H=1.4
+reproduces every R_cl; v_t = the α_vir=2 virial velocity, all 12 rows; t_ff matches) now live in
+**`LANCASTER_REFERENCE.md §7b`** (imprint protocol — reference that, not the chat). **Two corrections
+to the draft mapping below: (1) the search-snippet "M_* = 5000 M⊙ fixed" was FALSIFIED** — Table-1's
+Notes fix the *ratio* ε_* ≡ M_*/M_cloud ∈ {0.01, 0.1, 1}, so the draft's `sfe=0.05` for the three
+1e5 benches matched no published model → corrected to ε_*=0.1. **(2) exact mapping** replaces
+`mCloud=M_cl, sfe=ε_*`: TRINITY's mCloud is pre-SFE (cluster is *taken out of* it) while L21b *adds*
+the star particle to an M_cl gas cloud, so freeze **mCloud = M_cl·(1+ε_*), sfe = ε_*/(1+ε_*)** ⇒
+post-SF gas = M_cl at nCore = n̄_H (rCloud = R_cl exactly), mCluster = ε_*·M_cl exactly. **V_w remains
+[I]-grade** (not in the excerpts; not needed for the .params — only for Eq-10 theory overlays).
 
-**Benchmark configs** (5 bespoke `.param`s, `runs/params/bench5/` — flat profile `densPL`
-α=0 ⇒ nCore = n̄ exactly; sfe = 5000/M_cl; check `rCloud_max` plausibility validation passes):
+**Benchmark configs** (5 bespoke `.param`s, `runs/params/bench5/`, generator
+`runs/make_bench5_params.py` — flat profile `densPL` α=0 ⇒ nCore = n̄ exactly; `rCloud_max`
+plausibility validated at emit time; corrected mapping frozen 2026-07-12):
 
-| L21b model (M_cl, R_cl) | n̄_H | t_ff | TRINITY mapping |
+| L21b model (M_cl, R_cl, ε_*) | n̄_H (Table 1) | t_ff | TRINITY mapping (exact) |
 |---|---:|---:|---|
-| 5e4 M⊙, 20 pc | ≈43 | ≈6.6 Myr | mCloud 5e4, nCore 43, sfe 0.1 |
-| 1e5 M⊙, 10 pc | ≈690 | ≈1.7 Myr | mCloud 1e5, nCore 6.9e2, sfe 0.05 |
-| 1e5 M⊙, 5 pc | ≈5.5e3 | ≈0.6 Myr | mCloud 1e5, nCore 5.5e3, sfe 0.05 |
-| 1e5 M⊙, 2.5 pc | ≈4.4e4 | ≈0.2 Myr | mCloud 1e5, nCore 4.4e4, sfe 0.05 |
-| 5e5 M⊙, 2.5 pc | ≈2.2e5 | ≈0.09 Myr | mCloud 5e5, nCore 2.2e5, sfe 0.01 |
+| 5e4 M⊙, 20 pc, 0.1 | 43.1 | 6.63 Myr | mCloud 5.5e4, nCore 43.1, sfe 0.1/1.1 |
+| 1e5 M⊙, 10 pc, 0.1 | 690 | 1.66 Myr | mCloud 1.1e5, nCore 690, sfe 0.1/1.1 |
+| 1e5 M⊙, 5 pc, 0.1 | 5520 | 0.59 Myr | mCloud 1.1e5, nCore 5520, sfe 0.1/1.1 |
+| 1e5 M⊙, 2.5 pc, 0.1 | 44,200 | 0.21 Myr | mCloud 1.1e5, nCore 4.42e4, sfe 0.1/1.1 |
+| 5e5 M⊙, 2.5 pc, 0.01 | 228,000 | 0.09 Myr | mCloud 5.05e5, nCore 2.28e5, sfe 0.01/1.01 |
 
 Run the bespoke params — the standard band members are only loose stand-ins (mass/density
-mismatches up to 200×).
+mismatches up to 200×). (Fig 17 gives a *direct published 1−Θ(t) track* for bench-2 (1e5, 10 pc,
+ε0.1); the 1e5/20 pc model also has one and is a cheap candidate bench-6 if wanted —
+`LANCASTER_REFERENCE.md §7b`.)
 
 **Protocol.** Per benchmark × f_A ∈ {1, 4, 6, 8, 12, 16} (+ the Phase-4 winner), `stop_t 5`:
 two arms — (a) **diagnostic** with the cooling trigger disabled via
@@ -510,8 +538,10 @@ explicit shell-formation time), min(3 Myr, t(R2=R_cloud), stop_t)] — the 3 Myr
 `Lmech_total` ≈ L_wind so the Θ definitions align (SB99 SNe start ~3–4 Myr); if the SB99 reader
 exposes the wind-only channel, prefer θ_w = Lloss/L_wind and drop the cap.
 
-**Metrics & pass bands** (compute both statistics — L21b's headline Θ is *cumulative*, TRINITY's
-θ is *instantaneous*):
+**Metrics & pass bands** (compute both statistics; **corrected 2026-07-12**: the excerpt-verified
+Fig-17 Θ ≡ Ė_cool/ℒ_w is an *instantaneous rate ratio* like TRINITY's θ — the earlier "L21b's headline
+Θ is cumulative" hedge was wrong, but Θ_cum stays as metric 1: it is the robust, censoring-tolerant
+statistic and the energy-conservation-measured "fraction of input wind energy" reading of Fig 17):
 1. Θ_cum(t_end) = ∫_W L_loss dt / ∫_W L_mech dt ∈ **[0.9, 0.99]** — THE primary pass band; a
    benchmark passes iff Θ_cum is in-band (Phase 6 references this criterion, stated only here).
    Bench-1 caveat (t_ff ≈ 6.6 Myr): all matched epochs collapse to the single 3 Myr cap, so
@@ -594,9 +624,10 @@ L24); Tan, Oh & Gronke 2021 (MNRAS 502, 3179); Lancaster+21a/b (ApJ 914, 89/90),
 Rogers & Pittard 2013 (MNRAS 431, 1337). Consistency-only (never fit targets): Fierlinger+16;
 Geen+21/23. Numerical-mixing caution for 3D-calibrated factors: Gentry & Krumholz 2019.
 ⚠️ Unverified-number flags: Weaver appendix eq. numbers/near-edge coefficient; CM77 saturation
-exponent (−5/6 vs −5/8); El-Badry exact κ₀; **L21b Table-1 details (M_*, V_w, M–R pairings) —
-abstract/search-level only; PDF-verify before Phase 5** (this environment's proxy blocks
-non-GitHub fetches; [V] there means search-snippet confirmation).
+exponent (−5/6 vs −5/8); El-Badry exact κ₀; ~~L21b Table-1 details~~ **RESOLVED 2026-07-12:
+Table-1 (M–R–n̄–v_t suite + ε_* ∈ {0.01, 0.1, 1}), Θ ≡ Ė_cool/ℒ_w, and Eq 8–11 are now [V]-verified
+from maintainer-supplied excerpts (`LANCASTER_REFERENCE.md §7b`); the snippet "M_*=5000 fixed" was
+falsified there. V_w alone stays [I]-grade (not in the excerpts).**
 
 ## 6. Sibling reconciliation (keep true on every edit)
 
@@ -611,4 +642,5 @@ non-GitHub fetches; [V] there means search-snippet confirmation).
 - `REPRODUCE.md` #36 (screen); add rows as Phase 1/4/5 artifacts land.
 - `KAPPA_EFF_SCOPING.md §6.2`, `KMIX_SELFCONSISTENT.md §2/§3`, `KAPPA_FREEZE_MECHANISM.md §7` —
   pointer patches (landed 2026-07-06).
-- `LANCASTER_REFERENCE.md` — owes the Table-1 verification (Phase 5 pre-step).
+- `LANCASTER_REFERENCE.md` — Table-1 verification DELIVERED (§7b, 2026-07-12); still owes V_w if
+  Eq-10 theory overlays are ever wanted.

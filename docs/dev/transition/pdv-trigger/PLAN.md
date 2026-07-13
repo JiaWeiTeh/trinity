@@ -99,6 +99,37 @@ folder) — do **not** re-run the hours-long sims to recover them; reproduce onl
 > (Phase 6):** whether f_A supersedes `multiplier` as the production mechanism — decided AFTER Phase 5
 > (bench5 Lancaster/El-Badry calibration) + the HPC confirmation of the in-container matrix. Do not read
 > the 2026-07-01/02 verdict above as the final mechanism ruling.
+>
+> ↳ **Re-entry 2026-07-12 (`FINDINGS.md §15f`) — Phase 5 was BLOCKED on the L21b Table-1 maintainer
+> input** (pre-step re-verified unreachable: proxy 403 on arXiv/IOP/NSF-PAR; WebSearch = snippets only);
+> nothing frozen or run at that point, only the f_A wiring line-ref drift-fix
+> (`bubble_luminosity.py:435/845/65`).
+> **↳ RESOLVED same-day (`FINDINGS.md §15g`):** the maintainer supplied the Table-1/Eq-8–11/Fig-17
+> excerpts in-chat. Verified + imprinted (`LANCASTER_REFERENCE.md §7b`): μ_H=1.4 ⇒ n̄_H is TRINITY's
+> nCore convention; v_t = the α_vir=2 virial velocity (12/12 rows); **"M_*=5000 fixed" FALSIFIED**
+> (ε_* ∈ {0.01,0.1,1} → the spec's sfe=0.05 benches matched no published model, corrected to ε0.1);
+> §7's Eq-10 transcription corrected. **60 bench5 params frozen** (`runs/make_bench5_params.py`,
+> exact mapping mCloud=M_cl(1+ε)/sfe=ε/(1+ε), emit gates + end-to-end read_param check).
+> **↳ IN-CONTAINER RUN — COMPLETE (`FINDINGS.md §15h`, 2026-07-12):** maintainer ruled **all 60 bench5
+> arms run IN-CONTAINER** ("just run the 60 in-container — it's definitely doable; anything within 2 h is
+> runnable"). Campaign done (`runs/{run,harvest,checkpoint}_bench5*.py` + `autocommit_bench5.sh`) at
+> `--per-arm-timeout 7200` (2 h/arm): **60/60 ran, 59 compliant** (1 dense diag wall-killed, non-critical).
+> **FIRE MAP** (production arms): threshold **1 → 4 → 12 → >16 → >16** as n̄ falls 2.28e5→4.42e4→5520→690→43
+> — bench5 fires UNMODIFIED, bench3 at f_A≥12, bench2/bench1 NOFIRE ≤16. **Θ_cum L21b calibration** (diagnostic
+> arms, all complete; diffuse benches blow out cleanly = the L21b breakout window): bench3 enters the band
+> [0.90,0.99] at **f_A≈16** (Θ_cum 0.965); bench2/bench1 do NOT reach it even at f_A=16 (max 0.54/0.40) →
+> **f_A >16 / ≫16**. dex-vs-El-Badry never below 0.85. **Result: no single global f_A reproduces L21b across
+> density; the required boost climbs steeply toward low density — the route-a boundary.** **Next open: Phase 6
+> (ship decision) — see §15h for the three options.**
+>
+> ### ⚠️⚠️ WHAT REQUIRES HPC/HELIX (be explicit — maintainer directive 2026-07-12) ⚠️⚠️
+> **Exactly ONE item needs HPC: the theta5s Phase-4 CONFIRMATION** (`FINDINGS.md §15e`). The 81-arm
+> theta5s matrix was run in Claude's ephemeral container (HPC was down) and is **PROVISIONAL** — p=3.330,
+> the controls, the 3-class result, and the dMdt trend must be reproduced on Helix (`sbatch
+> runs/run_theta5s.sbatch`; params committed) before any theta5s number is authoritative/paper-ready.
+> **bench5 (Phase 5) does NOT require HPC** — it is being run in-container per the ruling above. The
+> maintainer-facing checklist with exact commands is the repo-root file **`temporary-HPC-runs.md`**
+> (created 2026-07-12; the maintainer deletes it after running). Do not add bench5 to the HPC list.
 
 *This single block (+ the dated f_A addendum) replaces the older layered ⭐/⚡/⚡⚡ synthesis. It reflects
 the grand view across `ELBADRY_REFERENCE.md`, `LANCASTER_REFERENCE.md`, `F_KAPPA_FUNCTIONAL_FORM.md`, and

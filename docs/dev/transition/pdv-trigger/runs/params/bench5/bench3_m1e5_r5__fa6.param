@@ -1,0 +1,12 @@
+model_name             bench3_m1e5_r5__fa6
+mCloud                 110000
+nCore                  5520
+rCore                  1
+sfe                    0.09090909090909091
+dens_profile           densPL
+densPL_alpha           0
+stop_t                 5
+cooling_boost_fA       6
+log_console            False
+log_file               True
+path2output            outputs/bench5/bench3_m1e5_r5__fa6
