@@ -162,10 +162,9 @@ CSVs, each with a provenance stamp + exact command); the maintainer mirrors the 
 1. ~~Provide the param file~~ **RESOLVED 2026-07-13** — supplied, committed at
    `docs/dev/rosette-cf/rosette_cf_survey_PISM1e5_fmix.param`, expansion verified 72/0-invalid
    (§2.1).
-2. Cell grouping: the brief says min-χ² Cf per "(nCore, fmix, P_HII) cell"; the cells CSV keys
-   on (mass-pair, nCore, fmix, P_HII) — 24 cells of 3 — since lumping the two mass-pairs would
-   mix physically different clouds. Coarser grouping is a trivial post-hoc aggregation; confirm
-   which the paper wants.
+2. ~~Cell grouping~~ **RESOLVED 2026-07-13** — maintainer confirmed **per mass-pair**: cells key
+   on (mass-pair, nCore, fmix, P_HII), 24 cells of 3 Cf, exactly what
+   `harness/match_cf_scan.py` (`CELL_KEYS`) already implements. No change needed.
 3. Confirm the §4 policy transcription against the frozen `observables.py`, and whether the
    frozen `match_runs.py` will be available in the Phase-2 container.
 4. Probe-arm choice (densest nCore, Cf=1.0, both fmix) assumes dense+sealed is the long pole —
