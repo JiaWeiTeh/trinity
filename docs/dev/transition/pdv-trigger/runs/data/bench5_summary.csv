@@ -2,6 +2,7 @@
 # ⚠️ PROVISIONAL / IN-CONTAINER — NOT HPC (HPC was down 2026-07-12). In-container-vs-HPC numerical fidelity unverified; re-confirm on HPC before any paper number. FIRE = actually fired cooling_balance (see fired_cooling_balance), stricter than theta_max>=0.95. Production arms fire/fate; *_diag arms (transition_trigger=blowout) give uncensored theta(t).
 run_name,theta_max,t_at_theta_max,theta_first,n_impl,t_final,phase_final,reached_momentum,fired_cooling_balance,outcome,detail
 bench1_m5e4_r20__fa12,0.5009015838363212,5.0,0.07056953216360949,173,5.0,implicit,False,False,stopping_time,Stopping time reached
+bench1_m5e4_r20__fa12_diag,0.4787582750963378,0.5959647390245375,0.07056953216360949,84,2.541760254337207,momentum,True,False,shell_dissolved,Shell dissolved
 bench1_m5e4_r20__fa16,0.563554843037243,5.0,0.08018428840230653,171,5.0,implicit,False,False,stopping_time,Stopping time reached
 bench1_m5e4_r20__fa16_diag,0.5025082087841242,0.6134423244468699,0.08018428840230653,84,2.55027673263715,momentum,True,False,shell_dissolved,Shell dissolved
 bench1_m5e4_r20__fa4,0.36689611770435593,0.6856811507607516,0.04525596200769247,173,5.0,implicit,False,False,stopping_time,Stopping time reached
