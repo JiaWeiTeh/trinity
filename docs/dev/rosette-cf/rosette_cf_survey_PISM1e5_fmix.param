@@ -1,0 +1,60 @@
+# ==============================================================================
+# Sweep Parameter File: Rosette Nebula — PISM=1e5, Cf x fmix x P_HII on/off
+# ==============================================================================
+#
+# Hybrid sweep. Two (mCloud, sfe) points bracketing NGC 2244's cluster mass
+# (1e5 @ 1% and 1e4 @ 10% -> ~1000 Msun cluster), gridded against nCore, the
+# covering fraction Cf, the resolved-cooling multiplier cooling_boost_fmix, and
+# P_HII on/off.
+#
+# Sweep axes (Cartesian product with the tuple):
+#   tuple(mCloud, sfe)   2   [1e5, 0.01] [1e4, 0.1]
+#   nCore                3   50, 1e2, 5e2
+#   coverFraction        3   0.70, 0.85, 1.0    (0.70 start .. 1.0 = sealed Weaver)
+#   cooling_boost_fmix   2   1 (baseline), 4
+#   include_PHII         2   True, False
+# => 2 x 3 x 3 x 2 x 2 = 72 runs.
+#
+# NOTE: cooling_boost_fmix only bites when cooling_boost_mode=multiplier (set).
+# SPS is left at the schema default (no sps_* block needed).
+#
+
+tuple(mCloud, sfe)    [1e5, 0.01] [1e4, 0.1]
+nCore    [50, 1e2, 5e2]
+PISM    [1e5]
+coverFraction    [0.70, 0.85, 1]
+include_PHII    [True, False]
+
+# Cooling boost
+cooling_boost_mode    multiplier
+cooling_boost_fmix    [1, 4]
+
+# =============================================================================
+# Fixed parameters (constant across all runs)
+# =============================================================================
+
+# Density profile
+dens_profile    densPL
+densPL_alpha   0
+
+# ISM and cloud
+nISM    1
+ZCloud    1
+
+# Termination
+allowShellDissolution    True
+stop_t_diss    1
+stop_r    None
+stop_t    3
+
+# Collapse
+coll_r    1
+
+# Allow expansion beyond cloud
+stop_at_rCloud_nSnap    None
+
+# Logging
+log_level    INFO
+
+# Output
+path2output    outputs/rosette_cf_survey_PISM1e5_fmix

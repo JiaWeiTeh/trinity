@@ -32,8 +32,9 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-07-13):** 🔵 Phase-1 plan + tooling committed (10 harness tests green); Phase-2
-execution BLOCKED on the maintainer providing the param file (§2) and approving this plan.
+**Status (2026-07-13):** 🔵 Phase-1 plan + tooling + param file committed (10 harness tests
+green; preflight verified: 72 combos, 0 implausible). Phase-2 execution awaits maintainer
+approval of this plan — the former param-file blocker is resolved (§2.1).
 
 ## 1. Goal & context
 
@@ -41,9 +42,12 @@ Helix (HPC) is down, so the 72-run Rosette Cf scan for the application paper run
 container — the same playbook as the theta5s (81/81) and bench5 (60/60) in-container campaigns
 (`docs/dev/transition/pdv-trigger/REPRODUCE.md` rows 41/43). Scan:
 **2 mass-pairs × 3 nCore × 3 Cf {0.70, 0.85, 1.0} × 2 cooling_boost_fmix {1, 4} × 2 P_HII = 72
-runs** at PISM=1e5, stop_t=3 Myr, from `param/rosette_cf_survey_PISM1e5_fmix.param`. Deliverable:
-the covering fraction Cf best matching the Rosette observables, per cell, with the
-`paper/rosette/PLAN.md` §0.3 sealed-baseline finding adjudicated first (§5), not tuned around.
+runs** at PISM=1e5, stop_t=3 Myr. The param file (maintainer-supplied 2026-07-13) is committed at
+**`docs/dev/rosette-cf/rosette_cf_survey_PISM1e5_fmix.param`** — mass-pairs (1e5, 1%) / (1e4, 10%)
+bracketing NGC 2244's ~1000 Msun cluster, nCore ∈ {50, 1e2, 5e2}, `cooling_boost_mode multiplier`
+so fmix bites. Deliverable: the covering fraction Cf best matching the Rosette observables, per
+cell, with the `paper/rosette/PLAN.md` §0.3 sealed-baseline finding adjudicated first (§5), not
+tuned around.
 
 ## 2. What this container verified vs. what it could NOT (blockers)
 
@@ -55,11 +59,12 @@ Verified against source @ `3b9be89`:
   within a step" — the grid's 0.70 is *below* that stated comfort band. Expect the integrator to
   be stressed there; a crashed 0.70 arm is a finding, not a tooling bug (it leaves the cell as a
   flagged 2-point fit, §6).
-- Sweep expansion of those five axes yields exactly 72 unique combos, and the output-folder
-  names DO encode the axes (checked by running `generate_combinations_from_config` on a synthetic
-  config): e.g. `1e5_sfe001_n5e3_PL0_yesPHII_coolingBoostFmix1_coverFraction0p7`. The
-  `--emit-jobs` manifest additionally carries every run's full params dict
-  (`trinity/_input/sweep_jobs.py`), so matching never parses folder names.
+- The committed param file expands to exactly 72 unique combos (verified with
+  `run.py ... --dry-run` and `--emit-jobs --dry-run`: 72 jobs, **0 implausible**), and the
+  output-folder names DO encode the axes:
+  e.g. `1e5_sfe001_n5e2_PL0_yesPHII_coolingBoostFmix1p0_coverFraction0p7`. The `--emit-jobs`
+  manifest additionally carries every run's full params dict (`trinity/_input/sweep_jobs.py`),
+  so matching never parses folder names.
 - `--emit-jobs` bundles use the same `.exit_code`/`.duration` sentinels as the bench5 pool, and
   emit-time validation (GMC plausibility) runs before anything is queued.
 
@@ -67,11 +72,13 @@ NOT verifiable here — **gitignored, local-only on the maintainer's machines**
 (`paper/CLAUDE.md`, `.gitignore`), so treat every statement about them in §4–§5 as transcribed
 from the 2026-07-13 task brief, not checked against source:
 
-1. **`param/rosette_cf_survey_PISM1e5_fmix.param` — HARD BLOCKER.** `param/*` is gitignored;
-   the file exists only on the maintainer's machine. Phase 2 cannot start until it is committed
-   (e.g. `git add -f`) or pasted into the session. Gate: its `--dry-run` must show exactly 72
-   combos, 0 implausible. Its mass-pairs/nCore/P_HII values are unknown here — this plan
-   deliberately encodes none of them.
+1. ~~**`param/rosette_cf_survey_PISM1e5_fmix.param` — HARD BLOCKER.**~~ **RESOLVED 2026-07-13**:
+   the maintainer supplied the file and it is committed at
+   `docs/dev/rosette-cf/rosette_cf_survey_PISM1e5_fmix.param` (campaign params live in the
+   workstream folder, the bench5 precedent — `param/*` stays gitignored). The gate passed:
+   `--dry-run` shows exactly 72 combos, `--emit-jobs --dry-run` reports 0 implausible. The
+   committed copy is CANONICAL for Phase 2; if the maintainer's local `param/` copy diverges,
+   reconcile before running.
 2. **`paper/rosette/PLAN.md`** (§0.3 pilot: best-fit Cf≈0.89 in one corner; §0.4 machinery;
    F-12 cavity-target conflict) — unreadable here; §5 encodes the brief's summary of it.
 3. **`paper/rosette/matching/{observables.py, match_runs.py}`** — the FROZEN matching policy.
@@ -84,13 +91,16 @@ from the 2026-07-13 task brief, not checked against source:
 
 0. **Env**: `pip install -r requirements.txt` (keep the `numpy<2` etc. pins);
    `pytest test/test_rosette_cf_harness.py -q` (10 tests) must pass.
-1. **Preflight**: `run.py <param> --dry-run` → expect 72/0-invalid, then
+1. **Preflight**: `python run.py docs/dev/rosette-cf/rosette_cf_survey_PISM1e5_fmix.param
+   --dry-run` → expect 72/0-invalid (re-confirm, already verified 2026-07-13), then
    `--emit-jobs "$WS/cf_jobs"`. Any invalid combo or count ≠ 72 → STOP, report, don't run.
 2. **Timing probes** (brief's requirement — the Helix ~1 h/run figure was for full-length runs;
-   stop_t=3 Myr runs are much shorter, so **measure, don't guess**): run the 2 densest-nCore,
-   Cf=1.0 arms (fmix 1 and 4) via `--only/--limit`, `--workers 1`. Set `--per-arm-timeout`
-   ≈ 6× the measured per-arm time; workers = 3 (bench5 default; raise only if probe time × 72 /
-   workers ≫ container window). Projected wall = probe-mean × 72 / workers.
+   stop_t=3 Myr runs are much shorter, so **measure, don't guess**): run the 2 densest-nCore
+   (5e2), Cf=1.0, both-fmix arms via
+   `--only '*1e5_sfe001_n5e2_PL0_yesPHII*coverFraction1p0'` (matches exactly those 2, verified),
+   `--workers 1`. Set `--per-arm-timeout` ≈ 6× the measured per-arm time; workers = 3 (bench5
+   default; raise only if probe time × 72 / workers ≫ container window). Projected wall =
+   probe-mean × 72 / workers.
 3. **Campaign**: the resumable pool (`harness/run_cf_scan_local.py`) over the bundle. Arm the
    `autocommit_cf_scan.sh` heartbeat **only if** projected wall > ~1.5 h (bench5's glue is
    load-bearing insurance for multi-window campaigns, dead weight for a sub-hour one); otherwise
@@ -149,8 +159,9 @@ CSVs, each with a provenance stamp + exact command); the maintainer mirrors the 
 
 ## 9. Open questions for maintainer review (answer before Phase 2)
 
-1. Provide `param/rosette_cf_survey_PISM1e5_fmix.param` (§2.1) — and confirm its expansion
-   matches §1's 72.
+1. ~~Provide the param file~~ **RESOLVED 2026-07-13** — supplied, committed at
+   `docs/dev/rosette-cf/rosette_cf_survey_PISM1e5_fmix.param`, expansion verified 72/0-invalid
+   (§2.1).
 2. Cell grouping: the brief says min-χ² Cf per "(nCore, fmix, P_HII) cell"; the cells CSV keys
    on (mass-pair, nCore, fmix, P_HII) — 24 cells of 3 — since lumping the two mass-pairs would
    mix physically different clouds. Coarser grouping is a trivial post-hoc aggregation; confirm
