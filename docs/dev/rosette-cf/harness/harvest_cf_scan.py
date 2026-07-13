@@ -10,18 +10,23 @@ and refreshes each arm's trajectory CSV — call it repeatedly (the autocommit h
    dir, so it needs no jobs bundle and works on the maintainer's machine too), exit code, duration,
    t_final, phase_final, final radii, quotable flag (exit_code==0; 📏 never quote a 124 arm).
 2. --traj-dir <dir>: per arm, <arm>.csv with every snapshot's (t_now, R2, v2, rShell,
-   current_phase) — the radii-only frozen matching policy needs exactly t/R2/rShell, so these
-   trajectories let the maintainer's frozen matcher (paper/rosette/matching/) be re-applied
-   offline even though the raw dictionary.jsonl stays ephemeral. Capped at 4000 rows by stride
+   current_phase) — a lightweight index for quick offline matching. Capped at 4000 rows by stride
    downsample keeping endpoints.
+3. --dicts-dir <dir>: per FINISHED arm, <arm>.jsonl.gz — the gzipped RAW dictionary.jsonl. This
+   is the actual Rosette deliverable: the maintainer reduces these later with their own tools. Raw
+   dicts are large (~10 MB/arm, ~26 KB/snapshot because each snapshot carries the full shell-
+   density arrays), so gzip (~2.7x here) is what keeps 72 of them committable. gunzip before
+   reducing. Idempotent (skips arms whose .gz is already current).
 
     python docs/dev/rosette-cf/harness/harvest_cf_scan.py "$WS"/outputs/rosette_cf_PISM1e5/* \
         --csv docs/dev/rosette-cf/data/cf_scan_PISM1e5_summary.csv \
-        --traj-dir docs/dev/rosette-cf/data/cf_scan_PISM1e5_traj
+        --traj-dir docs/dev/rosette-cf/data/cf_scan_PISM1e5_traj \
+        --dicts-dir docs/dev/rosette-cf/data/cf_scan_PISM1e5_dicts
 """
 
 import argparse
 import csv
+import gzip
 import json
 import math
 import sys
@@ -159,6 +164,31 @@ def write_traj(run_dir, traj_dir):
     return len(rows)
 
 
+def write_dict_gz(run_dir, dicts_dir):
+    """Gzip a FINISHED arm's raw dictionary.jsonl into <dicts_dir>/<arm>.jsonl.gz.
+
+    The raw dict is the actual Rosette deliverable (maintainer reduces it later); saving it
+    committed + gzipped is what survives the ephemeral container. Only arms with a .exit_code are
+    written (a dict still being appended to would be truncated). Idempotent: skips if the .gz is
+    already newer than the source, so the ~2-min heartbeat never re-gzips unchanged arms.
+    Returns bytes written (0 if skipped/absent).
+    """
+    run_dir = Path(run_dir)
+    src = run_dir / "dictionary.jsonl"
+    if not src.exists() or not (run_dir / ".exit_code").exists():
+        return 0
+    dicts_dir.mkdir(parents=True, exist_ok=True)
+    dst = dicts_dir / f"{run_dir.name}.jsonl.gz"
+    if dst.exists() and dst.stat().st_mtime >= src.stat().st_mtime:
+        return 0
+    data = src.read_bytes()
+    # mtime=0 -> deterministic gzip header (no embedded timestamp), so an unchanged dict
+    # produces a byte-identical .gz and does not create spurious git diffs.
+    with gzip.GzipFile(dst, "wb", mtime=0) as fh:
+        fh.write(data)
+    return dst.stat().st_size
+
+
 def _read_summary(path):
     if not path.exists():
         return {}
@@ -174,11 +204,12 @@ def main(argv):
     ap.add_argument("run_dirs", nargs="+")
     ap.add_argument("--csv", required=True, help="committed summary CSV (merged, not overwritten)")
     ap.add_argument("--traj-dir", help="committed per-arm trajectory dir")
+    ap.add_argument("--dicts-dir", help="committed dir for gzipped raw dictionary.jsonl per arm")
     args = ap.parse_args(argv)
 
     csv_out = Path(args.csv)
     merged = _read_summary(csv_out)
-    n_new = 0
+    n_new = n_dicts = 0
     for a in args.run_dirs:
         run_dir = Path(a)
         if not (run_dir / "dictionary.jsonl").exists():
@@ -190,6 +221,8 @@ def main(argv):
             n_new += 1
         if args.traj_dir:
             write_traj(run_dir, Path(args.traj_dir))
+        if args.dicts_dir and write_dict_gz(run_dir, Path(args.dicts_dir)):
+            n_dicts += 1
 
     csv_out.parent.mkdir(parents=True, exist_ok=True)
     rows = [merged[k] for k in sorted(merged)]
@@ -200,7 +233,10 @@ def main(argv):
         w.writeheader()
         w.writerows(rows)
     n_quot = sum(1 for r in rows if str(r.get("quotable")) == "True")
-    print(f"{len(rows)} arms in summary ({n_quot} quotable, {n_new} added/upgraded this pass)")
+    print(
+        f"{len(rows)} arms in summary ({n_quot} quotable, {n_new} added/upgraded, "
+        f"{n_dicts} dict.gz written this pass)"
+    )
 
 
 if __name__ == "__main__":

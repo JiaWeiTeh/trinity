@@ -6,8 +6,10 @@ ages in Myr within the 0-3 Myr stop_t window.
 """
 
 import csv
+import gzip
 import importlib.util
 import math
+import os
 from pathlib import Path
 
 import pytest
@@ -24,6 +26,7 @@ def _load(name):
 
 match_mod = _load("match_cf_scan")
 run_mod = _load("run_cf_scan_local")
+harvest_mod = _load("harvest_cf_scan")
 
 
 def _traj(t_final, dt=0.01):
@@ -124,6 +127,32 @@ def test_chi2_policy_constants_match_the_brief():
     assert (match_mod.RSHELL_TARGET, match_mod.RSHELL_ERR) == (19.0, 2.0)
     assert (match_mod.AGE_MIN, match_mod.AGE_MAX) == (1.5, 2.5)
     assert match_mod.chi2(8.0, 21.0, 7.0) == pytest.approx(1.0 + 1.0)
+
+
+def test_write_dict_gz_gates_on_exit_code_and_roundtrips(tmp_path):
+    run_dir = tmp_path / "arm1"
+    run_dir.mkdir()
+    payload = '{"t_now": 0.1, "R2": 4.2}\n{"t_now": 0.2, "R2": 4.5}\n'
+    (run_dir / "dictionary.jsonl").write_text(payload)
+    dicts = tmp_path / "dicts"
+
+    # no .exit_code yet -> arm still running -> nothing written (a partial dict would truncate)
+    assert harvest_mod.write_dict_gz(run_dir, dicts) == 0
+    assert not (dicts / "arm1.jsonl.gz").exists()
+
+    # finished -> written, and gunzips back to the exact bytes the maintainer will reduce
+    (run_dir / ".exit_code").write_text("0\n")
+    assert harvest_mod.write_dict_gz(run_dir, dicts) > 0
+    with gzip.open(dicts / "arm1.jsonl.gz", "rt") as fh:
+        assert fh.read() == payload
+
+    # idempotent: an unchanged dict is skipped on the next heartbeat tick
+    assert harvest_mod.write_dict_gz(run_dir, dicts) == 0
+    # a re-run (dict mtime clearly newer than the .gz) is refreshed
+    (run_dir / "dictionary.jsonl").write_text(payload + '{"t_now": 0.3, "R2": 4.9}\n')
+    newer = (dicts / "arm1.jsonl.gz").stat().st_mtime + 10
+    os.utime(run_dir / "dictionary.jsonl", (newer, newer))
+    assert harvest_mod.write_dict_gz(run_dir, dicts) > 0
 
 
 def test_matcher_end_to_end_writes_cells(tmp_path):
