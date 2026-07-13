@@ -89,7 +89,7 @@ def test_interp_at_stays_inside_range():
     assert rshell == pytest.approx(13 + 3 * 1.005)
 
 
-def test_runner_order_is_decision_first():
+def test_runner_order_is_completable_first():
     def arm(name, ncore, cf, fmix):
         return {
             "name": name,
@@ -97,14 +97,15 @@ def test_runner_order_is_decision_first():
         }
 
     arms = [
-        arm("diffuse_sealed", 5e3, 1.0, 1),
-        arm("dense_open", 1e5, 0.70, 1),
         arm("dense_sealed_f4", 1e5, 1.0, 4),
         arm("dense_sealed_f1", 1e5, 1.0, 1),
+        arm("dense_open", 1e5, 0.70, 1),
+        arm("diffuse_sealed", 5e3, 1.0, 1),
     ]
     ordered = [a["name"] for a in sorted(arms, key=run_mod.order_key)]
-    # dense nCore first; within it Cf=1.0 (the sealed §0.3 baseline) before open; fmix 1 before 4
-    assert ordered == ["dense_sealed_f1", "dense_sealed_f4", "dense_open", "diffuse_sealed"]
+    # completable-first: diffuse nCore first (cheap, banks fast under reclaim); within a density,
+    # leaky Cf before sealed; fmix 1 before 4 as a stable tiebreak.
+    assert ordered == ["diffuse_sealed", "dense_open", "dense_sealed_f1", "dense_sealed_f4"]
 
 
 def test_runner_skips_only_quotable_summary_rows(tmp_path):

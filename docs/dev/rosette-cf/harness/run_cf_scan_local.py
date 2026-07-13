@@ -43,11 +43,17 @@ REPO = HERE.parents[3]
 
 
 def order_key(run):
-    """Dense nCore first, then Cf descending (sealed Cf=1.0 §0.3 baselines first), fmix ascending."""
+    """Completable-first (the pdv-trigger lesson): fastest-to-terminate arms first, so the ephemeral
+    container banks the most finished dicts per window and a reclaim wastes only cheap arms — never a
+    ~30-min sealed one. The one timed probe (densest nCore=5e2 + sealed Cf=1.0) was the slow pole at
+    ~30 min, so we invert that corner: diffuse (low nCore) + leaky (low Cf) first; fmix ascending as
+    a stable tiebreak. (An earlier "decision-first" order ran the slow sealed baselines first — under
+    frequent reclaims that risks 0 arms ever completing; the goal here is all 72 dicts, so bank the
+    cheap ones first.)"""
     p = run.get("params", {})
     return (
-        -float(p.get("nCore", 0)),
-        -float(p.get("coverFraction", 0)),
+        float(p.get("nCore", 0)),
+        float(p.get("coverFraction", 0)),
         float(p.get("cooling_boost_fmix", 1)),
         run["name"],
     )
