@@ -24,6 +24,7 @@ EXEMPT = {
     "failed-large-clouds/harness/README.md",
     "magic-numbers/harness/README.md",
     "performance/harness/README.md",
+    "rosette-cf/harness/README.md",
     "shell-solver/harness/README.md",
     "transition/cleanroom/data/README.md",
     "transition/harness/README.md",
