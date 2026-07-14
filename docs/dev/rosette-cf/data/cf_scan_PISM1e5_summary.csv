@@ -1,4 +1,4 @@
-# generated 2026-07-14T06:16:52Z | builder harvest_cf_scan.py | code 5b8f3ad2+dirty
+# generated 2026-07-14T06:19:04Z | builder harvest_cf_scan.py | code 14d80c99+dirty
 # Rosette Cf scan (PISM=1e5, stop_t=3 Myr) cumulative summary, merged across container
 # restarts by harvest_cf_scan.py. quotable = exit_code==0 (a 124 arm was wall-killed: its
 # t_final is not a physics end — 📏 never quote its Cf). Per-arm trajectory CSVs in the
@@ -54,8 +54,9 @@ run_name,mCloud,sfe,nCore,coverFraction,cooling_boost_fmix,include_PHII,PISM,sto
 1e5_sfe001_n50_PL0_noPHII_coolingBoostFmix1p0_coverFraction1p0,,,,,,,,,0,1288,231,3.0,implicit,42.230765415472376,49.21996541545609,True
 1e5_sfe001_n50_PL0_noPHII_coolingBoostFmix4p0_coverFraction0p85,,,,,,,,,,,60,0.0017727664472762545,energy,0.42742771662252027,0.4288466694919673,False
 1e5_sfe001_n50_PL0_noPHII_coolingBoostFmix4p0_coverFraction1p0,,,,,,,,,0,1171,246,3.0,transition,29.22518375719069,123.29218375740206,True
-1e5_sfe001_n50_PL0_yesPHII_coolingBoostFmix1p0_coverFraction0p85,,,,,,,,,,,90,0.002672766447276257,energy,0.5472863618756317,0.5499273533159775,False
+1e5_sfe001_n50_PL0_yesPHII_coolingBoostFmix1p0_coverFraction0p85,,,,,,,,,0,1718,245,3.0,transition,24.534179847598427,109.22217984774726,True
 1e5_sfe001_n50_PL0_yesPHII_coolingBoostFmix1p0_coverFraction1p0,,,,,,,,,0,1233,231,3.0,implicit,42.68321525200385,49.901015251987026,True
+1e5_sfe001_n50_PL0_yesPHII_coolingBoostFmix4p0_coverFraction0p85,,,,,,,,,,,90,0.002672766447276257,energy,0.5472863618756317,0.5499273533159775,False
 1e5_sfe001_n50_PL0_yesPHII_coolingBoostFmix4p0_coverFraction1p0,,,,,,,,,0,1158,246,3.0,transition,29.580549611870435,124.33554961208509,True
 1e5_sfe001_n5e2_PL0_noPHII_coolingBoostFmix1p0_coverFraction0p7,,,,,,,,,0,1009,197,0.2859119580068019,momentum,1.5000000000000002,3.6018007052448544,True
 1e5_sfe001_n5e2_PL0_noPHII_coolingBoostFmix1p0_coverFraction0p85,,,,,,,,,0,1517,276,3.0,momentum,10.129455375036578,46.781055375018596,True
