@@ -1,4 +1,4 @@
-# generated 2026-07-14T06:54:38Z | builder harvest_cf_scan.py | code c692b35a+dirty
+# generated 2026-07-14T06:56:52Z | builder harvest_cf_scan.py | code 9809c931+dirty
 # Rosette Cf scan (PISM=1e5, stop_t=3 Myr) cumulative summary, merged across container
 # restarts by harvest_cf_scan.py. quotable = exit_code==0 (a 124 arm was wall-killed: its
 # t_final is not a physics end — 📏 never quote its Cf). Per-arm trajectory CSVs in the
@@ -57,9 +57,10 @@ run_name,mCloud,sfe,nCore,coverFraction,cooling_boost_fmix,include_PHII,PISM,sto
 1e5_sfe001_n50_PL0_noPHII_coolingBoostFmix1p0_coverFraction0p7,,,,,,,,,0,1036,222,1.0039248052020395,momentum,1.4999999999999987,3.3277603293649056,True
 1e5_sfe001_n50_PL0_noPHII_coolingBoostFmix1p0_coverFraction0p85,,,,,,,,,0,1533,251,3.0,momentum,24.195896622194812,108.25389662234063,True
 1e5_sfe001_n50_PL0_noPHII_coolingBoostFmix1p0_coverFraction1p0,,,,,,,,,0,1288,231,3.0,implicit,42.230765415472376,49.21996541545609,True
+1e5_sfe001_n50_PL0_noPHII_coolingBoostFmix4p0_coverFraction0p7,,,,,,,,,,,10,0.0002727664472762527,energy,0.15889250335563165,0.15902712942822725,False
 1e5_sfe001_n50_PL0_noPHII_coolingBoostFmix4p0_coverFraction0p85,,,,,,,,,0,958,231,1.3088879131690514,momentum,1.5000000000000007,3.2308798210190934,True
 1e5_sfe001_n50_PL0_noPHII_coolingBoostFmix4p0_coverFraction1p0,,,,,,,,,0,1171,246,3.0,transition,29.22518375719069,123.29218375740206,True
-1e5_sfe001_n50_PL0_yesPHII_coolingBoostFmix1p0_coverFraction0p7,,,,,,,,,,,90,0.002672766447276257,energy,0.5234846125854831,0.5265079921184619,False
+1e5_sfe001_n50_PL0_yesPHII_coolingBoostFmix1p0_coverFraction0p7,,,,,,,,,0,1140,224,1.1099934733465775,momentum,1.4999999999999991,3.2915026635107085,True
 1e5_sfe001_n50_PL0_yesPHII_coolingBoostFmix1p0_coverFraction0p85,,,,,,,,,0,1718,245,3.0,transition,24.534179847598427,109.22217984774726,True
 1e5_sfe001_n50_PL0_yesPHII_coolingBoostFmix1p0_coverFraction1p0,,,,,,,,,0,1233,231,3.0,implicit,42.68321525200385,49.901015251987026,True
 1e5_sfe001_n50_PL0_yesPHII_coolingBoostFmix4p0_coverFraction0p85,,,,,,,,,0,1071,236,1.4026183009189512,momentum,1.4999999999999993,3.2033962882082783,True
