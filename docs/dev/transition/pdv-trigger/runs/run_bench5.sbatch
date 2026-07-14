@@ -10,7 +10,9 @@
 #   harvest: python docs/dev/transition/pdv-trigger/runs/harvest_bench5.py "$WS"/outputs/bench5/* \
 #              --csv "$WS"/outputs/bench5_summary_hpc.csv --traj-dir "$WS"/outputs/bench5_traj_hpc
 #
-# --time=3:00:00: in-container 2 h/arm sufficed for 59/60; the one wall-killer
+# --time=1:30:00 (maintainer ruling 2026-07-13, same as theta5s): MEASURED evidence in
+# data/bench5_durations.csv — the longest COMPLIANT in-container arm took 3856 s (64 min) WITH
+# 3-worker contention, so 90 min on a dedicated Helix core is ample. The one wall-killer
 # (bench5_m5e5_r2p5__fa16_diag) froze at t=0.037 — stiffness, not walltime; if it wall-kills here
 # too, record it as the known non-critical freeze (§15h), do not chase with longer limits.
 # Post-harvest compliance: every arm t_final>=5 or a physics termination; report "N/60 compliant".
@@ -22,7 +24,7 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=2G
 #SBATCH --array=1-60
-#SBATCH --time=3:00:00
+#SBATCH --time=1:30:00
 #SBATCH --output=/gpfs/bwfor/work/ws/hd_cq295-trinity/jobs_bench5/logs/%A_%a.out
 
 module load devel/miniforge
