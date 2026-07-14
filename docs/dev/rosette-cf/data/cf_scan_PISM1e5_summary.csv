@@ -1,4 +1,4 @@
-# generated 2026-07-14T01:28:33Z | builder harvest_cf_scan.py | code f17fcc3d+dirty
+# generated 2026-07-14T01:30:39Z | builder harvest_cf_scan.py | code f7190416+dirty
 # Rosette Cf scan (PISM=1e5, stop_t=3 Myr) cumulative summary, merged across container
 # restarts by harvest_cf_scan.py. quotable = exit_code==0 (a 124 arm was wall-killed: its
 # t_final is not a physics end — 📏 never quote its Cf). Per-arm trajectory CSVs in the
@@ -15,12 +15,13 @@ run_name,mCloud,sfe,nCore,coverFraction,cooling_boost_fmix,include_PHII,PISM,sto
 1e4_sfe010_n5e2_PL0_yesPHII_coolingBoostFmix1p0_coverFraction0p7,,,,,,,,,0,877,188,0.24290941615099984,momentum,1.5,3.5352657807071477,True
 1e4_sfe010_n5e2_PL0_yesPHII_coolingBoostFmix1p0_coverFraction0p85,,,,,,,,,0,1872,275,2.3643865067535166,momentum,22.963153869067263,53.10515386903251,True
 1e4_sfe010_n5e2_PL0_yesPHII_coolingBoostFmix1p0_coverFraction1p0,,,,,,,,,0,1592,225,3.0,implicit,56.880806694847934,62.31380669483527,True
-1e4_sfe010_n5e2_PL0_yesPHII_coolingBoostFmix4p0_coverFraction0p7,,,,,,,,,,,50,0.0014708748274419737,energy,0.24955192085017644,0.25252505842255246,False
+1e4_sfe010_n5e2_PL0_yesPHII_coolingBoostFmix4p0_coverFraction0p7,,,,,,,,,0,136,141,0.17685306559359298,momentum,0.9806654635530426,1.6089001441037316,True
 1e4_sfe010_n5e2_PL0_yesPHII_coolingBoostFmix4p0_coverFraction0p85,,,,,,,,,0,1069,244,3.0,momentum,15.307652191401253,37.266652191408646,True
 1e4_sfe010_n5e2_PL0_yesPHII_coolingBoostFmix4p0_coverFraction1p0,,,,,,,,,0,1758,251,3.0,transition,47.52098197704891,66.13798197701713,True
 1e5_sfe001_n5e2_PL0_noPHII_coolingBoostFmix1p0_coverFraction0p7,,,,,,,,,,,90,0.0026708748274419766,energy,0.3233193877448269,0.3290490589560909,False
 1e5_sfe001_n5e2_PL0_noPHII_coolingBoostFmix1p0_coverFraction0p85,,,,,,,,,0,1517,276,3.0,momentum,10.129455375036578,46.781055375018596,True
 1e5_sfe001_n5e2_PL0_noPHII_coolingBoostFmix1p0_coverFraction1p0,,,,,,,,,0,1372,229,3.0,implicit,35.351806374864765,41.27580637485096,True
+1e5_sfe001_n5e2_PL0_noPHII_coolingBoostFmix4p0_coverFraction0p7,,,,,,,,,,,30,0.0008708748274419726,energy,0.1966575373651743,0.19819421319897354,False
 1e5_sfe001_n5e2_PL0_noPHII_coolingBoostFmix4p0_coverFraction0p85,,,,,,,,,0,1197,246,3.0,momentum,7.321326711615642,29.023326711627046,True
 1e5_sfe001_n5e2_PL0_noPHII_coolingBoostFmix4p0_coverFraction1p0,,,,,,,,,0,1126,275,3.0,momentum,9.996668163369247,45.8914681633548,True
 1e5_sfe001_n5e2_PL0_yesPHII_coolingBoostFmix1p0_coverFraction0p7,,,,,,,,,,,70,0.002070874827441975,energy,0.2909050287941701,0.29530562917344366,False
