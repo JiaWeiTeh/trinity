@@ -1,4 +1,4 @@
-# generated 2026-07-14T02:23:22Z | builder harvest_cf_scan.py | code 922cd119+dirty
+# generated 2026-07-14T02:25:29Z | builder harvest_cf_scan.py | code 735fcfb4+dirty
 # Rosette Cf scan (PISM=1e5, stop_t=3 Myr) cumulative summary, merged across container
 # restarts by harvest_cf_scan.py. quotable = exit_code==0 (a 124 arm was wall-killed: its
 # t_final is not a physics end — 📏 never quote its Cf). Per-arm trajectory CSVs in the
@@ -6,10 +6,11 @@
 # ⚠️ PROVISIONAL / IN-CONTAINER — NOT HPC (HPC down; same caveat as the theta5s/bench5
 # campaigns). Re-confirm on HPC before any paper number.
 run_name,mCloud,sfe,nCore,coverFraction,cooling_boost_fmix,include_PHII,PISM,stop_t,exit_code,duration_s,n_snap,t_final,phase_final,R2_final,rShell_final,quotable
+1e4_sfe010_n1e2_PL0_noPHII_coolingBoostFmix1p0_coverFraction0p85,,,,,,,,,,,90,0.0026719561736288375,energy,0.46678949197259595,0.46979464008887456,False
 1e4_sfe010_n1e2_PL0_noPHII_coolingBoostFmix1p0_coverFraction1p0,,,,,,,,,0,1429,227,3.0,implicit,56.42118851729435,61.832188517281736,True
 1e4_sfe010_n1e2_PL0_noPHII_coolingBoostFmix4p0_coverFraction1p0,,,,,,,,,0,1371,246,3.0,transition,46.26136614812828,67.725366148103,True
 1e4_sfe010_n1e2_PL0_yesPHII_coolingBoostFmix1p0_coverFraction1p0,,,,,,,,,0,1560,227,3.0,implicit,56.75145633733701,62.156456337324414,True
-1e4_sfe010_n1e2_PL0_yesPHII_coolingBoostFmix4p0_coverFraction1p0,,,,,,,,,,,90,0.0026719561736288375,energy,0.5069049575126825,0.5094768979445385,False
+1e4_sfe010_n1e2_PL0_yesPHII_coolingBoostFmix4p0_coverFraction1p0,,,,,,,,,0,1402,248,3.0,transition,46.78382190793436,69.23082190791376,True
 1e4_sfe010_n5e2_PL0_noPHII_coolingBoostFmix1p0_coverFraction0p7,,,,,,,,,0,1029,232,3.0,momentum,10.22821071800217,27.553210718012696,True
 1e4_sfe010_n5e2_PL0_noPHII_coolingBoostFmix1p0_coverFraction0p85,,,,,,,,,0,1284,272,3.0,momentum,16.118151051866516,39.02615105186992,True
 1e4_sfe010_n5e2_PL0_noPHII_coolingBoostFmix1p0_coverFraction1p0,,,,,,,,,0,1677,225,3.0,implicit,56.50346320037213,61.95246320035943,True
