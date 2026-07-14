@@ -1663,6 +1663,28 @@ physical result (diffuse clouds stay energy-driven; only n̄≳5×10³ reach the
 boost), or **(c)** do not ship the boost as calibrated. **The only HPC dependency is the theta5s Phase-4
 confirmation (`§15e`)** — repo-root `temporary-HPC-runs.md`; bench5 is not on that list.
 
+## 15i. [plan] HPC restored (2026-07-13) — three-batch schedule + the bench6 f_A-vs-f_mix decision matrix (designed, not yet run)
+
+HPC/Helix is back. The ordered maintainer checklist is repo-root `temporary-HPC-runs.md`: **§1 theta5s
+confirmation (MANDATORY, `§15e`), §2 bench5 confirmation + first in-container-vs-HPC fidelity
+measurement (`§15h`; `data/compare_bench5_hpc.py`), §3 bench6 — the Phase-6 decision matrix.** bench6
+(60 committed params, `runs/make_bench6_params.py`; sbatch `runs/run_bench6.sbatch`; driver
+`runs/sync_bench.sh`) supplies the two measurements the pre-committed Phase-6 tree still needs:
+**(a) f_A dose extension** — bench1/bench2 × f_A {24,32,64,128} + bench3 × {24,32} (band entry of the
+diffuse benches, or its proven absence; bench3 overshoot check above its ≈14–16 entry); **(b) the f_mix
+head-to-head** — all 5 benches × `cooling_boost_mode=multiplier` fm {2,3,4,8}, prod+diag, same
+blowout-window Θ_cum metric. Decision metric (in `data/make_bench6_analysis.py`, which combines
+bench5+bench6 into one dose–response table): **band-entry-dose uniformity across density per knob** —
+the knob whose calibrated dose varies less across the suite is the better single-constant. The
+*physical* asymmetry is already decided sim-free: f_A acts inside the bubble-structure ODE (structure
+responds; evaporation dMdt FALLS — the El-Badry Eq-47 sign, measured across the theta5s matrix `§15e`),
+while f_mix multiplies the resolved loss after the structure solve (structure frozen, dMdt untouched
+by construction — the "frozen-structure limit" of the Phase-6 tree row 1). bench6 decides the
+*empirical calibration* side. Dense benches (bench4/5) are excluded from the f_A extension by design
+(collapse-window censoring, no clean L21b metric to extend + the `§15h` fa16_diag freeze precedent);
+they are retained in the f_mix arms (cheap, fire-map value). All 60 params pass the bench5 emit gates
++ end-to-end `read_param` single-knob checks (fa arms: mode=none; fm arms: fA=1).
+
 ## 16. [flag] Pre-existing latent double-boost in the trigger fallback (found 2026-07-06 during the f_A plan audit; NOT fixed)
 
 `run_energy_implicit_phase.py:1245-1247`: when `bubble_props is None`, the trigger path reads
