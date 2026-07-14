@@ -39,6 +39,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 from _stamp import stamp  # noqa: E402
+from harvest_cf_scan import parse_run_name  # noqa: E402
 
 # ---- FROZEN POLICY (transcribed from the task brief — diff vs paper/rosette/matching/observables.py)
 R2_TARGET, R2_ERR = 7.0, 1.0  # pc, cavity radius (default base)
@@ -105,10 +106,19 @@ def match_run(rows):
 def parabola_vertex(pts):
     """Vertex of the parabola through 3 (cf, chi2) points -> (cf_star, chi2_star, flag).
 
-    flag: 'ok' | 'non-convex' (min quoted at the best grid point instead) | 'outside-grid'
-    (vertex extrapolates beyond the 3-point bracket — quote with the 3-point caveat).
+    Only a genuine bracketed valley (the MIDDLE Cf has the lowest chi2) yields a trustworthy
+    interior optimum. Otherwise the minimum sits at a grid endpoint and the parabola vertex is a
+    meaningless extrapolation (it was producing unphysical negative chi2), so we report the best
+    grid point instead:
+      'ok'         : middle is lowest, convex, vertex inside the bracket -> interpolated cf_star.
+      'edge-min'   : best chi2 is at a Cf endpoint (0.70 or 1.0); no interior optimum in the grid.
+      'non-convex' : concave fit; best grid point quoted.
+      'outside-grid': convex valley but the vertex extrapolates past the bracket.
     """
     (x1, y1), (x2, y2), (x3, y3) = sorted(pts)
+    if not (y2 <= y1 and y2 <= y3):  # middle isn't the lowest -> minimum is at an endpoint
+        xb, yb = min(pts, key=lambda p: p[1])
+        return xb, yb, "edge-min"
     d = (x1 - x2) * (x1 - x3) * (x2 - x3)
     a = (x3 * (y2 - y1) + x2 * (y1 - y3) + x1 * (y3 - y2)) / d
     b = (x3**2 * (y1 - y2) + x2**2 * (y3 - y1) + x1**2 * (y2 - y3)) / d
@@ -185,6 +195,19 @@ def main(argv):
     run_rows, cells = [], {}
     for s in summary:
         name = s["run_name"]
+        # Axes come from the summary, but fall back to the run name (authoritative, always present)
+        # for any empty field — so the matcher works even on a summary written by an older harvest.
+        # Best-effort: a non-conforming name (not a real sweep run) just skips the fallback.
+        try:
+            axes = parse_run_name(name)
+        except (AttributeError, ValueError):
+            axes = {}
+        s = {
+            **s,
+            **{
+                k: v for k, v in ((k, s.get(k) or axes.get(k)) for k in axes) if v not in (None, "")
+            },
+        }
         rec = {k: s.get(k, "") for k in ["run_name", "coverFraction"] + CELL_KEYS}
         rec["quotable"] = quotable = s.get("exit_code") == "0"
         traj_path = Path(args.traj_dir) / f"{name}.csv"

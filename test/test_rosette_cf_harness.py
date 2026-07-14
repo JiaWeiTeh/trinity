@@ -72,13 +72,16 @@ def test_parabola_vertex_interpolates_between_grid_points():
     assert ys < 2.0
 
 
-def test_parabola_vertex_flags_edge_and_nonconvex():
-    # monotonically falling toward Cf=1 -> convex fit but vertex beyond the grid
-    xs, _, flag = match_mod.parabola_vertex([(0.70, 9.0), (0.85, 4.0), (1.0, 1.0)])
-    assert flag == "outside-grid" and xs > 1.0
-    # concave (non-convex) -> fall back to the best grid point
-    xs, ys, flag = match_mod.parabola_vertex([(0.70, 2.0), (0.85, 5.0), (1.0, 1.0)])
-    assert flag == "non-convex" and (xs, ys) == (1.0, 1.0)
+def test_parabola_vertex_flags_edge_and_flat():
+    # monotonic toward Cf=1 (middle not lowest) -> minimum at the endpoint, no interior valley
+    xb, yb, flag = match_mod.parabola_vertex([(0.70, 9.0), (0.85, 4.0), (1.0, 1.0)])
+    assert flag == "edge-min" and (xb, yb) == (1.0, 1.0)
+    # monotonic toward Cf=0.70 -> endpoint minimum on the other side
+    xb, yb, flag = match_mod.parabola_vertex([(0.70, 1.0), (0.85, 4.0), (1.0, 9.0)])
+    assert flag == "edge-min" and (xb, yb) == (0.70, 1.0)
+    # flat χ² (degenerate valley) -> non-convex, best (first) grid point; never a negative vertex
+    xb, yb, flag = match_mod.parabola_vertex([(0.70, 3.0), (0.85, 3.0), (1.0, 3.0)])
+    assert flag == "non-convex" and (xb, yb) == (0.70, 3.0)
 
 
 def test_interp_at_stays_inside_range():
@@ -128,6 +131,26 @@ def test_chi2_policy_constants_match_the_brief():
     assert (match_mod.RSHELL_TARGET, match_mod.RSHELL_ERR) == (19.0, 2.0)
     assert (match_mod.AGE_MIN, match_mod.AGE_MAX) == (1.5, 2.5)
     assert match_mod.chi2(8.0, 21.0, 7.0) == pytest.approx(1.0 + 1.0)
+
+
+def test_parse_run_name_recovers_all_axes():
+    p = harvest_mod.parse_run_name(
+        "1e5_sfe001_n5e2_PL0_yesPHII_coolingBoostFmix4p0_coverFraction0p85"
+    )
+    assert p == {
+        "mCloud": 1e5,
+        "sfe": 0.01,
+        "nCore": 500.0,
+        "coverFraction": 0.85,
+        "cooling_boost_fmix": 4.0,
+        "include_PHII": True,
+    }
+    # compact non-scientific nCore, noPHII, .jsonl.gz suffix, Cf=1.0
+    p2 = harvest_mod.parse_run_name(
+        "1e4_sfe010_n50_PL0_noPHII_coolingBoostFmix1p0_coverFraction1p0.jsonl.gz"
+    )
+    assert (p2["mCloud"], p2["sfe"], p2["nCore"]) == (1e4, 0.10, 50.0)
+    assert p2["coverFraction"] == 1.0 and p2["include_PHII"] is False
 
 
 def test_write_dict_gz_gates_on_exit_code_and_roundtrips(tmp_path):

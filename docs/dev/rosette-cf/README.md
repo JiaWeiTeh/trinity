@@ -32,11 +32,11 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-07-13):** 🟡 Phase-2 RUNNING in-container — 72-run parallel campaign launched
-(workers=3, per-arm-timeout 7200s), autocommit heartbeat armed (commits summary + traj + gzipped
-raw dicts every ~2 min). Deliverable = the raw `dictionary.jsonl` per arm (§7). 11 harness tests
-green; preflight verified 72/0-invalid. Matcher runs against the fallback (`matching/` stays
-local per maintainer). See §10 for the in-container ops playbook.
+**Status (2026-07-14):** ✅ COMPLETE — all 72 arms ran to a physics end in-container (exit 0,
+zero re-run debt; two container reclaims auto-healed). 72 gzipped raw `dictionary.jsonl` committed
+(§7, the deliverable) plus summary/traj/fallback-match CSVs. Close-out + honest match caveats in
+§11. 12 harness tests green. Next: maintainer reduces the dicts with the frozen
+`paper/rosette/matching/`; the fallback numbers are PROVISIONAL. See §10 for the ops playbook.
 
 ## 1. Goal & context
 
@@ -206,3 +206,54 @@ probe). The pdv-trigger bench5/theta5s pattern makes it restart-survivable:
   wall-killed arm (exit 124) is non-compliant re-run debt, not a result.
 - **Report every tick / at terminal**: progress is the committed summary's row count; the run is
   done when all 72 arms have a `.jsonl.gz` (compliant or a flagged crash), not before.
+
+## 11. Close-out — CAMPAIGN COMPLETE (2026-07-14)
+
+**72/72 arms ran to a physics end, all exit 0 — a perfect compliance record (zero crashes, zero
+`--per-arm-timeout` kills, so no re-run debt and no 📏 non-compliant rows).** Ran fully
+in-container over ~3 container windows; **two container reclaims were auto-healed** with zero data
+loss (the hourly cron + resumable runner relaunched from the committed summary; the reclaim at 62
+committed arms resumed and finished the remaining 4).
+
+Committed deliverables in `docs/dev/rosette-cf/data/`:
+
+- **`cf_scan_PISM1e5_dicts/<arm>.jsonl.gz` ×72 — THE deliverable**: the gzipped raw
+  `dictionary.jsonl` per arm (~280 MB total), for the maintainer to reduce offline with the frozen
+  `paper/rosette/matching/`. `gunzip` before reducing.
+- `cf_scan_PISM1e5_summary.csv` — 72 rows: the 6 swept axes (recovered from the run name), exit
+  code, duration, `t_final`, `phase_final`, final radii, quotable flag.
+- `cf_scan_PISM1e5_traj/<arm>.csv` ×72 — lightweight (t, R2, v2, rShell, phase) index.
+- `match_cf_PISM1e5.csv` + `_cells.csv` — **PROVISIONAL fallback-matcher** output (see caveats).
+
+Campaign stats: per-arm duration 2.1 / 19.3 / 37.2 min (min/median/max), ~24.6 CPU-h total; median
+dur ~19 min across all three `nCore` (density barely moved arm cost — the ~30-min probe was a
+high-`t_final` outlier, not the norm). `t_final`: 52 arms reached the full 3.0 Myr, 20 stopped early
+(shell dissolution). `phase_final`: 45 momentum, 15 transition, 12 implicit.
+
+### Fallback-match result — read with the caveats, do NOT quote as a paper number
+
+The frozen matcher (`paper/rosette/matching/`) stays local (maintainer ruling); these numbers are
+from the in-repo fallback `match_cf_scan.py` (policy transcribed from the brief — **diff its
+`POLICY` constants against the frozen `observables.py` before quoting anything**):
+
+- **Matchable: 53/72.** 20 arms are age-censored (`t_final` below the 1.5–2.5 Myr prior — the more
+  diffuse/leaky arms dissolve before 1.5 Myr), so only 9/24 cells have all three Cf points inside
+  the prior; per-cell 3-point interpolation is mostly unavailable.
+- **§0.3 adjudication (the sealed baseline):** at these low core densities (50–500) the sealed
+  Cf=1.0 bubble **massively overshoots** the cavity — R2 is **+38 to +47 pc past the 7 pc target**
+  (and past 6.2 pc) at matched simulation time, across all 9 cells with a sealed row. The finding
+  is not tuned around: fmix=4 shrinks the overshoot only slightly (~+38 vs +47 pc).
+- **No interior χ²(Cf) minimum:** every one of the 9 full-3-point cells is flagged `edge-min` (best
+  χ² sits at a grid endpoint, 0.70 or 1.0), so **this grid does NOT reproduce the pilot's interior
+  ~0.89** — the low-density PISM=1e5 regime overshoots the Rosette cavity for all three Cf, and the
+  optimum, if any, lies at/below Cf=0.70 or (more likely) at higher `nCore` than this grid spans.
+  `cf_star` interpolation is therefore not quoted.
+
+**Interpretation stays provisional and belongs to the maintainer's frozen reduction of the raw
+dicts.** The scan's job — produce and preserve all 72 `dictionary.jsonl` — is done; the fallback
+match is a sanity read, explicitly PROVISIONAL / IN-CONTAINER, to be superseded by the frozen
+matcher. Next open item: maintainer reduces the committed dicts with `paper/rosette/matching/` and
+decides whether to extend `nCore` upward (this grid overshoots) before quoting any Cf.
+
+Exact commands that produced the artifacts: `harness/README.md` steps 0–5 (param file
+`docs/dev/rosette-cf/rosette_cf_survey_PISM1e5_fmix.param`).

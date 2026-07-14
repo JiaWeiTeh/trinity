@@ -6,9 +6,9 @@ theta5s lesson: raw arms lost to a /tmp wipe). Doubles as the restart checkpoint
 current container's arms into the committed summary (union by run_name, prefer exit_code==0 rows)
 and refreshes each arm's trajectory CSV — call it repeatedly (the autocommit heartbeat does).
 
-1. --csv <summary>: one row per arm — axes (read from the .param copy run.py leaves in the output
-   dir, so it needs no jobs bundle and works on the maintainer's machine too), exit code, duration,
-   t_final, phase_final, final radii, quotable flag (exit_code==0; 📏 never quote a 124 arm).
+1. --csv <summary>: one row per arm — axes (parsed from the run-folder name, which encodes all six;
+   run.py leaves no .param in the output dir), exit code, duration, t_final, phase_final, final
+   radii, quotable flag (exit_code==0; 📏 never quote a 124 arm).
 2. --traj-dir <dir>: per arm, <arm>.csv with every snapshot's (t_now, R2, v2, rShell,
    current_phase) — a lightweight index for quick offline matching. Capped at 4000 rows by stride
    downsample keeping endpoints.
@@ -29,6 +29,7 @@ import csv
 import gzip
 import json
 import math
+import re
 import sys
 from pathlib import Path
 
@@ -36,6 +37,8 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 from _stamp import stamp  # noqa: E402
 
+# The six swept axes, all encoded in the run-folder name by the sweep_parser naming convention
+# (PISM=1e5 and stop_t=3 are constant across the scan — stated in HEADER, not per-row columns).
 AXES = [
     "mCloud",
     "sfe",
@@ -43,8 +46,6 @@ AXES = [
     "coverFraction",
     "cooling_boost_fmix",
     "include_PHII",
-    "PISM",
-    "stop_t",
 ]
 COLUMNS = (
     ["run_name"]
@@ -78,18 +79,29 @@ def _finite(v):
     )
 
 
-def read_param_copy(run_dir):
-    """Axes from the .param copy run.py writes into the output dir (key/value lines)."""
-    out = {}
-    for p in sorted(run_dir.glob("*.param")):
-        for line in p.read_text().splitlines():
-            line = line.split("#", 1)[0].strip()
-            parts = line.split(None, 1)
-            if len(parts) == 2 and parts[0] in AXES:
-                out[parts[0]] = parts[1].strip()
-        if out:
-            break
-    return out
+def parse_run_name(name):
+    """Recover the six swept axes from a run-folder name (or <name>.jsonl.gz / .csv).
+
+    The sweep_parser naming convention encodes every axis, e.g.
+    ``1e5_sfe001_n5e2_PL0_yesPHII_coolingBoostFmix1p0_coverFraction0p7`` — so this is the reliable
+    source (run.py does NOT leave a .param in the output dir, and after a container reclaim the raw
+    output dirs are gone but the committed .jsonl.gz keep the name). sfe is the *100 zero-padded
+    integer (``sfe001`` -> 0.01); nCore/mCloud are compact scientific (``n5e2`` -> 500, ``n50`` ->
+    50); ``p`` is the decimal point in the generic suffixes.
+    """
+    name = re.sub(r"\.(jsonl\.gz|csv|param)$", "", name)
+    return {
+        "mCloud": float(name.split("_", 1)[0]),
+        "sfe": int(re.search(r"_sfe(\d+)", name).group(1)) / 100,
+        "nCore": float(re.search(r"_n([0-9]+(?:e[0-9]+)?)_", name).group(1)),
+        "coverFraction": float(
+            re.search(r"coverFraction([0-9p]+)", name).group(1).replace("p", ".")
+        ),
+        "cooling_boost_fmix": float(
+            re.search(r"coolingBoostFmix([0-9p]+)", name).group(1).replace("p", ".")
+        ),
+        "include_PHII": bool(re.search(r"_yesPHII", name)),
+    }
 
 
 def snapshots(run_dir):
@@ -132,7 +144,7 @@ def harvest(run_dir):
         return f.read_text().strip() if f.exists() else ""
 
     exit_code = _sentinel(".exit_code")
-    rec = {"run_name": run_dir.name, **read_param_copy(run_dir)}
+    rec = {"run_name": run_dir.name, **parse_run_name(run_dir.name)}
     rec.update(
         exit_code=exit_code,
         duration_s=_sentinel(".duration"),
@@ -224,6 +236,10 @@ def main(argv):
         if args.dicts_dir and write_dict_gz(run_dir, Path(args.dicts_dir)):
             n_dicts += 1
 
+    # Backfill axes from the run name for every row — authoritative and always available, so rows
+    # harvested by an older build (or whose raw output dir was wiped by a reclaim) get correct axes.
+    for name, row in merged.items():
+        row.update(parse_run_name(name))
     csv_out.parent.mkdir(parents=True, exist_ok=True)
     rows = [merged[k] for k in sorted(merged)]
     with csv_out.open("w", newline="") as fh:
