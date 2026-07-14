@@ -10,11 +10,14 @@
 #   harvest: python docs/dev/transition/pdv-trigger/runs/harvest_bench5.py "$WS"/outputs/bench6/* \
 #              --csv "$WS"/outputs/bench6_summary.csv --traj-dir "$WS"/outputs/bench6_traj
 #
-# --time=3:00:00: the long poles are the diffuse high-f_A diag arms (blowout comes later as the
-# boost strengthens; Eb back-reaction shrinks dt). Post-harvest compliance: every arm t_final>=5
-# or a physics termination; re-run any wall-killed arm longer BEFORE quoting theta ("N/60
-# compliant"). A frozen dense arm (t stalls at fixed step, cf. bench5_fa16_diag §15h) is a
-# stiffness signature, not a walltime problem — record, don't chase.
+# --time=1:30:00 (maintainer ruling 2026-07-13; evidence data/bench5_durations.csv — longest
+# compliant bench5 arm 64 min under 3-worker contention). The only UNMEASURED-cost arms are the
+# diffuse fa64/fa128 diag ones (blowout comes later as the boost strengthens; Eb back-reaction
+# shrinks dt). If one wall-kills (exit 124 with t still advancing in dictionary.jsonl), resubmit
+# just those ids with a CLI override — it beats the in-file directive:
+#     sbatch --time=3:00:00 --array=<id1>,<id2> docs/dev/transition/pdv-trigger/runs/run_bench6.sbatch
+# and re-harvest; quote no theta from a wall-killed arm. A FROZEN arm (t stalled at a fixed step,
+# cf. bench5_fa16_diag §15h) is a stiffness signature, not a walltime problem — record, don't chase.
 #
 #SBATCH --job-name=trinity-bench6
 #SBATCH --partition=cpu-single
