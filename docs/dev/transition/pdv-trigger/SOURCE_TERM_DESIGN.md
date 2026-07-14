@@ -100,14 +100,21 @@ campaign COMPLETE (`§15h`) → 60/60 ran, 59 compliant (1 dense diag wall-kille
 no single global f_A reproduces L21b (route-a boundary). Machinery to re-run if needed: OUT=`$SCRATCH/bench5_out`,
 `python runs/run_bench5_local.py --out OUT --workers 3 --per-arm-timeout 7200 --summary runs/data/bench5_summary.csv`
 + `bash runs/autocommit_bench5.sh OUT`; analyze `python data/make_bench5_analysis.py`.)*
-1. **HPC — the ONE mandatory item: theta5s (§15e) confirmation.** Re-run via `runs/run_theta5s.sbatch`
-   (authoritative); re-check fire map, p=3.33, both controls, dMdt (`runs/harvest_dmdt_suppression.py`),
-   any paper number — HPC wins any disagreement. **Checklist + commands in repo-root
-   `temporary-HPC-runs.md`.** **bench5 is NOT an HPC item** — maintainer ruled it in-container (done).
-2. **Phase 6 — decision (§3 Phase 6) [NEXT OPEN ITEM].** Does f_A ship as the transition-trigger fix? Phase-5
-   measured that a single global f_A cannot reproduce L21b across density; the three options are in `§15h`
-   (density-dependent f_A(n̄) / ship route-a boundary / do not ship). Feed the 3-class theta5s result +
-   p=3.33 + controls + the bench5 Θ_cum calibration into the decision tree.
+1. **HPC (restored 2026-07-13) — three batches, ordered checklist + commands in repo-root
+   `temporary-HPC-runs.md`:** §1 theta5s (§15e) confirmation (MANDATORY; `sync_theta5s.sh`; HPC wins
+   any disagreement), §2 bench5 (§15h) confirmation + first in-container-vs-HPC fidelity measurement
+   (`sync_bench.sh bench5` → `data/compare_bench5_hpc.py`), §3 **bench6 — the Phase-6 decision matrix**
+   (f_A dose extension bench1/2×{24,32,64,128} + bench3×{24,32}; f_mix head-to-head all 5 benches ×
+   fm{2,3,4,8}; `runs/make_bench6_params.py` (60 committed params), `sync_bench.sh bench6` →
+   `data/make_bench6_analysis.py`).
+2. **Phase 6 — decision (§3 Phase 6) [NEXT OPEN ITEM, blocked only on the §3 bench6 data].** Does f_A
+   ship as the transition-trigger fix? Phase-5 measured that a single global f_A ≤ 16 cannot reproduce
+   L21b across density. bench6 picks the pre-committed tree row: (a) band-entry dose per bench at
+   extended f_A (does bench1/2 EVER enter?), (b) the f_mix head-to-head band-entry-dose uniformity —
+   the knob whose calibrated dose varies less across density is the better single-constant; the
+   physical asymmetry (f_A suppresses dMdt in-ODE per El-Badry Eq-47, theta5s-measured; f_mix leaves
+   the bubble structure frozen by construction) is already established sim-free. Feed theta5s p=3.33 +
+   controls + bench5 Θ_cum + bench6 into the tree.
 3. Paper: the p_source≈3.3 collapse law + the 3-class fire map + the L21b bench5 calibration are the f_A story.
 
 **In-container run machinery (FALLBACK only; authoritative path is the HPC sbatch).** Committed & reusable:

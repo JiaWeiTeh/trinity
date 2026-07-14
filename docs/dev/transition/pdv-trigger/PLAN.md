@@ -122,14 +122,19 @@ folder) — do **not** re-run the hours-long sims to recover them; reproduce onl
 > density; the required boost climbs steeply toward low density — the route-a boundary.** **Next open: Phase 6
 > (ship decision) — see §15h for the three options.**
 >
-> ### ⚠️⚠️ WHAT REQUIRES HPC/HELIX (be explicit — maintainer directive 2026-07-12) ⚠️⚠️
-> **Exactly ONE item needs HPC: the theta5s Phase-4 CONFIRMATION** (`FINDINGS.md §15e`). The 81-arm
-> theta5s matrix was run in Claude's ephemeral container (HPC was down) and is **PROVISIONAL** — p=3.330,
-> the controls, the 3-class result, and the dMdt trend must be reproduced on Helix (`sbatch
-> runs/run_theta5s.sbatch`; params committed) before any theta5s number is authoritative/paper-ready.
-> **bench5 (Phase 5) does NOT require HPC** — it is being run in-container per the ruling above. The
-> maintainer-facing checklist with exact commands is the repo-root file **`temporary-HPC-runs.md`**
-> (created 2026-07-12; the maintainer deletes it after running). Do not add bench5 to the HPC list.
+> ### ⚠️⚠️ WHAT REQUIRES HPC/HELIX (updated 2026-07-13 — HPC is BACK) ⚠️⚠️
+> Ordered batch list in the repo-root **`temporary-HPC-runs.md`** (exact commands; maintainer deletes
+> it after running). Three batches, all params/tooling committed:
+> **§1 theta5s Phase-4 confirmation — MANDATORY** (`FINDINGS.md §15e` is PROVISIONAL; p=3.330, controls,
+> dMdt must be reproduced; `sync_theta5s.sh submit/run/down`). **§2 bench5 Phase-5 HPC confirmation**
+> (`§15h` is in-container/PROVISIONAL; re-run makes it authoritative + measures in-container-vs-HPC
+> fidelity for the first time; `sync_bench.sh bench5 …` → `data/compare_bench5_hpc.py`). **§3 bench6
+> Phase-6 decision matrix** (NEW 2026-07-13: f_A dose extension bench1/2×{24–128} + bench3×{24,32}, and
+> the f_mix head-to-head all-5-benches×fm{2,3,4,8}; 60 params `runs/params/bench6/` by
+> `make_bench6_params.py`; `sync_bench.sh bench6 …` → `data/make_bench6_analysis.py` prints band-entry
+> dose + uniformity per knob — the empirical f_A-vs-f_mix decision input; the physical asymmetry (f_A
+> suppresses dMdt in-ODE, f_mix freezes the structure) is already established sim-free). Batches §2/§3
+> are the Phase-6 inputs; §1 wins any disagreement with in-container numbers.
 
 *This single block (+ the dated f_A addendum) replaces the older layered ⭐/⚡/⚡⚡ synthesis. It reflects
 the grand view across `ELBADRY_REFERENCE.md`, `LANCASTER_REFERENCE.md`, `F_KAPPA_FUNCTIONAL_FORM.md`, and

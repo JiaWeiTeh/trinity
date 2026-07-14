@@ -12,12 +12,12 @@
 > are exact; stamp-less artifacts predate the convention (2026-07-02) — for those, only
 > the commit date is known. **Every new/edited builder must write the stamp.**
 
-533 artifacts · 0 stale-risk · 0 untracked · 15 stamped 🕐
+596 artifacts · 0 stale-risk · 0 untracked · 15 stamped 🕐
 
 | last updated (commit) | artifact | producer / flags |
 |---|---|---|
-| 2026-07-13 `f298d12` | `bench5_theta_tracks.png` | producer unknown (HPC/hand-made); refs: `make_bench5_analysis.py` |
-| 2026-07-13 `f298d12` | `data/bench5_analysis.csv` | by `make_bench5_analysis.py` |
+| 2026-07-13 `f299166` | `bench5_theta_tracks.png` | producer unknown (HPC/hand-made); refs: `make_bench5_analysis.py` |
+| 2026-07-13 `f299166` | `data/bench5_analysis.csv` | by `make_bench5_analysis.py` |
 | 2026-07-13 `7826031` | `runs/data/bench5_summary.csv` | by `harvest_bench5.py` |
 | 2026-07-13 `e3d53ab` | `runs/data/bench5_traj/bench1_m5e4_r20__fa12_diag.csv` | — (hand-made/HPC, unreferenced) |
 | 2026-07-13 `63bb436` | `runs/data/bench5_traj/bench1_m5e4_r20__fa16_diag.csv` | — (hand-made/HPC, unreferenced) |
@@ -200,7 +200,7 @@
 | 2026-07-10 `b94b09d` | `data/pdv_regime_budget.csv` | producer unknown (HPC/hand-made); refs: `make_ebpeak_8config_xcheck.py`, `make_pdv_regime_table.py` |
 | 2026-07-10 `b94b09d` | `data/pdv_trigger_compare.csv` | by `make_pdv_trigger_compare.py` |
 | 2026-07-10 `b94b09d` | `data/shadow_te_fate.csv` | by `harvest_shadow.py` |
-| 2026-07-10 `b94b09d` | `data/summary.csv` | producer unknown (HPC/hand-made); refs: `make_bench5_analysis.py`, `make_closure_test.py` |
+| 2026-07-10 `b94b09d` | `data/summary.csv` | producer unknown (HPC/hand-made); refs: `compare_bench5_hpc.py`, `make_bench5_analysis.py` |
 | 2026-07-10 `b94b09d` | `data/sweep_report.txt` | — (hand-made/HPC, unreferenced) |
 | 2026-07-10 `b94b09d` | `data/sweep_tmax_fate.csv` | — (hand-made/HPC, unreferenced) |
 | 2026-07-10 `b94b09d` | `data/theta5_fire_map.csv` | producer unknown (HPC/hand-made); refs: `make_theta5b_analysis.py`, `make_pdvtrigger_report.py` · 🕐 generated 2026-07-03T13:59:45Z | builder make_theta5b_analysis.py | code 5762c05+dirty |
@@ -549,3 +549,66 @@
 | 2026-07-10 `b94b09d` | `theta5k_fire_map.png` | producer unknown (HPC/hand-made); refs: `make_theta5k_analysis.py`, `make_pdvtrigger_report.py` |
 | 2026-07-10 `b94b09d` | `theta5k_theta_rise.png` | producer unknown (HPC/hand-made); refs: `make_theta5k_analysis.py`, `make_pdvtrigger_report.py` |
 | 2026-07-10 `b94b09d` | `theta_vs_density.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_overlay.py`, `make_fmix_spread_plot.py` |
+| None `None` | `data/bench6_analysis.csv` | by `make_bench6_analysis.py` |
+| None `None` | `runs/params/bench6/bench1_m5e4_r20__fa128.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench1_m5e4_r20__fa128_diag.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench1_m5e4_r20__fa24.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench1_m5e4_r20__fa24_diag.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench1_m5e4_r20__fa32.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench1_m5e4_r20__fa32_diag.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench1_m5e4_r20__fa64.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench1_m5e4_r20__fa64_diag.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench1_m5e4_r20__fm2.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench1_m5e4_r20__fm2_diag.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench1_m5e4_r20__fm3.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench1_m5e4_r20__fm3_diag.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench1_m5e4_r20__fm4.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench1_m5e4_r20__fm4_diag.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench1_m5e4_r20__fm8.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench1_m5e4_r20__fm8_diag.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench2_m1e5_r10__fa128.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench2_m1e5_r10__fa128_diag.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench2_m1e5_r10__fa24.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench2_m1e5_r10__fa24_diag.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench2_m1e5_r10__fa32.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench2_m1e5_r10__fa32_diag.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench2_m1e5_r10__fa64.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench2_m1e5_r10__fa64_diag.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench2_m1e5_r10__fm2.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench2_m1e5_r10__fm2_diag.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench2_m1e5_r10__fm3.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench2_m1e5_r10__fm3_diag.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench2_m1e5_r10__fm4.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench2_m1e5_r10__fm4_diag.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench2_m1e5_r10__fm8.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench2_m1e5_r10__fm8_diag.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench3_m1e5_r5__fa24.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench3_m1e5_r5__fa24_diag.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench3_m1e5_r5__fa32.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench3_m1e5_r5__fa32_diag.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench3_m1e5_r5__fm2.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench3_m1e5_r5__fm2_diag.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench3_m1e5_r5__fm3.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench3_m1e5_r5__fm3_diag.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench3_m1e5_r5__fm4.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench3_m1e5_r5__fm4_diag.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench3_m1e5_r5__fm8.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench3_m1e5_r5__fm8_diag.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench4_m1e5_r2p5__fm2.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench4_m1e5_r2p5__fm2_diag.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench4_m1e5_r2p5__fm3.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench4_m1e5_r2p5__fm3_diag.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench4_m1e5_r2p5__fm4.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench4_m1e5_r2p5__fm4_diag.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench4_m1e5_r2p5__fm8.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench4_m1e5_r2p5__fm8_diag.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench5_m5e5_r2p5__fm2.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench5_m5e5_r2p5__fm2_diag.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench5_m5e5_r2p5__fm3.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench5_m5e5_r2p5__fm3_diag.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench5_m5e5_r2p5__fm4.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench5_m5e5_r2p5__fm4_diag.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench5_m5e5_r2p5__fm8.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/params/bench6/bench5_m5e5_r2p5__fm8_diag.param` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/run_bench5.sbatch` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/run_bench6.sbatch` | — (hand-made/HPC, unreferenced) |

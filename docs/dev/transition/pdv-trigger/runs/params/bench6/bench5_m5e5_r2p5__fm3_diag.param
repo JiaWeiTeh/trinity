@@ -1,0 +1,14 @@
+model_name             bench5_m5e5_r2p5__fm3_diag
+mCloud                 505000
+nCore                  228000
+rCore                  1
+sfe                    0.009900990099009901
+dens_profile           densPL
+densPL_alpha           0
+stop_t                 5
+cooling_boost_mode     multiplier
+cooling_boost_fmix     3
+transition_trigger     blowout
+log_console            False
+log_file               True
+path2output            outputs/bench6/bench5_m5e5_r2p5__fm3_diag
