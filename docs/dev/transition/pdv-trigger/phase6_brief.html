@@ -25,7 +25,7 @@ L<sub>cool</sub> = L₁ + L₂ + L₃
 </div>
 <ul>
 <li><b>L₁</b> — the <b>hot interior</b> (T &gt; 10<sup>5.5</sup> K): shocked-wind gas in CIE. Radiates weakly; its emission scales with the bubble <i>volume</i>.</li>
-<li><b>L₂ + L₃</b> — the <b>interface band</b> (T &lt; 10<sup>5.5</sup> K): the thin conduction/mixing layer at the contact discontinuity where cold shell gas evaporates into the hot bubble. Density is high, T is in the peak of the cooling curve — this is where nearly all the radiative loss physically happens. Its emission scales with the interface <i>area</i>.</li>
+<li><b>L₂ + L₃</b> — the <b>conduction front</b> (10⁴ &lt; T &lt; 10<sup>5.5</sup> K): the thin bubble-side layer draped on the contact discontinuity at R₂. Precision (2026-07-19): the interface <i>surface</i> itself is the CD — L₃'s outer edge against the shell's inner skin (<code>shell_structure</code>); dMdt is mass ablated FROM the shell, transiting L₃→L₂ into the hot bubble (<code>bubble_dMdt</code>, "mass flux from shell into hot region"). L₂+L₃ is the radiative emission OF that front — dense, non-CIE, on the cooling-curve peak — and it scales with the CD <i>area</i>. The shell-side skin radiates the <i>stellar</i> budget, not L<sub>mech</sub>, so it never enters θ.</li>
 </ul>
 <p>Two more players complete the budget: <b>L<sub>leak</sub></b> (bulk hot-gas escape through shell holes — Rogers &amp; Pittard channel; <i>not radiation</i>) and <b>L<sub>mech</sub></b> (the SB99 wind+SN input). The transition trigger watches the instantaneous cooling fraction</p>
 <div class="eq">
