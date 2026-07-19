@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>f_A Phase-6 brief — the math, the verdict, the follow-ups (2026-07-19)</title>
+<style>
+body{font:15px/1.6 Georgia,serif;max-width:880px;margin:2rem auto;padding:0 1.2rem;color:#1a1a1a;background:#fdfcf8}
+h1{font-size:1.5rem;border-bottom:3px solid #8a1c1c;padding-bottom:.3rem}
+h2{font-size:1.2rem;color:#8a1c1c;margin-top:2rem}
+.eq{background:#f4f1e8;border-left:4px solid #8a1c1c;padding:.7rem 1rem;margin:.8rem 0;font-family:'STIX Two Math','Cambria Math',Georgia,serif;font-size:1.05rem;overflow-x:auto}
+.note{background:#eef3f8;border-left:4px solid #2a5d8f;padding:.6rem 1rem;margin:.8rem 0;font-size:.92rem}
+.warn{background:#fdf0ef;border-left:4px solid #c0392b;padding:.6rem 1rem;margin:.8rem 0;font-size:.92rem}
+table{border-collapse:collapse;margin:1rem 0;font-size:.9rem;width:100%}
+th,td{border:1px solid #c9c2b0;padding:.35rem .6rem;text-align:left}
+th{background:#f4f1e8}
+code{font-family:Menlo,Consolas,monospace;font-size:.85em;background:#f0ede4;padding:.05em .3em;border-radius:3px}
+.small{font-size:.85rem;color:#555}
+sub,sup{font-size:.72em}
+</style></head><body>
+
+<h1>f_A Phase-6 brief — what the knobs are, what was measured, what's next</h1>
+<p class="small">2026-07-19 · TRINITY pdv-trigger workstream · sources: <code>FINDINGS.md §15e–§15j</code>, <code>SOURCE_TERM_DESIGN.md §1–§4</code>, <code>data/bench6_analysis.csv</code>. Verified against source at <code>bubble_luminosity.py:435/845</code>, <code>get_betadelta.py:334–357</code>.</p>
+
+<h2>1. The stage: TRINITY's cooling budget in one picture</h2>
+<p>Inside the energy-driven phase, TRINITY solves the Weaver-style bubble structure T(r) every step and splits the radiative loss by temperature zone:</p>
+<div class="eq">
+L<sub>cool</sub> = L₁ + L₂ + L₃
+</div>
+<ul>
+<li><b>L₁</b> — the <b>hot interior</b> (T &gt; 10<sup>5.5</sup> K): shocked-wind gas in CIE. Radiates weakly; its emission scales with the bubble <i>volume</i>.</li>
+<li><b>L₂ + L₃</b> — the <b>interface band</b> (T &lt; 10<sup>5.5</sup> K): the thin conduction/mixing layer at the contact discontinuity where cold shell gas evaporates into the hot bubble. Density is high, T is in the peak of the cooling curve — this is where nearly all the radiative loss physically happens. Its emission scales with the interface <i>area</i>.</li>
+</ul>
+<p>Two more players complete the budget: <b>L<sub>leak</sub></b> (bulk hot-gas escape through shell holes — Rogers &amp; Pittard channel; <i>not radiation</i>) and <b>L<sub>mech</sub></b> (the SB99 wind+SN input). The transition trigger watches the instantaneous cooling fraction</p>
+<div class="eq">
+θ = L<sub>loss</sub> / L<sub>mech</sub> ,&nbsp;&nbsp; fire when θ ≥ 0.95&nbsp; (<code>cooling_balance</code>) → energy phase ends, momentum phase begins.
+</div>
+<p>The problem the workstream solves: TRINITY's 1-D spherical interface <b>under-counts the interface area</b> — a real 3-D interface is fractal/corrugated (Lancaster 2021a,b), so 3-D sims measure Θ ≈ 0.9–0.99 while TRINITY's native θ sits at 0.2–0.6 for most GMCs and the trigger never fires.</p>
+
+<h2>2. The two knobs — which is which</h2>
+
+<h3>f_A — the <i>source-term</i> (in-ODE) boost: <code>cooling_boost_fA</code></h3>
+<div class="eq">
+inside the structure ODE:&nbsp; du/dt → <b>f_A</b> · (du/dt)<sub>rad</sub>&nbsp;&nbsp;only where T &lt; 10<sup>5.5</sup> K<br>
+consistently, the loss integrals:&nbsp; L<sub>cool</sub> = L₁ + <b>f_A</b>·(L₂ + L₃)<br>
+effective loss the budget/trigger sees:&nbsp; L<sub>loss</sub> = L₁ + f_A·(L₂+L₃) + L<sub>leak</sub>
+</div>
+<p><b>Why it acts on (L₂+L₃) and not L₁ or L<sub>leak</sub>:</b> f_A is the 1-D projection of the fractal <b>area</b> multiplier, A<sub>eff</sub> = f_A · 4πR₂². Extra interface area means proportionally more <i>interface</i> emission — and the interface is exactly the T &lt; 10<sup>5.5</sup> K band, i.e. L₂+L₃. The hot interior L₁ is volume emission (no area to multiply) and L<sub>leak</sub> is bulk escape, not interface radiation — scaling either would be physically wrong, so both are deliberately excluded.</p>
+<p><b>The crucial consequence — the structure responds.</b> Because the boost lives <i>inside</i> the ODE, the solved T(r) changes: the interface layer gets cooler and denser, the conductive evaporation flux into the bubble <b>falls</b> (Ṁ<sub>evap</sub> ↓ — the El-Badry Eq-47 sign, measured across the theta5s matrix), and the solved L<sub>cool</sub> genuinely rises. θ is an <b>output</b> of physics, not an imposed number.</p>
+
+<h3>f_mix — the <i>post-hoc multiplier</i>: <code>cooling_boost_mode='multiplier'</code></h3>
+<div class="eq">
+structure solved FIRST, unboosted → L<sub>cool</sub>, then:&nbsp; L<sub>eff</sub> = L<sub>leak</sub> + <b>f_mix</b> · L<sub>cool</sub>
+</div>
+<p>The multiplier is applied <b>after</b> <code>get_bubbleproperties</code> returns — the T(r) structure, the evaporation Ṁ, everything inside is frozen at the unboosted solution; only the scalar number fed to the energy budget and the trigger is inflated. It answers "what if the 1-D solve under-counts the total by a constant factor" without letting the physics react. That's why the docs call it the <i>frozen-structure limit</i> of f_A.</p>
+
+<h2>3. Why f_mix measurably backfires (bench6, HPC)</h2>
+<p>Both knobs feed the same energy equation:</p>
+<div class="eq">
+dE<sub>b</sub>/dt = L<sub>mech</sub> − L<sub>loss</sub> − P dV/dt
+</div>
+<p>Under f_mix, the inflated L<sub>loss</sub> drains E<sub>b</sub> → bubble pressure P<sub>b</sub> falls → the <i>next</i> step's unboosted structure solve returns a weaker L<sub>cool</sub> (interface emission ∝ n² ∝ P<sub>b</sub>²) → f_mix·L<sub>cool</sub> shrinks even as f_mix is large. The feedback loop eats the multiplier. Measured on the diffuse benches (blowout-window Θ<sub>cum</sub> ≡ ∫L<sub>loss</sub>dt / ∫L<sub>mech</sub>dt):</p>
+<table>
+<tr><th>bench (n̄<sub>H</sub>)</th><th>knob</th><th>dose 1</th><th>2</th><th>3</th><th>4</th><th>8</th><th>…16</th><th>…64</th><th>…128</th><th>L21b band entry</th></tr>
+<tr><td rowspan="2">bench1 (43)</td><td><b>f_A</b></td><td>0.221</td><td>—</td><td>—</td><td>0.276<sup>†</sup></td><td>0.326<sup>†</sup></td><td>0.404</td><td>0.864</td><td>1.024</td><td><b>≈ 74.8</b></td></tr>
+<tr><td>f_mix</td><td>0.221</td><td>0.190</td><td>0.165</td><td>0.145</td><td>0.096</td><td>—</td><td>—</td><td>—</td><td><b>never — falls with dose</b></td></tr>
+<tr><td rowspan="2">bench2 (690)</td><td><b>f_A</b></td><td>0.341</td><td>—</td><td>—</td><td>0.391<sup>†</sup></td><td>0.453<sup>†</sup></td><td>0.540</td><td>0.953</td><td>0.905</td><td><b>≈ 53.5</b></td></tr>
+<tr><td>f_mix</td><td>0.341</td><td>0.266</td><td>0.216</td><td>0.182</td><td>0.112</td><td>—</td><td>—</td><td>—</td><td><b>never — falls with dose</b></td></tr>
+<tr><td rowspan="2">bench3 (5520)</td><td><b>f_A</b></td><td>0.462</td><td>—</td><td>—</td><td>0.520<sup>†</sup></td><td>0.584<sup>†</sup></td><td>0.965</td><td>—</td><td>—</td><td><b>≈ 13.9</b></td></tr>
+<tr><td>f_mix</td><td>0.462</td><td>0.332</td><td>0.256</td><td>0.224</td><td>0.579</td><td>—</td><td>—</td><td>—</td><td><b>never</b></td></tr>
+</table>
+<p class="small">† f_A columns 4/8 shown at those doses; full grids in <code>data/bench6_analysis.csv</code>. Dense benches (bench4/5) censor at shell-collapse — not the clean L21b window.</p>
+<div class="warn"><b>Trigger integrity:</b> fm8 <i>false-fires</i> bench1/bench2 — a transient θ spike crosses 0.95 while the integrated Θ<sub>cum</sub> ≈ 0.10. Under f_mix the trigger and the physical criterion decouple; under f_A they stay aligned. Combined with the wrong-sign dose-response: <b>f_mix is eliminated</b>.</div>
+<p>Under f_A the same feedback exists (boosted loss also drains E<sub>b</sub>), but the in-ODE boost <i>also</i> restructures the interface so the solved loss keeps up — Θ<sub>cum</sub> rises monotonically everywhere and enters the Lancaster band [0.90, 0.99] at:</p>
+<div class="eq">
+f_A(n̄) ≈ 315 · n̄<sup>−0.335</sup>&nbsp;&nbsp;(fits 13.9 / 53.5 / 74.8 to ~50% over 2 dex; the theta5s collapse law (0.90/Θ₀)<sup>3.33</sup> predicts the same doses to ×2)
+</div>
+<p>Extended fire thresholds complete the density gradient: <b>1 → 4 → 12 → 24 → 64</b> (n̄ = 2.28×10⁵ → 43).</p>
+
+<h2>4. The path if f_A is selected (Phase-6 ruling)</h2>
+<ol>
+<li><b>Now (interim):</b> production default stays <code>cooling_boost_mode=none</code> (byte-identical). f_A ships as the <i>calibrated diagnostic/paper knob</i> with the measured f_A(n̄) — quoted with its 3-point provenance, not wired as a default.</li>
+<li><b>Next rung (the real ship): the state-coupled f_A.</b> Replace the scalar with the El-Badry closed form evaluated on the live state — f_A(R₂, P<sub>b</sub>; λδv) from L<sub>int</sub> = 4π√(α λδv)·R²P<sub>b</sub><sup>3/2</sup>·√Λ(T<sub>pk</sub>)/(k<sub>B</sub>T<sub>pk</sub>) (<code>ELBADRY_REFERENCE §7</code>, option B). Mechanically it is a <b>one-read swap at the same two edit sites</b> (<code>SOURCE_TERM_DESIGN §4</code>). If it <i>derives</i> the measured 13.9/53.5/74.8 curve from first principles, the fitted n̄-dependence becomes physics — then and only then, the default-flip ruling.</li>
+<li><b>Gate discipline:</b> the swap re-runs the Phase-3 gates (default byte-identity, live sign check) + a bench re-run at the derived dose.</li>
+</ol>
+
+<h2>5. PLAN follow-ups still open</h2>
+<table>
+<tr><th>#</th><th>item</th><th>who</th><th>weight</th></tr>
+<tr><td>1</td><td><b>Phase-6 ruling</b> — tree row 3 verdict is on the table (§15j): interim-knob + state-coupled successor vs. don't-ship</td><td>maintainer</td><td>the decision</td></tr>
+<tr><td>2</td><td><b>dMdt reducer on Helix raw arms</b> — <code>harvest_dmdt_suppression.py</code>; the committed CSV is still in-container-derived (last HPC chore)</td><td>maintainer (Helix)</td><td>~1 cmd</td></tr>
+<tr><td>3</td><td><b>State-coupled f_A implementation</b> (§4 one-read swap + Phase-3 gates + bench re-run) — if ruling selects f_A</td><td>next session</td><td>the next workstream</td></tr>
+<tr><td>4</td><td>Fig-17 re-digitization (anchors are [V-plot-eyeball] ±0.2–0.3 dex) before any quantitative dex fit; V<sub>w</sub> still [I]-grade</td><td>maintainer (PDF)</td><td>small</td></tr>
+<tr><td>5</td><td>§16 latent fallback double-boost — pre-existing, multiplier-only; harmless if f_mix retires, else fix</td><td>either</td><td>small</td></tr>
+<tr><td>6</td><td>Review <code>docs/dev/to-be-removed/</code> (6 files + temporary-HPC-runs.md) and delete at will</td><td>maintainer</td><td>1 min</td></tr>
+<tr><td>7</td><td><code>rosette-cf/figs/README.md</code> missing 🔗 banner (conventions test fails; other workstream — untouched)</td><td>maintainer</td><td>1 line</td></tr>
+<tr><td>8</td><td>Delete merged <code>origin/claude/pdv-trigger-pt4b-i86ots</code>; merge current <code>feature/pdv-trigger-pt4b</code></td><td>maintainer</td><td>1 min</td></tr>
+</table>
+
+<p class="small">Regenerate anything here without sims: <code>python data/make_bench6_analysis.py</code> · <code>python data/make_bench5_analysis.py</code> · <code>python data/make_theta5s_analysis.py</code> · <code>python data/compare_bench5_hpc.py</code>. This file: <code>docs/dev/transition/pdv-trigger/phase6_brief.html</code> (hand-written 2026-07-19; supplements, does not replace, <code>pdvtrigger_report.html</code>).</p>
+</body></html>

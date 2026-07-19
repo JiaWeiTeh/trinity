@@ -413,17 +413,18 @@ READ FIRST, in order — the docs are the ground truth, chat memory does not exi
    long background runs) + the f_A addendum in the CANONICAL SYNTHESIS block.
 Honor the ⚠️/🔄/💾/🔗 banners: re-verify claims against current source before relying on them.
 
-STATE: Phases 0–4 ✅. Phase 4 completed IN-CONTAINER (81/81, PROVISIONAL — not HPC-verified):
-collapse-law p=3.330 confirmed the registered p_source≈3.3; both controls cold at every f_A; 3 classes
-(normal_n1e3 fires unmodified / 6 configs need f_A, f_fire 4–12 / 2 controls); dMdt suppression < 1
-matrix-wide (Eq-47 sign). Authoritative data: data/theta5s_{fire_map,collapse_law,dmdt_suppression}.csv.
+STATE (updated 2026-07-19): Phases 0–5 ✅ ALL HPC-CONFIRMED (`FINDINGS §15e/§15h/§15j`); bench6
+head-to-head measured — f_A reaches the L21b band on every clean bench (entry 13.9/53.5/74.8,
+f_A(n̄)≈315·n̄^−0.335, thresholds 1→4→12→24→64); f_mix ELIMINATED (never in band, wrong-sign
+dose-response, false-fires). Authoritative data: runs/data/{theta5s_summary,bench5_summary_hpc,
+bench6_summary}.csv + data/{theta5s_*,bench5_analysis,bench6_analysis}.csv.
 
-YOUR TASK — the next open phase, in this priority order:
-(a) If HPC (Helix) is available: run the AUTHORITATIVE matrix — ./sync_theta5s.sh {up,submit,watch,run,
-    down} (sbatch runs/run_theta5s.sbatch) — then execute the §15e mandatory re-check of everything
-    downstream (fire map, p=3.33, controls, dMdt) against the HPC summary. HPC wins any disagreement.
-(b) Else Phase 5 (SOURCE_TERM_DESIGN §3): bench5 Lancaster/El-Badry calibration — an f_A value is good
-    if the SOLVED θ matches the published bubble sims at similar time.
+YOUR TASK — the next open items, in this priority order:
+(a) Phase 6 maintainer RULING (tree row 3 verdict, §15j): interim = f_A as calibrated diagnostic
+    knob (default stays mode=none); endgame = the state-coupled f_A (§4 one-read swap, El-Badry
+    L_int closed form) which would DERIVE the measured f_A(n̄) — then a default-flip ruling.
+(b) The ONE remaining HPC chore: re-run runs/harvest_dmdt_suppression.py on the Helix theta5s raw
+    arms (data/theta5s_dmdt_suppression.csv is still in-container-derived).
 (c) Then Phase 6: the decision tree — does f_A supersede cooling_boost_mode='multiplier' (f_mix=4,
     adopted 2026-07-02) as the production mechanism? Feed it the 3-class result + p=3.33 + controls +
     dMdt fidelity + Phase 5.
