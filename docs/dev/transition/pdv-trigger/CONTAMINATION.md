@@ -185,3 +185,11 @@ Status legend: **CLEAN** (quotable for its stated question) · **FLAG-x** (usabl
    SESSION_HANDOFF §5.2 "~blowout"; measured compact 0.912 @ t≈0.12, diffuse 0.862 @ t≈1.06) stand as
    history. **Open residue: the stop_t=8 diffuse spot-check**, which would bracket the diffuse f_fire
    between 2 and 4.
+
+## Addendum 2026-07-19 — HPC-era rows (theta5s / bench5 / bench6)
+
+| artifact | grade | note |
+|---|---|---|
+| `runs/data/theta5s_summary.csv` + `data/theta5s_{fire_map,collapse_law}.csv` | ✅ QUOTABLE (HPC) | Helix harvest 2026-07-19; p=3.330 reproduced exactly (`FINDINGS §15e/§15j`). `data/theta5s_dmdt_suppression.csv` alone still in-container-derived — do not quote a dMdt number until re-derived on Helix raw arms. |
+| `runs/data/bench5_summary_hpc.csv` + `bench5_traj_hpc/` + `data/bench5_analysis.csv` | ✅ QUOTABLE (HPC) | fidelity vs in-container measured (zero fire flips; 57/60 <0.05); dense-bench Θ_cum stays collapse-window (NOT the clean L21b metric) — quote band numbers from bench3/2/1 only. In-container pair retained as the fidelity-comparison evidence. |
+| `runs/data/bench6_summary.csv` + `bench6_traj/` + `data/bench6_analysis.csv` | ✅ QUOTABLE (HPC) | f_mix FIRE thresholds carry the §16 fallback double-boost caveat (can only flatter f_mix); Θ_cum trends are accepted-row and unaffected (`FINDINGS §15j`). |

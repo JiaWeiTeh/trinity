@@ -129,7 +129,8 @@ def main():
             "# bench6 head-to-head analysis (f_A vs f_mix) — combined bench5+bench6 arms; "
             "theta_cum = Theta over the blowout window (diag arms; clean L21b metric only "
             "for bench3/2/1, see FINDINGS 15h). Band-entry + uniformity printed by "
-            "make_bench6_analysis.py. PROVISIONAL until sourced from HPC summaries.\n"
+            "make_bench6_analysis.py. Sourced from the 2026-07-19 Helix harvests "
+            "(bench5_summary_hpc preferred when present; bench6 is HPC-only).\n"
         )
         w = csv.DictWriter(fh, fieldnames=list(out_rows[0].keys()))
         w.writeheader()

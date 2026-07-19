@@ -1,4 +1,4 @@
-# bench6 head-to-head analysis (f_A vs f_mix) — combined bench5+bench6 arms; theta_cum = Theta over the blowout window (diag arms; clean L21b metric only for bench3/2/1, see FINDINGS 15h). Band-entry + uniformity printed by make_bench6_analysis.py. PROVISIONAL until sourced from HPC summaries.
+# bench6 head-to-head analysis (f_A vs f_mix) — combined bench5+bench6 arms; theta_cum = Theta over the blowout window (diag arms; clean L21b metric only for bench3/2/1, see FINDINGS 15h). Band-entry + uniformity printed by make_bench6_analysis.py. Sourced from the 2026-07-19 Helix harvests (bench5_summary_hpc preferred when present; bench6 is HPC-only).
 run_name,bench,knob,dose,arm,fired,theta_max,theta_cum,fate,t_final
 bench1_m5e4_r20__fa12,bench1_m5e4_r20,fA,12,prod,False,0.5009017401243189,,stopping_time,5.0
 bench1_m5e4_r20__fa128,bench1_m5e4_r20,fA,128,prod,True,1.290387741068556,,stopping_time,5.0

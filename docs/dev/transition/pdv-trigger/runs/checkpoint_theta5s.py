@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# ⚠️ DO NOT RE-RUN post-2026-07-19: this writes the in-container summary format and would CLOBBER the HPC harvest in runs/data/. HPC data is authoritative; this script is retained as the in-container campaign record.
 """Merge-checkpoint the theta5s summary across container restarts.
 
 The in-container runner writes outputs to /tmp, which is WIPED on every container restart, while

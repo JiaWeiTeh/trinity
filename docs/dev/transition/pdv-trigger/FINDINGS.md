@@ -1429,14 +1429,16 @@ termination; re-run any wall-killed/nonzero-exit arm at a longer limit before qu
 config only — never widen the grid to force a control to fire. **Phase 4 status: 🟡 tooling ready,
 awaiting HPC.** The analysis-session read-out feeds the Phase-6 decision tree.
 
-## 15e. [PROVISIONAL — in-container, NOT HPC] theta5s COMPLETE 81/81 matrix, assumed pending HPC confirmation (run 2026-07-10 → completed 2026-07-11)
+## 15e. [data — HPC-CONFIRMED 2026-07-19] theta5s COMPLETE 81/81 matrix (in-container 2026-07-11; Helix re-run confirms identical headline numbers)
 
-> ⚠️ **COMPLETE (81/81) but still ASSUMED, not authoritative.** The maintainer had no HPC access, so —
-> at their request — the full 81-arm theta5s matrix was run **in Claude's ephemeral container**, not on
-> Helix via `run_theta5s.sbatch`. All 81 arms now clear the compliance gate (`t_final ≥ 5`), so the
-> earlier "partial / fast-arm-biased" caveat is **resolved** — but the **in-container-vs-HPC numerical
-> fidelity is still unverified**. Treat every number below as **provisional pending an HPC re-run**;
-> the Phase-6 decision may lean on it but must be reconfirmed against HPC (mandatory action below).
+> ✅ **HPC-CONFIRMED (2026-07-19, `§15j`).** The 81-arm matrix was re-run on Helix
+> (`run_theta5s.sbatch`); the harvest replaced `runs/data/theta5s_summary.csv` in place and
+> `make_theta5s_analysis.py` on it reproduces the in-container headlines EXACTLY: collapse law
+> **p = 3.330** (A=1.463, rms 0.0554 dex, n=6), whole-band f_A [12,16,24,32], both controls never
+> fire, outcome counts {FIRED:42, NOFIRE:30, DRAIN:9}. The numbers below are authoritative.
+> **One residue stays provisional: `data/theta5s_dmdt_suppression.csv`** — still derived from the
+> in-container arms (the reducer needs the raw Helix `dictionary.jsonl`; re-run it there before
+> quoting a dMdt number in the paper).
 
 **How it ran.** Phase 4 (§15d) is HPC-gated by design; this was the maintainer-requested *fallback*
 while HPC was unavailable. Tooling (all committed): `runs/run_theta5s_local.py` (resumable runner,
@@ -1571,16 +1573,22 @@ precedent; needs the long-run ops playbook — est. ~40–60 min/arm uninterrupt
 or on HPC together with the mandatory theta5s confirmation. **No θ/Θ number exists yet for any bench;
 nothing here is a calibration result.**
 
-## 15h. [data — IN-CONTAINER, COMPLETE] Phase 5 bench5 campaign — 60/60 ran in-container (59 compliant); L21b Θ_cum calibration done (2026-07-12)
+## 15h. [data — HPC-CONFIRMED 2026-07-19] Phase 5 bench5 campaign — 60/60 (59 compliant); L21b Θ_cum calibration (in-container 2026-07-12, Helix fidelity-confirmed)
 
-> ⚠️ **IN-CONTAINER, COMPLETE (not HPC — HPC was down 2026-07-12).** All **60/60 arms ran in-container**;
-> **59 compliant**, **1 dense diag wall-killed** (`bench5_fa16_diag`, exit 124 — non-critical, below).
-> **Maintainer directive 2026-07-12: run ALL 60 in-container — "it's definitely doable; anything within
-> 2 h is runnable."** Done: runner at `--per-arm-timeout 7200` (2 h/arm) + autocommitter (git = only
-> durable store) + re-arming heartbeat + hourly cron; the container's restart storms were absorbed by the
-> resumable runner. In-container-vs-HPC numerical fidelity is unverified — re-confirm on HPC before any
-> paper number. The single item that DOES need HPC is the *theta5s* Phase-4 confirmation (`§15e`) — see
-> repo-root `temporary-HPC-runs.md`; bench5 is NOT on that list.
+> ✅ **HPC-CONFIRMED (2026-07-19, `§15j`).** The identical 60-arm matrix re-ran on Helix
+> (`run_bench5.sbatch` → `runs/data/bench5_summary_hpc.csv` + `bench5_traj_hpc/`), and
+> `data/compare_bench5_hpc.py` records the FIRST in-container-vs-HPC fidelity measurement:
+> **FIDELITY OK — fire map identical (zero flips), 57/60 arms |Δθ_max| < 0.05** (mostly < 0.002);
+> the only 3 outliers are dense-bench collapse transients (`bench5_fa4_diag` Δ=14.35,
+> `bench4_fa8_diag` Δ=10.34, `bench4_fa4` Δ=0.39) — trajectory-sensitive spikes in the stiff
+> collapse the calibration already excludes. The `bench5_fa16_diag` stiffness freeze REPRODUCED on
+> Helix (t stalls at 0.037 on both platforms → genuine solver stiffness, not container flakiness;
+> 59/60 compliant on both). HPC numbers are authoritative; `data/bench5_analysis.csv` is now
+> regenerated from the HPC pair. The in-container campaign story below stands as the historical
+> record; **its ≤16-dose fire map is extended by bench6 (`§15j`): bench2 fires at f_A≥24, bench1 at
+> f_A≥64 — full gradient 1→4→12→24→64 — and the diffuse benches DO reach the L21b band at extended
+> dose (entry ≈ 13.9/53.5/74.8), superseding this section's ">16/≫16" and "route-a resistance"
+> phrasing.**
 
 **How it ran.** Launched the 60-arm matrix (5 benches × f_A {1,4,6,8,12,16} × {production, diagnostic})
 via `runs/run_bench5_local.py` + `runs/autocommit_bench5.sh` (adapted from theta5s) + a re-arming
@@ -1663,7 +1671,7 @@ physical result (diffuse clouds stay energy-driven; only n̄≳5×10³ reach the
 boost), or **(c)** do not ship the boost as calibrated. **The only HPC dependency is the theta5s Phase-4
 confirmation (`§15e`)** — repo-root `temporary-HPC-runs.md`; bench5 is not on that list.
 
-## 15i. [plan] HPC restored (2026-07-13) — three-batch schedule + the bench6 f_A-vs-f_mix decision matrix (designed, not yet run)
+## 15i. [plan] HPC restored (2026-07-13) — three-batch schedule + the bench6 f_A-vs-f_mix decision matrix — **EXECUTED 2026-07-19, results in §15j**
 
 HPC/Helix is back. The ordered maintainer checklist is repo-root `temporary-HPC-runs.md`: **§1 theta5s
 confirmation (MANDATORY, `§15e`), §2 bench5 confirmation + first in-container-vs-HPC fidelity
@@ -1684,6 +1692,62 @@ by construction — the "frozen-structure limit" of the Phase-6 tree row 1). ben
 (collapse-window censoring, no clean L21b metric to extend + the `§15h` fa16_diag freeze precedent);
 they are retained in the f_mix arms (cheap, fire-map value). All 60 params pass the bench5 emit gates
 + end-to-end `read_param` single-knob checks (fa arms: mode=none; fm arms: fA=1).
+
+## 15j. [data — HPC, 2026-07-19] All three Helix batches harvested; bench6 f_A-vs-f_mix head-to-head DECIDED — f_A wins outright; Phase 6 is a maintainer ruling with data in hand
+
+All three `temporary-HPC-runs.md` batches ran on Helix and were harvested/analyzed 2026-07-19
+(HPC CSVs landed in main's `591e5e4` — note: that commit's message mentions only the rosette-cf
+cleanup; the pdv artifacts are inside it regardless).
+
+**(1) theta5s Phase-4 CONFIRMED** (`§15e` updated): p=3.330 / rms 0.0554 dex / whole-band
+[12,16,24,32] / controls clean / outcome counts identical. Residue: the dMdt-suppression CSV still
+needs the Helix raw-arm re-run.
+
+**(2) bench5 Phase-5 CONFIRMED + first fidelity measurement** (`§15h` updated): FIDELITY OK — zero
+fire-map flips, 57/60 arms |Δθ_max|<0.05; 3 dense collapse-transient outliers (excluded from the
+calibration); the fa16_diag freeze reproduces on Helix (solver stiffness, both platforms 59/60).
+
+**(3) bench6 — the Phase-6 decision data (60/60 HPC arms; `data/bench6_analysis.csv`):**
+
+| bench | n̄_H | f_A band-entry (interp.) | f_A fire threshold | f_mix band-entry | f_mix Θ_cum trend (fm 1→8) |
+|---|---:|---:|---:|---|---|
+| bench3 | 5520 | **13.9** | 12 | never (≤8) | 0.462→0.224 then 0.579 (non-monotone, wrong sign) |
+| bench2 | 690 | **53.5** | 24 | never (≤8) | 0.341→0.112 (**falls monotonically — wrong sign**) |
+| bench1 | 43.1 | **74.8** | 64 | never (≤8) | 0.221→0.096 (**falls monotonically — wrong sign**) |
+
+- **f_A:** monotone Θ_cum rise everywhere; **every clean-blowout bench reaches the L21b band
+  [0.90,0.99]** at finite dose (the "proven absence" branch of `§15i` is disproven). Band-entry dose
+  is steeply density-dependent — spread **5.39×** — and fits **f_A(n̄) ≈ 315·n̄^(−0.335)** to ~50%
+  across 2 dex; the theta5s p=3.33 collapse law independently predicts the same doses to a factor
+  ~2 ((0.90/Θ₀)^3.33 → 9.2/25.3/107 vs measured 13.9/53.5/74.8). Extended fire thresholds complete
+  the gradient **1→4→12→24→64** (bench1 fa32 peaks θ_max=0.9915 without firing; fa64 fires).
+  bench3 stays in-band at fa24/32 (0.938/0.946) — the band is ~×2 wide in dose, not a knife-edge.
+- **f_mix: eliminated by measurement.** It **never reaches the band** on any clean bench at fm≤8,
+  and its dose-response has the **wrong sign** on the diffuse benches — boosting the loss
+  *after* the structure solve drains Eb, the frozen structure's Lcool collapses, and the
+  *integrated* cooling fraction falls with dose. Worse, **fm8 false-fires bench1/bench2** (transient
+  θ spike >0.95 while Θ_cum ≈ 0.10): under f_mix the trigger and the physical L21b criterion
+  DECOUPLE; under f_A they stay aligned. (Equation-audit caveat, 2026-07-19: the `§16` fallback
+  double-boost is live on no-root segments for multiplier arms — it can only *flatter* f_mix's fire
+  thresholds, so the elimination stands a fortiori. The Θ_cum trends come from accepted-row
+  trajectories and are unaffected.)
+- **Code-vs-spec audit (same day):** both knobs implement exactly their documented equations —
+  `L_total = L₁ + f_A·(L₂+L₃)` with the in-ODE boost gated at T<10^5.5 K and L_leak excluded
+  (`bubble_luminosity.py:435/845`); `L_eff = L_leak + f_mix·L_cool` post-solve
+  (`get_betadelta.py:334-357`). The physical asymmetry is real in source: f_A moves the dMdt
+  root-find (in-ODE, structure responds); f_mix cannot (applied after `get_bubbleproperties_pure`
+  returns). One negligible f_A edge case (degenerate no-conduction-zone slice scaled above-band).
+
+**Phase-6 tree mapping (`SOURCE_TERM_DESIGN.md §3 Phase 6`):** the measured outcome is **row 3's
+verdict** — "band-fire and benchmark-match want different f_A; the single-scalar compromise fails
+calibration → next rung = the state-coupled f_A (§4)" — with one amendment the tree could not
+anticipate: **both rows 2/3 prescribe "keep f_mix production", but the head-to-head eliminates
+f_mix on the tree's own decision metric** (band-entry uniformity: f_A 5.39× spread vs f_mix
+unreachable + wrong-sign). The honest action is: production default stays `cooling_boost_mode=none`
+(untouched), f_A ships as the calibrated *diagnostic/paper* knob with the measured f_A(n̄), and the
+state-coupled f_A (El-Badry L_int closed form, one-read swap per §4) is the physically-derived
+successor that would *replace* the fitted n̄-dependence. **The row pick is the maintainer's Phase-6
+ruling — every input it needs is now measured and committed.**
 
 ## 16. [flag] Pre-existing latent double-boost in the trigger fallback (found 2026-07-06 during the f_A plan audit; NOT fixed)
 

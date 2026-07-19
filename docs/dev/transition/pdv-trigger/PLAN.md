@@ -122,7 +122,12 @@ folder) — do **not** re-run the hours-long sims to recover them; reproduce onl
 > density; the required boost climbs steeply toward low density — the route-a boundary.** **Next open: Phase 6
 > (ship decision) — see §15h for the three options.**
 >
-> ### ⚠️⚠️ WHAT REQUIRES HPC/HELIX (updated 2026-07-13 — HPC is BACK) ⚠️⚠️
+> ### ⚠️⚠️ WHAT REQUIRES HPC/HELIX (updated 2026-07-19 — ALL THREE BATCHES RAN) ⚠️⚠️
+> **DONE 2026-07-19 (`FINDINGS §15j`):** §1 theta5s CONFIRMED (p=3.330 exact); §2 bench5 CONFIRMED
+> (FIDELITY OK, zero flips); §3 bench6 measured (f_A band-entry 13.9/53.5/74.8, spread 5.39×;
+> f_mix never in band + wrong-sign + false-fires → eliminated). **The ONE remaining HPC item:
+> re-run `runs/harvest_dmdt_suppression.py` on the Helix theta5s raw arms** (the committed dMdt CSV
+> is still in-container-derived). Historical batch list below (executed as written):
 > Ordered batch list in the repo-root **`temporary-HPC-runs.md`** (exact commands; maintainer deletes
 > it after running). Three batches, all params/tooling committed:
 > **§1 theta5s Phase-4 confirmation — MANDATORY** (`FINDINGS.md §15e` is PROVISIONAL; p=3.330, controls,

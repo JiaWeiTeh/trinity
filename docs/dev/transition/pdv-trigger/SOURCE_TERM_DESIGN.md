@@ -46,8 +46,7 @@ maintainer had no HPC access, the full 81-arm matrix was run in Claude's ephemer
 (`runs/run_theta5s_local.py` + `runs/autocommit_theta5s.sh` + watchdogs). All 81 arms compliant.
 **Headline: collapse-law p=3.330 CONFIRMS the registered prediction p_source≈3.3; both controls
 (`fail_repro`, `small_1e6`) stay cold at every fA; 3-class structure (fires-unmodified / needs-f_A /
-control).** These numbers are ASSUMED (in-container, not HPC) — the full matrix must still be re-run on
-`run_theta5s.sbatch` and everything downstream re-checked (§15e mandatory action). **Phase 5 🟡 PARTIAL / PROVISIONAL, Phase 6 ⬜ open**
+control).** **HPC-CONFIRMED 2026-07-19 (`§15j`)**: Helix re-run reproduces p=3.330 / whole-band [12,16,24,32] / clean controls exactly (dMdt CSV alone still in-container-derived). **Phase 5 ✅ HPC-CONFIRMED (FIDELITY OK, zero fire-map flips), Phase 6 🟡 decision data IN HAND**
 (see the handoff block below). **Re-entry 2026-07-12: pre-step ✅ (`§15g`, Table-1 [V]-verified, 60 params
 frozen); then the maintainer ruled IN-CONTAINER (HPC down) and the 60-arm campaign COMPLETED —
 `FINDINGS.md §15h`: 60/60 ran, 59 compliant (1 dense diag wall-killed, non-critical). FIRE MAP threshold
@@ -55,9 +54,10 @@ frozen); then the maintainer ruled IN-CONTAINER (HPC down) and the 60-arm campai
 NOFIRE ≤16). Θ_cum L21b calibration (diagnostic arms, all complete; diffuse benches blow out cleanly):
 bench3 enters the band [0.90,0.99] at f_A≈16 (Θ_cum 0.965); bench2/bench1 do NOT reach it even at f_A=16
 (max 0.54/0.40) → f_A >16 / ≫16; dex-vs-El-Badry never below 0.85. RESULT: no single global f_A reproduces
-L21b across density — the required boost climbs steeply toward low density (route-a boundary).** NEXT OPEN
-ITEM: **Phase 6 (ship decision) — three options in §15h.** **The ONLY HPC dependency is the theta5s
-Phase-4 confirmation (§15e) — see repo-root `temporary-HPC-runs.md`; bench5 is NOT on it.** Two review agents audited this plan on 2026-07-06 (config-coverage audit;
+L21b across density — the required boost climbs steeply toward low density (route-a boundary).** **↳ SUPERSEDED 2026-07-19 by `FINDINGS §15j` (bench6): the diffuse benches DO reach the band at
+extended dose (entry 13.9/53.5/74.8, spread 5.39×; thresholds complete 1→4→12→24→64), and the f_mix
+head-to-head ELIMINATES the multiplier (never in band, wrong-sign dose-response, false-fires).**
+NEXT OPEN ITEM: **Phase 6 maintainer ruling — all inputs measured (§15j; tree row 3 verdict).** Two review agents audited this plan on 2026-07-06 (config-coverage audit;
 literature-benchmark extraction) — their findings are integrated throughout and marked "(audit)" /
 "(lit)". **Phase 1 headline: the condensation-edge prediction (edges near θ≈1) was FALSIFIED in the
 SAFE direction — no dMdt≤0 edge exists for f_A even at 512 (16× the physical range); the source knob
@@ -496,7 +496,7 @@ Headline question: does a single f_A fire **7/7 fireable** configs (the multipli
 standard was [4, 4.5] at 7/7) while both controls pass *unchanged*? **Never tune f_A to make the
 controls fire — that would itself be a bug.**
 
-### Phase 5 ✅ — literature calibration: matched-config benchmarks (pre-step ✅ + 60 params frozen `§15g`; in-container run COMPLETE 60/60, 59 compliant, fire map + Θ_cum L21b calibration `§15h` 2026-07-12)
+### Phase 5 ✅ — literature calibration: matched-config benchmarks (60/60 `§15h`; **HPC-confirmed 2026-07-19** — fidelity OK, `bench5_summary_hpc.csv`; extended by bench6 `§15j`)
 
 The maintainer's criterion: *an f_A value is working well if it produces similar θ at similar
 time for a cloud config found in published bubble simulations.* Primary anchor: **Lancaster
@@ -584,7 +584,7 @@ Artifacts: `runs/params/bench5/`, `runs/data/bench5_summary.csv`,
 `data/make_bench5_analysis.py`, `bench5_theta_tracks.png`; CONTAMINATION register entries;
 REPRODUCE rows.
 
-### Phase 6 ⬜ — decision (pre-committed tree; don't relitigate)
+### Phase 6 🟡 — decision (pre-committed tree; don't relitigate) — **all inputs measured 2026-07-19 (`FINDINGS §15j`): outcome = row 3's verdict (single-scalar fails; state-coupled f_A is the next rung), with the amendment that the bench6 head-to-head ELIMINATES f_mix on the tree's own metric (never reaches the band, wrong-sign dose-response, false-fires). Rows 2/3's "keep f_mix production" reads as "keep mode=none default". Maintainer ruling pending.**
 
 | outcome | verdict | action |
 |---|---|---|

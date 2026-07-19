@@ -32,8 +32,10 @@ import matplotlib.pyplot as plt  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 PDV = HERE.parent
-SUMMARY = PDV / "runs" / "data" / "bench5_summary.csv"
-TRAJ = PDV / "runs" / "data" / "bench5_traj"
+_RD = PDV / "runs" / "data"
+# prefer the authoritative HPC harvest (2026-07-19, FIDELITY OK vs in-container — compare_bench5_hpc.py)
+SUMMARY = _RD / ("bench5_summary_hpc.csv" if (_RD / "bench5_summary_hpc.csv").exists() else "bench5_summary.csv")
+TRAJ = _RD / ("bench5_traj_hpc" if (_RD / "bench5_traj_hpc").is_dir() else "bench5_traj")
 ELBADRY = HERE / "bench5_elbadry_prediction.csv"
 L21B_BAND = (0.90, 0.99)
 FIRE = 0.95
@@ -117,8 +119,9 @@ def main():
     out = HERE / "bench5_analysis.csv"
     cols = list(rows[0].keys())
     with out.open("w", newline="") as fh:
-        fh.write("# bench5 Phase-5 analysis (PROVISIONAL / IN-CONTAINER, NOT HPC — HPC down 2026-07-12). "
-                 "60/60 arms ran in-container (59 compliant; 1 dense diag wall-killed). FIRE MAP + theta_max "
+        fh.write("# bench5 Phase-5 analysis (HPC-sourced when bench5_summary_hpc.csv is present — the "
+                 "2026-07-19 Helix harvest, FIDELITY OK vs in-container, fire map identical). "
+                 "60/60 arms (59 compliant; 1 dense diag stiffness freeze on both platforms). FIRE MAP + theta_max "
                  "from the PRODUCTION arms; Theta_cum-over-window + dex_vs_EB from the DIAGNOSTIC (blowout) "
                  "arms. For the DIFFUSE benches (bench3/2/1) the diag arm blows out cleanly (end R2 ~ rCloud) "
                  "so theta_cum_prefire IS the L21b breakout-window Theta_cum; the DENSE benches (bench5/4) "

@@ -244,8 +244,9 @@ NOFIRE ≤16 — matches the registered θ_EB above (θ_EB falls with density). 
 L21b breakout-window Θ_cum — bench3 enters the band [0.90,0.99] at **f_A≈16** (Θ_cum 0.965), bench2/bench1
 do NOT reach it even at f_A=16 (max 0.54/0.40) → **f_A >16 / ≫16**. The dense benches censor at
 shell-collapse (not the clean L21b window). **Result: no single global f_A reproduces L21b across density;
-the required boost climbs steeply toward low density** (feeds Phase-6 ship decision). The Fig-17 direct
-tracks (bench-2, and the 20-pc bench-1) remain the comparison targets for an HPC re-confirmation run.
+the required boost climbs steeply toward low density** (feeds Phase-6 ship decision). **HPC re-confirmation DONE 2026-07-19** (`FINDINGS §15j`): fidelity OK, and bench6 extends the
+calibration — all clean benches reach the band (f_A entry 13.9/53.5/74.8); f_mix eliminated. The
+Fig-17 tracks remain [V-plot-eyeball] grade — re-digitize before any quantitative fit.
 
 *Transcribed from ApJ 914, 90 (Lancaster+2021 Paper II) and arXiv:2505.22730v1 (Lancaster+2025) on 2026-06-30,
 `feature/PdV-trigger-term-pt2`. No production code touched.*
