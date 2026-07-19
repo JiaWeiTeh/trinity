@@ -1,0 +1,62 @@
+# generated 2026-07-19T10:48:56Z | builder harvest_bench5.py | code 89e802dd+dirty
+run_name,theta_max,t_at_theta_max,theta_first,n_impl,t_final,phase_final,reached_momentum,fired_cooling_balance,outcome,detail
+bench1_m5e4_r20__fa128,1.290387741068556,0.13558433902133568,0.2198277561373813,58,5.0,momentum,True,True,stopping_time,Stopping time reached
+bench1_m5e4_r20__fa128_diag,1.4518231890256132,0.3273440015483224,0.2198277561373813,212,0.4943849702238397,implicit,False,False,,
+bench1_m5e4_r20__fa24,0.6761662391142077,4.971497470753799,0.09656570017581874,171,5.0,implicit,False,False,stopping_time,Stopping time reached
+bench1_m5e4_r20__fa24_diag,0.5752566002959433,0.6317810590175938,0.09656570017581874,84,2.5462311031979015,momentum,True,False,shell_dissolved,Shell dissolved
+bench1_m5e4_r20__fa32,0.9915390898207418,5.0,0.11055704716862377,171,5.0,implicit,False,False,stopping_time,Reached stop_t=5.000000e+00 Myr during prior phase
+bench1_m5e4_r20__fa32_diag,0.6903652792531808,0.6002331917935841,0.11055704716862377,84,2.7108534831087026,momentum,True,False,shell_dissolved,Shell dissolved
+bench1_m5e4_r20__fa64,0.9868162101093141,0.455719351415263,0.1547063665908088,78,4.838141731085957,momentum,True,True,shell_dissolved,Shell dissolved
+bench1_m5e4_r20__fa64_diag,1.4091895389798383,0.4807787130966266,0.1547063665908088,109,4.775168113190658,momentum,True,True,shell_dissolved,Shell dissolved
+bench1_m5e4_r20__fm2,0.48708293103496236,0.703158736183084,0.059839358741596356,171,5.0,implicit,False,False,stopping_time,Stopping time reached
+bench1_m5e4_r20__fm2_diag,0.48595457456633806,0.6134423244468699,0.059839358741596356,84,2.662673602197214,momentum,True,False,shell_dissolved,Shell dissolved
+bench1_m5e4_r20__fm3,0.6186316826795565,4.928843397123926,0.08999207268583763,171,5.0,implicit,False,False,stopping_time,Stopping time reached
+bench1_m5e4_r20__fm3_diag,0.6021240130409798,0.6391269853877208,0.08999207268583763,84,2.658358606732785,momentum,True,False,shell_dissolved,Shell dissolved
+bench1_m5e4_r20__fm4,0.7442417452387624,4.91696726118474,0.12030619979170204,170,5.0,implicit,False,False,stopping_time,Stopping time reached
+bench1_m5e4_r20__fm4_diag,0.6764164298818636,0.677250849448535,0.12030619979170204,84,2.6892371072475796,momentum,True,False,shell_dissolved,Shell dissolved
+bench1_m5e4_r20__fm8,0.9525383339719463,4.609752292775149,0.2431391103577952,159,5.0,transition,True,True,stopping_time,Stopping time reached
+bench1_m5e4_r20__fm8_diag,0.8565954552550138,0.8097522927751577,0.2431391103577952,84,3.1619964248185135,momentum,True,False,shell_dissolved,Shell dissolved
+bench2_m1e5_r10__fa128,1.2320637821681486,0.047799515123949865,0.3680775572108555,41,5.0,momentum,True,True,stopping_time,Stopping time reached
+bench2_m1e5_r10__fa128_diag,1.2325330458171602,0.056091061050192716,0.3680775572108555,101,5.0,momentum,True,True,stopping_time,Stopping time reached
+bench2_m1e5_r10__fa24,0.9635628243947987,0.3792024561847053,0.1629158198933333,75,5.0,momentum,True,True,stopping_time,Stopping time reached
+bench2_m1e5_r10__fa24_diag,1.4466776956178407,0.41075032340871503,0.1629158198933333,77,5.0,momentum,True,True,stopping_time,Stopping time reached
+bench2_m1e5_r10__fa32,1.0351113809980244,0.3149497754666761,0.1838207041368676,71,5.0,momentum,True,True,stopping_time,Stopping time reached
+bench2_m1e5_r10__fa32_diag,1.0351113809980244,0.3149497754666761,0.1838207041368676,89,5.0,momentum,True,True,stopping_time,Stopping time reached
+bench2_m1e5_r10__fa64,1.0644585947701621,0.08924106764412348,0.2532379159704591,51,5.0,momentum,True,True,stopping_time,Stopping time reached
+bench2_m1e5_r10__fa64_diag,1.3851273554730923,0.08924106764412348,0.2532379159704591,101,5.0,momentum,True,True,stopping_time,Stopping time reached
+bench2_m1e5_r10__fm2,0.6431763878827141,0.4673575523140884,0.14398486490230558,168,5.0,implicit,False,False,stopping_time,Stopping time reached
+bench2_m1e5_r10__fm2_diag,0.6362291548224374,0.3792024561847053,0.14398486490230558,76,5.0,momentum,True,False,stopping_time,Stopping time reached
+bench2_m1e5_r10__fm3,0.7540559431376356,0.4102472355973511,0.2169888027456047,168,5.0,implicit,False,False,stopping_time,Stopping time reached
+bench2_m1e5_r10__fm3_diag,0.7540559431376356,0.4102472355973511,0.2169888027456047,76,5.0,momentum,True,False,stopping_time,Stopping time reached
+bench2_m1e5_r10__fm4,0.8308092027319033,0.5116437082073505,0.29072930230326577,166,5.0,implicit,False,False,stopping_time,Stopping time reached
+bench2_m1e5_r10__fm4_diag,0.830799069031994,0.47192729647113635,0.29072930230326577,76,5.0,momentum,True,False,stopping_time,Stopping time reached
+bench2_m1e5_r10__fm8,1.0058037445694914,0.3717842173494915,0.5957855614430705,71,5.0,momentum,True,True,stopping_time,Stopping time reached
+bench2_m1e5_r10__fm8_diag,1.0058037445694914,0.3717842173494915,0.5957855614430705,94,5.0,momentum,True,True,stopping_time,Stopping time reached
+bench3_m1e5_r5__fa24,1.0664914776814713,0.091630566865426,0.27404221310453686,50,1.7383714154816061,momentum,True,True,shell_collapsed,Small radius reached (event)
+bench3_m1e5_r5__fa24_diag,1.20201878940118,0.10626293092958475,0.27404221310453686,104,1.8617707254723483,momentum,True,True,shell_collapsed,Small radius reached (event)
+bench3_m1e5_r5__fa32,1.3262634872857015,0.07404131274748432,0.30994423961642503,47,1.7794941420034238,momentum,True,True,shell_collapsed,Small radius reached (event)
+bench3_m1e5_r5__fa32_diag,1.3260405797836046,0.06904131274748432,0.30994423961642503,97,1.7550361303316044,momentum,True,True,shell_collapsed,Small radius reached (event)
+bench3_m1e5_r5__fm2,0.7877551021814867,0.3457455267203497,0.2879348651631689,164,5.0,implicit,False,False,stopping_time,Stopping time reached
+bench3_m1e5_r5__fm2_diag,0.7540049589032568,0.28913829781497635,0.2879348651631689,68,5.0,momentum,True,False,stopping_time,Stopping time reached
+bench3_m1e5_r5__fm3,0.9491518249175148,0.4250710249677679,0.43670721268028684,72,5.0,momentum,True,False,stopping_time,Stopping time reached
+bench3_m1e5_r5__fm3_diag,0.8682679252139809,0.2837826641171419,0.43670721268028684,68,5.0,momentum,True,False,stopping_time,Stopping time reached
+bench3_m1e5_r5__fm4,1.1373170262314851,0.27676285951481594,0.5916586930623627,64,5.0,momentum,True,True,stopping_time,Stopping time reached
+bench3_m1e5_r5__fm4_diag,1.1373170262314851,0.27676285951481594,0.5916586930623627,78,5.0,momentum,True,True,stopping_time,Stopping time reached
+bench3_m1e5_r5__fm8,0.9695483930180985,0.003020832602788425,0.9695483930180985,1,2.117450580738619,momentum,True,True,shell_collapsed,Small radius reached (event)
+bench3_m1e5_r5__fm8_diag,16.160564837914873,0.22226298370322017,1.0300381318472094,82,4.9101413843515145,momentum,True,True,shell_dissolved,Shell dissolved
+bench4_m1e5_r2p5__fm2,1.0196177173664625,0.16261525865202955,0.5711080104176559,55,0.5085227466703277,momentum,True,True,shell_collapsed,Small radius reached (event)
+bench4_m1e5_r2p5__fm2_diag,1.044443690448348,0.22730791160256256,0.5711080104176559,72,0.5867056179866045,momentum,True,True,shell_collapsed,Small radius reached (event)
+bench4_m1e5_r2p5__fm3,0.7145254368254305,0.0034102942363098327,0.7145254368254305,2,0.5308397415917566,momentum,True,False,shell_collapsed,Small radius reached
+bench4_m1e5_r2p5__fm3_diag,8.55042396908672,0.17681840660887732,0.7145254368254305,138,4.37971580328706,momentum,True,True,shell_dissolved,Shell dissolved
+bench4_m1e5_r2p5__fm4,0.9876708652799375,0.0034102942363098327,0.9876708652799375,2,0.539054513655866,momentum,True,True,shell_collapsed,Small radius reached
+bench4_m1e5_r2p5__fm4_diag,16.169316103395204,0.13494502956370735,0.9876708652799375,69,5.0,momentum,True,True,stopping_time,Stopping time reached
+bench4_m1e5_r2p5__fm8,0.9907155600794211,0.001430294236309828,0.9907155600794211,1,0.5539458121217773,momentum,True,True,shell_collapsed,Small radius reached
+bench4_m1e5_r2p5__fm8_diag,114.80426884228565,0.08550430852728523,0.2341633739575949,67,2.9838717853168637,momentum,True,True,shell_dissolved,Shell dissolved
+bench5_m5e5_r2p5__fm2,0.6223448565302624,0.0034100916062232926,0.6223448565302624,2,0.07514050892640756,momentum,True,False,shell_collapsed,Small radius reached
+bench5_m5e5_r2p5__fm2_diag,3.1327774200494343,0.09238023134719679,0.6223448565302624,90,0.18222381002279248,momentum,True,True,shell_collapsed,Small radius reached
+bench5_m5e5_r2p5__fm3,0.9412413767814313,0.0034100916062232926,0.9412413767814313,2,0.07509665897302284,momentum,True,False,shell_collapsed,Small radius reached
+bench5_m5e5_r2p5__fm3_diag,11.68758242642562,0.281179467879253,0.9412413767814313,102,0.3176195921283846,momentum,True,True,shell_collapsed,Small radius reached
+bench5_m5e5_r2p5__fm4,1.2005512684576864,0.002855570278463387,0.9100389416321037,3,0.07453670663461834,momentum,True,True,shell_collapsed,Small radius reached
+bench5_m5e5_r2p5__fm4_diag,1.2163181878227582,0.024456922196112067,1.2159026329421692,51,0.07628230941748884,momentum,True,True,shell_collapsed,Small radius reached
+bench5_m5e5_r2p5__fm8,1.0626183605519162,0.0019446238637401327,0.12032198432601314,4,0.07396237168266821,momentum,True,True,shell_collapsed,Small radius reached
+bench5_m5e5_r2p5__fm8_diag,2.148980521052819,0.053324129234256744,0.3053344751913588,42,0.053324129234256744,implicit,False,False,,

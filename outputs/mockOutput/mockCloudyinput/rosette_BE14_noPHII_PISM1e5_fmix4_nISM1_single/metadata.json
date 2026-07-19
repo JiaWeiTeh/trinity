@@ -1,0 +1,278 @@
+{
+  "_metadata_version": 4,
+  "model_name": "rosette_BE14_noPHII_PISM1e5_fmix4_nISM1_single",
+  "output_format": "JSON",
+  "log_level": "INFO",
+  "log_console": false,
+  "log_file": true,
+  "log_colors": true,
+  "mCloud": 99000.0,
+  "sfe": 0.01,
+  "ZCloud": 1.0,
+  "include_PHII": false,
+  "coverFraction": 0.89,
+  "dens_profile": "densBE",
+  "betadelta_solver": "hybr",
+  "densBE_Omega": 14.1,
+  "nCore": 2.937998946096347e+58,
+  "nISM": 2.937998946096347e+55,
+  "rCore": 1.0,
+  "rCloud_max": 1000000000.0,
+  "allowShellDissolution": true,
+  "stop_t_diss": 1.0,
+  "stop_r": null,
+  "stop_t": 3.0,
+  "coll_r": 1.0,
+  "SB99_rotation": 1.0,
+  "FB_mColdWindFrac": 0.0,
+  "FB_mColdSNFrac": 0.0,
+  "FB_thermCoeffWind": 1.0,
+  "FB_thermCoeffSN": 1.0,
+  "FB_vSN": 10227.12165045695,
+  "mu_atom": 1.0711988026792088e-57,
+  "mu_ion": 5.123124708465782e-58,
+  "mu_mol": 1.9638644715785495e-57,
+  "mu_convert": 1.1783186829471295e-57,
+  "x_He": 0.1,
+  "Z_He": 2.0,
+  "Z_He_shell": 1.0,
+  "TShell_neu": 100.0,
+  "TShell_ion": 10000.0,
+  "dust_sigma": 1.5753975604337285e-58,
+  "dust_noZ": 0.05,
+  "dust_KappaIR": 0.0008353429491840148,
+  "caseB_alpha": 2.781967778055141e-55,
+  "gamma_adia": 1.6666666666666667,
+  "C_thermal": 3.0733123139055833e-18,
+  "c_light": 306601.39378555055,
+  "G": 0.004498502151469554,
+  "k_B": 7.262467736391801e-60,
+  "PISM": 2.937998946096347e+60,
+  "phaseSwitch_LlossLgain": 0.05,
+  "transition_trigger": "cooling_balance",
+  "cooling_boost_mode": "multiplier",
+  "cooling_boost_fmix": 4.0,
+  "cooling_boost_theta": 0.0,
+  "cooling_boost_kappa": 1.0,
+  "cooling_boost_fA": 1.0,
+  "bubble_xi_Tb": 0.98,
+  "mCloud_input": 100000.0,
+  "mCluster": 1000.0,
+  "chi_e": 1.2,
+  "mu_ion_shell": 5.355994013396044e-58,
+  "chi_e_shell": 1.1,
+  "tSF": 0,
+  "rCloud": 15.742627185260364,
+  "nEdge": 2.0836871958130123e+57,
+  "densBE_Teff": 1130.8011606699436,
+  "densBE_sigma": 3.3325356338049312,
+  "termination_debug": {
+    "timestamp": "2026-07-15 13:59:59",
+    "reason": "Signal SIGINT",
+    "snapshot_count": 2,
+    "time": {
+      "new": 0.009747676707423806,
+      "old": 0.008955230111193249,
+      "dt": 0.0007924465962305567
+    },
+    "comparison": [
+      {
+        "key": "t_now",
+        "label": "Time",
+        "unit": "Myr",
+        "old": 0.008955230111193249,
+        "new": 0.009747676707423806,
+        "change": "+0.000792 (+8.8%)",
+        "rel_change": 0.08848980834563573,
+        "flagged": false
+      },
+      {
+        "key": "R1",
+        "label": "Inner radius",
+        "unit": "pc",
+        "old": 0.18763056111460094,
+        "new": 0.19459858093017504,
+        "change": "+0.00697 (+3.7%)",
+        "rel_change": 0.037136912953738783,
+        "flagged": false
+      },
+      {
+        "key": "R2",
+        "label": "Outer radius",
+        "unit": "pc",
+        "old": 0.5638518351067675,
+        "new": 0.5886385703131815,
+        "change": "+0.0248 (+4.4%)",
+        "rel_change": 0.04395966043405797,
+        "flagged": false
+      },
+      {
+        "key": "rShell",
+        "label": "Shell radius",
+        "unit": "pc",
+        "old": 0.594529757884967,
+        "new": 0.621408613966809,
+        "change": "+0.0269 (+4.5%)",
+        "rel_change": 0.04521027875452908,
+        "flagged": false
+      },
+      {
+        "key": "v2",
+        "label": "Shell velocity",
+        "unit": "km/s",
+        "old": 30.958038796333394,
+        "new": 30.208639712578147,
+        "change": "-0.749 (+2.4%)",
+        "rel_change": 0.02420693018331652,
+        "flagged": false
+      },
+      {
+        "key": "Eb",
+        "label": "Bubble energy",
+        "unit": "erg",
+        "old": 5.057122103156962e+47,
+        "new": 5.353104360594547e+47,
+        "change": "+2.96e+46 (+5.9%)",
+        "rel_change": 0.05852780522202834,
+        "flagged": false
+      },
+      {
+        "key": "Pb",
+        "label": "Bubble pressure",
+        "unit": "K cm\u207b\u00b3",
+        "old": 114920867.86287598,
+        "new": 106838183.84822603,
+        "change": "-8.08e+06 (+7.0%)",
+        "rel_change": 0.07033260507825477,
+        "flagged": false
+      },
+      {
+        "key": "shell_mass",
+        "label": "Shell mass",
+        "unit": "Msun",
+        "old": 25.856958390451727,
+        "new": 29.404962126942365,
+        "change": "+3.55 (+13.7%)",
+        "rel_change": 0.13721659303132963,
+        "flagged": false
+      },
+      {
+        "key": "shell_nMax",
+        "label": "Shell peak density",
+        "unit": "cm\u207b\u00b3",
+        "old": 5986.454229221546,
+        "new": 5554.54125952075,
+        "change": "-432 (+7.2%)",
+        "rel_change": 0.07214837918454442,
+        "flagged": false
+      },
+      {
+        "key": "F_grav",
+        "label": "Gravity force",
+        "unit": "code",
+        "old": 370.5903910690526,
+        "new": 387.3734467193087,
+        "change": "+16.8 (+4.5%)",
+        "rel_change": 0.04528734704060059,
+        "flagged": false
+      },
+      {
+        "key": "F_ram",
+        "label": "Ram force",
+        "unit": "code",
+        "old": 97965.82704593417,
+        "new": 99258.94248767706,
+        "change": "+1.29e+03 (+1.3%)",
+        "rel_change": 0.013199658296525953,
+        "flagged": false
+      },
+      {
+        "key": "F_rad",
+        "label": "Radiation force",
+        "unit": "code",
+        "old": 15082.6491828954,
+        "new": 15058.061728518738,
+        "change": "-24.6 (+0.2%)",
+        "rel_change": 0.001630181414319827,
+        "flagged": false
+      },
+      {
+        "key": "F_ion_in",
+        "label": "Ion force",
+        "unit": "code",
+        "old": 0.0,
+        "new": 0.0,
+        "change": "\u2014",
+        "rel_change": 0.0,
+        "flagged": false
+      },
+      {
+        "key": "T0",
+        "label": "Inner temp",
+        "unit": "K",
+        "old": 1622876.360336064,
+        "new": 1606193.9720061885,
+        "change": "-1.67e+04 (+1.0%)",
+        "rel_change": 0.010279518968666749,
+        "flagged": false
+      },
+      {
+        "key": "bubble_Tavg",
+        "label": "Avg bubble temp",
+        "unit": "K",
+        "old": 4552010.086861365,
+        "new": 4479799.004807758,
+        "change": "-7.22e+04 (+1.6%)",
+        "rel_change": 0.01586355932339252,
+        "flagged": false
+      },
+      {
+        "key": "current_phase",
+        "label": "Phase",
+        "unit": "",
+        "old": "implicit",
+        "new": "implicit",
+        "change": "\u2014",
+        "rel_change": 0.0,
+        "flagged": false
+      },
+      {
+        "key": "isCollapse",
+        "label": "Collapsing",
+        "unit": "",
+        "old": false,
+        "new": false,
+        "change": "\u2014",
+        "rel_change": 0.0,
+        "flagged": false
+      }
+    ],
+    "warnings": [],
+    "invalid_values": {
+      "nan": [],
+      "inf": []
+    },
+    "sanity_checks": [
+      {
+        "check": "R1 < R2",
+        "passed": true,
+        "detail": "R1=0.1946, R2=0.5886"
+      },
+      {
+        "check": "Eb > 0",
+        "passed": true,
+        "detail": "Eb=2.8158e+04"
+      },
+      {
+        "check": "Pb > 0",
+        "passed": true,
+        "detail": "Pb=2.2796e+04"
+      },
+      {
+        "check": "shell_mass > 0",
+        "passed": true,
+        "detail": "shell_mass=2.9405e+01"
+      }
+    ]
+  }
+}

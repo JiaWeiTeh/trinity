@@ -23,7 +23,7 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=2G
 #SBATCH --array=1-60
-#SBATCH --time=3:00:00
+#SBATCH --time=1:30:00
 #SBATCH --output=/gpfs/bwfor/work/ws/hd_cq295-trinity/jobs_bench6/logs/%A_%a.out
 
 module load devel/miniforge

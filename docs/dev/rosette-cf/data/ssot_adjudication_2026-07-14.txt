@@ -1,0 +1,40 @@
+SSOT: 7830 runs | matchable (finite chi2, radii-only 7pc): 3380 (43%)
+  matchable fates: {'recollapsed': 1342, 'ongoing': 1744, 'dispersed': 280, 'shell_dissolved': 14}
+  all-grid fates : from summary (recollapsed dominates)
+
+== A. fate-AGNOSTIC best (radii-only 7pc) — WARNING: mostly recollapsing bubbles ==
+   chi2=0.03 R2=7.14 rSh=18.8  mCloud=5e+05 nCore=1e+04 cf=0.95 prof=BE phii=False fate=recollapsed
+   chi2=0.03 R2=7.14 rSh=18.8  mCloud=5e+05 nCore=1e+04 cf=0.95 prof=BE phii=False fate=recollapsed
+   chi2=0.03 R2=7.14 rSh=18.8  mCloud=5e+05 nCore=1e+04 cf=0.95 prof=BE phii=False fate=recollapsed
+   -> of the top-200 fate-agnostic fits, fates: {'recollapsed': 182, 'dispersed': 2, 'ongoing': 16}
+
+== B. ONGOING (expanding at age) best — the PHYSICALLY-RELEVANT cavity match ==
+   chi2=2.89 R2=5.55 rSh=20.8 v2=1.1km/s  mCloud=1e+05 nCore=1e+03 cf=0.89 prof=BE phii=False fmix=4.0
+   chi2=2.93 R2=5.53 rSh=20.8 v2=1.1km/s  mCloud=1e+05 nCore=1e+03 cf=0.89 prof=BE phii=False fmix=4.0
+   chi2=3.26 R2=5.39 rSh=20.6 v2=1.3km/s  mCloud=1e+05 nCore=1e+03 cf=0.89 prof=BE phii=False fmix=4.0
+   chi2=3.30 R2=5.38 rSh=20.6 v2=1.4km/s  mCloud=1e+05 nCore=1e+03 cf=0.89 prof=BE phii=False fmix=4.0
+   chi2=3.35 R2=5.35 rSh=20.6 v2=1.6km/s  mCloud=1e+06 nCore=1e+03 cf=0.89 prof=BE phii=True fmix=4.0
+   PHYSICAL pair (mCloud=1e5, sfe=0.01) best ongoing: chi2=2.89 nCore=1e+03 cf=0.89 prof=BE R2=5.55 v2=1.1km/s
+
+== C. C_f is an INTERIOR optimum (min chi2 by C_f, ongoing only) ==
+   cf=0.77: min chi2=70.52  (n=94)
+   cf=0.83: min chi2=35.47  (n=236)
+   cf=0.89: min chi2=2.89  (n=396)
+   cf=0.95: min chi2=25.94  (n=507)
+   cf=0.99: min chi2=32.39  (n=511)
+   -> interim prediction 'edge-min at C_f<=0.70' is RETRACTED; optimum ~0.89-0.95, near the pilot's 0.89.
+
+== D. near-sealed C_f=0.99 overshoot by nCore (the ~x3 claim; median R2 vs 7 & 6.2 pc) ==
+   nCore=     100: median R2@best= 19.7 pc  x2.8(vs7) x3.2(vs6.2)  n=486
+   nCore=    1000: median R2@best= 12.0 pc  x1.7(vs7) x1.9(vs6.2)  n=494
+   nCore=   10000: median R2@best=  9.8 pc  x1.4(vs7) x1.6(vs6.2)  n=72
+   -> ~x3 holds only at LOW nCore; shrinks at higher nCore (and nCore=1e4 near-sealed recollapses).
+
+== E. 6.2 pc base: match_62.csv not ready; 6.2 overshoot readable as R2_at_best-6.2 (best ongoing R2~5.5 -> near-perfect on 6.2). ==
+
+PREDICTION VERDICTS (interim §0.3, dated 2026-07-14):
+  (a) C_f optimum <=0.70 edge-min .............. RETRACTED (interior ~0.89-0.95; pilot-like)
+  (b) chi2 falls w/ nCore; fmix=4<fmix=1 ....... MIXED (nCore: expanding optimum at 1e3 not 1e4 -
+      the 1e4 min recollapses; fmix=4 does favour the best ongoing fits)
+  (c) sealed overshoots tens-of-pc all nCore ... PARTIAL (yes at low nCore ~x2.8; high nCore recollapses)
+  (d) physical pair needs higher PISM .......... RETRACTED (PISM ~degenerate; 1e5 matches at nCore=1e3)

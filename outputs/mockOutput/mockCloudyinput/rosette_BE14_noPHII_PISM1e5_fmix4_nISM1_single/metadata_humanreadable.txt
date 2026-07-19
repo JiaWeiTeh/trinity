@@ -1,0 +1,29 @@
+============================================================
+TRINITY run: rosette_BE14_noPHII_PISM1e5_fmix4_nISM1_single
+============================================================
+Status   : ? UNKNOWN  (no termination block — legacy or aborted run)
+
+------------------------------------------------------------
+Cloud
+------------------------------------------------------------
+  mCloud        : 9.90e+04  Msun
+  nCore         : 1.00e+03  cm⁻³
+  rCloud        : 15.743  pc
+  rCore         : 1.000  pc
+  dens_profile  : densBE
+  nISM          : 1.00e+00  cm⁻³
+  sfe           : 0.0100
+  mCluster      : 1.00e+03  Msun
+  ZCloud        : 1.00  Z☉
+
+------------------------------------------------------------
+Final state
+------------------------------------------------------------
+  (no final_state block — legacy or aborted run)
+
+------------------------------------------------------------
+Termination diagnostics
+------------------------------------------------------------
+  reason        : Signal SIGINT
+  (no flagged changes, no NaN/Inf, all sanity checks passed)
+============================================================

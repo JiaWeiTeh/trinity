@@ -1,0 +1,22 @@
+ongoing matchable runs (finite radii chi2): 1744
+
+== best ONGOING by RADII ONLY ==
+   cr=  2.9 (radii 2.9) v2=1.1  mCloud=1e+05 nCore=1e+03 cf=0.89 prof=BE phii=False fmix=4.0 R2=5.6
+   cr=  3.4 (radii 3.4) v2=1.6  mCloud=1e+06 nCore=1e+03 cf=0.89 prof=BE phii=True fmix=4.0 R2=5.3
+   cr=  6.5 (radii 6.5) v2=1.6  mCloud=1e+05 nCore=1e+03 cf=0.89 prof=PL-1 phii=True fmix=4.0 R2=7.2
+   cr= 10.2 (radii 10.2) v2=1.6  mCloud=1e+05 nCore=1e+03 cf=0.89 prof=BE phii=True fmix=4.0 R2=6.1
+
+== best ONGOING by RADII + v2 vs NEUTRAL 4.3 (physically correct, F-3/D-6) ==
+   c_neu=  5.2 (radii 3.4) v2=1.6  mCloud=1e+06 nCore=1e+03 cf=0.89 prof=BE phii=True fmix=4.0 R2=5.3
+   c_neu=  5.4 (radii 3.3) v2=1.3  mCloud=1e+05 nCore=1e+03 cf=0.89 prof=BE phii=False fmix=4.0 R2=5.4
+   c_neu=  8.4 (radii 6.5) v2=1.6  mCloud=1e+05 nCore=1e+03 cf=0.89 prof=PL-1 phii=True fmix=4.0 R2=7.2
+   c_neu= 12.0 (radii 10.2) v2=1.6  mCloud=1e+05 nCore=1e+03 cf=0.89 prof=BE phii=True fmix=4.0 R2=6.1
+
+== best ONGOING by RADII + v2 vs IONISED 14.0 (frozen v_bubble target) ==
+   c_ion= 13.0 (radii 3.4) v2=1.6  mCloud=1e+06 nCore=1e+03 cf=0.89 prof=BE phii=True fmix=4.0 R2=5.3
+   c_ion= 13.3 (radii 3.3) v2=1.3  mCloud=1e+05 nCore=1e+03 cf=0.89 prof=BE phii=False fmix=4.0 R2=5.4
+   c_ion= 16.2 (radii 6.5) v2=1.6  mCloud=1e+05 nCore=1e+03 cf=0.89 prof=PL-1 phii=True fmix=4.0 R2=7.2
+   c_ion= 19.8 (radii 10.2) v2=1.6  mCloud=1e+05 nCore=1e+03 cf=0.89 prof=BE phii=True fmix=4.0 R2=6.1
+
+v2 in ionised 14.0+-4.0 band: 455/1744; neutral 4.3+-2.0 band: 442/1744; max v2 among ongoing: 16.6 km/s
+VERDICT: v2~1 km/s is the cold/neutral shell (survives the 4.3 constraint, same C_f~0.89 corner); it is NOT the ionised gas (no run matches ~7pc AND v2~14). -> supports the non-spherical §6 reveal; targets unchanged.

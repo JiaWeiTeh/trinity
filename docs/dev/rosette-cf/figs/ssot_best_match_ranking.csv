@@ -1,0 +1,17 @@
+# SSOT (7830-run, 2026-07-14) top ongoing matches by radii-only frozen chi2 (7pc). theta uncalibrated (P6).
+rank,chi2,mCloud,nCore,coverFraction,profile,phii,fmix,R2,rShell,v2_kms,run_name
+1,2.89,1e+05,1e+03,0.89,BE,off,4,5.55,20.8,1.1,1e5_sfe001_n1e3_BE14_noPHII_PISM100000p0_coolingBoostFmix4p0_coverFraction0p89_nISM1p0
+2,2.93,1e+05,1e+03,0.89,BE,off,4,5.53,20.8,1.1,1e5_sfe001_n1e3_BE14_noPHII_PISM100000p0_coolingBoostFmix4p0_coverFraction0p89_nISM0p1
+3,3.26,1e+05,1e+03,0.89,BE,off,4,5.39,20.6,1.3,1e5_sfe001_n1e3_BE14_noPHII_PISM10000p0_coolingBoostFmix4p0_coverFraction0p89_nISM1p0
+4,3.3,1e+05,1e+03,0.89,BE,off,4,5.38,20.6,1.4,1e5_sfe001_n1e3_BE14_noPHII_PISM10000p0_coolingBoostFmix4p0_coverFraction0p89_nISM0p1
+5,3.35,1e+06,1e+03,0.89,BE,on,4,5.35,20.6,1.6,1e6_sfe000_n1e3_BE14_yesPHII_PISM1000000p0_coolingBoostFmix4p0_coverFraction0p89_nISM0p1
+6,3.35,1e+06,1e+03,0.89,BE,on,4,5.35,20.6,1.6,1e6_sfe000_n1e3_BE14_yesPHII_PISM1000000p0_coolingBoostFmix4p0_coverFraction0p89_nISM1p0
+7,3.35,1e+06,1e+03,0.89,BE,on,4,5.35,20.6,1.6,1e6_sfe000_n1e3_BE14_yesPHII_PISM100000p0_coolingBoostFmix4p0_coverFraction0p89_nISM1p0
+8,3.35,1e+06,1e+03,0.89,BE,on,4,5.35,20.6,1.6,1e6_sfe000_n1e3_BE14_yesPHII_PISM100000p0_coolingBoostFmix4p0_coverFraction0p89_nISM0p1
+9,3.35,1e+06,1e+03,0.89,BE,on,4,5.35,20.6,1.6,1e6_sfe000_n1e3_BE14_yesPHII_PISM10000p0_coolingBoostFmix4p0_coverFraction0p89_nISM0p1
+10,3.35,1e+06,1e+03,0.89,BE,on,4,5.35,20.6,1.6,1e6_sfe000_n1e3_BE14_yesPHII_PISM10000p0_coolingBoostFmix4p0_coverFraction0p89_nISM1p0
+11,6.49,1e+05,1e+03,0.89,PL-1,on,4,7.2,24.1,1.6,1e5_sfe001_n1e3_PL-1_yesPHII_PISM100000p0_coolingBoostFmix4p0_coverFraction0p89_nISM1p0
+12,7.2,1e+05,1e+03,0.89,PL-1,on,4,7.26,24.3,1.7,1e5_sfe001_n1e3_PL-1_yesPHII_PISM100000p0_coolingBoostFmix4p0_coverFraction0p89_nISM0p1
+13,9.86,1e+05,1e+03,0.89,PL-1,on,4,7.45,25.2,2.1,1e5_sfe001_n1e3_PL-1_yesPHII_PISM10000p0_coolingBoostFmix4p0_coverFraction0p89_nISM1p0
+14,10.2,1e+05,1e+03,0.89,BE,on,4,6.13,25.1,1.6,1e5_sfe001_n1e3_BE14_yesPHII_PISM100000p0_coolingBoostFmix4p0_coverFraction0p89_nISM1p0
+15,10.54,1e+05,1e+03,0.89,BE,on,4,6.14,25.3,1.6,1e5_sfe001_n1e3_BE14_yesPHII_PISM100000p0_coolingBoostFmix4p0_coverFraction0p89_nISM0p1
