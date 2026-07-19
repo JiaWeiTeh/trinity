@@ -196,7 +196,14 @@ Four literature anchors for the source side: (1) **El-Badry+19 result vi** — "
 conduction, sets the cooling; Spitzer mainly sets interior T/evaporation" — the roles are
 separable, f_κ conflated them. (2) **Lancaster+21a/b** — the interface is a fractal turbulent
 mixing layer radiating over enlarged area; in 1D that is an area/emissivity factor on the
-interface-band n²Λ, not a transport change. (3) **Weaver+77 §V** — even the classical front
+interface-band n²Λ, not a transport change. *(Precision 2026-07-19 — the anatomy behind the
+shorthand: "the interface band" throughout this workstream means the thin **bubble-side
+conduction front** — L₂ (conduction zone, 1e4 < T < 10^5.5 K) + L₃ (intermediate sliver down to
+exactly 1e4 K) — draped on the interface **surface** proper, which is the contact discontinuity
+at R2 where L₃'s outer edge meets the shell's inner skin (`shell_structure` side). The band is
+not the interface itself; f_A scales that front's radiation only, and the shell-side skin
+radiates the stellar budget in `shell_structure`, never entering θ = L_loss/L_mech.)*
+(3) **Weaver+77 §V** — even the classical front
 radiates ~40% of the conductive flux; the evaporate-vs-radiate *split* is the physical dial and
 f_A moves it directly. (4) **Eq. 47's sign** — a source boost suppresses evaporation
 automatically (radiated flux no longer evaporates); a conductivity boost cannot.

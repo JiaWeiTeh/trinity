@@ -1226,7 +1226,9 @@ reproduction (params in the session scratchpad; mechanism-only, no θ quotes) an
 
 The queued-but-never-run "second offline prototype" of the KAPPA_EFF_SCOPING §6.2 redirect,
 generalized into a design: boost the net radiative source `dudt` INSIDE `_get_bubble_ODE`, only
-in the interface band (T < 10^5.5 K), leaving the conduction operator, the Eq-44 IC family, and
+in the interface band (T < 10^5.5 K) (precision 2026-07-19: the "interface band" = the thin
+bubble-side conduction front L2+L3 draped on the contact discontinuity at R2, not the interface
+surface itself — anatomy in `SOURCE_TERM_DESIGN.md §1`), leaving the conduction operator, the Eq-44 IC family, and
 the Eq-33 seed untouched; read the emergent loss as L_eff = L1 + f_A·(L2+L3). This is the 1-D
 projection of Lancaster's fractal-area interface enhancement on the SOURCE side (El-Badry result
 vi: mixing sets the cooling; Spitzer sets interior T/evaporation) — the corner of the knob 2×2
