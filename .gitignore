@@ -237,3 +237,7 @@ pytest-cache-files-*/
 # HOTPATH F1 capture: large regenerable bubble-state pickles (~3 MB each).
 # Commit the CSV diagnostics under docs/dev/performance/data/, not these.
 docs/dev/performance/data/states/
+
+# Stray sentinel output dir: path2output='def_dir' written literally (test/run without an
+# explicit path2output). Generated artifact, never source.
+def_dir/
