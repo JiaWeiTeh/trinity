@@ -33,6 +33,17 @@ L<sub>cool</sub> = L₁ + L₂ + L₃
 </div>
 <p>The problem the workstream solves: TRINITY's 1-D spherical interface <b>under-counts the interface area</b> — a real 3-D interface is fractal/corrugated (Lancaster 2021a,b), so 3-D sims measure Θ ≈ 0.9–0.99 while TRINITY's native θ sits at 0.2–0.6 for most GMCs and the trigger never fires.</p>
 
+<div class="note"><b>Where exactly is "the interface"? — the R₂ contact discontinuity, NOT the L₁–L₂ boundary</b> (code-verified 2026-07-19; <code>bubble_luminosity.py</code> zone slices at :736/:752/:799, ICs at :392, integration <code>t_span=(r2Prime, R1)</code> at :351).
+<p style="margin:.5rem 0 .3rem">The solver sets its boundary at r₂′ = R₂ − dR₂ with T ≈ 3×10⁴ K (cold, the shell side) and integrates <i>inward</i> to R₁, where T climbs past 10<sup>5.5</sup> K. So the verified radial layout, inside → out, is:</p>
+<div class="eq" style="text-align:center">R₁ &nbsp;[&nbsp;L₁: hot, T ≫ 10<sup>5.5</sup>, CIE&nbsp;]&nbsp; → &nbsp;[&nbsp;L₂: conduction zone, 10⁴&lt;T&lt;10<sup>5.5</sup>&nbsp;]&nbsp; → &nbsp;[&nbsp;L₃: sliver to 10⁴&nbsp;]&nbsp; → &nbsp;<b>R₂ (contact discontinuity ↔ shell)</b></div>
+<ul style="margin:.4rem 0">
+<li><b>The L₁–L₂ boundary is a thermometer reading, not a material boundary.</b> The 10<sup>5.5</sup> K line (<code>_CIEswitch</code>) is only the CIE ↔ non-CIE cooling-table switch <i>within one continuous fluid</i> — shocked wind gas, smooth T(r), the same stuff at 10<sup>5.6</sup> and 10<sup>5.4</sup> K. Nothing physically distinct meets there. An "L₁–L₂ interface" is an internal temperature threshold with no surface and no second medium.</li>
+<li><b>The physical interface is the contact discontinuity at R₂</b> — the only place two genuinely different media touch: hot tenuous shocked wind inside, cold dense swept-up shell outside. That is the surface across which heat conducts and mass ablates (dMdt, shell → hot region).</li>
+<li><b>Why the cooling lives in L₂+L₃, not L₁:</b> pressure is ≈uniform across the subsonic interior, so n ∝ 1/T. Toward R₂ the temperature falls → density <i>rises</i>, and the emissivity n²Λ(T) peaks exactly there (high n on the cooling-curve peak). L₁ is hot and rarefied → weak cooling — precisely why the classical Weaver interior is the <i>energy-retaining</i> reservoir.</li>
+</ul>
+<p style="margin:.3rem 0 0">So <b>L₂+L₃ is the thin bubble-side conduction front draped on the R₂ contact discontinuity</b>, and it is both the layer adjacent to the real interface and where nearly all the radiation emerges. f_A — Lancaster's fractal-<i>area</i> factor — multiplies that front and leaves L₁ (bulk volume, wrong side) and L<sub>leak</sub> (bulk escape, not radiation) alone. <span class="small">(Degenerate edge, <code>FINDINGS §15j</code>: if the solve finds no resolved conduction zone, <code>index_cooling_switch == index_CIE_switch</code>, L₂ collapses and the L₃ sliver is scaled unconditionally — a negligible above-band case. In the normal regime the front is exactly L₂+L₃.)</span></p>
+</div>
+
 <h2>2. The two knobs — which is which</h2>
 
 <h3>f_A — the <i>source-term</i> (in-ODE) boost: <code>cooling_boost_fA</code></h3>
