@@ -16,7 +16,8 @@
 
 | last updated (commit) | artifact | producer / flags |
 |---|---|---|
-| 2026-07-20 `0c72e4c` | `phase6_brief.html` | producer unknown (HPC/hand-made); refs: `make_zone_resolution.py` |
+| 2026-07-24 `6418992` | `data/zone_resolution.csv` | by `make_zone_resolution.py` |
+| 2026-07-24 `6418992` | `phase6_brief.html` | producer unknown (HPC/hand-made); refs: `make_zone_resolution.py` |
 | 2026-07-19 `f80fa63` | `bench5_theta_tracks.png` | producer unknown (HPC/hand-made); refs: `make_bench5_analysis.py` |
 | 2026-07-19 `f80fa63` | `data/bench5_analysis.csv` | by `make_bench5_analysis.py` |
 | 2026-07-19 `f80fa63` | `data/bench6_analysis.csv` | by `make_bench6_analysis.py` |
@@ -730,4 +731,3 @@
 | 2026-07-10 `b94b09d` | `theta5k_fire_map.png` | producer unknown (HPC/hand-made); refs: `make_theta5k_analysis.py`, `make_pdvtrigger_report.py` |
 | 2026-07-10 `b94b09d` | `theta5k_theta_rise.png` | producer unknown (HPC/hand-made); refs: `make_theta5k_analysis.py`, `make_pdvtrigger_report.py` |
 | 2026-07-10 `b94b09d` | `theta_vs_density.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_overlay.py`, `make_fmix_spread_plot.py` |
-| None `None` | `data/zone_resolution.csv` | by `make_zone_resolution.py` |

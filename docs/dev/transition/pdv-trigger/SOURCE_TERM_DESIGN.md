@@ -591,7 +591,7 @@ Artifacts: `runs/params/bench5/`, `runs/data/bench5_summary.csv`,
 `data/make_bench5_analysis.py`, `bench5_theta_tracks.png`; CONTAMINATION register entries;
 REPRODUCE rows.
 
-### Phase 6 🟡 — decision (pre-committed tree; don't relitigate) — **all inputs measured 2026-07-19 (`FINDINGS §15j`): outcome = row 3's verdict (single-scalar fails; state-coupled f_A is the next rung), with the amendment that the bench6 head-to-head ELIMINATES f_mix on the tree's own metric (never reaches the band, wrong-sign dose-response, false-fires). Rows 2/3's "keep f_mix production" reads as "keep mode=none default". Maintainer ruling pending.**
+### Phase 6 🟡 — decision (pre-committed tree; don't relitigate) — **all inputs measured 2026-07-19 (`FINDINGS §15j`): outcome = row 3's verdict (single-scalar fails; state-coupled f_A is the next rung), with the amendment that the bench6 head-to-head ELIMINATES f_mix on the tree's own metric (never reaches the band, wrong-sign dose-response, false-fires). Rows 2/3's "keep f_mix production" reads as "keep mode=none default". Maintainer ruling pending — recommended ruling text + mechanical close-out procedure: `FA_STATE_COUPLED.md §3`.**
 
 | outcome | verdict | action |
 |---|---|---|
@@ -603,7 +603,7 @@ REPRODUCE rows.
 | freezes / no-root grind | P3 falsified live | full stop; freeze-watch instrumentation (`KAPPA_FREEZE_MECHANISM.md §5`); do NOT tune around it |
 | p_source ≪ 2 or ≫ 4.5 | screen exponent didn't survive coupling | re-derive the response on live arms; update §2 reading and the f_A↔f_mix mapping |
 
-## 4. Deferred track (separate workstream — do not start from this doc)
+## 4. Deferred track — **PROMOTED 2026-07-22: the single plan for the state-coupled f_A is now `FA_STATE_COUPLED.md`** (do not extend this section; it is kept as the original design sketch)
 
 The **generalized near-front IC**: κ(T)·dT/dx = q_w + c_p·F_ṁ·(T−T_w), where q_w is the
 conductive flux into the wall (lumping sub-anchor radiation — the same neglect Weaver Eq. 44

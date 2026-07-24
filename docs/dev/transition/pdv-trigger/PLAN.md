@@ -425,6 +425,8 @@ YOUR TASK — the next open items, in this priority order:
     L_int closed form) which would DERIVE the measured f_A(n̄) — then a default-flip ruling.
 (b) The ONE remaining HPC chore: re-run runs/harvest_dmdt_suppression.py on the Helix theta5s raw
     arms (data/theta5s_dmdt_suppression.csv is still in-container-derived).
+(c) Successor workstream PLANNED 2026-07-22: **`FA_STATE_COUPLED.md`** is the single plan doc for
+    the state-coupled f_A (SC-0 offline falsification screen may run pre-ruling; SC-1+ gated on (a)).
 (c) Then Phase 6: the decision tree — does f_A supersede cooling_boost_mode='multiplier' (f_mix=4,
     adopted 2026-07-02) as the production mechanism? Feed it the 3-class result + p=3.33 + controls +
     dMdt fidelity + Phase 5.
