@@ -415,7 +415,7 @@ Honor the ⚠️/🔄/💾/🔗 banners: re-verify claims against current source
 
 STATE (updated 2026-07-19): Phases 0–5 ✅ ALL HPC-CONFIRMED (`FINDINGS §15e/§15h/§15j`); bench6
 head-to-head measured — f_A reaches the L21b band on every clean bench (entry 13.9/53.5/74.8,
-f_A(n̄)≈315·n̄^−0.335, thresholds 1→4→12→24→64); f_mix ELIMINATED (never in band, wrong-sign
+f_A(n̄)≈315·n̄^−0.335, thresholds 1→4→12→24→64); f_mix eliminated as a CALIBRATION knob — RETAINED as opt-in fallback per the 2026-07-22 ruling (`FA_STATE_COUPLED.md §3`) (never in band, wrong-sign
 dose-response, false-fires). Authoritative data: runs/data/{theta5s_summary,bench5_summary_hpc,
 bench6_summary}.csv + data/{theta5s_*,bench5_analysis,bench6_analysis}.csv.
 

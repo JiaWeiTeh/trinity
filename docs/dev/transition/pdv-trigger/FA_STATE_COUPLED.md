@@ -38,7 +38,10 @@ maintainer's one-stream directive there are **no parallel plans**: the scalar-f_
 and Phase 0–6 record stay in `SOURCE_TERM_DESIGN.md` (its §4 sketch is hereby **promoted here** and
 must not be extended there); THIS doc plans only the successor. **Phase SC-0 (offline screen) is
 OPEN and needs no ruling — it is read-only.** SC-1 onward are gated on the parent's Phase-6
-maintainer ruling (§3 below). Nothing here touches production code until SC-1.
+maintainer ruling (§3 below). Nothing here touches production code until SC-1. **Phase-6 ruling
+STARTED 2026-07-22: clause 1 RULED — f_mix RETAINED as an opt-in fallback, retirement deferred +
+staged (R0→R2 ladder, §3); default stays `none` (clause 3). Clauses 2/4 (adopt scalar f_A as the
+diagnostic knob; greenlight successor) await an explicit nod — but SC-0 may run regardless.**
 
 ## 0. Why this workstream exists (one paragraph)
 
@@ -113,17 +116,40 @@ bench), keep the knob diagnostic-only.
 physical constant, L21b-validated — the paper's f_A story completes). SC-4 FAIL ⇒ documented
 negative + the scalar f_A(n̄) table stands as the calibration.
 
-## 3. Phase 6 of the PARENT — the ruling this workstream's SC-1+ waits on
+## 3. Phase 6 of the PARENT — the RULING (source of truth; SC-1+ waits on this)
 
-Recommended ruling text (maintainer decides/edits; record the verdict in
-`SOURCE_TERM_DESIGN.md §3 Phase 6` + a one-paragraph `FINDINGS.md §15k`):
+This is THE Phase-6 ruling of record (this doc is the single place it lives; `SOURCE_TERM_DESIGN.md
+§3 Phase 6` and any `FINDINGS.md §15k` point HERE, they do not restate it). Clauses tagged
+**[RULED 2026-07-22]** are the maintainer's decision; **[pending]** clauses still want an explicit nod.
 
-1. **f_mix**: eliminated as a calibration knob (bench6: never reaches the band, wrong-sign
-   dose-response, false-fires). The mode stays in code as a control/historical arm only.
-2. **Scalar f_A**: adopted as the **calibrated diagnostic knob** — the f_A(n̄) table
-   (13.9/53.5/74.8; ≈315·n̄^−0.335) is quotable with HPC provenance. NOT a production default.
-3. **Production default**: `cooling_boost_mode=none`, `cooling_boost_fA=1.0` — unchanged.
-4. **Successor**: this workstream is greenlit; SC-4 is the pre-agreed bar for any default flip.
+1. **f_mix — RETAINED as an opt-in fallback [RULED 2026-07-22, maintainer].** bench6 eliminated f_mix
+   as a *calibration* knob (never reaches the L21b band ≤8, wrong-sign dose-response on the diffuse
+   benches, fm8 false-fires — `FINDINGS §15j`) — but NOT as a *fallback*. It stays fully wired and
+   supported for now: it is a valid opt-in mechanism AND the control arm the bench harness relies on.
+   Nothing is removed while f_A is not yet the production path. **Retirement is deferred and STAGED
+   (the "safely and slowly" ladder), each rung gated on the one before:**
+   - **R0 (now):** `cooling_boost_mode='multiplier'` retained, opt-in, **inert by default** (default
+     is `none`). Registry `info` for `cooling_boost_mode`/`cooling_boost_fmix` gains one line:
+     "fallback — superseded for L21b *calibration* by f_A (`FA_STATE_COUPLED.md`); retained pending
+     the state-coupled f_A shipping." No behavior change. (This is the only code touch clause 1
+     authorizes now — a doc-string edit, byte-neutral.)
+   - **R1:** only AFTER the state-coupled f_A ships as the production default (SC-5 PASS) AND ≥1
+     release cycle of it running clean — mark `multiplier` **deprecated** in the registry (still
+     works, emits a load-time deprecation warning). No removal yet.
+   - **R2:** after ≥1 further cycle with nothing in-repo relying on it (grep the params/tests/docs),
+     remove the `multiplier` branch — per the project rule, `git mv` the code + its arms into
+     `docs/dev/to-be-removed/` for maintainer review, never a direct delete.
+   - **Abort rule:** if the state-coupled f_A does NOT ship (SC-4/SC-5 FAIL), the ladder STOPS at R0
+     — f_mix stays indefinitely and the retirement is void.
+2. **Scalar f_A — calibrated *diagnostic* knob [pending explicit nod].** The measured f_A(n̄) table
+   (13.9/53.5/74.8; ≈315·n̄^−0.335, HPC provenance `§15j`) is quotable; NOT proposed as a production
+   default (the successor supersedes it). Recommended adopt.
+3. **Production default — UNCHANGED [RULED 2026-07-22, implied by clause 1].** `cooling_boost_mode=none`,
+   `cooling_boost_fA=1.0`, byte-identical. Keeping f_mix as an opt-in fallback presupposes no default
+   flip now — so this is settled by clause 1.
+4. **Successor — greenlit [pending explicit nod].** This workstream proceeds; **SC-4 is the pre-agreed
+   bar** for any future default flip (and, per clause 1, the trigger that starts the f_mix R1 rung).
+   SC-0 (offline falsification screen) is read-only and may start immediately regardless.
 
 Parent loose ends that stay in the PARENT's ledger (not this doc): the dMdt reducer re-run on the
 Helix theta5s raw arms (`§15e` residue); Fig-17 re-digitization before quantitative fits; V_w

@@ -1751,6 +1751,14 @@ state-coupled f_A (El-Badry L_int closed form, one-read swap per §4) is the phy
 successor that would *replace* the fitted n̄-dependence. **The row pick is the maintainer's Phase-6
 ruling — every input it needs is now measured and committed.**
 
+> **Phase-6 ruling update (2026-07-22, `FA_STATE_COUPLED.md §3` = source of truth):** "eliminated"
+> above means eliminated as a **calibration** knob (bench6 metric), NOT removed from code. The
+> maintainer RULED f_mix **RETAINED as an opt-in fallback** — it stays fully wired and is the bench
+> harness's control arm — with retirement **deferred and staged** (R0 keep→R1 deprecate→R2 remove),
+> each rung gated on the state-coupled f_A actually shipping (SC-5); if that fails, f_mix stays
+> indefinitely. Production default is unchanged (`mode=none`). The scalar-f_A-diagnostic adoption and
+> the successor greenlight await an explicit nod.
+
 ## 16. [flag] Pre-existing latent double-boost in the trigger fallback (found 2026-07-06 during the f_A plan audit; NOT fixed)
 
 `run_energy_implicit_phase.py:1245-1247`: when `bubble_props is None`, the trigger path reads
