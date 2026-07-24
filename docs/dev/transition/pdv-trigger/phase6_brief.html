@@ -44,6 +44,16 @@ L<sub>cool</sub> = L₁ + L₂ + L₃
 <p style="margin:.3rem 0 0">So <b>L₂+L₃ is the thin bubble-side conduction front draped on the R₂ contact discontinuity</b>, and it is both the layer adjacent to the real interface and where nearly all the radiation emerges. f_A — Lancaster's fractal-<i>area</i> factor — multiplies that front and leaves L₁ (bulk volume, wrong side) and L<sub>leak</sub> (bulk escape, not radiation) alone. <span class="small">(Degenerate edge, <code>FINDINGS §15j</code>: if the solve finds no resolved conduction zone, <code>index_cooling_switch == index_CIE_switch</code>, L₂ collapses and the L₃ sliver is scaled unconditionally — a negligible above-band case. In the normal regime the front is exactly L₂+L₃.)</span></p>
 </div>
 
+<div class="note"><b>Zone resolution &amp; radial extent — measured</b> (<code>data/zone_resolution.csv</code>, regen <code>data/make_zone_resolution.py</code>; 3rd settled energy-phase step, fA=1). The three "zones" are NOT a partition of one array: <b>L₁ is a slice of the raw ~60k solution grid</b> (<code>T_array[index_CIE_switch:]</code>), while <b>L₂ is a fresh resample</b> to <code>_CONDUCTION_NPTS=2000</code> (masked to T&lt;10<sup>5.5</sup>) and <b>L₃ a fixed 1000-pt linspace</b> off the continuous dense-output solution.
+<div style="overflow-x:auto"><table>
+<tr><th>zone</th><th>points</th><th>radial width</th><th>% of R₂</th><th>≈ in AU</th><th>points / pc</th></tr>
+<tr><td><b>L₁</b> hot interior</td><td>~54,000–57,000</td><td>~0.027 pc</td><td><b>~30%</b></td><td>~5,600 AU</td><td>~2×10⁶</td></tr>
+<tr><td><b>L₂</b> conduction front</td><td>~2,000</td><td>~5×10⁻⁷ pc</td><td>0.001%</td><td>~0.1 AU</td><td><b>~4×10⁹</b></td></tr>
+<tr><td><b>L₃</b> intermediate sliver</td><td>1,000</td><td>~2×10⁻⁹ pc</td><td>~10⁻⁶%</td><td>~5×10⁻⁴ AU</td><td><b>~4×10¹¹</b></td></tr>
+</table></div>
+<p style="margin:.3rem 0 0"><b>Yes, L₁ has the most points because it is radially enormous</b> — the hot interior fills ~30% of R₂ (~5,600 AU), so most of the raw grid lands there. <b>But the point <i>density</i> is inverted by 3–5 orders of magnitude:</b> the conduction front is a razor-thin skin (L₂ ~0.1 AU, L₃ ~10⁴ km) that gets its <i>own</i> dense resample — ~2,000× finer per pc than L₁ (L₂), ~200,000× finer (L₃). The raw 60k grid, front-heavy as it is, cannot resolve a ~0.1 AU temperature jump at 0.1 pc; only ~2,500–4,900 raw points ever fall in that band, too coarse for a converged integral — hence the bespoke L₂/L₃ re-samples, density-independent by construction. <b>So f_A boosts the thinnest, most finely-resolved, cooling-dominant layer</b> (the front) and leaves the radially-vast but weakly-radiating interior (L₁) alone — the numerical resolution map mirrors the physical one. The Weaver T ∝ (R₂−r)<sup>2/5</sup> profile is what makes the front this thin: nearly the whole temperature drop happens in the last sub-AU before the shell.</p>
+</div>
+
 <h2>2. The two knobs — which is which</h2>
 
 <h3>f_A — the <i>source-term</i> (in-ODE) boost: <code>cooling_boost_fA</code></h3>

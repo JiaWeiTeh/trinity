@@ -12,16 +12,16 @@
 > are exact; stamp-less artifacts predate the convention (2026-07-02) — for those, only
 > the commit date is known. **Every new/edited builder must write the stamp.**
 
-714 artifacts · 0 stale-risk · 0 untracked · 17 stamped 🕐
+715 artifacts · 0 stale-risk · 0 untracked · 17 stamped 🕐
 
 | last updated (commit) | artifact | producer / flags |
 |---|---|---|
+| 2026-07-20 `0c72e4c` | `phase6_brief.html` | producer unknown (HPC/hand-made); refs: `make_zone_resolution.py` |
 | 2026-07-19 `f80fa63` | `bench5_theta_tracks.png` | producer unknown (HPC/hand-made); refs: `make_bench5_analysis.py` |
 | 2026-07-19 `f80fa63` | `data/bench5_analysis.csv` | by `make_bench5_analysis.py` |
 | 2026-07-19 `f80fa63` | `data/bench6_analysis.csv` | by `make_bench6_analysis.py` |
 | 2026-07-19 `88a4738` | `data/theta5s_collapse_law.csv` | producer unknown (HPC/hand-made); refs: `make_theta5s_analysis.py` · 🕐 generated 2026-07-19T11:08:03Z | builder make_theta5s_analysis.py | code 075c73b+dirty |
 | 2026-07-19 `88a4738` | `data/theta5s_fire_map.csv` | producer unknown (HPC/hand-made); refs: `make_theta5s_analysis.py` · 🕐 generated 2026-07-19T11:08:03Z | builder make_theta5s_analysis.py | code 075c73b+dirty |
-| 2026-07-19 `d79218f` | `phase6_brief.html` | — (hand-made/HPC, unreferenced) |
 | 2026-07-19 `591e5e4` | `runs/data/bench5_summary_hpc.csv` | producer unknown (HPC/hand-made); refs: `compare_bench5_hpc.py`, `make_bench5_analysis.py` · 🕐 generated 2026-07-19T10:48:17Z | builder harvest_bench5.py | code 89e802dd+dirty |
 | 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench1_m5e4_r20__fa12.csv` | — (hand-made/HPC, unreferenced) |
 | 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench1_m5e4_r20__fa12_diag.csv` | — (hand-made/HPC, unreferenced) |
@@ -282,7 +282,7 @@
 | 2026-07-12 `a491b12` | `runs/params/bench5/bench1_m5e4_r20__fa6_diag.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-12 `a491b12` | `runs/params/bench5/bench1_m5e4_r20__fa8.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-12 `a491b12` | `runs/params/bench5/bench1_m5e4_r20__fa8_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-12 `a491b12` | `runs/params/bench5/bench1_m5e4_r20__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `a491b12` | `runs/params/bench5/bench1_m5e4_r20__none.param` | producer unknown (HPC/hand-made); refs: `make_zone_resolution.py` |
 | 2026-07-12 `a491b12` | `runs/params/bench5/bench1_m5e4_r20__none_diag.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-12 `a491b12` | `runs/params/bench5/bench2_m1e5_r10__fa12.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-12 `a491b12` | `runs/params/bench5/bench2_m1e5_r10__fa12_diag.param` | — (hand-made/HPC, unreferenced) |
@@ -306,7 +306,7 @@
 | 2026-07-12 `a491b12` | `runs/params/bench5/bench3_m1e5_r5__fa6_diag.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-12 `a491b12` | `runs/params/bench5/bench3_m1e5_r5__fa8.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-12 `a491b12` | `runs/params/bench5/bench3_m1e5_r5__fa8_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-12 `a491b12` | `runs/params/bench5/bench3_m1e5_r5__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `a491b12` | `runs/params/bench5/bench3_m1e5_r5__none.param` | producer unknown (HPC/hand-made); refs: `make_zone_resolution.py` |
 | 2026-07-12 `a491b12` | `runs/params/bench5/bench3_m1e5_r5__none_diag.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-12 `a491b12` | `runs/params/bench5/bench4_m1e5_r2p5__fa12.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-12 `a491b12` | `runs/params/bench5/bench4_m1e5_r2p5__fa12_diag.param` | — (hand-made/HPC, unreferenced) |
@@ -330,7 +330,7 @@
 | 2026-07-12 `a491b12` | `runs/params/bench5/bench5_m5e5_r2p5__fa6_diag.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-12 `a491b12` | `runs/params/bench5/bench5_m5e5_r2p5__fa8.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-12 `a491b12` | `runs/params/bench5/bench5_m5e5_r2p5__fa8_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-12 `a491b12` | `runs/params/bench5/bench5_m5e5_r2p5__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-12 `a491b12` | `runs/params/bench5/bench5_m5e5_r2p5__none.param` | producer unknown (HPC/hand-made); refs: `make_zone_resolution.py` |
 | 2026-07-12 `a491b12` | `runs/params/bench5/bench5_m5e5_r2p5__none_diag.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-11 `c6ed90f` | `data/theta5s_dmdt_suppression.csv` | producer unknown (HPC/hand-made); refs: `make_theta5s_analysis.py`, `harvest_dmdt_suppression.py` |
 | 2026-07-10 `b94b09d` | `ELBADRY_THETA_STORY.html` | producer unknown (HPC/hand-made); refs: `make_elbadry_story_figs.py` |
@@ -730,3 +730,4 @@
 | 2026-07-10 `b94b09d` | `theta5k_fire_map.png` | producer unknown (HPC/hand-made); refs: `make_theta5k_analysis.py`, `make_pdvtrigger_report.py` |
 | 2026-07-10 `b94b09d` | `theta5k_theta_rise.png` | producer unknown (HPC/hand-made); refs: `make_theta5k_analysis.py`, `make_pdvtrigger_report.py` |
 | 2026-07-10 `b94b09d` | `theta_vs_density.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_overlay.py`, `make_fmix_spread_plot.py` |
+| None `None` | `data/zone_resolution.csv` | by `make_zone_resolution.py` |
