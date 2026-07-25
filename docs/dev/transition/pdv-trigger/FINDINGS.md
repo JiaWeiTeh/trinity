@@ -1759,7 +1759,7 @@ ruling — every input it needs is now measured and committed.**
 > indefinitely. Production default is unchanged (`mode=none`). The scalar-f_A-diagnostic adoption and
 > the successor greenlight await an explicit nod.
 
-## 15k. [data — SC-0 screen COMPLETE, 14/14 arms] **SC-0 FAILS as pre-registered: no derived f_A law reproduces the measured doses.** C2 falsified by 2–8 dex; C1 is nearly flat (30× spread); the fitted scalar does not generalize (56×) (2026-07-25)
+## 15k. [data — SC-0 screen COMPLETE, 14/14 arms] **SC-0 FAILS as pre-registered: no derived f_A law reproduces the measured doses.** C2 falsified by 2–8 dex; C1 misses by 3.3×/4.5× per criterion; the fitted scalar does not generalize (56× on `fire`) (2026-07-25) — **TERMINAL: the pre-registered stop; SC-1…SC-5 not to be started (`FA_STATE_COUPLED.md §3` clauses 2b/4)**
 
 SC-0 (`FA_STATE_COUPLED.md`) screened three candidate f_A laws offline against measured targets
 (band-entry doses `§15j`; fire thresholds `§15e`) on committed trajectories. Data: the arms were

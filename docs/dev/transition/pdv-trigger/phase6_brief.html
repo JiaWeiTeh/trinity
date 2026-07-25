@@ -125,13 +125,13 @@ C3 fitted baseline:&nbsp; f_A = 315·n̄<sup>−0.335</sup>
 <h2>5. PLAN follow-ups still open</h2>
 <table>
 <tr><th>#</th><th>item</th><th>who</th><th>weight</th></tr>
-<tr><td>1</td><td><b>Phase-6 ruling</b> — tree row 3 verdict is on the table (§15j): interim-knob + state-coupled successor vs. don't-ship</td><td>maintainer</td><td>the decision</td></tr>
+<tr><td>1</td><td><b>Phase-6 ruling — <span style='color:#1e7a3c'>CLOSED 2026-07-25</span>.</b> Clause 1 was ruled 2026-07-22 (f_mix retained as opt-in fallback); SC-0's FAIL then resolved clause 2b (no f_A form ships — the fitted f_A(n̄) stays a measurement of record) and made clause 4 moot (nothing left to greenlight; the stop was pre-registered). R0 applied: registry <code>info</code> lines on <code>cooling_boost_mode</code>/<code>cooling_boost_fmix</code>, help-text only. <b>Nothing awaits a decision.</b></td><td>—</td><td>done</td></tr>
 <tr><td>2</td><td><b>dMdt reducer on Helix raw arms</b> — <code>harvest_dmdt_suppression.py</code>; the committed CSV is still in-container-derived (last HPC chore)</td><td>maintainer (Helix)</td><td>~1 cmd</td></tr>
-<tr><td>3</td><td><b>State-coupled f_A implementation</b> (§4 one-read swap + Phase-3 gates + bench re-run) — if ruling selects f_A</td><td>next session</td><td>the next workstream</td></tr>
+<tr><td>3</td><td><b>State-coupled f_A implementation — <span style='color:#c0392b'>CANCELLED 2026-07-25</span>.</b> SC-0 failed all three candidate laws, and SC-0's own FAIL clause reads <i>"neither closed form derives the curve ⇒ stop … no production code gets written."</i> SC-1 (wiring) through SC-5 (ship) are not to be started. A <i>new</i> candidate law would re-enter at SC-0, not at SC-1.</td><td>—</td><td>not to be started</td></tr>
 <tr><td>4</td><td>Fig-17 re-digitization (anchors are [V-plot-eyeball] ±0.2–0.3 dex) before any quantitative dex fit; V<sub>w</sub> still [I]-grade</td><td>maintainer (PDF)</td><td>small</td></tr>
 <tr><td>5</td><td>§16 latent fallback double-boost — pre-existing, multiplier-only; harmless if f_mix retires, else fix</td><td>either</td><td>small</td></tr>
 <tr><td>6</td><td>Review <code>docs/dev/to-be-removed/</code> (6 files + temporary-HPC-runs.md) and delete at will</td><td>maintainer</td><td>1 min</td></tr>
-<tr><td>7</td><td><code>rosette-cf/figs/README.md</code> missing 🔗 banner (conventions test fails; other workstream — untouched)</td><td>maintainer</td><td>1 line</td></tr>
+<tr><td>7</td><td><b>Two pre-existing rosette-cf breakages</b> (other workstream — untouched per the surgical-changes rule): <code>rosette-cf/figs/README.md</code> missing the 🔗 banner (<code>test_docs_dev_conventions.py</code> fails), and <code>test/test_paper_cf_csv_loader.py</code> importing <code>paper.rosette</code>, which does not exist in the tree — that one is a <b>pytest collection error, so a bare <code>pytest</code> aborts before running anything</b></td><td>maintainer</td><td>1 line + 1 import</td></tr>
 <tr><td>8</td><td>Delete merged <code>origin/claude/pdv-trigger-pt4b-i86ots</code>; merge current <code>feature/pdv-trigger-pt4b</code></td><td>maintainer</td><td>1 min</td></tr>
 </table>
 

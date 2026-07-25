@@ -37,6 +37,10 @@ the successor the scalar-f_A stream's own Phase-6 tree names (row 3, `FINDINGS.m
 maintainer's one-stream directive there are **no parallel plans**: the scalar-f_A history, evidence
 and Phase 0–6 record stay in `SOURCE_TERM_DESIGN.md` (its §4 sketch is hereby **promoted here** and
 must not be extended there); THIS doc plans only the successor. **Phase SC-0 COMPLETE 2026-07-25 → VERDICT: FAIL** (14 arms, `FINDINGS §15k`, `fa_state_screen.png`).
+**TERMINAL 2026-07-25** — the FAIL is the pre-registered stop: SC-1…SC-5 are not to be started, no
+production code is written, ruling clauses 2b/4 are resolved/moot below, and the f_mix retirement
+ladder halts permanently at R0 (done). The plan stays open only as the entry point for a *new*
+candidate law, which would restart at SC-0. Nothing here is awaiting a maintainer decision.
 No derived candidate reproduces the measured doses: C1 spread 30× and nearly flat, C2 falsified by
 2–8 dex, C3 (fitted baseline) 56×. **Per this plan's own pre-registered rule, SC-1 onward DO NOT
 PROCEED and no production code is written.** The remainder of this doc is retained as the design of
@@ -204,7 +208,11 @@ This is THE Phase-6 ruling of record (this doc is the single place it lives; `SO
    supported for now: it is a valid opt-in mechanism AND the control arm the bench harness relies on.
    Nothing is removed while f_A is not yet the production path. **Retirement is deferred and STAGED
    (the "safely and slowly" ladder), each rung gated on the one before:**
-   - **R0 (now):** `cooling_boost_mode='multiplier'` retained, opt-in, **inert by default** (default
+   - **R0 (now) — DONE 2026-07-25** (registry `info` lines added to `cooling_boost_mode` +
+     `cooling_boost_fmix`; help-text only, `exclude_from_snapshot=True`, no behavior change).
+     **And R0 is now the TERMINAL rung**: SC-0 FAILED (§15k), so by the abort rule below the
+     state-coupled f_A does not ship, R1/R2 never unlock, and **f_mix stays indefinitely.**
+     `cooling_boost_mode='multiplier'` retained, opt-in, **inert by default** (default
      is `none`). Registry `info` for `cooling_boost_mode`/`cooling_boost_fmix` gains one line:
      "fallback — superseded for L21b *calibration* by f_A (`FA_STATE_COUPLED.md`); retained pending
      the state-coupled f_A shipping." No behavior change. (This is the only code touch clause 1
@@ -224,15 +232,22 @@ This is THE Phase-6 ruling of record (this doc is the single place it lives; `SO
    - **2a [recommended, low-stakes]:** the f_A(n̄) numbers are a **measurement of record** — quotable
      with HPC provenance as "the dose TRINITY needs per bench", i.e. the calibration *target* the
      derived candidates must reproduce (that is how SC-0 uses them). This commits to no model.
-   - **2b [DEFERRED — do not decide now]:** whether any f_A form ships as *the* calibration is
-     SC-0's output, not a ruling input. The candidate set is C1/C2/C3 (§1); Lancaster's fractal law
-     (C2) is in the running precisely because the maintainer raised it. Decide after SC-0.
+   - **2b [RESOLVED 2026-07-25 by SC-0's own pre-registration — NO f_A form ships]:** the answer was
+     deferred to SC-0's output, and SC-0 returned FAIL on all three candidates (§15k): C1 misses by
+     3.3× (band) / 4.5× (fire), C2 by 2–8 dex, C3 by 56× on `fire` — none holds one constant to the
+     pre-agreed factor ~2. Per the SC-0 FAIL clause, *"neither closed form derives the curve ⇒ stop
+     … no production code gets written."* So **the fitted f_A(n̄) stays a measurement of record
+     (clause 2a), never a shipped model**, and TRINITY's production cooling is unchanged. Reopening
+     2b requires a NEW candidate law, which restarts at SC-0 — not at SC-1.
 3. **Production default — UNCHANGED [RULED 2026-07-22, implied by clause 1].** `cooling_boost_mode=none`,
    `cooling_boost_fA=1.0`, byte-identical. Keeping f_mix as an opt-in fallback presupposes no default
    flip now — so this is settled by clause 1.
-4. **Successor — greenlit [pending explicit nod].** This workstream proceeds; **SC-4 is the pre-agreed
-   bar** for any future default flip (and, per clause 1, the trigger that starts the f_mix R1 rung).
-   SC-0 (offline falsification screen) is read-only and may start immediately regardless.
+4. **Successor — MOOT 2026-07-25 (nothing left to greenlight).** The clause gated SC-1+ on a
+   greenlight plus an SC-0 PASS. SC-0 FAILED, so the ladder terminates at SC-0 by construction:
+   SC-1 (wiring) through SC-5 (ship decision) are **not to be started**, and SC-4 is no longer a
+   live bar because there is no candidate to put in front of it. No explicit nod is needed to
+   *stop* — the stop was pre-registered. A future nod would only be needed to *restart*, and only
+   with a new candidate law entering at SC-0.
 
 Parent loose ends that stay in the PARENT's ledger (not this doc): the dMdt reducer re-run on the
 Helix theta5s raw arms (`§15e` residue); Fig-17 re-digitization before quantitative fits; V_w
