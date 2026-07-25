@@ -146,6 +146,27 @@ scalar needed 14→75.
    the smaller spread and the fewer un-imprinted constants.
 3. Persist: `data/fa_state_screen.csv` + figure; register in REPRODUCE.
 
+**SC-0 implementation notes (2026-07-22 — reuse, do not re-derive; units are this repo's declared
+bug class).**
+- **C1 needs NO new unit work.** `data/make_elbadry_theta.py` already carries the El-Badry closed form
+  in *dimensionless* form and is validated against his Fig 7 (`theta(λδv=1, n=1, A_mix=3.5) = 0.61`):
+  `X = A_mix·√(λδv·n)`, `θ_EB = X/(11/5 + X)` with λδv in pc·km/s and n in cm⁻³. Since option A's n is
+  the *local ambient* density and every bench is `densPL_alpha=0` (uniform), **n = nCore = n̄_H exactly**
+  (43.1 / 690 / 5520). Then, matching boosted θ to θ_EB:
+  ```
+  f_A^C1(t) = θ_EB(λδv, n̄) · L_mech(t) / (L2+L3)(t)          [all three factors already in the traj CSV]
+  ```
+  ⇒ import `theta()` from the validated builder; no L_int/k_B/Λ conversion is written by hand.
+- **C2 DOES need one conversion** (P_b au→cgs and Λ(T_pk) at T_pk≈2×10⁴ K) for
+  `t_cool = (k_B T_pk)²/(P_b Λ(T_pk))`. Use `trinity/_functions/unit_conversions.py` (`cvt`) and the
+  bundled cooling table for Λ — **never hand-rolled constants** — and unit-test the single conversion
+  against `t_cool = P/(n²Λ)` (Eq 13's other form, with n = P/(k_B T_pk)) as a cross-check before use.
+- **Data (DONE 2026-07-22):** `runs/data/bench_state_traj/` — the three diffuse fa1 diag arms re-run
+  locally (Helix unavailable) and harvested with the new `harvest_bench5.py --extra-cols`, so the CSVs
+  carry `Pb, bubble_L2Conduction, bubble_L3Intermediate, bubble_dMdt, bubble_LTotal` alongside the
+  standard six. Provenance: identical committed params (`runs/params/bench5/bench{1,2,3}_*__none_diag`),
+  in-container (fidelity vs HPC was measured OK for bench5, `§15j`).
+
 **SC-1 — wiring (gated on Phase-6 ruling + SC-0 PASS).** The one-read swap at the two edit sites +
 registry sentinel resolver + validator extension + `test_fA_state_coupled.py`. Default `'1.0'`
 stays the LITERAL float path (byte-identity preserved by construction, same guard style as today).
