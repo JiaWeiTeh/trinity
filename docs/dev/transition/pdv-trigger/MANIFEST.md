@@ -12,7 +12,7 @@
 > are exact; stamp-less artifacts predate the convention (2026-07-02) — for those, only
 > the commit date is known. **Every new/edited builder must write the stamp.**
 
-718 artifacts · 1 stale-risk · 0 untracked · 17 stamped 🕐
+719 artifacts · 1 stale-risk · 1 untracked · 17 stamped 🕐
 
 | last updated (commit) | artifact | producer / flags |
 |---|---|---|
@@ -734,3 +734,4 @@
 | 2026-07-10 `b94b09d` | `theta5k_fire_map.png` | producer unknown (HPC/hand-made); refs: `make_theta5k_analysis.py`, `make_pdvtrigger_report.py` |
 | 2026-07-10 `b94b09d` | `theta5k_theta_rise.png` | producer unknown (HPC/hand-made); refs: `make_theta5k_analysis.py`, `make_pdvtrigger_report.py` |
 | 2026-07-10 `b94b09d` | `theta_vs_density.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_overlay.py`, `make_fmix_spread_plot.py` |
+| — | `data/fa_state_screen.csv` | 🚫 UNTRACKED (not in git — never quote) |

@@ -272,8 +272,22 @@ t_cool ≡ P/(n²Λ(T_pk)) = (k_B T_pk)²/(P Λ(T_pk)) ,  ∝ R_b²        (Eq 1
 ```
 "This enthalpy flux … increas[es] to smaller scale **until reaching the scale where
 `v_t(ℓ_cool)·t_cool = ℓ_cool`**" — T_pk is the temperature of peak cooling (same object as El-Badry's
-T_pk≈2×10⁴ K). ⇒ **ASK #2 ANSWERED: ℓ = ℓ_cool, set by a physical cascade-vs-cooling balance, so the
-law is transferable in principle to a 1-D code** (it does NOT die on resolution-dependence).
+T_pk≈2×10⁴ K). ⇒ **ASK #2 ANSWERED: ℓ = ℓ_cool, set by a physical cascade-vs-cooling balance.**
+
+> ⚠️ **MEASURED CORRECTION 2026-07-25 (SC-0 screen, `data/make_fa_state_screen.py`) — the optimistic
+> reading above ("so the law is transferable in principle; it does NOT die on resolution-dependence")
+> is WRONG, and this note supersedes it.** Evaluating Eq 13 with TRINITY's own non-CIE table gives, at
+> a representative bench3 row (n(T_pk)=2.35×10⁴ cm⁻³, Λ(2×10⁴K)=1.33×10⁻²² erg cm³/s, P_b=6.49×10⁻⁸
+> erg cm⁻³): **t_cool = 8.8×10⁵ s ≈ 0.03 yr** — dense peak-cooling gas cools essentially instantly.
+> Then `ℓ_cool = [v_t·t_cool/L^p]^{1/(1−p)}` = **8.5×10⁻¹⁵ pc at p=1/2**, and the conclusion is
+> **robust to p**: p = 0 / 0.3 / 0.5 / 0.7 give ℓ_cool = 2.9×10⁻⁷ / 1.7×10⁻¹⁰ / 8.5×10⁻¹⁵ / 7.6×10⁻²⁵ pc.
+> **For every p < 1, ℓ_cool sits below EVERY physical and numerical scale in the problem** — below the
+> measured conduction-front width (~5×10⁻⁷ pc, `data/zone_resolution.csv`) and 10⁵–10²³× below L21b's
+> own Δx (0.02–0.15 pc). **So the cascade never reaches ℓ_cool; the fractal area in Eq 11 must be
+> truncated by something else — in a 3-D simulation, the resolution.** The operative ℓ is therefore
+> NOT ℓ_cool, and Eq 11 is not portable to a 1-D code without an extra, independent physical closure
+> for the truncation scale. (Unit cross-check passed exactly: `P/(n²Λ)` and `(k_BT_pk)²/(PΛ)` agree to
+> all digits, so this is physics, not a conversion bug.)
 
 **Closing ℓ_cool.** Their initial spectrum is `|v_k|² ∝ k^−4` for 2 ≤ kL_box/2π ≤ 64 with
 **L_box = 2R_cloud** [V]. ⚠️ **[D-grade, derived by us, NOT quoted]:** |v_k|²∝k^−4 ⇒ v_t(ℓ) ∝ ℓ^{1/2}

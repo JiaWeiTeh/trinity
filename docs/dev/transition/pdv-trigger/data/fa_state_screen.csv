@@ -1,0 +1,5 @@
+# SC-0 state-coupled-f_A screen (FA_STATE_COUPLED.md SC-0). Candidates evaluated on the UNBOOSTED fa1 trajectory => FIRST-ORDER, no back-reaction; falsification is sound, a PASS needs SC-2/SC-4. C1 = theta_EB*Lmech/(L2+L3) [validated closed form]; C2 = (R2/l_cool)^d [L21b Eq 11, parameter-free, alpha_A=1]; C3 = 315*n^-0.335 [fitted baseline]. Values are luminosity-weighted means over the accepted-implicit window.
+arm,C1_ldv1,C1_ldv2,C1_ldv3,C1_ldv3.5,C1_ldv5,C2_d0.4,C2_d0.5,C2_d0.6,C2_d0.7,C3_fitted,alpha,nCore_cgs,n_rows,rCloud_pc,target,target_kind
+bench1_m5e4_r20__none_diag,14.02,14.39,14.55,14.61,14.73,1.188e+05,2.289e+06,4.497e+07,9.022e+08,89.28,0.0,43.1,84,20.000,74.8,band
+bench2_m1e5_r10__none_diag,11.06,11.13,11.17,11.18,11.2,2.234e+05,5.032e+06,1.154e+08,2.695e+09,35.26,0.0,690,76,9.998,53.5,band
+bench3_m1e5_r5__none_diag,8.799,8.821,8.831,8.834,8.84,3.137e+05,7.69e+06,1.917e+08,4.865e+09,17.57,0.0,5520,68,4.999,13.9,band

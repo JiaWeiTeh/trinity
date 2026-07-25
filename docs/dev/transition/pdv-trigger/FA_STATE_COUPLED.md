@@ -251,7 +251,15 @@ Imprinted in `LANCASTER_REFERENCE.md §7c` (read that, not this summary, for the
 1. **α_A — ANSWERED: an "order-unity parameter meant to account for any minor inconsistencies with
    this model"** (Eq 11 text). It is a fudge factor, not a measured constant ⇒ **α_A ≈ 1 is the right
    default** (the pre-screen's assumption was correct), and α_A must NOT be tuned to rescue a fit.
-2. **ℓ — ANSWERED, and it is the decisive result: ℓ is NOT free and NOT a grid scale.** It is the
+2. **ℓ — ANSWERED, then MEASURED (2026-07-25) — and the measurement reverses the optimistic reading.**
+   ⚠️ **SC-0 result: ℓ_cool is unreachably small** — t_cool ≈ 0.03 yr in peak-cooling gas gives
+   ℓ_cool ≈ 8×10⁻¹⁵ pc (p=1/2), and **for every p<1 it lies below every physical/numerical scale**
+   (2.9×10⁻⁷ pc even at p=0, vs the ~5×10⁻⁷ pc conduction front and L21b's 0.02–0.15 pc grid). The
+   cascade therefore never reaches ℓ_cool, so Eq 11's operative ℓ is set by the *truncation* scale
+   (resolution in their sims), not by cooling. **C2 as literally specified predicts f_A ~ 10⁹–10²⁴ —
+   falsified by 8+ orders of magnitude.** Unit cross-check passed exactly, so this is physics, not a
+   conversion bug. C2 survives only if someone supplies an independent physical truncation scale.
+   *(Superseded text, kept for the record: "ℓ is NOT free and NOT a grid scale.")* It is the
    **cooling scale ℓ_cool**, fixed by a cascade-vs-cooling balance (Eq 12–13 + text): the enthalpy flux
    grows toward smaller scales "until reaching the scale where **v_t(ℓ_cool)·t_cool = ℓ_cool**", with
    `t_cool = (k_B T_pk)²/(P Λ(T_pk))` (∝ R_b²). **⇒ C2 does NOT die on transferability** — the law is
