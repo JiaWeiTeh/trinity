@@ -36,8 +36,11 @@
 the successor the scalar-f_A stream's own Phase-6 tree names (row 3, `FINDINGS.md §15j`). Per the
 maintainer's one-stream directive there are **no parallel plans**: the scalar-f_A history, evidence
 and Phase 0–6 record stay in `SOURCE_TERM_DESIGN.md` (its §4 sketch is hereby **promoted here** and
-must not be extended there); THIS doc plans only the successor. **Phase SC-0 (offline screen) is
-OPEN and needs no ruling — it is read-only.** SC-1 onward are gated on the parent's Phase-6
+must not be extended there); THIS doc plans only the successor. **Phase SC-0 COMPLETE 2026-07-25 → VERDICT: FAIL** (14 arms, `FINDINGS §15k`, `fa_state_screen.png`).
+No derived candidate reproduces the measured doses: C1 spread 30× and nearly flat, C2 falsified by
+2–8 dex, C3 (fitted baseline) 56×. **Per this plan's own pre-registered rule, SC-1 onward DO NOT
+PROCEED and no production code is written.** The remainder of this doc is retained as the design of
+record + the negative result's provenance. SC-1 onward are gated on the parent's Phase-6
 maintainer ruling (§3 below). Nothing here touches production code until SC-1. **Phase-6 ruling
 STARTED 2026-07-22: clause 1 RULED — f_mix RETAINED as an opt-in fallback, retirement deferred +
 staged (R0→R2 ladder, §3); default stays `none` (clause 3). Clauses 2/4 (adopt scalar f_A as the

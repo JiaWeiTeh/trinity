@@ -1759,7 +1759,7 @@ ruling — every input it needs is now measured and committed.**
 > indefinitely. Production default is unchanged (`mode=none`). The scalar-f_A-diagnostic adoption and
 > the successor greenlight await an explicit nod.
 
-## 15k. [data — SC-0 screen, PROVISIONAL 7/14 arms] All three f_A candidate laws fail the shape bar; the Lancaster fractal law is falsified by 3–8 dex; the fitted scalar does NOT generalize (2026-07-25)
+## 15k. [data — SC-0 screen COMPLETE, 14/14 arms] **SC-0 FAILS as pre-registered: no derived f_A law reproduces the measured doses.** C2 falsified by 2–8 dex; C1 is nearly flat (30× spread); the fitted scalar does not generalize (56×) (2026-07-25)
 
 SC-0 (`FA_STATE_COUPLED.md`) screened three candidate f_A laws offline against measured targets
 (band-entry doses `§15j`; fire thresholds `§15e`) on committed trajectories. Data: the arms were
@@ -1768,11 +1768,23 @@ re-run **locally** (Helix unavailable) from the identical committed params and h
 **fidelity |Δθ_max| ≤ 5×10⁻⁶ and identical n_impl vs the HPC summary.** Builders:
 `data/make_fa_state_screen.py` (+ `make_fa_state_figures.py` → `fa_state_screen.png`).
 
-| candidate | spread, 7 arms | spread, 3 benches | note |
+**FINAL (14 arms run, 13 scored, 12 with numeric targets; `fail_repro` is unscoreable — the DRAIN
+control has essentially no interface cooling, itself consistent with never firing):**
+
+| candidate | spread, 12 arms | spread, 3 benches | note |
 |---|---|---|---|
-| C1 El-Badry `θ_EB·L_mech/(L₂+L₃)` | **29×** | 3.2× | **λδv-insensitive** (θ_EB saturates at n≳43) ⇒ cannot be tuned into agreement |
-| C2 Lancaster Eq 11 (parameter-free) | 18–68× **and 3–8 dex too high** | 14–29× | **FALSIFIED** |
-| C3 fitted scalar `315·n̄^−0.335` | **47×** | 1.9× | **fails to generalize** off its own fit points |
+| C1 El-Badry `θ_EB·L_mech/(L₂+L₃)` | **29.9–31.3×** | 3.2× | **λδv-insensitive** (θ_EB saturates at n≳43) ⇒ cannot be tuned. **Nearly FLAT: predicts 4–25 for everything while the measured doses span 1–75** — it does not reproduce the dynamic range at all |
+| C2 Lancaster Eq 11 (parameter-free) | **174–307×**, and 2–8 dex too high | 14–29× | **FALSIFIED** |
+| C3 fitted scalar `315·n̄^−0.335` | **56.1×** | 1.9× | **fails to generalize** off its own fit points (worst: `normal_n1e3` 31×) |
+
+**⇒ SC-0 VERDICT: FAIL, exactly as pre-registered.** The plan's rule ("neither derived form derives the
+curve ⇒ stop, record the spreads, the fitted f_A(n̄) remains the honest shipped result — **no production
+code gets written**") is now in force. **SC-1 onward do NOT proceed** on either candidate. Nothing in
+production was touched; the total cost was ~14 local arms and one offline screen.
+
+**Controls behave sanely but do not discriminate:** `small_1e6` (never fires at any tested dose ≤32)
+draws C1 = 34.2 and C3 = 67.4 — both "large", i.e. consistent with never-firing in the tested range,
+so neither is falsified by the controls; C2 gives 3.3×10⁷ (absurd). `fail_repro` scores no usable rows.
 
 **C2's falsification is physical, not a units bug** (the two Eq-13 forms agree to all digits):
 t_cool ≈ **0.03 yr** in peak-cooling gas ⇒ ℓ_cool ≈ 8×10⁻¹⁵ pc, and **robust to the [D]-grade cascade
@@ -1788,10 +1800,17 @@ three benches it was fitted to and **47× on the wider suite** — it is a local
 independently vindicates keeping it a *diagnostic* quantity and never a production default (`§15j`
 clause 2a, `FA_STATE_COUPLED §3`).
 
-⚠️ **First-order by construction** (unboosted f_A=1 trajectories, no back-reaction): SC-0 falsifies
-cheaply but a PASS would still need SC-2/SC-4. **PROVISIONAL at 7/14 arms** — the dense benches and
-both controls are still running; `fail_repro` scored 0 usable rows (a DRAIN control with essentially
-no interface cooling), itself consistent with its never-fires status.
+⚠️ **First-order by construction** (unboosted f_A=1 trajectories, no back-reaction). That is sound for
+FALSIFICATION — which is what happened — but note a PASS would have needed SC-2/SC-4 confirmation.
+The one loophole worth naming: back-reaction could in principle rescue a candidate whose *shape* is
+right and whose *offset* is wrong; none of the three has the right shape, so the loophole does not
+apply here.
+
+**What this means for the workstream.** The Phase-6 picture is unchanged and now better supported:
+production default stays `cooling_boost_mode=none`; f_mix stays the opt-in fallback (`§15j`,
+`FA_STATE_COUPLED §3` clause 1); and the fitted f_A(n̄) stays a **measurement of record, not a law** —
+SC-0 independently confirms it does not generalize. A future attempt needs a *new physical idea* for
+the truncation scale / interface area, not another fit.
 
 ## 16. [flag] Pre-existing latent double-boost in the trigger fallback (found 2026-07-06 during the f_A plan audit; NOT fixed)
 

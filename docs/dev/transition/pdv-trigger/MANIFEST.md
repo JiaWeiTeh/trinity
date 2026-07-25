@@ -12,16 +12,22 @@
 > are exact; stamp-less artifacts predate the convention (2026-07-02) — for those, only
 > the commit date is known. **Every new/edited builder must write the stamp.**
 
-725 artifacts · 1 stale-risk · 6 untracked · 17 stamped 🕐
+732 artifacts · 1 stale-risk · 0 untracked · 18 stamped 🕐
 
 | last updated (commit) | artifact | producer / flags |
 |---|---|---|
-| 2026-07-25 `50c5b77` | `data/fa_state_screen.csv` | by `make_fa_state_screen.py` |
+| 2026-07-25 `400a73f` | `data/fa_state_screen.csv` | by `make_fa_state_screen.py` |
+| 2026-07-25 `400a73f` | `fa_state_screen.png` | producer unknown (HPC/hand-made); refs: `make_fa_state_figures.py` |
+| 2026-07-25 `400a73f` | `phase6_brief.html` | producer unknown (HPC/hand-made); refs: `make_zone_resolution.py` |
+| 2026-07-25 `400a73f` | `runs/data/bench_state_traj/be_sphere__none.csv` | — (hand-made/HPC, unreferenced) |
 | 2026-07-25 `52260f0` | `runs/data/bench_state_traj/bench1_m5e4_r20__none_diag.csv` | — (hand-made/HPC, unreferenced) |
 | 2026-07-25 `52260f0` | `runs/data/bench_state_traj/bench2_m1e5_r10__none_diag.csv` | — (hand-made/HPC, unreferenced) |
 | 2026-07-25 `52260f0` | `runs/data/bench_state_traj/bench3_m1e5_r5__none_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-25 `400a73f` | `runs/data/bench_state_traj/fail_repro__none.csv` | producer unknown (HPC/hand-made); refs: `make_kmix_prototype.py` |
+| 2026-07-25 `400a73f` | `runs/data/bench_state_traj/large_diffuse_lowsfe__none.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-25 `400a73f` | `runs/data/bench_state_traj/midrange_pl0__none.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-25 `400a73f` | `runs/data/bench_state_traj/normal_n1e3__none.csv` | — (hand-made/HPC, unreferenced) |
 | 2026-07-24 `6418992` | `data/zone_resolution.csv` | by `make_zone_resolution.py` |
-| 2026-07-24 `6418992` | `phase6_brief.html` | producer unknown (HPC/hand-made); refs: `make_zone_resolution.py` |
 | 2026-07-19 `f80fa63` | `bench5_theta_tracks.png` | producer unknown (HPC/hand-made); refs: `make_bench5_analysis.py` |
 | 2026-07-19 `f80fa63` | `data/bench5_analysis.csv` | by `make_bench5_analysis.py` |
 | 2026-07-19 `f80fa63` | `data/bench6_analysis.csv` | by `make_bench6_analysis.py` |
@@ -735,9 +741,10 @@
 | 2026-07-10 `b94b09d` | `theta5k_fire_map.png` | producer unknown (HPC/hand-made); refs: `make_theta5k_analysis.py`, `make_pdvtrigger_report.py` |
 | 2026-07-10 `b94b09d` | `theta5k_theta_rise.png` | producer unknown (HPC/hand-made); refs: `make_theta5k_analysis.py`, `make_pdvtrigger_report.py` |
 | 2026-07-10 `b94b09d` | `theta_vs_density.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_overlay.py`, `make_fmix_spread_plot.py` |
-| — | `fa_state_screen.png` | 🚫 UNTRACKED (not in git — never quote) |
-| — | `runs/data/bench_state_traj/be_sphere__none.csv` | 🚫 UNTRACKED (not in git — never quote) |
-| — | `runs/data/bench_state_traj/fail_repro__none.csv` | 🚫 UNTRACKED (not in git — never quote) |
-| — | `runs/data/bench_state_traj/large_diffuse_lowsfe__none.csv` | 🚫 UNTRACKED (not in git — never quote) |
-| — | `runs/data/bench_state_traj/midrange_pl0__none.csv` | 🚫 UNTRACKED (not in git — never quote) |
-| — | `runs/data/bench_state_traj/normal_n1e3__none.csv` | 🚫 UNTRACKED (not in git — never quote) |
+| None `None` | `runs/data/bench_state_traj/bench4_m1e5_r2p5__none_diag.csv` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/data/bench_state_traj/bench5_m5e5_r2p5__none_diag.csv` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/data/bench_state_traj/pl2_steep__none.csv` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/data/bench_state_traj/simple_cluster__none.csv` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/data/bench_state_traj/small_1e6__none.csv` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/data/bench_state_traj/small_dense_highsfe__none.csv` | — (hand-made/HPC, unreferenced) |
+| None `None` | `runs/data/sc0_state_summary.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-25T16:57:36Z | builder harvest_bench5.py | code 400a73f+dirty |
