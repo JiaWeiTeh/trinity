@@ -288,6 +288,11 @@ With this, C2 has **no free parameters** beyond α_A≈1 and d∈[0.4,0.7] — c
 **v_t is CONFIRMED the virial velocity from the paper's own text** (§3.2 + Eq 23): the turbulence is
 decayed until `Ẽ_kin = 2|W̃_sphere| = 6GM_cloud/(5R_cloud)`, then `v_t = (Ẽ_kin,i)^{1/2}`. This upgrades
 `§7b`'s numerical α_vir=2 inference from [V-by-our-check] to **[V]-stated**.
+**Numerically closed (2026-07-25):** `v_t = √(6·G·M_cloud / (5·R_cloud))` with G = 4.301×10⁻³
+pc M⊙⁻¹ (km/s)² reproduces every Table-1 v_t to **≤0.4%** (3.59/5.08/7.18/10.16/32.13/11.36 vs
+3.59/5.08/7.18/10.2/32.1/11.4). **Consequence: v_t(L) is computable for ANY cloud, not just the 12
+published rows** — which is what makes the C2 fractal candidate testable on the 9 non-L21b theta5s
+configs as well (`FA_STATE_COUPLED.md` SC-0).
 
 **μ_H CORRECTED: 1.4271** (Eq 22: `ρ̄ = 3M_cloud/4πR³_cloud = μ_H m_p n̄_H`, "μ_H = 1.4271 is the mean
 molecular weight of the gas … n̄_H is the mean number density of Hydrogen nuclei"). `§7b` used **1.4**;
