@@ -12,10 +12,11 @@
 > are exact; stamp-less artifacts predate the convention (2026-07-02) — for those, only
 > the commit date is known. **Every new/edited builder must write the stamp.**
 
-719 artifacts · 1 stale-risk · 1 untracked · 17 stamped 🕐
+725 artifacts · 1 stale-risk · 6 untracked · 17 stamped 🕐
 
 | last updated (commit) | artifact | producer / flags |
 |---|---|---|
+| 2026-07-25 `50c5b77` | `data/fa_state_screen.csv` | by `make_fa_state_screen.py` |
 | 2026-07-25 `52260f0` | `runs/data/bench_state_traj/bench1_m5e4_r20__none_diag.csv` | — (hand-made/HPC, unreferenced) |
 | 2026-07-25 `52260f0` | `runs/data/bench_state_traj/bench2_m1e5_r10__none_diag.csv` | — (hand-made/HPC, unreferenced) |
 | 2026-07-25 `52260f0` | `runs/data/bench_state_traj/bench3_m1e5_r5__none_diag.csv` | — (hand-made/HPC, unreferenced) |
@@ -25,7 +26,7 @@
 | 2026-07-19 `f80fa63` | `data/bench5_analysis.csv` | by `make_bench5_analysis.py` |
 | 2026-07-19 `f80fa63` | `data/bench6_analysis.csv` | by `make_bench6_analysis.py` |
 | 2026-07-19 `88a4738` | `data/theta5s_collapse_law.csv` | producer unknown (HPC/hand-made); refs: `make_theta5s_analysis.py` · 🕐 generated 2026-07-19T11:08:03Z | builder make_theta5s_analysis.py | code 075c73b+dirty |
-| 2026-07-19 `88a4738` | `data/theta5s_fire_map.csv` | producer unknown (HPC/hand-made); refs: `make_theta5s_analysis.py` · 🕐 generated 2026-07-19T11:08:03Z | builder make_theta5s_analysis.py | code 075c73b+dirty |
+| 2026-07-19 `88a4738` | `data/theta5s_fire_map.csv` | producer unknown (HPC/hand-made); refs: `make_fa_state_screen.py`, `make_theta5s_analysis.py` · 🕐 generated 2026-07-19T11:08:03Z | builder make_theta5s_analysis.py | code 075c73b+dirty |
 | 2026-07-19 `591e5e4` | `runs/data/bench5_summary_hpc.csv` | producer unknown (HPC/hand-made); refs: `compare_bench5_hpc.py`, `make_bench5_analysis.py` · 🕐 generated 2026-07-19T10:48:17Z | builder harvest_bench5.py | code 89e802dd+dirty |
 | 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench1_m5e4_r20__fa12.csv` | — (hand-made/HPC, unreferenced) |
 | 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench1_m5e4_r20__fa12_diag.csv` | — (hand-made/HPC, unreferenced) |
@@ -310,7 +311,7 @@
 | 2026-07-12 `a491b12` | `runs/params/bench5/bench3_m1e5_r5__fa6_diag.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-12 `a491b12` | `runs/params/bench5/bench3_m1e5_r5__fa8.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-12 `a491b12` | `runs/params/bench5/bench3_m1e5_r5__fa8_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-12 `a491b12` | `runs/params/bench5/bench3_m1e5_r5__none.param` | producer unknown (HPC/hand-made); refs: `make_zone_resolution.py` |
+| 2026-07-12 `a491b12` | `runs/params/bench5/bench3_m1e5_r5__none.param` | producer unknown (HPC/hand-made); refs: `make_fa_state_screen.py`, `make_zone_resolution.py` |
 | 2026-07-12 `a491b12` | `runs/params/bench5/bench3_m1e5_r5__none_diag.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-12 `a491b12` | `runs/params/bench5/bench4_m1e5_r2p5__fa12.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-12 `a491b12` | `runs/params/bench5/bench4_m1e5_r2p5__fa12_diag.param` | — (hand-made/HPC, unreferenced) |
@@ -734,4 +735,9 @@
 | 2026-07-10 `b94b09d` | `theta5k_fire_map.png` | producer unknown (HPC/hand-made); refs: `make_theta5k_analysis.py`, `make_pdvtrigger_report.py` |
 | 2026-07-10 `b94b09d` | `theta5k_theta_rise.png` | producer unknown (HPC/hand-made); refs: `make_theta5k_analysis.py`, `make_pdvtrigger_report.py` |
 | 2026-07-10 `b94b09d` | `theta_vs_density.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_overlay.py`, `make_fmix_spread_plot.py` |
-| — | `data/fa_state_screen.csv` | 🚫 UNTRACKED (not in git — never quote) |
+| — | `fa_state_screen.png` | 🚫 UNTRACKED (not in git — never quote) |
+| — | `runs/data/bench_state_traj/be_sphere__none.csv` | 🚫 UNTRACKED (not in git — never quote) |
+| — | `runs/data/bench_state_traj/fail_repro__none.csv` | 🚫 UNTRACKED (not in git — never quote) |
+| — | `runs/data/bench_state_traj/large_diffuse_lowsfe__none.csv` | 🚫 UNTRACKED (not in git — never quote) |
+| — | `runs/data/bench_state_traj/midrange_pl0__none.csv` | 🚫 UNTRACKED (not in git — never quote) |
+| — | `runs/data/bench_state_traj/normal_n1e3__none.csv` | 🚫 UNTRACKED (not in git — never quote) |

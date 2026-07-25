@@ -101,6 +101,25 @@ f_A(n̄) ≈ 315 · n̄<sup>−0.335</sup>&nbsp;&nbsp;(fits 13.9 / 53.5 / 74.8 t
 <li><b>Gate discipline:</b> the swap re-runs the Phase-3 gates (default byte-identity, live sign check) + a bench re-run at the derived dose.</li>
 </ol>
 
+<h2>4b. SC-0 — the state-coupled f_A screen (2026-07-25, PROVISIONAL: 7 of 14 arms)</h2>
+<p>Phase 6 asked whether the fitted f_A(n̄) could be replaced by a <i>derived</i> law. Three candidates were screened offline against measured targets — band-entry doses for the L21b benches, fire thresholds for the theta5s configs — using committed trajectories (<code>runs/data/bench_state_traj/</code>, re-run locally, fidelity |Δθ_max| ≤ 5×10⁻⁶ vs HPC). Figure: <code>fa_state_screen.png</code>; builder <code>data/make_fa_state_screen.py</code> + <code>make_fa_state_figures.py</code>.</p>
+<div class="eq">
+C1 El-Badry:&nbsp; f_A = θ_EB(λδv, n_amb)·L<sub>mech</sub>/(L₂+L₃)&nbsp;&nbsp;<span class="small">[validated closed form, θ(1,1)=0.61 vs his Fig 7]</span><br>
+C2 Lancaster Eq 11:&nbsp; f_A = α_A(R₂/ℓ_cool)<sup>d</sup>, ℓ_cool = [v_t·t_cool]²/L&nbsp;&nbsp;<span class="small">[parameter-free: α_A≈1, d∈[0.4,0.7], v_t=√(6GM/5R)]</span><br>
+C3 fitted baseline:&nbsp; f_A = 315·n̄<sup>−0.335</sup>
+</div>
+<p><b>Discriminator</b> = spread of (predicted / measured) across arms — calibration-invariant, so a law with the right <i>shape</i> scores ~1 even if offset (absorbable by α_A or λδv); a wrong shape scatters.</p>
+<table>
+<tr><th>candidate</th><th>spread (7 arms)</th><th>spread (3 benches only)</th><th>verdict</th></tr>
+<tr><td><b>C1</b> El-Badry</td><td>29×</td><td>3.2×</td><td>shape fails on the wider suite; <b>λδv-insensitive</b> (θ_EB saturates at n≳43) so it cannot be tuned into agreement</td></tr>
+<tr><td><b>C2</b> Lancaster</td><td>18–68×, and <b>3–8 dex too high</b></td><td>14–29×</td><td><b>FALSIFIED</b> — see below</td></tr>
+<tr><td><b>C3</b> fitted scalar</td><td><b>47×</b></td><td>1.9×</td><td><b>does NOT generalize</b> beyond its own fit points</td></tr>
+</table>
+<div class="warn"><b>C2 is falsified, and not by a units bug.</b> Evaluating L21b Eq 13 with TRINITY's own non-CIE cooling table gives <b>t_cool ≈ 0.03 years</b> in peak-cooling gas (n(T<sub>pk</sub>)=2.35×10⁴ cm⁻³, Λ=1.33×10⁻²² erg cm³/s). Hence ℓ_cool ≈ 8×10⁻¹⁵ pc — and the result is <b>robust to the cascade index p</b> (the one [D]-grade assumption): p = 0 / 0.3 / 0.5 / 0.7 give 2.9×10⁻⁷ / 1.7×10⁻¹⁰ / 8.5×10⁻¹⁵ / 7.6×10⁻²⁵ pc. <b>For every p&lt;1, ℓ_cool lies below every physical and numerical scale in the problem</b> — below the measured ~5×10⁻⁷ pc conduction front, and 10⁵–10²³× below L21b's own Δx (0.02–0.15 pc). The cascade never reaches ℓ_cool, so Eq 11's operative ℓ is set by the <i>truncation</i> scale (resolution, in a 3-D sim), not by cooling. The unit cross-check passed exactly — <code>P/(n²Λ)</code> and <code>(k_BT_pk)²/(PΛ)</code> agree to all digits.
+<p style="margin:.4rem 0 0"><b>Correction of record:</b> an earlier imprint claimed "ℓ is physical, not resolution-set, so the law is transferable in principle." That was wrong and is superseded in <code>LANCASTER_REFERENCE §7c</code> / <code>FA_STATE_COUPLED §5</code>.</p></div>
+<p><b>The most consequential result is C3's.</b> The fitted scalar looked excellent (1.9×) on the three benches it was fitted to, and collapses to 47× on the wider suite — direct evidence that <b>f_A(n̄) is a local fit, not a law</b>, which is exactly why it was never proposed as a production default.</p>
+<p class="small">⚠️ First-order by construction: candidates are evaluated on the <i>unboosted</i> f_A=1 trajectory, so there is no back-reaction — SC-0 can falsify cheaply, but any PASS would still need SC-2/SC-4. Provisional at 7/14 arms; the remaining arms (incl. both controls and the dense benches) are running.</p>
+
 <h2>5. PLAN follow-ups still open</h2>
 <table>
 <tr><th>#</th><th>item</th><th>who</th><th>weight</th></tr>

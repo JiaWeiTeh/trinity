@@ -1759,6 +1759,40 @@ ruling — every input it needs is now measured and committed.**
 > indefinitely. Production default is unchanged (`mode=none`). The scalar-f_A-diagnostic adoption and
 > the successor greenlight await an explicit nod.
 
+## 15k. [data — SC-0 screen, PROVISIONAL 7/14 arms] All three f_A candidate laws fail the shape bar; the Lancaster fractal law is falsified by 3–8 dex; the fitted scalar does NOT generalize (2026-07-25)
+
+SC-0 (`FA_STATE_COUPLED.md`) screened three candidate f_A laws offline against measured targets
+(band-entry doses `§15j`; fire thresholds `§15e`) on committed trajectories. Data: the arms were
+re-run **locally** (Helix unavailable) from the identical committed params and harvested with the new
+`harvest_bench5.py --extra-cols` → `runs/data/bench_state_traj/` (Pb + L2/L3 + dMdt + Qi);
+**fidelity |Δθ_max| ≤ 5×10⁻⁶ and identical n_impl vs the HPC summary.** Builders:
+`data/make_fa_state_screen.py` (+ `make_fa_state_figures.py` → `fa_state_screen.png`).
+
+| candidate | spread, 7 arms | spread, 3 benches | note |
+|---|---|---|---|
+| C1 El-Badry `θ_EB·L_mech/(L₂+L₃)` | **29×** | 3.2× | **λδv-insensitive** (θ_EB saturates at n≳43) ⇒ cannot be tuned into agreement |
+| C2 Lancaster Eq 11 (parameter-free) | 18–68× **and 3–8 dex too high** | 14–29× | **FALSIFIED** |
+| C3 fitted scalar `315·n̄^−0.335` | **47×** | 1.9× | **fails to generalize** off its own fit points |
+
+**C2's falsification is physical, not a units bug** (the two Eq-13 forms agree to all digits):
+t_cool ≈ **0.03 yr** in peak-cooling gas ⇒ ℓ_cool ≈ 8×10⁻¹⁵ pc, and **robust to the [D]-grade cascade
+index p** — p=0/0.3/0.5/0.7 → 2.9e−7 / 1.7e−10 / 8.5e−15 / 7.6e−25 pc. For **every** p<1 that is below
+every physical/numerical scale (the ~5×10⁻⁷ pc conduction front; 10⁵–10²³× below L21b's Δx). The
+cascade never reaches ℓ_cool ⇒ Eq 11's operative ℓ is set by the **truncation** scale (resolution),
+not cooling ⇒ **not portable to a 1-D code without an independent closure.** This CORRECTS the earlier
+imprint that called ℓ "physical, not resolution-set, so transferable in principle"
+(`LANCASTER_REFERENCE §7c`, superseded in place).
+
+**The C3 result is the most consequential for the workstream:** the fitted f_A(n̄) scores 1.9× on the
+three benches it was fitted to and **47× on the wider suite** — it is a local fit, not a law. That
+independently vindicates keeping it a *diagnostic* quantity and never a production default (`§15j`
+clause 2a, `FA_STATE_COUPLED §3`).
+
+⚠️ **First-order by construction** (unboosted f_A=1 trajectories, no back-reaction): SC-0 falsifies
+cheaply but a PASS would still need SC-2/SC-4. **PROVISIONAL at 7/14 arms** — the dense benches and
+both controls are still running; `fail_repro` scored 0 usable rows (a DRAIN control with essentially
+no interface cooling), itself consistent with its never-fires status.
+
 ## 16. [flag] Pre-existing latent double-boost in the trigger fallback (found 2026-07-06 during the f_A plan audit; NOT fixed)
 
 `run_energy_implicit_phase.py:1245-1247`: when `bubble_props is None`, the trigger path reads
