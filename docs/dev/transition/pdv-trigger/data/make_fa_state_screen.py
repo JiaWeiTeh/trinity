@@ -25,6 +25,11 @@ SCORE.  Per arm: the luminosity-weighted mean of the candidate over the accepted
 robustness check. Then ratio = predicted / measured-target. The DISCRIMINATOR is the max/min SPREAD
 of that ratio across arms: it is calibration-invariant, so a law with the right SHAPE gives a
 constant ratio even if offset (absorbable by alpha_A or lambda_dv), while a wrong shape scatters.
+⚠️ REPORT IT PER TARGET TYPE. 'band' (the f_A that lands Theta_cum in [0.90,0.99]) and 'fire' (the
+f_A whose theta_max crosses 0.95) are DIFFERENT criteria and are known to disagree (FINDINGS §15j:
+bench3 needs ~16 for the band but fires at 12). A combined spread conflates them and inflates the
+number -- e.g. C1 is 3.3x within 'band' and 4.5x within 'fire' but 30x combined, because the two
+criteria sit ~10x apart. The per-type spreads are the meaningful test of a law's shape.
 
 TARGETS.  Band-entry dose for the clean-blowout benches (FINDINGS §15j) and the measured fire
 threshold f_fire for the theta5s configs (data/theta5s_fire_map.csv, HPC-confirmed §15e). The two
@@ -246,8 +251,16 @@ def main():
         spread = hi[0] / lo[0] if lo[0] > 0 else float("inf")
         best.append((spread, key, len(rs), lo, hi))
     for spread, key, n, lo, hi in sorted(best):
-        print(f"  {key:14s} n={n:2d}  spread={spread:8.2f}x   min {lo[0]:.3g} ({lo[1][:22]})"
-              f"  max {hi[0]:.3g} ({hi[1][:22]})")
+        # per-target-type spread: 'band' (Theta_cum in-band dose) and 'fire' (theta_max threshold)
+        # are DIFFERENT criteria, so a combined spread conflates them -- report both.
+        per = []
+        for kind in ("band", "fire"):
+            rr = [float(r[key]) / r["target"] for r in scored
+                  if r.get(key) and r.get("target_kind") == kind]
+            if len(rr) >= 2:
+                per.append(f"{kind} {max(rr)/min(rr):.1f}x")
+        print(f"  {key:14s} n={n:2d}  combined={spread:8.2f}x  [{', '.join(per) or '-'}]"
+              f"   min {lo[0]:.3g} ({lo[1][:20]})  max {hi[0]:.3g} ({hi[1][:20]})")
     if best:
         s, key, *_ = sorted(best)[0]
         print(f"\nbest-shape candidate: {key} (spread {s:.2f}x). C3 baseline to beat is the C3_fitted row.")

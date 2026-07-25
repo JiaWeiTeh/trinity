@@ -62,22 +62,34 @@ def main():
     ax.legend(fontsize=7, loc="upper left"); ax.grid(alpha=0.25, which="both")
 
     # ---- Panel B: spread of ratio per candidate (the discriminator) ------------------------
+    # Split by target_kind: `band` (Theta_cum-in-band dose) and `fire` (theta_max threshold) are
+    # DIFFERENT criteria, so a combined spread double-counts the ~10x offset between them.
     ax = axes[1]
     keys = [k for k in rows[0] if k.startswith(("C1_", "C2_", "C3"))]
     bars = []
     for k in keys:
-        rs = [_f(r[k]) / _f(r["target"]) for r in rows if _f(r.get(k))]
-        if len(rs) >= 3:
-            bars.append((max(rs) / min(rs), k, sum(rs) / len(rs)))
+        per = {}
+        for kind in ("band", "fire"):
+            rs = [_f(r[k]) / _f(r["target"]) for r in rows
+                  if _f(r.get(k)) and r.get("target_kind") == kind]
+            if len(rs) >= 3:
+                per[kind] = max(rs) / min(rs)
+        if per:
+            bars.append((max(per.values()), k, per))
     bars.sort()
-    ys = range(len(bars))
-    ax.barh(list(ys), [b[0] for b in bars],
-            color=[COL[b[1][:2]] for b in bars], alpha=0.85, edgecolor="k", linewidth=0.4)
-    ax.set_yticks(list(ys)); ax.set_yticklabels([b[1] for b in bars], fontsize=7)
+    ys = list(range(len(bars)))
+    for i, (_worst, k, per) in enumerate(bars):
+        for j, kind in enumerate(("band", "fire")):
+            if kind in per:
+                ax.barh(i + (j - 0.5) * 0.36, per[kind], height=0.34, color=COL[k[:2]],
+                        alpha=0.85 if kind == "fire" else 0.45, edgecolor="k", linewidth=0.4,
+                        hatch="" if kind == "fire" else "//")
+    ax.set_yticks(ys); ax.set_yticklabels([b[1] for b in bars], fontsize=7)
     ax.axvline(1, color="k", ls="--", lw=1)
     ax.axvline(2, color="0.4", ls=":", lw=1)
-    ax.set_xscale("log"); ax.set_xlabel("spread of (predicted/measured) across arms  [1 = perfect shape]")
-    ax.set_title("B. Shape test (calibration-invariant)\nNo candidate is near the 2x bar")
+    ax.set_xscale("log")
+    ax.set_xlabel("spread of (predicted/measured) WITHIN a target type  [1 = perfect shape]")
+    ax.set_title("B. Shape test (calibration-invariant)\nsolid = fire (n=9), hatched = band (n=3)")
     ax.grid(alpha=0.25, axis="x", which="both")
 
     # ---- Panel C: why C2 dies -- l_cool vs every real scale --------------------------------

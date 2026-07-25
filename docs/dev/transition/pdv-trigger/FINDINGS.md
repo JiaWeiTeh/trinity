@@ -1773,9 +1773,19 @@ control has essentially no interface cooling, itself consistent with never firin
 
 | candidate | spread, 12 arms | spread, 3 benches | note |
 |---|---|---|---|
-| C1 El-Badry `θ_EB·L_mech/(L₂+L₃)` | **29.9–31.3×** | 3.2× | **λδv-insensitive** (θ_EB saturates at n≳43) ⇒ cannot be tuned. **Nearly FLAT: predicts 4–25 for everything while the measured doses span 1–75** — it does not reproduce the dynamic range at all |
+| C1 El-Badry `θ_EB·L_mech/(L₂+L₃)` | 30× combined, but **3.3× within `band` / 4.5× within `fire`** | 3.2× | **λδv-insensitive** (θ_EB saturates at n≳43) ⇒ cannot be tuned. Tracks each criterion to 3–5×, still missing the 2× bar |
 | C2 Lancaster Eq 11 (parameter-free) | **174–307×**, and 2–8 dex too high | 14–29× | **FALSIFIED** |
-| C3 fitted scalar `315·n̄^−0.335` | **56.1×** | 1.9× | **fails to generalize** off its own fit points (worst: `normal_n1e3` 31×) |
+| C3 fitted scalar `315·n̄^−0.335` | **56.1×** (and 56× within `fire` alone) | 1.9× | **fails to generalize** off its own fit points (worst: `normal_n1e3` 31×) |
+
+> ⚠️ **Correction 2026-07-25 (same day):** the first write-up of this section headlined C1 as "29.9–31.3×
+> and nearly flat". That **conflated two different target criteria**. The `band` targets (f_A that lands
+> Θ_cum in [0.90,0.99]) and the `fire` targets (f_A whose θ_max crosses 0.95) are known to disagree —
+> `§15j` already recorded bench3 needing ≈16 for the band while firing at 12. Split by type, **C1's
+> spread is 3.3× (band, n=3) and 4.5× (fire, n=9)**; the 30× came from the ~10× systematic offset
+> BETWEEN the two criteria, not from C1 scattering. C3 by contrast fails *within* a single type (56×
+> on `fire` alone), and C2's 2–8 dex magnitude error is unaffected either way. The verdict below is
+> unchanged — 3–5× still misses the 2× bar — but C1 is "misses by 3–5× per criterion", NOT "flat".
+> The screen now reports per-type spreads.
 
 **⇒ SC-0 VERDICT: FAIL, exactly as pre-registered.** The plan's rule ("neither derived form derives the
 curve ⇒ stop, record the spreads, the fitted f_A(n̄) remains the honest shipped result — **no production
