@@ -250,3 +250,69 @@ Fig-17 tracks remain [V-plot-eyeball] grade — re-digitize before any quantitat
 
 *Transcribed from ApJ 914, 90 (Lancaster+2021 Paper II) and arXiv:2505.22730v1 (Lancaster+2025) on 2026-06-30,
 `feature/PdV-trigger-term-pt2`. No production code touched.*
+
+### 7c. Eq 11–15 / 22–23 VERIFIED (2026-07-22, maintainer-supplied pp. 3–6 excerpts) — the fractal-area law is CLOSED
+
+> Provenance: the maintainer pasted arxiv.org screenshots of L21b **pp. 3–6** on 2026-07-22 (Eq 1–15,
+> §3.1–3.2, the FULL Table 1 incl. Δx/Resolution, Eq 16–23). Grade **[V]** unless marked. This section
+> answers the two open asks that blocked the Lancaster-fractal f_A candidate (`FA_STATE_COUPLED.md §1 C2`).
+
+**The fractal-area law + its parameters (Eq 11, verbatim meaning):**
+`A_b(R_b; ℓ) ≡ 4π α_A R_b² (R_b/ℓ)^d` — d is the **"excess fractal dimension"** of the surface and
+**α_A is "an order-unity parameter meant to account for any minor inconsistencies with this model"**
+⇒ **ASK #1 ANSWERED: α_A ~ 1 (an order-unity fudge factor, not a measured constant).**
+
+**ℓ is NOT free and NOT a grid scale — it is the COOLING scale ℓ_cool (Eq 12–13 + text).** Paper I's
+picture: interface instabilities drive turbulence in the hot gas following `v_t(ℓ) = v_t(L)(ℓ/L)^p`.
+Accounting for turbulent velocity *and* fractal area, the effective enthalpy flux at scale ℓ is
+`Φ_cool ~ (5/2) P v_equiv`, with
+```
+v_equiv(ℓ) = v_t(ℓ) · (R_b/ℓ)^d                                   (Eq 12)
+t_cool ≡ P/(n²Λ(T_pk)) = (k_B T_pk)²/(P Λ(T_pk)) ,  ∝ R_b²        (Eq 13)
+```
+"This enthalpy flux … increas[es] to smaller scale **until reaching the scale where
+`v_t(ℓ_cool)·t_cool = ℓ_cool`**" — T_pk is the temperature of peak cooling (same object as El-Badry's
+T_pk≈2×10⁴ K). ⇒ **ASK #2 ANSWERED: ℓ = ℓ_cool, set by a physical cascade-vs-cooling balance, so the
+law is transferable in principle to a 1-D code** (it does NOT die on resolution-dependence).
+
+**Closing ℓ_cool.** Their initial spectrum is `|v_k|² ∝ k^−4` for 2 ≤ kL_box/2π ≤ 64 with
+**L_box = 2R_cloud** [V]. ⚠️ **[D-grade, derived by us, NOT quoted]:** |v_k|²∝k^−4 ⇒ v_t(ℓ) ∝ ℓ^{1/2}
+⇒ **p = 1/2**; then `v_t(ℓ_cool)t_cool = ℓ_cool` gives
+```
+ℓ_cool = [ v_t(L) · t_cool ]² / L          (p = 1/2; L = L_box = 2 R_cloud, v_t(L) = Table-1 v_t)
+```
+**Check p against Paper I before any quantitative fit** (Paper I states the cascade index; we inferred it).
+With this, C2 has **no free parameters** beyond α_A≈1 and d∈[0.4,0.7] — computable from TRINITY's own
+(P_b, T_pk, Λ) + the cloud's (v_t, R_cloud).
+
+**v_t is CONFIRMED the virial velocity from the paper's own text** (§3.2 + Eq 23): the turbulence is
+decayed until `Ẽ_kin = 2|W̃_sphere| = 6GM_cloud/(5R_cloud)`, then `v_t = (Ẽ_kin,i)^{1/2}`. This upgrades
+`§7b`'s numerical α_vir=2 inference from [V-by-our-check] to **[V]-stated**.
+
+**μ_H CORRECTED: 1.4271** (Eq 22: `ρ̄ = 3M_cloud/4πR³_cloud = μ_H m_p n̄_H`, "μ_H = 1.4271 is the mean
+molecular weight of the gas … n̄_H is the mean number density of Hydrogen nuclei"). `§7b` used **1.4**;
+the true value is 0.4% higher in ρ (0.13% in radius) — well inside the bench-emit 2% gate, so **no
+bench param changes**, but quote 1.4271 in the paper. (It does NOT explain the 2.5-pc rows' 3.3%
+offset: (1.4271/1.4)^{1/3} = 1.006.)
+
+**Table 1 fully re-verified, plus TWO NEW COLUMNS.** All 12 (M, R, n̄_H, v_t) rows match `§7b` exactly,
+and the Notes (ε_* ∈ {0.01, 0.1, 1}) are confirmed. New: **Δx [pc] and Resolution** —
+| M_cl | R_cl=20 | 10 | 5 | 2.5 |
+|---|---|---|---|---|
+| 5×10⁴ | Δx 0.15 (256³) | 0.08 | 0.04 | 0.02 |
+| 10⁵ | 0.08 (512³) | 0.04 | 0.02 | 0.01 |
+| 5×10⁵ | 0.15 (256³) | 0.08 | 0.04 | 0.02 |
+
+⚠️ **Resolution caveat for C2 (new, 2026-07-22).** Inverting Eq 11 for TRINITY's *measured* band-entry
+doses at d=0.7 implies ℓ ≈ 0.116 / 0.034 / 0.042 pc for bench3/bench2/bench1 — versus their Δx =
+0.02 / 0.04 / 0.15 pc, i.e. **ℓ/Δx ≈ 5.8 (resolved) / 0.85 (marginal) / 0.28 (UNRESOLVED)**. So the
+inner scale our doses imply sits at or below L21b's own grid scale for the two *diffuse* benches —
+exactly the regime the calibration targets. Treat any C2 fit there as resolution-limited on the L21b
+side (cf. Gentry & Krumholz 2019, `SOURCE_TERM_DESIGN §5`).
+
+**Other verified equations now available** (for the eventual paper / theory checks): Eq 1–2 (V_w, ṗ_w),
+Eq 3 (`p_r = α_p ṗ_w t`), Eq 4 (R_b from volume), Eq 5 (`R_b ∝ (α_R α_p)^{1/4} R_EC`, t^{1/2}),
+Eq 6 (`E_b = ½ ṗ_w S R_b`, S≈α_p within 6%), Eq 7 (P_b), Eq 8 (E_r,sh), Eq 9 (f_turb),
+**Eq 10 re-confirmed** as `1−Θ = (½(1+f_turb)α_p/α_R + S)(Ṙ_b/V_w)` — matches the `§7b` correction —
+Eq 14 (**EC-validity limit** `1−Θ < 4(5/6)^{1/4} Ṙ_EC/V_w`, explicitly derived by comparison to
+El-Badry+2019), Eq 15 (`v_hot(R_b) ≈ V_w/(6α_p−2)`, which cannot exceed Eq 12's v_equiv).

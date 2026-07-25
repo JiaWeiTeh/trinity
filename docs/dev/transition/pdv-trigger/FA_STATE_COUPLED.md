@@ -47,7 +47,12 @@ the calibration knob; maybe use the Lancaster values"): SC-0 now screens **three
 El-Badry L_int (C1), **Lancaster fractal area Eq 11 (C2)**, and the fitted scalar as baseline (C3) —
 and the data picks. A back-of-envelope pre-screen (§1) finds C2 does NOT collapse the measured doses
 at Lancaster's own d≈0.4–0.7 (3.4–16.8× spread vs C3's 5.4×), so nothing is pre-picked. Two
-literature values (α_A, and what ℓ physically is) are needed for C2's fair test — §5.
+literature values (α_A, and what ℓ physically is) were needed for C2's fair test — **BOTH ANSWERED
+2026-07-22 from maintainer-supplied L21b pp. 3–6 (`LANCASTER_REFERENCE §7c`): α_A is an order-unity
+fudge factor (≈1) and ℓ is the physical cooling scale ℓ_cool (v_t(ℓ)t_cool = ℓ), NOT a grid scale — so
+C2 is now CLOSED and PARAMETER-FREE (α_A≈1, d∈[0.4,0.7] both [V]), a stronger test than C1. SC-0 can
+falsify it outright. Caveats: p=1/2 is our derivation, and the doses' demanded ℓ sits at/below L21b's
+own Δx on the diffuse benches (§5).**
 
 ## 0. Why this workstream exists (one paragraph)
 
@@ -69,7 +74,7 @@ the scalar be the calibration, or should we use Lancaster's values?").
 | # | candidate | form | free parameters | provenance |
 |---|---|---|---|---|
 | **C1** | **El-Badry mixing luminosity** | f_A = L_int^EB(R2,Pb;λδv) / (L2+L3)_prev | **λδv** (lit. ≈3–3.5) | `ELBADRY_REFERENCE §7` [V] |
-| **C2** | **Lancaster fractal area** (Eq 11 — *literally* an area multiplier) | f_A = α_A·(R₂/ℓ)^d | α_A, ℓ, **d** (lit. d≈0.4–0.7) | `LANCASTER_REFERENCE §7b` Eq 11 [V]; d from §7 [V] |
+| **C2** | **Lancaster fractal area** (Eq 11 — *literally* an area multiplier) — **CLOSED 2026-07-22, see §5** | f_A = α_A·(R₂/ℓ_cool)^d, ℓ_cool = [v_t(L)·t_cool]²/L | **α_A≈1 (order-unity, [V]) + d∈[0.4,0.7] ([V]) only — ℓ is NOT free** | `LANCASTER_REFERENCE §7c` Eq 11–13/22–23 [V] |
 | **C3** | fitted scalar (baseline to beat) | f_A(n̄) ≈ 315·n̄^−0.335 | 2 fitted | `FINDINGS §15j` — measured, un-derived |
 
 **C2 pre-screen (2026-07-22, back-of-envelope — NOT the SC-0 test).** Inverting Eq 11 at the blowout
@@ -87,7 +92,13 @@ asks whether ONE inner scale ℓ serves all three benches: `ℓ = R_b / f_A^(1/d
 single scale (3.4–16.8× spread, vs C3's 5.4×) — only d≈1.5, well outside the measured range, tightens
 it. So **C2 is not a free win**; it is a real candidate that must be tested properly (along the
 trajectory, not at one radius) before anyone prefers it. ⚠️ Caveats: R_b-at-blowout is a crude proxy
-for the trajectory; **α_A has NO value in our imprint and ℓ has no definition** (see §5 asks).
+for the trajectory; the α_A=1 assumption is now **vindicated** ([V]: α_A is an order-unity fudge factor)
+and ℓ is now **known to be ℓ_cool** (§5) — so this pre-screen's "spread of ℓ" must be re-read as "spread
+of the ℓ the doses *demand*", to be compared against the ℓ_cool the physics *predicts* (SC-0's real job).
+**New resolution finding (2026-07-22):** those demanded ℓ (0.116/0.034/0.042 pc at d=0.7) sit at
+ℓ/Δx ≈ 5.8 / 0.85 / 0.28 versus L21b's own grid (Δx = 0.02/0.04/0.15 pc, Table 1 [V]) — i.e. **at or
+below their resolution for the two diffuse benches**, the very regime we calibrate. Any C2 agreement
+there is resolution-limited on the L21b side (`LANCASTER_REFERENCE §7c`).
 
 Candidate C1's definition (the one-read swap at the two production edit sites,
 `bubble_luminosity.py:435/845`):
@@ -212,18 +223,41 @@ landing. Siblings to keep reconciled on every edit: `SOURCE_TERM_DESIGN.md` (§4
 ruling), `FINDINGS.md` (new §15k+ entries), `INDEX.md` (this workstream's row), `PLAN.md` ledger,
 `ELBADRY_REFERENCE.md`/`LANCASTER_REFERENCE.md` (imprints — read-only anchors here).
 
-## 5. Open literature asks (blocking C2's fair test, not C1's)
+## 5. Literature asks — **BOTH ANSWERED 2026-07-22** (maintainer supplied L21b pp. 3–6)
 
-The Lancaster fractal-area candidate (C2) cannot be scored fairly until two values exist. Both are
-the **same pattern that resolved Table 1** — the maintainer pastes the PDF excerpt, we [V]-imprint it
-in `LANCASTER_REFERENCE.md` and reference the imprint thereafter (never the chat).
+Imprinted in `LANCASTER_REFERENCE.md §7c` (read that, not this summary, for the [V] detail).
 
-| ask | why it blocks | fallback if unavailable |
-|---|---|---|
-| **α_A** (Eq-11 prefactor) — no value in our imprint, only the symbol | sets C2's overall normalisation; without it the pre-screen had to assume α_A=1 | scan α_A ∈ {0.5, 1, 2} in SC-0 and report the ℓ-spread per α_A (spread is α_A-independent for fixed d — only the inferred ℓ shifts — so C2 can still be *screened*, just not *pinned*) |
-| **ℓ** — Lancaster's inner/dissipation scale: what physical quantity is it? (sonic scale? grid Δx? shell thickness? driving scale/Mach³?) | C2 is only predictive if ℓ is set by physics, not fitted; if ℓ must be fitted per cloud, C2 collapses into C3-with-extra-steps | SC-0 tests the physically-motivated ℓ candidates it can compute from TRINITY state (shell thickness ΔR_shell; the conduction-front width itself ≈5×10⁻⁷ pc from `data/zone_resolution.csv`; λδv as a length) and reports which, if any, holds one constant |
+1. **α_A — ANSWERED: an "order-unity parameter meant to account for any minor inconsistencies with
+   this model"** (Eq 11 text). It is a fudge factor, not a measured constant ⇒ **α_A ≈ 1 is the right
+   default** (the pre-screen's assumption was correct), and α_A must NOT be tuned to rescue a fit.
+2. **ℓ — ANSWERED, and it is the decisive result: ℓ is NOT free and NOT a grid scale.** It is the
+   **cooling scale ℓ_cool**, fixed by a cascade-vs-cooling balance (Eq 12–13 + text): the enthalpy flux
+   grows toward smaller scales "until reaching the scale where **v_t(ℓ_cool)·t_cool = ℓ_cool**", with
+   `t_cool = (k_B T_pk)²/(P Λ(T_pk))` (∝ R_b²). **⇒ C2 does NOT die on transferability** — the law is
+   physical, not resolution-set, so it CAN be ported to a 1-D code.
 
-⚠️ **The ℓ question is the crux for C2.** If ℓ turns out to be resolution-set in L21b (a grid scale),
-the fractal law is not transferable to a 1-D semi-analytic code at all, and C2 dies on principle
-rather than on fit — record that outcome, it is a publishable statement about the transferability of
-3-D fractal calibrations (cf. `SOURCE_TERM_DESIGN §5`, Gentry & Krumholz 2019 numerical-mixing caution).
+**C2 is therefore CLOSED and (nearly) parameter-free.** With their initial spectrum `|v_k|² ∝ k^−4` and
+`L_box = 2R_cloud` [V], and **p = 1/2 [D-grade: derived by us from that spectrum, NOT quoted — check
+Paper I before any quantitative fit]**:
+
+```
+f_A^L21b = α_A · (R2 / ℓ_cool)^d ,   ℓ_cool = [ v_t(L) · t_cool ]² / L
+   α_A ≈ 1 [V]      d ∈ [0.4, 0.7] [V]      L = L_box = 2 R_cloud [V]
+   v_t(L) = Table-1 v_t = the α_vir=2 virial velocity [V-stated, Eq 23]
+   t_cool = (k_B T_pk)² / (P_b Λ(T_pk)) [V Eq 13],  T_pk ≈ 2×10⁴ K (= El-Badry's T_pk)
+```
+Everything on the right is computable from TRINITY state — **no fitted parameter remains.** That makes
+C2 a genuine *prediction* (a stronger test than C1, whose λδv is still a tuned constant): SC-0 can now
+falsify or confirm it outright, with **zero freedom to fudge**.
+
+⚠️ **Two live caveats carried into SC-0 (do not drop):**
+- **p = 1/2 is ours, not Lancaster's** — if Paper I gives a different cascade index the ℓ_cool formula
+  changes as `ℓ_cool ∝ [v_t t_cool]^{1/(1−p)}`. Ask for Paper I's §2 if C2 survives the first screen.
+- **Resolution:** the ℓ our measured doses *demand* (0.116/0.034/0.042 pc at d=0.7) sits at
+  ℓ/Δx ≈ 5.8/0.85/0.28 against L21b's own grid — **at or below their resolution on the two diffuse
+  benches**. If SC-0 finds ℓ_cool there too, the agreement is resolution-limited on *their* side and
+  must be reported as such (`LANCASTER_REFERENCE §7c`; Gentry & Krumholz 2019 caution).
+
+**Side-effect corrections already applied to the imprint:** μ_H = **1.4271** (not 1.4 — 0.13% in radius,
+inside the bench 2% gate ⇒ no param changes, but quote the exact value); Table 1 re-verified 12/12 with
+two NEW columns (Δx, Resolution); v_t = virial velocity upgraded to [V]-stated; Eq 10 re-confirmed.
