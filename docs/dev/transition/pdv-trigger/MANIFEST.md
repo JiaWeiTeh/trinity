@@ -12,7 +12,7 @@
 > are exact; stamp-less artifacts predate the convention (2026-07-02) — for those, only
 > the commit date is known. **Every new/edited builder must write the stamp.**
 
-715 artifacts · 0 stale-risk · 0 untracked · 17 stamped 🕐
+718 artifacts · 1 stale-risk · 3 untracked · 17 stamped 🕐
 
 | last updated (commit) | artifact | producer / flags |
 |---|---|---|
@@ -211,7 +211,7 @@
 | 2026-07-14 `fcdc851` | `runs/params/bench6/bench5_m5e5_r2p5__fm8_diag.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-14 `075c73b` | `runs/run_bench5.sbatch` | — (hand-made/HPC, unreferenced) |
 | 2026-07-14 `075c73b` | `runs/run_bench6.sbatch` | — (hand-made/HPC, unreferenced) |
-| 2026-07-13 `7826031` | `runs/data/bench5_summary.csv` | by `harvest_bench5.py` |
+| 2026-07-13 `7826031` | `runs/data/bench5_summary.csv` | by `harvest_bench5.py` · ⚠️ STALE-RISK: builder newer (harvest_bench5.py 2026-07-25) — regenerate or justify |
 | 2026-07-13 `e3d53ab` | `runs/data/bench5_traj/bench1_m5e4_r20__fa12_diag.csv` | — (hand-made/HPC, unreferenced) |
 | 2026-07-13 `63bb436` | `runs/data/bench5_traj/bench1_m5e4_r20__fa16_diag.csv` | — (hand-made/HPC, unreferenced) |
 | 2026-07-13 `1343e3e` | `runs/data/bench5_traj/bench1_m5e4_r20__fa4_diag.csv` | — (hand-made/HPC, unreferenced) |
@@ -731,3 +731,6 @@
 | 2026-07-10 `b94b09d` | `theta5k_fire_map.png` | producer unknown (HPC/hand-made); refs: `make_theta5k_analysis.py`, `make_pdvtrigger_report.py` |
 | 2026-07-10 `b94b09d` | `theta5k_theta_rise.png` | producer unknown (HPC/hand-made); refs: `make_theta5k_analysis.py`, `make_pdvtrigger_report.py` |
 | 2026-07-10 `b94b09d` | `theta_vs_density.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_overlay.py`, `make_fmix_spread_plot.py` |
+| — | `runs/data/bench_state_traj/bench1_m5e4_r20__none_diag.csv` | 🚫 UNTRACKED (not in git — never quote) |
+| — | `runs/data/bench_state_traj/bench2_m1e5_r10__none_diag.csv` | 🚫 UNTRACKED (not in git — never quote) |
+| — | `runs/data/bench_state_traj/bench3_m1e5_r5__none_diag.csv` | 🚫 UNTRACKED (not in git — never quote) |
