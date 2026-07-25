@@ -42,6 +42,12 @@ maintainer ruling (§3 below). Nothing here touches production code until SC-1. 
 STARTED 2026-07-22: clause 1 RULED — f_mix RETAINED as an opt-in fallback, retirement deferred +
 staged (R0→R2 ladder, §3); default stays `none` (clause 3). Clauses 2/4 (adopt scalar f_A as the
 diagnostic knob; greenlight successor) await an explicit nod — but SC-0 may run regardless.**
+**Clause 2 NARROWED + candidate set WIDENED 2026-07-22** (maintainer: "not sure the scalar should be
+the calibration knob; maybe use the Lancaster values"): SC-0 now screens **three** candidates (§1) —
+El-Badry L_int (C1), **Lancaster fractal area Eq 11 (C2)**, and the fitted scalar as baseline (C3) —
+and the data picks. A back-of-envelope pre-screen (§1) finds C2 does NOT collapse the measured doses
+at Lancaster's own d≈0.4–0.7 (3.4–16.8× spread vs C3's 5.4×), so nothing is pre-picked. Two
+literature values (α_A, and what ℓ physically is) are needed for C2's fair test — §5.
 
 ## 0. Why this workstream exists (one paragraph)
 
@@ -53,9 +59,37 @@ exactly the kind of un-derived magic function this workstream's history warns ag
 mixing-layer physics** — replace the scalar with f_A evaluated from the live bubble state via the
 L_int closed form, leaving **one physical constant (λδv)** to serve the whole suite.
 
-## 1. The object — definition + the design decisions SC-0 must freeze
+## 1. The object — THREE candidates SC-0 screens (do not pre-pick; 2026-07-22)
 
-Candidate definition (the one-read swap at the two production edit sites,
+f_A is by definition an **area ratio** (A_eff/4πR₂²), so more than one literature law can supply it.
+SC-0 screens all three against the same measured target (band-entry 13.9/53.5/74.8) and the **data
+picks** — this replaces the earlier single-candidate framing (maintainer question 2026-07-22: "should
+the scalar be the calibration, or should we use Lancaster's values?").
+
+| # | candidate | form | free parameters | provenance |
+|---|---|---|---|---|
+| **C1** | **El-Badry mixing luminosity** | f_A = L_int^EB(R2,Pb;λδv) / (L2+L3)_prev | **λδv** (lit. ≈3–3.5) | `ELBADRY_REFERENCE §7` [V] |
+| **C2** | **Lancaster fractal area** (Eq 11 — *literally* an area multiplier) | f_A = α_A·(R₂/ℓ)^d | α_A, ℓ, **d** (lit. d≈0.4–0.7) | `LANCASTER_REFERENCE §7b` Eq 11 [V]; d from §7 [V] |
+| **C3** | fitted scalar (baseline to beat) | f_A(n̄) ≈ 315·n̄^−0.335 | 2 fitted | `FINDINGS §15j` — measured, un-derived |
+
+**C2 pre-screen (2026-07-22, back-of-envelope — NOT the SC-0 test).** Inverting Eq 11 at the blowout
+radius (R_b ≈ rCloud = 5/10/20 pc, the verified diag end-states) for the measured doses, with α_A=1,
+asks whether ONE inner scale ℓ serves all three benches: `ℓ = R_b / f_A^(1/d)`.
+
+| d | ℓ(bench3) | ℓ(bench2) | ℓ(bench1) | spread |
+|---|---|---|---|---|
+| 0.4 | 0.0069 | 0.0005 | 0.0004 pc | 16.8× |
+| **0.7** (top of lit. range) | 0.116 | 0.034 | 0.042 pc | **3.4×** |
+| 1.0 | 0.360 | 0.187 | 0.267 pc | 1.9× |
+| 1.5 (⚠️ far above lit.) | 0.865 | 0.704 | 1.127 pc | 1.6× |
+
+**Read:** at Lancaster's *own* measured d≈0.4–0.7 the fractal law does **not** collapse the doses to a
+single scale (3.4–16.8× spread, vs C3's 5.4×) — only d≈1.5, well outside the measured range, tightens
+it. So **C2 is not a free win**; it is a real candidate that must be tested properly (along the
+trajectory, not at one radius) before anyone prefers it. ⚠️ Caveats: R_b-at-blowout is a crude proxy
+for the trajectory; **α_A has NO value in our imprint and ℓ has no definition** (see §5 asks).
+
+Candidate C1's definition (the one-read swap at the two production edit sites,
 `bubble_luminosity.py:435/845`):
 
 ```
@@ -86,12 +120,19 @@ scalar needed 14→75.
    set (extend `harvest_bench5.py` with `--extra-cols`), or (b) run the 3 diffuse fa1 diag arms
    locally (~20–45 min each, walltime evidence `data/bench5_durations.csv`) and harvest there.
    Commit as `runs/data/bench_state_traj/`.
-2. *Offline calculator* `data/make_fa_state_screen.py`: evaluate f_A_state(t) along those
-   trajectories for λδv ∈ {1, 2, 3, 3.5, 5}; compare its blowout-window average against the
-   **measured** band-entry doses 13.9/53.5/74.8. **PASS:** one λδv reproduces all three within a
-   factor ~2 (the same tolerance the p=3.33 law achieved). **FAIL:** no λδv does ⇒ the closed form
-   does NOT derive the curve ⇒ stop, record, and the fitted f_A(n̄) remains the honest shipped
-   result — no production code gets written.
+2. *Offline calculator* `data/make_fa_state_screen.py`: along those trajectories evaluate **both
+   derived candidates** (§1) and score them against the same target:
+   - **C1** f_A = L_int^EB(R2,Pb;λδv)/(L2+L3)_prev for λδv ∈ {1, 2, 3, 3.5, 5};
+   - **C2** f_A = α_A·(R2/ℓ)^d for d ∈ {0.4, 0.5, 0.6, 0.7} × the ℓ candidates of §5 (and, if the
+     maintainer supplies it, the published α_A) — the trajectory version of the §1 pre-screen;
+   - **C3** the fitted scalar, as the baseline both must beat.
+   Score = blowout-window average f_A vs the **measured** band-entry doses 13.9/53.5/74.8, reported
+   as the max/min spread of the implied free constant (λδv for C1, ℓ for C2). **PASS:** a candidate
+   holds ONE constant across all three benches within a factor ~2 (the tolerance the p=3.33 law
+   achieved) — that candidate is the physics and goes to SC-1. **FAIL (both):** neither closed form
+   derives the curve ⇒ stop, record the spreads, and the fitted f_A(n̄) remains the honest shipped
+   result — **no production code gets written.** Winner-takes-SC-1; if both pass, prefer the one with
+   the smaller spread and the fewer un-imprinted constants.
 3. Persist: `data/fa_state_screen.csv` + figure; register in REPRODUCE.
 
 **SC-1 — wiring (gated on Phase-6 ruling + SC-0 PASS).** The one-read swap at the two edit sites +
@@ -141,9 +182,16 @@ This is THE Phase-6 ruling of record (this doc is the single place it lives; `SO
      `docs/dev/to-be-removed/` for maintainer review, never a direct delete.
    - **Abort rule:** if the state-coupled f_A does NOT ship (SC-4/SC-5 FAIL), the ladder STOPS at R0
      — f_mix stays indefinitely and the retirement is void.
-2. **Scalar f_A — calibrated *diagnostic* knob [pending explicit nod].** The measured f_A(n̄) table
-   (13.9/53.5/74.8; ≈315·n̄^−0.335, HPC provenance `§15j`) is quotable; NOT proposed as a production
-   default (the successor supersedes it). Recommended adopt.
+2. **Scalar f_A — NARROWED 2026-07-22 (maintainer challenged the wording; the challenge was right).**
+   The earlier phrasing ("adopt the scalar as the calibration knob") over-claimed: it read as a
+   *modelling commitment* to a fitted f(n̄), which is exactly the un-derived magic-function pattern
+   `INDEX §1.5` warns against. Split into two, and only the first is asked for now:
+   - **2a [recommended, low-stakes]:** the f_A(n̄) numbers are a **measurement of record** — quotable
+     with HPC provenance as "the dose TRINITY needs per bench", i.e. the calibration *target* the
+     derived candidates must reproduce (that is how SC-0 uses them). This commits to no model.
+   - **2b [DEFERRED — do not decide now]:** whether any f_A form ships as *the* calibration is
+     SC-0's output, not a ruling input. The candidate set is C1/C2/C3 (§1); Lancaster's fractal law
+     (C2) is in the running precisely because the maintainer raised it. Decide after SC-0.
 3. **Production default — UNCHANGED [RULED 2026-07-22, implied by clause 1].** `cooling_boost_mode=none`,
    `cooling_boost_fA=1.0`, byte-identical. Keeping f_mix as an opt-in fallback presupposes no default
    flip now — so this is settled by clause 1.
@@ -163,3 +211,19 @@ params + summaries under `runs/params/{sc_matrix,sc_bench}/` + `runs/data/`, REP
 landing. Siblings to keep reconciled on every edit: `SOURCE_TERM_DESIGN.md` (§4 pointer + Phase-6
 ruling), `FINDINGS.md` (new §15k+ entries), `INDEX.md` (this workstream's row), `PLAN.md` ledger,
 `ELBADRY_REFERENCE.md`/`LANCASTER_REFERENCE.md` (imprints — read-only anchors here).
+
+## 5. Open literature asks (blocking C2's fair test, not C1's)
+
+The Lancaster fractal-area candidate (C2) cannot be scored fairly until two values exist. Both are
+the **same pattern that resolved Table 1** — the maintainer pastes the PDF excerpt, we [V]-imprint it
+in `LANCASTER_REFERENCE.md` and reference the imprint thereafter (never the chat).
+
+| ask | why it blocks | fallback if unavailable |
+|---|---|---|
+| **α_A** (Eq-11 prefactor) — no value in our imprint, only the symbol | sets C2's overall normalisation; without it the pre-screen had to assume α_A=1 | scan α_A ∈ {0.5, 1, 2} in SC-0 and report the ℓ-spread per α_A (spread is α_A-independent for fixed d — only the inferred ℓ shifts — so C2 can still be *screened*, just not *pinned*) |
+| **ℓ** — Lancaster's inner/dissipation scale: what physical quantity is it? (sonic scale? grid Δx? shell thickness? driving scale/Mach³?) | C2 is only predictive if ℓ is set by physics, not fitted; if ℓ must be fitted per cloud, C2 collapses into C3-with-extra-steps | SC-0 tests the physically-motivated ℓ candidates it can compute from TRINITY state (shell thickness ΔR_shell; the conduction-front width itself ≈5×10⁻⁷ pc from `data/zone_resolution.csv`; λδv as a length) and reports which, if any, holds one constant |
+
+⚠️ **The ℓ question is the crux for C2.** If ℓ turns out to be resolution-set in L21b (a grid scale),
+the fractal law is not transferable to a 1-D semi-analytic code at all, and C2 dies on principle
+rather than on fit — record that outcome, it is a publishable statement about the transferability of
+3-D fractal calibrations (cf. `SOURCE_TERM_DESIGN §5`, Gentry & Krumholz 2019 numerical-mixing caution).
