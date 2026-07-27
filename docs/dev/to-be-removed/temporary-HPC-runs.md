@@ -44,15 +44,17 @@ AND measures in-container-vs-HPC fidelity for the first time (a standing unknown
 committed (`runs/params/bench5/`, do not re-emit).
 
 ```bash
-./docs/dev/transition/pdv-trigger/runs/sync_bench.sh bench5 submit   # sbatch 1-60, 3h/arm
+./docs/dev/transition/pdv-trigger/runs/sync_bench.sh bench5 submit   # sbatch 1-60, 1:30/arm
 ./docs/dev/transition/pdv-trigger/runs/sync_bench.sh bench5 watch
 ./docs/dev/transition/pdv-trigger/runs/sync_bench.sh bench5 run     # -> bench5_summary_hpc.csv + traj
 ./docs/dev/transition/pdv-trigger/runs/sync_bench.sh bench5 down    # into runs/data/ (in-container CSV kept)
 python docs/dev/transition/pdv-trigger/data/compare_bench5_hpc.py   # per-arm Δθ_max + fire-map flips
 ```
 
-Known non-critical case: `bench5_m5e5_r2p5__fa16_diag` froze at t=0.037 in-container (stiffness,
-not walltime) — if it wall-kills on Helix too, record it, don't chase with longer limits.
+Walltime evidence (`data/bench5_durations.csv`): longest compliant in-container arm = 64 min
+under 3-worker contention ⇒ 1:30/arm on a dedicated Helix core is ample. Known non-critical
+case: `bench5_m5e5_r2p5__fa16_diag` froze at t=0.037 in-container (stiffness, not walltime) —
+if it wall-kills on Helix too, record it, don't chase with longer limits.
 
 ---
 
@@ -68,7 +70,7 @@ metric is band-entry-dose **uniformity across density** per knob (see
 f_mix freezes the structure — is already established and sim-free).
 
 ```bash
-./docs/dev/transition/pdv-trigger/runs/sync_bench.sh bench6 submit   # sbatch 1-60, 3h/arm
+./docs/dev/transition/pdv-trigger/runs/sync_bench.sh bench6 submit   # sbatch 1-60, 1:30/arm
 ./docs/dev/transition/pdv-trigger/runs/sync_bench.sh bench6 watch
 ./docs/dev/transition/pdv-trigger/runs/sync_bench.sh bench6 run     # -> bench6_summary.csv + traj
 ./docs/dev/transition/pdv-trigger/runs/sync_bench.sh bench6 down
@@ -76,6 +78,9 @@ python docs/dev/transition/pdv-trigger/data/make_bench6_analysis.py  # head-to-h
 ```
 
 Compliance gate as always: `t_final ≥ 5` or physics termination per arm; "N/60 compliant".
+Only unmeasured-cost arms at 1:30/arm: the diffuse **fa64/fa128 diag** ones. If one wall-kills
+(exit 124, t still advancing), resubmit just those ids with a CLI override (beats the in-file
+directive): `sbatch --time=3:00:00 --array=<ids> runs/run_bench6.sbatch`, then re-harvest.
 
 ---
 

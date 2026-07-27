@@ -15,6 +15,9 @@ lesson: its raw arms were lost to a /tmp wipe and dMdt had to be salvaged in a s
 
     python harvest_bench5.py <arm_dirs...> --csv runs/data/bench5_summary.csv \
         --traj-dir runs/data/bench5_traj
+    # extra dictionary.jsonl columns (state-coupled f_A screen, FA_STATE_COUPLED.md SC-0):
+    python harvest_bench5.py <arm_dirs...> --traj-dir <dir> \
+        --extra-cols Pb,bubble_L2Conduction,bubble_L3Intermediate,bubble_dMdt
 """
 import csv
 import json
@@ -36,8 +39,13 @@ def _finite(v):
     return v if isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v) else None
 
 
-def trajectory(run_dir):
-    """Accepted implicit rows as [t_now, theta, Lcool, Lleak, Lmech, R2]."""
+def trajectory(run_dir, extra=()):
+    """Accepted implicit rows as [t_now, theta, Lcool, Lleak, Lmech, R2] + any ``extra`` keys.
+
+    ``extra`` names dictionary.jsonl keys appended verbatim (finite-filtered) after R2 — used by
+    the state-coupled-f_A screen, which needs Pb and the L2/L3 split that the six default columns
+    do not carry (FA_STATE_COUPLED.md SC-0). Empty ``extra`` reproduces the original 6 columns.
+    """
     out = []
     with (run_dir / "dictionary.jsonl").open() as fh:
         for line in fh:
@@ -59,7 +67,9 @@ def trajectory(run_dir):
                 continue
             Lcool = _finite(d.get("bubble_LTotal"))
             Lleak = _finite(d.get("bubble_Leak")) or 0.0
-            out.append([t, Lloss / Lmech, Lcool, Lleak, Lmech, _finite(d.get("R2"))])
+            row = [t, Lloss / Lmech, Lcool, Lleak, Lmech, _finite(d.get("R2"))]
+            row += [_finite(d.get(k)) for k in extra]
+            out.append(row)
     out.sort(key=lambda r: r[0])
     if len(out) > TRAJ_CAP:                     # log-t downsample, keep endpoints
         import numpy as np
@@ -71,14 +81,14 @@ def trajectory(run_dir):
     return out
 
 
-def write_traj(run_dir, traj_dir):
-    rows = trajectory(run_dir)
+def write_traj(run_dir, traj_dir, extra=()):
+    rows = trajectory(run_dir, extra)
     if not rows:
         return 0
     traj_dir.mkdir(parents=True, exist_ok=True)
     with (traj_dir / f"{run_dir.name}.csv").open("w", newline="") as fh:
         w = csv.writer(fh)
-        w.writerow(TRAJ_COLS)
+        w.writerow(TRAJ_COLS + list(extra))
         w.writerows(rows)
     return len(rows)
 
@@ -92,6 +102,11 @@ def main(argv):
     if "--traj-dir" in argv:
         traj_dir = Path(argv[argv.index("--traj-dir") + 1])
         args = [a for a in args if str(traj_dir) != a]
+    extra = ()
+    if "--extra-cols" in argv:
+        spec = argv[argv.index("--extra-cols") + 1]
+        extra = tuple(c.strip() for c in spec.split(",") if c.strip())
+        args = [a for a in args if spec != a]
 
     rows = []
     for a in args:
@@ -100,7 +115,7 @@ def main(argv):
             continue
         rows.append(harvest(run_dir))
         if traj_dir is not None:
-            write_traj(run_dir, traj_dir)
+            write_traj(run_dir, traj_dir, extra)
     rows.sort(key=lambda r: r["run_name"])
     if csv_out:
         csv_out.parent.mkdir(parents=True, exist_ok=True)

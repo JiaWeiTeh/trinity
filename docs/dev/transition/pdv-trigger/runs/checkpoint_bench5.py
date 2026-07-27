@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# ⚠️ DO NOT RE-RUN post-2026-07-19: this writes the in-container summary format and would CLOBBER the HPC harvest in runs/data/. HPC data is authoritative; this script is retained as the in-container campaign record.
 """Merge-checkpoint the bench5 summary + trajectory dir across container restarts.
 
 Same role as checkpoint_theta5s.py: the in-container runner writes to /tmp (wiped on restart) while

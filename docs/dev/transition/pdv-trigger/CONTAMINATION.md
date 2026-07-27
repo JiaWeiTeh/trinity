@@ -143,10 +143,6 @@ Status legend: **CLEAN** (quotable for its stated question) · **FLAG-x** (usabl
 | `dmdt_trace_dense.csv` + `dmdt_dip_traces.png` + `dmdt_tackle_flow.png` (built 07-03, `data/make_dmdt_dip_figures.py`; params `runs/params/dmdt_trace/`) | E8 | kappa 6/8, stop_t=0.08 local | ⛔ **mechanism diagnosis ONLY** — per-segment eigenvalue traces; never quote θ or timings from these short local runs as calibration |
 | `theta5n_summary.csv` (RAN Helix 2026-07-03) | E8 | multiplier 2–8 + kappa 2–16 + none | ✅ CLEAN rule-compliant (15/15 proper fates, stop_t=5, θ_max from dictionary). The none arm FIRES natively (θ₀=1.047) — quote as route-a evidence; kappa-16 DRAIN is a fate, not a θ transition |
 | ⛔ all-NaN θ arms (theta5 dense mult4/mult8 pattern) | — | any | **never a physics outcome**: NaN = `bubble_Lloss` registry default, written because the β–δ solve never succeeded (root at the integrable-domain edge, machine-flippable — FINDINGS §14). Use the finite-θ neighboring arms; never average or interpret NaN arms |
-| `theta5s_{fire_map,collapse_law}.csv`, `theta5s_dmdt_suppression.csv` (built 07-11, in-container) | E8 | f_A live matrix | ⚠️ derived from the IN-CONTAINER theta5s run; the underlying `runs/data/theta5s_summary.csv` was **overwritten in-place by the 07-19 HPC re-harvest** (`591e5e4`) with NO comparison written — re-run `make_theta5s_analysis.py` and write the §15e verdict before quoting (pre-step R2, `FINDINGS.md §17`) |
-| `bench5_analysis.csv` + `bench5_theta_tracks.png` (built 07-12; rows added 2026-07-27) | E8 | f_A bench5 | diffuse-bench diag rows ✅ CLEAN (HPC-matched to 4 dp, `§17`); dense-bench diag rows ⚡ **chaotic container-vs-HPC — never quote**; prod-arm `theta_cum_prefire` ⚠️ spec-window violation (no 3-Myr cap, integrates through SNe to 5 Myr — `§17` gap 5) |
-| `bench5_elbadry_prediction.csv` (built 07-12) | E8 | analytic | CLEAN as the sim-free EB registration (flag-only); NB committed same-commit as the first 25-arm checkpoint, not strictly prior (`§17` gap 7); all five benches are upward extrapolations of EB's tested n∈[0.1,10] |
-| `bench6_analysis.csv` (HPC data 07-19, `591e5e4`) | E8 | f_A vs f_mix | **⛔ fm-side columns UNUSABLE — metric bug** (`§17` gap 1: Θ_cum numerator omits the f_mix boost; "fm never enters the band" is an artifact). f_A-side columns CLEAN (band entry bench1≈75/bench2≈54/bench3 in-band at 24–32; bench1 fa128 point is a soft anchor — diag truncated at t=0.49). Regenerate after the R1 fix |
 
 ### `runs/data/`
 
@@ -160,10 +156,6 @@ Status legend: **CLEAN** (quotable for its stated question) · **FLAG-x** (usabl
 | `compare_f1edge_hidens_theta9{0,5}.csv` | SUPERSEDED (theta_target demoted) + FLAG-(a) |
 | `harvest_cal_*__{k1,ek1}.csv` | **CONTAMINATED-(a)** (stop_t 0.3–1.0 by design) |
 | `theta5_summary.csv` + `theta5_calibration.csv` (RAN Helix 2026-07-02) | ✅ **CLEAN — the first fully rule-compliant calibration** (32/32 arms ≥5 Myr or physics end; θ_max from dictionary; same-knob fit+validation; stamped). Two per-arm flags: `small_dense_highsfe__mult{4,8}` carry **NaN loss rows** (dense-edge stiffness — excluded from the fit); `midrange_pl0__mult8` reached momentum via the **Eb≤0 handoff, NOT a cooling fire** (`fired=False` is correct — do not count it as a θ transition). Stamp caveat: `theta5_summary.csv`'s stamp reads **`code 23f623d3+dirty`** — harvested on Helix from a dirty tree (the tree carried only the being-created CSVs, no code edits), noted per the `_stamp.py` doctrine |
-| `theta5s_summary.csv` | ⚠️ **OVERWRITTEN IN-PLACE 2026-07-19** (`591e5e4`): now the HPC re-harvest; the in-container original (basis of `FINDINGS.md §15e`) survives only in git history (`fcdc851`). No HPC-vs-container comparison written — §15e verdict owed (pre-step R2) |
-| `bench5_summary.csv` + `bench5_traj/` (60; in-container, 2026-07-12) | in-container set behind `FINDINGS.md §15h`; **fire map + diffuse Θ_cum CONFIRMED by the HPC set** (zero flips; 4 dp — `§17`); dense diag rows ⚡ chaotic vs HPC — never quote; traj `Lcool` column = RAW `bubble_LTotal` (boost-less under `multiplier`) — Θ_cum must integrate θ·Lmech (R1) |
-| `bench5_summary_hpc.csv` + `bench5_traj_hpc/` (60; Helix, landed 07-19 `591e5e4`) | ✅ the authoritative bench5 set (59 compliant; `bench5_fa16_diag` freezes at the identical t=0.0374 on HPC — solver stall, not walltime). §15h banner flip = pre-step R2 |
-| `bench6_summary.csv` + `bench6_traj/` (60; Helix, landed 07-19 `591e5e4`) | 58/60 compliant (`bench1__fa128_diag` truncated t=0.49; `bench5__fm8_diag` frozen t=0.053 — dense-freeze signature). fa arms ✅ CLEAN; fm arms: summary θ/θ_max are effective-loss-correct, but any Θ_cum from the traj `Lcool` column is ⛔ boost-less (`§17` gap 1) |
 
 ### Production code (on this branch)
 
@@ -193,3 +185,11 @@ Status legend: **CLEAN** (quotable for its stated question) · **FLAG-x** (usabl
    SESSION_HANDOFF §5.2 "~blowout"; measured compact 0.912 @ t≈0.12, diffuse 0.862 @ t≈1.06) stand as
    history. **Open residue: the stop_t=8 diffuse spot-check**, which would bracket the diffuse f_fire
    between 2 and 4.
+
+## Addendum 2026-07-19 — HPC-era rows (theta5s / bench5 / bench6)
+
+| artifact | grade | note |
+|---|---|---|
+| `runs/data/theta5s_summary.csv` + `data/theta5s_{fire_map,collapse_law}.csv` | ✅ QUOTABLE (HPC) | Helix harvest 2026-07-19; p=3.330 reproduced exactly (`FINDINGS §15e/§15j`). `data/theta5s_dmdt_suppression.csv` alone still in-container-derived — do not quote a dMdt number until re-derived on Helix raw arms. |
+| `runs/data/bench5_summary_hpc.csv` + `bench5_traj_hpc/` + `data/bench5_analysis.csv` | ✅ QUOTABLE (HPC) | fidelity vs in-container measured (zero fire flips; 57/60 <0.05); dense-bench Θ_cum stays collapse-window (NOT the clean L21b metric) — quote band numbers from bench3/2/1 only. In-container pair retained as the fidelity-comparison evidence. |
+| `runs/data/bench6_summary.csv` + `bench6_traj/` + `data/bench6_analysis.csv` | ✅ QUOTABLE (HPC) **for fa arms + fm raw trajectories/θ_max ONLY** | f_mix FIRE thresholds carry the §16 fallback double-boost caveat (fm-flattering); ⛔ **RE-GRADED 2026-07-27 (`FINDINGS §17`): the `bench6_analysis.csv` fm Θ_cum columns are a METRIC ARTIFACT** (numerator = raw `Lcool`, omits the f_mix boost — the earlier "Θ_cum trends are accepted-row and unaffected" note was wrong: the rows are accepted, the *numerator construction* is not mode-correct). Do not quote any fm Θ_cum/band-entry until the X1 fix regenerates the CSV (`SOURCE_TERM_DESIGN §3` Phase-6 correction). fm summary θ/θ_max (from `bubble_Lloss`) are boost-correct. |

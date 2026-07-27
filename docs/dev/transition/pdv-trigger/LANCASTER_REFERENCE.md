@@ -244,17 +244,96 @@ NOFIRE ≤16 — matches the registered θ_EB above (θ_EB falls with density). 
 L21b breakout-window Θ_cum — bench3 enters the band [0.90,0.99] at **f_A≈16** (Θ_cum 0.965), bench2/bench1
 do NOT reach it even at f_A=16 (max 0.54/0.40) → **f_A >16 / ≫16**. The dense benches censor at
 shell-collapse (not the clean L21b window). **Result: no single global f_A reproduces L21b across density;
-the required boost climbs steeply toward low density** (feeds Phase-6 ship decision). The Fig-17 direct
-tracks (bench-2, and the 20-pc bench-1) remain the comparison targets for an HPC re-confirmation run.
-
-**Update 2026-07-27 (external review, `FINDINGS.md §17`):** the HPC re-run landed 2026-07-19
-(`591e5e4`) and **confirms the fire map (zero flips) and the diffuse Θ_cum table to 4 dp**
-(reconciliation write-up = pre-step R2, `SOURCE_TERM_DESIGN.md §3`). ⚠️ **Framing correction:**
-reading bench1/bench2's resistance as "route-a / diffuse clouds genuinely resist" contradicts this
-very section — both are in-band *published L21b models* (Θ 0.9–0.99 in the 3-D truth; θ_EB
-0.948/0.986 at λδv=3), and bench6 shows both DO enter the band at extended dose (f_A ≈ 75/54).
-Their high required dose is a TRINITY 1-D fidelity gap, not a physical boundary; reserve
-"route-a" for n ≲ 50, below Lancaster's tested range (§7a).
+the required boost climbs steeply toward low density** (feeds Phase-6 ship decision). **HPC re-confirmation DONE 2026-07-19** (`FINDINGS §15j`): fidelity OK, and bench6 extends the
+calibration — all clean benches reach the band (f_A entry 13.9/53.5/74.8); f_mix eliminated
+*(⛔ corrected 2026-07-27: that elimination was a metric artifact — the fm Θ_cum omitted the
+boost; corrected fm band entry ≈ 4⁺/8⁺/>8, `FINDINGS §17` + X-plan)*. The
+Fig-17 tracks remain [V-plot-eyeball] grade — re-digitize before any quantitative fit.
 
 *Transcribed from ApJ 914, 90 (Lancaster+2021 Paper II) and arXiv:2505.22730v1 (Lancaster+2025) on 2026-06-30,
 `feature/PdV-trigger-term-pt2`. No production code touched.*
+
+### 7c. Eq 11–15 / 22–23 VERIFIED (2026-07-22, maintainer-supplied pp. 3–6 excerpts) — the fractal-area law is CLOSED
+
+> Provenance: the maintainer pasted arxiv.org screenshots of L21b **pp. 3–6** on 2026-07-22 (Eq 1–15,
+> §3.1–3.2, the FULL Table 1 incl. Δx/Resolution, Eq 16–23). Grade **[V]** unless marked. This section
+> answers the two open asks that blocked the Lancaster-fractal f_A candidate (`FA_STATE_COUPLED.md §1 C2`).
+
+**The fractal-area law + its parameters (Eq 11, verbatim meaning):**
+`A_b(R_b; ℓ) ≡ 4π α_A R_b² (R_b/ℓ)^d` — d is the **"excess fractal dimension"** of the surface and
+**α_A is "an order-unity parameter meant to account for any minor inconsistencies with this model"**
+⇒ **ASK #1 ANSWERED: α_A ~ 1 (an order-unity fudge factor, not a measured constant).**
+
+**ℓ is NOT free and NOT a grid scale — it is the COOLING scale ℓ_cool (Eq 12–13 + text).** Paper I's
+picture: interface instabilities drive turbulence in the hot gas following `v_t(ℓ) = v_t(L)(ℓ/L)^p`.
+Accounting for turbulent velocity *and* fractal area, the effective enthalpy flux at scale ℓ is
+`Φ_cool ~ (5/2) P v_equiv`, with
+```
+v_equiv(ℓ) = v_t(ℓ) · (R_b/ℓ)^d                                   (Eq 12)
+t_cool ≡ P/(n²Λ(T_pk)) = (k_B T_pk)²/(P Λ(T_pk)) ,  ∝ R_b²        (Eq 13)
+```
+"This enthalpy flux … increas[es] to smaller scale **until reaching the scale where
+`v_t(ℓ_cool)·t_cool = ℓ_cool`**" — T_pk is the temperature of peak cooling (same object as El-Badry's
+T_pk≈2×10⁴ K). ⇒ **ASK #2 ANSWERED: ℓ = ℓ_cool, set by a physical cascade-vs-cooling balance.**
+
+> ⚠️ **MEASURED CORRECTION 2026-07-25 (SC-0 screen, `data/make_fa_state_screen.py`) — the optimistic
+> reading above ("so the law is transferable in principle; it does NOT die on resolution-dependence")
+> is WRONG, and this note supersedes it.** Evaluating Eq 13 with TRINITY's own non-CIE table gives, at
+> a representative bench3 row (n(T_pk)=2.35×10⁴ cm⁻³, Λ(2×10⁴K)=1.33×10⁻²² erg cm³/s, P_b=6.49×10⁻⁸
+> erg cm⁻³): **t_cool = 8.8×10⁵ s ≈ 0.03 yr** — dense peak-cooling gas cools essentially instantly.
+> Then `ℓ_cool = [v_t·t_cool/L^p]^{1/(1−p)}` = **8.5×10⁻¹⁵ pc at p=1/2**, and the conclusion is
+> **robust to p**: p = 0 / 0.3 / 0.5 / 0.7 give ℓ_cool = 2.9×10⁻⁷ / 1.7×10⁻¹⁰ / 8.5×10⁻¹⁵ / 7.6×10⁻²⁵ pc.
+> **For every p < 1, ℓ_cool sits below EVERY physical and numerical scale in the problem** — below the
+> measured conduction-front width (~5×10⁻⁷ pc, `data/zone_resolution.csv`) and 10⁵–10²³× below L21b's
+> own Δx (0.02–0.15 pc). **So the cascade never reaches ℓ_cool; the fractal area in Eq 11 must be
+> truncated by something else — in a 3-D simulation, the resolution.** The operative ℓ is therefore
+> NOT ℓ_cool, and Eq 11 is not portable to a 1-D code without an extra, independent physical closure
+> for the truncation scale. (Unit cross-check passed exactly: `P/(n²Λ)` and `(k_BT_pk)²/(PΛ)` agree to
+> all digits, so this is physics, not a conversion bug.)
+
+**Closing ℓ_cool.** Their initial spectrum is `|v_k|² ∝ k^−4` for 2 ≤ kL_box/2π ≤ 64 with
+**L_box = 2R_cloud** [V]. ⚠️ **[D-grade, derived by us, NOT quoted]:** |v_k|²∝k^−4 ⇒ v_t(ℓ) ∝ ℓ^{1/2}
+⇒ **p = 1/2**; then `v_t(ℓ_cool)t_cool = ℓ_cool` gives
+```
+ℓ_cool = [ v_t(L) · t_cool ]² / L          (p = 1/2; L = L_box = 2 R_cloud, v_t(L) = Table-1 v_t)
+```
+**Check p against Paper I before any quantitative fit** (Paper I states the cascade index; we inferred it).
+With this, C2 has **no free parameters** beyond α_A≈1 and d∈[0.4,0.7] — computable from TRINITY's own
+(P_b, T_pk, Λ) + the cloud's (v_t, R_cloud).
+
+**v_t is CONFIRMED the virial velocity from the paper's own text** (§3.2 + Eq 23): the turbulence is
+decayed until `Ẽ_kin = 2|W̃_sphere| = 6GM_cloud/(5R_cloud)`, then `v_t = (Ẽ_kin,i)^{1/2}`. This upgrades
+`§7b`'s numerical α_vir=2 inference from [V-by-our-check] to **[V]-stated**.
+**Numerically closed (2026-07-25):** `v_t = √(6·G·M_cloud / (5·R_cloud))` with G = 4.301×10⁻³
+pc M⊙⁻¹ (km/s)² reproduces every Table-1 v_t to **≤0.4%** (3.59/5.08/7.18/10.16/32.13/11.36 vs
+3.59/5.08/7.18/10.2/32.1/11.4). **Consequence: v_t(L) is computable for ANY cloud, not just the 12
+published rows** — which is what makes the C2 fractal candidate testable on the 9 non-L21b theta5s
+configs as well (`FA_STATE_COUPLED.md` SC-0).
+
+**μ_H CORRECTED: 1.4271** (Eq 22: `ρ̄ = 3M_cloud/4πR³_cloud = μ_H m_p n̄_H`, "μ_H = 1.4271 is the mean
+molecular weight of the gas … n̄_H is the mean number density of Hydrogen nuclei"). `§7b` used **1.4**;
+the true value is 0.4% higher in ρ (0.13% in radius) — well inside the bench-emit 2% gate, so **no
+bench param changes**, but quote 1.4271 in the paper. (It does NOT explain the 2.5-pc rows' 3.3%
+offset: (1.4271/1.4)^{1/3} = 1.006.)
+
+**Table 1 fully re-verified, plus TWO NEW COLUMNS.** All 12 (M, R, n̄_H, v_t) rows match `§7b` exactly,
+and the Notes (ε_* ∈ {0.01, 0.1, 1}) are confirmed. New: **Δx [pc] and Resolution** —
+| M_cl | R_cl=20 | 10 | 5 | 2.5 |
+|---|---|---|---|---|
+| 5×10⁴ | Δx 0.15 (256³) | 0.08 | 0.04 | 0.02 |
+| 10⁵ | 0.08 (512³) | 0.04 | 0.02 | 0.01 |
+| 5×10⁵ | 0.15 (256³) | 0.08 | 0.04 | 0.02 |
+
+⚠️ **Resolution caveat for C2 (new, 2026-07-22).** Inverting Eq 11 for TRINITY's *measured* band-entry
+doses at d=0.7 implies ℓ ≈ 0.116 / 0.034 / 0.042 pc for bench3/bench2/bench1 — versus their Δx =
+0.02 / 0.04 / 0.15 pc, i.e. **ℓ/Δx ≈ 5.8 (resolved) / 0.85 (marginal) / 0.28 (UNRESOLVED)**. So the
+inner scale our doses imply sits at or below L21b's own grid scale for the two *diffuse* benches —
+exactly the regime the calibration targets. Treat any C2 fit there as resolution-limited on the L21b
+side (cf. Gentry & Krumholz 2019, `SOURCE_TERM_DESIGN §5`).
+
+**Other verified equations now available** (for the eventual paper / theory checks): Eq 1–2 (V_w, ṗ_w),
+Eq 3 (`p_r = α_p ṗ_w t`), Eq 4 (R_b from volume), Eq 5 (`R_b ∝ (α_R α_p)^{1/4} R_EC`, t^{1/2}),
+Eq 6 (`E_b = ½ ṗ_w S R_b`, S≈α_p within 6%), Eq 7 (P_b), Eq 8 (E_r,sh), Eq 9 (f_turb),
+**Eq 10 re-confirmed** as `1−Θ = (½(1+f_turb)α_p/α_R + S)(Ṙ_b/V_w)` — matches the `§7b` correction —
+Eq 14 (**EC-validity limit** `1−Θ < 4(5/6)^{1/4} Ṙ_EC/V_w`, explicitly derived by comparison to
+El-Badry+2019), Eq 15 (`v_hot(R_b) ≈ V_w/(6α_p−2)`, which cannot exceed Eq 12's v_equiv).
