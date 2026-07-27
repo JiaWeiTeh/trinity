@@ -247,5 +247,14 @@ shell-collapse (not the clean L21b window). **Result: no single global f_A repro
 the required boost climbs steeply toward low density** (feeds Phase-6 ship decision). The Fig-17 direct
 tracks (bench-2, and the 20-pc bench-1) remain the comparison targets for an HPC re-confirmation run.
 
+**Update 2026-07-27 (external review, `FINDINGS.md §17`):** the HPC re-run landed 2026-07-19
+(`591e5e4`) and **confirms the fire map (zero flips) and the diffuse Θ_cum table to 4 dp**
+(reconciliation write-up = pre-step R2, `SOURCE_TERM_DESIGN.md §3`). ⚠️ **Framing correction:**
+reading bench1/bench2's resistance as "route-a / diffuse clouds genuinely resist" contradicts this
+very section — both are in-band *published L21b models* (Θ 0.9–0.99 in the 3-D truth; θ_EB
+0.948/0.986 at λδv=3), and bench6 shows both DO enter the band at extended dose (f_A ≈ 75/54).
+Their high required dose is a TRINITY 1-D fidelity gap, not a physical boundary; reserve
+"route-a" for n ≲ 50, below Lancaster's tested range (§7a).
+
 *Transcribed from ApJ 914, 90 (Lancaster+2021 Paper II) and arXiv:2505.22730v1 (Lancaster+2025) on 2026-06-30,
 `feature/PdV-trigger-term-pt2`. No production code touched.*

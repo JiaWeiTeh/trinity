@@ -135,6 +135,18 @@ folder) — do **not** re-run the hours-long sims to recover them; reproduce onl
 > dose + uniformity per knob — the empirical f_A-vs-f_mix decision input; the physical asymmetry (f_A
 > suppresses dMdt in-ODE, f_mix freezes the structure) is already established sim-free). Batches §2/§3
 > are the Phase-6 inputs; §1 wins any disagreement with in-container numbers.
+>
+> ↳ **2026-07-27 EXTERNAL REVIEW of pt4b (`FINDINGS.md §17`) — the current state.** The three HPC
+> batches **LANDED 2026-07-19** (`591e5e4`) but were never reconciled (§15e/§15h still bannered
+> PROVISIONAL; `theta5s_summary.csv` overwritten in-place, no theta5s verdict written). bench5's
+> headline is **HPC-CONFIRMED** (fire map zero flips; diffuse Θ_cum to 4 dp; dense-bench diag
+> numbers chaotic between environments — never quote). ⛔ **bench6's fm-side Θ_cum is an artifact**
+> (the numerator omits the f_mix boost — the committed "fm never enters the band" is unusable;
+> corrected preview: fm monotone, bench3 enters ≈ fm4 — f_mix may WIN dose-uniformity). Route-a
+> framing corrected: bench1/2 are in-band published L21b models; their resistance is a 1-D
+> fidelity gap (tree rows 2/3), not a physical boundary. **Phase 6 is BLOCKED on the pre-step
+> R1–R5 (`SOURCE_TERM_DESIGN.md §3`) — that is the next open item. Next branch:
+> `feature/pdv-trigger-5`.**
 
 *This single block (+ the dated f_A addendum) replaces the older layered ⭐/⚡/⚡⚡ synthesis. It reflects
 the grand view across `ELBADRY_REFERENCE.md`, `LANCASTER_REFERENCE.md`, `F_KAPPA_FUNCTIONAL_FORM.md`, and

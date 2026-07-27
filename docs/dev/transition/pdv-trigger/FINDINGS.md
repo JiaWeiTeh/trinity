@@ -1697,3 +1697,97 @@ multiplier arm had `bubble_props` populated on accepted segments — the branch 
 fallback path. Verified against source 2026-07-06. Outside the f_A diff by design (surgical-
 change rule); fix candidate: pass the raw components (or skip the re-application) in the
 fallback. Registered here so the next multiplier-mode work knows.
+
+## 17. [audit] pt4b external review (2026-07-27) — campaign verified end-to-end; ONE blocking bug (bench6 fm-side Θ_cum); the 07-19 HPC drop landed UNRECONCILED; framing corrections
+
+**Provenance.** Independent review (branch `claude/pdv-trigger-pt4b-review-xxwn9v`) of PRs #727/#729
+(pt4b = §15h bench5 campaign + §15i tooling), the f_A wiring they exercise, and the post-merge HPC
+drop `591e5e4` (2026-07-19). Four parallel audits (param-gen/runner; analysis+data recompute;
+bench6+HPC tooling; a units pass over the whole dudt→L₂/L₃→dictionary→Θ_cum chain) plus hand
+checks. Every claim below was re-derived from committed artifacts; the review produced no new data
+artifacts — this entry is its durable record. **The fix plan derived from it is
+`SOURCE_TERM_DESIGN.md §3 "Phase 6 pre-step (R1–R5)"` — the workstream's next open item.**
+
+**CONFIRMED (safe to lean on):**
+1. All 60 bench5 AND all 60 bench6 params regenerate **byte-identically** from their generators;
+   the §7b exact mapping holds end-to-end through `read_param` (gas = M_cl, mCluster = ε·M_cl,
+   rCloud = R_cl within the Table-1 rounding); single-knob discipline verified in every arm; diag
+   arms differ from production ONLY by `transition_trigger blowout` (30/30 pairs).
+2. The §15h Θ_cum table + fire map reproduce **digit-for-digit** from `runs/data/bench5_traj/`.
+   Diffuse diag blowout windows end at 0.27–0.65 Myr — safely wind-only, so the winds+SNe
+   `Lmech_total` denominator (`read_sps.py:249`) does NOT contaminate the headline numbers (the
+   spec's 3-Myr cap is moot *for the diag arms*; prod arms are another story — gap 5).
+3. **HPC confirms the §15h headline.** `bench5_summary_hpc.csv` + `bench5_traj_hpc/` (60/60):
+   fire map identical (zero flips), diffuse Θ_cum identical to 4 dp (max |Δ| 2e-4), dex_vs_EB min
+   0.85 unchanged. The `bench5_fa16_diag` freeze reproduces IDENTICALLY on HPC (t_final 0.0374,
+   n_impl 62) — a real solver stall, not a container artifact.
+4. f_A wiring is physically self-consistent: both edit sites scale exactly the same T < 10^5.5
+   band (`_CIEswitch` `bubble_luminosity.py:706` ≡ `_T_INTERFACE_BAND` `:65`, test-pinned to the
+   cooling-table cutoff), f_A enters the energy budget once, L₁/L_leak untouched, default
+   byte-identical; units audit clean end-to-end. §16's fallback double-boost re-confirmed dormant
+   for mode `none`/f_A.
+
+**BUGS / GAPS (ordered by severity; fixes = R1–R5):**
+1. ⛔ **bench6's fm-side Θ_cum omits the f_mix boost.** `harvest_bench5.py:60` stores the RAW
+   `bubble_LTotal` as `Lcool`; `make_bench5_analysis.py:70` integrates `Lcool+Lleak` — correct for
+   f_A arms (boost already inside `bubble_LTotal` via edit site 2), WRONG under `multiplier`
+   (effective loss = `Lleak + fmix·Lcool`, `get_betadelta.py:353-354`). Verified: traj
+   `theta`/((Lcool+Lleak)/Lmech) = **exactly 8.000** on fm8 arms — the `theta` column
+   (= `bubble_Lloss/Lmech`, `harvest_bench5.py:54-62`) carries the boost; `Lcool` does not. The
+   committed `data/bench6_analysis.csv` fm columns (Θ_cum FALLING with dose; "band entry: never")
+   are an **artifact, trivially biased toward f_A**. Corrected preview (∫θ·Lmech dt): fm response
+   is monotone; bench3 band entry ≈ fm4; bench2 0.895 @ fm8; bench1 0.767 @ fm8 → the fm{2,3,4,8}
+   grid under-brackets the diffuse benches AND f_mix may WIN dose-uniformity (corrected f_A
+   band-entry spread from bench6 = 13.9→74.8, i.e. 5.4×). Also falsified:
+   `make_bench6_params.py:16-17` "Theta under the multiplier is ~linear in f_mix" (it is
+   sublinear/saturating).
+2. **The 07-19 HPC drop is unreconciled.** `591e5e4` (a rosette-cf-titled commit) landed ALL
+   THREE batches: the bench5 HPC set, `bench6_summary.csv`+`bench6_traj/`+`bench6_analysis.csv`,
+   and `theta5s_summary.csv` **overwritten in-place** (the in-container original now lives only
+   in git history; no theta5s HPC-vs-container verdict exists anywhere). §15e/§15h still carry
+   PROVISIONAL banners; `temporary-HPC-runs.md` post-steps 2/4 undone. `compare_bench5_hpc.py`
+   prints "FIDELITY OK — drop the PROVISIONAL banner" keyed ONLY on fire flips, silently passing
+   the dense-diag divergence it itself computes: bench5_fa4_diag Θ_cum 1.008→**3.556**, θ_max
+   1.385→**15.74**, fate shell_collapsed@0.18→shell_dissolved@1.88; bench4_fa8_diag fate flip
+   (shell_collapsed@0.58→stopping_time@5.0); max |Δθ_max| = 14.35. **Dense-bench diag numbers are
+   chaotic between environments — never quote them** (§15h's caveat is hereby a hard rule).
+3. **Framing correction — the "route-a" gloss overreaches.** §15h/§7b/PLAN read bench1/bench2's
+   non-fire as "diffuse clouds genuinely resist the transition — the route-a boundary". But
+   bench1 (n̄=43) and bench2 (n̄=690) are INSIDE Lancaster's tested range — their published 3-D Θ
+   IS 0.9–0.99 — and inside the El-Badry band at the workstream's own λδv=3 (registered θ_EB
+   0.948/0.986); the workstream's own route-a line is n ≲ 50; and bench6 shows both DO enter the
+   band at extended dose (f_A ≈ 75/54; fa64+ fire `cooling_balance` in production). Correct
+   reading: Phase-6 tree rows 2/3 — the knob is right, the required dose is steeply
+   density-dependent = a **1-D fidelity gap**, NOT a physical resistance boundary. Phase-6 option
+   (b) "ship route-a as the physical result" is unsupported at these densities.
+4. **L_leak ≡ 0 in ALL 120 committed trajectories** (in-container + HPC) → the Rogers & Pittard
+   channel-split check (spec metric 6) is degenerate: TRINITY reproduces the L21b band (where it
+   does) with 100% radiative loss vs 60–75% *leakage* in porous 3-D clouds — exactly the
+   false-positive shape the spec warns about. Record wherever Θ_cum is quoted; ask the maintainer
+   whether C_f=1 throughout these configs is expected.
+5. **Prod-arm `theta_cum_prefire` violates the spec window.** The 3-Myr wind-only cap was never
+   implemented; never-fired production arms integrate [0.0034, 5.0] Myr through the SNe ramp
+   (capping shifts them 5–17%: bench1_fa12 0.338→0.354, bench2_fa16 0.350→0.397, bench3_fa4
+   0.231→0.277) and out to R2 up to 66×rCloud, under a misleading "prefire" name with no CSV
+   flag. Window-end epochs are computed then discarded (`make_bench5_analysis.py:85`) — the
+   window is unauditable from the CSV alone. (Headline diag numbers unaffected — CONFIRMED 2.)
+6. **Spec metrics 2–3 were never computed**: no matched-epoch 1−θ dex vs the L21b Fig-17 tracks
+   (bench2 has a DIRECT published track, §7b), no fitted slope, no α_p. §15h's "no arm matches
+   El-Badry within the 0.5-dex trajectory criterion" transplants metric-2's bar (defined vs L21b
+   at matched epochs) onto the Θ_cum-vs-EB-asymptote comparison — a category slip (EB is
+   flag-only, so no §15h conclusion changes).
+7. **Minor:** `make_bench5_params.py:31` says a 1% gate, implements 2% (`:110`); `:46`
+   `parents[3]` is not the repo root (masked by the editable install); the summary header "FIRE =
+   actually fired" overclaims (`harvest_theta_max.py:95` ORs in reached-momentum ∧ θ_max≥0.95; on
+   diag arms the column means "θ crossed 0.95 uncensored" — docs scope FIRE to production arms,
+   which is why the fire map is right); the EB "registered BEFORE the arms" framing is actually
+   same-commit as the first 25-arm checkpoint (a9a190e; low real circularity — the closed form
+   has no fitted parameter); EB validity wording inconsistent (SOURCE_TERM_DESIGN "off-regime at
+   n ≤ 10" vs the builder's "n∈[0.1,10] tested ⇒ all five benches are upward extrapolations");
+   stale 3h-vs-1:30 walltime comments (`run_bench{5,6}.sbatch:13`, `temporary-HPC-runs.md`
+   §2–§3); this register's sibling CONTAMINATION.md had NO f_A-era rows (added 2026-07-27).
+8. **Main is red — from rosette-cf, not this workstream:** `591e5e4` broke
+   `test/test_paper_cf_csv_loader.py` (imports the deleted `paper.rosette`) and
+   `docs/dev/rosette-cf/figs/README.md` (missing 🔗 banner). Everything else green: 649 passed
+   with those two excluded (2026-07-27). Do NOT fix cross-workstream; flag to the maintainer and
+   run gates with the exclusions in the §3 pre-step notes.
