@@ -23,6 +23,9 @@ paper/shellSSC6/
 paper/pedrini/
 paper/rosette/
 test/test_barnes_population.py
+# tests that import the local-only paper/rosette/ mount (e.g. paper_Cf) — keep
+# local until that module is vendored, else they break collection in CI/containers
+test/test_paper_cf_csv_loader.py
 movie.txt
 lib/*
 !lib/default/
