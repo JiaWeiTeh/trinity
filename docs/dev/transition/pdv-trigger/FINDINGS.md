@@ -432,8 +432,10 @@ shadow `ebpeak_t=None` — **`ebpeak` never fired**.
 
 ## 8. [data] Stage-A shadow — El-Badry θ imposed end-to-end on 9 configs (2026-06-30)
 
-> 📖 **Illustrated walkthrough:** `ELBADRY_THETA_STORY.html` (6 figures, `make_elbadry_story_figs.py` →
-> `fig/elbadry_f{1..6}_*.png`) narrates the closed form, what §2/§3 impose & check, the physics, and the §8b
+> 📖 **Illustrated walkthrough:** the El-Badry chapter of `pdvtrigger_report.html` (consolidated
+> 2026-07-28, `§21`; the original `ELBADRY_THETA_STORY.html` is preserved in `docs/dev/to-be-removed/`).
+> Figures: `story_elbadry_f{1..6}_*.png` in THIS folder (`make_elbadry_story_figs.py`; the old
+> `fig/elbadry_f*` pointer was wrong — no such dir). It narrates the closed form, what §2/§3 impose & check, the physics, and the §8b
 > reversal. Regenerate with `python docs/dev/transition/pdv-trigger/make_elbadry_story_figs.py` (reads only the
 > committed CSVs).
 
@@ -1926,7 +1928,7 @@ physical asymmetry (f_A in-ODE, Eq-47 dMdt sign, structure responds; f_mix froze
 remains f_A's argument and is untouched. The 2026-07-22 clause-1 *outcome* (f_mix RETAINED,
 default `none`, nothing ships) is — if anything — reinforced, but its evidentiary record
 ("eliminated by measurement", the R0→R2 retirement premise, `CONTAMINATION.md`'s ✅ grading of
-`bench6_analysis.csv`, `phase6_brief.html`, `LANCASTER_REFERENCE §7b`'s and PLAN's "f_mix
+`bench6_analysis.csv`, `phase6_brief.html` (→ consolidated into `pdvtrigger_report.html` 2026-07-28, original in `docs/dev/to-be-removed/`), `LANCASTER_REFERENCE §7b`'s and PLAN's "f_mix
 eliminated" lines) must be corrected and the ruling re-presented to the maintainer with the
 corrected table (X2).
 
@@ -2171,3 +2173,47 @@ by the editable install and would have broken a clean checkout. Both param sets 
 `SOURCE_TERM_DESIGN §3`, `PLAN.md` ×2) per `§19`. `compare_bench5_hpc.py`'s FIDELITY-OK verdict now
 states that it keys only on fire flips and is necessary-not-sufficient, instead of advising that
 the PROVISIONAL banner be dropped.
+
+## 21. [data] The §16 double-boost is LOAD-BEARING after all — measured live in the rosette-cf campaign (1/36 fm4 fires is bug-dependent); plus a second wiring inconsistency (phase-1a/1c dEb/dt) and the three-report consolidation (2026-07-28)
+
+**Provenance.** Four independent audits (old-report claims, El-Badry-story claims, code-truth,
+ship-status) ran before consolidating the workstream's three HTML documents into one
+`pdvtrigger_report.html`; every disputed claim was re-verified in source, and one was settled by
+new measurement. Reproduce: `python docs/dev/transition/pdv-trigger/data/make_rosette_fm4_doubleboost_check.py`.
+
+**(a) §19's bound does not generalize — and the generalization FAILS.** §19 bounded the `§16`
+fm² trigger-fallback double-boost out of the pdv bench fire maps because 0/120 bench arms ever
+fired the live trigger. Two sibling campaigns run `cooling_boost_mode=multiplier` + `fmix 4`
+WITH the default `cooling_balance` trigger — `param/paperII_grid_sweep.param` (the 10,560-run
+Paper II grid) and the rosette-cf PISM1e5 survey (72 arms; the 2026-07-02 "f_mix=4 ADOPTED"
+maintainer ruling, `INDEX.md §0`, is their basis). Scanning ALL 36 rosette fm4 arms from the
+campaign's own dictionaries (git `5aa84723`; dropped from the tree at `591e5e4`):
+**36/36 fired, 36/36 through the stale no-root fallback path** (fire-row `bubble_LTotal`
+bit-identical to the previous row), and **1/36 is DOUBLE-BOOST-DEPENDENT** —
+`1e5_sfe001_n5e2_PL0_noPHII_coolingBoostFmix4p0_coverFraction1p0` fired at effective
+θ = 0.9227 < 0.95, a row where the fixed code would NOT have fired. The scan is exhaustive by
+construction: the loop breaks at fire, so an early (bug-caused) fire leaves θ_eff < 0.95
+imprinted on the arm's last implicit row. 35/36 fires are clean (θ_eff 0.953–1.105 at the fire
+row). **Consequence: the §16 fix is now load-bearing as a measured fact**; it belongs to the
+Paper II / rosette-cf workstream (full rule-5 ladder, mode-`none`/f_A byte-identity), and the
+one dependent arm should be re-checked before the maintainer's 72-dictionary reduction.
+Evidence: `data/rosette_fm4_doubleboost_check.csv`.
+
+**(b) NEW wiring inconsistency — the phase-1a/1c energy ODE never sees the fm/θ boost.**
+`energy_phase_ODEs.py:273` builds dEb/dt from the RAW `bubble_LTotal`, while the phase-1a
+trigger check (`run_energy_phase.py:279`) routes through `effective_Lloss_from_params` — so
+under `multiplier`/`theta_target` the boost reaches the trigger but NOT the energy budget in
+phases 1a and 1c (consumed at `run_energy_phase.py:297`, `run_transition_phase.py:231`). This
+contradicts `registry.py:384`'s "feeds the beta-delta residual, the energy ODE, AND the
+transition trigger consistently" — which is true only in phase 1b (there dEb/dt = Ed_from_beta,
+and the boost flows through the β root). f_κ and f_A are immune (they change `bubble_LTotal`
+itself). Registered, not fixed (behavioral for fm/θ runs ⇒ the full ladder); the alternative is
+correcting the registry claim.
+
+**(c) Consolidation.** `pdvtrigger_report.html` (rebuilt by `make_pdvtrigger_report.py`) now
+carries the whole story — trigger problem, all FOUR knobs with the exact equations and edit
+sites each acts on, the El-Badry arc (imposed → broken → calibration target → SC-0 candidate,
+falsified), the f_κ/f_mix/f_A eras, the §17–§20 corrections, the ship list, and the consistency
+plan. `ELBADRY_THETA_STORY.html`, `phase6_brief.html`, and the 2026-07-03 generator are
+preserved under `docs/dev/to-be-removed/`. Fixed in passing: FINDINGS §8's walkthrough pointer
+(the story's figures are `story_elbadry_f*.png` in the workstream root, never `fig/elbadry_f*`).

@@ -109,7 +109,7 @@ direction/knob/θ_max corrections + pt2⇄pt3 reconciliation (07-01) · **E8** t
 | `THETA_ELBADRY_SPEC.md` | 06-30 | E6 | the gated `theta_elbadry` mode spec (never merged to `trinity/`) | live (**opt-in override**; demoted 07-01) |
 | `PB_COLLAPSE_GUARD_FIX.md` | 06-30 | E7 | Pb hygiene fix — applied + tested | **done** |
 | `HIMASS_HANDOFF_PLAN.md` | 06-30 | E7 | the high-mass Eb≤0 dead-stop diagnosis → PR #715; deferred items (1a routing, pressure-crossover event) | **partially shipped** (PR #715 ✅; rest ⏳) |
-| `ELBADRY_THETA_STORY.html` | 07-01 | E6/E7 | illustrated 9-chapter walkthrough incl. the correction chapter | narrative snapshot |
+| `pdvtrigger_report.html` | 07-01 | E6/E7 | illustrated 9-chapter walkthrough incl. the correction chapter | narrative snapshot |
 | `KAPPA_VALIDATION_PLAN.md` | 07-01 | E7 | the T1–T5 correct-knob validation working plan | **completed** (all done; see §1.5 for its stale lines) |
 | `SESSION_HANDOFF_2026-07-01.md` | 07-01 | E7 | the pt2 session handoff (self-declared speculation + retractions R1–R6) | historical snapshot |
 | `CONTAMINATION.md` | 07-01 | E7 | ⛔ the register: rules (a)–(e), per-artifact status, tensions (⚡ #1 resolved) | **live — read first** |

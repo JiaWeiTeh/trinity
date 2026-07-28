@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Zone resolution diagnostic — how many grid points, and over what radial extent, does the
 bubble-structure solver actually put in L1 (hot interior), L2 (conduction front) and L3
-(intermediate sliver)?  (FINDINGS §15j anatomy; phase6_brief.html §1.)
+(intermediate sliver)?  (FINDINGS §15j anatomy; pdvtrigger_report.html (was phase6_brief.html, consolidated 2026-07-28) §1.)
 
 WHY: f_A scales the interface-band losses L2+L3 (bubble_luminosity.py:845). L1/L2/L3 are NOT a
 partition of one array: L1 is a slice of the raw ~60k solution grid (T_array[index_CIE_switch:]),
@@ -115,7 +115,7 @@ def main_():
         fh.write("# Zone element counts + radial extent of L1/L2/L3 (bubble-structure solver), "
                  "3rd settled energy-phase eval, dense/mid/diffuse L21b benches (fA=1 baseline). "
                  "L1 = raw-grid slice T>10^5.5; L2 = _CONDUCTION_NPTS resample; L3 = fixed 1000-pt "
-                 "linspace. See phase6_brief.html §1 / FINDINGS §15j. Regenerate: make_zone_resolution.py\n")
+                 "linspace. See pdvtrigger_report.html (was phase6_brief.html, consolidated 2026-07-28) §1 / FINDINGS §15j. Regenerate: make_zone_resolution.py\n")
         w = csv.DictWriter(fh, fieldnames=cols)
         w.writeheader()
         w.writerows(rows)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Figures for `phase6_brief.html` — the corrected f_A vs f_mix head-to-head (FINDINGS §18–§20).
+"""Figures for `pdvtrigger_report.html (was phase6_brief.html, consolidated 2026-07-28)` — the corrected f_A vs f_mix head-to-head (FINDINGS §18–§20).
 
 Seven panels, all read ONLY from committed artifacts (no sims, seconds to run):
   1. phase6_fig1_correction.png     the artifact vs the fix: raw vs effective fm dose-response
@@ -516,6 +516,10 @@ EQUATIONS = {
     r"\qquad \mathrm{(already\ boosted\ once)}$",
     "fired": r"$\mathtt{fired} \; = \; \mathtt{meta\_fired} \ \ \mathrm{OR} \ \ "
     r"\left(\mathtt{reached\_momentum} \ \ \mathrm{AND} \ \ \theta_{\max} \geq 0.95\right)$",
+    "fkappa": r"$\kappa_{\rm eff} = f_\kappa \cdot C_{\rm th}\,T^{5/2}\quad \mathrm{(3\ sites{:}\ \dot{M}\ seed,\ Eq44\ ICs,\ ODE\ RHS)}\,, \qquad \dot{M}_{\rm seed} \propto f_\kappa^{\,2/7}\ \uparrow$",
+    "elbadry": r"$\theta_{\rm EB}(n) = \frac{A_{\rm mix}\sqrt{\lambda\delta v\; n}}{\frac{11}{5} + A_{\rm mix}\sqrt{\lambda\delta v\; n}}\,, \qquad A_{\rm mix}{=}3.5\,,\ \lambda\delta v{=}3\ \mathrm{pc\,km/s}\,,\ n_{\rm fire}(\theta{=}0.95) \approx 48\ \mathrm{cm^{-3}}$",
+    "eq47": r"$\dot{m} = \dot{m}_0\,\frac{(1-\theta)^{37/35}}{\theta^{2/7}}\qquad \mathrm{(El\!-\!Badry\ Eq\ 47{:}\ evaporation\ FALLS\ as\ cooling\ rises)}$",
+    "thetatarget": r"$L_{\rm loss} = \max\left(L_{\rm cool}+L_{\rm leak},\ \theta_t\,L_{\rm mech}\right) \qquad \mathrm{(single{-}count\ top{-}up{:}\ inert\ where\ resolved\ loss\ exceeds\ target)}$",
     "sc0": r"$\mathrm{C1\ El\!-\!Badry:}\quad f_A = \theta_{\rm EB}(\lambda\delta v,\, n_{\rm amb})"
     r"\cdot \frac{L_{\rm mech}}{L_2+L_3}$"
     "\n"

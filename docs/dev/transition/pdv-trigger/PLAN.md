@@ -1997,3 +1997,47 @@ given the offline verdict** — it confirms, it does not change, the reading-B f
 - Storyline report: `make_pdvtrigger_report.py` → `pdvtrigger_report.html`.
 - Upstream (committed): `../cleanroom/data/c0_*_h0.csv`, `../../failed-large-clouds/data/budget_*.csv`,
   `../pt4/r1shadow/r1_shadow_summary.csv`.
+
+## Consistency plan (2026-07-28) — make the whole workstream correct and mutually consistent
+
+*Added at the three-report consolidation (`FINDINGS §21`; `pdvtrigger_report.html` §10 mirrors
+this list — THIS copy is the living one). Items are ordered by dependency, each with its owner
+and gate.*
+
+1. **Registry info strings** (`trinity/_input/registry.py:384-385` + `default.param` regen) —
+   the production text still says f_mix is "superseded for L21b *calibration* by
+   cooling_boost_fA … retained pending a state-coupled successor"; both clauses are dead
+   (`§15k` terminal, `§18` withdrawal). Blocked only on Q1's choice (re-derive clause-1 grounds
+   from the physical in-ODE asymmetry — recommended — or withdraw the framing). Byte-neutral,
+   R0-class edit; gate = help-text-only diff + full pytest. *Owner: maintainer nod, then either.*
+2. **The `§16` trigger-fallback fix — now load-bearing (`§21`: 1/36 rosette fm4 fires is
+   bug-dependent; the Paper II grid runs the same configuration).** Fix candidate: consume the
+   stored effective `bubble_Lloss` directly in the `bubble_props is None` branch
+   (`run_energy_implicit_phase.py:1244-1247`). Full rule-5 ladder; byte-identity gate for
+   mode=`none`/f_A; separate-process full-run equivalence on a `multiplier` arm. Schedule under
+   the Paper II / rosette-cf workstream BEFORE the 72-dictionary reduction; afterwards re-run
+   `data/make_rosette_fm4_doubleboost_check.py` and re-check the dependent arm
+   (`1e5_sfe001_n5e2…Cf1p0`). *Owner: either, maintainer priority call.*
+3. **The phase-1a/1c dEb/dt asymmetry (`§21b`)** — `energy_phase_ODEs.py:273` uses raw
+   `bubble_LTotal` while the 1a trigger uses the effective loss. Either route
+   `get_ODE_Edot_pure` through `effective_Lloss_from_params` (behavioral for fm/θ runs ⇒ full
+   ladder) or correct `registry.py:384`'s "consistently" claim. Decide jointly with item 2.
+4. **Validators**: reject unknown `cooling_boost_mode` tokens (a typo currently un-boosts a
+   10,560-run grid silently, `get_betadelta.py:357`) and enforce `cooling_boost_theta`'s
+   advertised 0..1. Load-time behavior change — gate with a param-file sweep over `param/` and
+   the test suite. *Owner: either.*
+5. **fm ∈ {12,16} on bench1/bench2 (~4 HPC arms, Q4)** — converts the 2.96×-vs-5.39×
+   uniformity inversion from (saturation-biased) estimate to measurement.
+   `runs/make_bench6_params.py`'s docstring already specifies the extension. *Owner: maintainer (HPC).*
+6. **Frozen-row metric decision (Q3)** — exclude no-root rows from Θ_cum or carry an
+   uncertainty band; then regenerate `bench5_analysis.csv`/`bench6_analysis.csv` under the
+   chosen convention (moves f_A-side numbers too — 54-67% frozen on band-setting arms).
+   *Owner: maintainer ruling, then mechanical.*
+7. **Doc debris**: reconcile `LANCASTER_REFERENCE.md:143-145`'s loose n_fire/λδv pairing with
+   the verified inversion (λδv=3 ⇒ n_fire=47.5); regenerate `MANIFEST.md`; rebuild the
+   storyline book (`docs/dev/html-insights/build_storylines.py`) against the consolidated
+   report; review `docs/dev/to-be-removed/` (now incl. the three superseded HTML/generator
+   files). *Owner: either / maintainer review.*
+8. **Standing measurement debt** (unchanged, parent ledger): Fig-17 re-digitization (metric 2's
+   dex half), metric 3 α_p (needs a re-harvest with momentum columns), the dMdt reducer on
+   Helix theta5s raw arms, V_w [I]-grade.

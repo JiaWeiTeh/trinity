@@ -653,7 +653,7 @@ REPRODUCE rows.
 > **X1** ✅ metric fixed, both CSVs regenerated, all 3 gates cleared (f_A side 2.6e-16 vs a ≤1e-9
 > bar; fm monotone on all clean benches; f_A rows string-identical) — `§18`.
 > **X2** ✅ record corrected in place across `§15j`, this heading, `CONTAMINATION.md`,
-> `phase6_brief.html`, `LANCASTER_REFERENCE §7b`, `PLAN.md`, `REPRODUCE.md`, `INDEX.md`,
+> `pdvtrigger_report.html` (§7, the corrections chapter; consolidated 2026-07-28), `LANCASTER_REFERENCE §7b`, `PLAN.md`, `REPRODUCE.md`, `INDEX.md`,
 > `FA_STATE_COUPLED.md`; re-presentation to the maintainer immediately below.
 > **X3** ✅ the `§16` double-boost is **bounded out**, not fixed — a production edit is not
 > justified because no fire label ever came from the live trigger (`§19`).
@@ -679,7 +679,7 @@ REPRODUCE rows.
 **X2 — correct the record + re-present clause 1 (docs; maintainer input at the end).** Rewrite
 `§15j`'s f_mix paragraphs and this Phase-6 heading from the corrected table; fix
 `CONTAMINATION.md`'s ✅ grading of `bench6_analysis.csv` (fm columns were ⛔ until X1),
-`phase6_brief.html`, `LANCASTER_REFERENCE.md` §7b's and `PLAN.md`'s "f_mix eliminated" lines
+`pdvtrigger_report.html` (§7, the corrections chapter; consolidated 2026-07-28), `LANCASTER_REFERENCE.md` §7b's and `PLAN.md`'s "f_mix eliminated" lines
 (dated in-place corrections; do not rewrite history). Then put the corrected head-to-head to the
 maintainer: uniformity now plausibly favors f_mix as the single-constant; the physical asymmetry
 (in-ODE back-reaction, Eq-47 dMdt suppression, theta5s-measured) still favors f_A; the practical
