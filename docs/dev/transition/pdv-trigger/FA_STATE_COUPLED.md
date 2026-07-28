@@ -68,14 +68,19 @@ rests on a **metric artifact** — the bench6 fm Θ_cum omitted the f_mix boost;
 entry is ≈ 4⁺/8⁺/>8 and monotone (`§17`). The clause-1 outcome (f_mix RETAINED, default `none`)
 is if anything reinforced, but its evidentiary record and the R0→R2 retirement premise must be
 corrected and re-presented — see `SOURCE_TERM_DESIGN.md §3 "Phase 6 correction (X1–X4)"`.
+**UPDATE 2026-07-28: X1–X4 are EXECUTED (`FINDINGS §18`/`§19`/`§20`).** Corrected band entry
+bench3 ≈4 (measured) / bench2 >8 / bench1 >8 (extrapolated ≈8.2/11.9); on the tree's uniformity
+metric f_mix ≈2.96× vs f_A 5.39×, i.e. the head-to-head **inverts** — as an estimate the fm≤8
+grid cannot settle. SC-0's FAIL and this doc's TERMINAL state remain unaffected. The clause-1
+re-presentation is in `SOURCE_TERM_DESIGN.md §3` under "Maintainer re-presentation".
 
 ## 0. Why this workstream exists (one paragraph)
 
 The scalar f_A was measured to work — every clean L21b bench reaches the Θ band — but at a steeply
 density-dependent dose: band entry **13.9 / 53.5 / 74.8** for n̄ = 5520/690/43 (spread 5.39×, fit
-f_A(n̄) ≈ 315·n̄^−0.335; `FINDINGS §15j`), while f_mix was eliminated outright *(⛔ corrected
-2026-07-27: that elimination was a metric artifact — `FINDINGS §17`; the hypothesis below stands
-on the f_A dose gradient alone)*. A fitted f(n̄) is
+f_A(n̄) ≈ 315·n̄^−0.335; `FINDINGS §15j`), while f_mix was eliminated outright *(⛔ WITHDRAWN — that elimination was a metric artifact;
+corrected `FINDINGS §18` 2026-07-28, where f_mix's band-entry spread ≈2.96× actually beats f_A's
+5.39×. The hypothesis below stands on the f_A dose gradient alone, which is unaffected)*. A fitted f(n̄) is
 exactly the kind of un-derived magic function this workstream's history warns against
 (`INDEX.md §1.5`). Hypothesis to test: **the density dependence is not a free function but El-Badry
 mixing-layer physics** — replace the scalar with f_A evaluated from the live bubble state via the
@@ -212,9 +217,14 @@ This is THE Phase-6 ruling of record (this doc is the single place it lives; `SO
 §3 Phase 6` and any `FINDINGS.md §15k` point HERE, they do not restate it). Clauses tagged
 **[RULED 2026-07-22]** are the maintainer's decision; **[pending]** clauses still want an explicit nod.
 
-1. **f_mix — RETAINED as an opt-in fallback [RULED 2026-07-22, maintainer].** bench6 eliminated f_mix
-   as a *calibration* knob (never reaches the L21b band ≤8, wrong-sign dose-response on the diffuse
-   benches, fm8 false-fires — `FINDINGS §15j`) — but NOT as a *fallback*. It stays fully wired and
+1. **f_mix — RETAINED as an opt-in fallback [RULED 2026-07-22, maintainer].** ~~bench6 eliminated
+   f_mix as a *calibration* knob (never reaches the L21b band ≤8, wrong-sign dose-response on the
+   diffuse benches, fm8 false-fires — `FINDINGS §15j`)~~ **[the stated GROUNDS are WITHDRAWN
+   2026-07-28 — all three legs were metric artifacts or backwards; `FINDINGS §18`/`§19`. The
+   RULING (retain as opt-in fallback) is unchanged and if anything strengthened; only its
+   justification changes, and the R0→R2 retirement premise must be re-derived — see the
+   maintainer re-presentation in `SOURCE_TERM_DESIGN.md §3`.]** f_mix was never eliminated as a
+   *fallback*. It stays fully wired and
    supported for now: it is a valid opt-in mechanism AND the control arm the bench harness relies on.
    Nothing is removed while f_A is not yet the production path. **Retirement is deferred and STAGED
    (the "safely and slowly" ladder), each rung gated on the one before:**

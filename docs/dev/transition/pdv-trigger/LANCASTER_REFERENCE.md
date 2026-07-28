@@ -246,8 +246,10 @@ do NOT reach it even at f_A=16 (max 0.54/0.40) → **f_A >16 / ≫16**. The dens
 shell-collapse (not the clean L21b window). **Result: no single global f_A reproduces L21b across density;
 the required boost climbs steeply toward low density** (feeds Phase-6 ship decision). **HPC re-confirmation DONE 2026-07-19** (`FINDINGS §15j`): fidelity OK, and bench6 extends the
 calibration — all clean benches reach the band (f_A entry 13.9/53.5/74.8); f_mix eliminated
-*(⛔ corrected 2026-07-27: that elimination was a metric artifact — the fm Θ_cum omitted the
-boost; corrected fm band entry ≈ 4⁺/8⁺/>8, `FINDINGS §17` + X-plan)*. The
+*(⛔ WITHDRAWN — corrected 2026-07-27, fix EXECUTED 2026-07-28: that elimination was a metric
+artifact (the fm Θ_cum omitted the boost). Corrected band entry: bench3 ≈4 measured, bench2/bench1
+>8 (extrapolated ≈8.2/11.9). On band-entry uniformity f_mix ≈2.96× actually beats f_A's 5.39×.
+`FINDINGS §18`)*. The
 Fig-17 tracks remain [V-plot-eyeball] grade — re-digitize before any quantitative fit.
 
 *Transcribed from ApJ 914, 90 (Lancaster+2021 Paper II) and arXiv:2505.22730v1 (Lancaster+2025) on 2026-06-30,

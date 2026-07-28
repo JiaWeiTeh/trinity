@@ -420,10 +420,14 @@ head-to-head measured — f_A reaches the L21b band on every clean bench (entry 
 f_A(n̄)≈315·n̄^−0.335, thresholds 1→4→12→24→64); f_mix eliminated as a CALIBRATION knob — RETAINED as opt-in fallback per the 2026-07-22 ruling (`FA_STATE_COUPLED.md §3`) (never in band, wrong-sign
 dose-response, false-fires). ⛔ **Corrected 2026-07-27 (`FINDINGS §17`): the fm "elimination" was a
 metric artifact (Θ_cum numerator omitted the boost; corrected fm band entry ≈ 4⁺/8⁺/>8, monotone) —
-the head-to-head re-opens; next open work = the X-plan (`SOURCE_TERM_DESIGN §3` Phase-6 correction),
-branch `feature/pdv-trigger-5`.** Authoritative data: runs/data/{theta5s_summary,bench5_summary_hpc,
+the head-to-head re-opens.** ✅ **X1–X4 EXECUTED 2026-07-28 (`FINDINGS §18`/`§19`/`§20`): metric
+fixed and CSVs regenerated (f_A side bit-stable); corrected band entry bench3 ≈4 MEASURED,
+bench2/bench1 >8 (extrap ≈8.2/11.9) — uniformity 2.96× vs f_A's 5.39×, so the head-to-head
+INVERTS as an estimate the fm≤8 grid cannot settle; "f_mix eliminated" WITHDRAWN; the §16
+double-boost BOUNDED OUT of the fire map. Next open work = the maintainer re-presentation of
+clause 1 (`SOURCE_TERM_DESIGN §3`).** Authoritative data: runs/data/{theta5s_summary,bench5_summary_hpc,
 bench6_summary}.csv + data/{theta5s_*,bench5_analysis,bench6_analysis}.csv (bench6 fm Θ_cum columns
-⛔ until the X1 regeneration).
+✅ QUOTABLE since the 2026-07-28 X1 regeneration) + data/bench_stale_segments.csv.
 
 YOUR TASK — the next open items, in this priority order:
 (a) Phase 6 maintainer RULING (tree row 3 verdict, §15j): interim = f_A as calibrated diagnostic
@@ -442,7 +446,8 @@ YOUR TASK — the next open items, in this priority order:
 
 STANDING RULES (unchanged): θ only as θ_max over ≥5 Myr from dictionary.jsonl accepted rows via
 runs/harvest_theta_max.py (never blowout, never the R6 observer); FIRE = the trigger actually fired
-(the analysis CSV), NOT θ_max≥0.95; every arm must clear the compliance gate before its number is
+(the analysis CSV), NOT θ_max≥0.95;
+[CORRECTED 2026-07-28, FINDINGS 19: for the bench5/bench6 campaigns these are the SAME criterion, not different ones — 0/120 arms recorded a cooling_balance termination in metadata, so harvest_theta_max.py:95 falls through to reached_momentum AND theta_max>=0.95. Keep quoting the CSV's FIRED column, but do not claim it is stricter than theta_max.] every arm must clear the compliance gate before its number is
 quoted; single-knob arms (mode=none, kappa=1 when varying fA); commit every artifact WITH its builder
 script + exact command; every result gets a FINDINGS entry + REPRODUCE row and reconcile
 INDEX/PLAN/SOURCE_TERM_DESIGN same-visit; run pytest + test/test_docs_dev_conventions.py before
@@ -470,7 +475,8 @@ processes at matched t; byte-identity for any "free win").
 
 STANDING RULES: θ only as θ_max over ≥5 Myr from dictionary.jsonl accepted rows via
 runs/harvest_theta_max.py (never blowout, never the R6 observer); FIRE = the trigger actually fired
-(analysis CSV's FIRED/NOFIRE), NOT θ_max≥0.95; no number quoted before its compliance gate (t_final≥5
+(analysis CSV's FIRED/NOFIRE), NOT θ_max≥0.95;
+[CORRECTED 2026-07-28, FINDINGS 19: for the bench5/bench6 campaigns these are the SAME criterion, not different ones — 0/120 arms recorded a cooling_balance termination in metadata, so harvest_theta_max.py:95 falls through to reached_momentum AND theta_max>=0.95. Keep quoting the CSV's FIRED column, but do not claim it is stricter than theta_max.] no number quoted before its compliance gate (t_final≥5
 or physics end; ≥1.5 h/arm before any wall-kill verdict); single-knob arms; thresholds from incomplete
 data are upper bounds, not results; a control that fires is a BUG to flag, never a pass; if a
 registered prediction is falsified, STOP and write it up before touching code; measure, don't

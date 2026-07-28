@@ -1457,7 +1457,7 @@ stretches. Each arm got its full 2 h before any wall-kill; only container restar
 **RESULTS — authoritative source is `data/theta5s_fire_map.csv` + `data/theta5s_collapse_law.csv`**
 (regenerate: `python data/make_theta5s_analysis.py`; figures `theta5s_fire_map.png`,
 `theta5s_theta_rise.png`). **FIRE = the run actually fired the cooling_balance trigger (left the energy
-phase with θ crossing), which is STRICTER than θ_max ≥ 0.95** — a transient θ peak that does not sustain
+phase with θ crossing), which is STRICTER than θ_max ≥ 0.95**  **[CORRECTED 2026-07-28, FINDINGS §19: this is BACKWARDS. No arm in the bench5/bench6 campaigns recorded a `cooling_balance` termination in metadata (0/120) — metadata carries only the FINAL termination — so `harvest_theta_max.py:95` falls through to `reached_momentum AND theta_max>=0.95`. The column IS the θ_max≥0.95 criterion, not something stricter.]** — a transient θ peak that does not sustain
 the transition is NOFIRE (e.g. `large_diffuse__fa6` peaks θ_max=1.029 but NOFIRE; it fires at fa8). Quote
 the CSV's FIRED/NOFIRE, **not** raw θ_max. Three clean classes:
 
@@ -1599,7 +1599,7 @@ in-flight arms to t=0; the runner resumes from the committed summary, so it grou
 prior lost pt4 session's 1–3/60 over 8 h). The last two to land were the diffuse fa1 baselines
 (`bench1/bench2_none_diag`), the slowest full-implicit-to-blowout solves.
 
-**FIRE MAP (production arms; FIRE = actually fired cooling_balance, from `data/bench5_analysis.csv`; 60/60):**
+**FIRE MAP (production arms; FIRE = actually fired cooling_balance, from `data/bench5_analysis.csv`; 60/60):** *(label semantics corrected 2026-07-28, `§19`: 0/120 arms recorded a `cooling_balance` termination, so this column is `reached_momentum ∧ θ_max≥0.95`.)*
 
 | bench | n̄_H | θ_EB(λδv3) | FIRE threshold f_A | FIRED f_A | fate |
 |---|---:|---:|---|---|---|
@@ -1695,7 +1695,14 @@ by construction — the "frozen-structure limit" of the Phase-6 tree row 1). ben
 they are retained in the f_mix arms (cheap, fire-map value). All 60 params pass the bench5 emit gates
 + end-to-end `read_param` single-knob checks (fa arms: mode=none; fm arms: fA=1).
 
-## 15j. [data — HPC, 2026-07-19] All three Helix batches harvested; bench6 f_A-vs-f_mix head-to-head DECIDED — f_A wins outright; Phase 6 is a maintainer ruling with data in hand
+## 15j. [data — HPC, 2026-07-19] All three Helix batches harvested; bench6 f_A-vs-f_mix head-to-head DECIDED — f_A wins outright; Phase 6 is a maintainer ruling with data in hand — ⛔ **the f_mix HALF IS WITHDRAWN (2026-07-27 `§17` / corrected `§18`); the f_A half stands unchanged**
+
+> ⛔ **CORRECTION 2026-07-28 — read `§18` before quoting any f_mix number below.** Every f_mix
+> figure in this section was computed with a numerator that omitted the f_mix boost. Corrected,
+> the dose-response is **monotone rising**, not wrong-sign, and band entry is fm ≈ 4 (bench3) /
+> >8 (bench2, 0.895 at fm8) / >8 (bench1, 0.767). "f_mix eliminated by measurement" is
+> **WITHDRAWN**. The f_A numbers, the fire thresholds, the code-vs-spec audit and the tree
+> mapping to row 3 are **unaffected** (verified `§17` CONFIRMED-3, re-verified `§18` gate iii).
 
 All three `temporary-HPC-runs.md` batches ran on Helix and were harvested/analyzed 2026-07-19
 (HPC CSVs landed in main's `591e5e4` — note: that commit's message mentions only the rosette-cf
@@ -1713,9 +1720,12 @@ calibration); the fa16_diag freeze reproduces on Helix (solver stiffness, both p
 
 | bench | n̄_H | f_A band-entry (interp.) | f_A fire threshold | f_mix band-entry | f_mix Θ_cum trend (fm 1→8) |
 |---|---:|---:|---:|---|---|
-| bench3 | 5520 | **13.9** | 12 | never (≤8) | 0.462→0.224 then 0.579 (non-monotone, wrong sign) |
-| bench2 | 690 | **53.5** | 24 | never (≤8) | 0.341→0.112 (**falls monotonically — wrong sign**) |
-| bench1 | 43.1 | **74.8** | 64 | never (≤8) | 0.221→0.096 (**falls monotonically — wrong sign**) |
+| bench3 | 5520 | **13.9** | 12 | ~~never (≤8)~~ → **≈4** | ~~0.462→0.224 then 0.579~~ → **0.462→0.895 (fm1→4), monotone** |
+| bench2 | 690 | **53.5** | 24 | ~~never (≤8)~~ → **>8 (0.895 at fm8)** | ~~0.341→0.112~~ → **0.341→0.895, monotone** |
+| bench1 | 43.1 | **74.8** | 64 | ~~never (≤8)~~ → **>8 (0.767 at fm8)** | ~~0.221→0.096~~ → **0.221→0.767, monotone** |
+
+*(struck values = the superseded raw-numerator construction, kept for the record; bold = corrected,
+`§18`. They are still reproducible as `theta_cum_raw_superseded` in `data/bench6_analysis.csv`.)*
 
 - **f_A:** monotone Θ_cum rise everywhere; **every clean-blowout bench reaches the L21b band
   [0.90,0.99]** at finite dose (the "proven absence" branch of `§15i` is disproven). Band-entry dose
@@ -1724,15 +1734,21 @@ calibration); the fa16_diag freeze reproduces on Helix (solver stiffness, both p
   ~2 ((0.90/Θ₀)^3.33 → 9.2/25.3/107 vs measured 13.9/53.5/74.8). Extended fire thresholds complete
   the gradient **1→4→12→24→64** (bench1 fa32 peaks θ_max=0.9915 without firing; fa64 fires).
   bench3 stays in-band at fa24/32 (0.938/0.946) — the band is ~×2 wide in dose, not a knife-edge.
-- **f_mix: eliminated by measurement.** It **never reaches the band** on any clean bench at fm≤8,
-  and its dose-response has the **wrong sign** on the diffuse benches — boosting the loss
-  *after* the structure solve drains Eb, the frozen structure's Lcool collapses, and the
-  *integrated* cooling fraction falls with dose. Worse, **fm8 false-fires bench1/bench2** (transient
-  θ spike >0.95 while Θ_cum ≈ 0.10): under f_mix the trigger and the physical L21b criterion
-  DECOUPLE; under f_A they stay aligned. (Equation-audit caveat, 2026-07-19: the `§16` fallback
-  double-boost is live on no-root segments for multiplier arms — it can only *flatter* f_mix's fire
-  thresholds, so the elimination stands a fortiori. The Θ_cum trends come from accepted-row
-  trajectories and are unaffected.)
+- **f_mix: ~~eliminated by measurement~~ — WITHDRAWN 2026-07-28 (`§18`).** The original text read:
+  "*never reaches the band on any clean bench at fm≤8, and its dose-response has the wrong sign on
+  the diffuse benches … Worse, fm8 false-fires bench1/bench2 (transient θ spike >0.95 while
+  Θ_cum ≈ 0.10) … the `§16` fallback double-boost … can only flatter f_mix's fire thresholds, so
+  the elimination stands a fortiori.*" **All three legs fail.** (a) The wrong sign was a metric
+  artifact — the numerator omitted the boost; corrected, Θ_cum rises monotonically with dose on
+  every clean bench. The in-text rationalization ("the frozen structure's Lcool collapses")
+  correctly explains why the RAW ratio falls, but the raw ratio is not the model's cooling
+  fraction: the energy a multiplier run actually drains is `fmix·Lcool`. (b) "Never reaches the
+  band" survives only as a statement about the **grid**, which under-brackets (bench3 enters at
+  fm≈4; bench2/bench1 need fm>8 — extrapolated ≈8.2/11.9). (c) The Θ_cum ≈ 0.10 behind
+  "false-fires" was the artifact (corrected: 0.77–0.90), and the `§16` a-fortiori argument is
+  **backwards** — `§19` shows the double-boost cannot have inflated any published fire threshold
+  (0/120 arms recorded a `cooling_balance` termination; every label is `θ_max≥0.95`), and its only
+  reachable effect is early truncation, a false-NEGATIVE direction.
 - **Code-vs-spec audit (same day):** both knobs implement exactly their documented equations —
   `L_total = L₁ + f_A·(L₂+L₃)` with the in-ODE boost gated at T<10^5.5 K and L_leak excluded
   (`bubble_luminosity.py:435/845`); `L_eff = L_leak + f_mix·L_cool` post-solve
@@ -1743,16 +1759,24 @@ calibration); the fa16_diag freeze reproduces on Helix (solver stiffness, both p
 **Phase-6 tree mapping (`SOURCE_TERM_DESIGN.md §3 Phase 6`):** the measured outcome is **row 3's
 verdict** — "band-fire and benchmark-match want different f_A; the single-scalar compromise fails
 calibration → next rung = the state-coupled f_A (§4)" — with one amendment the tree could not
-anticipate: **both rows 2/3 prescribe "keep f_mix production", but the head-to-head eliminates
+anticipate: ~~**both rows 2/3 prescribe "keep f_mix production", but the head-to-head eliminates
 f_mix on the tree's own decision metric** (band-entry uniformity: f_A 5.39× spread vs f_mix
-unreachable + wrong-sign). The honest action is: production default stays `cooling_boost_mode=none`
+unreachable + wrong-sign).~~ **[CORRECTED 2026-07-28, `§18`: the amendment is withdrawn and the
+sign of the comparison REVERSES. On band-entry uniformity f_mix spreads ≈2.96× (1/3 measured,
+2/3 extrapolated) against f_A's 5.39× (fully measured) — f_mix is plausibly the *better*
+single-constant on the tree's own metric, though the fm≤8 grid cannot settle it. Rows 2/3's
+"keep f_mix production" therefore applies without amendment.]** The honest action is: production default stays `cooling_boost_mode=none`
 (untouched), f_A ships as the calibrated *diagnostic/paper* knob with the measured f_A(n̄), and the
 state-coupled f_A (El-Badry L_int closed form, one-read swap per §4) is the physically-derived
 successor that would *replace* the fitted n̄-dependence. **The row pick is the maintainer's Phase-6
 ruling — every input it needs is now measured and committed.**
 
 > **Phase-6 ruling update (2026-07-22, `FA_STATE_COUPLED.md §3` = source of truth):** "eliminated"
-> above means eliminated as a **calibration** knob (bench6 metric), NOT removed from code. The
+> above means eliminated as a **calibration** knob (bench6 metric), NOT removed from code.
+> **[CORRECTED 2026-07-28 (`§18`): the calibration-knob elimination is itself WITHDRAWN — it was a
+> metric artifact, and on the corrected numbers f_mix's band-entry uniformity (2.96×) is BETTER
+> than f_A's (5.39×). The RULING below stands unchanged; only its grounds do not. The R0→R2
+> retirement premise needs re-deriving — see the re-presentation in `SOURCE_TERM_DESIGN §3`.]** The
 > maintainer RULED f_mix **RETAINED as an opt-in fallback** — it stays fully wired and is the bench
 > harness's control arm — with retirement **deferred and staged** (R0 keep→R1 deprecate→R2 remove),
 > each rung gated on the state-coupled f_A actually shipping (SC-5); if that fails, f_mix stays
@@ -1923,3 +1947,227 @@ wording overclaims (`harvest_theta_max.py:95` ORs in reached-momentum ∧ θ_max
 the column means "θ crossed 0.95 uncensored"); `compare_bench5_hpc.py`'s verdict keys only on
 fire flips (the §15j fidelity read was done manually and more carefully — fine, but the script's
 "drop the banner" advice is weaker than it looks).
+
+## 18. [data] X1 EXECUTED — the corrected f_mix Θ_cum; the head-to-head plausibly INVERTS but the fm grid cannot settle it; and a shared frozen-no-root caveat that hits f_A harder (2026-07-28, offline replay, no sims)
+
+**Provenance.** Executes `SOURCE_TERM_DESIGN.md §3` **X1** against the committed trajectories
+(`runs/data/bench5_traj_hpc/` + `bench6_traj/`, 120 arms) on branch `feature/pdv-trigger-5`.
+No sims. Supersedes the f_mix numbers in `§15j`; `§17` is the audit that found the artifact and
+this is its fix. Regenerate everything below with three commands:
+
+```
+python docs/dev/transition/pdv-trigger/data/make_bench5_analysis.py
+python docs/dev/transition/pdv-trigger/data/make_bench6_analysis.py
+python docs/dev/transition/pdv-trigger/data/make_bench_stale_segments.py
+```
+
+**The fix.** `make_bench5_analysis.py::theta_cum_prefire` numerator is now `∫θ·L_mech dt` (the
+traj `theta` column = `bubble_Lloss/Lmech`, i.e. the EFFECTIVE loss under every
+`cooling_boost_mode`) instead of `∫(Lcool+Lleak) dt` (the RAW `bubble_LTotal`, which drops the
+f_mix boost). Both are written: `theta_cum_prefire` (corrected) and `theta_cum_raw_superseded`
+(the construction that published `§15j`), plus `t_window_end_Myr` — closing `§17` gap (c)'s
+auditability hole. `theta_cum_raw_superseded` reproduces the published `§15j` values exactly
+(bench1/2/3 fm8 = 0.0959 / 0.1118 / 0.5793 vs the recorded 0.096 / 0.112 / 0.579), so the record
+stays auditable rather than being overwritten.
+
+**Gates (pre-committed in X1) — all three cleared.** (i) regression: recomputing every one of the
+60 mode-`none`/f_A trajectories both ways gives worst `|eff−raw|/raw` = **2.6e-16** (bar ≤ 1e-9) —
+ULP-level, i.e. θ·L_mech reconstructs the raw numerator to floating-point identity where no boost
+is present. (ii) fm monotonicity: **holds on all three clean-blowout benches** (bench3/2/1) and on
+bench4; **violated on bench5** (fm2→3→4: 2.695 → 1.822 → 1.216) — a dense collapse-window bench
+whose Θ_cum is already flagged as NOT the clean L21b metric, and whose fm arms are 37–98% frozen
+no-root rows (below). (iii) f_A-side numbers IDENTICAL: all 60 `bench5_analysis.csv` rows are
+string-identical to the committed baseline; band entry stays 13.9 / 53.5 / 74.8 and thresholds
+1→4→12→24→64. **No f_A number anywhere in the workstream moves.**
+
+**Corrected dose–response** (diag arms; `data/bench6_analysis.csv`). The registered expectation
+from `§17` — bench3 0.462→0.895 at fm1→4, bench2 →0.895 at fm8, bench1 →0.767 at fm8 — is
+**confirmed to 3 dp by the regenerated pipeline**, checked not tuned to:
+
+| bench | fm 1 | fm 2 | fm 3 | fm 4 | fm 8 |
+|---|---|---|---|---|---|
+| bench3 raw (`§15j`, superseded) | 0.462 | 0.332 | 0.256 | 0.224 | 0.579 |
+| **bench3 effective (corrected)** | 0.462 | 0.663 | 0.767 | **0.895** | 4.635 ⚠️ |
+| bench2 raw (superseded) | 0.341 | 0.266 | 0.216 | 0.182 | 0.112 |
+| **bench2 effective** | 0.341 | 0.533 | 0.649 | 0.727 | **0.895** |
+| bench1 raw (superseded) | 0.221 | 0.190 | 0.165 | 0.145 | 0.096 |
+| **bench1 effective** | 0.221 | 0.380 | 0.494 | 0.579 | **0.767** |
+
+**The three `§15j` elimination legs, re-read.** (1) "never reaches the band at fm≤8" — the
+*trend* claim is FALSE (the response rises monotonically toward the band), but the *grid* claim is
+literally true and is the honest statement: only bench3 enters within fm≤8. (2) "wrong-sign
+dose-response" — **WITHDRAWN**; the falling sequence was the artifact. (3) "fm8 false-fires while
+Θ_cum ≈ 0.10" — **WITHDRAWN as stated**; corrected Θ_cum at fm8 is 0.77–0.90, so the
+fire-vs-band offset is comparable to f_A's own benign bench3 pattern (fires at 12, band at ≈16).
+
+**The decision metric, honestly.** Band-entry-dose spread across bench3/2/1:
+
+| knob | bench3 | bench2 | bench1 | spread (max/min) | status |
+|---|---|---|---|---|---|
+| f_A | 13.9 | 53.5 | 74.8 | **5.39×** | all three MEASURED in-grid (fA≤128) |
+| f_mix | 4 | 8.16\* | 11.9\* | **2.96×** | 1/3 measured, 2/3 EXTRAPOLATED past fm≤8 |
+
+\* extrapolated from the local log-log slope of the top two grid points
+(`band_entry_extrapolated`). A global power law fitted on fm≤4 (p = 0.47 / 0.55 / 0.70 for
+bench3/2/1, R² ≥ 0.99) is **rejected**: it predicts 1.12 for bench2 at fm8 where 0.895 was
+measured, i.e. the response saturates and the fm≤4 fit would understate the entry dose. So the
+uniformity inversion (f_mix ≈ 1.8× more uniform than f_A) **is a defensible estimate, not a
+measurement** — the fm≤8 grid under-brackets exactly as the f_A grid did at ≤16 before bench6
+extended it. Settling it needs fm ≈ {12, 16} on bench1/bench2 (~4 arms). **`§17`'s "plausibly
+INVERTS" survives, with its evidentiary status downgraded from "measured" to "estimated".**
+
+**⚠️ NEW — the shared frozen-no-root caveat (`data/bench_stale_segments.csv`).** A beta-delta
+segment that finds no root leaves BOTH `bubble_props` and `bubble_Lloss` frozen
+(`run_energy_implicit_phase.py:893`, `:929-930` are guarded by `is not None`), yet the row is
+still logged and harvested. Offline signature: the raw `Lcool` column repeats bit-identically.
+Θ_cum integrates θ across those frozen spans, so a long no-root grind contributes a held-over θ
+times real elapsed time. Decomposing Θ_cum into stale and solved contributions on the arms that
+SET band entry:
+
+| arm | rows | stale | Θ from stale | Θ from solved | Θ total |
+|---|---|---|---|---|---|
+| bench3 fa16_diag | 94 | 34 | **0.647** | 0.319 | 0.965 |
+| bench2 fa64_diag | 101 | 50 | **0.616** | 0.337 | 0.953 |
+| bench1 fa64_diag | 109 | 30 | **0.470** | 0.394 | 0.864 |
+| bench3 fm4_diag | 78 | 15 | 0.296 | 0.598 | 0.895 |
+| bench2 fm8_diag | 94 | 24 | 0.417 | 0.478 | 0.895 |
+| bench1 fm8_diag | 84 | 1 | 0.053 | 0.714 | 0.767 |
+| bench3 fm8_diag | 82 | 58 | 2.666 | 1.969 | 4.635 |
+
+This is **not** an f_mix artifact and does not rescue `§15j`: on the band-setting arms the stale
+share is **larger for f_A** (67% / 65% / 54% of Θ_cum) than for f_mix (33% / 47% / 7%). Two
+consequences. (a) It re-characterises `§17`'s "bench3 fm8 Θ_cum = 4.6 is real high-dose
+pathology": 71% of those rows are frozen, with θ held at 3.45 / 2.23 / 3.02 across long spans, so
+the 4.635 is a **no-root-grind artifact, not a measured cooling fraction** — high-dose f_mix is
+still bad, but what it breaks is the *solver*, not the energy budget. (b) The L21b Θ_cum
+calibration for BOTH knobs rests substantially on frozen rows; that belongs in the paper's
+fidelity statement, and a future metric should either exclude no-root rows or carry them as an
+explicit uncertainty band. **Not fixed here** (it would change every published Θ_cum, f_A side
+included, and is outside X1's gates) — registered for the maintainer.
+
+**`L_leak` ≡ 0 in all 120 bench trajectories** (`§17` gap b, confirmed: global max |L_leak| =
+0.0). So `leak_frac` is 0 throughout, the Rogers & Pittard channel split (Phase-5 metric 6) is
+**vacuous**, and TRINITY's loss here is 100% radiative against R&P's 60–75% leakage in porous 3-D
+clouds. Recorded in both CSV headers. **Maintainer question:** is C_f = 1 throughout expected for
+these configs, or is the leak channel silently disabled?
+
+**What this does NOT change.** The f_A side of `§15j` (band entry 13.9/53.5/74.8, thresholds
+1→4→12→24→64); `§15k`/SC-0 and its TERMINAL verdict (fa-side doses only); the Phase-5 fire map;
+the production default `none`; and the 2026-07-22 clause-1 *outcome* (f_mix retained as opt-in,
+nothing ships). What changes is the *evidentiary record* behind clause 1 — see X2.
+
+## 19. [data] X3 — the `§16` double-boost is BOUNDED OUT of the published fire map (no production edit needed), because no fire label ever came from the live trigger (2026-07-28, offline, no sims)
+
+**The question X3 asked.** `§16`'s fallback double-boost is now load-bearing (f_mix is a supported
+opt-in fallback), so either fix it — a trigger-path production edit carrying the full rule-5
+ladder — or bound its effect before quoting any fm fire threshold. **Outcome: bounded out; the
+production edit is NOT justified.** Reproduce with
+`python docs/dev/transition/pdv-trigger/data/make_bench_stale_segments.py`.
+
+**The mechanism, re-verified against source.** `run_energy_implicit_phase.py:1244-1247`: when
+`bubble_props is None` (a no-physical-root segment) the trigger reads `_Lcool` from
+`params['bubble_Lloss']` — already the effective, boosted loss written at `:930` — and passes it
+through `effective_Lloss_from_params` again, giving `fmix²·Lcool` under `multiplier`. The loop
+does **not** break on a no-root segment (it continues until `NO_ROOT_HANDOFF_STREAK = 50`, `:865`),
+so the trigger check at `:1296` — `(Lgain − Lloss)/Lgain < threshold`, i.e. trigger-θ > 0.95 — IS
+evaluated on that path. Confirmed: the bug is live and inflates the trigger's θ by exactly `fmix`
+on no-root segments. Note this `Lloss` is a **local** variable; it is never written back to
+`params`, so the harvested `theta` column does not carry it (Θ_cum is unaffected — consistent with
+`§17`).
+
+**Why it cannot have moved a published number.** `harvest_theta_max.py:95` sets
+`fired = meta_fired or (reached_momentum and theta_max >= 0.95)`, where `theta_max` is the max of
+the **single-boosted** recorded θ. Checked across all 120 bench5+bench6 arms: **0 carry a
+`cooling_balance` termination in metadata** (every `outcome` is `stopping_time`,
+`shell_collapsed`, or `shell_dissolved` — metadata records only the FINAL termination, and a run
+that fires then continues in the momentum phase ends as one of those). So `meta_fired` is False
+everywhere and **every fire label in the entire fire map, both knobs, is the inferred branch**,
+computed from θ_max rather than from the trigger event. A double-boost-induced early fire cannot
+manufacture a `FIRED` label on its own: the label still requires the recorded single-boost θ to
+cross 0.95 independently.
+
+**Residual exposure, and its direction.** The double-boost *can* still end the energy phase early,
+which truncates the trajectory and therefore the window θ_max and Θ_cum are measured over. That
+direction produces **false negatives (missed fires / short windows), not fm-flattering false
+fires** — the opposite of the bias `§17` worried about. No-root exposure in the fm PRODUCTION arms
+is small on the diffuse benches (bench1/bench2 0–1 stale rows of ~160–170, ≤1%; bench3 1–2 of
+64–164) and structurally large on the dense benches only because their production arms are 2–4
+rows total (they fire or collapse almost immediately). Per-arm counts:
+`data/bench_stale_segments.csv`.
+
+**Decision — do NOT apply `§16`'s fix candidate now.** It is a trigger-path production edit
+requiring the full rule-5 ladder (mode-`none`/f_A byte-identity + full-run equivalence on the
+stiffest regimes in separate processes), and it would change no published number: the default is
+`none` (where the re-application is the identity), SC-0 failed terminally so nothing ships, and
+the fm fire map is provably independent of the bug. `§16` stays registered as a live latent bug
+for whoever next runs `multiplier` arms **and reads the fire event from the run rather than from
+θ_max**. That is the condition under which it becomes load-bearing.
+
+**"fm8 false-fires", final re-read (X1 + X3).** The claim is **WITHDRAWN**. Its three supports all
+fail: the "Θ_cum ≈ 0.10" was the `§17` metric artifact (corrected: 0.77–0.90, `§18`); the
+fire-vs-band offset that remains is comparable to f_A's own benign bench3 pattern; and the
+double-boost that would have made fm fires suspect is bounded out above. The one real high-dose fm
+concern is bench3 fm8's Θ_cum = 4.635 — and `§18` shows that is itself 71% frozen no-root rows,
+i.e. a solver pathology, not a false fire.
+
+**Correction owed to the summary headers (`§17` gap e).** Since no arm recorded an actual
+`cooling_balance` termination, the "FIRE = the run actually fired the trigger (STRICTER than
+θ_max≥0.95)" wording in `SOURCE_TERM_DESIGN §3` and the harvest headers is **backwards**: the
+column IS θ_max≥0.95 (∧ reached_momentum). Corrected in place under X4.
+
+## 20. [data] X4 — honesty closures: the wind-only cap MEASURED (4–33%, wider than the 5–17% estimate), metric-2's slope half computed and PASSING but far flatter than L21b, gap (d) still open (2026-07-28, offline, no sims)
+
+Executes `SOURCE_TERM_DESIGN §3` **X4** / `§17` gaps (b)–(e). Reproduce with
+`python docs/dev/transition/pdv-trigger/data/make_bench5_analysis.py`.
+
+**(a) `L_leak` ≡ 0 — CLOSED as a recorded caveat.** Global max `|L_leak|` = 0.0 across all 120
+bench trajectories, so `leak_frac` = 0 everywhere and Phase-5 metric 6 (the Rogers & Pittard
+channel split) is **vacuous**. Recorded in `§18`, in both analysis-CSV headers, and below.
+TRINITY's loss here is 100% radiative vs R&P's 60–75% leakage in porous 3-D clouds — a mandatory
+paper caveat, not a modelling choice this campaign tested. **Open maintainer question: is C_f = 1
+throughout expected for these configs, or is the leak channel silently disabled?**
+
+**(b) The 3-Myr wind-only cap — IMPLEMENTED and measured.** New column `theta_cum_wind_only` in
+`bench5_analysis.csv` re-integrates Θ_cum with the spec's wind-only window (t ≤ 3 Myr, before the
+SNe ramp), alongside the uncapped `theta_cum_prefire`. **17 of 60 arms cross 3 Myr — all of them
+PRODUCTION arms that never fired and ran to `stop_t` = 5 Myr; not one diagnostic arm crosses**
+(max diag window end 0.86 Myr), so the *decision* metric is untouched. Measured shift where it
+bites: **4.3% – 33.1%** (bench1 fa16 +4.3%, bench2 __none +22.1%, bench4 __none +33.1%) — wider
+on both ends than `§17` gap (c)'s 5–17% estimate, which is hereby superseded. Capping always
+*raises* Θ_cum, because the post-3-Myr SNe ramp adds more to ∫L_mech than to ∫L_loss. **Quote
+`theta_cum_wind_only` for production arms.** bench6 needs no cap (all its Θ_cum arms are diag,
+max window end 0.86 Myr).
+
+**(c) Phase-5 metric 2 — the slope half COMPUTED, the Fig-17 half still open.** Metric 2 has two
+independent parts. The **fitted slope** `d log₁₀(1−θ)/d log₁₀(t)`, pass band [−1, 0] (L21b expects
+−0.5 from 1−Θ ∝ t^{−1/2}), needs nothing external and is now a column (`slope_1mtheta`):
+
+| bench | fa1 | fa4 | fa8 | fa16 |
+|---|---|---|---|---|
+| bench3 | −0.16 | −0.18 | −0.23 | −0.29 |
+| bench2 | −0.10 | −0.12 | −0.15 | −0.19 |
+| bench1 | −0.06 | −0.07 | −0.09 | −0.12 |
+
+**Verdict: PASSES the [−1, 0] band on every clean-blowout arm (59/60; only bench5 fa4 at −1.58
+falls out, a dense collapse-window arm), but sits well ABOVE L21b's −0.5** — TRINITY's 1−θ decays
+3–8× more slowly than the L21b power law, and the gap widens with decreasing density (bench1
+−0.06 vs bench3 −0.16). The slope steepens monotonically with f_A dose, i.e. the knob pushes in
+the right direction but nowhere near far enough. **This is a real fidelity gap that the Θ_cum band
+metric alone hides**, and it is new information for the paper's honest-fidelity statement.
+The matched-epoch dex offset against bench2's DIRECT Fig-17 track **remains open** — it needs the
+figure re-digitized (parent-ledger chore; the `§7b` ±0.2–0.3 dex anchors are eyeball-grade and
+`LANCASTER_REFERENCE.md:251` already forbids quantitative fits against them).
+**Metric 3 (α_p ∈ [1.2, 4]) is NOT computable offline**: the committed trajectories carry only
+`t_now, theta, Lcool, Lleak, Lmech, R2` — no shell momentum and no ṗ_w — so it needs either a
+re-harvest with `--extra-cols` or a re-run. Registered, not attempted.
+
+**(d) Nits — fixed.** `make_bench5_params.py` docstring said a 1% mapping gate while implementing
+2% (corrected in place, with the reason: Table-1's 2.5-pc rows carry a ~3.3%-implied rounding
+offset). `REPO = HERE.parents[3]` resolved to `docs/`, not the repo root, in BOTH
+`make_bench5_params.py:46` and `make_bench6_params.py:54` — fixed to `parents[4]`; it was masked
+by the editable install and would have broken a clean checkout. Both param sets still regenerate
+**byte-identically** (0 files changed) after the edits. The "FIRE = actually fired … STRICTER than
+θ_max≥0.95" wording is corrected in place wherever it appears (`FINDINGS §15e/§15h`,
+`SOURCE_TERM_DESIGN §3`, `PLAN.md` ×2) per `§19`. `compare_bench5_hpc.py`'s FIDELITY-OK verdict now
+states that it keys only on fire flips and is necessary-not-sufficient, instead of advising that
+the PROVISIONAL banner be dropped.

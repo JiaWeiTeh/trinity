@@ -67,8 +67,12 @@ def main():
     print(
         "verdict: "
         + (
-            "FIDELITY OK — fire map identical; quote the HPC numbers as "
-            "authoritative and drop the PROVISIONAL banner (§15h)."
+            "FIDELITY OK on the fire map — but this verdict keys ONLY on fire flips. It is a "
+            "NECESSARY, NOT SUFFICIENT check: Θ_cum, t_final and the trajectory shape can all "
+            "drift while every fire label holds (and the labels themselves are just "
+            "reached_momentum ∧ θ_max≥0.95 — FINDINGS §19). Read max |Δθ_max| above and compare "
+            "Θ_cum by hand before dropping the PROVISIONAL banner (§15h); the §15j fidelity call "
+            "was made that way, not from this line. [caveat added 2026-07-28, §17 gap (e)]"
             if not fire_flips
             else "DISAGREEMENT — HPC wins; update §15h fire map from the HPC summary "
             "and record the flip(s), dated."
