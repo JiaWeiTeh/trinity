@@ -60,7 +60,9 @@ def rows_prose(path, src):
             "cites": bool(CITATION.search(text)),
             "units": bool(UNITS.search(text)),
             "formula": bool(FORMULA.search(text)),
-            "text": " ".join(text.split())[:600],
+            # Full text, not a preview: Lens B sees only this, so a truncated
+            # docstring would hide claims (caught in the Phase 0e calibration).
+            "text": " ".join(text.split()),
             "code_at_line": " ".join(lines[hi : hi + 3][:1])[:200] if hi < len(lines) else "",
             "verdict": "",
         }
