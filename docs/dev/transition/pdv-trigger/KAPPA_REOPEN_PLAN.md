@@ -274,3 +274,40 @@ timeout and treat a wall-kill as a recorded non-compliance (G3), not a silent dr
 The scientific risk is **P2**: f_κ may turn out to be the most *uniform* knob whose required doses are
 simultaneously *unreachable*. That would be a real result, not a failure — and it is the reason G5 exists, so
 the write-up cannot quietly report the uniformity number without the reachability number beside it.
+
+---
+
+## 8. Next-chat handoff (2026-07-29)
+
+**Branch** `feature/pdv-trigger-5` @ `db353aa1`. **Do NOT branch from `origin/main`** — main lags the whole
+07-19 → 07-29 close-out. Everything is durable in git; re-derive from the docs + committed CSVs, never from
+chat memory.
+
+**State.** K0 is DONE and committed (`FINDINGS §24`, `data/kappa_eq47_check.csv`). K1–K4 are pre-registered
+here and **not run**. No production change; default is still `cooling_boost_mode='none'`, f_κ = 1.0.
+`pytest` is green except one pre-existing failure in a different workstream
+(`test_docs_dev_conventions.py::test_banners[rosette-cf/figs/README.md]`, fails identically at HEAD — leave it).
+
+**The one thing blocking execution: the §6.0 ruling.** Three calls, in priority order:
+   (a) the K1 dose grid `{2,3,4,6,8,12,16,24,32}` — accept / trim / extend;
+   (b) K1b's 12 dense arms — worth the slots, or drop;
+   (c) K4's 8 f_mix arms riding along — **recommended yes** (without them the three-way comparison keeps an
+       extrapolated leg, and P5 is the cheapest of the five predictions to settle).
+Once ruled: write `runs/make_kappa_reopen_params.py` (model it on `runs/make_bench6_params.py`, self-gating per
+G1), then follow §6.1 → §6.5. **Do not write the generator before the ruling** — it is thrown away if (a) moves.
+
+**Standing maintainer questions, still open** (none block K1–K4):
+ - **Q1** clause-1 grounds — re-derive from the in-ODE structural asymmetry, or withdraw the framing?
+   (`PLAN.md` consistency item 1; the registry info strings wait on it.)
+ - **Q2** is `C_f = 1` / `L_leak ≡ 0` expected for the bench configs, or is the leak channel silently
+   disabled? (`FINDINGS §18`, `§20`.)
+ - **Q3** frozen-row Θ_cum — exclude no-root rows, or carry an uncertainty band? Moves f_A-side numbers too.
+   (`PLAN.md` item 6.) **K1 sidesteps this by reporting both variants** (§4), but the published f_A/f_mix
+   numbers still need the ruling.
+ - **Q5** land the `§16` fallback double-boost fix before the rosette-cf 72-dictionary reduction?
+   (`PLAN.md` item 2; `§21` showed 1/36 rosette fm4 fires is bug-dependent.)
+ - *(Q4 — the fm{12,16} arms — is no longer separate; it is **K4** here.)*
+
+**Also queued, independent of this campaign:** `PLAN.md` items 8 (rebuild the f_A rationale after `§23`
+voided its Eq-47 leg) and 9 (the area-faithful successor — the discriminating experiment, first pass needs
+no new sims).
