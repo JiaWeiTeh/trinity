@@ -16,9 +16,12 @@ it does not gate. Two honest limits, both visible in the output:
   * `unstamped` is not the same as `old`. Some artifacts predate _stamp.py or are hand-made (params,
     HPC harvests copied by hand); they get status `UNSTAMPED` and a git-commit date instead, which
     only UPPER-bounds their age — see the _stamp.py docstring for why that distinction matters.
-  * `+dirty` in the code field means the working tree had uncommitted edits when the artifact was
-    made, so it may not be reproducible from any commit. Those are flagged separately: a FRESH
-    artifact built from a dirty tree is fresh but not yet reproducible.
+  * `+dirty` is reported but is NOT treated as "unreproducible" on its own. `_stamp.py` calls
+    `git status --porcelain` from inside the open file handle, so a builder that overwrites its own
+    tracked output has already dirtied the tree by the time it stamps — every in-place regeneration
+    is `+dirty`, including ones from an otherwise clean checkout. What is actually checkable is the
+    `code` sha: `at HEAD` means the artifact was built from the commit you are sitting on, `behind
+    HEAD` means the code has moved since. Read the two columns together.
 """
 
 import csv
@@ -32,6 +35,13 @@ HERE = Path(__file__).resolve().parent
 PDV = HERE.parent
 ROOTS = [HERE, PDV / "runs" / "data"]
 STAMP_RE = re.compile(r"^#\s*generated\s+(\S+)\s*\|\s*builder\s+(\S+)\s*\|\s*code\s+(\S+)")
+
+
+def _head():
+    r = subprocess.run(
+        ["git", "-C", str(PDV), "rev-parse", "--short", "HEAD"], capture_output=True, text=True
+    )
+    return r.stdout.strip()
 
 
 def _git_date(path):
@@ -59,6 +69,7 @@ def audit(path, cutoff):
 
 
 def main(argv):
+    head = _head()
     cutoff = argv[0] if argv else dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d")
     rows = []
     for root in ROOTS:
@@ -71,11 +82,12 @@ def main(argv):
                     "builder": builder,
                     "code": code,
                     "status": status,
-                    "reproducible": (
+                    "code_vs_HEAD": (
                         ""
                         if not code
-                        else ("no — built from a dirty tree" if code.endswith("+dirty") else "yes")
+                        else ("at HEAD" if code.split("+")[0] == head else f"behind HEAD ({head})")
                     ),
+                    "tree_dirty": "" if not code else ("yes" if code.endswith("+dirty") else "no"),
                 }
             )
 
@@ -89,9 +101,11 @@ def main(argv):
             f"# freshness audit, cutoff {cutoff}: FRESH = the artifact's own generation stamp is on "
             "or after the cutoff; OLD = before it; UNSTAMPED = no stamp line, so the date shown is "
             "the git COMMIT date, which only UPPER-bounds the artifact's age (see _stamp.py).\n"
-            "# 'reproducible' reads the +dirty marker: a FRESH artifact built from a dirty tree is "
-            "current but not reproducible from any commit — regenerate it from a clean tree before "
-            "it is quoted.\n"
+            f"# code_vs_HEAD compares the artifact's recorded commit against HEAD ({head}) — 'at "
+            "HEAD' means it was built from the code you are sitting on. tree_dirty just reports the "
+            "+dirty marker and is NOT on its own a reproducibility problem: _stamp.py checks git "
+            "status from inside the open output file, so any builder overwriting its own tracked "
+            "output reads as dirty even from a clean checkout.\n"
             "# Regenerate: python docs/dev/transition/pdv-trigger/data/make_freshness_audit.py "
             "[YYYY-MM-DD]\n"
         )
@@ -107,12 +121,12 @@ def main(argv):
     if fresh:
         print(f"\nFRESH (generated on/after {cutoff}):")
         for r in fresh:
-            print(f"  {r['generated']}  {r['artifact']:<58s} {r['reproducible']}")
-    dirty = [r for r in fresh if r["reproducible"].startswith("no")]
-    if dirty:
+            print(f"  {r['generated']}  {r['artifact']:<58s} {r['code_vs_HEAD']}")
+    behind = [r for r in fresh if r["code_vs_HEAD"].startswith("behind")]
+    if behind:
         print(
-            f"\n⚠️  {len(dirty)} fresh artifact(s) were built from a DIRTY tree — current, but not "
-            "reproducible from a commit. Regenerate from a clean tree before quoting."
+            f"\n⚠️  {len(behind)} fresh artifact(s) were built from a commit that is not HEAD — "
+            "regenerate them so the data matches the code being read."
         )
     print(f"\nwrote {len(rows)} rows -> {out}")
     return 0
