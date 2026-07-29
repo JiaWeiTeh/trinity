@@ -2517,14 +2517,20 @@ means it did not. The targets are not relaxed in either direction — that is th
 
 **A new receipt: `data/make_freshness_audit.py` → `data/freshness_audit.csv`.** Walks every committed CSV
 under `data/` and `runs/data/`, reads each file's own stamp, and classifies it FRESH / OLD / UNSTAMPED against
-a cutoff. Two honesty properties are built in. `UNSTAMPED` is reported separately from `OLD`: an unstamped
-file falls back to its git *commit* date, which only upper-bounds its age. And the reproducibility column
-compares the artifact's recorded commit against **HEAD** rather than trusting the `+dirty` marker — because
-`_stamp.py` reads `git status` from inside the already-open output file, **every** in-place regeneration
-records `+dirty`, even from a spotless checkout, so a dirty-based flag would fire on everything and be
-learned-ignored within a day. `tree_dirty` is still reported, just not treated as a verdict. Baseline before
-any arm has run: **FRESH 4, OLD 18, UNSTAMPED 262** — the 262 are mostly the per-arm trajectory CSVs, which
-is exactly the hole the new `harvest_bench5.py` stamp closes on the next reduce.
+a cutoff. Baseline before any arm has run: **FRESH 4, OLD 18, UNSTAMPED 262** — the 262 are mostly the
+per-arm trajectory CSVs, which is exactly the hole the new `harvest_bench5.py` stamp closes on the next
+reduce.
+
+Two things it deliberately does **not** do, both learned by getting them wrong first. It does not fold
+`UNSTAMPED` into `OLD` — an unstamped file falls back to its git *commit* date, which only upper-bounds its
+age, and conflating the two would overstate what is known. And it passes **no verdict on reproducibility**,
+because both obvious ways to do that are false alarms: `_stamp.py` reads `git status` from inside the
+already-open output file, so **every** in-place regeneration records `+dirty` even from a spotless checkout;
+and an artifact always names the commit *before* the one that commits it, so a commit-vs-HEAD check is red
+for correct work too. Both were implemented, observed firing on all four freshly-regenerated CSVs, and
+removed. The genuine staleness question — *did the builder change after its output?* — is already answered
+properly by `MANIFEST.md`'s ⚠️ STALE-RISK flag, so the audit points there and sticks to *when was this
+measured?*
 
 **The run order is now written down** (`KAPPA_REOPEN_PLAN.md §6.2`): baselines first (`bench5r`, `bench6r`),
 bench7 concurrently, one `reduce`+`down` each, then the four re-derive commands and the freshness audit. If
