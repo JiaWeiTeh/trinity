@@ -34,6 +34,8 @@ FIGURES = {
                        "PdV/Lmech per config: normal clouds sub-critical near 0.45, the 5e9 above 1"),
     "__FIG_DOUBLE__": ("storyline_figs/fig_doublecount.png",
                        "single-count line vs the forbidden double-count region, with the max-closure and MC draws"),
+    "__FIG_ZONES__": ("zone_profiles.png",
+                      "T and n vs depth below R2 for L1/L2/L3, three configs, and where L_cool is emitted"),
     "__FIG_FKDEF__": ("fkappa_definition.png",
                       "the Spitzer conductivity f_kappa multiplies; Mdot ~ f_kappa^(2/7) verified"),
     "__FIG_FABOOST__": ("fA_source_boost.png",
@@ -95,6 +97,13 @@ EQS = {  # token -> phase6_eq_<key>.svg (alt = readable TeX)
     "__EQ_DOUBLEBOOST__": ("doubleboost", "L_loss^fallback = f_mix(f_mix L_cool) = f_mix^2 L_cool"),
     "__EQ_FIRED__": ("fired", "fired = meta_fired OR (reached_momentum AND theta_max >= 0.95)"),
     "__EQ_EXTRAP__": ("extrap", "p = ln(Theta1/Theta0)/ln(d1/d0); d_band = d1 (0.90/Theta1)^(1/p)"),
+    "__EQ_FK1__": ("fk_site1", "Mdot_seed = (12/75) xi^(5/2) 4pi R2^3/t (mu_ion/kB)(t f_kappa C_th/R2^2)^(2/7) Pb^(5/7) => Mdot ~ f_kappa^(2/7)"),
+    "__EQ_FK2__": ("fk_site2", "dR2 = T_init^(5/2)/(C Mdot/(4pi R2^2)), C = (25/4) kB/(mu_ion f_kappa C_th) => dR2 ~ f_kappa"),
+    "__EQ_FK3__": ("fk_site3", "d2T/dr2 = Pb/(f_kappa C_th T^(5/2))[(beta+5delta/2)/t + (5/2)(v-v_t)(1/T)dT/dr - udot/Pb] - (5/2T)(dT/dr)^2 - (2/r)dT/dr"),
+    "__EQ_FA1__": ("fa_site1", "udot -> f_A udot if T < 10^5.5 K, inside the ODE RHS"),
+    "__EQ_FA2__": ("fa_site2", "L2 -> f_A L2, L3 -> f_A L3; L1 and L_leak untouched"),
+    "__EQ_INTEGRAND__": ("integrand", "L1 = int chi_e n^2 Lambda_CIE(T) 4pi r^2 dr; L2,3 = int udot_net(n,T,phi) 4pi r^2 dr"),
+    "__EQ_NDENS__": ("ndens", "n(r) = Pb/((mu_conv/mu_ion) kB T(r)); n ~ 1/T at near-uniform Pb"),
     "__EQ_SC0__": ("sc0", "C1 El-Badry, C2 Lancaster Eq 11, C3 fitted f_A = 315 nbar^-0.335"),
 }
 
@@ -202,15 +211,46 @@ violation of this contract on one code path.</figcaption></figure>
 all <code>exclude_from_snapshot</code>). The bubble's radiative loss splits by temperature zone,</p>
 __EQ_COOLSPLIT__
 <p>with L₁ the hot CIE interior (volume emission), and L₂+L₃ the thin conduction front draped on the contact
-discontinuity at R₂ — the layer where n ∝ 1/T peaks the emissivity n²Λ(T):</p>
+discontinuity at R₂:</p>
 __EQ_LAYOUT__
+<p>Pressure is ≈uniform across the subsonic interior, so the solver sets the density directly from the
+temperature — which is why the front is dense and its emissivity n²Λ(T) per unit volume is highest:</p>
+__EQ_NDENS__
+<p>and what each zone actually integrates is:</p>
+__EQ_INTEGRAND__
+
+<div class="warn"><b>&#9888; CORRECTED 2026-07-28 (FINDINGS §22) — the front is NOT where most of the radiation
+comes from.</b> Earlier versions of this report said L₂+L₃ is "where nearly all the radiation emerges" and that
+L₁ is "hot and rarefied → weak cooling". <b>Measured, that is backwards.</b> Averaged over the accepted rows of
+all 14 committed <code>__none</code> arms (<code>runs/data/bench_state_traj/</code>, from the solver's own
+<code>bubble_L2Conduction</code>/<code>bubble_L3Intermediate</code> against <code>bubble_LTotal</code>):
+<b>L₁ = 60–77%, L₂ = 15–34%, L₃ = 1–25%</b> (typically ≈70 / 26 / 2). The front's emissivity per unit volume
+really is orders of magnitude higher — but it is ~10⁵× thinner, and the interior's sheer volume wins. So
+f<sub>A</sub>, which scales only L₂+L₃, starts with a lever on about a quarter of the cooling (its share grows
+with dose — by f<sub>A</sub>=16 the boosted L₂+L₃ dominates the total). This changes no published Θ<sub>cum</sub>
+or fire number — those are measured from L<sub>loss</sub>, not from this decomposition — but it corrects the
+physical story used to motivate the knob.</div>
+
+<figure>__FIG_ZONES__<figcaption><b>The zone anatomy, measured.</b> <code>data/zone_profiles.csv</code>, built by
+<code>data/make_zone_profiles.py</code> — captured live from the solver at the 3rd settled energy-phase
+evaluation, f<sub>A</sub>=1, for the dense/mid/diffuse benches. <b>Top:</b> T climbs from 10⁴ K at the contact
+discontinuity to ~3×10⁷ K in the interior; the dashed line is the 10<sup>5.5</sup> K CIE switch defining the
+L₁/L₂ boundary. <b>Middle:</b> n mirrors it exactly (nT constant to &lt;1% across all three zones), ~5×10⁵ cm⁻³
+at the front down to ~10² cm⁻³ inside. <b>Bottom:</b> cumulative fraction of L<sub>cool</sub> emitted going
+inward from R₂ — it only reaches ≈0.3 by the end of L₂, so <b>~70% of the cooling comes from L₁</b>. The x-axis
+is depth below R₂ on a log scale spanning ~10 decades: L₂+L₃ occupy the outermost ~10⁻⁷ pc, which is why they
+are invisible on any linear-radius plot.</figcaption></figure>
 
 <h3>2.1 f<sub>κ</sub> — <code>cooling_boost_kappa</code>: multiply the conduction coefficient (in-solve)</h3>
 __EQ_FKAPPA__
-<p>Three edit sites, all on the Spitzer coefficient <code>C_thermal</code> in
-<code>bubble_luminosity.py</code>: the dMdt seed (Weaver Eq 33, <code>:304</code>), the conduction-layer ICs
-(Weaver Eq 44, <code>:398</code>), and the structure-ODE right-hand side (Weaver Eqs 42–43, <code>:441</code>).
-It does <b>not</b> multiply L<sub>cool</sub> — it thickens the conduction layer so more gas sits where Λ(T) peaks,
+<p>It enters at three places in <code>bubble_luminosity.py</code>, always through the same product
+f<sub>κ</sub>·C_thermal. Written out in full:</p>
+__EQ_FK1__
+__EQ_FK2__
+__EQ_FK3__
+<p>(ξ is the dMdt factor, β/δ the cooling exponents, v<sub>t</sub> = α r/t the similarity velocity, u̇ the net
+radiative source.) Site 1 is precisely why evaporation <b>rises</b> with f<sub>κ</sub>; site 3 is where the
+conductivity divides the entire temperature-curvature term. It does <b>not</b> multiply L<sub>cool</sub> — it thickens the conduction layer so more gas sits where Λ(T) peaks,
 and θ emerges as an output. Side effect that killed it as the final model: the evaporative flux
 <b>rises</b> (Ṁ ∝ f<sub>κ</sub><sup>2/7</sup>, measured 1.2175 vs analytic 1.219 at f<sub>κ</sub>=2) — the
 opposite sign to El-Badry's Eq 47. No validator; <code>'auto'</code> resolves a trilinear lookup on the 819-run
@@ -238,10 +278,11 @@ essentially by construction. The advertised θ<sub>max</sub>&lt;1 ceiling in its
 
 <h3>2.4 f<sub>A</sub> — <code>cooling_boost_fA</code>: multiply the interface source term (in-solve + integrals)</h3>
 __EQ_FA__
-<p>Two edit sites in <code>bubble_luminosity.py</code>: inside the ODE right-hand side the net radiative
-<code>dudt</code> is scaled only where T &lt; 10<sup>5.5</sup> K (<code>:435–437</code>,
-<code>_T_INTERFACE_BAND</code> at <code>:65</code>), and the resolved L₂/L₃ component integrals are scaled to
-match (<code>:845–848</code>; L₁ and L<sub>leak</sub> deliberately untouched). Because site 1 is inside both the
+<p>Its two edit sites in <code>bubble_luminosity.py</code>, written out:</p>
+__EQ_FA1__
+__EQ_FA2__
+<p>The band edge is <code>_T_INTERFACE_BAND</code> at <code>:65</code>. Site 1's u̇ is the same u̇ that appears
+inside f<sub>κ</sub>'s site-3 equation above — that is exactly why the structure responds. Because site 1 is inside both the
 dMdt root-find and the profile integration, the structure <b>responds</b>: the interface gets cooler and denser,
 and the evaporative flux <b>falls</b> — the El-Badry Eq-47 sign, measured across theta5s (FINDINGS §15e).
 Validated (<code>registry.py:117–148</code>: raises on f<sub>A</sub>≤0, warns on cross-knob combination);

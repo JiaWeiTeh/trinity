@@ -520,6 +520,13 @@ EQUATIONS = {
     "elbadry": r"$\theta_{\rm EB}(n) = \frac{A_{\rm mix}\sqrt{\lambda\delta v\; n}}{\frac{11}{5} + A_{\rm mix}\sqrt{\lambda\delta v\; n}}\,, \qquad A_{\rm mix}{=}3.5\,,\ \lambda\delta v{=}3\ \mathrm{pc\,km/s}\,,\ n_{\rm fire}(\theta{=}0.95) \approx 48\ \mathrm{cm^{-3}}$",
     "eq47": r"$\dot{m} = \dot{m}_0\,\frac{(1-\theta)^{37/35}}{\theta^{2/7}}\qquad \mathrm{(El\!-\!Badry\ Eq\ 47{:}\ evaporation\ FALLS\ as\ cooling\ rises)}$",
     "thetatarget": r"$L_{\rm loss} = \max\left(L_{\rm cool}+L_{\rm leak},\ \theta_t\,L_{\rm mech}\right) \qquad \mathrm{(single{-}count\ top{-}up{:}\ inert\ where\ resolved\ loss\ exceeds\ target)}$",
+    "fk_site1": r"$\mathrm{site\ 1\ (:304,\ Weaver\ Eq\ 33)\!:}\quad \dot{M}_{\rm seed} = \frac{12}{75}\,\xi^{5/2}\,\frac{4\pi R_2^{3}}{t}\,\frac{\mu_{\rm ion}}{k_B}\left(\frac{t\,f_\kappa C_{\rm th}}{R_2^{2}}\right)^{2/7} P_b^{5/7}\ \ \Rightarrow\ \ \dot{M}\propto f_\kappa^{2/7}$",
+    "fk_site2": r"$\mathrm{site\ 2\ (:398,\ Weaver\ Eq\ 44)\!:}\quad dR_2 = \frac{T_{\rm init}^{5/2}}{\mathcal{C}\,\dot{M}/(4\pi R_2^{2})}\,, \qquad \mathcal{C} = \frac{25}{4}\frac{k_B}{\mu_{\rm ion}\,f_\kappa C_{\rm th}}\ \ \Rightarrow\ \ dR_2 \propto f_\kappa$",
+    "fk_site3": r"$\mathrm{site\ 3\ (:441,\ Weaver\ Eqs\ 42\!-\!43)\!:}\quad \frac{d^{2}T}{dr^{2}} = \frac{P_b}{f_\kappa C_{\rm th}T^{5/2}}\left[\frac{\beta + \frac{5}{2}\delta}{t} + \frac{5}{2}(v-v_t)\frac{1}{T}\frac{dT}{dr} - \frac{\dot{u}}{P_b}\right] - \frac{5}{2T}\left(\frac{dT}{dr}\right)^{2} - \frac{2}{r}\frac{dT}{dr}$",
+    "fa_site1": r"$\mathrm{site\ 1\ (:435\!-\!437,\ in\ the\ ODE\ RHS)\!:}\quad \dot{u} \longrightarrow f_A\,\dot{u} \quad \mathrm{if}\ T < 10^{5.5}\,\mathrm{K}\qquad \mathrm{(enters}\ d^{2}T/dr^{2}\ \mathrm{above)}$",
+    "fa_site2": r"$\mathrm{site\ 2\ (:845\!-\!848,\ on\ the\ integrals)\!:}\quad L_2 \longrightarrow f_A L_2\,, \quad L_3 \longrightarrow f_A L_3\,, \quad L_1\ \mathrm{and}\ L_{\rm leak}\ \mathrm{untouched}$",
+    "integrand": r"$L_1 = \int \chi_e\,n^{2}\Lambda_{\rm CIE}(T)\,4\pi r^{2}\,dr \quad (\mathrm{:746})\,, \qquad L_{2,3} = \int \dot{u}_{\rm net}(n,T,\phi)\,4\pi r^{2}\,dr \quad (\mathrm{:793,\ :835})$",
+    "ndens": r"$n(r) = \frac{P_b}{(\mu_{\rm conv}/\mu_{\rm ion})\,k_B\,T(r)} \quad (\mathrm{:673}) \qquad \Rightarrow \qquad n \propto 1/T \ \ \mathrm{at\ near\!-\!uniform}\ P_b$",
     "sc0": r"$\mathrm{C1\ El\!-\!Badry:}\quad f_A = \theta_{\rm EB}(\lambda\delta v,\, n_{\rm amb})"
     r"\cdot \frac{L_{\rm mech}}{L_2+L_3}$"
     "\n"

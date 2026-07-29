@@ -2217,3 +2217,47 @@ falsified), the f_κ/f_mix/f_A eras, the §17–§20 corrections, the ship list,
 plan. `ELBADRY_THETA_STORY.html`, `phase6_brief.html`, and the 2026-07-03 generator are
 preserved under `docs/dev/to-be-removed/`. Fixed in passing: FINDINGS §8's walkthrough pointer
 (the story's figures are `story_elbadry_f*.png` in the workstream root, never `fig/elbadry_f*`).
+
+## 22. [data] The L1/L2/L3 zone profiles, measured — and the front is NOT where most of the cooling comes from: L1 ≈ 70%, L2 ≈ 26%, L3 ≈ 2% (2026-07-28, offline + 3 short probe runs)
+
+**Provenance.** New harness `data/make_zone_profiles.py` (same monkeypatch pattern as
+`make_zone_resolution.py`): run the committed dense/mid/diffuse `__none` bench params, capture the
+3rd settled energy-phase evaluation, early-exit. Each zone is integrated twice by
+`bubble_luminosity` — once for luminosity, once for `r²·T` — so patching `_trapezoid` yields both
+the emission integrand dL/dr and T(r) on each zone's own grid. Density is EXACT, not inferred: the
+solver sets `n = Pb/((mu_convert/mu_ion)·k_B·T)` (`bubble_luminosity.py:673`). Deliverables:
+`data/zone_profiles.csv` (2700 rows) + `zone_profiles.png`, both committed.
+
+**The profiles.** T climbs from 10⁴ K at the contact discontinuity to ~3×10⁷ K in the interior;
+n mirrors it exactly (nT constant to <1% across all three zones — near-uniform Pb), from
+~5×10⁵ cm⁻³ at the front to ~10² cm⁻³ inside. The zones tile continuously in both T and n:
+L3 [10⁴, 3×10⁴] → L2 [3×10⁴, 10^5.5] → L1 [10^5.5, 3×10⁷]. Radially, L2+L3 occupy the outermost
+~10⁻⁷ pc against L1's ~0.028 pc — invisible on any linear-radius axis, hence the log-depth plot.
+
+**⛔ THE FINDING — the workstream's §1 anatomy claim is backwards.** The reports have said
+L2+L3 is "where nearly all the radiation emerges" and L1 is "hot and rarefied → weak cooling".
+Measured, **L1 dominates**. Two independent routes agree:
+(1) the cumulative dL/dr reconstruction above reaches only ≈0.3 by the end of L2;
+(2) the solver's OWN recorded components (`runs/data/bench_state_traj/`, `bubble_L2Conduction` and
+`bubble_L3Intermediate` against `bubble_LTotal`, averaged over accepted rows of all 14 `__none`
+arms) give **L1 = 60–77%, L2 = 15–34%, L3 = 1–25%**, typically ≈70/26/2. Per-arm extremes:
+bench1_diffuse 0.659/0.331/0.010; bench5_dense 0.602/0.148/0.250; small_dense_highsfe
+0.639/0.344/0.017.
+
+The emissivity argument is not wrong — the front's n²Λ(T) per unit volume *is* orders of magnitude
+higher — but the front is ~10⁵× thinner, and the interior's volume wins. **Consequence for f_A:**
+it scales only L2+L3, so at f_A=1 it has a lever on ~a quarter of the cooling. That share grows
+with dose (by f_A≈16 the boosted L2+L3 dominates), so the knob still works — but the
+"L2+L3 is where the radiation is" motivation is not the reason, and it should stop being quoted.
+**No published Θ_cum, band-entry or fire number changes** — those are measured from `bubble_Lloss`,
+never from this decomposition.
+
+**Open, related (from the 2026-07-28 f_A-vs-evaporation discussion, not yet resolved).** If f_A is
+motivated as a fractal-AREA factor (A_eff = f_A·4πR₂²), a faithful implementation would scale the
+whole interface budget — conduction, evaporation and radiation together — and evaporation would
+RISE with dose. The shipped f_A scales only the radiative side and measures a weak *fall*
+(dMdt ratio 0.988 at f_A=2 → 0.857 at f_A=32, `theta5s_dmdt_suppression.csv`), justified by
+El-Badry Eq 47 — which is a statement about radiative efficiency at fixed conducted flux, not
+about area. Registered for the maintainer; a candidate successor design (an area-faithful knob,
+predicting dMdt ↑ with dose, testable against the existing theta5s baseline without new sims)
+belongs in `SOURCE_TERM_DESIGN.md §4` if pursued.

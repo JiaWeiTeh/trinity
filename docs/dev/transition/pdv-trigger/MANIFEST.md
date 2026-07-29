@@ -12,22 +12,24 @@
 > are exact; stamp-less artifacts predate the convention (2026-07-02) — for those, only
 > the commit date is known. **Every new/edited builder must write the stamp.**
 
-739 artifacts · 1 stale-risk · 1 untracked · 18 stamped 🕐
+742 artifacts · 2 stale-risk · 3 untracked · 18 stamped 🕐
 
 | last updated (commit) | artifact | producer / flags |
 |---|---|---|
 | 2026-07-28 `0493f630` | `data/bench5_analysis.csv` | by `make_bench5_analysis.py` |
 | 2026-07-28 `0493f630` | `data/bench6_analysis.csv` | by `make_bench6_analysis.py` |
 | 2026-07-28 `0493f630` | `data/bench_stale_segments.csv` | by `make_bench_stale_segments.py` |
-| 2026-07-28 `b38aa74c` | `phase6_fig1_correction.png` | producer unknown (HPC/hand-made); refs: `make_phase6_figures.py` |
-| 2026-07-28 `b38aa74c` | `phase6_fig2_headtohead.png` | producer unknown (HPC/hand-made); refs: `make_phase6_figures.py` |
-| 2026-07-28 `b38aa74c` | `phase6_fig3_uniformity.png` | producer unknown (HPC/hand-made); refs: `make_phase6_figures.py` |
-| 2026-07-28 `b38aa74c` | `phase6_fig4_stale.png` | producer unknown (HPC/hand-made); refs: `make_phase6_figures.py` |
-| 2026-07-28 `b38aa74c` | `phase6_fig5_windcap.png` | producer unknown (HPC/hand-made); refs: `make_phase6_figures.py` |
-| 2026-07-28 `b38aa74c` | `phase6_fig6_slope.png` | producer unknown (HPC/hand-made); refs: `make_phase6_figures.py` |
-| 2026-07-28 `b38aa74c` | `phase6_fig7_mechanism.png` | producer unknown (HPC/hand-made); refs: `make_phase6_figures.py` |
+| 2026-07-28 `dd9b4caa` | `data/rosette_fm4_doubleboost_check.csv` | by `make_rosette_fm4_doubleboost_check.py` |
+| 2026-07-28 `dd9b4caa` | `pdvtrigger_report.html` | by `make_pdvtrigger_report.py` |
+| 2026-07-28 `b38aa74c` | `phase6_fig1_correction.png` | producer unknown (HPC/hand-made); refs: `make_phase6_figures.py`, `make_pdvtrigger_report.py` |
+| 2026-07-28 `b38aa74c` | `phase6_fig2_headtohead.png` | producer unknown (HPC/hand-made); refs: `make_phase6_figures.py`, `make_pdvtrigger_report.py` |
+| 2026-07-28 `b38aa74c` | `phase6_fig3_uniformity.png` | producer unknown (HPC/hand-made); refs: `make_phase6_figures.py`, `make_pdvtrigger_report.py` |
+| 2026-07-28 `b38aa74c` | `phase6_fig4_stale.png` | producer unknown (HPC/hand-made); refs: `make_phase6_figures.py`, `make_pdvtrigger_report.py` |
+| 2026-07-28 `b38aa74c` | `phase6_fig5_windcap.png` | producer unknown (HPC/hand-made); refs: `make_phase6_figures.py`, `make_pdvtrigger_report.py` |
+| 2026-07-28 `b38aa74c` | `phase6_fig6_slope.png` | producer unknown (HPC/hand-made); refs: `make_phase6_figures.py`, `make_pdvtrigger_report.py` |
+| 2026-07-28 `b38aa74c` | `phase6_fig7_mechanism.png` | producer unknown (HPC/hand-made); refs: `make_phase6_figures.py`, `make_pdvtrigger_report.py` |
 | 2026-07-25 `f8d903b8` | `data/fa_state_screen.csv` | by `make_fa_state_screen.py` |
-| 2026-07-25 `c4423bc3` | `fa_state_screen.png` | producer unknown (HPC/hand-made); refs: `make_fa_state_figures.py` |
+| 2026-07-25 `c4423bc3` | `fa_state_screen.png` | producer unknown (HPC/hand-made); refs: `make_fa_state_figures.py`, `make_pdvtrigger_report.py` |
 | 2026-07-25 `400a73ff` | `runs/data/bench_state_traj/be_sphere__none.csv` | — (hand-made/HPC, unreferenced) |
 | 2026-07-25 `f8d903b8` | `runs/data/bench_state_traj/bench1_m5e4_r20__none_diag.csv` | — (hand-made/HPC, unreferenced) |
 | 2026-07-25 `f8d903b8` | `runs/data/bench_state_traj/bench2_m1e5_r10__none_diag.csv` | — (hand-made/HPC, unreferenced) |
@@ -43,8 +45,8 @@
 | 2026-07-25 `f8d903b8` | `runs/data/bench_state_traj/small_1e6__none.csv` | — (hand-made/HPC, unreferenced) |
 | 2026-07-25 `f8d903b8` | `runs/data/bench_state_traj/small_dense_highsfe__none.csv` | — (hand-made/HPC, unreferenced) |
 | 2026-07-25 `f8d903b8` | `runs/data/sc0_state_summary.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-25T16:57:36Z | builder harvest_bench5.py | code 400a73f+dirty |
-| 2026-07-24 `6418992d` | `data/zone_resolution.csv` | by `make_zone_resolution.py` |
-| 2026-07-19 `f80fa633` | `bench5_theta_tracks.png` | producer unknown (HPC/hand-made); refs: `make_bench5_analysis.py` |
+| 2026-07-24 `6418992d` | `data/zone_resolution.csv` | by `make_zone_resolution.py` · ⚠️ STALE-RISK: builder newer (make_zone_resolution.py 2026-07-28) — regenerate or justify |
+| 2026-07-19 `f80fa633` | `bench5_theta_tracks.png` | producer unknown (HPC/hand-made); refs: `make_bench5_analysis.py`, `make_pdvtrigger_report.py` |
 | 2026-07-19 `88a4738a` | `data/theta5s_collapse_law.csv` | producer unknown (HPC/hand-made); refs: `make_theta5s_analysis.py` · 🕐 generated 2026-07-19T11:08:03Z | builder make_theta5s_analysis.py | code 075c73b+dirty |
 | 2026-07-19 `88a4738a` | `data/theta5s_fire_map.csv` | producer unknown (HPC/hand-made); refs: `make_fa_state_screen.py`, `make_theta5s_analysis.py` · 🕐 generated 2026-07-19T11:08:03Z | builder make_theta5s_analysis.py | code 075c73b+dirty |
 | 2026-07-19 `591e5e40` | `runs/data/bench5_summary_hpc.csv` | producer unknown (HPC/hand-made); refs: `compare_bench5_hpc.py`, `make_bench5_analysis.py` · 🕐 generated 2026-07-19T10:48:17Z | builder harvest_bench5.py | code 89e802dd+dirty |
@@ -221,7 +223,7 @@
 | 2026-07-14 `a0c1a57f` | `data/kmix_theta_trajectory.csv` | by `make_kmix_theta_trajectory.py` |
 | 2026-07-14 `a0c1a57f` | `data/kmix_theta_trajectory_summary.csv` | by `make_kmix_theta_trajectory.py` |
 | 2026-07-14 `a0c1a57f` | `data/live_pdv_decomp.csv` | by `make_live_pdv_decomp.py` |
-| 2026-07-14 `a0c1a57f` | `data/newcode_default_vs_theta.csv` | producer unknown (HPC/hand-made); refs: `make_elbadry_story_figs.py` |
+| 2026-07-14 `a0c1a57f` | `data/newcode_default_vs_theta.csv` | producer unknown (HPC/hand-made); refs: `make_elbadry_story_figs.py`, `make_pdvtrigger_report.py` |
 | 2026-07-14 `a0c1a57f` | `data/nmap_verify.csv` | by `make_nmap_verify.py` |
 | 2026-07-14 `a0c1a57f` | `data/pdv_combined_trigger.csv` | producer unknown (HPC/hand-made); refs: `make_combined_trigger_table.py`, `make_ebpeak_8config_xcheck.py` |
 | 2026-07-14 `a0c1a57f` | `data/pdv_regime_budget.csv` | producer unknown (HPC/hand-made); refs: `make_ebpeak_8config_xcheck.py`, `make_pdv_regime_table.py` |
@@ -237,7 +239,7 @@
 | 2026-07-14 `a0c1a57f` | `data/traj_normal_n1e3.csv` | — (hand-made/HPC, unreferenced) |
 | 2026-07-14 `a0c1a57f` | `data/traj_small_1e6.csv` | producer unknown (HPC/hand-made); refs: `make_fA_edge_map.py` |
 | 2026-07-14 `a0c1a57f` | `dmdt_dip_traces.png` | producer unknown (HPC/hand-made); refs: `make_dmdt_dip_figures.py` |
-| 2026-07-14 `a0c1a57f` | `dmdt_tackle_flow.png` | producer unknown (HPC/hand-made); refs: `make_dmdt_dip_figures.py` |
+| 2026-07-14 `a0c1a57f` | `dmdt_tackle_flow.png` | producer unknown (HPC/hand-made); refs: `make_dmdt_dip_figures.py`, `make_pdvtrigger_report.py` |
 | 2026-07-14 `a0c1a57f` | `ebpeak_8config_xcheck.png` | by `make_ebpeak_8config_xcheck.py` |
 | 2026-07-14 `a0c1a57f` | `ebpeak_trigger_test.png` | by `make_ebpeak_trigger_test.py` |
 | 2026-07-14 `a0c1a57f` | `elbadry_overlay.png` | by `make_elbadry_overlay.py` |
@@ -268,7 +270,6 @@
 | 2026-07-14 `a0c1a57f` | `nmap_verify.png` | by `make_nmap_verify.py` |
 | 2026-07-14 `a0c1a57f` | `pdv_combined_trigger.png` | producer unknown (HPC/hand-made); refs: `make_combined_trigger_table.py` |
 | 2026-07-14 `a0c1a57f` | `pdv_trigger_compare.png` | by `make_pdv_trigger_compare.py` |
-| 2026-07-14 `a0c1a57f` | `pdvtrigger_report.html` | producer unknown (HPC/hand-made); refs: `make_phase6_figures.py`, `make_zone_resolution.py` |
 | 2026-07-14 `a0c1a57f` | `runs/data/bench5_summary.csv` | by `harvest_bench5.py` · ⚠️ STALE-RISK: builder newer (harvest_bench5.py 2026-07-25) — regenerate or justify |
 | 2026-07-14 `a0c1a57f` | `runs/data/bench5_traj/bench1_m5e4_r20__fa12.csv` | — (hand-made/HPC, unreferenced) |
 | 2026-07-14 `a0c1a57f` | `runs/data/bench5_traj/bench1_m5e4_r20__fa12_diag.csv` | — (hand-made/HPC, unreferenced) |
@@ -347,7 +348,7 @@
 | 2026-07-14 `a0c1a57f` | `runs/data/theta5_fmix_scorecard.csv` | producer unknown (HPC/hand-made); refs: `make_theta5_figures.py` · 🕐 generated 2026-07-03T21:58:20Z | builder make_theta5_figures.py | code f667df5+dirty |
 | 2026-07-14 `a0c1a57f` | `runs/data/theta5_summary.csv` | producer unknown (HPC/hand-made); refs: `make_theta5_figures.py`, `make_theta5b_analysis.py` · 🕐 generated 2026-07-02T13:50:54Z | builder harvest_theta_max.py | code 23f623d3+dirty |
 | 2026-07-14 `a0c1a57f` | `runs/data/theta5b_summary.csv` | producer unknown (HPC/hand-made); refs: `make_theta5b_analysis.py`, `make_theta5b_params.py` · 🕐 generated 2026-07-02T21:13:23Z | builder harvest_theta_max.py | code 049d3905+dirty |
-| 2026-07-14 `a0c1a57f` | `runs/data/theta5k_summary.csv` | producer unknown (HPC/hand-made); refs: `make_theta5k_analysis.py`, `make_theta5k_params.py` · 🕐 generated 2026-07-03T11:48:20Z | builder harvest_theta_max.py | code fa9dc7ed+dirty |
+| 2026-07-14 `a0c1a57f` | `runs/data/theta5k_summary.csv` | producer unknown (HPC/hand-made); refs: `make_theta5k_analysis.py`, `make_pdvtrigger_report.py` · 🕐 generated 2026-07-03T11:48:20Z | builder harvest_theta_max.py | code fa9dc7ed+dirty |
 | 2026-07-14 `a0c1a57f` | `runs/data/theta5n_summary.csv` | producer unknown (HPC/hand-made); refs: `make_theta5b_analysis.py`, `make_theta5k_analysis.py` · 🕐 generated 2026-07-03T13:30:11Z | builder harvest_theta_max.py | code c7c58738+dirty |
 | 2026-07-14 `a0c1a57f` | `runs/params/bench5/bench1_m5e4_r20__fa12.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-14 `a0c1a57f` | `runs/params/bench5/bench1_m5e4_r20__fa12_diag.param` | — (hand-made/HPC, unreferenced) |
@@ -734,24 +735,26 @@
 | 2026-07-14 `a0c1a57f` | `runs/run_theta5k.sbatch` | producer unknown (HPC/hand-made); refs: `make_theta5k_params.py` |
 | 2026-07-14 `a0c1a57f` | `runs/run_theta5n.sbatch` | producer unknown (HPC/hand-made); refs: `make_theta5n_params.py` |
 | 2026-07-14 `a0c1a57f` | `runs/run_theta5s.sbatch` | producer unknown (HPC/hand-made); refs: `checkpoint_theta5s.py`, `make_theta5s_params.py` |
-| 2026-07-14 `a0c1a57f` | `story_elbadry_f1_closedform.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_story_figs.py` |
+| 2026-07-14 `a0c1a57f` | `story_elbadry_f1_closedform.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_story_figs.py`, `make_pdvtrigger_report.py` |
 | 2026-07-14 `a0c1a57f` | `story_elbadry_f2_impose.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_story_figs.py` |
 | 2026-07-14 `a0c1a57f` | `story_elbadry_f3_check.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_story_figs.py` |
 | 2026-07-14 `a0c1a57f` | `story_elbadry_f4_fatemap.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_story_figs.py` |
-| 2026-07-14 `a0c1a57f` | `story_elbadry_f5_reversal.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_story_figs.py` |
-| 2026-07-14 `a0c1a57f` | `story_elbadry_f6_regime.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_story_figs.py` |
+| 2026-07-14 `a0c1a57f` | `story_elbadry_f5_reversal.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_story_figs.py`, `make_pdvtrigger_report.py` |
+| 2026-07-14 `a0c1a57f` | `story_elbadry_f6_regime.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_story_figs.py`, `make_pdvtrigger_report.py` |
 | 2026-07-14 `a0c1a57f` | `storyline_figs/fig_closure_heatmap.png` | producer unknown (HPC/hand-made); refs: `make_storyline_figs.py` |
-| 2026-07-14 `a0c1a57f` | `storyline_figs/fig_doublecount.png` | producer unknown (HPC/hand-made); refs: `make_storyline_figs.py` |
+| 2026-07-14 `a0c1a57f` | `storyline_figs/fig_doublecount.png` | producer unknown (HPC/hand-made); refs: `make_pdvtrigger_report.py`, `make_storyline_figs.py` |
 | 2026-07-14 `a0c1a57f` | `storyline_figs/fig_fmix_convention.png` | producer unknown (HPC/hand-made); refs: `make_storyline_figs.py` |
-| 2026-07-14 `a0c1a57f` | `storyline_figs/fig_regime_split.png` | producer unknown (HPC/hand-made); refs: `make_storyline_figs.py` |
-| 2026-07-14 `a0c1a57f` | `theta5_arms.png` | producer unknown (HPC/hand-made); refs: `make_theta5_figures.py` |
-| 2026-07-14 `a0c1a57f` | `theta5_collapse_law.png` | producer unknown (HPC/hand-made); refs: `make_theta5_figures.py` |
+| 2026-07-14 `a0c1a57f` | `storyline_figs/fig_regime_split.png` | producer unknown (HPC/hand-made); refs: `make_pdvtrigger_report.py`, `make_storyline_figs.py` |
+| 2026-07-14 `a0c1a57f` | `theta5_arms.png` | producer unknown (HPC/hand-made); refs: `make_theta5_figures.py`, `make_pdvtrigger_report.py` |
+| 2026-07-14 `a0c1a57f` | `theta5_collapse_law.png` | producer unknown (HPC/hand-made); refs: `make_theta5_figures.py`, `make_pdvtrigger_report.py` |
 | 2026-07-14 `a0c1a57f` | `theta5_knob_choice.png` | producer unknown (HPC/hand-made); refs: `make_theta5_figures.py` |
-| 2026-07-14 `a0c1a57f` | `theta5_metric_correction.png` | producer unknown (HPC/hand-made); refs: `make_theta5_figures.py` |
+| 2026-07-14 `a0c1a57f` | `theta5_metric_correction.png` | producer unknown (HPC/hand-made); refs: `make_theta5_figures.py`, `make_pdvtrigger_report.py` |
 | 2026-07-14 `a0c1a57f` | `theta5_target_vs_emergent.png` | producer unknown (HPC/hand-made); refs: `make_theta5_figures.py` |
-| 2026-07-14 `a0c1a57f` | `theta5b_fire_map.png` | producer unknown (HPC/hand-made); refs: `make_theta5b_analysis.py` |
+| 2026-07-14 `a0c1a57f` | `theta5b_fire_map.png` | producer unknown (HPC/hand-made); refs: `make_theta5b_analysis.py`, `make_pdvtrigger_report.py` |
 | 2026-07-14 `a0c1a57f` | `theta5b_law_check.png` | producer unknown (HPC/hand-made); refs: `make_theta5b_analysis.py` |
-| 2026-07-14 `a0c1a57f` | `theta5k_fire_map.png` | producer unknown (HPC/hand-made); refs: `make_theta5k_analysis.py` |
+| 2026-07-14 `a0c1a57f` | `theta5k_fire_map.png` | producer unknown (HPC/hand-made); refs: `make_theta5k_analysis.py`, `make_pdvtrigger_report.py` |
 | 2026-07-14 `a0c1a57f` | `theta5k_theta_rise.png` | producer unknown (HPC/hand-made); refs: `make_theta5k_analysis.py` |
 | 2026-07-14 `a0c1a57f` | `theta_vs_density.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_overlay.py`, `make_fmix_spread_plot.py` |
-| — | `data/rosette_fm4_doubleboost_check.csv` | 🚫 UNTRACKED (not in git — never quote) |
+| — | `_eqp.html` | 🚫 UNTRACKED (not in git — never quote) |
+| — | `data/zone_profiles.csv` | 🚫 UNTRACKED (not in git — never quote) |
+| — | `zone_profiles.png` | 🚫 UNTRACKED (not in git — never quote) |
