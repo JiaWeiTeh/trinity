@@ -2261,3 +2261,57 @@ El-Badry Eq 47 — which is a statement about radiative efficiency at fixed cond
 about area. Registered for the maintainer; a candidate successor design (an area-faithful knob,
 predicting dMdt ↑ with dose, testable against the existing theta5s baseline without new sims)
 belongs in `SOURCE_TERM_DESIGN.md §4` if pursued.
+
+## 23. [correction] The "f_κ raises dMdt = the wrong El-Badry sign" claim is FALSE — Eq 47 rises with conduction (C^{2/7}), and TRINITY's f_κ reproduces it to 0.12% (2026-07-29, from the paper itself)
+
+**Provenance.** The maintainer supplied the El-Badry+2019 page carrying Eq 47 in print. Reading it
+directly falsifies a claim the workstream has carried since 2026-07-01 and which reached
+production text (`registry.py:387`). No sims; no data changes.
+
+**Eq 47 as printed** (MNRAS 490, 1961; the factors that matter here):
+
+```
+mdot = mdot_0 · (1−θ)^{37/35} / θ^{2/7} · (μ/0.62)^… · (Δt_SNe/0.1 Myr)^{−27/35}
+              · (ρ0/1.4 m_p cm^-3)^{−2/35} · (t/1 Myr)^{6/35} · (C / 6×10^−7 cgs)^{2/7}
+```
+
+**The finding.** That last factor's normalization constant, **C = 6×10⁻⁷ cgs, is exactly TRINITY's
+`C_thermal` default** (`registry.py:377`, unit `erg s^-1 cm^-1 K^-7/2`). So El-Badry's own equation
+says **∂ln ṁ/∂ln C = +2/7 — evaporation RISES with conduction.** `cooling_boost_kappa` multiplies
+precisely that C (`bubble_luminosity.py:304/398/441`), and the measured response is
+Ṁ(f_κ=2)/Ṁ(1) = **1.2175 vs analytic 2^{2/7} = 1.2190 — 0.12%**
+(`kappa_backreaction.csv`, FINDINGS §11). **That is TRINITY reproducing Eq 47, not violating it.**
+The falling behaviour lives in a *different* factor, (1−θ)^{37/35}/θ^{2/7}, monotone decreasing in
+θ; `cooling_boost_fA` does not touch C and instead raises θ. **Both knobs are consistent with the
+same equation — they move different variables in it.** In El-Badry's parameterization the two are
+independent: θ is set by Eq 38 (λδv, n̄), which contains no C.
+
+**The defensible concern, restated correctly.** A knob representing *turbulent-mixing-driven*
+cooling should act through **θ** — the channel by which efficient cooling reduces the hot-gas mass
+(El-Badry §6.1: "the mass of hot gas in the bubble interior is reduced" at large n_H,0 and λδv).
+Implementing mixing as a multiplier on the Spitzer coefficient moves the C-channel instead, which
+raises ṁ. So f_κ is the wrong **vehicle** for mixing — not a sign error. That narrower claim is
+what the record should carry.
+
+**Corrected in place (5 sites, one of them production):** `registry.py:387` (the
+`cooling_boost_kappa` info string shipped to users — it asserted "the El-Badry coupling a faithful
+kappa_eff must instead suppress"), its `SOURCE_TERM_DESIGN §3` ParamSpec mirror, the clause-1
+grounds at `SOURCE_TERM_DESIGN` §"Maintainer re-presentation", `PLAN.md`'s "wrong-sign evaporation
+coupling" line, and `pdvtrigger_report.html` §2.1/§2.4/§2.5 plus a new §2.6 that writes the
+factorization out. `default.param` regenerated from the registry.
+
+**What this does NOT change.** f_κ is **not** rehabilitated: its two independent empirical failures
+stand — no whole-band f_κ exists (best single value fires 5/6 vs the multiplier's 6/6, `§12`) and
+κ_mix/κ_Spitzer ≈ 10³–10⁷ in the cool layer, so a scalar on Spitzer C cannot represent mixing
+(`§9b`). No measured Θ_cum, band-entry, fire threshold or collapse-law number moves; this is an
+interpretation error, not a data error, and the campaigns that produced those numbers are unaffected.
+
+**What it DOES change — the case for f_A is now one leg shorter.** `§18` withdrew the
+measurement-based case ("f_mix eliminated"); the surviving case was the physical asymmetry, one leg
+of which was "and f_A moves evaporation the El-Badry way, unlike f_κ". That leg is void: both move
+Eq 47 correctly, in different variables. What survives, and is still true, is the *structural*
+asymmetry — f_A acts inside the ODE so T(r) and dMdt respond, f_mix is frozen by construction.
+Combined with `§22` (f_A scales L2+L3, which carry only ~26% of L_cool) and the open area question
+(a fractal-area increase raises the conductive flux, so per Eq 47's C-exponent ṁ should RISE), the
+f_A motivation now has **three** documented weaknesses. The knob still works empirically; its
+*rationale* needs rebuilding. Registered for the maintainer — see the re-scoping note in `PLAN.md`.

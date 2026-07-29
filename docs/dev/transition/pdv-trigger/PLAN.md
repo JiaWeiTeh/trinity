@@ -88,6 +88,8 @@ folder) — do **not** re-run the hours-long sims to recover them; reproduce onl
 > net radiative source *inside* the bubble-structure ODE + the resolved interface losses, only in the
 > interface band (T<10^5.5 K) — the physically-correct in-structure boost that `kappa` wanted to be,
 > WITHOUT the wrong-sign evaporation coupling (its dMdt *falls* with boost, El-Badry Eq-47 sign; kappa's
+> [CORRECTED 2026-07-29, FINDINGS 23: there is NO wrong sign. Eq 47 rises with conduction (C^{2/7}) and
+> falls with theta; f_kappa moves the C-channel, f_A the theta-channel. Both match the paper.]
 > rose → condensation crashes). Status: **Phases 0–4 ✅** — shipped gated default-1.0 LITERAL
 > byte-identical; no condensation edge even at f_A=512; **81/81 theta5s matrix complete in-container
 > (2026-07-11, PROVISIONAL pending HPC): collapse-law p=3.330 confirms the registered p_source≈3.3
@@ -2038,6 +2040,23 @@ and gate.*
    storyline book (`docs/dev/html-insights/build_storylines.py`) against the consolidated
    report; review `docs/dev/to-be-removed/` (now incl. the three superseded HTML/generator
    files). *Owner: either / maintainer review.*
-8. **Standing measurement debt** (unchanged, parent ledger): Fig-17 re-digitization (metric 2's
+8. **Re-scope the f_A rationale (NEW 2026-07-29, FINDINGS §23).** The case for f_A has lost two of
+   its three legs in four days: `§18` withdrew the measurement leg ("f_mix eliminated"), and `§23`
+   voids the Eq-47 sign leg (both knobs move Eq 47 correctly, in different variables). `§22` adds
+   that f_A scales L2+L3, which carry only ~26% of L_cool. **The knob's empirical behaviour is
+   untouched — every measured number stands — but its stated rationale must be rebuilt on what
+   survives:** the structural asymmetry (f_A acts in-solve so T(r) and dMdt respond; f_mix is frozen
+   by construction). *Do NOT re-open the campaigns for this* — it is a documentation/argument
+   rebuild, and the discriminating experiment is item 9. *Owner: maintainer ruling on the grounds,
+   then mechanical.*
+9. **The area-faithful successor — the one experiment that would settle it (NEW).** Neither shipped
+   knob scales interface AREA: f_κ moves conduction (Eq 47 C-channel, ṁ ↑), f_A moves radiative
+   efficiency (θ-channel, ṁ ↓), and a genuine fractal-area increase should move the whole interface
+   budget — conduction, evaporation and radiation together — predicting **ṁ RISES with dose**. That
+   is a falsifiable, discriminating prediction testable against the existing theta5s baseline with
+   no new sims for the first pass (`theta5s_dmdt_suppression.csv` already measures the f_A side:
+   ratio 0.988 at f_A=2 → 0.857 at f_A=32). Design note belongs in `SOURCE_TERM_DESIGN.md §4`.
+   *Owner: maintainer go/no-go; scoping is cheap.*
+10. **Standing measurement debt** (unchanged, parent ledger): Fig-17 re-digitization (metric 2's
    dex half), metric 3 α_p (needs a re-harvest with momentum columns), the dMdt reducer on
    Helix theta5s raw arms, V_w [I]-grade.

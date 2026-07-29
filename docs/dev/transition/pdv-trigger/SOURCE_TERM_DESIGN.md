@@ -377,7 +377,7 @@ same ParamSpec shape: `category='input_solver'`, `unit=None`, `exclude_from_snap
 `run_const=True`, no resolver):
 
 ```python
-ParamSpec(name='cooling_boost_fA', default='1.0', info='Interface source-term boost f_A (docs/dev/transition/pdv-trigger/SOURCE_TERM_DESIGN.md): multiplies the net radiative dudt inside the bubble-structure ODE and the resolved L2+L3 loss integrals, ONLY in the interface band T < 10^5.5 K (the non-CIE regime). The 1-D projection of fractal-interface mixing (Lancaster) on the SOURCE side: cooling rises THROUGH the structure and evaporation dMdt FALLS (El-Badry Eq 47 coupling; contrast cooling_boost_kappa, which raises it). L_leak is deliberately NOT scaled (leakage is bulk escape, not interface radiation). Requires f_A > 0; values < 1 are untested suppression territory. Default 1.0 = byte-identical. Single-knob use intended: combining with cooling_boost_mode != none or cooling_boost_kappa != 1 warns at load (double-boost / cross-knob).', category='input_solver', unit=None, exclude_from_snapshot=True, run_const=True, validator=_validate_cooling_boost_fA),
+ParamSpec(name='cooling_boost_fA', default='1.0', info='Interface source-term boost f_A (docs/dev/transition/pdv-trigger/SOURCE_TERM_DESIGN.md): multiplies the net radiative dudt inside the bubble-structure ODE and the resolved L2+L3 loss integrals, ONLY in the interface band T < 10^5.5 K (the non-CIE regime). The 1-D projection of fractal-interface mixing (Lancaster) on the SOURCE side: cooling rises THROUGH the structure and evaporation dMdt FALLS -- the theta-channel of El-Badry Eq 47, (1-theta)^(37/35)/theta^(2/7). [CORRECTED 2026-07-29, FINDINGS 23: cooling_boost_kappa raising dMdt is NOT a 'wrong sign' -- it moves Eq 47's OTHER factor, (C/6e-7)^(2/7), which rises with conduction by construction.] L_leak is deliberately NOT scaled (leakage is bulk escape, not interface radiation). Requires f_A > 0; values < 1 are untested suppression territory. Default 1.0 = byte-identical. Single-knob use intended: combining with cooling_boost_mode != none or cooling_boost_kappa != 1 warns at load (double-boost / cross-knob).', category='input_solver', unit=None, exclude_from_snapshot=True, run_const=True, validator=_validate_cooling_boost_fA),
 ```
 
 Define `_validate_cooling_boost_fA(value, params)` next to `_validate_dens_profile`
@@ -725,7 +725,8 @@ must be withdrawn or re-derived.*
    MEASURED in-grid while f_mix's is 1/3 measured + 2/3 extrapolated past fm≤8; and both knobs'
    Θ_cum carry a large frozen-no-root share that is *worse* on the f_A side (`§18`).
 4. **What still favours f_A, untouched.** The physical asymmetry: f_A acts inside the
-   bubble-structure ODE so the structure responds and evaporation dMdt falls (El-Badry Eq-47 sign,
+   bubble-structure ODE so the structure responds and evaporation dMdt falls (Eq 47's theta-channel;
+   NOT a sign advantage over f_kappa -- see FINDINGS 23,
    measured in theta5s); f_mix multiplies the resolved loss after the solve, leaving the structure
    frozen and dMdt untouched by construction. **This was always the stronger argument, and it is
    the one the corrected data leaves standing.** The empirical calibration argument that the

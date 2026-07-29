@@ -527,6 +527,9 @@ EQUATIONS = {
     "fa_site2": r"$\mathrm{site\ 2\ (:845\!-\!848,\ on\ the\ integrals)\!:}\quad L_2 \longrightarrow f_A L_2\,, \quad L_3 \longrightarrow f_A L_3\,, \quad L_1\ \mathrm{and}\ L_{\rm leak}\ \mathrm{untouched}$",
     "integrand": r"$L_1 = \int \chi_e\,n^{2}\Lambda_{\rm CIE}(T)\,4\pi r^{2}\,dr \quad (\mathrm{:746})\,, \qquad L_{2,3} = \int \dot{u}_{\rm net}(n,T,\phi)\,4\pi r^{2}\,dr \quad (\mathrm{:793,\ :835})$",
     "ndens": r"$n(r) = \frac{P_b}{(\mu_{\rm conv}/\mu_{\rm ion})\,k_B\,T(r)} \quad (\mathrm{:673}) \qquad \Rightarrow \qquad n \propto 1/T \ \ \mathrm{at\ near\!-\!uniform}\ P_b$",
+    "eq47_channels": r"$\dot{m} = \dot{m}_0 \cdot \frac{(1-\theta)^{37/35}}{\theta^{2/7}} \cdot (\mu,\ \Delta t_{\rm SNe},\ \rho_0,\ t\ \mathrm{factors}) \cdot \left(\frac{C}{6\times10^{-7}\,\mathrm{cgs}}\right)^{2/7}\qquad \mathrm{(El\!-\!Badry\ Eq\ 47)}$"
+               "\n"
+               r"$\mathrm{the\ }\theta\mathrm{-channel\ }(f_A)\mathrm{:}\ \partial\dot{m}/\partial\theta < 0 \qquad\qquad \mathrm{the\ }C\mathrm{-channel\ }(f_\kappa)\mathrm{:}\ \partial\ln\dot{m}/\partial\ln C = +2/7 > 0$",
     "sc0": r"$\mathrm{C1\ El\!-\!Badry:}\quad f_A = \theta_{\rm EB}(\lambda\delta v,\, n_{\rm amb})"
     r"\cdot \frac{L_{\rm mech}}{L_2+L_3}$"
     "\n"

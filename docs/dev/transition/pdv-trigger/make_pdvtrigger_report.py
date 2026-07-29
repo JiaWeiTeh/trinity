@@ -90,6 +90,7 @@ EQS = {  # token -> phase6_eq_<key>.svg (alt = readable TeX)
     "__EQ_THETATARGET__": ("thetatarget", "L_loss = max(L_cool+L_leak, theta_t L_mech)"),
     "__EQ_FA__": ("fa", "du/dt -> f_A (du/dt)_rad for T<10^5.5 K; L_cool = L_1 + f_A(L_2+L_3)"),
     "__EQ_ELBADRY__": ("elbadry", "theta_EB(n) = A_mix sqrt(ldv n) / (11/5 + A_mix sqrt(ldv n)); A_mix=3.5, ldv=3, n_fire~48"),
+    "__EQ_EQ47CH__": ("eq47_channels", "Eq 47 factorized: theta-channel (1-theta)^(37/35)/theta^(2/7) falls; C-channel (C/6e-7)^(2/7) rises. f_A moves theta, f_kappa moves C."),
     "__EQ_EQ47__": ("eq47", "mdot = mdot_0 (1-theta)^(37/35)/theta^(2/7) - evaporation falls as cooling rises"),
     "__EQ_NUMERATORS__": ("numerators", "Theta_raw = int(Lcool+Lleak)dt/int Lmech dt (superseded) vs Theta = int theta Lmech dt / int Lmech dt (corrected)"),
     "__EQ_STALE__": ("stale_split", "Theta_cum = solved part (physics) + frozen part (solver state)"),
@@ -168,7 +169,7 @@ and the head-to-head is an open estimate the fm≤8 grid cannot settle.</div>
 
 <div class="toc"><b>Contents</b> ·
 <a href="#p1">1 The problem</a> ·
-<a href="#p2">2 The four knobs — which equations each acts on</a> ·
+<a href="#p2">2 The four knobs + the Eq-47 factorization</a> ·
 <a href="#p3">3 El-Badry theory: impose, break, calibrate, screen</a> ·
 <a href="#p4">4 The f<sub>κ</sub> era</a> ·
 <a href="#p5">5 The f<sub>mix</sub> era</a> ·
@@ -252,8 +253,8 @@ __EQ_FK3__
 radiative source.) Site 1 is precisely why evaporation <b>rises</b> with f<sub>κ</sub>; site 3 is where the
 conductivity divides the entire temperature-curvature term. It does <b>not</b> multiply L<sub>cool</sub> — it thickens the conduction layer so more gas sits where Λ(T) peaks,
 and θ emerges as an output. Side effect that killed it as the final model: the evaporative flux
-<b>rises</b> (Ṁ ∝ f<sub>κ</sub><sup>2/7</sup>, measured 1.2175 vs analytic 1.219 at f<sub>κ</sub>=2) — the
-opposite sign to El-Badry's Eq 47. No validator; <code>'auto'</code> resolves a trilinear lookup on the 819-run
+<b>rises</b> (Ṁ ∝ f<sub>κ</sub><sup>2/7</sup>, measured 1.2175 vs analytic 2<sup>2/7</sup> = 1.2190 at
+f<sub>κ</sub>=2 — 0.12%). <b>That rise MATCHES El-Badry Eq 47, it does not contradict it</b> (§2.6). No validator; <code>'auto'</code> resolves a trilinear lookup on the 819-run
 grid (<code>fkappa_auto.py</code>, ceiling 64), measured at f<sub>A</sub>=1 only.</p>
 <figure>__FIG_FKDEF__<figcaption><b>What f<sub>κ</sub> multiplies.</b> Left: the Spitzer conductivity
 κ = C<sub>th</sub>T<sup>5/2</sup>. Right: the Ṁ ∝ f<sub>κ</sub><sup>2/7</sup> analytic-vs-measured check
@@ -284,12 +285,42 @@ __EQ_FA2__
 <p>The band edge is <code>_T_INTERFACE_BAND</code> at <code>:65</code>. Site 1's u̇ is the same u̇ that appears
 inside f<sub>κ</sub>'s site-3 equation above — that is exactly why the structure responds. Because site 1 is inside both the
 dMdt root-find and the profile integration, the structure <b>responds</b>: the interface gets cooler and denser,
-and the evaporative flux <b>falls</b> — the El-Badry Eq-47 sign, measured across theta5s (FINDINGS §15e).
+and the evaporative flux <b>falls</b> — Eq 47's <i>θ-channel</i>, measured across theta5s (FINDINGS §15e).
+This is <b>not</b> a sign advantage over f<sub>κ</sub>; the two knobs move different factors of the same
+equation (§2.6).
 Validated (<code>registry.py:117–148</code>: raises on f<sub>A</sub>≤0, warns on cross-knob combination);
 default byte-identical (literal float-ops guard).</p>
 <figure>__FIG_FABOOST__<figcaption><b>The fourth knob corner.</b> The f<sub>A</sub> offline screen (FINDINGS §15):
 the source-term boost passes all four registered predictions — the corner of (in-solve × interface-targeted) the
 other three knobs miss. </figcaption></figure>
+
+<h3>2.6 The El-Badry Eq-47 factorization — why neither knob has a "wrong sign"
+<span class="tag t-out">CORRECTED 2026-07-29</span></h3>
+<p>The workstream long held that f<sub>κ</sub> raising evaporation was "the wrong El-Badry sign", and used
+that to prefer f<sub>A</sub>. <b>Reading Eq 47 as printed, that is backwards.</b> The equation carries a
+conduction factor whose normalization constant is <i>exactly</i> TRINITY's <code>C_thermal</code> default,
+6×10⁻⁷ cgs (<code>registry.py:377</code>):</p>
+__EQ_EQ47CH__
+<p>So Eq 47 <b>rises</b> with conduction, ∂ln ṁ/∂ln C = +2/7 — and TRINITY's f<sub>κ</sub>, which multiplies
+that very C, measures 1.2175 against the analytic 2<sup>2/7</sup> = 1.2190, i.e. it <b>reproduces El-Badry's
+own scaling to 0.12%</b>. The falling behaviour lives in the <i>other</i> factor,
+(1−θ)<sup>37/35</sup>/θ<sup>2/7</sup>, which decreases in θ. f<sub>A</sub> does not touch C; it raises the
+radiative losses, i.e. θ. <b>Both knobs are consistent with the same equation — they move different variables
+in it.</b> In El-Badry's parameterization these are independent: θ comes from Eq 38 (λδv and n̄), with no C.</p>
+<div class="note"><b>The defensible concern, stated correctly.</b> A knob meant to represent
+<i>turbulent-mixing-driven</i> cooling should act through <b>θ</b> — that is the channel by which efficient
+cooling reduces the hot-gas mass (El-Badry §6.1: "<i>the mass of hot gas in the bubble interior is
+reduced</i>" at large n<sub>H,0</sub> and λδv). Implementing mixing as a multiplier on the <i>Spitzer
+coefficient</i> instead moves the C-channel, which raises ṁ. So f<sub>κ</sub> is the wrong <b>vehicle</b> for
+mixing — not because its sign disagrees with Eq 47, but because it moves the wrong variable. That is a
+narrower and survivable claim than "wrong sign", and it is the one the record should carry.</div>
+<div class="warn"><b>What this does and does not change.</b> It does <b>not</b> rehabilitate f<sub>κ</sub>: its
+two independent empirical failures stand — no whole-band f<sub>κ</sub> exists (best single value fires 5/6 vs
+the multiplier's 6/6, FINDINGS §12) and κ<sub>mix</sub>/κ<sub>Spitzer</sub> ≈ 10³–10⁷ in the cool layer, so a
+scalar on Spitzer C cannot represent mixing (§9b). It does remove one leg from the case for f<sub>A</sub> —
+the leg that survived §18's withdrawal of the measurement-based case — and it points the same way as the
+area argument in FINDINGS §22: an interface-area increase raises the conductive flux, so a faithful
+area knob should make ṁ <b>rise</b>, per Eq 47's own C-exponent.</div>
 
 <h3>2.5 The comparison — one table (code-truth audit, 2026-07-28)</h3>
 <table>
@@ -301,8 +332,8 @@ other three knobs miss. </figcaption></figure>
 <td><code>get_betadelta.py:356</code></td><td><code>bubble_luminosity.py:435–437/845–848</code></td></tr>
 <tr><td>where in pipeline</td><td>inside dMdt fsolve + ODE</td><td>after the structure solve</td><td>after the structure solve</td>
 <td>inside ODE + on the integrals</td></tr>
-<tr><td>T(r)/dMdt respond?</td><td><b>yes</b> — dMdt <b>↑</b> ∝ f<sub>κ</sub><sup>2/7</sup></td><td>no (frozen)</td><td>no (frozen)</td>
-<td><b>yes</b> — dMdt <b>↓</b> (Eq-47 sign)</td></tr>
+<tr><td>T(r)/dMdt respond?</td><td><b>yes</b> — dMdt <b>↑</b> ∝ f<sub>κ</sub><sup>2/7</sup> (Eq 47 <i>C</i>-channel)</td><td>no (frozen)</td><td>no (frozen)</td>
+<td><b>yes</b> — dMdt <b>↓</b> (Eq 47 <i>θ</i>-channel)</td></tr>
 <tr><td>temperature gate</td><td>none</td><td>none</td><td>none</td><td>T&lt;10<sup>5.5</sup> K in-ODE; unconditional on L₂+L₃</td></tr>
 <tr><td>scales L<sub>leak</sub>?</td><td>indirect only</td><td>no</td><td>absorbed in <code>max</code></td><td>no (by design)</td></tr>
 <tr><td><code>bubble_LTotal</code> in output</td><td>changed</td><td><b>unchanged (raw)</b></td><td><b>unchanged</b></td><td>changed</td></tr>
