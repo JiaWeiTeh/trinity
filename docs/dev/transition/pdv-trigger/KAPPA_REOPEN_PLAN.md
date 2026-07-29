@@ -1,5 +1,29 @@
 # Re-opening `cooling_boost_kappa` — the K0 re-read and the K1–K4 HPC campaign
 
+> ---
+>
+> ⚠️⚠️ **DEMOTED 2026-07-29 — read this as "could be true, verify before use".** The maintainer no
+> longer trusts this workstream's measured numbers without re-measurement, and three corrections in
+> five days say that is the right call: `§18` (a metric artifact published "f_mix eliminated" for
+> eight days across four documents), `§23` (the "wrong El-Badry sign" argument used to retire f_κ was
+> false), `§24` (a correct result with a wrong stated cause). None of these were caught by
+> `CONTAMINATION.md` — they were **correct data with a wrong reading**, which a per-artifact grade
+> cannot detect.
+>
+> **The active workstream is now [`docs/dev/transition/kappa-3way/`](../kappa-3way/README.md)** — its
+> `report.html` is the source of truth, and its rule is: a number is quotable only if its own
+> provenance stamp is dated **on or after 2026-07-29**.
+>
+> **What this doc is still good for:** the history, the physics reasoning, the design rationale, the
+> literature imprints (`LANCASTER_REFERENCE.md`, `ELBADRY_REFERENCE.md` — published values, still
+> `[V]`), the measurement rules, and the param/HPC tooling under `runs/` (which stays here and is
+> actively used). **What it is not good for:** quoting a measured value. Every Θ_cum, band-entry
+> dose, spread, fire map and threshold in here is ⚠️ **VERIFY** until the 294-arm re-run reproduces
+> it — see [`../kappa-3way/PROVENANCE.md`](../kappa-3way/PROVENANCE.md).
+>
+> ---
+
+
 > ⚠️ **This document may be out of date — verify before trusting it.** It is a
 > point-in-time analysis/audit, not a maintained spec; the code moves faster
 > than these notes (paths, line numbers, and "what shipped" status drift).
@@ -34,7 +58,7 @@
 
 **Status (2026-07-29, updated same day):** 🟡 **submit-ready** — **K0 (the offline re-read) is DONE** and is the
 evidence base below (`data/kappa_eq47_check.csv`, `FINDINGS.md §23`/`§24`); the **§6.0 grid ruling has landed**
-(§6.0); **gate G0 is CLEARED 11/11** (`data/bench7_gate_g0.csv`); and the **166 params are generated and
+(§6.0); **gate G0 is CLEARED 11/11** (`data/bench7_gate_g0.csv`); and the **174 params are generated and
 committed** (`runs/make_kappa_reopen_params.py` → `runs/params/bench7/`, all four G1 emit gates pass). **The arms
 are NOT yet run** — §6.2's `./runs/sync_bench.sh bench7 up|submit` needs cluster access and is the maintainer's
 step. Nothing here changes production.
@@ -47,8 +71,8 @@ precision and persisted (§3, `data/bench7_gate_g0.csv`). Campaign total 102 →
 *Third pass, same day — the **ALL-FRESH ruling** (§6.2):* the maintainer does not trust the earlier harvests and
 requires every number the conclusions rest on to be re-measured today, with a legible timestamp on each
 artifact. Two structural consequences: **K2's grid widened** `{5,7,9}` → `{1,…,16}` so `theta5k`'s 2026-07-03
-columns stop being an input (campaign **118 → 166**), and the **`bench5r`/`bench6r` re-run campaigns** were added
-so Θ₀ and the f_A/f_mix ladders are today's numbers too (**286 arms** in total). Stamping was extended to the
+columns stop being an input (campaign **118 → 166 → 174**), and the **`bench5r`/`bench6r` re-run campaigns** were added
+so Θ₀ and the f_A/f_mix ladders are today's numbers too (**294 arms** in total). Stamping was extended to the
 per-arm trajectory CSVs, the hash files and the analysis outputs, and `data/make_freshness_audit.py` reports
 what is fresh. **G0 now doubles as the old-vs-new reproduction gate** — same targets, fresh arms.
 
@@ -196,7 +220,7 @@ measured entry landing *above* the extrapolation is the expected direction of an
 
 ---
 
-## 4. The campaign — K1–K4 (**166 arms**, generated and committed 2026-07-29)
+## 4. The campaign — K1–K4 (**174 arms**, generated and committed 2026-07-29)
 
 Every arm follows the standing protocol: `stop_t = 5`, θ from `dictionary.jsonl` accepted rows, one process per
 arm, **prod** (live `cooling_balance` → fire map) + **diag** (`transition_trigger=blowout` → uncensored θ(t) to
@@ -207,11 +231,11 @@ numbers drop straight into the §18 table. Single-knob per arm by construction: 
 | phase | question | grid | prefix | arms |
 |---|---|---|---|---|
 | **K1** | the missing third leg of the head-to-head: what is f_κ's L21b band-entry spread? | bench1/2/3 × f_κ ∈ {2,3,4,6,8,12,16,24,32} × {prod, diag} | `k1_` | 54 |
-| **K1b** | keep the Phase-5 fire map 3-knob complete at the dense end | bench4/bench5 × f_κ ∈ {2,4,8} × {prod, diag} | `k1b_` | 12 |
+| **K1b** | keep the Phase-5 fire map 3-knob complete at the dense end | bench4/bench5 × f_κ ∈ {2,4,8,12,16} × {prod, diag} | `k1b_` | 20 |
 | **K2** | is the K0.Q2 squeeze real, or just coarse sampling? | the 6 band configs × f_κ ∈ {5,7,9} × prod | `k2_` | 18 |
 | **K3** | are the non-monotonic fates physical or nondeterministic? | 5 flip arms × 2 (`_a`/`_b`, identical physics) | `k3_` | 10 |
 | **K4** | close the f_mix extrapolation the record already owes (§18, maintainer Q4) — **as a full ladder redo**, per the §6.0(c) ruling | bench1/bench2 × f_mix ∈ {2,3,4,8,12,16} × {prod, diag} | `k4_` | 24 |
-| | | | **total** | **166** |
+| | | | **total** | **174** |
 
 **The 5 K3 flip arms**, and the rule that picked them — every cell in `data/theta5k_fire_map.csv` whose fate
 reverses against its dose neighbours. Two are isolated single-cell reversals; three are the grid-edge/onset
@@ -300,18 +324,18 @@ update `CONTAMINATION.md` and `INDEX.md §1.5`, and stop.
 > redo the ladder properly here*. The second was taken, because a redo is possible at param cost only and
 > it is what makes f_mix's band entry **measured** rather than extrapolated (`§18`'s standing flaw). The
 > choice is one line in `runs/make_kappa_reopen_params.py`:
-> `F_MIX_K4 = ["2","3","4","8","12","16"]` (166 arms, current) · `[]` (142 arms, K4 dropped, P5 recorded
-> **NOT RUN** — not *missed*) · `["12","16"]` (150 arms, the literal ride-along). Nothing else changes;
+> `F_MIX_K4 = ["2","3","4","8","12","16"]` (174 arms, current) · `[]` (142 arms, K4 dropped, P5 recorded
+> **NOT RUN** — not *missed*) · `["12","16"]` (158 arms, the literal ride-along). Nothing else changes;
 > `submit` re-sizes the array from the param count on its own.
 
 **6.1 ✅ DONE 2026-07-29.** `runs/make_kappa_reopen_params.py` (new, modelled on `make_bench6_params.py`) →
-**166 committed params in `runs/params/bench7/`**. Self-gating per G1 — all four emit gates pass (GMC
+**174 committed params in `runs/params/bench7/`**. Self-gating per G1 — all four emit gates pass (GMC
 plausibility on every arm incl. the theta5 configs, the exact L21b mapping ≤2%, an end-to-end `read_param`
-load-check on all 166 files, and a count/uniqueness assertion). **All five K-phases emit into that ONE
+load-check on all 174 files, and a count/uniqueness assertion). **All five K-phases emit into that ONE
 directory** — a phase is just a filename prefix (`k1_…`, `k1b_…`, `k2_…`, `k3_…`, `k4_…`), so the campaign is
 one array, one reduce, one download rather than two of everything.
 
-`test/test_bench7_params.py` (174 cases) pins the set against its builder: byte-identical regeneration, the
+`test/test_bench7_params.py` (182 cases) pins the set against its builder: byte-identical regeneration, the
 per-phase counts, `stop_t = 5` / `model_name` / `path2output` on every arm, **single-knob** by construction,
 the prod-vs-diag `transition_trigger` split, the K3 pairs differing in nothing but their names (P4 rests on
 that), and every bench arm sitting on the same cloud as its bench5 `__none` sibling (G2 rests on that).
@@ -327,7 +351,7 @@ that), and every bench arm sitting on the same cloud as its bench5 `__none` sibl
 
 **What that changed in the design** (both already committed):
 
-1. **K2's dose grid widened `{5,7,9}` → `{1,2,3,4,5,6,7,8,9,12,16}`** (18 → 66 arms; campaign 118 → **166**).
+1. **K2's dose grid widened `{5,7,9}` → `{1,2,3,4,5,6,7,8,9,12,16}`** (18 → 66 arms; campaign 118 → **166 → 174**).
    The old grid measured only the three *new* doses and reused `theta5k`'s 2026-07-03 columns for the rest —
    so the P3 whole-band verdict would have been part today's data and part four weeks old. K2 now re-measures
    the entire f_κ fire map for the 6 band configs, `f_κ = 1` baseline column included. **`theta5k` is no
@@ -340,7 +364,7 @@ that), and every bench arm sitting on the same cloud as its bench5 `__none` sibl
 
 **Order matters: the baselines first.** `bench5r` supplies Θ₀ (the f_κ=1 / f_mix=1 column) and re-clears G0
 against today's arms. If G0 **fails** on fresh data, that is a finding about the 07-19 result and it should be
-reconciled *before* bench7's 166 arms are read — though bench7 can run concurrently, since nothing in its
+reconciled *before* bench7's 174 arms are read — though bench7 can run concurrently, since nothing in its
 submission depends on the outcome.
 
 ```bash
@@ -353,8 +377,8 @@ git pull                                        # laptop: pick up feature/pdv-tr
 ./runs/sync_bench.sh bench6r submit             # auto-sized --array=1-60 over params/bench6/
 ./runs/sync_bench.sh bench5r watch              # (Ctrl-C to stop watching; the array keeps running)
 
-# ── 2. the campaign itself (166 arms) — submit any time after step 0 ──────────
-./runs/sync_bench.sh bench7 submit              # auto-sized --array=1-166 over params/bench7/
+# ── 2. the campaign itself (174 arms) — submit any time after step 0 ──────────
+./runs/sync_bench.sh bench7 submit              # auto-sized --array=1-174 over params/bench7/
 ./runs/sync_bench.sh bench7 watch
 
 # ── 3. reduce + download, once each array is DONE (⚠️ THE REDUCE IS ONE-SHOT) ──
@@ -379,7 +403,7 @@ flags `+dirty` artifacts: fresh, but built from an uncommitted tree, so **regene
 quoting**. The K3 determinism hash is taken over **non-comment lines**, so stamping cannot make two identical
 runs look different.
 
-**Cost.** 286 arms total (166 + 60 + 60) at `--time=1:30:00` each. The 07-19 bench5 evidence
+**Cost.** 294 arms total (174 + 60 + 60) at `--time=1:30:00` each. The 07-19 bench5 evidence
 (`data/bench5_durations.csv`) puts the longest compliant arm at 64 min under 3-worker contention, so the
 array is the wall-clock constraint, not any single job.
 
@@ -422,7 +446,7 @@ paired rows in `bench7_hashes.csv` — no new harness needed.
 
 ## 7. Cost and risk
 
-166 arms, plus the 120 baseline arms of `bench5r`/`bench6r` (§6.2) = **286**, at the bench5/bench6 wall-clock profile. The known expensive corner is **dense × high dose**: the
+174 arms, plus the 120 baseline arms of `bench5r`/`bench6r` (§6.2) = **294**, at the bench5/bench6 wall-clock profile. The known expensive corner is **dense × high dose**: the
 `bench5_fa16_diag` stiffness freeze reproduced on both platforms (`FINDINGS.md §15h`/`§15j`), and f_κ enters the
 structure ODE, so its high-dose diffuse arms (bench1 at f_κ ≥ 24) are the analogous risk here. Budget a per-arm
 timeout and treat a wall-kill as a recorded non-compliance (G3), not a silent drop.
@@ -443,7 +467,7 @@ git; re-derive from the docs + committed CSVs, never from chat memory.
 **State.** K0 DONE (`FINDINGS §24`, `data/kappa_eq47_check.csv` — re-verified 2026-07-29: it regenerates
 **byte-identically**). HPC tooling DONE (`runs/run_bench7.sbatch`, `bench7` in `runs/sync_bench.sh` — §6.2).
 **§6.0 ruled** (§6.0 table). **G0 CLEARED 11/11** (`data/bench7_gate_g0.csv`, rebuild with
-`python data/make_bench7_gate_g0.py`; exits non-zero if any row fails). **G1 CLEARED 4/4 and the 166 params are
+`python data/make_bench7_gate_g0.py`; exits non-zero if any row fails). **G1 CLEARED 4/4 and the 174 params are
 committed** (`runs/params/bench7/`). No production change; default is still `cooling_boost_mode='none'`,
 f_κ = 1.0. Full `pytest` is **896 passed / 0 failed** — including
 `test_docs_dev_conventions.py::test_banners[rosette-cf/figs/README.md]`, which the previous handoff recorded as
@@ -451,12 +475,12 @@ a standing failure: **it passes now**, so that caveat is retired.
 
 **The one thing blocking execution is cluster access, not a decision.** §6.2's loop must run from a machine
 that can `ssh helix`; the container this was prepared in has no `ssh` at all. **§6.2 now holds the full
-ALL-FRESH run order — follow it there, not here** (286 arms: `bench5r` 60 + `bench6r` 60 + `bench7` 166, then
+ALL-FRESH run order — follow it there, not here** (294 arms: `bench5r` 60 + `bench6r` 60 + `bench7` 174, then
 the four re-derive commands and `make_freshness_audit.py`).
 
 **Two things to settle BEFORE `submit`, both cheap:**
  1. **§6.0(c) is a reading, not a confirmation** — K4 is currently the 24-arm ladder redo. If that is wrong,
-    change `F_MIX_K4` in `runs/make_kappa_reopen_params.py` (`[]` → 142 arms · `["12","16"]` → 150 arms),
+    change `F_MIX_K4` in `runs/make_kappa_reopen_params.py` (`[]` → 150 arms · `["12","16"]` → 158 arms),
     re-run the builder, re-run `pytest test/test_bench7_params.py` (its `PHASE_COUNTS` must be updated to
     match), and re-commit. After `submit` this is no longer free.
  2. **The reduce is one-shot.** `sync_bench.sh` already passes

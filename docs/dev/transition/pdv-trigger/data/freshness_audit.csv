@@ -1,4 +1,4 @@
-# generated 2026-07-29T19:19:42Z | builder make_freshness_audit.py | code f3d64e6+dirty
+# generated 2026-07-29T20:49:41Z | builder make_freshness_audit.py | code ea3723d+dirty
 # freshness audit, cutoff 2026-07-29: FRESH = the artifact's own generation stamp is on or after the cutoff; OLD = before it; UNSTAMPED = no stamp line, so the date shown is the git COMMIT date, which only UPPER-bounds the artifact's age (see _stamp.py).
 # The code/tree_dirty columns are informational ONLY. +dirty is unavoidable (_stamp.py reads git status from inside the already-open output file, so every in-place regeneration records it), and an artifact always names the commit BEFORE the one that commits it. For real staleness -- did the BUILDER change after its output? -- read MANIFEST.md's STALE-RISK flag instead.
 # Regenerate: python docs/dev/transition/pdv-trigger/data/make_freshness_audit.py [YYYY-MM-DD]
@@ -7,7 +7,7 @@ data/bench5_analysis.csv,2026-07-29,make_bench5_analysis.py,afb969f+dirty,FRESH,
 data/bench5_durations.csv,2026-07-19,,,UNSTAMPED,
 data/bench5_elbadry_prediction.csv,2026-07-12,,,UNSTAMPED,
 data/bench6_analysis.csv,2026-07-29,make_bench6_analysis.py,afb969f+dirty,FRESH,yes
-data/bench7_gate_g0.csv,2026-07-29,make_bench7_gate_g0.py,afb969f+dirty,FRESH,yes
+data/bench7_gate_g0.csv,2026-07-29,make_bench7_gate_g0.py,ea3723d+dirty,FRESH,yes
 data/bench_stale_segments.csv,2026-07-28,,,UNSTAMPED,
 data/closure_test.csv,2026-06-28,,,UNSTAMPED,
 data/da_replay.csv,2026-06-28,,,UNSTAMPED,
@@ -37,7 +37,7 @@ data/fkappa_theta1_collapse.csv,2026-07-01,,,UNSTAMPED,
 data/fm1_rootcheck.csv,2026-06-28,,,UNSTAMPED,
 data/fm1b_evapsign.csv,2026-06-28,,,UNSTAMPED,
 data/fmix_table.csv,2026-06-28,,,UNSTAMPED,
-data/freshness_audit.csv,2026-07-29,make_freshness_audit.py,f3d64e6+dirty,FRESH,yes
+data/freshness_audit.csv,2026-07-29,make_freshness_audit.py,ea3723d+dirty,FRESH,yes
 data/gate_prototype.csv,2026-07-01,,,UNSTAMPED,
 data/kappa_backreaction.csv,2026-06-28,,,UNSTAMPED,
 data/kappa_blowout_calibration.csv,2026-06-28,,,UNSTAMPED,

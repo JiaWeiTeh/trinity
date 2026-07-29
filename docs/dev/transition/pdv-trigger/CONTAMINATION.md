@@ -1,5 +1,29 @@
 # CONTAMINATION REGISTER — what you may and may not quote from this workstream
 
+> ---
+>
+> ⚠️⚠️ **DEMOTED 2026-07-29 — read this as "could be true, verify before use".** The maintainer no
+> longer trusts this workstream's measured numbers without re-measurement, and three corrections in
+> five days say that is the right call: `§18` (a metric artifact published "f_mix eliminated" for
+> eight days across four documents), `§23` (the "wrong El-Badry sign" argument used to retire f_κ was
+> false), `§24` (a correct result with a wrong stated cause). None of these were caught by
+> `CONTAMINATION.md` — they were **correct data with a wrong reading**, which a per-artifact grade
+> cannot detect.
+>
+> **The active workstream is now [`docs/dev/transition/kappa-3way/`](../kappa-3way/README.md)** — its
+> `report.html` is the source of truth, and its rule is: a number is quotable only if its own
+> provenance stamp is dated **on or after 2026-07-29**.
+>
+> **What this doc is still good for:** the history, the physics reasoning, the design rationale, the
+> literature imprints (`LANCASTER_REFERENCE.md`, `ELBADRY_REFERENCE.md` — published values, still
+> `[V]`), the measurement rules, and the param/HPC tooling under `runs/` (which stays here and is
+> actively used). **What it is not good for:** quoting a measured value. Every Θ_cum, band-entry
+> dose, spread, fire map and threshold in here is ⚠️ **VERIFY** until the 294-arm re-run reproduces
+> it — see [`../kappa-3way/PROVENANCE.md`](../kappa-3way/PROVENANCE.md).
+>
+> ---
+
+
 > ⚠️ **This document may be out of date — verify before trusting it.** It is a
 > point-in-time analysis/audit, not a maintained spec; the code moves faster
 > than these notes (paths, line numbers, and "what shipped" status drift).

@@ -1,5 +1,29 @@
 # PdV-in-the-transition-trigger — argument, evidence, and a plan to test it
 
+> ---
+>
+> ⚠️⚠️ **DEMOTED 2026-07-29 — read this as "could be true, verify before use".** The maintainer no
+> longer trusts this workstream's measured numbers without re-measurement, and three corrections in
+> five days say that is the right call: `§18` (a metric artifact published "f_mix eliminated" for
+> eight days across four documents), `§23` (the "wrong El-Badry sign" argument used to retire f_κ was
+> false), `§24` (a correct result with a wrong stated cause). None of these were caught by
+> `CONTAMINATION.md` — they were **correct data with a wrong reading**, which a per-artifact grade
+> cannot detect.
+>
+> **The active workstream is now [`docs/dev/transition/kappa-3way/`](../kappa-3way/README.md)** — its
+> `report.html` is the source of truth, and its rule is: a number is quotable only if its own
+> provenance stamp is dated **on or after 2026-07-29**.
+>
+> **What this doc is still good for:** the history, the physics reasoning, the design rationale, the
+> literature imprints (`LANCASTER_REFERENCE.md`, `ELBADRY_REFERENCE.md` — published values, still
+> `[V]`), the measurement rules, and the param/HPC tooling under `runs/` (which stays here and is
+> actively used). **What it is not good for:** quoting a measured value. Every Θ_cum, band-entry
+> dose, spread, fire map and threshold in here is ⚠️ **VERIFY** until the 294-arm re-run reproduces
+> it — see [`../kappa-3way/PROVENANCE.md`](../kappa-3way/PROVENANCE.md).
+>
+> ---
+
+
 > ⚠️ **This document may be out of date — verify before trusting it.** It is a
 > point-in-time analysis/audit, not a maintained spec; the code moves faster
 > than these notes (paths, line numbers, and "what shipped" status drift).
@@ -2079,12 +2103,12 @@ and gate.*
    number. `KAPPA_REOPEN_PLAN.md` pre-registers K1–K4 (predictions P1–P5, gates G0–G6, a TERMINAL
    stop) and **item 5 above is folded in as its K4**. **Status (`FINDINGS §25`): §6.0 ruled; G0
    cleared 11/11 (`data/bench7_gate_g0.csv` — the published Θ₀ and band-entry table reproduce
-   exactly from the committed trajectories); G1 cleared 4/4; 166 params committed in
+   exactly from the committed trajectories); G1 cleared 4/4; 174 params committed in
    `runs/params/bench7/` and pinned by `test/test_bench7_params.py`. NO arm has been run** — §6.2's
    `sync_bench.sh` loop needs `ssh helix`. **ALL-FRESH ruling (`FINDINGS §26`): bench7 does not run
    alone.** K2's grid was widened to the full f_κ range so `theta5k` stops being an input, and the
    L21b baselines are re-run as `bench5r`/`bench6r` under fresh landing names so Θ₀ and the
-   f_A/f_mix ladders are today's numbers — **286 arms**, run order in `KAPPA_REOPEN_PLAN §6.2`.
+   f_A/f_mix ladders are today's numbers — **294 arms**, run order in `KAPPA_REOPEN_PLAN §6.2`.
    Every artifact now carries its UTC generation stamp (trajectories and hash files included) and
    `data/make_freshness_audit.py` reports what is fresh; G0 doubles as the old-vs-new reproduction
    gate. Two cheap pre-submit checks: the flagged §6.0(c) K4 reading, and the one-shot

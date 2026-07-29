@@ -12,16 +12,16 @@
 > are exact; stamp-less artifacts predate the convention (2026-07-02) — for those, only
 > the commit date is known. **Every new/edited builder must write the stamp.**
 
-912 artifacts · 2 stale-risk · 0 untracked · 22 stamped 🕐
+920 artifacts · 2 stale-risk · 0 untracked · 22 stamped 🕐
 
 | last updated (commit) | artifact | producer / flags |
 |---|---|---|
 | 2026-07-29 `ab1e319` | `_eqp.html` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `bench5_theta_tracks.png` | producer unknown (HPC/hand-made); refs: `make_bench5_analysis.py`, `make_pdvtrigger_report.py` |
-| 2026-07-29 `cd6064f` | `data/bench5_analysis.csv` | by `make_bench5_analysis.py` · 🕐 generated 2026-07-29T18:58:22Z | builder make_bench5_analysis.py | code 1e82a37+dirty |
-| 2026-07-29 `cd6064f` | `data/bench6_analysis.csv` | by `make_bench6_analysis.py` · 🕐 generated 2026-07-29T18:58:39Z | builder make_bench6_analysis.py | code 1e82a37+dirty |
-| 2026-07-29 `cd6064f` | `data/bench7_gate_g0.csv` | by `make_bench7_gate_g0.py` · 🕐 generated 2026-07-29T18:59:47Z | builder make_bench7_gate_g0.py | code 1e82a37+dirty |
-| 2026-07-29 `cd6064f` | `data/freshness_audit.csv` | by `make_freshness_audit.py` · 🕐 generated 2026-07-29T18:59:12Z | builder make_freshness_audit.py | code 1e82a37+dirty |
+| 2026-07-29 `afb969f` | `bench5_theta_tracks.png` | producer unknown (HPC/hand-made); refs: `make_bench5_analysis.py`, `make_pdvtrigger_report.py` |
+| 2026-07-29 `f3d64e6` | `data/bench5_analysis.csv` | by `make_bench5_analysis.py` · 🕐 generated 2026-07-29T19:14:18Z | builder make_bench5_analysis.py | code afb969f+dirty |
+| 2026-07-29 `f3d64e6` | `data/bench6_analysis.csv` | by `make_bench6_analysis.py` · 🕐 generated 2026-07-29T19:14:20Z | builder make_bench6_analysis.py | code afb969f+dirty |
+| 2026-07-29 `4c42596` | `data/bench7_gate_g0.csv` | by `make_bench7_gate_g0.py` · 🕐 generated 2026-07-29T20:49:40Z | builder make_bench7_gate_g0.py | code ea3723d+dirty |
+| 2026-07-29 `4c42596` | `data/freshness_audit.csv` | by `make_freshness_audit.py` · 🕐 generated 2026-07-29T20:49:41Z | builder make_freshness_audit.py | code ea3723d+dirty |
 | 2026-07-29 `db353aa` | `data/kappa_eq47_check.csv` | by `make_kappa_eq47_check.py` |
 | 2026-07-29 `ab1e319` | `data/zone_profiles.csv` | by `make_zone_profiles.py` |
 | 2026-07-29 `2b381bd` | `pdvtrigger_report.html` | by `make_pdvtrigger_report.py` |
@@ -79,83 +79,91 @@
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench3_m1e5_r5__fk6_diag.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench3_m1e5_r5__fk8.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench3_m1e5_r5__fk8_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `4c42596` | `runs/params/bench7/k1b_bench4_m1e5_r2p5__fk12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `4c42596` | `runs/params/bench7/k1b_bench4_m1e5_r2p5__fk12_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `4c42596` | `runs/params/bench7/k1b_bench4_m1e5_r2p5__fk16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `4c42596` | `runs/params/bench7/k1b_bench4_m1e5_r2p5__fk16_diag.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k1b_bench4_m1e5_r2p5__fk2.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k1b_bench4_m1e5_r2p5__fk2_diag.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k1b_bench4_m1e5_r2p5__fk4.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k1b_bench4_m1e5_r2p5__fk4_diag.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k1b_bench4_m1e5_r2p5__fk8.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k1b_bench4_m1e5_r2p5__fk8_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `4c42596` | `runs/params/bench7/k1b_bench5_m5e5_r2p5__fk12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `4c42596` | `runs/params/bench7/k1b_bench5_m5e5_r2p5__fk12_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `4c42596` | `runs/params/bench7/k1b_bench5_m5e5_r2p5__fk16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `4c42596` | `runs/params/bench7/k1b_bench5_m5e5_r2p5__fk16_diag.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k1b_bench5_m5e5_r2p5__fk2.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k1b_bench5_m5e5_r2p5__fk2_diag.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k1b_bench5_m5e5_r2p5__fk4.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k1b_bench5_m5e5_r2p5__fk4_diag.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k1b_bench5_m5e5_r2p5__fk8.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k1b_bench5_m5e5_r2p5__fk8_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/params/bench7/k2_be_sphere__fk1.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/params/bench7/k2_be_sphere__fk12.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/params/bench7/k2_be_sphere__fk16.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/params/bench7/k2_be_sphere__fk2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/params/bench7/k2_be_sphere__fk3.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/params/bench7/k2_be_sphere__fk4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969f` | `runs/params/bench7/k2_be_sphere__fk1.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969f` | `runs/params/bench7/k2_be_sphere__fk12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969f` | `runs/params/bench7/k2_be_sphere__fk16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969f` | `runs/params/bench7/k2_be_sphere__fk2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969f` | `runs/params/bench7/k2_be_sphere__fk3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969f` | `runs/params/bench7/k2_be_sphere__fk4.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k2_be_sphere__fk5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/params/bench7/k2_be_sphere__fk6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969f` | `runs/params/bench7/k2_be_sphere__fk6.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k2_be_sphere__fk7.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/params/bench7/k2_be_sphere__fk8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969f` | `runs/params/bench7/k2_be_sphere__fk8.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k2_be_sphere__fk9.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/params/bench7/k2_large_diffuse_lowsfe__fk1.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/params/bench7/k2_large_diffuse_lowsfe__fk12.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/params/bench7/k2_large_diffuse_lowsfe__fk16.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/params/bench7/k2_large_diffuse_lowsfe__fk2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/params/bench7/k2_large_diffuse_lowsfe__fk3.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/params/bench7/k2_large_diffuse_lowsfe__fk4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969f` | `runs/params/bench7/k2_large_diffuse_lowsfe__fk1.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969f` | `runs/params/bench7/k2_large_diffuse_lowsfe__fk12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969f` | `runs/params/bench7/k2_large_diffuse_lowsfe__fk16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969f` | `runs/params/bench7/k2_large_diffuse_lowsfe__fk2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969f` | `runs/params/bench7/k2_large_diffuse_lowsfe__fk3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969f` | `runs/params/bench7/k2_large_diffuse_lowsfe__fk4.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k2_large_diffuse_lowsfe__fk5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/params/bench7/k2_large_diffuse_lowsfe__fk6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969f` | `runs/params/bench7/k2_large_diffuse_lowsfe__fk6.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k2_large_diffuse_lowsfe__fk7.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/params/bench7/k2_large_diffuse_lowsfe__fk8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969f` | `runs/params/bench7/k2_large_diffuse_lowsfe__fk8.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k2_large_diffuse_lowsfe__fk9.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/params/bench7/k2_midrange_pl0__fk1.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/params/bench7/k2_midrange_pl0__fk12.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/params/bench7/k2_midrange_pl0__fk16.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/params/bench7/k2_midrange_pl0__fk2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/params/bench7/k2_midrange_pl0__fk3.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/params/bench7/k2_midrange_pl0__fk4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969f` | `runs/params/bench7/k2_midrange_pl0__fk1.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969f` | `runs/params/bench7/k2_midrange_pl0__fk12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969f` | `runs/params/bench7/k2_midrange_pl0__fk16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969f` | `runs/params/bench7/k2_midrange_pl0__fk2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969f` | `runs/params/bench7/k2_midrange_pl0__fk3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969f` | `runs/params/bench7/k2_midrange_pl0__fk4.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k2_midrange_pl0__fk5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/params/bench7/k2_midrange_pl0__fk6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969f` | `runs/params/bench7/k2_midrange_pl0__fk6.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k2_midrange_pl0__fk7.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/params/bench7/k2_midrange_pl0__fk8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969f` | `runs/params/bench7/k2_midrange_pl0__fk8.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k2_midrange_pl0__fk9.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/params/bench7/k2_pl2_steep__fk1.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/params/bench7/k2_pl2_steep__fk12.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/params/bench7/k2_pl2_steep__fk16.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/params/bench7/k2_pl2_steep__fk2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/params/bench7/k2_pl2_steep__fk3.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/params/bench7/k2_pl2_steep__fk4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969f` | `runs/params/bench7/k2_pl2_steep__fk1.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969f` | `runs/params/bench7/k2_pl2_steep__fk12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969f` | `runs/params/bench7/k2_pl2_steep__fk16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969f` | `runs/params/bench7/k2_pl2_steep__fk2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969f` | `runs/params/bench7/k2_pl2_steep__fk3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969f` | `runs/params/bench7/k2_pl2_steep__fk4.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k2_pl2_steep__fk5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/params/bench7/k2_pl2_steep__fk6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969f` | `runs/params/bench7/k2_pl2_steep__fk6.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k2_pl2_steep__fk7.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/params/bench7/k2_pl2_steep__fk8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969f` | `runs/params/bench7/k2_pl2_steep__fk8.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k2_pl2_steep__fk9.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/params/bench7/k2_simple_cluster__fk1.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/params/bench7/k2_simple_cluster__fk12.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/params/bench7/k2_simple_cluster__fk16.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/params/bench7/k2_simple_cluster__fk2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/params/bench7/k2_simple_cluster__fk3.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/params/bench7/k2_simple_cluster__fk4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969f` | `runs/params/bench7/k2_simple_cluster__fk1.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969f` | `runs/params/bench7/k2_simple_cluster__fk12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969f` | `runs/params/bench7/k2_simple_cluster__fk16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969f` | `runs/params/bench7/k2_simple_cluster__fk2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969f` | `runs/params/bench7/k2_simple_cluster__fk3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969f` | `runs/params/bench7/k2_simple_cluster__fk4.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k2_simple_cluster__fk5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/params/bench7/k2_simple_cluster__fk6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969f` | `runs/params/bench7/k2_simple_cluster__fk6.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k2_simple_cluster__fk7.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/params/bench7/k2_simple_cluster__fk8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969f` | `runs/params/bench7/k2_simple_cluster__fk8.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k2_simple_cluster__fk9.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/params/bench7/k2_small_dense_highsfe__fk1.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/params/bench7/k2_small_dense_highsfe__fk12.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/params/bench7/k2_small_dense_highsfe__fk16.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/params/bench7/k2_small_dense_highsfe__fk2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/params/bench7/k2_small_dense_highsfe__fk3.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/params/bench7/k2_small_dense_highsfe__fk4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969f` | `runs/params/bench7/k2_small_dense_highsfe__fk1.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969f` | `runs/params/bench7/k2_small_dense_highsfe__fk12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969f` | `runs/params/bench7/k2_small_dense_highsfe__fk16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969f` | `runs/params/bench7/k2_small_dense_highsfe__fk2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969f` | `runs/params/bench7/k2_small_dense_highsfe__fk3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969f` | `runs/params/bench7/k2_small_dense_highsfe__fk4.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k2_small_dense_highsfe__fk5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/params/bench7/k2_small_dense_highsfe__fk6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969f` | `runs/params/bench7/k2_small_dense_highsfe__fk6.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k2_small_dense_highsfe__fk7.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/params/bench7/k2_small_dense_highsfe__fk8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969f` | `runs/params/bench7/k2_small_dense_highsfe__fk8.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k2_small_dense_highsfe__fk9.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k3_be_sphere__fk8_a.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k3_be_sphere__fk8_b.param` | — (hand-made/HPC, unreferenced) |
@@ -191,7 +199,7 @@
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k4_bench2_m1e5_r10__fm4_diag.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k4_bench2_m1e5_r10__fm8.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k4_bench2_m1e5_r10__fm8_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `cd6064f` | `runs/run_bench7.sbatch` | producer unknown (HPC/hand-made); refs: `make_kappa_reopen_params.py` |
+| 2026-07-29 `4c42596` | `runs/run_bench7.sbatch` | producer unknown (HPC/hand-made); refs: `make_kappa_reopen_params.py` |
 | 2026-07-29 `ab1e319` | `zone_profiles.png` | by `make_zone_profiles.py` |
 | 2026-07-28 `0493f63` | `data/bench_stale_segments.csv` | by `make_bench_stale_segments.py` |
 | 2026-07-28 `dd9b4ca` | `data/rosette_fm4_doubleboost_check.csv` | by `make_rosette_fm4_doubleboost_check.py` |

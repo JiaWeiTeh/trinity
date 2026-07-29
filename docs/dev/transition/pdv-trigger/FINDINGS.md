@@ -1,5 +1,29 @@
 # PdV-trigger workstream — findings (✅ direction corrected 2026-07-01: θ is an output, f_κ reinstated — see §8c)
 
+> ---
+>
+> ⚠️⚠️ **DEMOTED 2026-07-29 — read this as "could be true, verify before use".** The maintainer no
+> longer trusts this workstream's measured numbers without re-measurement, and three corrections in
+> five days say that is the right call: `§18` (a metric artifact published "f_mix eliminated" for
+> eight days across four documents), `§23` (the "wrong El-Badry sign" argument used to retire f_κ was
+> false), `§24` (a correct result with a wrong stated cause). None of these were caught by
+> `CONTAMINATION.md` — they were **correct data with a wrong reading**, which a per-artifact grade
+> cannot detect.
+>
+> **The active workstream is now [`docs/dev/transition/kappa-3way/`](../kappa-3way/README.md)** — its
+> `report.html` is the source of truth, and its rule is: a number is quotable only if its own
+> provenance stamp is dated **on or after 2026-07-29**.
+>
+> **What this doc is still good for:** the history, the physics reasoning, the design rationale, the
+> literature imprints (`LANCASTER_REFERENCE.md`, `ELBADRY_REFERENCE.md` — published values, still
+> `[V]`), the measurement rules, and the param/HPC tooling under `runs/` (which stays here and is
+> actively used). **What it is not good for:** quoting a measured value. Every Θ_cum, band-entry
+> dose, spread, fire map and threshold in here is ⚠️ **VERIFY** until the 294-arm re-run reproduces
+> it — see [`../kappa-3way/PROVENANCE.md`](../kappa-3way/PROVENANCE.md).
+>
+> ---
+
+
 > ⚠️ **This document may be out of date — verify before trusting it.** It is a
 > point-in-time analysis/audit, not a maintained spec; the code moves faster
 > than these notes (paths, line numbers, and "what shipped" status drift).
@@ -2428,7 +2452,7 @@ docstring, and it is one constant to flip (`F_MIX_K4`) before submission: `[]` �
 **NOT RUN**; `["12","16"]` → 102 arms, the literal ride-along.
 
 **G1 — CLEARED, 4/4; 118 params committed.** `runs/make_kappa_reopen_params.py` →
-`runs/params/bench7/` (K1 54 + K1b 12 + K2 18 + K3 10 + K4 24). All five K-phases share one directory and one
+`runs/params/bench7/` (K1 54 + K1b 20 + K2 18 + K3 10 + K4 24). All five K-phases share one directory and one
 sbatch array; a phase is only a filename prefix. The builder aborts before writing anything if any gate fails:
 GMC plausibility via `_validate_sweep_combination` on **every** arm (the L21b benches *and* the theta5 configs,
 `densBE` included), the exact L21b mapping (`rCloud`(gas) = R_cl to <2%), an end-to-end `read_param` load-check
@@ -2469,7 +2493,7 @@ reduce returns.
 workstream. The E3/E4 contamination grades stand; `cooling_boost_kappa='auto'` stays PROVISIONAL. `§12`'s 5/6
 and `§18`'s band-entry table are re-confirmed byte-identically by G0, not revised.
 
-## 26. [tooling] The ALL-FRESH re-run — bench7 widened to 166 arms, the L21b baselines re-run as `bench5r`/`bench6r`, and every artifact timestamped (2026-07-29, offline, no sims)
+## 26. [tooling] The ALL-FRESH re-run — bench7 widened to 174 arms, the L21b baselines re-run as `bench5r`/`bench6r`, and every artifact timestamped (2026-07-29, offline, no sims)
 
 **Provenance.** Maintainer ruling, same day as `§25`: *"I do not really trust the previous runs and I would
 like very fresh ones… everything I want will be new numerically… not the csv or files or conclusion that are
@@ -2484,7 +2508,7 @@ conclusions, which the ALL-FRESH ruling does not permit:
     three legs of the head-to-head. Only the f_κ leg would have been fresh.
 
 **Two design changes, both committed.**
- 1. **K2's grid widened `{5,7,9}` → `{1,2,3,4,5,6,7,8,9,12,16}`** (18 → 66 arms; campaign **118 → 166**). K2
+ 1. **K2's grid widened `{5,7,9}` → `{1,2,3,4,5,6,7,8,9,12,16}`** (18 → 66 arms; campaign **118 → 166 → 174**). K2
     now re-measures the whole f_κ fire map for the 6 band configs *and* fills in the condensation squeeze.
     `f_κ = 1` is included deliberately — a gated ×1.0 exact no-op, i.e. the config's native Θ₀ — so the K2
     fire map is self-contained. **`theta5k` is no longer an input to any bench7 conclusion.**
@@ -2492,7 +2516,7 @@ conclusions, which the ALL-FRESH ruling does not permit:
     bench5/bench6, re-run today, landing under **fresh names** (`bench5r_summary.csv` + `bench5r_traj/`, …).
     Nothing older is overwritten, so old-vs-new is a file diff rather than a lost baseline. They also collect
     bench7's four extra trajectory columns (`Pb`, `bubble_dMdt`, the L2/L3 split), which the 07-19 harvests
-    never captured. Campaign total: **286 arms** (166 + 60 + 60).
+    never captured. Campaign total: **294 arms** (174 + 60 + 60).
 
 **Timestamping, extended to where it was missing.** `_stamp.py`'s
 `# generated <UTC ISO8601> | builder <x> | code <sha>` contract already covered the summary CSVs. It now also
@@ -2537,5 +2561,59 @@ bench7 concurrently, one `reduce`+`down` each, then the four re-derive commands 
 G0 fails on fresh data, that is a finding about the 07-19 result and it is reconciled before bench7 is read.
 
 **What this does NOT change.** No production behaviour, no default, no physics. `test/test_bench7_params.py`
-tracks the new counts (174 cases; `k2_` 66, total 166) and still pins byte-identical regeneration. Every P1–P5
+tracks the new counts (182 cases; `k2_` 66, `k1b_` 20, total 174) and still pins byte-identical regeneration. Every P1–P5
 number remains a prediction — **no arm of any campaign has been run.**
+
+## 27. [tooling] K1b extended to f_κ ∈ {2,4,8,12,16}, and the record moves to a new workstream — `transition/kappa-3way/` (2026-07-29, offline, no sims)
+
+**Provenance.** Two maintainer instructions, same day, after `§25` and `§26`. No sims, no production change.
+
+**(1) "Also, include 12 and 16."** After `§26` widened K2 to the full f_κ range, **K1b was the only grid in
+the campaign that still stopped short** — the dense benches ran `{2,4,8}` while K1's diffuse benches ran out
+to 32 and K2's band configs to 16. That left the fire map dark at the dense end precisely where the rest of
+the campaign is densest, and at the two doses that matter most: **12** is `theta5k`'s best whole-band dose
+(5/6, `§12`) and **16** is where its fire set starts falling over. A fire map that cannot be read across
+density at those doses cannot answer P3. K1b is now `{2,4,8,12,16}` — **12 → 20 arms; campaign 174; total
+174 + 60 + 60 = 294**.
+
+**(2) A new workstream directory, and this one demoted.** The maintainer's instruction: a clean directory
+that documents what happens from here, a new HTML that is *the source of truth*, and this workstream
+downgraded to *"could be true, but definitely need to verify"*.
+
+**`docs/dev/transition/kappa-3way/`** is that directory:
+
+| file | role |
+|---|---|
+| `report.html` | 📌 **the source of truth.** *Generated* by `make_report.py` from the committed artifacts — arm counts are read off the `.param` files, G0 verdicts and the P1 predictions off `bench7_gate_g0.csv`, the freshness roll-up off `freshness_audit.csv` — so it cannot drift from the data the way a hand-written status page does. It prints its own build timestamp and opens with a red banner stating that no arm has been run. |
+| `PROVENANCE.md` | the freshness rule, the quotability ladder, and an explicit inherited-vs-re-measured table |
+| `PLAN.md` | what happened → what to do → what we will do, with the campaign, the gates, the run order and the pre-registered decision |
+| `REPRODUCE.md` | claim → command → artifact, split into what runs today and what needs the 294 arms |
+
+**The rule that replaces the register.** *A number is quotable only if its own provenance stamp is dated on
+or after **2026-07-29**.* One date comparison, applied mechanically by `make_freshness_audit.py`. The
+justification is this workstream's own record: `§18` (a metric artifact that published *"f_mix eliminated"*
+for eight days across four documents), `§23` (the falsified El-Badry sign argument), `§24` (a correct result
+with a wrong stated cause). **None of these were caught by `CONTAMINATION.md`** — every one passed its
+grades, because they were *correct data with a wrong reading*, which a per-artifact grade cannot detect. A
+date cutoff does not catch bad readings either, but it forces the re-derivation that does.
+
+**What this workstream is now.** `INDEX.md`, `PLAN.md`, `FINDINGS.md`, `CONTAMINATION.md`, `REPRODUCE.md`
+and `KAPPA_REOPEN_PLAN.md` each carry a **DEMOTED** banner directly under their H1. The distinction it
+draws matters and is not "this is wrong":
+
+- **Still good for** — the history, the physics reasoning, the design rationale, the literature imprints
+  (`LANCASTER_REFERENCE.md`, `ELBADRY_REFERENCE.md`: published values, still `[V]`, and a re-run cannot
+  refresh a paper), the measurement rules, and the whole param/HPC toolchain under `runs/`.
+- **Not good for** — quoting a measured value. Every Θ_cum, band-entry dose, spread, fire map and threshold
+  here is ⚠️ **VERIFY** until the 294-arm re-run reproduces it.
+
+**What deliberately did NOT move.** The param builders, the 174 `.param` files, `run_bench7.sbatch` and
+`sync_bench.sh` stay in `pdv-trigger/runs/`. The cluster paths are baked into those scripts
+(`$REPO/docs/dev/transition/pdv-trigger/runs/…`); moving them buys a tidier tree and risks a silent path
+break on a **one-shot** 294-arm reduce. The new workstream owns the record and the rules; the old one keeps
+the machinery, and both say so.
+
+**What this does NOT change.** No production behaviour, no default, no physics, and **no measured number** —
+the demotion changes how the existing numbers may be *cited*, not what they *say*. `pytest` green
+(`test_bench7_params.py` 182 cases). **No arm of any campaign has been run**; every P1–P5 number is still a
+prediction.

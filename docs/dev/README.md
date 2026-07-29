@@ -63,7 +63,10 @@ docs/dev/
 ├── roadmap/               repo-wide execution queue + solver audit + reorg spec (🔵 ACTIVE — start: roadmap/README.md)
 ├── test-suite/            test-suite remediation plan from the 2026-07-06 four-slice audit (🔵 — PLAN.md)
 ├── transition/            implicit→momentum transition trigger (🔵 ACTIVE — see transition/README.md)
-│   ├── pdv-trigger/       the active front: PdV/f_κ mechanism + θ calibration (start: INDEX.md)
+│   ├── kappa-3way/       🔵 THE ACTIVE FRONT — the three-way f_κ/f_A/f_mix band-entry
+│   │                     calibration, measured fresh (start: report.html)
+│   ├── pdv-trigger/       ⚠️ DEMOTED 2026-07-29 to "verify before use" — the history, the
+│   │                     physics reasoning and the HPC tooling (start: INDEX.md)
 │   ├── cleanroom/         substrate certification (concluded — the "transition is geometric" verdict)
 │   ├── pt4/               hypothesis audits H1–H5 + R1 shadow (concluded, feeds pdv-trigger)
 │   └── harness/ + PROVENANCE_PROTOCOL.md    shared run-stamping tooling
@@ -90,8 +93,12 @@ The top-level `scratch/` (repo root) is separate, git-ignored, local-only.
   2026-07-06 solver audit ([`solver-audit.md`](roadmap/solver-audit.md)) with the mechanical
   hand-off spec in [`REORG.md`](roadmap/REORG.md).
 - **`transition/`** — the umbrella for the transition-trigger program; start at
-  [`transition/README.md`](transition/README.md). The live front is `pdv-trigger/`
-  (entry: `pdv-trigger/INDEX.md`; check `pdv-trigger/CONTAMINATION.md` before quoting numbers).
+  [`transition/README.md`](transition/README.md). The live front is **`kappa-3way/`**
+  (entry: [`transition/kappa-3way/report.html`](transition/kappa-3way/report.html) — the generated
+  source of truth; rules in `kappa-3way/PROVENANCE.md`). Its parent `pdv-trigger/` was **demoted
+  2026-07-29** to "could be true, verify before use": still the place for the history, the physics
+  reasoning, the literature imprints and the HPC tooling, but no measured number from it is quotable
+  until the 294-arm re-run reproduces it.
 - **`cooling/`** — [`refactor-audit.md`](cooling/refactor-audit.md): decouple the cooling-table
   loaders from hardcoded SB99/OPIATE/CLOUDY. Two side items shipped; core PR-1–4 pending.
 - **`performance/`** — start at

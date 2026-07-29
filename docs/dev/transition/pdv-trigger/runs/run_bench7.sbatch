@@ -1,9 +1,9 @@
 #!/bin/bash -l
-# 📏 bench7 — the f_kappa RE-OPEN campaign on Helix (KAPPA_REOPEN_PLAN.md K1–K4, 166 arms).
+# 📏 bench7 — the f_kappa RE-OPEN campaign on Helix (KAPPA_REOPEN_PLAN.md K1–K4, 174 arms).
 # All five K-phases share this ONE array: a phase is just a filename prefix in params/bench7/, so
 # there is one submit, one reduce and one download for the whole campaign.
 #   K1  bench1/2/3 × f_kappa grid × prod/diag — the missing third leg of the band-entry head-to-head
-#   K1b bench4/bench5 × f_kappa — dense fire-map completeness
+#   K1b bench4/bench5 × f_kappa {2,4,8,12,16} — dense fire-map completeness
 #   K2  the 6 band configs × f_kappa {1,2,3,4,5,6,7,8,9,12,16} — the whole f_kappa fire map,
 #       re-measured today (ALL-FRESH ruling) and filled in across the condensation squeeze
 #   K3  the 5 fate-flip arms, each run twice — determinism (P4)
@@ -42,7 +42,7 @@
 #SBATCH --export=NONE
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=2G
-#SBATCH --array=1-166
+#SBATCH --array=1-174
 #SBATCH --time=1:30:00
 #SBATCH --output=/gpfs/bwfor/work/ws/hd_cq295-trinity/jobs_bench7/logs/%A_%a.out
 

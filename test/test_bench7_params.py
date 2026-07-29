@@ -19,7 +19,7 @@ import pytest
 RUNS = Path(__file__).resolve().parent.parent / "docs/dev/transition/pdv-trigger/runs"
 PARAMS = RUNS / "params" / "bench7"
 
-PHASE_COUNTS = {"k1_": 54, "k1b_": 12, "k2_": 66, "k3_": 10, "k4_": 24}
+PHASE_COUNTS = {"k1_": 54, "k1b_": 20, "k2_": 66, "k3_": 10, "k4_": 24}
 KNOBS = ("cooling_boost_kappa", "cooling_boost_fA", "cooling_boost_mode")
 
 

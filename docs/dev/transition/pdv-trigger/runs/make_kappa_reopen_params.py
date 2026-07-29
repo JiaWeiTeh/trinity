@@ -13,12 +13,12 @@ prefix, so the campaign is one sbatch array, one reduce and one download (run_be
 `./sync_bench.sh bench7 submit` auto-sizes --array from the committed param count):
 
   k1_   bench1/2/3 x f_kappa {2,3,4,6,8,12,16,24,32} x {prod, diag}      54   the missing third leg
-  k1b_  bench4/bench5 x f_kappa {2,4,8} x {prod, diag}                   12   dense fire-map only
+  k1b_  bench4/bench5 x f_kappa {2,4,8,12,16} x {prod, diag}              20   dense fire-map only
   k2_   6 band configs x f_kappa {1,2,3,4,5,6,7,8,9,12,16} x prod        66   fire map + fine grid
   k3_   5 fate-flip arms, each emitted TWICE (_a/_b) x prod              10   determinism (P4)
   k4_   bench1/bench2 x f_mix {2,3,4,8,12,16} x {prod, diag}             24   the f_mix ladder REDO
                                                                        ----
-                                                                        166
+                                                                        174
 
 Every arm: stop_t = 5, one process per arm, theta from dictionary.jsonl accepted rows, and the
 bench5/bench6 two-arm protocol — production (live `cooling_balance` -> fire map) + diagnostic
@@ -99,8 +99,16 @@ F_KAPPA_K1 = ["2", "3", "4", "6", "8", "12", "16", "24", "32"]
 # K1b — fire-map completeness at the dense end only. bench4/bench5 fire at low dose into a collapse
 # window, so they have no clean L21b breakout window and are excluded from the decision metric (the
 # same exclusion bench6 applied to f_A).
+#
+# GRID EXTENDED 2026-07-29 (maintainer: "also, include 12 and 16"). It was {2,4,8} — after the
+# ALL-FRESH widening of K2, K1b was the ONLY grid in the campaign that stopped short of 12/16, so
+# the dense benches were the one place the fire map went dark exactly where K1's diffuse benches
+# and K2's band configs are densest. 12 and 16 also bracket theta5k's best whole-band dose (12,
+# 5/6) and the dose where its fire set starts falling over (16), so leaving them out at the dense
+# end would have made the fire map un-comparable across density at precisely the interesting doses.
+# 12 -> 20 arms; campaign 166 -> 174.
 K1B_BENCHES = ["bench4_m1e5_r2p5", "bench5_m5e5_r2p5"]
-F_KAPPA_K1B = ["2", "4", "8"]
+F_KAPPA_K1B = ["2", "4", "8", "12", "16"]
 
 # K2 — is the K0.Q2 squeeze real, or coarse sampling? `pl2_steep` needs f_kappa >= 8 while
 # `simple_cluster` condenses from f_kappa = 8 up, and theta5k never sampled between them. The 6 BAND
