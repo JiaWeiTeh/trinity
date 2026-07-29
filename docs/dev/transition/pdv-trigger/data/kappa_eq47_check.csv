@@ -1,0 +1,156 @@
+# K0 re-read of the f_kappa evidence with the 'wrong El-Badry sign' argument removed (FINDINGS 23/24). Q1_eq47_C_channel: dMdt(f)/dMdt(1) at a FIXED captured state from data/fkappa_leverage.csv against El-Badry Eq 47's (C/6e-7 cgs)^(2/7) -- f_kappa multiplies exactly that C (bubble_luminosity.py:304/398/441; C_thermal default 6e-7, registry.py:377). Q1b_backreaction_drift: the same ratio along the FULL f_kappa=2 run in data/kappa_backreaction.csv, which decays from -0.12% to -11.3% as Eb/Pb deplete. Q2_theta5k_outcomes: the per-(config,dose) outcome census from data/theta5k_fire_map.csv, showing the whole-band failure is condensation fallout, not insufficient reach. PROVENANCE: kappa_backreaction.csv is graded 'CLEAN for the f_kappa^(2/7) scaling check' and theta5k_fire_map.csv 'CLEAN re-analysis' in CONTAMINATION.md; fkappa_leverage.csv is graded SUPERSEDED there for its THETA-leverage exponent p, which this file does not use -- the per-call dMdt/LTotal ratios at a fixed state are untouched by that supersession (f_kappa=1 is byte-identical in that harness). Both Q1 sources carry FLAG-(a) (early-time), which is why Q1b is reported alongside. No sims. Regenerate: python docs/dev/transition/pdv-trigger/data/make_kappa_eq47_check.py
+table,state,f_kappa,t_Myr,dMdt_ratio_measured,eq47_prediction_f_pow_2_7,pct_error,Lcool_multiplier,Eb_ratio,Pb_ratio,outcome,theta_max,is_control
+Q1_eq47_C_channel,stiff 5e9/sfe0.01,2,,1.217928,1.219014,-0.089,1.5071,,,,,
+Q1_eq47_C_channel,stiff 5e9/sfe0.01,4,,1.482715,1.485994,-0.221,2.2719,,,,,
+Q1_eq47_C_channel,stiff 5e9/sfe0.01,8,,1.803977,1.811447,-0.412,3.4169,,,,,
+Q1_eq47_C_channel,stiff 5e9/sfe0.01,16,,2.192973,2.208179,-0.689,5.1249,,,,,
+Q1_eq47_C_channel,stiff 5e9/sfe0.01,32,,2.662722,2.691800,-1.080,7.6565,,,,,
+Q1_eq47_C_channel,stiff 5e9/sfe0.01,64,,3.227948,3.281341,-1.627,11.3977,,,,,
+Q1_eq47_C_channel,mild cluster,2,,1.218837,1.219014,-0.014,1.5924,,,,,
+Q1_eq47_C_channel,mild cluster,4,,1.485445,1.485994,-0.037,2.5372,,,,,
+Q1_eq47_C_channel,mild cluster,8,,1.810145,1.811447,-0.072,4.0368,,,,,
+Q1_eq47_C_channel,mild cluster,16,,2.205399,2.208179,-0.126,6.3969,,,,,
+Q1_eq47_C_channel,mild cluster,32,,2.686171,2.691800,-0.209,10.1705,,,,,
+Q1_eq47_C_channel,mild cluster,64,,3.270323,3.281341,-0.336,16.1326,,,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,1.956174e-07,1.217519,1.219014,-0.123,,1.00000,1.00000,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,3.019562e-05,1.216839,1.219014,-0.178,,0.99278,0.99722,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,6.019562e-05,1.213822,1.219014,-0.426,,0.99554,0.99732,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,9.019562e-05,1.210590,1.219014,-0.691,,0.99424,0.99594,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,1.201956e-04,1.207267,1.219014,-0.964,,0.99244,0.99421,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,1.501956e-04,1.203975,1.219014,-1.234,,0.99050,0.99234,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,1.801956e-04,1.200752,1.219014,-1.498,,0.98851,0.99041,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,2.101956e-04,1.197608,1.219014,-1.756,,0.98651,0.98846,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,2.401956e-04,1.194546,1.219014,-2.007,,0.98451,0.98649,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,2.701956e-04,1.191564,1.219014,-2.252,,0.98252,0.98453,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,3.001956e-04,1.188657,1.219014,-2.490,,0.98054,0.98259,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,3.301956e-04,1.185828,1.219014,-2.722,,0.97857,0.98066,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,3.601956e-04,1.183064,1.219014,-2.949,,0.97663,0.97874,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,3.901956e-04,1.180370,1.219014,-3.170,,0.97470,0.97685,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,4.201956e-04,1.177741,1.219014,-3.386,,0.97280,0.97498,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,4.501956e-04,1.175171,1.219014,-3.597,,0.97092,0.97314,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,4.801956e-04,1.172664,1.219014,-3.802,,0.96907,0.97133,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,5.101956e-04,1.170210,1.219014,-4.004,,0.96723,0.96954,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,5.401956e-04,1.167812,1.219014,-4.200,,0.96542,0.96778,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,5.701956e-04,1.165463,1.219014,-4.393,,0.96364,0.96605,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,6.001956e-04,1.163167,1.219014,-4.581,,0.96188,0.96435,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,6.301956e-04,1.160919,1.219014,-4.766,,0.96014,0.96267,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,6.601956e-04,1.158716,1.219014,-4.946,,0.95843,0.96103,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,6.901956e-04,1.156560,1.219014,-5.123,,0.95674,0.95941,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,7.201956e-04,1.154445,1.219014,-5.297,,0.95507,0.95782,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,7.501956e-04,1.152372,1.219014,-5.467,,0.95343,0.95626,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,7.801956e-04,1.150340,1.219014,-5.634,,0.95182,0.95473,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,8.101956e-04,1.148345,1.219014,-5.797,,0.95022,0.95322,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,8.401956e-04,1.146390,1.219014,-5.958,,0.94865,0.95175,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,8.701956e-04,1.144469,1.219014,-6.115,,0.94710,0.95030,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,9.001956e-04,1.142585,1.219014,-6.270,,0.94557,0.94888,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,9.301956e-04,1.140737,1.219014,-6.421,,0.94406,0.94749,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,9.601956e-04,1.138923,1.219014,-6.570,,0.94258,0.94612,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,9.901956e-04,1.137139,1.219014,-6.716,,0.94112,0.94478,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,1.020196e-03,1.135388,1.219014,-6.860,,0.93968,0.94347,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,1.050196e-03,1.133672,1.219014,-7.001,,0.93827,0.94219,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,1.080196e-03,1.131986,1.219014,-7.139,,0.93687,0.94094,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,1.110196e-03,1.130330,1.219014,-7.275,,0.93550,0.93972,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,1.140196e-03,1.128708,1.219014,-7.408,,0.93416,0.93852,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,1.170196e-03,1.127112,1.219014,-7.539,,0.93283,0.93736,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,1.200196e-03,1.125543,1.219014,-7.668,,0.93153,0.93621,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,1.230196e-03,1.124003,1.219014,-7.794,,0.93025,0.93510,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,1.260196e-03,1.122489,1.219014,-7.918,,0.92899,0.93401,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,1.290196e-03,1.121001,1.219014,-8.040,,0.92775,0.93295,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,1.320196e-03,1.119541,1.219014,-8.160,,0.92652,0.93191,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,1.350196e-03,1.118103,1.219014,-8.278,,0.92533,0.93090,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,1.380196e-03,1.116688,1.219014,-8.394,,0.92414,0.92991,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,1.410196e-03,1.115301,1.219014,-8.508,,0.92298,0.92894,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,1.440196e-03,1.113931,1.219014,-8.620,,0.92183,0.92800,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,1.470196e-03,1.112588,1.219014,-8.730,,0.92070,0.92708,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,1.500196e-03,1.111261,1.219014,-8.839,,0.91959,0.92618,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,1.530196e-03,1.109961,1.219014,-8.946,,0.91850,0.92531,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,1.560196e-03,1.108679,1.219014,-9.051,,0.91743,0.92446,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,1.590196e-03,1.107418,1.219014,-9.155,,0.91637,0.92362,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,1.620196e-03,1.106177,1.219014,-9.256,,0.91533,0.92282,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,1.650196e-03,1.104954,1.219014,-9.357,,0.91431,0.92203,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,1.680196e-03,1.103749,1.219014,-9.456,,0.91329,0.92126,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,1.710196e-03,1.102561,1.219014,-9.553,,0.91230,0.92051,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,1.740196e-03,1.101395,1.219014,-9.649,,0.91132,0.91978,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,1.770196e-03,1.100245,1.219014,-9.743,,0.91036,0.91907,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,1.800196e-03,1.099109,1.219014,-9.836,,0.90941,0.91838,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,1.830196e-03,1.097993,1.219014,-9.928,,0.90847,0.91771,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,1.860196e-03,1.096890,1.219014,-10.018,,0.90755,0.91705,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,1.890196e-03,1.095804,1.219014,-10.107,,0.90664,0.91642,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,1.920196e-03,1.094737,1.219014,-10.195,,0.90575,0.91580,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,1.950196e-03,1.093682,1.219014,-10.281,,0.90487,0.91520,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,1.980196e-03,1.092644,1.219014,-10.367,,0.90401,0.91462,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,2.010196e-03,1.091618,1.219014,-10.451,,0.90315,0.91405,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,2.040196e-03,1.090609,1.219014,-10.533,,0.90231,0.91350,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,2.070196e-03,1.089612,1.219014,-10.615,,0.90149,0.91297,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,2.100196e-03,1.088630,1.219014,-10.696,,0.90067,0.91245,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,2.130196e-03,1.087662,1.219014,-10.775,,0.89986,0.91195,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,2.160196e-03,1.086703,1.219014,-10.854,,0.89907,0.91146,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,2.190196e-03,1.085758,1.219014,-10.931,,0.89829,0.91099,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,2.220196e-03,1.084830,1.219014,-11.008,,0.89752,0.91053,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,2.250196e-03,1.083907,1.219014,-11.083,,0.89676,0.91009,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,2.280196e-03,1.083000,1.219014,-11.158,,0.89601,0.90966,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,2.310196e-03,1.082103,1.219014,-11.231,,0.89528,0.90925,,,
+Q1b_backreaction_drift,kappa_backreaction f=2,2,2.340196e-03,1.081220,1.219014,-11.304,,0.89455,0.90884,,,
+Q2_theta5k_outcomes,fail_repro,1,,,,,,,,DRAIN,0.003,control
+Q2_theta5k_outcomes,fail_repro,2,,,,,,,,DRAIN,0.005,control
+Q2_theta5k_outcomes,fail_repro,4,,,,,,,,DRAIN,0.007,control
+Q2_theta5k_outcomes,fail_repro,6,,,,,,,,DRAIN,0.008,control
+Q2_theta5k_outcomes,fail_repro,8,,,,,,,,DRAIN,0.009,control
+Q2_theta5k_outcomes,fail_repro,12,,,,,,,,DRAIN,0.011,control
+Q2_theta5k_outcomes,fail_repro,16,,,,,,,,DRAIN,0.011,control
+Q2_theta5k_outcomes,small_1e6,1,,,,,,,,NOFIRE,0.297,control
+Q2_theta5k_outcomes,small_1e6,2,,,,,,,,NOFIRE,0.389,control
+Q2_theta5k_outcomes,small_1e6,4,,,,,,,,NOFIRE,0.488,control
+Q2_theta5k_outcomes,small_1e6,6,,,,,,,,NOFIRE,0.547,control
+Q2_theta5k_outcomes,small_1e6,8,,,,,,,,NOFIRE,0.592,control
+Q2_theta5k_outcomes,small_1e6,12,,,,,,,,NOFIRE,0.643,control
+Q2_theta5k_outcomes,small_1e6,16,,,,,,,,NOFIRE,0.680,control
+Q2_theta5k_outcomes,pl2_steep,1,,,,,,,,NOFIRE,0.511,band
+Q2_theta5k_outcomes,pl2_steep,2,,,,,,,,NOFIRE,0.615,band
+Q2_theta5k_outcomes,pl2_steep,4,,,,,,,,DRAIN,0.757,band
+Q2_theta5k_outcomes,pl2_steep,6,,,,,,,,DRAIN,0.786,band
+Q2_theta5k_outcomes,pl2_steep,8,,,,,,,,FIRED,1.066,band
+Q2_theta5k_outcomes,pl2_steep,12,,,,,,,,FIRED,1.066,band
+Q2_theta5k_outcomes,pl2_steep,16,,,,,,,,CONDENSE,0.578,band
+Q2_theta5k_outcomes,be_sphere,1,,,,,,,,NOFIRE,0.529,band
+Q2_theta5k_outcomes,be_sphere,2,,,,,,,,NOFIRE,0.632,band
+Q2_theta5k_outcomes,be_sphere,4,,,,,,,,NOFIRE,0.804,band
+Q2_theta5k_outcomes,be_sphere,6,,,,,,,,FIRED,1.022,band
+Q2_theta5k_outcomes,be_sphere,8,,,,,,,,DRAIN,0.833,band
+Q2_theta5k_outcomes,be_sphere,12,,,,,,,,FIRED,1.055,band
+Q2_theta5k_outcomes,be_sphere,16,,,,,,,,FIRED,1.016,band
+Q2_theta5k_outcomes,large_diffuse_lowsfe,1,,,,,,,,NOFIRE,0.535,band
+Q2_theta5k_outcomes,large_diffuse_lowsfe,2,,,,,,,,NOFIRE,0.696,band
+Q2_theta5k_outcomes,large_diffuse_lowsfe,4,,,,,,,,FIRED,1.091,band
+Q2_theta5k_outcomes,large_diffuse_lowsfe,6,,,,,,,,FIRED,1.077,band
+Q2_theta5k_outcomes,large_diffuse_lowsfe,8,,,,,,,,FIRED,0.993,band
+Q2_theta5k_outcomes,large_diffuse_lowsfe,12,,,,,,,,FIRED,1.053,band
+Q2_theta5k_outcomes,large_diffuse_lowsfe,16,,,,,,,,FIRED,0.957,band
+Q2_theta5k_outcomes,midrange_pl0,1,,,,,,,,NOFIRE,0.636,band
+Q2_theta5k_outcomes,midrange_pl0,2,,,,,,,,NOFIRE,0.745,band
+Q2_theta5k_outcomes,midrange_pl0,4,,,,,,,,FIRED,0.952,band
+Q2_theta5k_outcomes,midrange_pl0,6,,,,,,,,FIRED,1.171,band
+Q2_theta5k_outcomes,midrange_pl0,8,,,,,,,,FIRED,1.110,band
+Q2_theta5k_outcomes,midrange_pl0,12,,,,,,,,FIRED,1.016,band
+Q2_theta5k_outcomes,midrange_pl0,16,,,,,,,,FIRED,1.051,band
+Q2_theta5k_outcomes,small_dense_highsfe,1,,,,,,,,NOFIRE,0.717,band
+Q2_theta5k_outcomes,small_dense_highsfe,2,,,,,,,,DRAIN,0.833,band
+Q2_theta5k_outcomes,small_dense_highsfe,4,,,,,,,,FIRED,1.990,band
+Q2_theta5k_outcomes,small_dense_highsfe,6,,,,,,,,CONDENSE,0.578,band
+Q2_theta5k_outcomes,small_dense_highsfe,8,,,,,,,,FIRED,1.493,band
+Q2_theta5k_outcomes,small_dense_highsfe,12,,,,,,,,FIRED,1.463,band
+Q2_theta5k_outcomes,small_dense_highsfe,16,,,,,,,,FIRED,1.822,band
+Q2_theta5k_outcomes,simple_cluster,1,,,,,,,,NOFIRE,0.676,band
+Q2_theta5k_outcomes,simple_cluster,2,,,,,,,,DRAIN,0.779,band
+Q2_theta5k_outcomes,simple_cluster,4,,,,,,,,FIRED,1.024,band
+Q2_theta5k_outcomes,simple_cluster,6,,,,,,,,FIRED,1.041,band
+Q2_theta5k_outcomes,simple_cluster,8,,,,,,,,CONDENSE,0.533,band
+Q2_theta5k_outcomes,simple_cluster,12,,,,,,,,CONDENSE,0.587,band
+Q2_theta5k_outcomes,simple_cluster,16,,,,,,,,CONDENSE,0.624,band
+Q2_theta5k_outcomes,normal_n1e3,1,,,,,,,,FIRED,1.047,fires_unmodified
+Q2_theta5k_outcomes,normal_n1e3,2,,,,,,,,FIRED,0.963,fires_unmodified
+Q2_theta5k_outcomes,normal_n1e3,4,,,,,,,,FIRED,1.043,fires_unmodified
+Q2_theta5k_outcomes,normal_n1e3,6,,,,,,,,FIRED,1.072,fires_unmodified
+Q2_theta5k_outcomes,normal_n1e3,8,,,,,,,,FIRED,0.984,fires_unmodified
+Q2_theta5k_outcomes,normal_n1e3,12,,,,,,,,FIRED,1.140,fires_unmodified
+Q2_theta5k_outcomes,normal_n1e3,16,,,,,,,,DRAIN,0.916,fires_unmodified

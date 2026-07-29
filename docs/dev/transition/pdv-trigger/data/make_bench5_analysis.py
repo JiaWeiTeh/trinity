@@ -32,11 +32,18 @@ import matplotlib.pyplot as plt  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 PDV = HERE.parent
-SUMMARY = PDV / "runs" / "data" / "bench5_summary.csv"
-TRAJ = PDV / "runs" / "data" / "bench5_traj"
+_RD = PDV / "runs" / "data"
+# prefer the authoritative HPC harvest (2026-07-19, FIDELITY OK vs in-container — compare_bench5_hpc.py)
+SUMMARY = _RD / ("bench5_summary_hpc.csv" if (_RD / "bench5_summary_hpc.csv").exists() else "bench5_summary.csv")
+TRAJ = _RD / ("bench5_traj_hpc" if (_RD / "bench5_traj_hpc").is_dir() else "bench5_traj")
 ELBADRY = HERE / "bench5_elbadry_prediction.csv"
 L21B_BAND = (0.90, 0.99)
 FIRE = 0.95
+# The L21b comparison window is WIND-ONLY: SNe switch on at ~3 Myr and change the energy budget, so
+# rows past it are outside the spec. Diag arms end at 0.23-0.86 Myr (moot), but a never-fired
+# PRODUCTION arm integrates to stop_t=5 Myr straight through the SNe ramp — FINDINGS §17 gap (c).
+# theta_cum_wind_only re-integrates with the cap applied; theta_cum_prefire keeps the full window.
+WIND_ONLY_CAP_MYR = 3.0
 
 
 def _read_csv(path):
@@ -62,27 +69,67 @@ def _fa_of(run_name):
 
 
 def theta_cum_prefire(traj_rows):
-    """∫θ-weighted: ∫Lloss dt / ∫Lmech dt over the logged trajectory, trapezoid.
+    """Θ_cum = ∫θ·Lmech dt / ∫Lmech dt over the logged trajectory, trapezoid.
+
+    Returns ``(theta_cum, theta_cum_raw, t_window_end, leak_frac)``.
+
+    The numerator uses the traj ``theta`` column (= ``bubble_Lloss``/``Lmech_total``, written at
+    run_energy_implicit_phase.py:930), so it is the EFFECTIVE loss the run actually drained under
+    EVERY ``cooling_boost_mode``. ``Lcool`` is the RAW ``bubble_LTotal`` (harvest_bench5.py), so the
+    old ``∫(Lcool+Lleak)dt`` numerator silently dropped the f_mix boost — identical under mode
+    'none'/f_A (the boost is already inside ``bubble_LTotal`` via edit site 2) but WRONG under
+    'multiplier', whose effective loss is ``Lleak + fmix*Lcool`` (get_betadelta.py:353-357). That is
+    the FINDINGS §17 artifact, fixed in §18; ``theta_cum_raw`` keeps the old construction so the
+    published §15j numbers stay auditable.
+
     For a PRODUCTION arm the trajectory is censored at fire (a lower bound). For a DIAGNOSTIC arm
     (transition_trigger=blowout) it runs to blowout (R2≈rCloud) or shell-collapse — for the diffuse
     clean-blowout benches (bench3/2/1) this IS the L21b breakout-window Θ_cum."""
     ts = [_fnum(r["t_now"]) for r in traj_rows]
-    Ll = [_fnum(r["Lcool"]) + (_fnum(r["Lleak"]) or 0) for r in traj_rows]  # bubble_Lloss = cool+leak
+    th = [_fnum(r["theta"]) for r in traj_rows]
+    Ll = [_fnum(r["Lcool"]) + (_fnum(r["Lleak"]) or 0) for r in traj_rows]  # RAW cool+leak (§15j)
     Lm = [_fnum(r["Lmech"]) for r in traj_rows]
-    pts = [(t, a, b) for t, a, b in zip(ts, Ll, Lm) if t is not None and a is not None and b]
+    pts = [(t, a, w, b) for t, a, w, b in zip(ts, th, Ll, Lm)
+           if t is not None and a is not None and b]
     if len(pts) < 2:
-        return None, None, None
-    num = den = leak_num = 0.0
-    for (t0, l0, m0), (t1, l1, m1) in zip(pts, pts[1:]):
+        return None, None, None, None
+    num = raw_num = den = 0.0
+    for (t0, h0, w0, m0), (t1, h1, w1, m1) in zip(pts, pts[1:]):
         dt = t1 - t0
-        num += 0.5 * (l0 + l1) * dt
+        num += 0.5 * (h0 * m0 + h1 * m1) * dt
+        raw_num += 0.5 * ((w0 or 0.0) + (w1 or 0.0)) * dt
         den += 0.5 * (m0 + m1) * dt
     # leak fraction of the loss budget (Rogers & Pittard channel check)
     lk = [(_fnum(r["Lleak"]) or 0.0) for r in traj_rows]
     cool = [(_fnum(r["Lcool"]) or 0.0) for r in traj_rows]
     tot = sum(lk) + sum(cool)
     leak_frac = (sum(lk) / tot) if tot else 0.0
-    return (num / den if den else None), pts[-1][0], leak_frac
+    if not den:
+        return None, None, pts[-1][0], leak_frac
+    return num / den, raw_num / den, pts[-1][0], leak_frac
+
+
+def slope_1mtheta(traj_rows):
+    """Fitted d log10(1−θ) / d log10(t) — the self-contained half of Phase-5 metric 2.
+
+    Metric 2 (SOURCE_TERM_DESIGN §3 Phase 5) has two parts: a matched-epoch dex offset against
+    L21b's Fig-17 track (needs the figure re-digitized — still open, §17 gap d) and this fitted
+    slope, whose pass band [−1, 0] (L21b expects −0.5, from 1−Θ ∝ t^{−1/2}) needs nothing external.
+    Least-squares over rows with 0 < θ < 1 and t > 0; None if fewer than 3 such rows."""
+    pts = []
+    for r in traj_rows:
+        t, th = _fnum(r["t_now"]), _fnum(r["theta"])
+        if t and t > 0 and th is not None and 0 < th < 1:
+            pts.append((math.log10(t), math.log10(1 - th)))
+    if len(pts) < 3:
+        return None
+    n = len(pts)
+    sx = sum(x for x, _ in pts)
+    sy = sum(y for _, y in pts)
+    sxx = sum(x * x for x, _ in pts)
+    sxy = sum(x * y for x, y in pts)
+    denom = n * sxx - sx * sx
+    return (n * sxy - sx * sy) / denom if denom else None
 
 
 def main():
@@ -95,9 +142,13 @@ def main():
         is_diag = name.endswith("_diag")
         tmax = _fnum(s.get("theta_max"))
         traj_path = TRAJ / f"{name}.csv"
-        tcum = tfire_traj = leak_frac = None
+        tcum = tcum_raw = t_win_end = leak_frac = tcum_wind = slope = None
         if traj_path.exists():
-            tcum, tfire_traj, leak_frac = theta_cum_prefire(_read_csv(traj_path))
+            traj = _read_csv(traj_path)
+            tcum, tcum_raw, t_win_end, leak_frac = theta_cum_prefire(traj)
+            capped = [r for r in traj if (_fnum(r["t_now"]) or 0) <= WIND_ONLY_CAP_MYR]
+            tcum_wind = tcum if len(capped) == len(traj) else theta_cum_prefire(capped)[0]
+            slope = slope_1mtheta(traj)
         ebr = eb.get(bench, {})
         eb_val = _fnum(ebr.get("theta_EB_ldv3_Amix3p5"))
         # dex cross-check |Δlog(1−Θ_cum) − Δlog(1−θ_EB)| — only where Θ_cum<1 (else 1−Θ_cum≤0, undefined)
@@ -109,7 +160,12 @@ def main():
             "fired": s.get("fired_cooling_balance"), "theta_max": f"{tmax:.4f}" if tmax else "",
             "t_fire_Myr": s.get("t_at_theta_max", ""), "t_final_Myr": s.get("t_final", ""),
             "fate": s.get("outcome", ""), "phase_final": s.get("phase_final", ""),
-            "theta_cum_prefire": f"{tcum:.4f}" if tcum else "", "dex_vs_EB": dex,
+            "theta_cum_prefire": f"{tcum:.4f}" if tcum else "",
+            "theta_cum_raw_superseded": f"{tcum_raw:.4f}" if tcum_raw else "",
+            "theta_cum_wind_only": f"{tcum_wind:.4f}" if tcum_wind else "",
+            "t_window_end_Myr": f"{t_win_end:.6g}" if t_win_end else "",
+            "slope_1mtheta": f"{slope:.3f}" if slope is not None else "",
+            "dex_vs_EB": dex,
             "leak_frac": f"{leak_frac:.3f}" if leak_frac is not None else "",
             "theta_EB_ldv3": ebr.get("theta_EB_ldv3_Amix3p5", ""), "n_bar_H": ebr.get("n_bar_H", ""),
         })
@@ -117,15 +173,27 @@ def main():
     out = HERE / "bench5_analysis.csv"
     cols = list(rows[0].keys())
     with out.open("w", newline="") as fh:
-        fh.write("# bench5 Phase-5 analysis (PROVISIONAL / IN-CONTAINER, NOT HPC — HPC down 2026-07-12). "
-                 "60/60 arms ran in-container (59 compliant; 1 dense diag wall-killed). FIRE MAP + theta_max "
+        fh.write("# bench5 Phase-5 analysis (HPC-sourced when bench5_summary_hpc.csv is present — the "
+                 "2026-07-19 Helix harvest, FIDELITY OK vs in-container, fire map identical). "
+                 "60/60 arms (59 compliant; 1 dense diag stiffness freeze on both platforms). FIRE MAP + theta_max "
                  "from the PRODUCTION arms; Theta_cum-over-window + dex_vs_EB from the DIAGNOSTIC (blowout) "
                  "arms. For the DIFFUSE benches (bench3/2/1) the diag arm blows out cleanly (end R2 ~ rCloud) "
                  "so theta_cum_prefire IS the L21b breakout-window Theta_cum; the DENSE benches (bench5/4) "
                  "censor at shell-COLLAPSE (end R2 << rCloud) so their theta_cum is a collapse-window value, "
                  "NOT the clean L21b metric (fire map stands from production). dex_vs_EB = "
                  "|dlog10(1-Theta_cum) - dlog10(1-theta_EB)|, diag arms with Theta_cum<1 only. theta_EB from "
-                 "data/bench5_elbadry_prediction.csv (registered, sim-free). L21b band Theta in [0.90,0.99].\n")
+                 "data/bench5_elbadry_prediction.csv (registered, sim-free). L21b band Theta in [0.90,0.99].\n"
+                 "# CORRECTED 2026-07-28 (FINDINGS 17 -> 18, X1): theta_cum_prefire numerator is now "
+                 "int(theta*Lmech)dt -- the EFFECTIVE loss under every cooling_boost_mode. "
+                 "theta_cum_raw_superseded is the old int(Lcool+Lleak)dt construction that published "
+                 "FINDINGS 15j; the two are identical for mode 'none'/f_A arms (gate i, measured "
+                 "2.6e-16) and differ by the dropped f_mix boost on multiplier arms. t_window_end_Myr "
+                 "closes 17 gap (c). theta_cum_wind_only re-integrates with the spec WIND-ONLY cap "
+                 "(t <= 3 Myr, before the SNe ramp): 17/60 arms cross it, all never-fired PRODUCTION "
+                 "arms (no diag arm does) -- quote the wind_only column for prod arms. slope_1mtheta "
+                 "is Phase-5 metric 2's self-contained half, pass band [-1,0] (L21b -0.5). NOTE: "
+                 "Lleak is identically 0 in all 120 bench trajectories, so leak_frac is 0 throughout "
+                 "and the Rogers & Pittard channel split (Phase-5 metric 6) is VACUOUS -- FINDINGS 18.\n")
         w = csv.DictWriter(fh, fieldnames=cols)
         w.writeheader()
         w.writerows(rows)

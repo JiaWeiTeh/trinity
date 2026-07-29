@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Figures for ELBADRY_THETA_STORY.html — document the El-Badry theta closed form:
+"""Figures for the El-Badry chapter of pdvtrigger_report.html (was ELBADRY_THETA_STORY.html, consolidated 2026-07-28) — document the El-Badry theta closed form:
 what it is, what we impose, what we check, and the physics behind it.
 
 All inputs are committed CSVs in data/ (no sim run here). Writes story_elbadry_f*.png next to this script.

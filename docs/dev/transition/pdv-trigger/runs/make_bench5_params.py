@@ -29,7 +29,8 @@ So freeze mCloud = M_cl*(1+eps), sfe = eps/(1+eps)  =>  post-SF gas = M_cl at nC
 Emit-time gates (the builder self-checks; a failing gate aborts the emit):
   1. sweep_runner's GMC plausibility validation passes for every bench (rCloud_max etc.);
   2. the exact mapping holds: rCloud computed from the post-SF gas mass matches the L21b R_cl
-     to <1% for every bench.
+     to <2% for every bench (the gate below implements 2%, not 1%, because Table-1's 5e4/5e5 rows
+     at R_cl=2.5 pc carry a ~3.3%-implied rounding offset — doc corrected 2026-07-28, FINDINGS 20).
 
 Harvest into the standard namespace (theta only from dictionary.jsonl accepted rows):
     python runs/harvest_theta_max.py "$WS"/outputs/bench5/* --csv runs/data/bench5_summary.csv
@@ -43,7 +44,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 OUT = HERE / "params" / "bench5"
-REPO = HERE.parents[3]
+REPO = HERE.parents[4]  # repo root (parents[3] is docs/ — off by one, fixed 2026-07-28)
 
 # (name, M_cl [Msun], R_cl [pc], n_H [cm^-3], eps_*) — L21b Table 1, [V] 2026-07-12.
 BENCHES = [

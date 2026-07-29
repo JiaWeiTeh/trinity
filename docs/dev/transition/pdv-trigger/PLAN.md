@@ -88,6 +88,8 @@ folder) — do **not** re-run the hours-long sims to recover them; reproduce onl
 > net radiative source *inside* the bubble-structure ODE + the resolved interface losses, only in the
 > interface band (T<10^5.5 K) — the physically-correct in-structure boost that `kappa` wanted to be,
 > WITHOUT the wrong-sign evaporation coupling (its dMdt *falls* with boost, El-Badry Eq-47 sign; kappa's
+> [CORRECTED 2026-07-29, FINDINGS 23: there is NO wrong sign. Eq 47 rises with conduction (C^{2/7}) and
+> falls with theta; f_kappa moves the C-channel, f_A the theta-channel. Both match the paper.]
 > rose → condensation crashes). Status: **Phases 0–4 ✅** — shipped gated default-1.0 LITERAL
 > byte-identical; no condensation edge even at f_A=512; **81/81 theta5s matrix complete in-container
 > (2026-07-11, PROVISIONAL pending HPC): collapse-law p=3.330 confirms the registered p_source≈3.3
@@ -122,7 +124,14 @@ folder) — do **not** re-run the hours-long sims to recover them; reproduce onl
 > density; the required boost climbs steeply toward low density — the route-a boundary.** **Next open: Phase 6
 > (ship decision) — see §15h for the three options.**
 >
-> ### ⚠️⚠️ WHAT REQUIRES HPC/HELIX (updated 2026-07-13 — HPC is BACK) ⚠️⚠️
+> ### ⚠️⚠️ WHAT REQUIRES HPC/HELIX (updated 2026-07-19 — ALL THREE BATCHES RAN) ⚠️⚠️
+> **DONE 2026-07-19 (`FINDINGS §15j`):** §1 theta5s CONFIRMED (p=3.330 exact); §2 bench5 CONFIRMED
+> (FIDELITY OK, zero flips); §3 bench6 measured (f_A band-entry 13.9/53.5/74.8, spread 5.39×;
+> f_mix never in band + wrong-sign + false-fires → eliminated ⛔ **corrected 2026-07-27: the fm
+> elimination was a metric artifact** — `FINDINGS §17`, X-plan in `SOURCE_TERM_DESIGN §3`).
+> **The ONE remaining HPC item:
+> re-run `runs/harvest_dmdt_suppression.py` on the Helix theta5s raw arms** (the committed dMdt CSV
+> is still in-container-derived). Historical batch list below (executed as written):
 > Ordered batch list in the repo-root **`temporary-HPC-runs.md`** (exact commands; maintainer deletes
 > it after running). Three batches, all params/tooling committed:
 > **§1 theta5s Phase-4 confirmation — MANDATORY** (`FINDINGS.md §15e` is PROVISIONAL; p=3.330, controls,
@@ -408,24 +417,39 @@ READ FIRST, in order — the docs are the ground truth, chat memory does not exi
    long background runs) + the f_A addendum in the CANONICAL SYNTHESIS block.
 Honor the ⚠️/🔄/💾/🔗 banners: re-verify claims against current source before relying on them.
 
-STATE: Phases 0–4 ✅. Phase 4 completed IN-CONTAINER (81/81, PROVISIONAL — not HPC-verified):
-collapse-law p=3.330 confirmed the registered p_source≈3.3; both controls cold at every f_A; 3 classes
-(normal_n1e3 fires unmodified / 6 configs need f_A, f_fire 4–12 / 2 controls); dMdt suppression < 1
-matrix-wide (Eq-47 sign). Authoritative data: data/theta5s_{fire_map,collapse_law,dmdt_suppression}.csv.
+STATE (updated 2026-07-19): Phases 0–5 ✅ ALL HPC-CONFIRMED (`FINDINGS §15e/§15h/§15j`); bench6
+head-to-head measured — f_A reaches the L21b band on every clean bench (entry 13.9/53.5/74.8,
+f_A(n̄)≈315·n̄^−0.335, thresholds 1→4→12→24→64); f_mix eliminated as a CALIBRATION knob — RETAINED as opt-in fallback per the 2026-07-22 ruling (`FA_STATE_COUPLED.md §3`) (never in band, wrong-sign
+dose-response, false-fires). ⛔ **Corrected 2026-07-27 (`FINDINGS §17`): the fm "elimination" was a
+metric artifact (Θ_cum numerator omitted the boost; corrected fm band entry ≈ 4⁺/8⁺/>8, monotone) —
+the head-to-head re-opens.** ✅ **X1–X4 EXECUTED 2026-07-28 (`FINDINGS §18`/`§19`/`§20`): metric
+fixed and CSVs regenerated (f_A side bit-stable); corrected band entry bench3 ≈4 MEASURED,
+bench2/bench1 >8 (extrap ≈8.2/11.9) — uniformity 2.96× vs f_A's 5.39×, so the head-to-head
+INVERTS as an estimate the fm≤8 grid cannot settle; "f_mix eliminated" WITHDRAWN; the §16
+double-boost BOUNDED OUT of the fire map. Next open work = the maintainer re-presentation of
+clause 1 (`SOURCE_TERM_DESIGN §3`).** Authoritative data: runs/data/{theta5s_summary,bench5_summary_hpc,
+bench6_summary}.csv + data/{theta5s_*,bench5_analysis,bench6_analysis}.csv (bench6 fm Θ_cum columns
+✅ QUOTABLE since the 2026-07-28 X1 regeneration) + data/bench_stale_segments.csv.
 
-YOUR TASK — the next open phase, in this priority order:
-(a) If HPC (Helix) is available: run the AUTHORITATIVE matrix — ./sync_theta5s.sh {up,submit,watch,run,
-    down} (sbatch runs/run_theta5s.sbatch) — then execute the §15e mandatory re-check of everything
-    downstream (fire map, p=3.33, controls, dMdt) against the HPC summary. HPC wins any disagreement.
-(b) Else Phase 5 (SOURCE_TERM_DESIGN §3): bench5 Lancaster/El-Badry calibration — an f_A value is good
-    if the SOLVED θ matches the published bubble sims at similar time.
+YOUR TASK — the next open items, in this priority order:
+(a) Phase 6 maintainer RULING (tree row 3 verdict, §15j): interim = f_A as calibrated diagnostic
+    knob (default stays mode=none); endgame = the state-coupled f_A (§4 one-read swap, El-Badry
+    L_int closed form) which would DERIVE the measured f_A(n̄) — then a default-flip ruling.
+(b) The ONE remaining HPC chore: re-run runs/harvest_dmdt_suppression.py on the Helix theta5s raw
+    arms (data/theta5s_dmdt_suppression.csv is still in-container-derived).
+(c) Successor workstream PLANNED 2026-07-22, **TERMINAL 2026-07-25**: **`FA_STATE_COUPLED.md`** is
+    the single plan doc for the state-coupled f_A. Its SC-0 offline falsification screen RAN and
+    FAILED all three candidate laws (`FINDINGS §15k`) — the pre-registered stop — so SC-1…SC-5 are
+    not to be started and no production code is written. Phase 6 is closed with it; (b) is now the
+    only live chore in this ledger.
 (c) Then Phase 6: the decision tree — does f_A supersede cooling_boost_mode='multiplier' (f_mix=4,
     adopted 2026-07-02) as the production mechanism? Feed it the 3-class result + p=3.33 + controls +
     dMdt fidelity + Phase 5.
 
 STANDING RULES (unchanged): θ only as θ_max over ≥5 Myr from dictionary.jsonl accepted rows via
 runs/harvest_theta_max.py (never blowout, never the R6 observer); FIRE = the trigger actually fired
-(the analysis CSV), NOT θ_max≥0.95; every arm must clear the compliance gate before its number is
+(the analysis CSV), NOT θ_max≥0.95;
+[CORRECTED 2026-07-28, FINDINGS 19: for the bench5/bench6 campaigns these are the SAME criterion, not different ones — 0/120 arms recorded a cooling_balance termination in metadata, so harvest_theta_max.py:95 falls through to reached_momentum AND theta_max>=0.95. Keep quoting the CSV's FIRED column, but do not claim it is stricter than theta_max.] every arm must clear the compliance gate before its number is
 quoted; single-knob arms (mode=none, kappa=1 when varying fA); commit every artifact WITH its builder
 script + exact command; every result gets a FINDINGS entry + REPRODUCE row and reconcile
 INDEX/PLAN/SOURCE_TERM_DESIGN same-visit; run pytest + test/test_docs_dev_conventions.py before
@@ -453,7 +477,8 @@ processes at matched t; byte-identity for any "free win").
 
 STANDING RULES: θ only as θ_max over ≥5 Myr from dictionary.jsonl accepted rows via
 runs/harvest_theta_max.py (never blowout, never the R6 observer); FIRE = the trigger actually fired
-(analysis CSV's FIRED/NOFIRE), NOT θ_max≥0.95; no number quoted before its compliance gate (t_final≥5
+(analysis CSV's FIRED/NOFIRE), NOT θ_max≥0.95;
+[CORRECTED 2026-07-28, FINDINGS 19: for the bench5/bench6 campaigns these are the SAME criterion, not different ones — 0/120 arms recorded a cooling_balance termination in metadata, so harvest_theta_max.py:95 falls through to reached_momentum AND theta_max>=0.95. Keep quoting the CSV's FIRED column, but do not claim it is stricter than theta_max.] no number quoted before its compliance gate (t_final≥5
 or physics end; ≥1.5 h/arm before any wall-kill verdict); single-knob arms; thresholds from incomplete
 data are upper bounds, not results; a control that fires is a BUG to flag, never a pass; if a
 registered prediction is falsified, STOP and write it up before touching code; measure, don't
@@ -1974,3 +1999,78 @@ given the offline verdict** — it confirms, it does not change, the reading-B f
 - Storyline report: `make_pdvtrigger_report.py` → `pdvtrigger_report.html`.
 - Upstream (committed): `../cleanroom/data/c0_*_h0.csv`, `../../failed-large-clouds/data/budget_*.csv`,
   `../pt4/r1shadow/r1_shadow_summary.csv`.
+
+## Consistency plan (2026-07-28) — make the whole workstream correct and mutually consistent
+
+*Added at the three-report consolidation (`FINDINGS §21`; `pdvtrigger_report.html` §10 mirrors
+this list — THIS copy is the living one). Items are ordered by dependency, each with its owner
+and gate.*
+
+1. **Registry info strings** (`trinity/_input/registry.py:384-385` + `default.param` regen) —
+   the production text still says f_mix is "superseded for L21b *calibration* by
+   cooling_boost_fA … retained pending a state-coupled successor"; both clauses are dead
+   (`§15k` terminal, `§18` withdrawal). Blocked only on Q1's choice (re-derive clause-1 grounds
+   from the physical in-ODE asymmetry — recommended — or withdraw the framing). Byte-neutral,
+   R0-class edit; gate = help-text-only diff + full pytest. *Owner: maintainer nod, then either.*
+2. **The `§16` trigger-fallback fix — now load-bearing (`§21`: 1/36 rosette fm4 fires is
+   bug-dependent; the Paper II grid runs the same configuration).** Fix candidate: consume the
+   stored effective `bubble_Lloss` directly in the `bubble_props is None` branch
+   (`run_energy_implicit_phase.py:1244-1247`). Full rule-5 ladder; byte-identity gate for
+   mode=`none`/f_A; separate-process full-run equivalence on a `multiplier` arm. Schedule under
+   the Paper II / rosette-cf workstream BEFORE the 72-dictionary reduction; afterwards re-run
+   `data/make_rosette_fm4_doubleboost_check.py` and re-check the dependent arm
+   (`1e5_sfe001_n5e2…Cf1p0`). *Owner: either, maintainer priority call.*
+3. **The phase-1a/1c dEb/dt asymmetry (`§21b`)** — `energy_phase_ODEs.py:273` uses raw
+   `bubble_LTotal` while the 1a trigger uses the effective loss. Either route
+   `get_ODE_Edot_pure` through `effective_Lloss_from_params` (behavioral for fm/θ runs ⇒ full
+   ladder) or correct `registry.py:384`'s "consistently" claim. Decide jointly with item 2.
+4. **Validators**: reject unknown `cooling_boost_mode` tokens (a typo currently un-boosts a
+   10,560-run grid silently, `get_betadelta.py:357`) and enforce `cooling_boost_theta`'s
+   advertised 0..1. Load-time behavior change — gate with a param-file sweep over `param/` and
+   the test suite. *Owner: either.*
+5. **fm ∈ {12,16} on bench1/bench2 (~4 HPC arms, Q4)** — converts the 2.96×-vs-5.39×
+   uniformity inversion from (saturation-biased) estimate to measurement.
+   `runs/make_bench6_params.py`'s docstring already specifies the extension.
+   **(2026-07-29: folded into `KAPPA_REOPEN_PLAN.md` as K4 — 8 arms there, since prod+diag are
+   both needed for a band-entry number. Run it with that campaign, not separately.)**
+   *Owner: maintainer (HPC).*
+6. **Frozen-row metric decision (Q3)** — exclude no-root rows from Θ_cum or carry an
+   uncertainty band; then regenerate `bench5_analysis.csv`/`bench6_analysis.csv` under the
+   chosen convention (moves f_A-side numbers too — 54-67% frozen on band-setting arms).
+   *Owner: maintainer ruling, then mechanical.*
+7. **Doc debris**: reconcile `LANCASTER_REFERENCE.md:143-145`'s loose n_fire/λδv pairing with
+   the verified inversion (λδv=3 ⇒ n_fire=47.5); regenerate `MANIFEST.md`; rebuild the
+   storyline book (`docs/dev/html-insights/build_storylines.py`) against the consolidated
+   report; review `docs/dev/to-be-removed/` (now incl. the three superseded HTML/generator
+   files). *Owner: either / maintainer review.*
+8. **Re-scope the f_A rationale (NEW 2026-07-29, FINDINGS §23).** The case for f_A has lost two of
+   its three legs in four days: `§18` withdrew the measurement leg ("f_mix eliminated"), and `§23`
+   voids the Eq-47 sign leg (both knobs move Eq 47 correctly, in different variables). `§22` adds
+   that f_A scales L2+L3, which carry only ~26% of L_cool. **The knob's empirical behaviour is
+   untouched — every measured number stands — but its stated rationale must be rebuilt on what
+   survives:** the structural asymmetry (f_A acts in-solve so T(r) and dMdt respond; f_mix is frozen
+   by construction). *Do NOT re-open the campaigns for this* — it is a documentation/argument
+   rebuild, and the discriminating experiment is item 9. *Owner: maintainer ruling on the grounds,
+   then mechanical.*
+9. **The area-faithful successor — the one experiment that would settle it (NEW).** Neither shipped
+   knob scales interface AREA: f_κ moves conduction (Eq 47 C-channel, ṁ ↑), f_A moves radiative
+   efficiency (θ-channel, ṁ ↓), and a genuine fractal-area increase should move the whole interface
+   budget — conduction, evaporation and radiation together — predicting **ṁ RISES with dose**. That
+   is a falsifiable, discriminating prediction testable against the existing theta5s baseline with
+   no new sims for the first pass (`theta5s_dmdt_suppression.csv` already measures the f_A side:
+   ratio 0.988 at f_A=2 → 0.857 at f_A=32). Design note belongs in `SOURCE_TERM_DESIGN.md §4`.
+   *Owner: maintainer go/no-go; scoping is cheap.*
+10. **Standing measurement debt** (unchanged, parent ledger): Fig-17 re-digitization (metric 2's
+   dex half), metric 3 α_p (needs a re-harvest with momentum columns), the dMdt reducer on
+   Helix theta5s raw arms, V_w [I]-grade.
+11. **The f_κ re-open — planned, awaiting a grid ruling (NEW 2026-07-29, `KAPPA_REOPEN_PLAN.md`).**
+   Item 8 says the f_A rationale lost the Eq-47 sign leg. The symmetric consequence is that **f_κ
+   lost the argument it was retired on**, so its evidence was re-read with that argument deleted
+   (**K0, DONE** — `FINDINGS §24`, `data/kappa_eq47_check.csv`): the Eq-47 C-channel match is exact
+   at fixed state (0.34–1.63% over f_κ ∈ [1,64]) and decays under back-reaction as E_b drains, and
+   `§12`'s whole-band failure is re-attributed from *reach* to *condensation fallout* (its 5/6
+   headline reproduced exactly, unchanged). **The gap K0 exposes: f_κ has never been through the
+   L21b Θ_cum band-entry calibration that decided f_A vs f_mix** — f_A 5.39×, f_mix 2.96×, f_κ no
+   number. `KAPPA_REOPEN_PLAN.md` pre-registers K1–K4 (102 arms, predictions P1–P5, gates G0–G5, a
+   TERMINAL stop) and **item 5 above is folded in as its K4**. Nothing is generated until §6.0's
+   grid ruling. *Owner: maintainer ruling (§6.0), then HPC.*

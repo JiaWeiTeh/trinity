@@ -67,10 +67,10 @@ def _load(summary, traj_dir):
     rows = {r["run_name"]: r for r in _read_csv(summary)}
     for name, r in rows.items():
         tp = traj_dir / f"{name}.csv"
-        r["_theta_cum"] = None
+        r["_theta_cum"] = r["_theta_cum_raw"] = r["_t_window_end"] = None
         if name.endswith("_diag") and tp.exists():
-            tcum, _, _ = theta_cum_prefire(_read_csv(tp))
-            r["_theta_cum"] = tcum
+            tcum, tcum_raw, t_win_end, _ = theta_cum_prefire(_read_csv(tp))
+            r["_theta_cum"], r["_theta_cum_raw"], r["_t_window_end"] = tcum, tcum_raw, t_win_end
     return rows
 
 
@@ -84,6 +84,23 @@ def band_entry(doses_tcum):
     if pts and pts[0][1] >= L21B_BAND[0]:
         return pts[0][0]
     return None
+
+
+def band_entry_extrapolated(doses_tcum):
+    """Band-entry dose EXTRAPOLATED past the grid, from the local log-log slope of the top two
+    doses. Used only when the grid under-brackets (band never reached) — the f_mix grid stops at 8
+    and bench1/bench2 are still short there, exactly as the f_A grid was at ≤16 before bench6
+    extended it. Local slope (not a global fit over all doses) because the dose-response SATURATES:
+    a power law fitted on fm ≤ 4 over-predicts the measured fm8 point on both benches, so it would
+    understate the entry dose. Estimate only — flagged as such wherever quoted (FINDINGS §18)."""
+    pts = sorted((d, t) for d, t in doses_tcum if t is not None)
+    if len(pts) < 2:
+        return None
+    (d0, t0), (d1, t1) = pts[-2], pts[-1]
+    if not (0 < t0 < t1) or d1 <= d0 or t1 >= L21B_BAND[0]:
+        return None
+    p = math.log(t1 / t0) / math.log(d1 / d0)
+    return d1 * (L21B_BAND[0] / t1) ** (1 / p) if p > 0 else None
 
 
 def main():
@@ -119,6 +136,10 @@ def main():
                 "fired": r.get("fired_cooling_balance"),
                 "theta_max": r.get("theta_max", ""),
                 "theta_cum": f"{r['_theta_cum']:.4f}" if r.get("_theta_cum") else "",
+                "theta_cum_raw_superseded": (
+                    f"{r['_theta_cum_raw']:.4f}" if r.get("_theta_cum_raw") else ""
+                ),
+                "t_window_end_Myr": f"{r['_t_window_end']:.6g}" if r.get("_t_window_end") else "",
                 "fate": r.get("outcome", ""),
                 "t_final": r.get("t_final", ""),
             }
@@ -129,7 +150,14 @@ def main():
             "# bench6 head-to-head analysis (f_A vs f_mix) — combined bench5+bench6 arms; "
             "theta_cum = Theta over the blowout window (diag arms; clean L21b metric only "
             "for bench3/2/1, see FINDINGS 15h). Band-entry + uniformity printed by "
-            "make_bench6_analysis.py. PROVISIONAL until sourced from HPC summaries.\n"
+            "make_bench6_analysis.py. Sourced from the 2026-07-19 Helix harvests "
+            "(bench5_summary_hpc preferred when present; bench6 is HPC-only).\n"
+            "# CORRECTED 2026-07-28 (FINDINGS 17 -> 18, X1): theta_cum is now the EFFECTIVE loss "
+            "int(theta*Lmech)dt / int(Lmech)dt. The superseded raw construction int(Lcool+Lleak)dt "
+            "-- which produced the FINDINGS 15j f_mix numbers and their 'wrong-sign dose-response' "
+            "reading -- is kept as theta_cum_raw_superseded. f_A arms are unaffected (the two agree "
+            "to rel<=1e-9); the f_mix arms are the correction. DO NOT quote the raw column as a "
+            "cooling fraction: the energy a multiplier run actually drains is fmix*Lcool.\n"
         )
         w = csv.DictWriter(fh, fieldnames=list(out_rows[0].keys()))
         w.writeheader()
@@ -138,6 +166,7 @@ def main():
 
     print("Θ_cum dose–response per (bench, knob) — diag arms; band [0.90,0.99]:")
     entries = {}
+    extrap = {}
     for knob in ("fA", "fmix"):
         for b in BENCHES:
             series = [
@@ -160,13 +189,18 @@ def main():
             if not series:
                 continue
             e = band_entry(series)
+            ex = None if e else band_entry_extrapolated(series)
             clean = b in CLEAN_BLOWOUT
             if clean:
                 entries.setdefault(knob, {})[b] = e
+                extrap.setdefault(knob, {})[b] = e or ex
             track = "  ".join(f"{d:g}:{t:.3f}" for d, t in sorted(series) if t is not None)
-            tag = (f"entry≈{e:.3g}" if e else f">{max(d for d, _ in series):g}") + (
-                "" if clean else "  [collapse-window, not clean L21b]"
-            )
+            tag = (
+                f"entry≈{e:.3g}"
+                if e
+                else f">{max(d for d, _ in series):g}"
+                + (f" (extrap≈{ex:.3g}, ESTIMATE)" if ex else "")
+            ) + ("" if clean else "  [collapse-window, not clean L21b]")
             print(f"  {b:18s} {knob:4s}  {track}   -> {tag}")
 
     print("\nBAND-ENTRY DOSE UNIFORMITY (clean-blowout benches only — the decision metric):")
@@ -184,10 +218,28 @@ def main():
             + (f"  spread(max/min)={spread:.2f}" if spread else "")
             + (f"  UNREACHED on {len(missing)} bench(es)" if missing else "")
         )
+    print("\nSAME METRIC, GRID UNDER-BRACKETING FILLED BY EXTRAPOLATION (ESTIMATE — see §18):")
+    for knob, per in extrap.items():
+        vals = [v for v in per.values() if v]
+        spread = (max(vals) / min(vals)) if len(vals) > 1 else None
+        measured = entries.get(knob, {})
+        print(
+            f"  {knob:4s}: "
+            + ", ".join(
+                f"{b.split('_')[0]}: {v:.3g}" + ("" if measured.get(b) else "*")
+                for b, v in sorted(per.items())
+                if v
+            )
+            + (f"  spread(max/min)={spread:.2f}" if spread else "")
+            + "   (* = extrapolated past the grid, not measured)"
+        )
     print(
         "\nDecision read: smaller spread = better single-constant knob; 'never'/'UNREACHED' "
         "rows feed the 'no whole-band dose' branch of the Phase-6 tree "
-        "(SOURCE_TERM_DESIGN §3 Phase 6)."
+        "(SOURCE_TERM_DESIGN §3 Phase 6). CAVEAT (FINDINGS §18): f_A's spread is MEASURED "
+        "in-grid; f_mix's is 1/3 measured + 2/3 extrapolated, so the head-to-head inversion is an "
+        "estimate the fm≤8 grid cannot settle. Both knobs' Θ_cum also carry a large frozen-no-root "
+        "share (data/bench_stale_segments.csv) — bigger on the f_A side."
     )
 
 

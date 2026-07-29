@@ -1,8 +1,10 @@
 """Tests for the f_A interface source-term boost (cooling_boost_fA).
 
 f_A (SOURCE_TERM_DESIGN.md) multiplies the net radiative source dudt inside the
-bubble-structure ODE AND the resolved L2+L3 loss integrals, ONLY in the interface
-band T < 10^5.5 K. Default 1.0 = byte-identical. Two production edit sites in
+bubble-structure ODE AND the resolved L2+L3 loss integrals, in the interface band
+T < 10^5.5 K -- i.e. the bubble-side conduction front (L2+L3) draped on the R2
+contact discontinuity, not the interface surface itself. Default 1.0 = byte-identical.
+Two production edit sites in
 trinity/bubble_structure/bubble_luminosity.py:
   - _get_bubble_ODE RHS: dudt -> fA*dudt when T < _T_INTERFACE_BAND (edit site 1);
   - _bubble_luminosity: L_conduction, L_intermediate -> fA*(...) (edit site 2).

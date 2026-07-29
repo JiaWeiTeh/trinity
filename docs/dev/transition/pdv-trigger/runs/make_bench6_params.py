@@ -13,8 +13,15 @@ designed for Helix (HPC restored 2026-07-13):
 
   B. f_mix HEAD-TO-HEAD — same benches, same metrics, the OTHER knob:
      all 5 benches x cooling_boost_mode=multiplier, cooling_boost_fmix {2, 3, 4, 8}.
-     Theta under the multiplier is ~linear in f_mix (vs f_A^~0.3), so this grid brackets the
-     band for every bench. The decision metric is band-entry-dose UNIFORMITY across density:
+     [FALSIFIED 2026-07-28, FINDINGS 18 — the sizing rationale below was wrong, and this grid does
+     NOT bracket the band for every bench.] The premise was "Theta under the multiplier is ~linear
+     in f_mix (vs f_A^~0.3), so this grid brackets the band for every bench". Measured (corrected
+     metric, X1): Theta_cum ~ f_mix^p with p = 0.47 / 0.55 / 0.70 on bench3 / bench2 / bench1
+     (fm <= 4, R^2 >= 0.99) — SUBLINEAR, and saturating above fm4, so only bench3 reaches the
+     L21b band within fm <= 8; bench2 (0.895 at fm8) and bench1 (0.767) are still short. The grid
+     under-brackets exactly as the f_A grid did at <= 16 before this matrix extended it. A rerun
+     wanting measured (not extrapolated) fm band entry needs fm ~ {12, 16} on bench1/bench2.
+     The decision metric is band-entry-dose UNIFORMITY across density:
      the knob whose calibrated dose varies less across the suite is the better single-constant.
      (The physical asymmetry is already established without sims: f_A acts inside the
      bubble-structure ODE — the structure responds and evaporation dMdt FALLS, the El-Badry
@@ -44,7 +51,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 OUT = HERE / "params" / "bench6"
-REPO = HERE.parents[3]
+REPO = HERE.parents[4]  # repo root (parents[3] is docs/ — off by one, fixed 2026-07-28)
 
 # (name, M_cl [Msun], R_cl [pc], n_H [cm^-3], eps_*) — L21b Table 1, [V] 2026-07-12.
 BENCHES = [
