@@ -2315,3 +2315,75 @@ Combined with `§22` (f_A scales L2+L3, which carry only ~26% of L_cool) and the
 (a fractal-area increase raises the conductive flux, so per Eq 47's C-exponent ṁ should RISE), the
 f_A motivation now has **three** documented weaknesses. The knob still works empirically; its
 *rationale* needs rebuilding. Registered for the maintainer — see the re-scoping note in `PLAN.md`.
+
+## 24. [data] K0 — the f_κ evidence re-read with the "wrong sign" argument deleted: the Eq-47 match is EXACT at fixed state and DECAYS under back-reaction, and the whole-band failure is condensation, not reach (2026-07-29, offline, no sims)
+
+**Provenance.** `§23` deleted a physics argument that had been used to retire `cooling_boost_kappa`. This
+section re-reads the surviving f_κ evidence without it, from committed artifacts only. It is the evidence base
+for `KAPPA_REOPEN_PLAN.md`. Regenerate:
+
+```
+python docs/dev/transition/pdv-trigger/data/make_kappa_eq47_check.py
+```
+→ `data/kappa_eq47_check.csv` (three tables, 154 rows).
+
+**Q1 — the Eq-47 C-channel, at fixed state: CONFIRMED over a 64× dose range.** `data/fkappa_leverage.csv`
+re-solves the bubble structure at two frozen captured states across f_κ ∈ [1, 64] (f_κ = 1 is byte-identical
+there). El-Badry Eq 47 predicts `dMdt(f)/dMdt(1) = f^{2/7}` because `cooling_boost_kappa` multiplies exactly
+the `C` that equation normalizes at 6×10⁻⁷ cgs:
+
+| state | fitted exponent | Eq-47 2/7 | max abs error | L_cool exponent |
+|---|---|---|---|---|
+| stiff 5e9/sfe0.01 | 0.2819 | 0.2857 | 1.63% | 0.586 |
+| mild cluster | 0.2849 | 0.2857 | 0.34% | 0.669 |
+
+`§23` quoted the single f_κ=2 point (0.12%); this is the same claim measured over the full dose range and by a
+fitted exponent, i.e. independent of any one point.
+
+**Q1b — the same check on a FULL RUN: the match DECAYS, and that is the mechanism.** Per-call equivalence is
+necessary but not sufficient (CLAUDE.md rule 5), so the ratio is re-read along the whole f_κ=2 trajectory in
+`data/kappa_backreaction.csv` (graded *"CLEAN for the f_κ^{2/7} scaling check"*):
+
+| t [Myr] | dMdt ratio | error vs 2^{2/7} | E_b ratio | P_b ratio |
+|---|---|---|---|---|
+| 1.96e-07 | 1.21752 | −0.12% | 1.00000 | 1.00000 |
+| 9.00e-04 | 1.14258 | −6.27% | 0.94557 | 0.94888 |
+| 2.34e-03 | 1.08122 | −11.30% | 0.89455 | 0.90884 |
+
+The boosted arm radiates more, drains `E_b`, loses pressure, and its conduction falls behind the fixed-state
+prediction — the deviation tracks `E_b_ratio` down monotonically. **The C-channel is not failing; the bubble is
+paying for it.** ⚠️ t ≲ 2.3e-3 Myr (FLAG-(a)) — a mechanism statement, never a calibration.
+
+**Q2 — why no whole-band f_κ: NOT reach. Condensation.** `§12` recorded the whole-band failure and attributed
+it to the knob's reach. Re-reading `data/theta5k_fire_map.csv` per dose falsifies that attribution: **all 6
+band configs cross θ = 0.95 somewhere in the grid** (peak θ_max 1.041 `simple_cluster` → 1.990
+`small_dense_highsfe`). The band breaks on CONDENSE/DRAIN fallout at scattered, non-monotonic doses —
+`pl2_steep` DRAIN@4,6 → FIRED@8,12 → CONDENSE@16; `be_sphere` FIRED@6 → DRAIN@8 → FIRED@12,16;
+`simple_cluster` FIRED@4,6 → CONDENSE@8,12,16. **The squeeze:** `pl2_steep` needs f_κ ≥ 8 while
+`simple_cluster` condenses from f_κ = 8 up, and the coarse grid never samples between them.
+
+| f_κ | 1 | 2 | 4 | 6 | 8 | 12 | 16 |
+|---|---|---|---|---|---|---|---|
+| FIRED | 0 | 0 | 4 | 4 | 4 | **5** | 4 |
+| CONDENSE | 0 | 0 | 0 | 1 | 1 | 1 | 2 |
+| DRAIN | 0 | 2 | 1 | 1 | 1 | 0 | 0 |
+| NOFIRE | 6 | 4 | 1 | 0 | 0 | 0 | 0 |
+
+Denominator = the 6 **band** configs, excluding the two controls (`fail_repro`, `small_1e6`) and
+`normal_n1e3`, which fires unmodified at f = 1 (θ₀ = 1.047). The best single dose is f_κ = 12 at **5/6** —
+**reproducing `§12`'s headline exactly**, so this is a re-attribution of a standing result, not a new number.
+*(An earlier draft of the harness counted 7 configs and reported 6/7; the denominator was corrected to §12's
+before publication.)*
+
+**Q1b explains Q2.** The E_b depletion that bends dMdt below `f^{2/7}` is the same depletion that carries an
+arm across the evaporation→condensation boundary (`KAPPA_FREEZE_MECHANISM.md`). **f_κ's Eq-47 fidelity and its
+instability are one effect at two doses** — the hypothesis `KAPPA_REOPEN_PLAN.md` P1/P2 are written to test.
+
+**The gap this exposes — and it is the whole reason to spend HPC time.** f_κ has **never** been through the
+L21b Θ_cum calibration that decided between f_A and f_mix. The published decision metric is band-entry-dose
+uniformity across density (`§18`): f_A = 5.39× (measured), f_mix = 2.96× (2/3 extrapolated), **f_κ = no number
+at all** — it was cut before that protocol existed. The head-to-head is two-way where it should be three-way.
+
+**What this does NOT change.** No production behaviour, no default. The E3/E4 contamination grades stand
+(`CONTAMINATION.md` ⛔ #1–#4); `cooling_boost_kappa='auto'` stays PROVISIONAL. `§12`'s 5/6 headline stands —
+only its stated *cause* is corrected. No Θ_cum, band-entry, fire-threshold or collapse-law number moves.

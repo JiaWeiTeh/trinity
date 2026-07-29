@@ -12,13 +12,13 @@
 > are exact; stamp-less artifacts predate the convention (2026-07-02) — for those, only
 > the commit date is known. **Every new/edited builder must write the stamp.**
 
-742 artifacts · 2 stale-risk · 0 untracked · 18 stamped 🕐
+743 artifacts · 2 stale-risk · 1 untracked · 18 stamped 🕐
 
 | last updated (commit) | artifact | producer / flags |
 |---|---|---|
 | 2026-07-29 `ab1e319a` | `_eqp.html` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `ab1e319a` | `data/zone_profiles.csv` | by `make_zone_profiles.py` |
-| 2026-07-29 `ab1e319a` | `pdvtrigger_report.html` | by `make_pdvtrigger_report.py` |
+| 2026-07-29 `2b381bd1` | `pdvtrigger_report.html` | by `make_pdvtrigger_report.py` |
 | 2026-07-29 `ab1e319a` | `zone_profiles.png` | by `make_zone_profiles.py` |
 | 2026-07-28 `0493f630` | `data/bench5_analysis.csv` | by `make_bench5_analysis.py` |
 | 2026-07-28 `0493f630` | `data/bench6_analysis.csv` | by `make_bench6_analysis.py` |
@@ -758,3 +758,4 @@
 | 2026-07-14 `a0c1a57f` | `theta5k_fire_map.png` | producer unknown (HPC/hand-made); refs: `make_theta5k_analysis.py`, `make_pdvtrigger_report.py` |
 | 2026-07-14 `a0c1a57f` | `theta5k_theta_rise.png` | producer unknown (HPC/hand-made); refs: `make_theta5k_analysis.py` |
 | 2026-07-14 `a0c1a57f` | `theta_vs_density.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_overlay.py`, `make_fmix_spread_plot.py` |
+| — | `data/kappa_eq47_check.csv` | 🚫 UNTRACKED (not in git — never quote) |

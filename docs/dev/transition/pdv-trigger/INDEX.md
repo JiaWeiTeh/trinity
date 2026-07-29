@@ -80,6 +80,8 @@ predate one or more of these pivots and, read in isolation, point the wrong way.
 | `KMIX_IMPLEMENTATION_SPEC.md` | the κ_mix-into-the-ODE wiring design | **SHELVED** (banner in the doc); its dimensionless-multiplier *units* strategy is still reusable |
 | `runs/README.md` §9-era verdicts | "heavy clouds collapse regardless" (fail_repro) | **pre-PR#715** dead-stop artifact — post-merge record is `data/newcode_default_vs_theta.csv` |
 | any "Lancaster 2021c / ApJ 914, 91" / "ApJ 914,90 = theory" | paper-ID confusion | ApJ 914, **90 is Paper II (sims)** — the θ~0.9–0.99 anchor; see `LANCASTER_REFERENCE.md` §0 |
+| any doc saying **f_κ pushes evaporation the WRONG way vs El-Badry** (incl. `PLAN.md`'s "wrong-sign evaporation coupling", `SOURCE_TERM_DESIGN.md`'s clause-1 grounds, `registry.py`'s shipped info string) | the sign claim itself | **FALSE — corrected 2026-07-29 from the paper** (`FINDINGS.md §23`). Eq 47 carries (C/6e-7 cgs)^{2/7}: ṁ **rises** with conduction, and TRINITY's f_κ reproduces it to 0.34–1.63% over f_κ ∈ [1,64] (`§24`). The defensible narrower claim is that f_κ is the wrong **vehicle** for turbulent mixing (it moves the C-channel, not θ). All 5 sites corrected in place. |
+| `FINDINGS.md` **§12's stated CAUSE** of "no whole-band f_κ" (insufficient leverage/reach) | the attribution, not the result | **re-attributed 2026-07-29** (`§24`): all 6 band configs DO cross θ=0.95 somewhere; the band breaks on scattered CONDENSE/DRAIN fallout (the condensation boundary), driven by the E_b depletion measured in `§24` Q1b. **§12's 5/6 headline is reproduced exactly and stands.** |
 
 **Rule going forward (maintainer): whenever a decision is made, update the ⭐⭐ canonical synthesis AND this
 audit AND `CONTAMINATION.md` AND the affected sibling together — never one in isolation.**
@@ -116,6 +118,7 @@ direction/knob/θ_max corrections + pt2⇄pt3 reconciliation (07-01) · **E8** t
 | `SOURCE_TERM_DESIGN.md` | 07-06 | E8 | **THE single f_A plan** (maintainer directive 2026-07-06: one workflow stream): design + screen evidence + Phases 0–6 (offline completeness → wiring → gates → all-9-config theta5s matrix with per-class acceptance → **Lancaster/El-Badry literature benchmarks** → decision tree) + the deferred (★)-IC track. Absorbed and replaced `FA_IMPLEMENTATION_SPEC.md` (deleted same day) | **live — start here** |
 | `MANIFEST.md` | 07-02 | E8 | generated which-version ledger (`python make_manifest.py`): per-artifact last-update + ⚠️ STALE-RISK flags | **generated** — regenerate with every artifact change |
 | `KAPPA_FREEZE_MECHANISM.md` | 07-03 | E8 | the kappa freeze diagnosis: evaporation→condensation domain boundary (dMdt eigenvalue), fixed by the no-root⇒momentum handoff | **done** (FINDINGS §9b) |
+| `KAPPA_REOPEN_PLAN.md` | 07-29 | E8 | the f_κ re-open after `FINDINGS §23` deleted the "wrong El-Badry sign" argument: **K0** the offline re-read (DONE — `§24`) + the pre-registered **K1–K4** HPC campaign (102 arms) whose headline is the *missing third leg* of the band-entry head-to-head, with gates G0–G5 and a pre-registered TERMINAL stop | **live — 🔵 K0 done, K1–K4 awaiting a maintainer grid ruling (§6.0)** |
 | `INDEX.md` (this file) | 06-30 | all | the map | **live** |
 
 *(2026-07-06: added the missing `MANIFEST.md` and `KAPPA_FREEZE_MECHANISM.md` rows — the table had
