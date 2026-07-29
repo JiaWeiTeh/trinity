@@ -2387,3 +2387,84 @@ at all** — it was cut before that protocol existed. The head-to-head is two-wa
 **What this does NOT change.** No production behaviour, no default. The E3/E4 contamination grades stand
 (`CONTAMINATION.md` ⛔ #1–#4); `cooling_boost_kappa='auto'` stays PROVISIONAL. `§12`'s 5/6 headline stands —
 only its stated *cause* is corrected. No Θ_cum, band-entry, fire-threshold or collapse-law number moves.
+
+## 25. [gate+tooling] The f_κ re-open is SUBMIT-READY — §6.0 ruled, G0 cleared 11/11, 118 params frozen and pinned by a test; K1–K4 still NOT run (2026-07-29, offline, no sims)
+
+**Provenance.** Executes `KAPPA_REOPEN_PLAN.md` §6.0 → §6.1 on branch `feature/pdv-trigger-5b`, base
+`origin/main` (PR #731 `3264d79e` + PR #732 `c5b2c01`). No sims, no production change. This is the
+counterpart of `§15d`/`§15g` for this campaign: tooling and gates land, arms wait for the cluster.
+
+**Re-verification first (the 🔄 banner).** `§8`'s handoff claims were re-checked against current source before
+anything was generated. K0 regenerates **byte-identically**
+(`python data/make_kappa_eq47_check.py` → no diff vs `git show HEAD`, 154 rows). `cooling_boost_kappa` is still
+`default='1.0'` and `cooling_boost_mode` still `default='none'` (`registry.py:384`/`:387`), and both info
+strings carry the `§23` correction. Two handoff statements had drifted: the bench7 tooling is now **merged to
+main** (it was on `feature/pdv-trigger-5` when `§8` was written), and
+`test_docs_dev_conventions.py::test_banners[rosette-cf/figs/README.md]` — recorded there as a standing failure
+in a sibling workstream — **now passes**. Full suite: **896 passed, 0 failed**.
+
+**G0 — CLEARED, 11/11** (`data/bench7_gate_g0.csv`, builder `data/make_bench7_gate_g0.py`). The gate
+recomputes every baseline quantity **from the 120 committed trajectories** through `make_bench6_analysis`'s own
+functions, not by re-reading `bench6_analysis.csv`. Tolerances are half the last digit each source quotes:
+
+| quantity | pre-registered | measured | |
+|---|---|---|---|
+| Θ₀ bench3 / bench2 / bench1 | 0.462 / 0.341 / 0.221 | 0.461806 / 0.340860 / 0.220551 | PASS |
+| band entry f_A bench3 / 2 / 1 | 13.9 / 53.5 / 74.8 | 13.8834 / 53.5130 / 74.8331 | PASS (all measured in-grid) |
+| spread f_A | 5.39× | 5.3901× | PASS |
+| band entry f_mix bench3 / 2 / 1 | 4 / 8.16 / 11.9 | 4.00402 / 8.16293 / 11.8661 | PASS (2/3 EXTRAPOLATED, per `§18`) |
+| spread f_mix | 2.96× | 2.96355× | PASS |
+
+Re-running the three analysis builders left `bench5_analysis.csv`, `bench6_analysis.csv` and
+`bench_stale_segments.csv` **byte-identical** in git. The baseline has not moved; the HPC spend is justified.
+
+**The §6.0 ruling, and the one place it was read rather than confirmed.** (a) the K1 dose grid
+`{2,3,4,6,8,12,16,24,32}` **accepted as written**; (b) K1b's 12 dense arms **kept**; (c) K4's 8 f_mix
+ride-along arms — **"no, redo if possible"**. (c) is two-way, and the reading taken is *no to the ride-along,
+yes to a full ladder redo*: bench1/bench2 × f_mix {2,3,4,8,12,16} × prod/diag = **24 arms**, so f_mix band
+entry is **measured inside one campaign** instead of extrapolated across two harvests — the exact flaw `§18`
+had to flag. ⚠️ **That reading is flagged, not confirmed**, in both the plan (§6.0(c)) and the generator
+docstring, and it is one constant to flip (`F_MIX_K4`) before submission: `[]` → 94 arms with P5 recorded
+**NOT RUN**; `["12","16"]` → 102 arms, the literal ride-along.
+
+**G1 — CLEARED, 4/4; 118 params committed.** `runs/make_kappa_reopen_params.py` →
+`runs/params/bench7/` (K1 54 + K1b 12 + K2 18 + K3 10 + K4 24). All five K-phases share one directory and one
+sbatch array; a phase is only a filename prefix. The builder aborts before writing anything if any gate fails:
+GMC plausibility via `_validate_sweep_combination` on **every** arm (the L21b benches *and* the theta5 configs,
+`densBE` included), the exact L21b mapping (`rCloud`(gas) = R_cl to <2%), an end-to-end `read_param` load-check
+on all 118 files, and a count/uniqueness assertion.
+
+**K3's 5 flip arms, and the rule that chose them.** `§24` named the non-monotonic tracks but not the arms. The
+rule applied to `data/theta5k_fire_map.csv` is *every cell whose fate reverses against its dose neighbours*:
+`be_sphere`@8 (FIRED→**DRAIN**→FIRED) and `small_dense_highsfe`@6 (FIRED→**CONDENSE**→FIRED) are isolated
+single-cell reversals; `pl2_steep`@16, `normal_n1e3`@16 and `simple_cluster`@8 are the grid-edge/onset
+reversals the K0.Q2 squeeze rests on. Each is emitted twice (`_a`/`_b`) differing in nothing but `model_name`
+and `path2output` — both `input_admin`, neither physics — so P4 is a diff of the paired rows in
+`bench7_hashes.csv`.
+
+**A new gate, G6 (a tightening, not a loosening).** The redo removes the cross-campaign stitching risk and
+introduces a different one: that bench6 and bench7 silently disagree. G6 requires K4's overlapping doses
+{2,3,4,8} to reproduce the bench6 ladder to ≤2% on Θ_cum with no fire-label flips; a failure means the two
+campaigns are **not** one measurement and K4's ladder is reported standalone. P1–P5 and G0–G5 are untouched.
+
+**P1 is now frozen in a CSV, not only on a page.** `bench7_gate_g0.csv` table `P1` carries the predicted f_κ
+band-entry dose per bench per q ∈ {0.55, 0.60, 0.70} and the resulting spreads — **3.833× / 3.427× / 2.874×**,
+computed from full-precision Θ₀. The plan's table (3.82× / 3.42× / 2.87×, from 3-dp Θ₀) is the pre-registered
+statement of record; the ≤0.4% offset on the bench1 column is rounding, and both are noted in-place so a later
+visit does not read it as a discrepancy.
+
+**A test now pins the param set.** `test/test_bench7_params.py` (126 cases): byte-identical regeneration from
+the builder, per-phase counts, `stop_t = 5` / `model_name` / `path2output` on every arm, **single-knob** by
+construction, the prod-vs-diag `transition_trigger` split, K3 pairs identical bar their names, and every bench
+arm sitting on the same cloud as its bench5 `__none` sibling. The last two are load-bearing: P4 is decided by a
+trajectory hash, and G2 compares each arm to that sibling.
+
+**What is NOT done, and why.** §6.2–§6.5 — `up → submit → watch → reduce → down`, then the analysis and the
+write-up. `sync_bench.sh` drives Helix over `ssh`, and the preparation container has no `ssh` binary at all, so
+the loop is the maintainer's step. **No arm of K1–K4 has been run; every number in `§3`'s P1–P5 is still a
+prediction.** `data/make_bench7_analysis.py` is deliberately not written yet — its shape depends on what the
+reduce returns.
+
+**What this does NOT change.** No production behaviour, no default, no measured number anywhere in the
+workstream. The E3/E4 contamination grades stand; `cooling_boost_kappa='auto'` stays PROVISIONAL. `§12`'s 5/6
+and `§18`'s band-entry table are re-confirmed byte-identically by G0, not revised.

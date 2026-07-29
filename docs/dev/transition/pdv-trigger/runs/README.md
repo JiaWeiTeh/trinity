@@ -12,7 +12,8 @@
 >    standing rules (`../CONTAMINATION.md`);
 > 3. the historical §9 **live edge runs** (`compare_live.py`/`make_params.py`, documented below).
 >
-> **The bench campaigns** (`make_bench{5,6}_params.py` + `sync_bench.sh` + `run_bench{5,6,7}.sbatch` +
+> **The bench campaigns** (`make_bench{5,6}_params.py`, `make_kappa_reopen_params.py` (bench7) +
+> `sync_bench.sh` + `run_bench{5,6,7}.sbatch` +
 > `harvest_bench5.py`) are a fourth, added later: `up → submit → watch → reduce → down`, where **`reduce`
 > runs the harvest ON the cluster** so only small CSVs ever travel and the multi-GB `dictionary.jsonl`
 > files stay on gpfs. `bench7` (2026-07-29) is the f_κ re-open campaign — see
@@ -22,6 +23,13 @@
 > `*_hashes.csv` of the reduced trajectories for the K3 determinism check. ⚠️ **The reduce is one-shot** —
 > gpfs is cleaned and the raw arms do not come back (the theta5s lesson); declare every column you might
 > need *before* the first reduce, not after.
+>
+> **bench7 status (2026-07-29):** its **118 params are generated and committed** in `params/bench7/`
+> (`python make_kappa_reopen_params.py`, self-gating; pinned by `test/test_bench7_params.py`), and gates
+> G0/G1 are cleared (`FINDINGS §25`). **No arm has been run.** All five K-phases live in that one directory
+> and differ only by prefix — `k1_` 54, `k1b_` 12, `k2_` 18, `k3_` 10, `k4_` 24 — so it is one submit, one
+> reduce, one download. Before `submit`, check `F_MIX_K4` in the builder: the K4 phase rests on a *read* of
+> the `KAPPA_REOPEN_PLAN §6.0(c)` ruling, not a confirmed one.
 
 > ⚠️ **This document may be out of date — verify before trusting it.** It is a
 > point-in-time analysis/audit, not a maintained spec; the code moves faster

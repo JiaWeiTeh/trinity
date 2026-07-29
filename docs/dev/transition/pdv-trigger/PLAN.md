@@ -2031,8 +2031,13 @@ and gate.*
 5. **fm ∈ {12,16} on bench1/bench2 (~4 HPC arms, Q4)** — converts the 2.96×-vs-5.39×
    uniformity inversion from (saturation-biased) estimate to measurement.
    `runs/make_bench6_params.py`'s docstring already specifies the extension.
-   **(2026-07-29: folded into `KAPPA_REOPEN_PLAN.md` as K4 — 8 arms there, since prod+diag are
-   both needed for a band-entry number. Run it with that campaign, not separately.)**
+   **(2026-07-29: folded into `KAPPA_REOPEN_PLAN.md` as K4. Its §6.0(c) ruling — "no, redo if
+   possible" — took it further than the 4-arm sketch: K4 is now a 24-arm ladder REDO of
+   bench1/bench2 × fm {2,3,4,8,12,16} × prod/diag, so f_mix band entry is measured inside one
+   campaign rather than stitched onto the 2026-07-19 bench6 harvest, with `G6` checking the
+   overlapping doses against bench6. ⚠️ That reading of the ruling is flagged, not confirmed —
+   `F_MIX_K4` in `runs/make_kappa_reopen_params.py` is the one-line switch. Run it with that
+   campaign, not separately.)**
    *Owner: maintainer (HPC).*
 6. **Frozen-row metric decision (Q3)** — exclude no-root rows from Θ_cum or carry an
    uncertainty band; then regenerate `bench5_analysis.csv`/`bench6_analysis.csv` under the
@@ -2063,7 +2068,7 @@ and gate.*
 10. **Standing measurement debt** (unchanged, parent ledger): Fig-17 re-digitization (metric 2's
    dex half), metric 3 α_p (needs a re-harvest with momentum columns), the dMdt reducer on
    Helix theta5s raw arms, V_w [I]-grade.
-11. **The f_κ re-open — planned, awaiting a grid ruling (NEW 2026-07-29, `KAPPA_REOPEN_PLAN.md`).**
+11. **The f_κ re-open — SUBMIT-READY; the arms are the only thing left (2026-07-29, `KAPPA_REOPEN_PLAN.md`).**
    Item 8 says the f_A rationale lost the Eq-47 sign leg. The symmetric consequence is that **f_κ
    lost the argument it was retired on**, so its evidence was re-read with that argument deleted
    (**K0, DONE** — `FINDINGS §24`, `data/kappa_eq47_check.csv`): the Eq-47 C-channel match is exact
@@ -2071,6 +2076,11 @@ and gate.*
    `§12`'s whole-band failure is re-attributed from *reach* to *condensation fallout* (its 5/6
    headline reproduced exactly, unchanged). **The gap K0 exposes: f_κ has never been through the
    L21b Θ_cum band-entry calibration that decided f_A vs f_mix** — f_A 5.39×, f_mix 2.96×, f_κ no
-   number. `KAPPA_REOPEN_PLAN.md` pre-registers K1–K4 (102 arms, predictions P1–P5, gates G0–G5, a
-   TERMINAL stop) and **item 5 above is folded in as its K4**. Nothing is generated until §6.0's
-   grid ruling. *Owner: maintainer ruling (§6.0), then HPC.*
+   number. `KAPPA_REOPEN_PLAN.md` pre-registers K1–K4 (predictions P1–P5, gates G0–G6, a TERMINAL
+   stop) and **item 5 above is folded in as its K4**. **Status (`FINDINGS §25`): §6.0 ruled; G0
+   cleared 11/11 (`data/bench7_gate_g0.csv` — the published Θ₀ and band-entry table reproduce
+   exactly from the committed trajectories); G1 cleared 4/4; 118 params committed in
+   `runs/params/bench7/` and pinned by `test/test_bench7_params.py`. NO arm has been run** — §6.2's
+   `sync_bench.sh bench7 up|submit` needs `ssh helix`. Two cheap pre-submit checks: the flagged
+   §6.0(c) K4 reading, and the one-shot reduce's `--extra-cols`.
+   *Owner: maintainer (HPC), then analysis + `FINDINGS §26`.*

@@ -100,7 +100,7 @@ direction/knob/θ_max corrections + pt2⇄pt3 reconciliation (07-01) · **E8** t
 | `FINDINGS.md` | 06-25 | all | the verified findings ledger (§1–§9) + the 3-axis taxonomy | **live** |
 | `KAPPA_EFF_SCOPING.md` | 06-25 | E2 | κ_eff Rung-A feasibility map + back-reaction result | settled |
 | `RUNGB_SCOPING.md` | 06-26 | E5 | structural κ_mix scoping | 🛑 **SHELVED** (§1.5) |
-| `REPRODUCE.md` | 06-28 | all | result→param→command→artifact map (now #1–#28) | **live** |
+| `REPRODUCE.md` | 06-28 | all | result→param→command→artifact map (now #1–#49) | **live** |
 | `F_KAPPA_FUNCTIONAL_FORM.md` | 06-29 | E3/E4 | the f_κ / emergent-θ calibration program; §11–13 "don't-force-it"; §14 the (voided) calibration | **live — re-derivation DONE 2026-07-02 (FINDINGS §10); §14 numbers remain void** (§1.5) |
 | `KMIX_DIFFUSIVITY.md` | 06-29 | E5 | maintainer manuscript draft verified; λδv origin | live (λδv recipe retired) |
 | `KMIX_PROTOTYPE.md` | 06-29 | E5 | offline κ_mix go/no-go | live (⚠️ truncated anchors) |
@@ -118,7 +118,7 @@ direction/knob/θ_max corrections + pt2⇄pt3 reconciliation (07-01) · **E8** t
 | `SOURCE_TERM_DESIGN.md` | 07-06 | E8 | **THE single f_A plan** (maintainer directive 2026-07-06: one workflow stream): design + screen evidence + Phases 0–6 (offline completeness → wiring → gates → all-9-config theta5s matrix with per-class acceptance → **Lancaster/El-Badry literature benchmarks** → decision tree) + the deferred (★)-IC track. Absorbed and replaced `FA_IMPLEMENTATION_SPEC.md` (deleted same day) | **live — start here** |
 | `MANIFEST.md` | 07-02 | E8 | generated which-version ledger (`python make_manifest.py`): per-artifact last-update + ⚠️ STALE-RISK flags | **generated** — regenerate with every artifact change |
 | `KAPPA_FREEZE_MECHANISM.md` | 07-03 | E8 | the kappa freeze diagnosis: evaporation→condensation domain boundary (dMdt eigenvalue), fixed by the no-root⇒momentum handoff | **done** (FINDINGS §9b) |
-| `KAPPA_REOPEN_PLAN.md` | 07-29 | E8 | the f_κ re-open after `FINDINGS §23` deleted the "wrong El-Badry sign" argument: **K0** the offline re-read (DONE — `§24`) + the pre-registered **K1–K4** HPC campaign (102 arms) whose headline is the *missing third leg* of the band-entry head-to-head, with gates G0–G5 and a pre-registered TERMINAL stop | **live — 🔵 K0 done, K1–K4 awaiting a maintainer grid ruling (§6.0)** |
+| `KAPPA_REOPEN_PLAN.md` | 07-29 | E8 | the f_κ re-open after `FINDINGS §23` deleted the "wrong El-Badry sign" argument: **K0** the offline re-read (DONE — `§24`) + the pre-registered **K1–K4** HPC campaign (**118 arms**) whose headline is the *missing third leg* of the band-entry head-to-head, with gates G0–G6 and a pre-registered TERMINAL stop | **live — 🟡 submit-ready (`§25`): K0 done, §6.0 ruled, G0 11/11 + G1 4/4 cleared, 118 params committed; NO arm run — §6.2 needs `ssh helix`** |
 | `INDEX.md` (this file) | 06-30 | all | the map | **live** |
 
 *(2026-07-06: added the missing `MANIFEST.md` and `KAPPA_FREEZE_MECHANISM.md` rows — the table had
@@ -156,7 +156,7 @@ the canonical 8-config base params live in `../cleanroom/configs/` (6) + `runs/m
 ## 4. Data & figures
 
 ~50 builders + ~45 CSVs + ~45 figures under `data/`, `runs/data/` and the folder root. The canonical map is
-**`REPRODUCE.md`** (result #1–#28 → builder/param/command/artifact); the quotability of every artifact is graded
+**`REPRODUCE.md`** (result #1–#49 → builder/param/command/artifact); the quotability of every artifact is graded
 in **`CONTAMINATION.md`** (do not quote a number without checking it there first). The HPC artifacts are the
 819-combo sweep (`data/summary.csv` + reduction) and the 📏 `theta5` matrix (ran 2026-07-02;
 `runs/data/theta5_{summary,calibration}.csv`).

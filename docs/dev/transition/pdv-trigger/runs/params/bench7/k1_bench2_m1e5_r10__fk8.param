@@ -1,0 +1,12 @@
+model_name             k1_bench2_m1e5_r10__fk8
+mCloud                 110000
+nCore                  690
+rCore                  1
+sfe                    0.09090909090909091
+dens_profile           densPL
+densPL_alpha           0
+stop_t                 5
+cooling_boost_kappa    8
+log_console            False
+log_file               True
+path2output            outputs/bench7/k1_bench2_m1e5_r10__fk8

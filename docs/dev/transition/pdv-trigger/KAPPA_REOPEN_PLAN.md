@@ -32,9 +32,17 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-07-29):** 🔵 actionable — **K0 (the offline re-read) is DONE** and is the evidence base below
-(`data/kappa_eq47_check.csv`, `FINDINGS.md §23`/`§24`). **K1–K4 are pre-registered and NOT yet run**; they need
-a maintainer ruling on the grid (§6) before any param is generated. Nothing here changes production.
+**Status (2026-07-29, updated same day):** 🟡 **submit-ready** — **K0 (the offline re-read) is DONE** and is the
+evidence base below (`data/kappa_eq47_check.csv`, `FINDINGS.md §23`/`§24`); the **§6.0 grid ruling has landed**
+(§6.0); **gate G0 is CLEARED 11/11** (`data/bench7_gate_g0.csv`); and the **118 params are generated and
+committed** (`runs/make_kappa_reopen_params.py` → `runs/params/bench7/`, all four G1 emit gates pass). **The arms
+are NOT yet run** — §6.2's `./runs/sync_bench.sh bench7 up|submit` needs cluster access and is the maintainer's
+step. Nothing here changes production.
+
+*What changed this visit (2026-07-29, second pass):* the §6.0 ruling was recorded; K4 grew from 8 arms to a
+24-arm f_mix **ladder redo** under a flagged reading of the ruling (§6.0(c)); the campaign total moved
+**102 → 118**; **G6** was added to the gate table (a tightening the redo makes necessary); §6.1 is DONE; and the
+P1 prediction table was recomputed at full Θ₀ precision and persisted (§3, `data/bench7_gate_g0.csv`).
 
 ---
 
@@ -155,6 +163,13 @@ fixed-state L_cool exponents (0.586 / 0.669), assumed to carry to the integrated
 **So: predicted f_κ band-entry spread ≈ 2.9–3.8×, central 3.4×** — between f_mix's 2.96× (estimated) and f_A's
 5.39× (measured). *Falsifiable both ways.*
 
+> 📌 **These numbers are now frozen in a committed CSV, not just on this page.**
+> `data/bench7_gate_g0.csv` (table `P1`, built by `data/make_bench7_gate_g0.py`) recomputes the same
+> prediction from the **full-precision** measured Θ₀ (0.461806 / 0.340860 / 0.220551) rather than the 3-dp
+> values tabulated above, so it reads **3.36 / 5.84 / 12.90 → 3.833×**, **3.04 / 5.04 / 10.42 → 3.427×**,
+> **2.59 / 4.00 / 7.455 → 2.874×**. The ≤0.4% offset on the bench1 column is Θ₀ rounding, nothing more —
+> **the table above is the pre-registered statement of record** and the CSV is its machine-checkable twin.
+
 **P2 (K1).** Because f_κ acts inside the structure ODE, at least one diffuse high-dose arm (bench1 at f_κ ≥ 16)
 exits CONDENSE or DRAIN rather than reaching the band — the Q1b back-reaction, at the doses P1 requires. If P1
 and P2 are both right, f_κ is *uniform but unreachable*, which is a different failure from f_A's and worth
@@ -173,7 +188,7 @@ measured entry landing *above* the extrapolation is the expected direction of an
 
 ---
 
-## 4. The campaign — K1–K4 (105 arms)
+## 4. The campaign — K1–K4 (**118 arms**, generated and committed 2026-07-29)
 
 Every arm follows the standing protocol: `stop_t = 5`, θ from `dictionary.jsonl` accepted rows, one process per
 arm, **prod** (live `cooling_balance` → fire map) + **diag** (`transition_trigger=blowout` → uncensored θ(t) to
@@ -181,14 +196,26 @@ blowout = the L21b window) — identical to `runs/make_bench5_params.py` / `make
 numbers drop straight into the §18 table. Single-knob per arm by construction: f_κ arms keep
 `cooling_boost_mode=none` and `cooling_boost_fA=1`.
 
-| phase | question | grid | arms |
-|---|---|---|---|
-| **K1** | the missing third leg of the head-to-head: what is f_κ's L21b band-entry spread? | bench1/2/3 × f_κ ∈ {2,3,4,6,8,12,16,24,32} × {prod, diag} | 54 |
-| **K1b** | keep the Phase-5 fire map 3-knob complete at the dense end | bench4/bench5 × f_κ ∈ {2,4,8} × {prod, diag} | 12 |
-| **K2** | is the K0.Q2 squeeze real, or just coarse sampling? | the 6 band configs × f_κ ∈ {5,7,9} × prod | 18 |
-| **K3** | are the non-monotonic fates physical or nondeterministic? | 5 flip arms × 2 (original + bit-identical repeat) | 10 |
-| **K4** | close the f_mix extrapolation the record already owes (§18, maintainer Q4) | bench1/bench2 × f_mix ∈ {12,16} × {prod, diag} | 8 |
-| | | **total** | **102** |
+| phase | question | grid | prefix | arms |
+|---|---|---|---|---|
+| **K1** | the missing third leg of the head-to-head: what is f_κ's L21b band-entry spread? | bench1/2/3 × f_κ ∈ {2,3,4,6,8,12,16,24,32} × {prod, diag} | `k1_` | 54 |
+| **K1b** | keep the Phase-5 fire map 3-knob complete at the dense end | bench4/bench5 × f_κ ∈ {2,4,8} × {prod, diag} | `k1b_` | 12 |
+| **K2** | is the K0.Q2 squeeze real, or just coarse sampling? | the 6 band configs × f_κ ∈ {5,7,9} × prod | `k2_` | 18 |
+| **K3** | are the non-monotonic fates physical or nondeterministic? | 5 flip arms × 2 (`_a`/`_b`, identical physics) | `k3_` | 10 |
+| **K4** | close the f_mix extrapolation the record already owes (§18, maintainer Q4) — **as a full ladder redo**, per the §6.0(c) ruling | bench1/bench2 × f_mix ∈ {2,3,4,8,12,16} × {prod, diag} | `k4_` | 24 |
+| | | | **total** | **118** |
+
+**The 5 K3 flip arms**, and the rule that picked them — every cell in `data/theta5k_fire_map.csv` whose fate
+reverses against its dose neighbours. Two are isolated single-cell reversals; three are the grid-edge/onset
+reversals the K0.Q2 squeeze actually rests on:
+
+| arm | the reversal | kind |
+|---|---|---|
+| `be_sphere` @ f_κ=8 | FIRED@6 → **DRAIN@8** → FIRED@12 | isolated |
+| `small_dense_highsfe` @ f_κ=6 | FIRED@4 → **CONDENSE@6** → FIRED@8 | isolated |
+| `pl2_steep` @ f_κ=16 | FIRED@12 → **CONDENSE@16** | grid edge |
+| `normal_n1e3` @ f_κ=16 | FIRED@12 → **DRAIN@16** | grid edge |
+| `simple_cluster` @ f_κ=8 | FIRED@6 → **CONDENSE@8** | the squeeze's upper limit |
 
 Notes on the design choices, so a later visit can argue with them:
 
@@ -200,6 +227,13 @@ Notes on the design choices, so a later visit can argue with them:
   dose into a collapse window, so they have no clean L21b breakout window. Same exclusion bench6 applied to f_A.
 - **K2 reuses f_κ = 6, 8 from theta5k** rather than re-running them; only 5, 7, 9 are new. It runs the 6 band
   configs only — the two controls and `normal_n1e3` (fires unmodified) cannot change a whole-band verdict.
+- **K4 is a ladder redo, not a ride-along** (§6.0(c) ruling, 2026-07-29). Re-running f_mix ∈ {2,3,4,8} alongside
+  the new {12,16} costs 16 extra arms and buys two things the 8-arm version could not: f_mix band entry becomes
+  **measured inside one campaign, one code state, one reduce** — the same in-grid bar G4 sets for f_κ, and the
+  fix for exactly the flaw `§18` had to flag — and the overlap with the 2026-07-19 bench6 ladder becomes a
+  cross-campaign reproduction check (**G6**). `normal_n1e3` and the dense benches are not in K4: `§18`'s
+  extrapolated legs are bench2 and bench1 only. ⚠️ The ruling's wording ("no, redo if possible") was read, not
+  confirmed — see the flag in §6.0(c).
 - **⚡ If a later revision adds `small_1e6` back**, note it is degenerate with `large_diffuse_lowsfe` at early
   time — identical M_cluster, nCore and flat profile give bit-identical early trajectories
   (`CONTAMINATION.md`, `FINDINGS.md §12.6`) — so the pair counts as **one** check, not two.
@@ -221,12 +255,18 @@ campaign reports "the L21b Θ_cum metric cannot discriminate these knobs" instea
 
 | gate | when | bar | fail ⇒ |
 |---|---|---|---|
-| **G0 baseline** | before generating params | `data/bench6_analysis.csv` Θ₀ = 0.462/0.341/0.221 and §18's band-entry table are reproduced by re-running the two analysis scripts on the committed trajectories | the baseline moved; stop and reconcile before spending HPC time |
-| **G1 param emit** | param generation | the bench5/bench6 emit gates pass unchanged (GMC plausibility, `rCloud`(gas) = R_cl within 2%, end-to-end `read_param` load-check) | fix the generator; do not submit |
+| **G0 baseline** ✅ **CLEARED 2026-07-29, 11/11** | before generating params | `data/bench6_analysis.csv` Θ₀ = 0.462/0.341/0.221 and §18's band-entry table are reproduced by re-running the two analysis scripts on the committed trajectories | the baseline moved; stop and reconcile before spending HPC time |
+| **G1 param emit** ✅ **CLEARED 2026-07-29, 4/4** | param generation | the bench5/bench6 emit gates pass unchanged (GMC plausibility, `rCloud`(gas) = R_cl within 2%, end-to-end `read_param` load-check) | fix the generator; do not submit |
 | **G2 equivalence** | first harvest | the 30 K1/K1b **prod** arms' f_κ = 1 counterparts already exist; no new f_κ=1 arm is run, so the check is that each new arm's t < first-boost-effect trajectory prefix matches its `__none` sibling to ≤ 1e-9 relative | a gated-knob leak; **blocking** — `cooling_boost_kappa` must be ×1.0-exact when unset |
 | **G3 compliance** | harvest | ≥ 95% of arms reach `stop_t = 5` or a proper fate (FIRED/CONDENSE/DRAIN/NOFIRE); no freezes | investigate before analysing; a freeze class means `KAPPA_FREEZE_MECHANISM.md` fix #1 regressed |
 | **G4 decision** | analysis | K1 band entry measured **in-grid** for all three of bench3/2/1 (no extrapolation — the exact flaw §18 had to flag on f_mix) | extend the grid, or report the spread as *estimated* and say so in the table |
 | **G5 honesty** | analysis | both Θ_cum variants (§4) reported; frozen-row share stated per band-setting arm | do not publish a ranking |
+| **G6 fm reproduction** *(added 2026-07-29 with the §6.0(c) redo — a tightening, not a loosening; G0–G5 are unchanged)* | analysis | K4's overlapping f_mix doses {2,3,4,8} reproduce the bench6 ladder (bench1 0.380/0.494/0.579/0.767, bench2 0.533/0.649/0.727/0.895) to ≤2% on Θ_cum, and no fire label flips | the bench6 and bench7 f_mix arms are **not** one measurement; report K4's ladder standalone and say so — do **not** merge the two campaigns' points into one band-entry fit |
+
+**Why G6 exists.** The 8-arm ride-along would have stitched fm{12,16} onto a 2026-07-19 harvest; the redo
+instead re-measures the whole ladder, which *removes* the stitching risk but *introduces* a new one — that the
+two campaigns silently disagree. G6 turns that into a checkable statement. If the ruling is flipped back to the
+ride-along (`F_MIX_K4 = ["12","16"]`), G6 becomes inapplicable and should be struck.
 
 **Pre-registered TERMINAL stop** (the `SC-0` pattern): if **G4 passes and f_κ's measured spread is worse than
 both** f_A's 5.39× and f_mix's measured spread, **and P3 holds** (K2 finds no whole-band f_κ), then f_κ is
@@ -237,18 +277,34 @@ update `CONTAMINATION.md` and `INDEX.md §1.5`, and stop.
 
 ## 6. Execution order (nothing is generated until §6.0 is ruled on)
 
-**6.0 — maintainer ruling required, before any param exists.** Three open calls:
-   **(a)** the K1 dose grid `{2,3,4,6,8,12,16,24,32}` — accept, or trim/extend;
-   **(b)** whether K1b (12 dense arms, fire-map completeness only) is worth the slots;
-   **(c)** whether K4's 8 f_mix arms ride along in this campaign (recommended — without them the three-way
-   comparison still has an extrapolated leg, and P5 is the cheapest of the five predictions to settle).
-   *Deliberately not written yet:* the param generator. Writing it before the grid is ruled on is work thrown
-   away if (a) changes.
+**6.0 — the maintainer ruling. ✅ LANDED 2026-07-29.**
 
-**6.1** `runs/make_kappa_reopen_params.py` (new, modelled on `make_bench6_params.py`) →
-`runs/params/bench7/`. Self-gating per G1. **All five K-phases emit into that ONE directory** — a phase is
-just a filename prefix (`k1_…`, `k2_…`, `k3_…`, `k4_…`), so the campaign is one array, one reduce, one
-download rather than two of everything. Commit the params.
+| call | ruling | what was done |
+|---|---|---|
+| **(a)** the K1 dose grid `{2,3,4,6,8,12,16,24,32}` | **accepted as written** | `F_KAPPA_K1` in the generator, verbatim; 54 arms |
+| **(b)** K1b's 12 dense arms | **keep** | `K1B_BENCHES` × `{2,4,8}` × prod/diag; 12 arms |
+| **(c)** K4's 8 f_mix arms riding along | **"no, redo if possible"** | read as: *no* to the ride-along, *yes* to a full ladder redo — bench1/bench2 × f_mix {2,3,4,8,12,16} × prod/diag, 24 arms, plus **G6** |
+
+> ⚠️ **(c) is a READING, not a confirmation — check it before submitting.** "no, redo if possible" is
+> two-way: it can mean *drop K4 and redo f_mix later as its own campaign*, or *don't just ride along —
+> redo the ladder properly here*. The second was taken, because a redo is possible at param cost only and
+> it is what makes f_mix's band entry **measured** rather than extrapolated (`§18`'s standing flaw). The
+> choice is one line in `runs/make_kappa_reopen_params.py`:
+> `F_MIX_K4 = ["2","3","4","8","12","16"]` (118 arms, current) · `[]` (94 arms, K4 dropped, P5 recorded
+> **NOT RUN** — not *missed*) · `["12","16"]` (102 arms, the literal ride-along). Nothing else changes;
+> `submit` re-sizes the array from the param count on its own.
+
+**6.1 ✅ DONE 2026-07-29.** `runs/make_kappa_reopen_params.py` (new, modelled on `make_bench6_params.py`) →
+**118 committed params in `runs/params/bench7/`**. Self-gating per G1 — all four emit gates pass (GMC
+plausibility on every arm incl. the theta5 configs, the exact L21b mapping ≤2%, an end-to-end `read_param`
+load-check on all 118 files, and a count/uniqueness assertion). **All five K-phases emit into that ONE
+directory** — a phase is just a filename prefix (`k1_…`, `k1b_…`, `k2_…`, `k3_…`, `k4_…`), so the campaign is
+one array, one reduce, one download rather than two of everything.
+
+`test/test_bench7_params.py` (126 cases) pins the set against its builder: byte-identical regeneration, the
+per-phase counts, `stop_t = 5` / `model_name` / `path2output` on every arm, **single-knob** by construction,
+the prod-vs-diag `transition_trigger` split, the K3 pairs differing in nothing but their names (P4 rests on
+that), and every bench arm sitting on the same cloud as its bench5 `__none` sibling (G2 rests on that).
 
 **6.2–6.3 — the HPC loop.** Tooling is **already committed and ready** (2026-07-29):
 `runs/run_bench7.sbatch` + `bench7` support in `runs/sync_bench.sh`. Nothing there depends on the §6.0 grid —
@@ -290,7 +346,7 @@ paired rows in `bench7_hashes.csv` — no new harness needed.
 
 ## 7. Cost and risk
 
-~105 arms at the bench5/bench6 wall-clock profile. The known expensive corner is **dense × high dose**: the
+118 arms at the bench5/bench6 wall-clock profile. The known expensive corner is **dense × high dose**: the
 `bench5_fa16_diag` stiffness freeze reproduced on both platforms (`FINDINGS.md §15h`/`§15j`), and f_κ enters the
 structure ODE, so its high-dose diffuse arms (bench1 at f_κ ≥ 24) are the analogous risk here. Budget a per-arm
 timeout and treat a wall-kill as a recorded non-compliance (G3), not a silent drop.
@@ -301,29 +357,49 @@ the write-up cannot quietly report the uniformity number without the reachabilit
 
 ---
 
-## 8. Next-chat handoff (2026-07-29)
+## 8. Next-chat handoff (2026-07-29, rewritten after the §6.0 ruling landed)
 
-**Base: `origin/main`.** `feature/pdv-trigger-5` was merged to main on 2026-07-29 (PR #731, merge `3264d79e`),
-so main now carries the whole 07-19 → 07-29 close-out and is the correct branch point — the earlier
-"do NOT branch from main" warning is **retired**. Everything is durable in git; re-derive from the docs +
-committed CSVs, never from chat memory.
+**Base: `origin/main`.** `feature/pdv-trigger-5` was merged to main on 2026-07-29 (PR #731, merge `3264d79e`);
+the bench7 HPC tooling followed via PR #732 (merge `c5b2c01`, commit `7f1ca95`). Main carries both, and is the
+correct branch point — the earlier "do NOT branch from main" warning is **retired**. Everything is durable in
+git; re-derive from the docs + committed CSVs, never from chat memory.
 
-**State.** K0 is DONE and committed (`FINDINGS §24`, `data/kappa_eq47_check.csv`). The HPC tooling is DONE and
-committed (`runs/run_bench7.sbatch`, `bench7` in `runs/sync_bench.sh` — §6.2). K1–K4 are pre-registered here
-and **not run**; the only missing piece is the param generator, which waits on the §6.0 ruling. No production
-change; default is still `cooling_boost_mode='none'`, f_κ = 1.0. `pytest` is green except one pre-existing
-failure in a different workstream
-(`test_docs_dev_conventions.py::test_banners[rosette-cf/figs/README.md]`, fails identically at HEAD — leave it).
+**State.** K0 DONE (`FINDINGS §24`, `data/kappa_eq47_check.csv` — re-verified 2026-07-29: it regenerates
+**byte-identically**). HPC tooling DONE (`runs/run_bench7.sbatch`, `bench7` in `runs/sync_bench.sh` — §6.2).
+**§6.0 ruled** (§6.0 table). **G0 CLEARED 11/11** (`data/bench7_gate_g0.csv`, rebuild with
+`python data/make_bench7_gate_g0.py`; exits non-zero if any row fails). **G1 CLEARED 4/4 and the 118 params are
+committed** (`runs/params/bench7/`). No production change; default is still `cooling_boost_mode='none'`,
+f_κ = 1.0. Full `pytest` is **896 passed / 0 failed** — including
+`test_docs_dev_conventions.py::test_banners[rosette-cf/figs/README.md]`, which the previous handoff recorded as
+a standing failure: **it passes now**, so that caveat is retired.
 
-**The one thing blocking execution: the §6.0 ruling.** Three calls, in priority order:
-   (a) the K1 dose grid `{2,3,4,6,8,12,16,24,32}` — accept / trim / extend;
-   (b) K1b's 12 dense arms — worth the slots, or drop;
-   (c) K4's 8 f_mix arms riding along — **recommended yes** (without them the three-way comparison keeps an
-       extrapolated leg, and P5 is the cheapest of the five predictions to settle).
-Once ruled: write `runs/make_kappa_reopen_params.py` (model it on `runs/make_bench6_params.py`, self-gating per
-G1) emitting all five K-phases into `runs/params/bench7/`, then follow §6.1 → §6.5. **Do not write the
-generator before the ruling** — it is thrown away if (a) moves. The submit/reduce/down tooling is already in
-place and grid-independent, so the ruling gates the generator only.
+**The one thing blocking execution is cluster access, not a decision.** §6.2's loop must run from a machine
+that can `ssh helix`; the container this was prepared in has no `ssh` at all. Next session, from the maintainer's
+laptop:
+
+```
+./runs/sync_bench.sh bench7 up        # git pull the committed code on Helix
+./runs/sync_bench.sh bench7 submit    # auto-sizes --array=1-118 from the committed params
+./runs/sync_bench.sh bench7 watch
+./runs/sync_bench.sh bench7 reduce    # ⚠️ ONE-SHOT — the --extra-cols are already declared
+./runs/sync_bench.sh bench7 down
+```
+
+**Two things to settle BEFORE `submit`, both cheap:**
+ 1. **§6.0(c) is a reading, not a confirmation** — K4 is currently the 24-arm ladder redo. If that is wrong,
+    change `F_MIX_K4` in `runs/make_kappa_reopen_params.py` (`[]` → 94 arms · `["12","16"]` → 102 arms),
+    re-run the builder, re-run `pytest test/test_bench7_params.py` (its `PHASE_COUNTS` must be updated to
+    match), and re-commit. After `submit` this is no longer free.
+ 2. **The reduce is one-shot.** `sync_bench.sh` already passes
+    `--extra-cols Pb,bubble_dMdt,bubble_L2Conduction,bubble_L3Intermediate`. If any analysis you intend to run
+    needs another `dictionary.jsonl` field, add it to that list *now*.
+
+Then §6.4 → §6.5: write `data/make_bench7_analysis.py` (three-knob band-entry table + **both** Θ_cum variants
+per §4/G5), re-run `data/make_bench_stale_segments.py` over the new trajectories, extend
+`data/make_kappa_eq47_check.py`'s Q1b with the full-run arms, check P4 by diffing the paired `k3_*_a`/`k3_*_b`
+rows of `bench7_hashes.csv`, and check G6 against the bench6 fm ladder. Record any prediction miss as a miss
+(the SC-0 pattern, `FINDINGS §15k`); if G4 cannot be met in-grid, write **"estimated"** in the table rather
+than extrapolating silently.
 
 **Standing maintainer questions, still open** (none block K1–K4):
  - **Q1** clause-1 grounds — re-derive from the in-ODE structural asymmetry, or withdraw the framing?
