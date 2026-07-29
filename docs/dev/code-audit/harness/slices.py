@@ -6,10 +6,12 @@ file size.
 
     python docs/dev/code-audit/harness/slices.py <outdir>
 
-writes, per slice: <outdir>/<slice>/code/...   comment-stripped source (Lens A)
-                   <outdir>/<slice>/prose.md   comments + docstrings only (Lens B)
+writes, per slice: <outdir>/<slice>/code/...      comment-stripped source (Lens A)
+                   <outdir>/<slice>/prose.md      comments + docstrings only (Lens B)
+                   <outdir>/<slice>/signatures.md def/class signatures only (Lens C)
 """
 
+import ast
 import pathlib
 import sys
 
@@ -107,6 +109,27 @@ def check_partition():
     return len(on_disk)
 
 
+def rows_sig(src):
+    """Signature lines only: `def`/`class` headers and module-level constant names.
+
+    Lens C must derive what a function *should* compute from its interface and the
+    literature, so it gets names, parameters and annotations — never a body, never a
+    numeric literal (a stale constant would anchor the derivation it exists to check).
+    """
+    out = []
+    for node in ast.walk(ast.parse(src)):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            ret = f" -> {ast.unparse(node.returns)}" if node.returns else ""
+            out.append((node.lineno, f"def {node.name}({ast.unparse(node.args)}){ret}"))
+        elif isinstance(node, ast.ClassDef):
+            out.append((node.lineno, f"class {node.name}"))
+    for node in ast.parse(src).body:
+        for tgt in getattr(node, "targets", []):
+            if isinstance(tgt, ast.Name):
+                out.append((node.lineno, f"{tgt.id} = ..."))
+    return sorted(out)
+
+
 def main(out_dir):
     sys.path.insert(0, str(pathlib.Path(__file__).parent))
     from extract_claims import rows_prose
@@ -117,11 +140,15 @@ def main(out_dir):
     for sid, (title, tier, files) in SLICES.items():
         base = out_dir / sid
         prose = [f"# {title} — prose only ({tier} tier)\n"]
+        sigs = [f"# {title} — signatures only ({tier} tier)\n"]
         for rel in files:
             src = (PKG / rel).read_text()
             dst = base / "code" / rel
             dst.parent.mkdir(parents=True, exist_ok=True)
             dst.write_text(strip(src))
+            if lines := rows_sig(src):
+                sigs.append(f"\n## trinity/{rel}\n")
+                sigs += [f"- `L{ln}` `{text}`" for ln, text in lines]
             rows = rows_prose(f"trinity/{rel}", src)
             if not rows:
                 continue
@@ -133,6 +160,7 @@ def main(out_dir):
             ]
         base.mkdir(parents=True, exist_ok=True)
         (base / "prose.md").write_text("\n".join(prose) + "\n")
+        (base / "signatures.md").write_text("\n".join(sigs) + "\n")
     print(f"{n} files -> {len(SLICES)} slices in {out_dir}")
 
 
