@@ -6,6 +6,14 @@ the maintainer reviews each entry and deletes personally. Exempt from banner che
 Previous round (per-doc DOC_STATUS ledger + `arms_mock4e3.attempt1.jsonl`) was reviewed and
 deleted in commit `9459234a` (2026-07-06).
 
+## Round of 2026-07-19 (orphaned test — broke CI collection)
+
+### Moved here (whole file — imports a module that is not in this repo)
+
+| file | original path | evidence | risk |
+|---|---|---|---|
+| `test_paper_cf_csv_loader.py` | `test/test_paper_cf_csv_loader.py` | committed by accident in `591e5e4` (a commit whose stated purpose was dropping interim `.gz` scan dicts). It does `from paper.rosette.figures.paper_Cf import load_cf_runs_from_csv, PC_MYR_TO_KM_S`, but **`paper/rosette/` and `paper_Cf` have never existed** in this repo or its git history (`git log --all -S load_cf_runs_from_csv` → only this test; `find . -name paper_Cf*` → nothing). The figs code confirms `paper_Cf` is external — `docs/dev/rosette-cf/figs/make_ssot_bestparam.py:189` calls it "the real paper_Cf on the pulled dicts" living on a local `paper/rosette/plots/` mount. The unresolved import failed collection in `pytest test/`, turning the whole suite red (ModuleNotFoundError: No module named 'paper.rosette'). | none for the repo — the test targets a paper-figure module that lives outside version control. If `paper_Cf` is ever vendored into the repo, restore this test alongside it. |
+
 ## Round of 2026-07-06 (solver-audit session)
 
 ### Moved here (whole files — zero references anywhere)

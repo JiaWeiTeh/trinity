@@ -4,7 +4,7 @@
 > figure here is a *preliminary* read of the 72-arm in-container scan. **Never a
 > paper number; never fills a `TBD(HPC)`; does NOT satisfy or shrink P21** (the
 > ~8000-run Helix survey stays the sole data SSOT). Re-confirm on HPC before any
-> paper number. The 🔄/💾 banners of `docs/dev/rosette-cf/README.md` apply.
+> paper number. The 🔄/💾/🔗 banners of `docs/dev/rosette-cf/README.md` apply.
 
 Produced by the maintainer's frozen reduction of the committed dicts (the README §11
 close-out step). The **only quotable matcher** is the frozen `paper/rosette/matching/`
