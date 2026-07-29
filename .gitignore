@@ -22,6 +22,8 @@ paper/II-survey/
 paper/shellSSC6/
 paper/pedrini/
 paper/rosette/
+# referee-revision staging area (new analysis + HPC control-sweep harness; review before wiring into src/)
+paper/methods/upgrade/
 test/test_barnes_population.py
 movie.txt
 lib/*
