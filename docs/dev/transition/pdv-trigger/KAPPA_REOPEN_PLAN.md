@@ -245,18 +245,42 @@ update `CONTAMINATION.md` and `INDEX.md §1.5`, and stop.
    *Deliberately not written yet:* the param generator. Writing it before the grid is ruled on is work thrown
    away if (a) changes.
 
-**6.1** `runs/make_kappa_reopen_params.py` (new, modelled on `make_bench6_params.py`) → `runs/params/bench7/`.
-Self-gating per G1. Commit the params.
+**6.1** `runs/make_kappa_reopen_params.py` (new, modelled on `make_bench6_params.py`) →
+`runs/params/bench7/`. Self-gating per G1. **All five K-phases emit into that ONE directory** — a phase is
+just a filename prefix (`k1_…`, `k2_…`, `k3_…`, `k4_…`), so the campaign is one array, one reduce, one
+download rather than two of everything. Commit the params.
 
-**6.2** Submit as an sbatch array (`runs/run_bench7.sbatch`, `runs/sync_bench.sh bench7 submit/run/down`);
-K2/K3 as a second array against `runs/params/theta5kf/`.
+**6.2–6.3 — the HPC loop.** Tooling is **already committed and ready** (2026-07-29):
+`runs/run_bench7.sbatch` + `bench7` support in `runs/sync_bench.sh`. Nothing there depends on the §6.0 grid —
+`submit` **auto-sizes `--array` from the committed param count**, so a grid change needs no edit.
 
-**6.3** Harvest: `runs/harvest_bench5.py "$WS"/outputs/bench7/* --csv runs/data/bench7_summary.csv
---traj-dir runs/data/bench7_traj` (K1/K1b/K4); `runs/harvest_theta_max.py` (K2/K3).
+```
+./runs/sync_bench.sh bench7 up        # git pull the committed code on the cluster
+./runs/sync_bench.sh bench7 submit    # auto-sized array over runs/params/bench7/
+./runs/sync_bench.sh bench7 watch     # queue + newest task log
+./runs/sync_bench.sh bench7 reduce    # multi-GB jsonl -> small CSVs, ON HPC
+./runs/sync_bench.sh bench7 down      # ships ONLY the reduced CSVs into runs/data/
+```
+
+`reduce` runs `harvest_bench5.py` on the cluster and writes three things: `bench7_summary.csv` (the fire map),
+`bench7_traj/` (per-arm θ(t), ≤4000 rows, log-t downsampled, endpoints kept), and `bench7_hashes.csv` (sha256
+of each reduced trajectory — this is what makes **K3's determinism claim (P4) checkable** without shipping a
+raw dictionary down: two runs of one param must hash identically). The raw `dictionary.jsonl` files never
+leave gpfs.
+
+> ⚠️ **The reduce is one-shot — declare the columns BEFORE the first one.** gpfs workspaces get cleaned and
+> the raw arms do not come back; this already cost the workstream once (theta5s's arms were lost to a `/tmp`
+> wipe and `dMdt` had to be salvaged in a scramble — `harvest_bench5.py`'s docstring). The six default
+> trajectory columns do **not** carry `Pb` or `bubble_dMdt`, and **P2 and the K0.Q1b back-reaction both read
+> them**, so `sync_bench.sh` passes
+> `--extra-cols Pb,bubble_dMdt,bubble_L2Conduction,bubble_L3Intermediate` for bench7. Do not hand-run the
+> harvest without those columns. If a later K-phase needs another field, add it to that list *before*
+> submitting, not after.
 
 **6.4** Analyse: `data/make_bench7_analysis.py` (new — three-knob band-entry table + both Θ_cum variants),
 re-run `data/make_bench_stale_segments.py` over the new trajectories, and re-run
-`data/make_kappa_eq47_check.py` with the full-run arms added to Q1b.
+`data/make_kappa_eq47_check.py` with the full-run arms added to Q1b. K3's determinism check is a diff of the
+paired rows in `bench7_hashes.csv` — no new harness needed.
 
 **6.5** Write it up: `FINDINGS.md §25`, reconcile `INDEX.md` (§1.5 audit row + doc table), `CONTAMINATION.md`
 (register every new artifact with its grade), `PLAN.md` ledger, `REPRODUCE.md` (#48+), regenerate
@@ -279,13 +303,16 @@ the write-up cannot quietly report the uniformity number without the reachabilit
 
 ## 8. Next-chat handoff (2026-07-29)
 
-**Branch** `feature/pdv-trigger-5` @ `db353aa1`. **Do NOT branch from `origin/main`** — main lags the whole
-07-19 → 07-29 close-out. Everything is durable in git; re-derive from the docs + committed CSVs, never from
-chat memory.
+**Base: `origin/main`.** `feature/pdv-trigger-5` was merged to main on 2026-07-29 (PR #731, merge `3264d79e`),
+so main now carries the whole 07-19 → 07-29 close-out and is the correct branch point — the earlier
+"do NOT branch from main" warning is **retired**. Everything is durable in git; re-derive from the docs +
+committed CSVs, never from chat memory.
 
-**State.** K0 is DONE and committed (`FINDINGS §24`, `data/kappa_eq47_check.csv`). K1–K4 are pre-registered
-here and **not run**. No production change; default is still `cooling_boost_mode='none'`, f_κ = 1.0.
-`pytest` is green except one pre-existing failure in a different workstream
+**State.** K0 is DONE and committed (`FINDINGS §24`, `data/kappa_eq47_check.csv`). The HPC tooling is DONE and
+committed (`runs/run_bench7.sbatch`, `bench7` in `runs/sync_bench.sh` — §6.2). K1–K4 are pre-registered here
+and **not run**; the only missing piece is the param generator, which waits on the §6.0 ruling. No production
+change; default is still `cooling_boost_mode='none'`, f_κ = 1.0. `pytest` is green except one pre-existing
+failure in a different workstream
 (`test_docs_dev_conventions.py::test_banners[rosette-cf/figs/README.md]`, fails identically at HEAD — leave it).
 
 **The one thing blocking execution: the §6.0 ruling.** Three calls, in priority order:
@@ -294,7 +321,9 @@ here and **not run**. No production change; default is still `cooling_boost_mode
    (c) K4's 8 f_mix arms riding along — **recommended yes** (without them the three-way comparison keeps an
        extrapolated leg, and P5 is the cheapest of the five predictions to settle).
 Once ruled: write `runs/make_kappa_reopen_params.py` (model it on `runs/make_bench6_params.py`, self-gating per
-G1), then follow §6.1 → §6.5. **Do not write the generator before the ruling** — it is thrown away if (a) moves.
+G1) emitting all five K-phases into `runs/params/bench7/`, then follow §6.1 → §6.5. **Do not write the
+generator before the ruling** — it is thrown away if (a) moves. The submit/reduce/down tooling is already in
+place and grid-independent, so the ruling gates the generator only.
 
 **Standing maintainer questions, still open** (none block K1–K4):
  - **Q1** clause-1 grounds — re-derive from the in-ODE structural asymmetry, or withdraw the framing?
