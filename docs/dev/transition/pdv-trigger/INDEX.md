@@ -118,7 +118,7 @@ direction/knob/θ_max corrections + pt2⇄pt3 reconciliation (07-01) · **E8** t
 | `SOURCE_TERM_DESIGN.md` | 07-06 | E8 | **THE single f_A plan** (maintainer directive 2026-07-06: one workflow stream): design + screen evidence + Phases 0–6 (offline completeness → wiring → gates → all-9-config theta5s matrix with per-class acceptance → **Lancaster/El-Badry literature benchmarks** → decision tree) + the deferred (★)-IC track. Absorbed and replaced `FA_IMPLEMENTATION_SPEC.md` (deleted same day) | **live — start here** |
 | `MANIFEST.md` | 07-02 | E8 | generated which-version ledger (`python make_manifest.py`): per-artifact last-update + ⚠️ STALE-RISK flags | **generated** — regenerate with every artifact change |
 | `KAPPA_FREEZE_MECHANISM.md` | 07-03 | E8 | the kappa freeze diagnosis: evaporation→condensation domain boundary (dMdt eigenvalue), fixed by the no-root⇒momentum handoff | **done** (FINDINGS §9b) |
-| `KAPPA_REOPEN_PLAN.md` | 07-29 | E8 | the f_κ re-open after `FINDINGS §23` deleted the "wrong El-Badry sign" argument: **K0** the offline re-read (DONE — `§24`) + the pre-registered **K1–K4** HPC campaign (**118 arms**) whose headline is the *missing third leg* of the band-entry head-to-head, with gates G0–G6 and a pre-registered TERMINAL stop | **live — 🟡 submit-ready (`§25`): K0 done, §6.0 ruled, G0 11/11 + G1 4/4 cleared, 118 params committed; NO arm run — §6.2 needs `ssh helix`** |
+| `KAPPA_REOPEN_PLAN.md` | 07-29 | E8 | the f_κ re-open after `FINDINGS §23` deleted the "wrong El-Badry sign" argument: **K0** the offline re-read (DONE — `§24`) + the pre-registered **K1–K4** HPC campaign (**166 arms**, + the `bench5r`/`bench6r` baseline re-runs = 286) whose headline is the *missing third leg* of the band-entry head-to-head, with gates G0–G6 and a pre-registered TERMINAL stop | **live — 🟡 submit-ready (`§25`+`§26`): K0 done, §6.0 ruled, G0 11/11 + G1 4/4 cleared, 166 params committed, ALL-FRESH run order in §6.2; NO arm run — needs `ssh helix`** |
 | `INDEX.md` (this file) | 06-30 | all | the map | **live** |
 
 *(2026-07-06: added the missing `MANIFEST.md` and `KAPPA_FREEZE_MECHANISM.md` rows — the table had
@@ -156,7 +156,7 @@ the canonical 8-config base params live in `../cleanroom/configs/` (6) + `runs/m
 ## 4. Data & figures
 
 ~50 builders + ~45 CSVs + ~45 figures under `data/`, `runs/data/` and the folder root. The canonical map is
-**`REPRODUCE.md`** (result #1–#49 → builder/param/command/artifact); the quotability of every artifact is graded
+**`REPRODUCE.md`** (result #1–#51 → builder/param/command/artifact); the quotability of every artifact is graded
 in **`CONTAMINATION.md`** (do not quote a number without checking it there first). The HPC artifacts are the
 819-combo sweep (`data/summary.csv` + reduction) and the 📏 `theta5` matrix (ran 2026-07-02;
 `runs/data/theta5_{summary,calibration}.csv`).

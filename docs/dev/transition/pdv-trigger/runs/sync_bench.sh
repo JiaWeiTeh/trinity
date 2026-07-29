@@ -1,12 +1,19 @@
 #!/usr/bin/env bash
-# Laptop-side driver for the bench campaigns on bwForCluster Helix — one script, three campaigns:
+# Laptop-side driver for the bench campaigns on bwForCluster Helix — one script, five campaigns:
 #   bench5  = the 60-arm Phase-5 L21b matrix, HPC CONFIRMATION of the in-container §15h result
 #             (summary lands as bench5_summary_hpc.csv — the in-container bench5_summary.csv is
 #             kept; diff them with data/compare_bench5_hpc.py)
 #   bench6  = the 60-arm Phase-6 DECISION matrix (f_A dose extension + f_mix head-to-head)
-#   bench7  = the f_kappa re-open campaign, KAPPA_REOPEN_PLAN.md K1-K4 (~102 arms). K1/K1b/K2/K3/K4
+#   bench7  = the f_kappa re-open campaign, KAPPA_REOPEN_PLAN.md K1-K4 (166 arms). K1/K1b/K2/K3/K4
 #             all live in ONE params dir as one array — a K-phase is just a filename prefix, so
 #             there is one submit, one reduce and one download for the whole campaign.
+#   bench5r = bench5's committed params, RE-RUN today (maintainer ALL-FRESH ruling 2026-07-29)
+#   bench6r = bench6's committed params, RE-RUN today
+#             The two *r campaigns exist so the L21b baselines the bench7 head-to-head is measured
+#             against — Theta_0, the f_A ladder, the f_mix ladder — are TODAY's numbers rather than
+#             the 2026-07-19 harvest. They reuse the same params/sbatch/gpfs dirs but land under
+#             fresh names in runs/data/, so nothing older is overwritten and old-vs-new is a diff.
+#             Run order and the full rationale: ../KAPPA_REOPEN_PLAN.md section 6.2.
 # Same shape as ./sync_theta5s.sh (tracked workstream: code travels by `git pull`).
 #
 #   ./sync_bench.sh <campaign> up       # git pull the latest committed code on the cluster
@@ -28,35 +35,46 @@
 # BEFORE the first reduce. bench7 declares Pb + bubble_dMdt (KAPPA_REOPEN_PLAN P2 and the K0.Q1b
 # back-reaction both read them) and the L2/L3 split.
 #
-# `reduce` also writes <campaign>_hashes.csv: sha256 of each reduced trajectory CSV. That is what
-# makes K3's determinism claim checkable (two runs of one param must hash identically) without ever
-# shipping a raw dictionary down. Hash the REDUCED csv, not the jsonl — the physics columns only.
+# `reduce` also writes <campaign>_hashes.csv: sha256 of each reduced trajectory CSV, taken over its
+# NON-COMMENT lines only. That is what makes K3's determinism claim checkable (two runs of one param
+# must hash identically) without ever shipping a raw dictionary down. Hash the REDUCED csv, not the
+# jsonl — the physics columns only; excluding '#' lines keeps the per-file provenance stamp (added
+# 2026-07-29) from making two otherwise-identical runs look different.
 # Override the ssh host with HELIX=myalias ./sync_bench.sh ...
 set -euo pipefail
 
+USAGE="usage: $0 bench5|bench6|bench7|bench5r|bench6r up|submit|watch|reduce|down   (HELIX=alias  ARRAY=1-60%16)"
 CAMPAIGN=${1:-}
 CMD=${2:-}
 EXTRA=""
+COLS="--extra-cols Pb,bubble_dMdt,bubble_L2Conduction,bubble_L3Intermediate"
+# SRC = which committed params/sbatch/gpfs-output dir this campaign uses.
+# The *_NAME vars are what lands in runs/data/ — a re-run campaign reuses SRC but lands under fresh
+# names, so re-running never overwrites an older harvest. Comparing old vs new is then a file diff.
 case "$CAMPAIGN" in
-  bench5) SUMMARY_NAME=bench5_summary_hpc.csv; TRAJ_NAME=bench5_traj_hpc ;;
-  bench6) SUMMARY_NAME=bench6_summary.csv;     TRAJ_NAME=bench6_traj ;;
-  bench7) SUMMARY_NAME=bench7_summary.csv;     TRAJ_NAME=bench7_traj
-          EXTRA="--extra-cols Pb,bubble_dMdt,bubble_L2Conduction,bubble_L3Intermediate" ;;
-  *) echo "usage: $0 bench5|bench6|bench7 up|submit|watch|reduce|down   (HELIX=alias  ARRAY=1-60%16)"; exit 1 ;;
+  bench5)  SRC=bench5; SUMMARY_NAME=bench5_summary_hpc.csv; TRAJ_NAME=bench5_traj_hpc ;;
+  bench6)  SRC=bench6; SUMMARY_NAME=bench6_summary.csv;     TRAJ_NAME=bench6_traj ;;
+  bench7)  SRC=bench7; SUMMARY_NAME=bench7_summary.csv;     TRAJ_NAME=bench7_traj;  EXTRA=$COLS ;;
+  # The ALL-FRESH re-runs (maintainer ruling 2026-07-29): same committed params, today's numbers.
+  # They also collect bench7's extra columns, which the 2026-07-19 harvests never captured.
+  bench5r) SRC=bench5; SUMMARY_NAME=bench5r_summary.csv;    TRAJ_NAME=bench5r_traj; EXTRA=$COLS ;;
+  bench6r) SRC=bench6; SUMMARY_NAME=bench6r_summary.csv;    TRAJ_NAME=bench6r_traj; EXTRA=$COLS ;;
+  *) echo "$USAGE"; exit 1 ;;
 esac
 
 HOST=${HELIX:-helix}                                        # ssh host / alias
 REPO=/home/hd/hd_hd/hd_cq295/trinity                        # trinity repo on Helix (/home, tracked)
 WS=/gpfs/bwfor/work/ws/hd_cq295-trinity                     # writable workspace (/gpfs)
 RUNS=$REPO/docs/dev/transition/pdv-trigger/runs
-SBATCH=$RUNS/run_$CAMPAIGN.sbatch
-OUT=$WS/outputs/$CAMPAIGN                                   # 60 run dirs (dictionary.jsonl live here)
-LOGS=$WS/jobs_$CAMPAIGN/logs                                # --output dir (must exist BEFORE sbatch)
+SBATCH=$RUNS/run_$SRC.sbatch
+OUT=$WS/outputs/$SRC                                        # run dirs (dictionary.jsonl live here;
+                                                            # path2output inside each .param sets it)
+LOGS=$WS/jobs_$SRC/logs                                     # --output dir (must exist BEFORE sbatch)
 SUMMARY=$WS/outputs/$SUMMARY_NAME                           # harvest writes here (gpfs, repo stays clean)
 TRAJ=$WS/outputs/$TRAJ_NAME
 HASHES_NAME=${CAMPAIGN}_hashes.csv                          # sha256 per reduced traj csv (K3)
 HASHES=$WS/outputs/$HASHES_NAME
-PARAMS=$RUNS/params/$CAMPAIGN
+PARAMS=$RUNS/params/$SRC
 ENV_SETUP=${ENV_SETUP:-"module load devel/miniforge && conda activate trinity"}
 
 # this repo on the laptop (where `down` drops the committed CSVs)
@@ -86,10 +104,11 @@ case "$CMD" in
            echo ">> extra trajectory columns: ${EXTRA:-<none — the six defaults>}"
            ssh -t "$HOST" "bash -lc 'cd $REPO && $ENV_SETUP && \
              python $RUNS/harvest_bench5.py $OUT/* --csv $SUMMARY --traj-dir $TRAJ $EXTRA && \
-             { echo run_name,sha256,bytes; \
+             { echo \"# generated \$(date -u +%Y-%m-%dT%H:%M:%SZ) | builder sync_bench.sh $CAMPAIGN reduce | code \$(git -C $REPO rev-parse --short HEAD)\"; \
+               echo run_name,sha256,rows; \
                for f in $TRAJ/*.csv; do \
-                 echo \"\$(basename \"\$f\" .csv),\$(sha256sum \"\$f\" | cut -d\" \" -f1),\$(wc -c <\"\$f\")\"; \
-               done; } > $HASHES && echo \">> hashed \$(( \$(wc -l <$HASHES) - 1 )) reduced trajectories\"'" ;;
+                 echo \"\$(basename \"\$f\" .csv),\$(grep -v \"^#\" \"\$f\" | sha256sum | cut -d\" \" -f1),\$(grep -cv \"^#\" \"\$f\")\"; \
+               done; } > $HASHES && echo \">> hashed \$(( \$(wc -l <$HASHES) - 2 )) reduced trajectories\"'" ;;
 
   down)    echo ">> rsync ONLY the reduced CSVs <- $HOST -> runs/data/  (raw jsonl stays on gpfs)"
            mkdir -p "$LAPTOP_DATA/$TRAJ_NAME"
@@ -99,5 +118,5 @@ case "$CMD" in
            rsync -av "$HOST:$TRAJ/" "$LAPTOP_DATA/$TRAJ_NAME/" 2>/dev/null || true
            echo ">> committed deliverables now in runs/data/ — commit them from the laptop." ;;
 
-  *)       echo "usage: $0 bench5|bench6|bench7 up|submit|watch|reduce|down   (HELIX=alias  ARRAY=1-60%16)"; exit 1 ;;
+  *)       echo "$USAGE"; exit 1 ;;
 esac

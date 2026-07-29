@@ -2468,3 +2468,65 @@ reduce returns.
 **What this does NOT change.** No production behaviour, no default, no measured number anywhere in the
 workstream. The E3/E4 contamination grades stand; `cooling_boost_kappa='auto'` stays PROVISIONAL. `§12`'s 5/6
 and `§18`'s band-entry table are re-confirmed byte-identically by G0, not revised.
+
+## 26. [tooling] The ALL-FRESH re-run — bench7 widened to 166 arms, the L21b baselines re-run as `bench5r`/`bench6r`, and every artifact timestamped (2026-07-29, offline, no sims)
+
+**Provenance.** Maintainer ruling, same day as `§25`: *"I do not really trust the previous runs and I would
+like very fresh ones… everything I want will be new numerically… not the csv or files or conclusion that are
+from before."* No sims, no production change. This entry records what that ruling changed in the campaign
+design and in the tooling; the arms themselves are still **NOT RUN**.
+
+**The gap it exposes in `§25`.** `§25` left two loads of 2026-07-19 (and 2026-07-03) data inside the bench7
+conclusions, which the ALL-FRESH ruling does not permit:
+ 1. **K2 reused `theta5k`'s f_κ {1,2,4,6,8,12,16} columns** and measured only the three new doses {5,7,9}, so
+    the P3 whole-band verdict would have been part today's data and part four weeks old.
+ 2. **Θ₀ and the f_A/f_mix ladders came from `bench5_summary_hpc.csv`/`bench6_summary.csv`** — two of the
+    three legs of the head-to-head. Only the f_κ leg would have been fresh.
+
+**Two design changes, both committed.**
+ 1. **K2's grid widened `{5,7,9}` → `{1,2,3,4,5,6,7,8,9,12,16}`** (18 → 66 arms; campaign **118 → 166**). K2
+    now re-measures the whole f_κ fire map for the 6 band configs *and* fills in the condensation squeeze.
+    `f_κ = 1` is included deliberately — a gated ×1.0 exact no-op, i.e. the config's native Θ₀ — so the K2
+    fire map is self-contained. **`theta5k` is no longer an input to any bench7 conclusion.**
+ 2. **Two new campaigns, `bench5r` and `bench6r`** in `runs/sync_bench.sh`: the *same committed params* as
+    bench5/bench6, re-run today, landing under **fresh names** (`bench5r_summary.csv` + `bench5r_traj/`, …).
+    Nothing older is overwritten, so old-vs-new is a file diff rather than a lost baseline. They also collect
+    bench7's four extra trajectory columns (`Pb`, `bubble_dMdt`, the L2/L3 split), which the 07-19 harvests
+    never captured. Campaign total: **286 arms** (166 + 60 + 60).
+
+**Timestamping, extended to where it was missing.** `_stamp.py`'s
+`# generated <UTC ISO8601> | builder <x> | code <sha>` contract already covered the summary CSVs. It now also
+covers (a) the **per-arm trajectory CSVs** (`harvest_bench5.py`) — the files the Θ_cum metric actually reads,
+previously unstamped; (b) `<campaign>_hashes.csv` (`sync_bench.sh`); and (c) the three analysis outputs
+(`bench5_analysis.csv`, `bench6_analysis.csv`, `bench7_gate_g0.csv`), which additionally carry a
+**`# SOURCES READ:`** line naming the exact input files, so "which generation of data produced this number"
+is never an inference.
+
+⚠️ **The stamp could have broken P4, and did not.** K3's determinism check hashes the reduced trajectory CSVs
+— and two identical runs stamped at different seconds would hash differently, silently converting P4 into a
+guaranteed FAIL. The hash in `sync_bench.sh` is therefore taken over the **non-comment lines only**
+(`grep -v '^#' | sha256sum`), which also makes it immune to any future header change. The `bytes` column
+became `rows` to match what is now counted.
+
+**Source precedence, everywhere.** `make_bench5_analysis.py`, `make_bench6_analysis.py` and
+`make_bench7_gate_g0.py` prefer `bench5r_*`/`bench6r_*` when present, then the 07-19 harvest, then the 07-12
+in-container one — and each prints the choice. **G0 thereby becomes an old-vs-new reproduction gate**: run
+before the re-run it is a self-check (cleared 11/11, `§25`); run after `bench5r|bench6r down` it checks the
+**same pre-registered targets** against today's arms, so a PASS means the 07-19 result reproduced and a FAIL
+means it did not. The targets are not relaxed in either direction — that is the point.
+
+**A new receipt: `data/make_freshness_audit.py` → `data/freshness_audit.csv`.** Walks every committed CSV
+under `data/` and `runs/data/`, reads each file's own stamp, and classifies it FRESH / OLD / UNSTAMPED against
+a cutoff. Two honesty properties are built in: `UNSTAMPED` is reported separately from `OLD` (an unstamped
+file falls back to its git *commit* date, which only upper-bounds its age), and `+dirty` artifacts are flagged
+as *fresh but not reproducible from any commit*. Baseline today, before any arm has run: **FRESH 3, OLD 18,
+UNSTAMPED 262** — the 262 are mostly the per-arm trajectory CSVs, which is exactly the hole the new
+`harvest_bench5.py` stamp closes on the next reduce.
+
+**The run order is now written down** (`KAPPA_REOPEN_PLAN.md §6.2`): baselines first (`bench5r`, `bench6r`),
+bench7 concurrently, one `reduce`+`down` each, then the four re-derive commands and the freshness audit. If
+G0 fails on fresh data, that is a finding about the 07-19 result and it is reconciled before bench7 is read.
+
+**What this does NOT change.** No production behaviour, no default, no physics. `test/test_bench7_params.py`
+tracks the new counts (174 cases; `k2_` 66, total 166) and still pins byte-identical regeneration. Every P1–P5
+number remains a prediction — **no arm of any campaign has been run.**

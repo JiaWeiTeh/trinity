@@ -1,3 +1,5 @@
+# generated 2026-07-29T18:58:39Z | builder make_bench6_analysis.py | code 1e82a37+dirty
+# SOURCES READ: bench5=bench5_summary_hpc.csv, bench6=bench6_summary.csv
 # bench6 head-to-head analysis (f_A vs f_mix) — combined bench5+bench6 arms; theta_cum = Theta over the blowout window (diag arms; clean L21b metric only for bench3/2/1, see FINDINGS 15h). Band-entry + uniformity printed by make_bench6_analysis.py. Sourced from the 2026-07-19 Helix harvests (bench5_summary_hpc preferred when present; bench6 is HPC-only).
 # CORRECTED 2026-07-28 (FINDINGS 17 -> 18, X1): theta_cum is now the EFFECTIVE loss int(theta*Lmech)dt / int(Lmech)dt. The superseded raw construction int(Lcool+Lleak)dt -- which produced the FINDINGS 15j f_mix numbers and their 'wrong-sign dose-response' reading -- is kept as theta_cum_raw_superseded. f_A arms are unaffected (the two agree to rel<=1e-9); the f_mix arms are the correction. DO NOT quote the raw column as a cooling fraction: the energy a multiplier run actually drains is fmix*Lcool.
 run_name,bench,knob,dose,arm,fired,theta_max,theta_cum,theta_cum_raw_superseded,t_window_end_Myr,fate,t_final

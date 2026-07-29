@@ -2079,8 +2079,14 @@ and gate.*
    number. `KAPPA_REOPEN_PLAN.md` pre-registers K1–K4 (predictions P1–P5, gates G0–G6, a TERMINAL
    stop) and **item 5 above is folded in as its K4**. **Status (`FINDINGS §25`): §6.0 ruled; G0
    cleared 11/11 (`data/bench7_gate_g0.csv` — the published Θ₀ and band-entry table reproduce
-   exactly from the committed trajectories); G1 cleared 4/4; 118 params committed in
+   exactly from the committed trajectories); G1 cleared 4/4; 166 params committed in
    `runs/params/bench7/` and pinned by `test/test_bench7_params.py`. NO arm has been run** — §6.2's
-   `sync_bench.sh bench7 up|submit` needs `ssh helix`. Two cheap pre-submit checks: the flagged
-   §6.0(c) K4 reading, and the one-shot reduce's `--extra-cols`.
-   *Owner: maintainer (HPC), then analysis + `FINDINGS §26`.*
+   `sync_bench.sh` loop needs `ssh helix`. **ALL-FRESH ruling (`FINDINGS §26`): bench7 does not run
+   alone.** K2's grid was widened to the full f_κ range so `theta5k` stops being an input, and the
+   L21b baselines are re-run as `bench5r`/`bench6r` under fresh landing names so Θ₀ and the
+   f_A/f_mix ladders are today's numbers — **286 arms**, run order in `KAPPA_REOPEN_PLAN §6.2`.
+   Every artifact now carries its UTC generation stamp (trajectories and hash files included) and
+   `data/make_freshness_audit.py` reports what is fresh; G0 doubles as the old-vs-new reproduction
+   gate. Two cheap pre-submit checks: the flagged §6.0(c) K4 reading, and the one-shot
+   reduce's `--extra-cols`.
+   *Owner: maintainer (HPC), then analysis + `FINDINGS §27`.*

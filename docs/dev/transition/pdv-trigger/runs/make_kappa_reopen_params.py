@@ -14,11 +14,11 @@ prefix, so the campaign is one sbatch array, one reduce and one download (run_be
 
   k1_   bench1/2/3 x f_kappa {2,3,4,6,8,12,16,24,32} x {prod, diag}      54   the missing third leg
   k1b_  bench4/bench5 x f_kappa {2,4,8} x {prod, diag}                   12   dense fire-map only
-  k2_   the 6 band configs x f_kappa {5,7,9} x prod                      18   the squeeze fine grid
+  k2_   6 band configs x f_kappa {1,2,3,4,5,6,7,8,9,12,16} x prod        66   fire map + fine grid
   k3_   5 fate-flip arms, each emitted TWICE (_a/_b) x prod              10   determinism (P4)
   k4_   bench1/bench2 x f_mix {2,3,4,8,12,16} x {prod, diag}             24   the f_mix ladder REDO
                                                                        ----
-                                                                        118
+                                                                        166
 
 Every arm: stop_t = 5, one process per arm, theta from dictionary.jsonl accepted rows, and the
 bench5/bench6 two-arm protocol — production (live `cooling_balance` -> fire map) + diagnostic
@@ -35,8 +35,17 @@ and the fix for exactly the flaw `§18` had to flag. That reading was not confir
 instead, set F_MIX_K4 = [] (campaign falls to 94 arms and P5 is recorded NOT RUN, not missed); to
 run the literal ride-along, set F_MIX_K4 = ["12", "16"] (102 arms). Nothing else changes.
 
-f_kappa = 1 IS NOT RE-RUN. The bench5 `__none` arms already are it (`cooling_boost_kappa` is gated
-x1.0 exact), and they are the K1/G2 equivalence baseline. Likewise the f_mix ladder's fm=1 point.
+⚠️ ALL-FRESH RULING (maintainer, 2026-07-29): every number the bench7 conclusions rest on must come
+from THIS campaign, not from a committed CSV of an earlier one. Two consequences are baked in here:
+K2's dose grid was widened from {5,7,9} to the full {1,...,16} so the P3 whole-band fire map is
+re-measured rather than stitched onto theta5k's 2026-07-03 columns (see K2 below), and the L21b
+BASELINES are re-run as their own campaigns — `./sync_bench.sh bench5r|bench6r ...`, same committed
+params, fresh landing names — so Theta_0, the f_A ladder and the f_mix ladder are today's numbers
+too. Read `../KAPPA_REOPEN_PLAN.md` section 6.2 for the full order of operations.
+
+f_kappa = 1 on the L21b BENCHES is not re-run inside bench7: the bench5r `__none` arms are it
+(`cooling_boost_kappa` is gated x1.0 exact) and they are the K1/G2 equivalence baseline, so bench5r
+supplies that column freshly. The band configs get their own f_kappa = 1 column inside K2.
 
 Benches, the exact L21b Table-1 mapping and the emit gates are IDENTICAL to make_bench5_params.py /
 make_bench6_params.py (L21b Table 1 [V], LANCASTER_REFERENCE section 7b; mCloud = M_cl*(1+eps),
@@ -96,8 +105,15 @@ F_KAPPA_K1B = ["2", "4", "8"]
 # K2 — is the K0.Q2 squeeze real, or coarse sampling? `pl2_steep` needs f_kappa >= 8 while
 # `simple_cluster` condenses from f_kappa = 8 up, and theta5k never sampled between them. The 6 BAND
 # configs only: the two controls (fail_repro, small_1e6) and normal_n1e3 (fires unmodified at f = 1,
-# so it never tests a knob) cannot change a whole-band verdict. f_kappa 6 and 8 are reused from
-# theta5k rather than re-run; only 5, 7, 9 are new.
+# so it never tests a knob) cannot change a whole-band verdict.
+#
+# GRID WIDENED 2026-07-29 (maintainer ALL-FRESH ruling — see the banner in the docstring). It was
+# {5,7,9}: the three genuinely new doses, with theta5k's 2026-07-03 {1,2,4,6,8,12,16} columns reused
+# rather than re-run. Under the all-fresh ruling that reuse is exactly what is not allowed — the P3
+# whole-band verdict would then be part today's measurement and part a four-week-old one — so K2 now
+# re-measures theta5k's whole f_kappa fire map for the band configs AND fills it in. f_kappa = 1 is
+# included on purpose: it is the unboosted baseline column (a gated x1.0 exact no-op, so it is the
+# config's native Theta_0), which makes the K2 fire map self-contained with no theta5k input at all.
 K2_CONFIGS = [
     "simple_cluster",
     "small_dense_highsfe",
@@ -106,7 +122,7 @@ K2_CONFIGS = [
     "be_sphere",
     "large_diffuse_lowsfe",
 ]
-F_KAPPA_K2 = ["5", "7", "9"]
+F_KAPPA_K2 = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "12", "16"]
 
 # K3 — are the non-monotonic fates physical or nondeterministic (P4)? Selection rule, applied to
 # `data/theta5k_fire_map.csv`: every cell whose fate reverses against its dose neighbours. Two are

@@ -1,4 +1,6 @@
-# bench7 gate G0 — the pre-HPC baseline check for the f_kappa re-open (KAPPA_REOPEN_PLAN.md section 5). Recomputed FROM the committed trajectories (runs/data/bench5_traj_hpc/ + bench6_traj/, 120 arms, 2026-07-19 Helix harvests) via make_bench6_analysis's own functions, NOT re-read from bench6_analysis.csv.
+# generated 2026-07-29T18:59:47Z | builder make_bench7_gate_g0.py | code 1e82a37+dirty
+# SOURCES READ: bench5=bench5_summary_hpc.csv [2026-07-19], bench6=bench6_summary.csv [2026-07-19]  <- this is the line that says whether the numbers below are today's re-run or the 2026-07-19 harvest.
+# bench7 gate G0 — the baseline check for the f_kappa re-open (KAPPA_REOPEN_PLAN.md section 5). Recomputed FROM the trajectory CSVs via make_bench6_analysis's own functions, NOT re-read from bench6_analysis.csv. Prefers the ALL-FRESH bench5r/bench6r harvest when present, else the 2026-07-19 one; either way the targets are the SAME pre-registered numbers, so against fresh arms a PASS means the 07-19 result reproduced and a FAIL means it did not.
 # Targets: FINDINGS section 18 (band-entry table + spreads) and section 15h / bench6_analysis.csv (Theta_0). abs_tol = half the last digit the source quotes.
 # Table P1 rows are the pre-registered f_kappa band-entry PREDICTION (entry = (0.90/Theta_0)^(1/q), q in 0.55-0.70 from the K0.Q1 fixed-state L_cool exponents), frozen BEFORE any bench7 arm runs. A miss is recorded, not re-negotiated (the SC-0 pattern, FINDINGS section 15k).
 # Regenerate: python docs/dev/transition/pdv-trigger/data/make_bench7_gate_g0.py

@@ -7,10 +7,18 @@ committed trajectories; fail => the baseline moved, stop and reconcile before sp
 This harness is that gate, made machine-checkable and durable, so a later visit re-clears it in a
 second instead of re-reading three docs and eyeballing a console dump.
 
-It recomputes every G0 quantity FROM THE COMMITTED TRAJECTORIES (runs/data/bench5_traj_hpc/ +
-bench6_traj/, 120 arms) through make_bench6_analysis's own functions — not by re-reading
-bench6_analysis.csv, which would only prove the CSV still says what it said. Nothing is written
-outside data/bench7_gate_g0.csv, so the gate has no side effects on the tracked analysis outputs.
+It recomputes every G0 quantity FROM THE TRAJECTORY CSVs through make_bench6_analysis's own
+functions — not by re-reading bench6_analysis.csv, which would only prove the CSV still says what it
+said. Nothing is written outside data/bench7_gate_g0.csv, so the gate has no side effects on the
+tracked analysis outputs.
+
+RUN IT TWICE — it answers a different question each time, and the SOURCES line in the CSV says which:
+  * BEFORE the all-fresh re-run it reads the 2026-07-19 harvest and is a self-check ("the published
+    numbers still fall out of the trajectories they were computed from" — cleared 11/11 on 07-29);
+  * AFTER `./sync_bench.sh bench5r|bench6r down` it prefers bench5r/bench6r automatically and checks
+    the SAME pre-registered targets against arms run today, so a PASS means the 07-19 result
+    REPRODUCED and a FAIL means it did not. That is the whole point of the ALL-FRESH ruling
+    (maintainer, 2026-07-29), and the targets are not relaxed in either direction.
 
 Two tables:
   G0   the pre-registered baseline targets vs measured: Theta_0 per bench, the f_A and f_mix
@@ -33,6 +41,8 @@ HERE = Path(__file__).resolve().parent
 RDATA = HERE.parent / "runs" / "data"
 
 sys.path.insert(0, str(HERE))
+sys.path.insert(0, str(HERE.parent))
+from _stamp import stamp  # noqa: E402
 from make_bench6_analysis import (  # noqa: E402
     CLEAN_BLOWOUT,
     _knob_dose,
@@ -62,14 +72,32 @@ Q_GRID = [0.55, 0.60, 0.70]  # P1's exponent bracket; 0.60 is the pre-registered
 BAND_LO = 0.90
 
 
+def _pick(fresh_summary, fresh_traj, old_summary, old_traj):
+    """Prefer the ALL-FRESH re-run harvest when it has landed; fall back to the 2026-07-19 one.
+
+    This is what makes G0 do double duty. Before the re-run it is a self-check ("the published
+    numbers still fall out of the trajectories they were computed from"). After `sync_bench.sh
+    bench5r|bench6r down`, the SAME pre-registered targets are checked against TODAY's arms, so a
+    PASS means the 07-19 result reproduced and a FAIL means it did not — which is the question the
+    all-fresh re-run was ordered to answer. The targets are never relaxed either way.
+    """
+    if (RDATA / fresh_summary).exists():
+        return RDATA / fresh_summary, RDATA / fresh_traj, "FRESH"
+    return RDATA / old_summary, RDATA / old_traj, "2026-07-19"
+
+
 def measured():
     """Every G0 quantity, recomputed from the committed trajectories."""
-    b5 = _load(RDATA / "bench5_summary_hpc.csv", RDATA / "bench5_traj_hpc")
-    b6 = _load(RDATA / "bench6_summary.csv", RDATA / "bench6_traj")
+    p5, t5, src5 = _pick(
+        "bench5r_summary.csv", "bench5r_traj", "bench5_summary_hpc.csv", "bench5_traj_hpc"
+    )
+    p6, t6, src6 = _pick("bench6r_summary.csv", "bench6r_traj", "bench6_summary.csv", "bench6_traj")
+    b5, b6 = _load(p5, t5), _load(p6, t6)
     if not b5 or not b6:
         sys.exit(
-            "ABORT: the committed bench5_hpc/bench6 harvests are missing — nothing to gate on."
+            f"ABORT: no usable bench5/bench6 harvest ({p5.name} / {p6.name}) — nothing to gate on."
         )
+    print(f"  sources: bench5 <- {p5.name} [{src5}]   bench6 <- {p6.name} [{src6}]\n")
 
     series = {}
     for name, r in {**b5, **b6}.items():
@@ -94,6 +122,7 @@ def measured():
     for knob in ("fA", "fmix"):
         vals = [out[f"band_entry_{knob}_{b}"] for b in CLEAN_BLOWOUT]
         out[f"spread_{knob}"] = max(vals) / min(vals)
+    out["_sources"] = f"bench5={p5.name} [{src5}], bench6={p6.name} [{src6}]"
     return out
 
 
@@ -154,11 +183,16 @@ def main():
 
     out = HERE / "bench7_gate_g0.csv"
     with out.open("w", newline="") as fh:
+        fh.write(stamp(__file__) + "\n")
         fh.write(
-            "# bench7 gate G0 — the pre-HPC baseline check for the f_kappa re-open "
-            "(KAPPA_REOPEN_PLAN.md section 5). Recomputed FROM the committed trajectories "
-            "(runs/data/bench5_traj_hpc/ + bench6_traj/, 120 arms, 2026-07-19 Helix harvests) via "
-            "make_bench6_analysis's own functions, NOT re-read from bench6_analysis.csv.\n"
+            f"# SOURCES READ: {got['_sources']}  <- this is the line that says whether the numbers "
+            "below are today's re-run or the 2026-07-19 harvest.\n"
+            "# bench7 gate G0 — the baseline check for the f_kappa re-open "
+            "(KAPPA_REOPEN_PLAN.md section 5). Recomputed FROM the trajectory CSVs via "
+            "make_bench6_analysis's own functions, NOT re-read from bench6_analysis.csv. Prefers the "
+            "ALL-FRESH bench5r/bench6r harvest when present, else the 2026-07-19 one; either way the "
+            "targets are the SAME pre-registered numbers, so against fresh arms a PASS means the "
+            "07-19 result reproduced and a FAIL means it did not.\n"
             "# Targets: FINDINGS section 18 (band-entry table + spreads) and section 15h / "
             "bench6_analysis.csv (Theta_0). abs_tol = half the last digit the source quotes.\n"
             "# Table P1 rows are the pre-registered f_kappa band-entry PREDICTION "
