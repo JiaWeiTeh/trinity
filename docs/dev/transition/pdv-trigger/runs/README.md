@@ -11,6 +11,17 @@
 >    REPRODUCE.md result #18 / Block C) — ran on Helix 2026-06-29; ⚠️ its `stop_t=2` metric predates the
 >    standing rules (`../CONTAMINATION.md`);
 > 3. the historical §9 **live edge runs** (`compare_live.py`/`make_params.py`, documented below).
+>
+> **The bench campaigns** (`make_bench{5,6}_params.py` + `sync_bench.sh` + `run_bench{5,6,7}.sbatch` +
+> `harvest_bench5.py`) are a fourth, added later: `up → submit → watch → reduce → down`, where **`reduce`
+> runs the harvest ON the cluster** so only small CSVs ever travel and the multi-GB `dictionary.jsonl`
+> files stay on gpfs. `bench7` (2026-07-29) is the f_κ re-open campaign — see
+> [`../KAPPA_REOPEN_PLAN.md`](../KAPPA_REOPEN_PLAN.md) §6.2. Two things differ from bench5/bench6 and
+> matter: `submit` **auto-sizes `--array`** from the committed param count, and `reduce` declares
+> **extra trajectory columns** (`Pb,bubble_dMdt,bubble_L2Conduction,bubble_L3Intermediate`) plus a
+> `*_hashes.csv` of the reduced trajectories for the K3 determinism check. ⚠️ **The reduce is one-shot** —
+> gpfs is cleaned and the raw arms do not come back (the theta5s lesson); declare every column you might
+> need *before* the first reduce, not after.
 
 > ⚠️ **This document may be out of date — verify before trusting it.** It is a
 > point-in-time analysis/audit, not a maintained spec; the code moves faster
