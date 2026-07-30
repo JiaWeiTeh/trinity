@@ -1,5 +1,5 @@
-# generated 2026-07-29T20:49:40Z | builder make_bench7_gate_g0.py | code ea3723d+dirty
-# SOURCES READ: bench5=bench5_summary_hpc.csv [2026-07-19], bench6=bench6_summary.csv [2026-07-19]  <- this is the line that says whether the numbers below are today's re-run or the 2026-07-19 harvest.
+# generated 2026-07-30T19:08:40Z | builder make_bench7_gate_g0.py | code 1056c6d7+dirty
+# SOURCES READ: bench5=bench5r_summary.csv [FRESH], bench6=bench6r_summary.csv [FRESH]  <- this is the line that says whether the numbers below are today's re-run or the 2026-07-19 harvest.
 # bench7 gate G0 — the baseline check for the f_kappa re-open (KAPPA_REOPEN_PLAN.md section 5). Recomputed FROM the trajectory CSVs via make_bench6_analysis's own functions, NOT re-read from bench6_analysis.csv. Prefers the ALL-FRESH bench5r/bench6r harvest when present, else the 2026-07-19 one; either way the targets are the SAME pre-registered numbers, so against fresh arms a PASS means the 07-19 result reproduced and a FAIL means it did not.
 # Targets: FINDINGS section 18 (band-entry table + spreads) and section 15h / bench6_analysis.csv (Theta_0). abs_tol = half the last digit the source quotes.
 # Table P1 rows are the pre-registered f_kappa band-entry PREDICTION (entry = (0.90/Theta_0)^(1/q), q in 0.55-0.70 from the K0.Q1 fixed-state L_cool exponents), frozen BEFORE any bench7 arm runs. A miss is recorded, not re-negotiated (the SC-0 pattern, FINDINGS section 15k).
@@ -10,12 +10,12 @@ G0,theta0_bench2_m1e5_r10,0.341,0.34086,0.0005,PASS,
 G0,theta0_bench1_m5e4_r20,0.221,0.220551,0.0005,PASS,
 G0,band_entry_fA_bench3_m1e5_r5,13.9,13.8834,0.05,PASS,MEASURED in-grid
 G0,band_entry_fA_bench2_m1e5_r10,53.5,53.513,0.05,PASS,MEASURED in-grid
-G0,band_entry_fA_bench1_m5e4_r20,74.8,74.8331,0.05,PASS,MEASURED in-grid
-G0,spread_fA,5.39,5.3901,0.005,PASS,
-G0,band_entry_fmix_bench3_m1e5_r5,4,4.00402,0.05,PASS,MEASURED in-grid
+G0,band_entry_fA_bench1_m5e4_r20,74.8,83.2428,0.05,FAIL,MEASURED in-grid
+G0,spread_fA,5.39,5.99583,0.005,FAIL,
+G0,band_entry_fmix_bench3_m1e5_r5,4,4.01531,0.05,PASS,MEASURED in-grid
 G0,band_entry_fmix_bench2_m1e5_r10,8.16,8.16293,0.005,PASS,"EXTRAPOLATED past the grid (section 18) — an estimate, not a measurement"
 G0,band_entry_fmix_bench1_m5e4_r20,11.9,11.8661,0.05,PASS,"EXTRAPOLATED past the grid (section 18) — an estimate, not a measurement"
-G0,spread_fmix,2.96,2.96355,0.005,PASS,
+G0,spread_fmix,2.96,2.95522,0.005,PASS,
 P1,predicted_fkappa_band_entry_bench1_m5e4_r20_q0.55,12.9,,,PENDING,"(0.90/0.221)^(1/0.55) — P1, frozen before any bench7 arm runs"
 P1,predicted_fkappa_band_entry_bench1_m5e4_r20_q0.6,10.42,,,PENDING,"(0.90/0.221)^(1/0.6) — P1, frozen before any bench7 arm runs"
 P1,predicted_fkappa_band_entry_bench1_m5e4_r20_q0.7,7.455,,,PENDING,"(0.90/0.221)^(1/0.7) — P1, frozen before any bench7 arm runs"
