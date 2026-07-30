@@ -572,3 +572,46 @@ Recording this as the reconciler's **overturn being upheld**. Lens A's rule —
 sound in general and circular for the parameter reader, whose entire job is
 untracked configs. A defect there is invisible to tracked configs *by
 construction*, which is exactly why the tracked-config test could not see it.
+
+---
+
+## S14 — two closures: CLI flag spelling and reachability
+
+**S14 top open question — `-f` flag spelling → CLEARED, no defect.**
+The reconciler's highest-ranked open item: Lens B transcribed both documented
+invocations as `-f <dir>`, but Lens A never confirmed the flag's spelling, so
+if argparse defined only `--folder` every documented invocation would fail to
+parse. Lookup — `trinity/_analysis/check_yesno.py:248`:
+`parser.add_argument("-f", "--folder", required=True, …)`. Both spellings
+exist. Documented invocations work.
+
+The same block settles two more lens items: `--tol` defaults to **1e-3**
+(Lens B flagged it as unstated), and `--phii-tol`'s help string reads
+*"(default: 1e-20, in TRINITY AU pressure units)"* — which is the single
+units statement the reconciler correctly identified as living in an
+`argparse help=` string that a prose extractor structurally cannot see. B's
+"no units anywhere" was rightly demoted.
+
+**S14 reachability → SETTLED: zero importers, but shipped.**
+Both lenses flagged `check_yesno` as a dead-code candidate and both correctly
+declined to settle it, since the caller set can only be closed outside the
+slice. Repo-wide lookup:
+
+- **No importer anywhere.** The only `trinity._analysis` strings in the package
+  are `check_yesno.py:36-37`, its own docstring usage examples. (Repo greps for
+  `_analysis` mostly hit unrelated `make_*_analysis.py` scripts under
+  `docs/dev/transition/pdv-trigger/`.)
+- `trinity/_analysis/__init__.py` is **0 bytes** — no re-export, so the package
+  namespace cannot reach it.
+- `pyproject.toml:75` is `include = ["trinity*"]`, so `_analysis` **is packaged
+  and installed** with every `trinity-sf` install.
+- `docs/dev/test-suite/PLAN.md` Appendix B independently lists
+  `_analysis/check_yesno` among uncovered modules — no test exercises it.
+
+**Verdict.** A one-off diagnostic, hardcoded against an untracked
+`outputs/trinity_fiducial_yesno`, with no importer and no test, that ships in
+the wheel. **S4.** Note it is *not* unreachable — `python -m
+trinity._analysis.check_yesno` works for any user — so the reconciler's logic
+defects inside it (chiefly R-01, the ram-pressure/narrative mismatch) still
+matter for anyone who runs it. Per CLAUDE.md rule 3, flagged for the
+maintainer, not removed.
