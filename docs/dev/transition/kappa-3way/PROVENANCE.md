@@ -32,8 +32,9 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-07-29):** 🔵 actionable — the rule is in force from today; the fresh artifacts it will
-govern do not exist yet.
+**Status (2026-07-30):** 🔵 in force — the fresh artifacts now exist (294 arms, stamped 2026-07-30).
+§7's "if a fresh number contradicts a VERIFY number" clause **fired**: G0 failed 2/11, and the
+reconciliation is `FINDINGS.md` §1.
 
 ---
 

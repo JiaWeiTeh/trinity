@@ -1,0 +1,247 @@
+# generated 2026-07-30T19:22:18Z | builder make_bench7_analysis.py | code 50c5606+dirty
+# SOURCES READ: bench7_summary.csv, bench5r_summary.csv, bench6r_summary.csv (2026-07-30 ALL-FRESH harvests only — no pre-cutoff fallback)
+# TRUNCATED = the arm stopped with no `outcome`: it ran out of wall-clock mid-solve, so its Theta_cum integrates a SHORTER window and is biased LOW with no physics change. A band-entry dose whose bracketing arms include a truncated arm is an artifact of wall-clock, NOT a measurement — see the G0 failure (bench1 f_A 74.8 -> 83.2 from one truncated arm).
+table,run_name,phase,subject,knob,dose,arm,bench,n_bar_H,theta_max,theta_cum,t_final,n_impl,fate,entry_dose,measured_in_grid,grid_max,n_doses,truncated_arms,truncated,track
+ARMS,k1_bench1_m5e4_r20__fk12,K1,bench1_m5e4_r20,fkappa,12,prod,,,0.6561847898521286,0.4687,5.0,171,NOFIRE,,,,,,,
+ARMS,k1_bench1_m5e4_r20__fk12_diag,K1,bench1_m5e4_r20,fkappa,12,diag,,,0.639890411655982,0.5471,3.210521183663691,85,DRAIN,,,,,,,
+ARMS,k1_bench1_m5e4_r20__fk16,K1,bench1_m5e4_r20,fkappa,16,prod,,,0.7056393808300562,0.5094,5.0,170,NOFIRE,,,,,,,
+ARMS,k1_bench1_m5e4_r20__fk16_diag,K1,bench1_m5e4_r20,fkappa,16,diag,,,0.6816099102139195,0.5820,3.147095170602847,84,DRAIN,,,,,,,
+ARMS,k1_bench1_m5e4_r20__fk2,K1,bench1_m5e4_r20,fkappa,2,prod,,,0.3994895840331222,0.2411,5.0,173,NOFIRE,,,,,,,
+ARMS,k1_bench1_m5e4_r20__fk24,K1,bench1_m5e4_r20,fkappa,24,prod,,,0.7683608765095066,0.5664,5.0,170,NOFIRE,,,,,,,
+ARMS,k1_bench1_m5e4_r20__fk24_diag,K1,bench1_m5e4_r20,fkappa,24,diag,,,0.7364213491679813,0.6400,3.3854892617522747,85,DRAIN,,,,,,,
+ARMS,k1_bench1_m5e4_r20__fk2_diag,K1,bench1_m5e4_r20,fkappa,2,diag,,,0.3824841572836394,0.2979,2.7722644473732454,84,DRAIN,,,,,,,
+ARMS,k1_bench1_m5e4_r20__fk3,K1,bench1_m5e4_r20,fkappa,3,prod,,,0.451542172038733,0.2865,5.0,173,NOFIRE,,,,,,,
+ARMS,k1_bench1_m5e4_r20__fk32,K1,bench1_m5e4_r20,fkappa,32,prod,,,0.8131023472707071,0.6062,5.0,169,NOFIRE,,,,,,,
+ARMS,k1_bench1_m5e4_r20__fk32_diag,K1,bench1_m5e4_r20,fkappa,32,diag,,,0.8095427350710402,0.6761,3.4611341824328736,85,DRAIN,,,,,,,
+ARMS,k1_bench1_m5e4_r20__fk3_diag,K1,bench1_m5e4_r20,fkappa,3,diag,,,0.4499882043635662,0.3487,2.816782782515077,84,DRAIN,,,,,,,
+ARMS,k1_bench1_m5e4_r20__fk4,K1,bench1_m5e4_r20,fkappa,4,prod,,,0.4985319085825898,0.3213,5.0,171,NOFIRE,,,,,,,
+ARMS,k1_bench1_m5e4_r20__fk4_diag,K1,bench1_m5e4_r20,fkappa,4,diag,,,0.4985319085825898,0.3895,2.903472641140209,84,DRAIN,,,,,,,
+ARMS,k1_bench1_m5e4_r20__fk6,K1,bench1_m5e4_r20,fkappa,6,prod,,,0.5498838990738316,0.3735,5.0,171,NOFIRE,,,,,,,
+ARMS,k1_bench1_m5e4_r20__fk6_diag,K1,bench1_m5e4_r20,fkappa,6,diag,,,0.543350892540122,0.4426,2.9336984371375676,84,DRAIN,,,,,,,
+ARMS,k1_bench1_m5e4_r20__fk8,K1,bench1_m5e4_r20,fkappa,8,prod,,,0.5890980847988122,0.4123,5.0,171,NOFIRE,,,,,,,
+ARMS,k1_bench1_m5e4_r20__fk8_diag,K1,bench1_m5e4_r20,fkappa,8,diag,,,0.5858955341244758,0.4853,3.0015768374015686,84,DRAIN,,,,,,,
+ARMS,k1_bench2_m1e5_r10__fk12,K1,bench2_m1e5_r10,fkappa,12,prod,,,0.8435338232213238,0.4606,5.0,168,NOFIRE,,,,,,,
+ARMS,k1_bench2_m1e5_r10__fk12_diag,K1,bench2_m1e5_r10,fkappa,12,diag,,,0.7838618782711663,0.6869,5.0,77,NOFIRE,,,,,,,
+ARMS,k1_bench2_m1e5_r10__fk16,K1,bench2_m1e5_r10,fkappa,16,prod,,,1.0635545513501008,0.7533,5.0,76,FIRED,,,,,,,
+ARMS,k1_bench2_m1e5_r10__fk16_diag,K1,bench2_m1e5_r10,fkappa,16,diag,,,1.0635545513501008,0.7533,5.0,76,FIRED,,,,,,,
+ARMS,k1_bench2_m1e5_r10__fk2,K1,bench2_m1e5_r10,fkappa,2,prod,,,0.5463490579364688,0.2337,5.0,169,NOFIRE,,,,,,,
+ARMS,k1_bench2_m1e5_r10__fk24,K1,bench2_m1e5_r10,fkappa,24,prod,,,1.050935444441032,0.7660,5.0,72,FIRED,,,,,,,
+ARMS,k1_bench2_m1e5_r10__fk24_diag,K1,bench2_m1e5_r10,fkappa,24,diag,,,1.6781839738436222,0.8887,5.0,85,FIRED,,,,,,,
+ARMS,k1_bench2_m1e5_r10__fk2_diag,K1,bench2_m1e5_r10,fkappa,2,diag,,,0.5450185289591793,0.4398,4.973490302643587,77,DRAIN,,,,,,,
+ARMS,k1_bench2_m1e5_r10__fk3,K1,bench2_m1e5_r10,fkappa,3,prod,,,0.6091178318552354,0.2780,5.0,169,NOFIRE,,,,,,,
+ARMS,k1_bench2_m1e5_r10__fk32,K1,bench2_m1e5_r10,fkappa,32,prod,,,1.1604804927593797,0.7634,5.0,65,FIRED,,,,,,,
+ARMS,k1_bench2_m1e5_r10__fk32_diag,K1,bench2_m1e5_r10,fkappa,32,diag,,,1.2550326564999659,0.8903,5.0,110,FIRED,,,,,,,
+ARMS,k1_bench2_m1e5_r10__fk3_diag,K1,bench2_m1e5_r10,fkappa,3,diag,,,0.6091178318552354,0.4986,5.0,77,NOFIRE,,,,,,,
+ARMS,k1_bench2_m1e5_r10__fk4,K1,bench2_m1e5_r10,fkappa,4,prod,,,0.6427415148171057,0.3124,5.0,169,NOFIRE,,,,,,,
+ARMS,k1_bench2_m1e5_r10__fk4_diag,K1,bench2_m1e5_r10,fkappa,4,diag,,,0.6336120176206719,0.5365,5.0,77,NOFIRE,,,,,,,
+ARMS,k1_bench2_m1e5_r10__fk6,K1,bench2_m1e5_r10,fkappa,6,prod,,,0.6982843296610409,0.3644,5.0,168,NOFIRE,,,,,,,
+ARMS,k1_bench2_m1e5_r10__fk6_diag,K1,bench2_m1e5_r10,fkappa,6,diag,,,0.6972916321062486,0.5942,5.0,77,NOFIRE,,,,,,,
+ARMS,k1_bench2_m1e5_r10__fk8,K1,bench2_m1e5_r10,fkappa,8,prod,,,0.7509905539021028,0.4034,5.0,168,NOFIRE,,,,,,,
+ARMS,k1_bench2_m1e5_r10__fk8_diag,K1,bench2_m1e5_r10,fkappa,8,diag,,,0.7371526662375677,0.6324,5.0,77,NOFIRE,,,,,,,
+ARMS,k1_bench3_m1e5_r5__fk12,K1,bench3_m1e5_r5,fkappa,12,prod,,,0.9797911040439959,0.7417,2.302707875937658,57,FIRED,,,,,,,
+ARMS,k1_bench3_m1e5_r5__fk12_diag,K1,bench3_m1e5_r5,fkappa,12,diag,,,1.1647227270148655,0.9221,5.0,106,FIRED,,,,,,,
+ARMS,k1_bench3_m1e5_r5__fk16,K1,bench3_m1e5_r5,fkappa,16,prod,,,1.012109734492777,0.7488,1.7702201924236713,53,FIRED,,,,,,,
+ARMS,k1_bench3_m1e5_r5__fk16_diag,K1,bench3_m1e5_r5,fkappa,16,diag,,,1.3824877851078434,0.9270,0.29204403331143086,112,TRUNC,,,,,,YES,
+ARMS,k1_bench3_m1e5_r5__fk2,K1,bench3_m1e5_r5,fkappa,2,prod,,,0.7002066585451057,0.2402,5.0,165,NOFIRE,,,,,,,
+ARMS,k1_bench3_m1e5_r5__fk24,K1,bench3_m1e5_r5,fkappa,24,prod,,,0.8800798480399143,0.6880,0.2300883899958499,82,TRUNC,,,,,,YES,
+ARMS,k1_bench3_m1e5_r5__fk24_diag,K1,bench3_m1e5_r5,fkappa,24,diag,,,0.8800798480399143,0.6804,4.981387099457231,88,DRAIN,,,,,,,
+ARMS,k1_bench3_m1e5_r5__fk2_diag,K1,bench3_m1e5_r5,fkappa,2,diag,,,0.6710861147717228,0.5635,5.0,69,NOFIRE,,,,,,,
+ARMS,k1_bench3_m1e5_r5__fk3,K1,bench3_m1e5_r5,fkappa,3,prod,,,0.746632621864421,0.2860,5.0,165,NOFIRE,,,,,,,
+ARMS,k1_bench3_m1e5_r5__fk32,K1,bench3_m1e5_r5,fkappa,32,prod,,,0.9957353438441614,0.7611,1.9436334622848186,41,FIRED,,,,,,,
+ARMS,k1_bench3_m1e5_r5__fk32_diag,K1,bench3_m1e5_r5,fkappa,32,diag,,,1.176542094338288,0.9132,1.9368739482830657,174,FIRED,,,,,,,
+ARMS,k1_bench3_m1e5_r5__fk3_diag,K1,bench3_m1e5_r5,fkappa,3,diag,,,0.7255767526826561,0.6201,5.0,69,NOFIRE,,,,,,,
+ARMS,k1_bench3_m1e5_r5__fk4,K1,bench3_m1e5_r5,fkappa,4,prod,,,0.8355736427152476,0.6550,0.715475142617401,92,TRUNC,,,,,,YES,
+ARMS,k1_bench3_m1e5_r5__fk4_diag,K1,bench3_m1e5_r5,fkappa,4,diag,,,0.7583699174808886,0.6594,5.0,68,NOFIRE,,,,,,,
+ARMS,k1_bench3_m1e5_r5__fk6,K1,bench3_m1e5_r5,fkappa,6,prod,,,0.9015529378708806,0.8069,1.6484270763868432,112,TRUNC,,,,,,YES,
+ARMS,k1_bench3_m1e5_r5__fk6_diag,K1,bench3_m1e5_r5,fkappa,6,diag,,,0.8575694944279795,0.7086,5.0,69,NOFIRE,,,,,,,
+ARMS,k1_bench3_m1e5_r5__fk8,K1,bench3_m1e5_r5,fkappa,8,prod,,,1.067362798861757,0.7614,5.0,67,FIRED,,,,,,,
+ARMS,k1_bench3_m1e5_r5__fk8_diag,K1,bench3_m1e5_r5,fkappa,8,diag,,,1.4778003482042381,0.8582,5.0,77,FIRED,,,,,,,
+ARMS,k1b_bench4_m1e5_r2p5__fk12,K1B,bench4_m1e5_r2p5,fkappa,12,prod,,,0.5493320403397595,0.5487,0.410600224281773,50,CONDENSE,,,,,,,
+ARMS,k1b_bench4_m1e5_r2p5__fk12_diag,K1B,bench4_m1e5_r2p5,fkappa,12,diag,,,0.5493320403397595,0.5487,0.410600224281773,50,CONDENSE,,,,,,,
+ARMS,k1b_bench4_m1e5_r2p5__fk16,K1B,bench4_m1e5_r2p5,fkappa,16,prod,,,0.5890082872571186,0.5883,0.40814072523548917,50,CONDENSE,,,,,,,
+ARMS,k1b_bench4_m1e5_r2p5__fk16_diag,K1B,bench4_m1e5_r2p5,fkappa,16,diag,,,0.5890082872571186,0.5883,0.40814072523548917,50,CONDENSE,,,,,,,
+ARMS,k1b_bench4_m1e5_r2p5__fk2,K1B,bench4_m1e5_r2p5,fkappa,2,prod,,,1.0325228524778567,0.7468,0.8333482790369383,61,FIRED,,,,,,,
+ARMS,k1b_bench4_m1e5_r2p5__fk2_diag,K1B,bench4_m1e5_r2p5,fkappa,2,diag,,,0.914601235975515,0.7162,0.7420775915585267,60,CONDENSE,,,,,,,
+ARMS,k1b_bench4_m1e5_r2p5__fk4,K1B,bench4_m1e5_r2p5,fkappa,4,prod,,,1.110564441480976,0.7412,0.47909579014604464,52,FIRED,,,,,,,
+ARMS,k1b_bench4_m1e5_r2p5__fk4_diag,K1B,bench4_m1e5_r2p5,fkappa,4,diag,,,1.47436832840684,1.0044,0.5714370334893231,118,FIRED,,,,,,,
+ARMS,k1b_bench4_m1e5_r2p5__fk8,K1B,bench4_m1e5_r2p5,fkappa,8,prod,,,0.4926320630493837,0.4921,0.41328189639385693,50,CONDENSE,,,,,,,
+ARMS,k1b_bench4_m1e5_r2p5__fk8_diag,K1B,bench4_m1e5_r2p5,fkappa,8,diag,,,0.4926320630493837,0.4921,0.41328189639385693,50,CONDENSE,,,,,,,
+ARMS,k1b_bench5_m5e5_r2p5__fk12,K1B,bench5_m5e5_r2p5,fkappa,12,prod,,,1.812871848829981,0.8102,0.09352442510602116,34,FIRED,,,,,,,
+ARMS,k1b_bench5_m5e5_r2p5__fk12_diag,K1B,bench5_m5e5_r2p5,fkappa,12,diag,,,1.8130075173787692,1.0859,0.14464690984397527,87,FIRED,,,,,,,
+ARMS,k1b_bench5_m5e5_r2p5__fk16,K1B,bench5_m5e5_r2p5,fkappa,16,prod,,,4.038189018400083,1.0572,0.19143364012260314,51,FIRED,,,,,,,
+ARMS,k1b_bench5_m5e5_r2p5__fk16_diag,K1B,bench5_m5e5_r2p5,fkappa,16,diag,,,4.077909831446655,1.8874,0.23524251891242912,93,FIRED,,,,,,,
+ARMS,k1b_bench5_m5e5_r2p5__fk2,K1B,bench5_m5e5_r2p5,fkappa,2,prod,,,1.0180166850116346,0.7633,0.11477133580854712,32,FIRED,,,,,,,
+ARMS,k1b_bench5_m5e5_r2p5__fk2_diag,K1B,bench5_m5e5_r2p5,fkappa,2,diag,,,1.1933832292648134,0.9907,0.12448298573590597,82,FIRED,,,,,,,
+ARMS,k1b_bench5_m5e5_r2p5__fk4,K1B,bench5_m5e5_r2p5,fkappa,4,prod,,,4.014458541086818,0.8149,0.17130251774662097,47,FIRED,,,,,,,
+ARMS,k1b_bench5_m5e5_r2p5__fk4_diag,K1B,bench5_m5e5_r2p5,fkappa,4,diag,,,4.017793691216642,2.7624,0.22667353110222302,96,FIRED,,,,,,,
+ARMS,k1b_bench5_m5e5_r2p5__fk8,K1B,bench5_m5e5_r2p5,fkappa,8,prod,,,1.4579067594576711,0.7159,0.08508054831688713,29,FIRED,,,,,,,
+ARMS,k1b_bench5_m5e5_r2p5__fk8_diag,K1B,bench5_m5e5_r2p5,fkappa,8,diag,,,1.4578655758111252,1.1027,0.1018815178119826,84,FIRED,,,,,,,
+ARMS,k2_be_sphere__fk1,K2,be_sphere,fkappa,1,prod,,,0.5286290124260625,0.2304,5.0,164,NOFIRE,,,,,,,
+ARMS,k2_be_sphere__fk12,K2,be_sphere,fkappa,12,prod,,,1.0547910634671327,0.7492,2.005843516476268,59,FIRED,,,,,,,
+ARMS,k2_be_sphere__fk16,K2,be_sphere,fkappa,16,prod,,,1.0163001405303707,0.7705,1.9934053486541365,59,FIRED,,,,,,,
+ARMS,k2_be_sphere__fk2,K2,be_sphere,fkappa,2,prod,,,0.6320762125605515,0.3117,5.0,163,NOFIRE,,,,,,,
+ARMS,k2_be_sphere__fk3,K2,be_sphere,fkappa,3,prod,,,0.7068377858446157,0.3687,5.0,163,NOFIRE,,,,,,,
+ARMS,k2_be_sphere__fk4,K2,be_sphere,fkappa,4,prod,,,0.8035289215100961,0.4141,5.0,163,NOFIRE,,,,,,,
+ARMS,k2_be_sphere__fk5,K2,be_sphere,fkappa,5,prod,,,1.0278547193388419,0.7435,5.0,79,FIRED,,,,,,,
+ARMS,k2_be_sphere__fk6,K2,be_sphere,fkappa,6,prod,,,1.022360000015059,0.7214,2.549750866300391,69,FIRED,,,,,,,
+ARMS,k2_be_sphere__fk7,K2,be_sphere,fkappa,7,prod,,,1.0922316905237444,0.7757,3.097751131530613,74,FIRED,,,,,,,
+ARMS,k2_be_sphere__fk8,K2,be_sphere,fkappa,8,prod,,,0.9802466940018649,0.7156,3.803377558829186,90,FIRED,,,,,,,
+ARMS,k2_be_sphere__fk9,K2,be_sphere,fkappa,9,prod,,,1.071780691095846,0.7627,2.3966964246177316,68,FIRED,,,,,,,
+ARMS,k2_large_diffuse_lowsfe__fk1,K2,large_diffuse_lowsfe,fkappa,1,prod,,,0.5350422013812615,0.3658,5.0,173,NOFIRE,,,,,,,
+ARMS,k2_large_diffuse_lowsfe__fk12,K2,large_diffuse_lowsfe,fkappa,12,prod,,,1.0529253148700966,0.6528,5.0,119,FIRED,,,,,,,
+ARMS,k2_large_diffuse_lowsfe__fk16,K2,large_diffuse_lowsfe,fkappa,16,prod,,,0.9572618327853214,0.6698,5.0,115,FIRED,,,,,,,
+ARMS,k2_large_diffuse_lowsfe__fk2,K2,large_diffuse_lowsfe,fkappa,2,prod,,,0.6963995034273315,0.4638,5.0,173,NOFIRE,,,,,,,
+ARMS,k2_large_diffuse_lowsfe__fk3,K2,large_diffuse_lowsfe,fkappa,3,prod,,,0.9378348658876557,0.5287,5.0,173,NOFIRE,,,,,,,
+ARMS,k2_large_diffuse_lowsfe__fk4,K2,large_diffuse_lowsfe,fkappa,4,prod,,,1.0910275804831182,0.5680,5.0,169,FIRED,,,,,,,
+ARMS,k2_large_diffuse_lowsfe__fk5,K2,large_diffuse_lowsfe,fkappa,5,prod,,,1.002589061510514,0.5845,5.0,165,FIRED,,,,,,,
+ARMS,k2_large_diffuse_lowsfe__fk6,K2,large_diffuse_lowsfe,fkappa,6,prod,,,1.0765919822264363,0.6095,5.0,164,FIRED,,,,,,,
+ARMS,k2_large_diffuse_lowsfe__fk7,K2,large_diffuse_lowsfe,fkappa,7,prod,,,0.9859424001836898,0.6176,5.0,161,FIRED,,,,,,,
+ARMS,k2_large_diffuse_lowsfe__fk8,K2,large_diffuse_lowsfe,fkappa,8,prod,,,0.9929231520735072,0.6211,5.0,125,FIRED,,,,,,,
+ARMS,k2_large_diffuse_lowsfe__fk9,K2,large_diffuse_lowsfe,fkappa,9,prod,,,0.9830646519862276,0.6286,5.0,123,FIRED,,,,,,,
+ARMS,k2_midrange_pl0__fk1,K2,midrange_pl0,fkappa,1,prod,,,0.6355354439390808,0.1811,5.0,166,NOFIRE,,,,,,,
+ARMS,k2_midrange_pl0__fk12,K2,midrange_pl0,fkappa,12,prod,,,1.016031959526415,0.7641,1.1852713950734761,65,FIRED,,,,,,,
+ARMS,k2_midrange_pl0__fk16,K2,midrange_pl0,fkappa,16,prod,,,1.0511086179762439,0.7690,1.1587580044361199,60,FIRED,,,,,,,
+ARMS,k2_midrange_pl0__fk2,K2,midrange_pl0,fkappa,2,prod,,,0.7454187953531299,0.2492,5.0,167,NOFIRE,,,,,,,
+ARMS,k2_midrange_pl0__fk3,K2,midrange_pl0,fkappa,3,prod,,,0.8001440980815111,0.2983,5.0,167,NOFIRE,,,,,,,
+ARMS,k2_midrange_pl0__fk4,K2,midrange_pl0,fkappa,4,prod,,,0.9515146266569647,0.8000,5.0,127,FIRED,,,,,,,
+ARMS,k2_midrange_pl0__fk5,K2,midrange_pl0,fkappa,5,prod,,,1.020774672231894,0.7398,1.6679967665609263,74,FIRED,,,,,,,
+ARMS,k2_midrange_pl0__fk6,K2,midrange_pl0,fkappa,6,prod,,,1.1711312242054317,0.7598,1.3535259625040943,72,FIRED,,,,,,,
+ARMS,k2_midrange_pl0__fk7,K2,midrange_pl0,fkappa,7,prod,,,1.0233629138107414,0.7492,1.3347934839222937,72,FIRED,,,,,,,
+ARMS,k2_midrange_pl0__fk8,K2,midrange_pl0,fkappa,8,prod,,,1.1103523499982286,0.7684,1.2960941067816598,72,FIRED,,,,,,,
+ARMS,k2_midrange_pl0__fk9,K2,midrange_pl0,fkappa,9,prod,,,0.9870488628713806,0.7535,1.2237761101724114,70,FIRED,,,,,,,
+ARMS,k2_pl2_steep__fk1,K2,pl2_steep,fkappa,1,prod,,,0.5107530250900207,0.1625,5.0,153,NOFIRE,,,,,,,
+ARMS,k2_pl2_steep__fk12,K2,pl2_steep,fkappa,12,prod,,,1.0661428608529846,0.6995,0.0853352582949149,25,FIRED,,,,,,,
+ARMS,k2_pl2_steep__fk16,K2,pl2_steep,fkappa,16,prod,,,0.5781734717958079,0.5774,1.70206443675688,50,CONDENSE,,,,,,,
+ARMS,k2_pl2_steep__fk2,K2,pl2_steep,fkappa,2,prod,,,0.6153207502512231,0.2231,5.0,153,NOFIRE,,,,,,,
+ARMS,k2_pl2_steep__fk3,K2,pl2_steep,fkappa,3,prod,,,0.6729518244622894,0.2663,5.0,153,NOFIRE,,,,,,,
+ARMS,k2_pl2_steep__fk4,K2,pl2_steep,fkappa,4,prod,,,0.7568653293479533,0.5639,5.0,100,NOFIRE,,,,,,,
+ARMS,k2_pl2_steep__fk5,K2,pl2_steep,fkappa,5,prod,,,0.8058094701834077,0.6194,0.30376606993702143,82,TRUNC,,,,,,YES,
+ARMS,k2_pl2_steep__fk6,K2,pl2_steep,fkappa,6,prod,,,0.7864445735918999,0.5947,1.326840371893642,102,TRUNC,,,,,,YES,
+ARMS,k2_pl2_steep__fk7,K2,pl2_steep,fkappa,7,prod,,,0.8967729688495841,0.7568,0.5753428877742031,112,TRUNC,,,,,,YES,
+ARMS,k2_pl2_steep__fk8,K2,pl2_steep,fkappa,8,prod,,,1.0659281055569492,0.7813,0.8184755913347803,39,FIRED,,,,,,,
+ARMS,k2_pl2_steep__fk9,K2,pl2_steep,fkappa,9,prod,,,0.9964426786320164,0.7709,0.7394908762782157,39,FIRED,,,,,,,
+ARMS,k2_simple_cluster__fk1,K2,simple_cluster,fkappa,1,prod,,,0.6759717869721299,0.1390,5.0,163,NOFIRE,,,,,,,
+ARMS,k2_simple_cluster__fk12,K2,simple_cluster,fkappa,12,prod,,,0.587276821505463,0.5866,0.24239301260092883,50,CONDENSE,,,,,,,
+ARMS,k2_simple_cluster__fk16,K2,simple_cluster,fkappa,16,prod,,,0.624433410316768,0.6237,0.22614296943161608,50,CONDENSE,,,,,,,
+ARMS,k2_simple_cluster__fk2,K2,simple_cluster,fkappa,2,prod,,,0.7793633305757522,0.6395,2.0544310835933173,101,DRAIN,,,,,,,
+ARMS,k2_simple_cluster__fk3,K2,simple_cluster,fkappa,3,prod,,,0.890826314127653,0.8337,2.5566176218080927,100,DRAIN,,,,,,,
+ARMS,k2_simple_cluster__fk4,K2,simple_cluster,fkappa,4,prod,,,1.0243494124217885,0.7456,0.31265004975733635,45,FIRED,,,,,,,
+ARMS,k2_simple_cluster__fk5,K2,simple_cluster,fkappa,5,prod,,,1.1455086021943355,0.7845,0.356439923078882,47,FIRED,,,,,,,
+ARMS,k2_simple_cluster__fk6,K2,simple_cluster,fkappa,6,prod,,,1.0414197423686193,0.7752,0.23768850026668475,43,FIRED,,,,,,,
+ARMS,k2_simple_cluster__fk7,K2,simple_cluster,fkappa,7,prod,,,0.5144302023120862,0.5139,0.2738848954330265,50,CONDENSE,,,,,,,
+ARMS,k2_simple_cluster__fk8,K2,simple_cluster,fkappa,8,prod,,,0.5326057786009093,0.5320,0.2601746397852074,50,CONDENSE,,,,,,,
+ARMS,k2_simple_cluster__fk9,K2,simple_cluster,fkappa,9,prod,,,0.5486842582794567,0.5481,0.250088363131168,50,CONDENSE,,,,,,,
+ARMS,k2_small_dense_highsfe__fk1,K2,small_dense_highsfe,fkappa,1,prod,,,0.7167705883636005,0.1696,5.0,147,NOFIRE,,,,,,,
+ARMS,k2_small_dense_highsfe__fk12,K2,small_dense_highsfe,fkappa,12,prod,,,1.4632455095193895,0.8418,2.8025468606732384,29,FIRED,,,,,,,
+ARMS,k2_small_dense_highsfe__fk16,K2,small_dense_highsfe,fkappa,16,prod,,,1.8219486352889949,0.8708,2.7118240050389857,33,FIRED,,,,,,,
+ARMS,k2_small_dense_highsfe__fk2,K2,small_dense_highsfe,fkappa,2,prod,,,0.8330231975140994,0.6553,0.04515258833328708,42,TRUNC,,,,,,YES,
+ARMS,k2_small_dense_highsfe__fk3,K2,small_dense_highsfe,fkappa,3,prod,,,0.9718676068109149,0.8190,2.752219547673214,15,FIRED,,,,,,,
+ARMS,k2_small_dense_highsfe__fk4,K2,small_dense_highsfe,fkappa,4,prod,,,1.9895518912016428,0.6830,2.746761439043215,33,FIRED,,,,,,,
+ARMS,k2_small_dense_highsfe__fk5,K2,small_dense_highsfe,fkappa,5,prod,,,1.0014136508551457,0.8233,2.8010807558328823,15,FIRED,,,,,,,
+ARMS,k2_small_dense_highsfe__fk6,K2,small_dense_highsfe,fkappa,6,prod,,,0.5778987462673478,0.5773,1.777152312693499,50,DRAIN,,,,,,,
+ARMS,k2_small_dense_highsfe__fk7,K2,small_dense_highsfe,fkappa,7,prod,,,1.4160272847498734,0.7681,2.7978583632013256,27,FIRED,,,,,,,
+ARMS,k2_small_dense_highsfe__fk8,K2,small_dense_highsfe,fkappa,8,prod,,,1.4931515679212217,0.7860,2.750361353663826,28,FIRED,,,,,,,
+ARMS,k2_small_dense_highsfe__fk9,K2,small_dense_highsfe,fkappa,9,prod,,,1.4680799186350915,0.7907,2.846629203198772,27,FIRED,,,,,,,
+ARMS,k3_be_sphere__fk8_a,K3,be_sphere,fkappa,8,prod_a,,,0.9802466940018649,0.7156,3.803377558829186,90,FIRED,,,,,,,
+ARMS,k3_be_sphere__fk8_b,K3,be_sphere,fkappa,8,prod_b,,,0.9802466940018649,0.7156,3.803377558829186,90,FIRED,,,,,,,
+ARMS,k3_normal_n1e3__fk16_a,K3,normal_n1e3,fkappa,16,prod_a,,,0.9159502579052126,0.6092,1.3293619466242874,122,TRUNC,,,,,,YES,
+ARMS,k3_normal_n1e3__fk16_b,K3,normal_n1e3,fkappa,16,prod_b,,,0.9159502579052126,0.6092,1.3293619466242874,122,TRUNC,,,,,,YES,
+ARMS,k3_pl2_steep__fk16_a,K3,pl2_steep,fkappa,16,prod_a,,,0.5781734717958079,0.5774,1.70206443675688,50,CONDENSE,,,,,,,
+ARMS,k3_pl2_steep__fk16_b,K3,pl2_steep,fkappa,16,prod_b,,,0.5781734717958079,0.5774,1.70206443675688,50,CONDENSE,,,,,,,
+ARMS,k3_simple_cluster__fk8_a,K3,simple_cluster,fkappa,8,prod_a,,,0.5326057786009093,0.5320,0.2601746397852074,50,CONDENSE,,,,,,,
+ARMS,k3_simple_cluster__fk8_b,K3,simple_cluster,fkappa,8,prod_b,,,0.5326057786009093,0.5320,0.2601746397852074,50,CONDENSE,,,,,,,
+ARMS,k3_small_dense_highsfe__fk6_a,K3,small_dense_highsfe,fkappa,6,prod_a,,,0.5778987462673478,0.5773,1.777152312693499,50,DRAIN,,,,,,,
+ARMS,k3_small_dense_highsfe__fk6_b,K3,small_dense_highsfe,fkappa,6,prod_b,,,0.5778987462673478,0.5773,1.777152312693499,50,DRAIN,,,,,,,
+ARMS,k4_bench1_m5e4_r20__fm12,K4,bench1_m5e4_r20,fmix,12,prod,,,0.955443732839645,0.8220,5.0,75,FIRED,,,,,,,
+ARMS,k4_bench1_m5e4_r20__fm12_diag,K4,bench1_m5e4_r20,fmix,12,diag,,,1.0752853843983716,0.9352,5.0,109,FIRED,,,,,,,
+ARMS,k4_bench1_m5e4_r20__fm16,K4,bench1_m5e4_r20,fmix,16,prod,,,1.048410445346452,0.8560,5.0,69,FIRED,,,,,,,
+ARMS,k4_bench1_m5e4_r20__fm16_diag,K4,bench1_m5e4_r20,fmix,16,diag,,,1.1757602019275613,0.9520,0.8238463829732672,112,TRUNC,,,,,,YES,
+ARMS,k4_bench1_m5e4_r20__fm2,K4,bench1_m5e4_r20,fmix,2,prod,,,0.48708293103496236,0.3089,5.0,171,NOFIRE,,,,,,,
+ARMS,k4_bench1_m5e4_r20__fm2_diag,K4,bench1_m5e4_r20,fmix,2,diag,,,0.48595457456633806,0.3802,2.662673602197214,84,DRAIN,,,,,,,
+ARMS,k4_bench1_m5e4_r20__fm3,K4,bench1_m5e4_r20,fmix,3,prod,,,0.6186316826795565,0.4142,5.0,171,NOFIRE,,,,,,,
+ARMS,k4_bench1_m5e4_r20__fm3_diag,K4,bench1_m5e4_r20,fmix,3,diag,,,0.6021240130409798,0.4939,2.658358606732785,84,DRAIN,,,,,,,
+ARMS,k4_bench1_m5e4_r20__fm4,K4,bench1_m5e4_r20,fmix,4,prod,,,0.7442417452387624,0.4995,5.0,170,NOFIRE,,,,,,,
+ARMS,k4_bench1_m5e4_r20__fm4_diag,K4,bench1_m5e4_r20,fmix,4,diag,,,0.6764164298818636,0.5789,2.6892371072475796,84,DRAIN,,,,,,,
+ARMS,k4_bench1_m5e4_r20__fm8,K4,bench1_m5e4_r20,fmix,8,prod,,,0.9525383339719463,0.6920,5.0,159,FIRED,,,,,,,
+ARMS,k4_bench1_m5e4_r20__fm8_diag,K4,bench1_m5e4_r20,fmix,8,diag,,,0.8565954552550138,0.7670,3.1619964248185135,84,DRAIN,,,,,,,
+ARMS,k4_bench2_m1e5_r10__fm12,K4,bench2_m1e5_r10,fmix,12,prod,,,0.9331644775173936,0.9332,5.0,3,NOFIRE,,,,,,,
+ARMS,k4_bench2_m1e5_r10__fm12_diag,K4,bench2_m1e5_r10,fmix,12,diag,,,1.0289625931900008,0.9061,0.26264602819152555,102,TRUNC,,,,,,YES,
+ARMS,k4_bench2_m1e5_r10__fm16,K4,bench2_m1e5_r10,fmix,16,prod,,,0.9645230812218591,,5.0,1,FIRED,,,,,,,
+ARMS,k4_bench2_m1e5_r10__fm16_diag,K4,bench2_m1e5_r10,fmix,16,diag,,,0.06368309197876827,0.0637,0.004936487959591076,12,TRUNC,,,,,,YES,
+ARMS,k4_bench2_m1e5_r10__fm2,K4,bench2_m1e5_r10,fmix,2,prod,,,0.6431763878827141,0.2993,5.0,168,NOFIRE,,,,,,,
+ARMS,k4_bench2_m1e5_r10__fm2_diag,K4,bench2_m1e5_r10,fmix,2,diag,,,0.6362291548224374,0.5326,5.0,76,NOFIRE,,,,,,,
+ARMS,k4_bench2_m1e5_r10__fm3,K4,bench2_m1e5_r10,fmix,3,prod,,,0.7540559431376356,0.4028,5.0,168,NOFIRE,,,,,,,
+ARMS,k4_bench2_m1e5_r10__fm3_diag,K4,bench2_m1e5_r10,fmix,3,diag,,,0.7540559431376356,0.6491,5.0,76,NOFIRE,,,,,,,
+ARMS,k4_bench2_m1e5_r10__fm4,K4,bench2_m1e5_r10,fmix,4,prod,,,0.8308092027319033,0.4868,5.0,166,NOFIRE,,,,,,,
+ARMS,k4_bench2_m1e5_r10__fm4_diag,K4,bench2_m1e5_r10,fmix,4,diag,,,0.830799069031994,0.7267,5.0,76,NOFIRE,,,,,,,
+ARMS,k4_bench2_m1e5_r10__fm8,K4,bench2_m1e5_r10,fmix,8,prod,,,1.0058037445694914,0.8356,5.0,71,FIRED,,,,,,,
+ARMS,k4_bench2_m1e5_r10__fm8_diag,K4,bench2_m1e5_r10,fmix,8,diag,,,1.0058037445694914,0.8946,5.0,94,FIRED,,,,,,,
+ENTRY,,,,fA,,,bench3_m1e5_r5,5520,,,,,,13.88,yes,32,8,0,,1:0.462  4:0.520  6:0.551  8:0.584  12:0.833  16:0.965  24:0.938  32:0.946
+ENTRY,,,,fmix,,,bench3_m1e5_r5,5520,,,,,,4.015,yes,8,5,1,,1:0.462  2:0.664  3:0.767  4:0.895  8:1.878
+ENTRY,,,,fkappa,,,bench3_m1e5_r5,5520,,,,,,10.43,yes,32,10,1,,1:0.462  2:0.564  3:0.620  4:0.659  6:0.709  8:0.858  12:0.922  16:0.927  24:0.680  32:0.913
+ENTRY,,,,fA,,,bench2_m1e5_r10,690,,,,,,53.51,yes,128,10,0,,1:0.341  4:0.391  6:0.420  8:0.453  12:0.495  16:0.540  24:0.712  32:0.747  64:0.953  128:0.905
+ENTRY,,,,fmix,,,bench2_m1e5_r10,690,,,,,,9.689,yes,16,7,2,,1:0.341  2:0.533  3:0.649  4:0.727  8:0.895  12:0.906  16:0.064
+ENTRY,,,,fkappa,,,bench2_m1e5_r10,690,,,,,,169.4,no — EXTRAPOLATED,32,10,0,,1:0.341  2:0.440  3:0.499  4:0.536  6:0.594  8:0.632  12:0.687  16:0.753  24:0.889  32:0.890
+ENTRY,,,,fA,,,bench1_m5e4_r20,43.1,,,,,,83.24,yes,128,10,1,,1:0.221  4:0.276  6:0.304  8:0.326  12:0.369  16:0.404  24:0.463  32:0.516  64:0.864  128:0.959
+ENTRY,,,,fmix,,,bench1_m5e4_r20,43.1,,,,,,11.02,yes,16,7,1,,1:0.221  2:0.380  3:0.494  4:0.579  8:0.767  12:0.935  16:0.952
+ENTRY,,,,fkappa,,,bench1_m5e4_r20,43.1,,,,,,143,no — EXTRAPOLATED,32,10,0,,1:0.221  2:0.298  3:0.349  4:0.389  6:0.443  8:0.485  12:0.547  16:0.582  24:0.640  32:0.676
+ENTRY,,,,fA,,,SPREAD(max/min),,,,,,,5.997,all in-grid,,3,1,,"bench3:13.9, bench2:53.5, bench1:83.2"
+ENTRY,,,,fmix,,,SPREAD(max/min),,,,,,,2.745,all in-grid,,3,4,,"bench3:4.01, bench2:9.69, bench1:11"
+ENTRY,,,,fkappa,,,SPREAD(max/min),,,,,,,16.242,PARTLY EXTRAPOLATED/UNREACHED,,3,1,,"bench3:10.4, bench2:169, bench1:143"
+EXPONENT,,,,fA,,,bench3_m1e5_r5,,,,,,,0.2520,"BELOW P1 [0.55,0.70] — prediction missed",,8,0,,excluded doses: none
+EXPONENT,,,,fmix,,,bench3_m1e5_r5,,,,,,,0.4692,"BELOW P1 [0.55,0.70] — prediction missed",,4,1,,excluded doses: 8
+EXPONENT,,,,fkappa,,,bench3_m1e5_r5,,,,,,,0.2774,"BELOW P1 [0.55,0.70] — prediction missed",,7,3,,"excluded doses: 16,24,32"
+EXPONENT,,,,fA,,,bench2_m1e5_r10,,,,,,,0.2460,"BELOW P1 [0.55,0.70] — prediction missed",,10,0,,excluded doses: none
+EXPONENT,,,,fmix,,,bench2_m1e5_r10,,,,,,,0.4639,"BELOW P1 [0.55,0.70] — prediction missed",,5,2,,"excluded doses: 12,16"
+EXPONENT,,,,fkappa,,,bench2_m1e5_r10,,,,,,,0.2732,"BELOW P1 [0.55,0.70] — prediction missed",,10,0,,excluded doses: none
+EXPONENT,,,,fA,,,bench1_m5e4_r20,,,,,,,0.3073,"BELOW P1 [0.55,0.70] — prediction missed",,9,1,,excluded doses: 128
+EXPONENT,,,,fmix,,,bench1_m5e4_r20,,,,,,,0.5633,"within P1 [0.55,0.70]",,6,1,,excluded doses: 16
+EXPONENT,,,,fkappa,,,bench1_m5e4_r20,,,,,,,0.3183,"BELOW P1 [0.55,0.70] — prediction missed",,10,0,,excluded doses: none
+FIREMAP,,,simple_cluster,fkappa,,,,,,,,,,"4,5,6",,,11,0,,1:NOFIRE  2:DRAIN  3:DRAIN  4:FIRED  5:FIRED  6:FIRED  7:CONDENSE  8:CONDENSE  9:CONDENSE  12:CONDENSE  16:CONDENSE
+FIREMAP,,,small_dense_highsfe,fkappa,,,,,,,,,,"3,4,5,7,8,9,12,16",,,11,1,,1:NOFIRE  2:TRUNC  3:FIRED  4:FIRED  5:FIRED  6:DRAIN  7:FIRED  8:FIRED  9:FIRED  12:FIRED  16:FIRED
+FIREMAP,,,pl2_steep,fkappa,,,,,,,,,,"8,9,12",,,11,3,,1:NOFIRE  2:NOFIRE  3:NOFIRE  4:NOFIRE  5:TRUNC  6:TRUNC  7:TRUNC  8:FIRED  9:FIRED  12:FIRED  16:CONDENSE
+FIREMAP,,,midrange_pl0,fkappa,,,,,,,,,,"4,5,6,7,8,9,12,16",,,11,0,,1:NOFIRE  2:NOFIRE  3:NOFIRE  4:FIRED  5:FIRED  6:FIRED  7:FIRED  8:FIRED  9:FIRED  12:FIRED  16:FIRED
+FIREMAP,,,be_sphere,fkappa,,,,,,,,,,"5,6,7,8,9,12,16",,,11,0,,1:NOFIRE  2:NOFIRE  3:NOFIRE  4:NOFIRE  5:FIRED  6:FIRED  7:FIRED  8:FIRED  9:FIRED  12:FIRED  16:FIRED
+FIREMAP,,,large_diffuse_lowsfe,fkappa,,,,,,,,,,"4,5,6,7,8,9,12,16",,,11,0,,1:NOFIRE  2:NOFIRE  3:NOFIRE  4:FIRED  5:FIRED  6:FIRED  7:FIRED  8:FIRED  9:FIRED  12:FIRED  16:FIRED
+FIREMAP,,,bench4_m1e5_r2p5,fkappa,,,,,,,,,,"2,4",,,5,0,,2:FIRED  4:FIRED  8:CONDENSE  12:CONDENSE  16:CONDENSE
+FIREMAP,,,bench5_m5e5_r2p5,fkappa,,,,,,,,,,"2,4,8,12,16",,,5,0,,2:FIRED  4:FIRED  8:FIRED  12:FIRED  16:FIRED
+DETERM,k3_be_sphere__fk8,,be_sphere,,8,,,,,,,,FIRED,,IDENTICAL,,,,,da88e6a908114717
+DETERM,k3_normal_n1e3__fk16,,normal_n1e3,,16,,,,,,,,TRUNC,,IDENTICAL,,,,,00cf62cbec709458
+DETERM,k3_pl2_steep__fk16,,pl2_steep,,16,,,,,,,,CONDENSE,,IDENTICAL,,,,,5febcfe0bca185e6
+DETERM,k3_simple_cluster__fk8,,simple_cluster,,8,,,,,,,,CONDENSE,,IDENTICAL,,,,,00174d1ee20c6193
+DETERM,k3_small_dense_highsfe__fk6,,small_dense_highsfe,,6,,,,,,,,DRAIN,,IDENTICAL,,,,,e0ef6fa8d1f50807
+G6,k4_bench1_m5e4_r20__fm2_diag,,bench1_m5e4_r20,,2,,,,,0.3802,,,,0.3802,PASS,,,,,+0.00%
+G6,k4_bench1_m5e4_r20__fm3_diag,,bench1_m5e4_r20,,3,,,,,0.4939,,,,0.4939,PASS,,,,,+0.00%
+G6,k4_bench1_m5e4_r20__fm4_diag,,bench1_m5e4_r20,,4,,,,,0.5789,,,,0.5789,PASS,,,,,+0.00%
+G6,k4_bench1_m5e4_r20__fm8_diag,,bench1_m5e4_r20,,8,,,,,0.7670,,,,0.7670,PASS,,,,,+0.00%
+G6,k4_bench2_m1e5_r10__fm2_diag,,bench2_m1e5_r10,,2,,,,,0.5326,,,,0.5326,PASS,,,,,+0.00%
+G6,k4_bench2_m1e5_r10__fm3_diag,,bench2_m1e5_r10,,3,,,,,0.6491,,,,0.6491,PASS,,,,,+0.00%
+G6,k4_bench2_m1e5_r10__fm4_diag,,bench2_m1e5_r10,,4,,,,,0.7267,,,,0.7267,PASS,,,,,+0.00%
+G6,k4_bench2_m1e5_r10__fm8_diag,,bench2_m1e5_r10,,8,,,,,0.8946,,,,0.8946,PASS,,,,,+0.00%
+BACKREACT,k1_bench3_m1e5_r5__fk12_diag,,bench3_m1e5_r5,,12,,,,,0.7987,,,,2.0339,-60.73% -> -95.21%,,86,,,0.0973 @ t=0.299
+BACKREACT,k1_bench3_m1e5_r5__fk16_diag,,bench3_m1e5_r5,,16,,,,,0.6557,,,,2.2082,-70.30% -> -96.54%,,112,,,0.0765 @ t=0.292
+BACKREACT,k1_bench3_m1e5_r5__fk24_diag,,bench3_m1e5_r5,,24,,,,,0.3797,,,,2.4794,-84.69% -> +17.60%,,88,,,2.9158 @ t=0.293
+BACKREACT,k1_bench3_m1e5_r5__fk2_diag,,bench3_m1e5_r5,,2,,,,,1.0657,,,,1.2190,-12.58% -> -13.71%,,69,,,1.0518 @ t=0.295
+BACKREACT,k1_bench3_m1e5_r5__fk32_diag,,bench3_m1e5_r5,,32,,,,,0.2889,,,,2.6918,-89.27% -> -99.64%,,174,,,0.0096 @ t=0.271
+BACKREACT,k1_bench3_m1e5_r5__fk3_diag,,bench3_m1e5_r5,,3,,,,,1.0751,,,,1.3687,-21.46% -> -25.25%,,68,,,1.0232 @ t=0.286
+BACKREACT,k1_bench3_m1e5_r5__fk4_diag,,bench3_m1e5_r5,,4,,,,,1.0627,,,,1.4860,-28.49% -> -40.61%,,67,,,0.8826 @ t=0.286
+BACKREACT,k1_bench3_m1e5_r5__fk6_diag,,bench3_m1e5_r5,,6,,,,,1.0109,,,,1.6685,-39.41% -> -68.49%,,67,,,0.5257 @ t=0.288
+BACKREACT,k1_bench3_m1e5_r5__fk8_diag,,bench3_m1e5_r5,,8,,,,,0.9445,,,,1.8114,-47.86% -> -97.33%,,67,,,0.0484 @ t=0.292
+BACKREACT,k1_bench2_m1e5_r10__fk12_diag,,bench2_m1e5_r10,,12,,,,,1.3420,,,,2.0339,-34.02% -> -55.63%,,75,,,0.9026 @ t=0.441
+BACKREACT,k1_bench2_m1e5_r10__fk16_diag,,bench2_m1e5_r10,,16,,,,,1.3230,,,,2.2082,-40.08% -> -80.45%,,74,,,0.4318 @ t=0.432
+BACKREACT,k1_bench2_m1e5_r10__fk24_diag,,bench2_m1e5_r10,,24,,,,,1.2547,,,,2.4794,-49.39% -> -99.85%,,79,,,0.0036 @ t=0.445
+BACKREACT,k1_bench2_m1e5_r10__fk2_diag,,bench2_m1e5_r10,,2,,,,,1.1396,,,,1.2190,-6.52% -> -4.75%,,77,,,1.1611 @ t=0.436
+BACKREACT,k1_bench2_m1e5_r10__fk32_diag,,bench2_m1e5_r10,,32,,,,,1.1699,,,,2.6918,-56.54% -> +220.94%,,98,,,8.6392 @ t=0.443
+BACKREACT,k1_bench2_m1e5_r10__fk3_diag,,bench2_m1e5_r10,,3,,,,,1.2143,,,,1.3687,-11.28% -> -31.13%,,76,,,0.9426 @ t=0.418
+BACKREACT,k1_bench2_m1e5_r10__fk4_diag,,bench2_m1e5_r10,,4,,,,,1.2606,,,,1.4860,-15.17% -> -32.15%,,76,,,1.0083 @ t=0.418
+BACKREACT,k1_bench2_m1e5_r10__fk6_diag,,bench2_m1e5_r10,,6,,,,,1.3124,,,,1.6685,-21.34% -> -36.44%,,76,,,1.0605 @ t=0.437
+BACKREACT,k1_bench2_m1e5_r10__fk8_diag,,bench2_m1e5_r10,,8,,,,,1.3355,,,,1.8114,-26.27% -> -29.83%,,76,,,1.2711 @ t=0.445
+BACKREACT,k1_bench1_m5e4_r20__fk12_diag,,bench1_m5e4_r20,,12,,,,,1.6682,,,,2.0339,-17.98% -> -52.99%,,84,,,0.9562 @ t=0.679
+BACKREACT,k1_bench1_m5e4_r20__fk16_diag,,bench1_m5e4_r20,,16,,,,,1.7292,,,,2.2082,-21.69% -> -52.29%,,83,,,1.0535 @ t=0.673
+BACKREACT,k1_bench1_m5e4_r20__fk24_diag,,bench1_m5e4_r20,,24,,,,,1.7918,,,,2.4794,-27.73% -> -67.18%,,82,,,0.8137 @ t=0.645
+BACKREACT,k1_bench1_m5e4_r20__fk2_diag,,bench1_m5e4_r20,,2,,,,,1.1812,,,,1.2190,-3.10% -> -10.73%,,84,,,1.0882 @ t=0.636
+BACKREACT,k1_bench1_m5e4_r20__fk32_diag,,bench1_m5e4_r20,,32,,,,,1.8129,,,,2.6918,-32.65% -> -83.53%,,82,,,0.4434 @ t=0.671
+BACKREACT,k1_bench1_m5e4_r20__fk3_diag,,bench1_m5e4_r20,,3,,,,,1.2939,,,,1.3687,-5.47% -> -30.99%,,84,,,0.9445 @ t=0.636
+BACKREACT,k1_bench1_m5e4_r20__fk4_diag,,bench1_m5e4_r20,,4,,,,,1.3752,,,,1.4860,-7.45% -> -40.81%,,84,,,0.8796 @ t=0.653
+BACKREACT,k1_bench1_m5e4_r20__fk6_diag,,bench1_m5e4_r20,,6,,,,,1.4893,,,,1.6685,-10.74% -> -36.20%,,84,,,1.0644 @ t=0.657
+BACKREACT,k1_bench1_m5e4_r20__fk8_diag,,bench1_m5e4_r20,,8,,,,,1.5673,,,,1.8114,-13.48% -> -47.65%,,84,,,0.9483 @ t=0.671

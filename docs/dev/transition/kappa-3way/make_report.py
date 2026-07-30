@@ -10,6 +10,7 @@ not rebuilt, the page says so rather than lying quietly.
 
 Reads (all optional — each renders a "not yet measured" panel when absent, which is itself the
 honest state before the campaign runs):
+    ../pdv-trigger/data/bench7_analysis.csv   the three-way band-entry table (the deliverable)
     ../pdv-trigger/data/bench7_gate_g0.csv    G0 verdicts + the frozen P1 predictions
     ../pdv-trigger/data/freshness_audit.csv   FRESH / OLD / UNSTAMPED per artifact
     ../pdv-trigger/runs/params/bench7/        the committed arm count, counted per K-phase
@@ -182,6 +183,58 @@ def panel_freshness(rows):
     )
 
 
+def panel_threeway(rows):
+    """The deliverable: band entry per knob per bench + the uniformity spread."""
+    ent = [r for r in rows if r.get("table") == "ENTRY"]
+    if not ent:
+        return (
+            '<p class="note">No <code>bench7_analysis.csv</code> yet — the campaign has not been '
+            "reduced. Run <code>python docs/dev/transition/pdv-trigger/data/"
+            "make_bench7_analysis.py</code>.</p>"
+        )
+    per = [r for r in ent if r.get("bench") and "SPREAD" not in r["bench"]]
+    spr = {r["knob"]: r for r in ent if r.get("bench") == "SPREAD(max/min)"}
+    benches = ["bench3_m1e5_r5", "bench2_m1e5_r10", "bench1_m5e4_r20"]
+    body = []
+    for knob in ("fmix", "fA", "fkappa"):
+        cells = []
+        for b in benches:
+            r = next((x for x in per if x["knob"] == knob and x["bench"] == b), None)
+            if not r or not r["entry_dose"]:
+                cells.append("<span class='dim'>—</span>")
+                continue
+            v = esc(r["entry_dose"])
+            if r["measured_in_grid"] != "yes":
+                v = f"<i>{v}</i>"  # extrapolated
+            if r["truncated_arms"] not in ("", "0"):
+                v += ' <span class="pill warn">wall-limited</span>'
+            cells.append(v)
+        s_ = spr.get(knob)
+        sv = f"<b>{esc(s_['entry_dose'])}&times;</b>" if s_ else "—"
+        note = esc(s_["measured_in_grid"]) if s_ else ""
+        body.append([f"<b>{esc(knob)}</b>", *cells, sv, f'<span class="dim">{note}</span>'])
+    return table(
+        ["knob", "bench3 (n=5520)", "bench2 (n=690)", "bench1 (n=43)", "spread", "caveat"],
+        body,
+        "wide",
+    )
+
+
+def panel_firemap(rows):
+    fm = [r for r in rows if r.get("table") == "FIREMAP"]
+    if not fm:
+        return ""
+    body = [
+        [
+            f'<code>{esc(r["subject"])}</code>',
+            f'<code class="grid">{esc(r["track"])}</code>',
+            f'<b>{esc(r["entry_dose"] or "— none —")}</b>',
+        ]
+        for r in fm
+    ]
+    return table(["config", "f_kappa fate vs dose", "FIRED at"], body, "wide")
+
+
 def panel_arms(counts):
     order = [
         ("K1", "bench1/2/3 × f_κ {2,3,4,6,8,12,16,24,32} × prod/diag", "the missing third leg"),
@@ -213,6 +266,7 @@ def panel_arms(counts):
 
 def build():
     gate = _read(PDV / "data" / "bench7_gate_g0.csv")
+    ana = _read(PDV / "data" / "bench7_analysis.csv")
     fresh = _read(PDV / "data" / "freshness_audit.csv")
     counts = _arm_counts()
     now = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -233,6 +287,9 @@ def build():
         p1=panel_p1(gate),
         freshness=panel_freshness(fresh),
         g0_stamp=esc(_stamp_of(PDV / "data" / "bench7_gate_g0.csv") or "not built"),
+        threeway=panel_threeway(ana),
+        firemap=panel_firemap(ana),
+        ran="yes" if ana else "no",
     )
 
 
@@ -286,13 +343,22 @@ Built {now} from the committed artifacts &middot; code <code>{sha}</code>.</p>
 
 <div class="k3">
 
+<div class="box win">
+<p><b>{total}/{total} arms ran on 2026-07-30. The three-way table is MEASURED.</b> Headline:
+<b>f_&kappa; is the worst of the three knobs</b> &mdash; spread &ge;16&times; against f_mix's 2.75&times;
+and f_A's 6.0&times;, and it does not reach the L21b band at all on the two diffuse benches by
+f_&kappa;&nbsp;=&nbsp;32. Prediction <b>P1 is falsified</b> (predicted 3.4&times;). Full record:
+<a href="FINDINGS.md">FINDINGS.md</a>.</p>
+</div>
+
 <div class="box stop">
-<p><b>Read this first: no arm of this campaign has been run.</b> Every quantity below that describes
-f_&kappa;'s calibration is a <i>pre-registered prediction</i>, marked
-<span class="pill pending">PENDING</span>. The measured numbers on this page are the
-<i>pre-run baseline checks</i>, and they come from artifacts dated before the {cutoff} cutoff — which
-makes them <span class="pill warn">VERIFY</span>, not results. See
-<a href="PROVENANCE.md">PROVENANCE.md</a>.</p>
+<p><b>Gate G0 FAILED 2/11 — and the cause is the most important result here.</b> 116/120 baseline
+arms reproduced <b>bit-identically</b> against the 2026-07-19 harvest, and <i>every</i> arm that moved
+was one that ran out of wall-clock mid-solve. One such arm (<code>bench1 f_A=128</code>) sits at the
+top of f_A's bench1 ladder, so its shorter integration window slid that band-entry dose
+74.8&nbsp;&rarr;&nbsp;83.2 and f_A's spread 5.39&nbsp;&rarr;&nbsp;6.00. <b>f_A's spread &mdash; the
+number the published head-to-head rests on &mdash; is therefore not converged</b>: it is
+5.4&ndash;6.0&times;, wall-limited. 21/294 arms (7.1%) truncated this way.</p>
 </div>
 
 <h2>1. The question</h2>
@@ -320,7 +386,40 @@ better single physical constant.</p>
 three-way — f_&kappa; has never been through the calibration that decided between the other two.</p>
 </div>
 
-<h2>2. What happened — why the old numbers are not trusted</h2>
+<h2>2. THE RESULT — the three-way band-entry table</h2>
+
+<p>L21b band {band}, clean-blowout benches. <i>Italic</i> = extrapolated past the grid, not measured.
+Read from <code>bench7_analysis.csv</code> at build time.</p>
+
+<div class="tw">{threeway}</div>
+
+<p class="note"><b>The extrapolation-free statement</b>, which needs no model: at the top of the
+f_&kappa; grid (f_&kappa; = 32), &Theta;<sub>cum</sub> = <b>0.913</b> on bench3 (in band),
+<b>0.890</b> on bench2 (below, and <i>saturating</i> &mdash; 24&rarr;32 moves it 0.889&rarr;0.890 while
+the integration window is still growing), and <b>0.676</b> on bench1 (far short). f_&kappa; appears to
+asymptote just below the band on the intermediate-density cloud.</p>
+
+<p class="note"><b>Why P1 missed.</b> It assumed the dose&ndash;response exponent q &isin; [0.55, 0.70],
+carried over from &sect;24's <i>fixed-state</i> L_cool exponents. Measured on the <i>integrated</i>
+metric, q &asymp; <b>0.27&ndash;0.32</b> for f_&kappa; &mdash; roughly half &mdash; and 8 of 9 fits
+across all three knobs fall below the bracket. Entry dose goes as 1/q in the exponent, so halving q
+roughly squares the required dose. That is the whole gap between the predicted 3.4&times; and the
+measured &ge;16&times;. It is <code>CLAUDE.md</code> rule 5 again: a per-call equivalence is necessary
+but not sufficient.</p>
+
+<p class="note">f_mix's exponent (0.46&ndash;0.56) is about <b>double</b> f_A's and f_&kappa;'s. That is
+<i>why</i> it is the most uniform knob &mdash; the uniformity ranking is a consequence of the exponent
+ranking, not an independent fact.</p>
+
+<h3>The f_&kappa; fire map (K2, 66 arms) — P3 confirmed</h3>
+<p class="note">No single f_&kappa; fires all 6 band configs; best is <b>5/6 at f_&kappa; &isin;
+{{8, 9, 12}}</b>, reproducing &sect;12's "5/6 at 12" exactly from an independent fresh grid.
+<code>simple_cluster</code> fires only at 4&ndash;6 then condenses; <code>pl2_steep</code> needs
+&ge;8. <b>The windows do not overlap</b> &mdash; the squeeze is real, now bounded to one dose unit.</p>
+
+<div class="tw">{firemap}</div>
+
+<h2>3. What happened — why the old numbers were not trusted</h2>
 
 <p>Three corrections inside five days, all in the parent workstream
 <code>docs/dev/transition/pdv-trigger/</code>. None of them was corrupt data. Every one passed the
@@ -361,7 +460,7 @@ true, not citable until re-measured. One date comparison, applied mechanically b
 <code>make_freshness_audit.py</code>, replacing a five-week register whose failure mode was silent.</p>
 </div>
 
-<h2>3. The campaign — {total} arms</h2>
+<h2>4. The campaign — {total} arms</h2>
 
 <p>All arms <code>stop_t = 5 Myr</code>, one process each, <b>single-knob by construction</b>, with the
 two-arm protocol: <b>production</b> (live <code>cooling_balance</code> &rarr; the fire map) and
@@ -390,7 +489,7 @@ old-vs-new is a file diff.</p>
     <code>F_MIX_K4</code>, changes it, and it is free only until <code>submit</code>.</li>
 </ul>
 
-<h2>4. Pre-registered predictions</h2>
+<h2>5. Pre-registered predictions — scored</h2>
 
 <p>Frozen before any arm runs, in <code>pdv-trigger/data/bench7_gate_g0.csv</code>. A miss is
 <b>recorded as a miss</b>, never re-negotiated.</p>
@@ -413,7 +512,7 @@ old-vs-new is a file diff.</p>
 
 <div class="tw">{p1}</div>
 
-<h2>5. Gate G0 — the baseline check, which does double duty</h2>
+<h2>6. Gate G0 — the baseline check, which does double duty</h2>
 
 <p class="note">Artifact stamp: <code>{g0_stamp}</code></p>
 
@@ -430,11 +529,11 @@ downstream. Never silently adopt either value, and never merge a fresh and a pre
 into one fit.</p>
 </div>
 
-<h2>6. Freshness — what on disk is actually from today</h2>
+<h2>7. Freshness — what on disk is actually from today</h2>
 
 {freshness}
 
-<h2>7. What to run</h2>
+<h2>8. What was run</h2>
 
 <pre><code>git pull                                  # branch feature/pdv-trigger-5b
 cd docs/dev/transition/pdv-trigger/runs
@@ -467,7 +566,7 @@ python docs/dev/transition/kappa-3way/make_report.py                  # rebuild 
 else your analysis will need must be added <i>before</i> the first reduce.</p>
 </div>
 
-<h2>8. What we will do with the result</h2>
+<h2>9. What the result means</h2>
 
 <p>The deliverable is the three-way table this program has been missing — per knob: band-entry dose on
 each bench, the spread, and whether it was <b>measured in-grid or extrapolated</b>. Per gate G5, both
@@ -491,7 +590,7 @@ about honesty, never about promoting f_&kappa;.</p>
 factor, the single-constant program <b>stops</b> rather than being re-scoped into a fitted f(n).</p>
 </div>
 
-<h2>9. Where things live</h2>
+<h2>10. Where things live</h2>
 
 <div class="tw"><table>
 <thead><tr><th>what</th><th>where</th><th>why</th></tr></thead>

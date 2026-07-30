@@ -32,9 +32,10 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-07-29):** 🔵 actionable — the campaign is **designed, gated and submit-ready**; **294 arms
-have NOT been run**. Every quantitative claim in this workstream is currently a *prediction*. Nothing here
-changes production.
+**Status (2026-07-30):** 🔵 actionable — **294/294 arms ran; the three-way table is MEASURED**
+(`FINDINGS.md`, `report.html`). Headline: **f_κ is the worst of the three knobs** and **P1 is falsified**.
+Gate **G0 failed 2/11** — traced to wall-clock truncation, which also makes f_A's published 5.39× spread
+non-converged. Nothing here changes production.
 
 ---
 

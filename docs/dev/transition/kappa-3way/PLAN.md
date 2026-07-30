@@ -32,8 +32,9 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-07-29):** 🔵 actionable — design frozen, gates G0/G1 cleared, **294 arms not run**. The
-blocker is cluster access, not a decision.
+**Status (2026-07-30):** 🟡 campaign COMPLETE — 294/294 arms ran and are reduced. Results in
+`FINDINGS.md`; §5's analysis plan is executed. G0 **failed 2/11** (wall-clock truncation, §1 there).
+Remaining work is §9 of `FINDINGS.md`, chiefly re-running the 21 truncated arms with more walltime.
 
 ---
 

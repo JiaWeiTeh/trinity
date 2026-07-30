@@ -12,16 +12,318 @@
 > are exact; stamp-less artifacts predate the convention (2026-07-02) — for those, only
 > the commit date is known. **Every new/edited builder must write the stamp.**
 
-920 artifacts · 2 stale-risk · 0 untracked · 22 stamped 🕐
+1222 artifacts · 2 stale-risk · 0 untracked · 323 stamped 🕐
 
 | last updated (commit) | artifact | producer / flags |
 |---|---|---|
+| 2026-07-30 `d23494e` | `bench5_theta_tracks.png` | producer unknown (HPC/hand-made); refs: `make_bench5_analysis.py`, `make_pdvtrigger_report.py` |
+| 2026-07-30 `d23494e` | `bench7_entry.png` | producer unknown (HPC/hand-made); refs: `make_bench7_analysis.py` |
+| 2026-07-30 `d23494e` | `data/bench5_analysis.csv` | by `make_bench5_analysis.py` · 🕐 generated 2026-07-30T19:12:47Z | builder make_bench5_analysis.py | code 50c5606+dirty |
+| 2026-07-30 `d23494e` | `data/bench6_analysis.csv` | by `make_bench6_analysis.py` · 🕐 generated 2026-07-30T19:12:56Z | builder make_bench6_analysis.py | code 50c5606+dirty |
+| 2026-07-30 `d23494e` | `data/bench7_analysis.csv` | by `make_bench7_analysis.py` · 🕐 generated 2026-07-30T19:22:18Z | builder make_bench7_analysis.py | code 50c5606+dirty |
+| 2026-07-30 `d23494e` | `data/bench7_gate_g0.csv` | by `make_bench7_gate_g0.py` · 🕐 generated 2026-07-30T19:13:03Z | builder make_bench7_gate_g0.py | code 50c5606+dirty |
+| 2026-07-30 `d23494e` | `data/freshness_audit.csv` | by `make_freshness_audit.py` · 🕐 generated 2026-07-30T19:22:20Z | builder make_freshness_audit.py | code 50c5606+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_hashes.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:35Z | builder sync_bench.sh bench5r reduce | code 1056c6d7 |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_summary.csv` | producer unknown (HPC/hand-made); refs: `make_bench5_analysis.py`, `make_bench6_analysis.py` · 🕐 generated 2026-07-30T19:01:35Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench1_m5e4_r20__fa12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:25Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench1_m5e4_r20__fa12_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:25Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench1_m5e4_r20__fa16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:25Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench1_m5e4_r20__fa16_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:25Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench1_m5e4_r20__fa4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:25Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench1_m5e4_r20__fa4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:25Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench1_m5e4_r20__fa6.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:26Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench1_m5e4_r20__fa6_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:26Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench1_m5e4_r20__fa8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:26Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench1_m5e4_r20__fa8_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:26Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench1_m5e4_r20__none.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:26Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench1_m5e4_r20__none_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:27Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench2_m1e5_r10__fa12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:27Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench2_m1e5_r10__fa12_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:27Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench2_m1e5_r10__fa16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:27Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench2_m1e5_r10__fa16_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:27Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench2_m1e5_r10__fa4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:28Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench2_m1e5_r10__fa4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:28Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench2_m1e5_r10__fa6.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:28Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench2_m1e5_r10__fa6_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:28Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench2_m1e5_r10__fa8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:28Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench2_m1e5_r10__fa8_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:29Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench2_m1e5_r10__none.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:29Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench2_m1e5_r10__none_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:29Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench3_m1e5_r5__fa12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:29Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench3_m1e5_r5__fa12_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:30Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench3_m1e5_r5__fa16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:30Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench3_m1e5_r5__fa16_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:30Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench3_m1e5_r5__fa4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:30Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench3_m1e5_r5__fa4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:30Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench3_m1e5_r5__fa6.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:31Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench3_m1e5_r5__fa6_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:31Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench3_m1e5_r5__fa8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:31Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench3_m1e5_r5__fa8_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:31Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench3_m1e5_r5__none.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:31Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench3_m1e5_r5__none_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:32Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench4_m1e5_r2p5__fa12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:32Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench4_m1e5_r2p5__fa12_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:32Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench4_m1e5_r2p5__fa16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:32Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench4_m1e5_r2p5__fa16_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:32Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench4_m1e5_r2p5__fa4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:32Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench4_m1e5_r2p5__fa4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:33Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench4_m1e5_r2p5__fa6.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:33Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench4_m1e5_r2p5__fa6_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:33Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench4_m1e5_r2p5__fa8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:33Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench4_m1e5_r2p5__fa8_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:33Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench4_m1e5_r2p5__none.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:34Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench4_m1e5_r2p5__none_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:34Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench5_m5e5_r2p5__fa12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:34Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench5_m5e5_r2p5__fa12_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:34Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench5_m5e5_r2p5__fa16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:34Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench5_m5e5_r2p5__fa16_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:34Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench5_m5e5_r2p5__fa4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:34Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench5_m5e5_r2p5__fa4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:34Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench5_m5e5_r2p5__fa6.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:35Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench5_m5e5_r2p5__fa6_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:35Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench5_m5e5_r2p5__fa8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:35Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench5_m5e5_r2p5__fa8_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:35Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench5_m5e5_r2p5__none.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:35Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench5_m5e5_r2p5__none_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:35Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_hashes.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:51Z | builder sync_bench.sh bench6r reduce | code 1056c6d7 |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_summary.csv` | producer unknown (HPC/hand-made); refs: `make_bench6_analysis.py`, `make_bench7_analysis.py` · 🕐 generated 2026-07-30T19:01:51Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench1_m5e4_r20__fa128.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:39Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench1_m5e4_r20__fa128_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:40Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench1_m5e4_r20__fa24.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:40Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench1_m5e4_r20__fa24_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:40Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench1_m5e4_r20__fa32.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:40Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench1_m5e4_r20__fa32_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:40Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench1_m5e4_r20__fa64.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:41Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench1_m5e4_r20__fa64_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:41Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench1_m5e4_r20__fm2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:41Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench1_m5e4_r20__fm2_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:41Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench1_m5e4_r20__fm3.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:41Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench1_m5e4_r20__fm3_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:42Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench1_m5e4_r20__fm4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:42Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench1_m5e4_r20__fm4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:42Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench1_m5e4_r20__fm8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:42Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench1_m5e4_r20__fm8_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:42Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench2_m1e5_r10__fa128.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:43Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench2_m1e5_r10__fa128_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:43Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench2_m1e5_r10__fa24.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:43Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench2_m1e5_r10__fa24_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:43Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench2_m1e5_r10__fa32.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:43Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench2_m1e5_r10__fa32_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:44Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench2_m1e5_r10__fa64.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:44Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench2_m1e5_r10__fa64_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:44Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench2_m1e5_r10__fm2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:44Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench2_m1e5_r10__fm2_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:44Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench2_m1e5_r10__fm3.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:45Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench2_m1e5_r10__fm3_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:45Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench2_m1e5_r10__fm4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:45Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench2_m1e5_r10__fm4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:45Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench2_m1e5_r10__fm8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:46Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench2_m1e5_r10__fm8_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:46Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench3_m1e5_r5__fa24.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:46Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench3_m1e5_r5__fa24_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:46Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench3_m1e5_r5__fa32.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:46Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench3_m1e5_r5__fa32_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:47Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench3_m1e5_r5__fm2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:47Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench3_m1e5_r5__fm2_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:47Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench3_m1e5_r5__fm3.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:48Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench3_m1e5_r5__fm3_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:48Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench3_m1e5_r5__fm4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:48Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench3_m1e5_r5__fm4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:48Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench3_m1e5_r5__fm8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:49Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench3_m1e5_r5__fm8_diag.csv` | producer unknown (HPC/hand-made); refs: `make_phase6_figures.py` · 🕐 generated 2026-07-30T19:01:49Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench4_m1e5_r2p5__fm2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:49Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench4_m1e5_r2p5__fm2_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:49Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench4_m1e5_r2p5__fm3.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:49Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench4_m1e5_r2p5__fm3_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:49Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench4_m1e5_r2p5__fm4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:50Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench4_m1e5_r2p5__fm4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:50Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench4_m1e5_r2p5__fm8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:50Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench4_m1e5_r2p5__fm8_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:50Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench5_m5e5_r2p5__fm2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:50Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench5_m5e5_r2p5__fm2_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:51Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench5_m5e5_r2p5__fm3.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:51Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench5_m5e5_r2p5__fm3_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:51Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench5_m5e5_r2p5__fm4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:51Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench5_m5e5_r2p5__fm4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:51Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench5_m5e5_r2p5__fm8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:51Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench5_m5e5_r2p5__fm8_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:51Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_hashes.csv` | producer unknown (HPC/hand-made); refs: `make_bench7_analysis.py`, `make_kappa_reopen_params.py` · 🕐 generated 2026-07-30T19:02:28Z | builder sync_bench.sh bench7 reduce | code 1056c6d7 |
+| 2026-07-30 `50c5606` | `runs/data/bench7_summary.csv` | producer unknown (HPC/hand-made); refs: `make_bench7_analysis.py` · 🕐 generated 2026-07-30T19:02:28Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:58Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk12_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:58Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:59Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk16_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:59Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:59Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk24.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:59Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk24_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:59Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk2_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:00Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk3.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:00Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk32.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:00Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk32_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:00Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk3_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:00Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:00Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:01Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk6.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:01Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk6_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:01Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:01Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk8_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:01Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:02Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk12_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:02Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:02Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk16_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:02Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:02Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk24.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:03Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk24_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:03Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk2_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:03Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk3.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:03Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk32.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:04Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk32_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:04Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk3_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:04Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:04Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:04Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk6.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:05Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk6_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:05Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:05Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk8_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:05Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:05Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk12_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:06Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:06Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk16_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:06Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:06Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk24.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:07Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk24_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:07Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk2_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:07Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk3.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:07Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk32.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:07Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk32_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:08Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk3_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:08Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:08Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:08Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk6.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:08Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk6_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:09Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:09Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk8_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:09Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1b_bench4_m1e5_r2p5__fk12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:55Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1b_bench4_m1e5_r2p5__fk12_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:55Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1b_bench4_m1e5_r2p5__fk16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:55Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1b_bench4_m1e5_r2p5__fk16_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:55Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1b_bench4_m1e5_r2p5__fk2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:55Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1b_bench4_m1e5_r2p5__fk2_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:56Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1b_bench4_m1e5_r2p5__fk4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:56Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1b_bench4_m1e5_r2p5__fk4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:56Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1b_bench4_m1e5_r2p5__fk8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:56Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1b_bench4_m1e5_r2p5__fk8_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:56Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1b_bench5_m5e5_r2p5__fk12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:57Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1b_bench5_m5e5_r2p5__fk12_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:57Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1b_bench5_m5e5_r2p5__fk16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:57Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1b_bench5_m5e5_r2p5__fk16_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:57Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1b_bench5_m5e5_r2p5__fk2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:57Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1b_bench5_m5e5_r2p5__fk2_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:57Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1b_bench5_m5e5_r2p5__fk4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:58Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1b_bench5_m5e5_r2p5__fk4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:58Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1b_bench5_m5e5_r2p5__fk8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:58Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1b_bench5_m5e5_r2p5__fk8_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:58Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_be_sphere__fk1.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:09Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_be_sphere__fk12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:09Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_be_sphere__fk16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:10Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_be_sphere__fk2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:10Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_be_sphere__fk3.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:10Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_be_sphere__fk4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:10Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_be_sphere__fk5.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:11Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_be_sphere__fk6.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:11Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_be_sphere__fk7.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:11Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_be_sphere__fk8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:11Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_be_sphere__fk9.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:11Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_large_diffuse_lowsfe__fk1.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:12Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_large_diffuse_lowsfe__fk12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:12Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_large_diffuse_lowsfe__fk16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:12Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_large_diffuse_lowsfe__fk2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:12Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_large_diffuse_lowsfe__fk3.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:12Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_large_diffuse_lowsfe__fk4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:13Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_large_diffuse_lowsfe__fk5.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:13Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_large_diffuse_lowsfe__fk6.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:13Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_large_diffuse_lowsfe__fk7.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:13Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_large_diffuse_lowsfe__fk8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:13Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_large_diffuse_lowsfe__fk9.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:14Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_midrange_pl0__fk1.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:14Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_midrange_pl0__fk12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:14Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_midrange_pl0__fk16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:14Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_midrange_pl0__fk2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:14Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_midrange_pl0__fk3.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:14Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_midrange_pl0__fk4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:15Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_midrange_pl0__fk5.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:15Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_midrange_pl0__fk6.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:15Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_midrange_pl0__fk7.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:15Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_midrange_pl0__fk8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:15Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_midrange_pl0__fk9.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:16Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_pl2_steep__fk1.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:16Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_pl2_steep__fk12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:16Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_pl2_steep__fk16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:16Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_pl2_steep__fk2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:16Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_pl2_steep__fk3.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:17Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_pl2_steep__fk4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:17Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_pl2_steep__fk5.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:17Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_pl2_steep__fk6.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:17Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_pl2_steep__fk7.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:17Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_pl2_steep__fk8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:17Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_pl2_steep__fk9.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:18Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_simple_cluster__fk1.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:18Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_simple_cluster__fk12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:18Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_simple_cluster__fk16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:18Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_simple_cluster__fk2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:18Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_simple_cluster__fk3.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:19Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_simple_cluster__fk4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:19Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_simple_cluster__fk5.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:19Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_simple_cluster__fk6.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:19Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_simple_cluster__fk7.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:19Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_simple_cluster__fk8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:19Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_simple_cluster__fk9.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:20Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_small_dense_highsfe__fk1.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:20Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_small_dense_highsfe__fk12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:20Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_small_dense_highsfe__fk16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:20Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_small_dense_highsfe__fk2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:20Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_small_dense_highsfe__fk3.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:20Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_small_dense_highsfe__fk4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:20Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_small_dense_highsfe__fk5.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:21Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_small_dense_highsfe__fk6.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:21Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_small_dense_highsfe__fk7.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:21Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_small_dense_highsfe__fk8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:21Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_small_dense_highsfe__fk9.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:21Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k3_be_sphere__fk8_a.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:21Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k3_be_sphere__fk8_b.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:22Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k3_normal_n1e3__fk16_a.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:22Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k3_normal_n1e3__fk16_b.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:22Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k3_pl2_steep__fk16_a.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:22Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k3_pl2_steep__fk16_b.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:22Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k3_simple_cluster__fk8_a.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:23Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k3_simple_cluster__fk8_b.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:23Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k3_small_dense_highsfe__fk6_a.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:23Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k3_small_dense_highsfe__fk6_b.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:23Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k4_bench1_m5e4_r20__fm12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:23Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k4_bench1_m5e4_r20__fm12_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:23Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k4_bench1_m5e4_r20__fm16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:24Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k4_bench1_m5e4_r20__fm16_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:24Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k4_bench1_m5e4_r20__fm2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:24Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k4_bench1_m5e4_r20__fm2_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:24Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k4_bench1_m5e4_r20__fm3.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:24Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k4_bench1_m5e4_r20__fm3_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:25Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k4_bench1_m5e4_r20__fm4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:25Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k4_bench1_m5e4_r20__fm4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:25Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k4_bench1_m5e4_r20__fm8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:25Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k4_bench1_m5e4_r20__fm8_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:25Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k4_bench2_m1e5_r10__fm12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:26Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k4_bench2_m1e5_r10__fm12_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:26Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k4_bench2_m1e5_r10__fm16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:26Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k4_bench2_m1e5_r10__fm16_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:26Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k4_bench2_m1e5_r10__fm2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:26Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k4_bench2_m1e5_r10__fm2_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:26Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k4_bench2_m1e5_r10__fm3.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:27Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k4_bench2_m1e5_r10__fm3_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:27Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k4_bench2_m1e5_r10__fm4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:27Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k4_bench2_m1e5_r10__fm4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:27Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k4_bench2_m1e5_r10__fm8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:27Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k4_bench2_m1e5_r10__fm8_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:28Z | builder harvest_bench5.py | code 1056c6d7+dirty |
 | 2026-07-29 `ab1e319` | `_eqp.html` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `bench5_theta_tracks.png` | producer unknown (HPC/hand-made); refs: `make_bench5_analysis.py`, `make_pdvtrigger_report.py` |
-| 2026-07-29 `f3d64e6` | `data/bench5_analysis.csv` | by `make_bench5_analysis.py` · 🕐 generated 2026-07-29T19:14:18Z | builder make_bench5_analysis.py | code afb969f+dirty |
-| 2026-07-29 `f3d64e6` | `data/bench6_analysis.csv` | by `make_bench6_analysis.py` · 🕐 generated 2026-07-29T19:14:20Z | builder make_bench6_analysis.py | code afb969f+dirty |
-| 2026-07-29 `4c42596` | `data/bench7_gate_g0.csv` | by `make_bench7_gate_g0.py` · 🕐 generated 2026-07-29T20:49:40Z | builder make_bench7_gate_g0.py | code ea3723d+dirty |
-| 2026-07-29 `4c42596` | `data/freshness_audit.csv` | by `make_freshness_audit.py` · 🕐 generated 2026-07-29T20:49:41Z | builder make_freshness_audit.py | code ea3723d+dirty |
 | 2026-07-29 `db353aa` | `data/kappa_eq47_check.csv` | by `make_kappa_eq47_check.py` |
 | 2026-07-29 `ab1e319` | `data/zone_profiles.csv` | by `make_zone_profiles.py` |
 | 2026-07-29 `2b381bd` | `pdvtrigger_report.html` | by `make_pdvtrigger_report.py` |
@@ -79,20 +381,20 @@
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench3_m1e5_r5__fk6_diag.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench3_m1e5_r5__fk8.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench3_m1e5_r5__fk8_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `4c42596` | `runs/params/bench7/k1b_bench4_m1e5_r2p5__fk12.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `4c42596` | `runs/params/bench7/k1b_bench4_m1e5_r2p5__fk12_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `4c42596` | `runs/params/bench7/k1b_bench4_m1e5_r2p5__fk16.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `4c42596` | `runs/params/bench7/k1b_bench4_m1e5_r2p5__fk16_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `42b084f` | `runs/params/bench7/k1b_bench4_m1e5_r2p5__fk12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `42b084f` | `runs/params/bench7/k1b_bench4_m1e5_r2p5__fk12_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `42b084f` | `runs/params/bench7/k1b_bench4_m1e5_r2p5__fk16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `42b084f` | `runs/params/bench7/k1b_bench4_m1e5_r2p5__fk16_diag.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k1b_bench4_m1e5_r2p5__fk2.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k1b_bench4_m1e5_r2p5__fk2_diag.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k1b_bench4_m1e5_r2p5__fk4.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k1b_bench4_m1e5_r2p5__fk4_diag.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k1b_bench4_m1e5_r2p5__fk8.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k1b_bench4_m1e5_r2p5__fk8_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `4c42596` | `runs/params/bench7/k1b_bench5_m5e5_r2p5__fk12.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `4c42596` | `runs/params/bench7/k1b_bench5_m5e5_r2p5__fk12_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `4c42596` | `runs/params/bench7/k1b_bench5_m5e5_r2p5__fk16.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `4c42596` | `runs/params/bench7/k1b_bench5_m5e5_r2p5__fk16_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `42b084f` | `runs/params/bench7/k1b_bench5_m5e5_r2p5__fk12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `42b084f` | `runs/params/bench7/k1b_bench5_m5e5_r2p5__fk12_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `42b084f` | `runs/params/bench7/k1b_bench5_m5e5_r2p5__fk16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `42b084f` | `runs/params/bench7/k1b_bench5_m5e5_r2p5__fk16_diag.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k1b_bench5_m5e5_r2p5__fk2.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k1b_bench5_m5e5_r2p5__fk2_diag.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k1b_bench5_m5e5_r2p5__fk4.param` | — (hand-made/HPC, unreferenced) |
@@ -199,7 +501,7 @@
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k4_bench2_m1e5_r10__fm4_diag.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k4_bench2_m1e5_r10__fm8.param` | — (hand-made/HPC, unreferenced) |
 | 2026-07-29 `1e82a37` | `runs/params/bench7/k4_bench2_m1e5_r10__fm8_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `4c42596` | `runs/run_bench7.sbatch` | producer unknown (HPC/hand-made); refs: `make_kappa_reopen_params.py` |
+| 2026-07-29 `42b084f` | `runs/run_bench7.sbatch` | producer unknown (HPC/hand-made); refs: `make_kappa_reopen_params.py` |
 | 2026-07-29 `ab1e319` | `zone_profiles.png` | by `make_zone_profiles.py` |
 | 2026-07-28 `0493f63` | `data/bench_stale_segments.csv` | by `make_bench_stale_segments.py` |
 | 2026-07-28 `dd9b4ca` | `data/rosette_fm4_doubleboost_check.csv` | by `make_rosette_fm4_doubleboost_check.py` |

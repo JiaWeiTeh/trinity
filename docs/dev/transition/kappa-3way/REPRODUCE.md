@@ -32,7 +32,8 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-07-29):** 🔵 actionable — rows 1–5 are runnable now; rows 6–10 need the 294 arms.
+**Status (2026-07-30):** ✅ all rows runnable — the 294 arms ran, reduced and landed; row 10's
+`make_bench7_analysis.py` is written and is the three-way deliverable.
 
 ---
 
@@ -46,11 +47,11 @@ All commands run **from the repo root**. Cost: 🟢 seconds (reads committed CSV
 | 3 | **The params match their builder** — byte-identical regeneration, per-phase counts, single-knob, K3 pairs identical bar their names, each bench arm on its bench5 `__none` cloud | `pytest test/test_bench7_params.py` | 182 passing cases | 🟢 | ✅ |
 | 4 | **Gate G0** — Θ₀ and the `§18` band-entry table recompute from the trajectories, at half-last-digit tolerances. Auto-prefers `bench5r`/`bench6r` once they land, turning it into the old-vs-new reproduction gate | `python docs/dev/transition/pdv-trigger/data/make_bench7_gate_g0.py` | `pdv-trigger/data/bench7_gate_g0.csv` (23 rows: 11 G0 + 12 P1) | 🟢 | ✅ 11/11 pre-run |
 | 5 | **The freshness receipt** — every committed CSV classified FRESH / OLD / UNSTAMPED against the cutoff, from its own stamp | `python docs/dev/transition/pdv-trigger/data/make_freshness_audit.py [YYYY-MM-DD]` | `pdv-trigger/data/freshness_audit.csv` | 🟢 | ✅ |
-| 6 | **Θ₀ + the f_A ladder ≤16, re-measured** | `./sync_bench.sh bench5r submit` → `reduce` → `down` | `runs/data/bench5r_{summary,hashes}.csv` + `bench5r_traj/` (60) | 🔴 | 🔴 not run |
-| 7 | **f_A 24–128 + the f_mix head-to-head, re-measured** | `./sync_bench.sh bench6r submit` → `reduce` → `down` | `runs/data/bench6r_{summary,hashes}.csv` + `bench6r_traj/` (60) | 🔴 | 🔴 not run |
-| 8 | **K1–K4 — the f_κ campaign** (54 + 20 + 66 + 10 + 24) | `./sync_bench.sh bench7 submit` → `reduce` → `down` | `runs/data/bench7_{summary,hashes}.csv` + `bench7_traj/` (174) | 🔴 | 🔴 not run |
-| 9 | **The re-derivation from fresh data** — each builder prints and records a `SOURCES READ:` line | `python .../make_bench5_analysis.py`; `.../make_bench6_analysis.py`; `.../make_bench7_gate_g0.py` | regenerated `bench5_analysis.csv`, `bench6_analysis.csv`, `bench7_gate_g0.csv` | 🟢 | 🔴 needs 6–8 |
-| 10 | **The three-way band-entry table** — the deliverable | `python .../data/make_bench7_analysis.py` | *(pending)* `pdv-trigger/data/bench7_analysis.csv` | 🟢 | 🔴 **script not written** — its shape depends on what the reduce returns |
+| 6 | **Θ₀ + the f_A ladder ≤16, re-measured** | `./sync_bench.sh bench5r submit` → `reduce` → `down` | `runs/data/bench5r_{summary,hashes}.csv` + `bench5r_traj/` (60) | 🔴 | ✅ ran 2026-07-30 |
+| 7 | **f_A 24–128 + the f_mix head-to-head, re-measured** | `./sync_bench.sh bench6r submit` → `reduce` → `down` | `runs/data/bench6r_{summary,hashes}.csv` + `bench6r_traj/` (60) | 🔴 | ✅ ran 2026-07-30 |
+| 8 | **K1–K4 — the f_κ campaign** (54 + 20 + 66 + 10 + 24) | `./sync_bench.sh bench7 submit` → `reduce` → `down` | `runs/data/bench7_{summary,hashes}.csv` + `bench7_traj/` (174) | 🔴 | ✅ ran 2026-07-30 |
+| 9 | **The re-derivation from fresh data** — each builder prints and records a `SOURCES READ:` line | `python .../make_bench5_analysis.py`; `.../make_bench6_analysis.py`; `.../make_bench7_gate_g0.py` | regenerated `bench5_analysis.csv`, `bench6_analysis.csv`, `bench7_gate_g0.csv` | 🟢 | ✅ |
+| 10 | **The three-way band-entry table** — the deliverable | `python .../data/make_bench7_analysis.py` | `pdv-trigger/data/bench7_analysis.csv` (234 rows: ARMS/ENTRY/EXPONENT/FIREMAP/DETERM/G6/BACKREACT) + `bench7_entry.png` | 🟢 | ✅ **the deliverable** |
 
 ## Rebuild everything runnable today, in one block
 
