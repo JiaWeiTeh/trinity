@@ -29,6 +29,9 @@ def main(raw_dir):
         title, _, rest = body.partition("\n")
         if not title.startswith("# "):
             title, rest = f"# {src.stem}", body
+        # Agents sometimes reproduce the banner themselves despite being told not
+        # to; drop their copy so stamping cannot double it.
+        rest = re.sub(r"\A\s*> ⚠️ \*\*This document.*?\n> update one in isolation\.\n", "", rest, flags=re.S)
         (DEST / src.name).write_text(
             f"{title}\n\n{banners}\n"
             f"**Status (2026-07-29):** 📘 raw agent report — provenance for "
