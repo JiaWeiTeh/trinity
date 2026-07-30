@@ -515,3 +515,60 @@ Recommend a warning at the override site, not removal. Flagged, not fixed.
 This one is worth noting methodologically: the *cleared* lookup is what exposed
 it. Chasing a hypothesised 1.85 dex error through four files found no error on
 the audited path, and a real inconsistency on a path no lens was scoped to see.
+
+---
+
+## S12a-R-01 — user-set `mu_*` silently discarded → **CONFIRMED S1** (medium → high confidence)
+
+**Open question.** The S12a reconciler overturned Lens A's blanket no-S1 verdict
+for exactly this finding, rating it **S1 at medium confidence** and naming the
+one lookup the rating hung on: *are `mu_*` actually declared in `default.param`,
+i.e. can a user set them at all?* Neither lens read `default.param` (it is data,
+not code, and sits outside the slice's file list). Its discriminator for S1 was:
+a user value is **accepted by the schema**, **warns nothing**, and a *different*
+value **silently drives the physics**.
+
+**Lookup — both halves confirmed.**
+
+1. **User-settable.** `trinity/_input/default.param` declares all four as
+   ordinary editable parameter lines with concrete values:
+   `mu_atom 14/11` (`:205`), `mu_ion 14/23` (`:209`), `mu_mol 14/6` (`:213`),
+   `mu_convert 1.4` (`:217`). A user setting any of them hits no unknown-key
+   error — the key *is* in the schema.
+2. **Unconditionally overwritten.** `trinity/_input/read_param.py:316-319`:
+   ```python
+   params['mu_convert'].value = float(_muH)    * _mH_au
+   params['mu_atom'].value    = float(_mu_n)   * _mH_au
+   params['mu_ion'].value     = float(_mu_p)   * _mH_au
+   params['mu_mol'].value     = float(_mu_mol) * _mH_au
+   ```
+   In-place `.value` assignment, derived from `x_He`/`Z_He`, with **no test of
+   whether the user set them and no warning**. Because the `DescribedItem`
+   object is unchanged, the anti-stomp guard — which compares object identity
+   (Lens A, A-03) — structurally cannot see it.
+3. **Drives the physics.** `mu_convert` is the `n_H -> rho` conversion
+   (`rho = mu_convert * n_H`, `registry.py:366`) used in every zone.
+
+**Verdict — S1 confirmed, confidence medium -> high.** A user who sets
+`mu_convert 1.6` gets a run integrated at 1.4. No error, no warning, and the
+snapshot records the derived value, so the discard is invisible after the fact.
+
+**Mitigation, stated because it is real.** The `INFO:` line directly above each
+key in the same file *does* say "Derived at load from x_He" (`:203`, `:207`,
+`:211`, `:215`), and the Step-6 comment calls `x_He`/`Z_He` "the single source
+of truth". So the behaviour is documented where an attentive user would look.
+That lowers discoverability risk but does not change the mechanism: the file
+still presents four derived quantities as editable input lines, and the code
+still discards user values without a word.
+
+The severity stands. A documented silent discard is still a silent discard —
+the rubric asks whether physical output changes on a config run today, not
+whether the manual warned you. **Fix direction** (for the maintainer, not
+applied here): reject or warn on user-set `mu_*`, or stop advertising them as
+inputs. Any of the three closes it.
+
+Recording this as the reconciler's **overturn being upheld**. Lens A's rule —
+"nothing changes numbers on a nominal successful run of a tracked config" — is
+sound in general and circular for the parameter reader, whose entire job is
+untracked configs. A defect there is invisible to tracked configs *by
+construction*, which is exactly why the tracked-config test could not see it.
