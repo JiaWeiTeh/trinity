@@ -1,0 +1,28 @@
+
+          ,          ______   ______     __     __   __     __     ______   __  __
+       \  :  /      /\__  _\ /\  == \   /\ \   /\ "-.\ \   /\ \   /\__  _\ /\ \_\ \
+    `. __/ \__ .'   \/_/\ \/ \ \  __<   \ \ \  \ \ \-.  \  \ \ \  \/_/\ \/ \ \____ \
+    _ _\     /_ _      \ \_\  \ \_\ \_\  \ \_\  \ \_\\"\_\  \ \_\    \ \_\  \/\_____\
+       /_   _\          \/_/   \/_/ /_/   \/_/   \/_/ \/_/   \/_/     \/_/   \/_____/
+     .'  \ /  `.
+          '             © J.W. Teh, R.S. Klessen, S.C.O. Glover, K. Kreckel
+        
+		      --------------------------------------------------
+		      Welcome to [32m]8;;https://github.com/JiaWeiTeh/trinity\TRINITY]8;;\[0m!
+
+		      Notes:
+		         - Documentation can be found [32m]8;;https://jiaweiteh.github.io/trinity-web/\here]8;;\[0m.
+		         - [1m[96mBold text[0m indicates that a file is saved.
+		         - [1m[94mWarning message[0m. Code runs still.
+		         - [1m[91mError encountered.[0m Code terminates.
+
+		      [Version 1.0.0] 2026. All rights reserved.
+		      --------------------------------------------------
+[5mLoading parameters:[0m
+	model name: f1edge_lowdens
+	log_mCloud: 7.0 Msun
+	SFE: 0.5
+	metallicity: 1.0 Zsun
+	log10 Core density: 2.0 cm-3
+	density profile: densPL
+➳ [1m[96mMetadata: outputs/f1edge_lowdens/metadata.json[0m
