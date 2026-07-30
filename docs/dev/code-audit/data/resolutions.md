@@ -462,3 +462,56 @@ from neither lens but from their **conjunction** — which is exactly the
 inference the reconciler is supposed to raise and the orchestrator is supposed
 to close. The absence of a factor is only a defect if the input is n_tot; it
 isn't.
+
+---
+
+## S13b-R-02 — `ZREL` solar-relative convention → **CLEARED (doubly); a different defect found**
+
+**Open question.** The S13b reconciler *promoted* this to R-01's tier and rated
+it the larger risk: Lens A marked the solar-relative reading "assumed", Lens B
+marked it "not stated", and if the convention were wrong the deck error is
+**~1.85 dex** — five times R-01's. Neither lens could settle it because the
+declaring spec and the consuming template are both outside the slice.
+
+**Lookup — four links, all outside S13b.**
+
+1. `trinity/_input/registry.py:339` — `ParamSpec(name='ZCloud', default='1',
+   info='Cloud metallicity', **unit='Zsun'** …)`. The convention **is**
+   declared: solar-relative, linear. Neither lens could see it (S12a's slice).
+2. `trinity/_output/cloudy/snapshot_to_deck.py:212` —
+   `zrel = float(bundle.summary["ZCloud"])`. Passed through unchanged, emitted
+   `f"{zrel:.4f}"` at `:274`.
+3. The bundled template, line 20 — `metals and grains {{ZREL}}`. CLOUDY's
+   `metals and grains <scale>` takes a **linear solar-relative** scale factor.
+   `ZREL=1.0000` is solar. Convention matches end to end.
+4. `trinity/_input/registry.py:99-105` — `_validate_ZCloud` **raises**
+   `ParameterFileError` unless `value == 1`: *"Metallicity Z=… not implemented.
+   Currently only Z=1 (solar) is supported."*
+
+**Verdict — cleared twice over.** The convention is correct *and* the risk is
+unreachable through the normal path: no run can start with `ZCloud != 1`, so
+`ZREL` is always `1.0000`. The feared 1.85 dex cannot occur via `.param` input.
+
+**But the lookup surfaced a defect neither lens could have found.**
+`trinity/_output/cloudy/trinity_to_cloudy.py:140` defines a `--z-override`
+CLI flag (`dest="z_override"`), and `snapshot_to_deck.py:206` takes
+`zrel = float(z_override)` **in preference to the summary value** — bypassing
+`_validate_ZCloud` entirely, since the validator guards `.param` load, not the
+export CLI.
+
+So `--z-override 0.2` emits `metals and grains 0.2000` into a deck whose
+density structure, shell ionisation and cooling were all integrated at **solar**
+metallicity. CLOUDY then computes photoionisation at 0.2 Z⊙ over a
+hydrodynamic structure that assumed 1.0 Z⊙. The deck runs, and is internally
+inconsistent, with no warning that the trajectory underneath it was not
+computed at the metallicity the deck declares.
+
+Rating **S2**: it needs an opt-in flag, and a user passing it may know exactly
+what they are doing. But nothing says so, and the flag is the only way to reach
+a non-solar deck in a code that otherwise refuses non-solar runs outright —
+which makes it likely to be read as supported rather than as an override.
+Recommend a warning at the override site, not removal. Flagged, not fixed.
+
+This one is worth noting methodologically: the *cleared* lookup is what exposed
+it. Chasing a hypothesised 1.85 dex error through four files found no error on
+the audited path, and a real inconsistency on a path no lens was scoped to see.
