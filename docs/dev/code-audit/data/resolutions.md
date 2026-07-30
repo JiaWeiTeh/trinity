@@ -266,3 +266,71 @@ R-01's *classification-by-list-index* sibling, plus R-06, R-09, R-22 — all fou
 rest on the same unread files (`run_energy`, `run_phase_energy`,
 `run_phase_transition`, `run_phase_momentum`). The reconciler's Q1+Q2 greps
 clear or confirm the whole cluster and are the highest-value pair left.
+
+---
+
+# S11 orchestration — all 14 open questions settled (2026-07-30)
+
+The reconciler could not read the four phase runners (`run_energy_phase`,
+`run_energy_implicit_phase`, `run_transition_phase`, `run_momentum_phase`) —
+by design, they are outside the slice. It flagged that ~a third of its findings
+rested on assumptions all three lenses shared about that unread code, and
+listed 14 decisive lookups. All 14 are run below. **Net: one S1 confirmed and
+escalated, seven findings demoted, one headline theme refuted.**
+
+## The refutation — Q4
+
+The reconciler's second theme was "no channel distinguishes a solver failure
+from a physical fate; `sol.status`/`sol.success` are never read." **That is
+false.** Every runner checks it:
+
+| file | line | check |
+|---|---|---|
+| `phase1_energy/run_energy_phase.py` | 310 | `if not solution.success:` |
+| `phase1b_energy_implicit/run_energy_implicit_phase.py` | 1085 | `if not sol.success or len(sol.t) == 0:` -> `termination_reason = f"solver_failed: {sol.message}"` |
+| `phase1c_transition/run_transition_phase.py` | 646 | same |
+| `phase2_momentum/run_momentum_phase.py` | 728 | same |
+| `bubble_structure/bubble_luminosity.py` | 362 | `if not sol.success:` -> `BubbleSolverError` |
+
+The claim is true *within the slice* (`main.py`, `phase_events.py`) and the
+reconciler generalised it to the codebase. Exactly the inference-not-fact trap
+— and this time all three lenses shared the wrong assumption, which is why
+agreement is not proof.
+
+**The narrow half survives:** `run.py:231` calls `main.start_expansion(params)`
+without capturing the return value, so the `99` failure code is discarded and
+never reaches `sys.exit`. That stays, at S3.
+
+## The escalation — Q7
+
+`isCollapse` is **not** metadata-only. It is consumed by
+`paper/_lib/plot_markers.py` — `find_collapse_time` (`:147`) and
+`add_collapse_marker` (`:371`). So the `velocity_runaway_event`
+mis-classification recorded above (collapse at `v2 < -500 pc/Myr` never sets
+`isCollapse`) propagates into **published paper figures**: the collapse marker
+is silently omitted. S1 confirmed, and worse than "census undercount".
+
+## Disposition table
+
+| Q | Answer | Moves |
+|---|---|---|
+| Q1 | `cooling_balance` is **not** spliced into `solve_ivp`. The factory is unpacked at `run_energy_implicit_phase.py:752` and **never used again**; the live decision is the inline ratio at `:1296` (`Lgain > 0 and (Lgain-Lloss)/Lgain < threshold`), as the docstring at `:278` says. | **R-06 S1 -> S3.** New **S4**: `make_cooling_balance_event` + the returned factory are dead (flag, don't delete). |
+| Q2 | All four sites pass the **event root**, not the last step: `t_now = event_result.t` is assigned immediately before the call (momentum `:743`->`:749`, transition `:662`->`:669`, implicit `:1105`->`:1117`; energy passes `event_result.t` directly at `:327`). | **R-09 S1 -> S4** (cosmetic: three spell it via `t_now`, one directly). |
+| Q3 | `registry.py:420` — `ParamSpec(name='EndSimulationDirectly', default=False, ...)`. Not `None`. | **R-10 hazard 1 S1 -> S4.** |
+| Q4 | See above — refuted. | **Theme demoted**; `run.py:231` half stays **S3**. |
+| Q5 | `stop_r` default `500` pc (`registry.py:352`), well above any GMC `rCloud`. | **R-04 / R-02 large-radius half stay S4** (and the builder is dead — see the R-01 entry above). |
+| Q6 | `current_phase` is consumed by `_output/` only — `show_run`, `simulation_end`, `trinity_reader`, and the cloudy deck exporters. **No hits in `paper/` or `tools/`.** | **R-11 S2 -> S3** (it does reach cloudy decks, so not pure logging). |
+| Q7 | See above — escalated. | **R-02 velocity half: S1 confirmed, reaches published figures.** |
+| Q8 | `COOLING_PHASE_KEYS` (`dictionary.py:1180+`) holds `residual_*`, `betadelta_*` and `bubble_*` keys. `Lmech_total`/`v_mech_total` are **not** in the block inspected. | **R-15 likely cleared** — marked partial, only the first 20 entries were read. |
+| Q9 | `MIN_RADIUS_SAFETY = 0.01` pc, `MIN_RADIUS_FACTOR = 1.5` (`phase_events.py:71-72`), `coll_r` default `1` pc (`registry.py:355`). So `min_r = max(1.5, 0.01) = 1.5` pc; the safety floor binds only for `coll_r < 0.0067` pc, which no plausible GMC config sets. | **R-05**: offset is 0.5 pc. **R-20 confirmed S4** — `MIN_RADIUS_SAFETY` is effectively dead. |
+| Q10 | Sweeps use `ProcessPoolExecutor` (`run.py:612`); `start_expansion` runs once per worker process (`:231`). | **R-10 hazard 2 -> S4.** Cross-run flag leakage is not reachable via the sweep path (in-process global leakage remains real — CLAUDE.md says so — but nothing calls it twice per process). |
+| Q11 | `stop_at_rCloud_nSnap` appears **only** in `main.py:36-65`, as a conflict *validator* against `stop_r`. A stale `.pyc` matches `run_momentum_phase`, but current source does not. | Confirms the reconciler: the `>= 1` semantics B and C both describe have **no consumer**. **S3.** |
+| Q12 | `Lgain` is guarded: the transition test at `:1296` requires `Lgain > 0`, and the diagnostics divide by `max(Lgain, 1e-300)` (`:872`, `:906`). | **R-07 S2 -> S4.** |
+| Q13 | Both present — `__format__` at `dictionary.py:152`, `__truediv__` at `:180`. | **R-21 closed, no defect.** |
+| Q14 | The integrated state is **phase-dependent**, which is why A/C and B disagreed: momentum `['R2','v2']` (2), transition and phase1-energy `['R2','v2','Eb']` (3), implicit `['R2','v2','Eb','T0']` (4, confirmed by the `y0=` log at `:1062`). | Resolves the A/C-vs-B split. **Leaves open:** `y_index=2` is valid in the 3- and 4-component phases but out of range in momentum — not chased here. |
+
+## Remaining open in S11
+
+- `y_index=2` under the 2-component momentum state (from Q14). One lookup.
+- Q8's `COOLING_PHASE_KEYS` tail beyond the first 20 entries.
+- R-01's classification-by-list-index sibling, which Q1/Q2 did not reach.
