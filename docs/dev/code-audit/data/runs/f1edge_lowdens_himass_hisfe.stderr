@@ -1,0 +1,6 @@
+/home/user/trinity/trinity/_input/dictionary.py:509: UserWarning: _simplify: reconstruction R²=0.894 below threshold 0.90 (N_in=1722, N_out=62). Consider increasing nmin.
+  x_out, y_out = _simplify(x_arr, y_arr, nmin=nmin, grad_inc=grad_inc)
+/home/user/trinity/trinity/_input/dictionary.py:509: UserWarning: _simplify: reconstruction R²=0.881 below threshold 0.90 (N_in=1830, N_out=61). Consider increasing nmin.
+  x_out, y_out = _simplify(x_arr, y_arr, nmin=nmin, grad_inc=grad_inc)
+/home/user/trinity/trinity/_input/dictionary.py:509: UserWarning: _simplify: reconstruction R²=0.865 below threshold 0.90 (N_in=1944, N_out=60). Consider increasing nmin.
+  x_out, y_out = _simplify(x_arr, y_arr, nmin=nmin, grad_inc=grad_inc)
