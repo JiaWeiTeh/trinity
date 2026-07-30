@@ -411,3 +411,54 @@ produces **true observations with over-severe ratings**, because a doc defect
 and a code defect are indistinguishable from the prose side. That asymmetry is
 a property of the method, not a failure of it — provided every such claim gets
 the lookup before it reaches `FINDINGS.md`.
+
+---
+
+## S13b-R-01 — CLOUDY `dlaw` density: `n` vs `n_H` → **CLEARED**
+
+**Open question.** The S13b reconciler ranked this first in the slice. Both
+lenses reached the same hole blind from opposite directions: Lens B found the
+`dlaw.py` docstring calling the output column `log10 n [cm^-3]` in prose and
+`log10(n_H/cm^-3)` in its format block; Lens A found **no composition factor
+anywhere in the code** — the column is a pure pc⁻³→cm⁻³ unit shift. If the
+source array `log_shell_n_arr` were *total particle* density rather than
+*hydrogen* density, every emitted deck would be wrong by ~0.35 dex in n(H):
+decks that run, and produce plausible spectra at the wrong ionisation
+parameter. The reconciler named the deciding lookup — trace the producer of
+`log_shell_n_arr` and read whether it divides by `μ m_H` or `X_H m_H`.
+
+**Lookup.** The producer is `shell_n_arr` in
+`trinity/shell_structure/shell_structure.py:411` (`np.concatenate([nShell_arr_ion,
+nShell_arr_neu])`), declared at `:81` as *"Number density through shell
+[1/pc^3]"*. Three independent lines of evidence fix which density that is:
+
+- **Global convention.** `trinity/_input/registry.py:366` (`mu_convert` spec):
+  *"Use for the n_H -> rho mass conversion (rho = mu_convert * n_H) … **All
+  densities n in TRINITY are hydrogen-nuclei densities n_H.**"*
+- **Recombination term.** `shell_structure.py:282` computes
+  `chi_e_shell * caseB_alpha * nShell_arr_ion**2`, and `registry.py:417` defines
+  `chi_e_shell` as the *"Electron-per-hydrogen-nucleus factor n_e/n_H …
+  Multiplies n_H^2 in shell recombination"*. The explicit `chi_e_shell` factor
+  is present **because** `nShell` is n_H — with n_tot it would be wrong.
+  Identical in form to the S9-R-01 CIE result above.
+- **Opacity term.** `shell_structure.py:389` builds the mass column as
+  `mu_convert * sum(nShell_arr * dr)`, and `mu_convert` is mass per **hydrogen
+  nucleus**. Only valid for n_H.
+
+**Verdict — the code is correct, and the missing composition factor is correct.**
+`shell_n_arr` is n_H in pc⁻³, so the pure unit shift yields n_H in cm⁻³, which
+is exactly what a CLOUDY `dlaw table radius` block expects. There is no
+~0.35 dex error and **no factor should be introduced**.
+
+What survives is Lens B's half, at lower severity: the `dlaw.py` docstring
+states the column two ways (`n` and `n_H`) in one docstring. **S3** — the code
+is right, the prose is ambiguous about the single most consequential quantity
+in the export.
+
+Worth recording *why* this looked dangerous: A's "no composition factor" was a
+true observation about the code, and B's "documented two ways" was a true
+observation about the prose. Both were right, and the alarming conclusion came
+from neither lens but from their **conjunction** — which is exactly the
+inference the reconciler is supposed to raise and the orchestrator is supposed
+to close. The absence of a factor is only a defect if the input is n_tot; it
+isn't.
