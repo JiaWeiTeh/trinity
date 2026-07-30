@@ -373,3 +373,41 @@ view; the S2 rating was the correct call *given what it could see*. The blind
 lens produced a true observation and an over-severe rating, and the orchestrator
 lookup is what separates them. A finding that gets smaller under verification is
 as much a result as one that grows.
+
+---
+
+## S13a-B-05 — `is_successful_run` range test → **CLEARED (false positive)**
+
+**Open question.** S13a Lens B, reading prose only, reported the docstring of
+`is_successful_run` as specifying `exit_code in [0, 9]` and flagged it against
+`is_clean()`'s documented range 0-9. In Python those differ decisively:
+`ec in [0, 9]` is membership of the two-element list `{0, 9}`, so exit codes
+**1-8 would be misclassified as failures**. If the code matched the docstring
+literally this was a real defect, not doc drift.
+
+**Lookup.**
+
+- `trinity/_output/trinity_reader.py:543` — the code is
+  `return 0 <= int(ec) <= 9`. A chained comparison, i.e. a genuine **range**
+  test.
+- `trinity/_output/simulation_end.py:111` — `is_clean()` is
+  `return 0 <= self._code <= 9`. **Identical semantics.**
+- The docstring at `:530` reads *"exit code in [0, 9] (clean termination per
+  ``SimulationEndCode.is_clean()``)"* — `[0, 9]` here is **mathematical
+  interval notation**, not a Python list literal.
+
+**Verdict — the code is correct and consistent with `is_clean()`.** The finding
+is withdrawn. Lens B's reading was reasonable under a prose-only view: `[0, 9]`
+inside a Python docstring is genuinely ambiguous, and the failure mode it
+inferred would have been serious. Only the notation is unfortunate.
+
+A residual **S4** stands on the notation itself — interval brackets in a Python
+docstring invite exactly this misreading, and the next reader may be a human
+rather than an audit lens. Flagged, not fixed.
+
+This is the second B-only claim in the infra tier to shrink under lookup
+(see S12b-B-01 above). The pattern is worth naming: a prose-only lens reliably
+produces **true observations with over-severe ratings**, because a doc defect
+and a code defect are indistinguishable from the prose side. That asymmetry is
+a property of the method, not a failure of it — provided every such claim gets
+the lookup before it reaches `FINDINGS.md`.
