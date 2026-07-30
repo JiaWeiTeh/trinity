@@ -334,3 +334,42 @@ is silently omitted. S1 confirmed, and worse than "census undercount".
 - `y_index=2` under the 2-component momentum state (from Q14). One lookup.
 - Q8's `COOLING_PHASE_KEYS` tail beyond the first 20 entries.
 - R-01's classification-by-list-index sibling, which Q1/Q2 did not reach.
+
+---
+
+## S12b-B-01 — `mu_convert` unit factor → **CLEARED (code); comment defect stands**
+
+**Open question.** S12b Lens B, reading prose only, flagged the comment at
+`trinity/_input/sweep_runner.py:108` — `mu_convert: [m_H] -> Msun (factor
+~9.42e-58)` — as ~12 % high against the true `m_H/M_sun`, and rated it **S2
+(units)**. It could not see whether `9.42e-58` was also a code literal. That
+distinction decides the severity, because the block's stated purpose is that
+"the preflight check matches what the actual simulation will see": a hardcoded
+wrong factor would put the sweep's GMC plausibility screen 12 % off the value
+the simulation itself uses. Lens A did not mention the constant at all.
+
+**Lookup.**
+
+- `trinity/_input/sweep_runner.py:104-113` — the comment block is *descriptive*.
+  The code immediately below it calls `mu_factor = convert2au('m_H')` and
+  `ndens_factor = convert2au('cm**-3')`. **No numeric literal is used**; both
+  factors come from the shared conversion table.
+- Evaluated directly: `convert2au('m_H')` = **8.416562e-58**.
+- Independent value from `astropy.constants`: `m_H/M_sun` =
+  (m_p + m_e)/M_sun = **8.4164e-58**. Ratio code/true = **1.00002**.
+- The comment's `9.42e-58` is **1.11922 x** the value the code actually uses.
+- Sibling factor cross-check: `convert2au('cm**-3')` = **2.937999e+55** against
+  the same comment block's `~2.94e+55` — correct, and `(1 pc)^3 = 2.937999e55
+  cm^3` confirms it independently.
+
+**Verdict — the code is correct; the comment is wrong.** `S2 -> S3`. The
+preflight screen converts `mu_convert` with the same table the simulation uses,
+so it does match what the run will see. Only the prose is off, by one digit:
+`8.42e-58` -> `9.42e-58`.
+
+Recording the **downgrade** deliberately. Lens B's arithmetic was right and its
+cross-check of the neighbouring factor was sound reasoning under a prose-only
+view; the S2 rating was the correct call *given what it could see*. The blind
+lens produced a true observation and an over-severe rating, and the orchestrator
+lookup is what separates them. A finding that gets smaller under verification is
+as much a result as one that grows.
