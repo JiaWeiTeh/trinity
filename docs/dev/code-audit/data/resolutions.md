@@ -200,3 +200,69 @@ preset's order (R-02/R-03). Neither lens read
 `lib/default/sps/starburst99/1e6cluster_default.csv`; the comment-vs-literal
 agreement the reconciler found is two artefacts in the same file by the same
 author, not independent confirmation. That one needs the table read.
+
+---
+
+# S11 orchestration — R-01 collapse classification (2026-07-30)
+
+The reconciler's headline finding: `apply_event_result` decides whether a run
+collapsed by substring-matching the reason code —
+
+```python
+# trinity/phase_general/phase_events.py:627
+if 'radius' in result.reason_code.lower() or 'collapse' in result.reason_code.lower():
+    params['isCollapse'].value = True
+```
+
+It called two consequences: `large_radius_event` wrongly flagged as collapse,
+and `velocity_runaway_event` wrongly not flagged. The mechanism is exactly
+right. The **reachability is inverted between the two halves** — the one it led
+with is dead, the one it listed second is live.
+
+**Half 1 — `large_radius_event` mislabelled: NOT reachable. Demote to S4.**
+`make_large_radius_event` (`:139-163`, sets `reason_code = "large_radius_event"`)
+is **never constructed**. None of the four event-list builders (`:447`, `:487`,
+`:531`, `:569`) includes it. The live stop-radius termination is a plain string
+set inline in the three runners — `run_momentum_phase.py:852`,
+`run_transition_phase.py:799`, `run_energy_implicit_phase.py:1329` — each of
+which assigns `SimulationEndReason`/`SimulationEndCode`/`EndSimulationDirectly`
+and `break`s **without calling `apply_event_result`**. So line 627 never sees a
+`large_radius` code, and `isCollapse` is not set on that path. The builder is
+dead code (flag, don't delete — CLAUDE.md rule 3).
+
+**Half 2 — `velocity_runaway_event` not flagged: LIVE. Confirmed S1.**
+`make_velocity_runaway_event(MAX_VELOCITY_COLLAPSE, direction="collapse")` is
+constructed in **all four** builders (`:450`, `:490`, `:534`, `:572`) — it is
+the default direction. Its event is `v2 + v_max`, `direction=-1`, i.e. it fires
+when `v2 < -500 pc/Myr`: the most violent infall the code detects. It sets
+`terminal = True` and `is_simulation_ending = True`, so it reaches line 627 via
+`apply_event_result` (call site e.g. `run_momentum_phase.py:749`). Its
+`reason_code` is `"velocity_runaway_event"` — which contains neither `'radius'`
+nor `'collapse'`. **`isCollapse` stays False on a genuine collapse.**
+
+This reaches user-facing output: `_output/show_run.py:226-228` prints
+"Collapsing: yes/no" from it, and `_output/simulation_end.py:433` records it in
+`final_state`. A fate census filtered on `isCollapse` silently undercounts
+every velocity-runaway collapse.
+
+**Reproduction (static, no run needed):**
+
+```
+$ grep -n 'reason_code = ' trinity/phase_general/phase_events.py
+128:    event.reason_code = "small_radius_event"      # -> 'radius'  -> True  (correct)
+160:    event.reason_code = "large_radius_event"      # -> 'radius'  -> True  (wrong, but dead)
+211:    event.reason_code = "velocity_runaway_event"  # -> no match  -> False (wrong, and live)
+$ grep -rn 'make_large_radius_event' trinity/ --include=*.py   # definition only, no caller
+```
+
+**Fix outline.** Replace the substring test with an explicit property on the
+event — the `SimulationEndCode` enum already exists and is already carried on
+every event (`end_code`), so the collapse set can be declared there rather than
+inferred from spelling. That also removes the class of bug entirely rather than
+patching one member of it.
+
+**Still open in S11 (need the phase-runner reads the lenses were denied):**
+R-01's *classification-by-list-index* sibling, plus R-06, R-09, R-22 — all four
+rest on the same unread files (`run_energy`, `run_phase_energy`,
+`run_phase_transition`, `run_phase_momentum`). The reconciler's Q1+Q2 greps
+clear or confirm the whole cluster and are the highest-value pair left.
