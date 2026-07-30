@@ -150,3 +150,53 @@ print(np.polyfit(np.log10(n[m]),np.log10(cool[m]),1)[0])   # -> 2.014
   The reconciler corrected Lens C's proposed test (sweeping T across the seam
   returns ≈1 by construction — a false negative); the valid detector compares
   the two models **at the same T**. Not yet run.
+
+---
+
+# S10 SPS — R-01 reachability settled (2026-07-30)
+
+The reconciler flagged its own top finding with an honest caveat: taken
+literally, A's mechanism says the first ODE evaluation at `t = 0.0` crashes
+every run, which the working quickstart contradicts. It asked for the
+reachability lookup rather than promoting the claim. Resolved here.
+
+**Mechanism — confirmed.** `update_feedback.py:184` computes `pdotdot_total`
+by central difference at `t ± 1e-9`. The guard at `:155` admits the *closed*
+interval `t_min <= t <= t_max`; the stencil needs it open by `1e-9`. The SPS
+interpolators are built with `scipy.interpolate.interp1d(...)` at
+`read_sps.py:341+` with the default `bounds_error=True`, and `read_sps.py:264`
+prepends `t = 0.0`, so `t_min` is exactly `0.0`. Probing just outside the
+domain raises:
+
+```
+$ python -c "
+import scipy.interpolate, numpy as np
+f = scipy.interpolate.interp1d(np.array([0.,.1,.2]), np.array([1.,2.,3.]))
+f(-1e-9)
+"
+ValueError: A value (-1e-09) in x_new is below the interpolation range's
+minimum value (0.0).
+```
+
+**Reachability — refuted for current configs.** Every call site of
+`get_current_sps_feedback` is in a *later* phase — `phase1b_energy_implicit`
+(`:803`), `phase1c_transition` (`:496`, `:750`, `:834`), `phase2_momentum`
+(`:407`, `:577`, `:887`). None is in phase0 or phase1-energy, so `t` has
+always advanced past `0.0` before the first call. That is why the quickstart
+runs. No clamp of `t` to the SPS `t_max` was found in the implicit or
+momentum runners either, so the upper endpoint is not forced exactly.
+
+**Disposition: S1 -> S2 (latent).** The guard/consumer domain contract really
+is inconsistent, and it is one root cause, not two (the reconciler was right
+to fold the `t=0` and `t=t_max` items together). But nothing reaches the
+endpoints today, so it changes no current output. It becomes reachable the
+moment a caller is added earlier in the run, or a stopping condition lands on
+`t_max` exactly. Fix remains the reconciler's: a one-sided difference at the
+endpoints, a clamped stencil, or `CubicSpline(...).derivative()`, which needs
+no stencil at all.
+
+**Not settled here:** whether the bundled CSV's columns really are in the
+preset's order (R-02/R-03). Neither lens read
+`lib/default/sps/starburst99/1e6cluster_default.csv`; the comment-vs-literal
+agreement the reconciler found is two artefacts in the same file by the same
+author, not independent confirmation. That one needs the table read.
