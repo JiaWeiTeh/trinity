@@ -1,14 +1,17 @@
 #!/bin/bash -l
-# 📏 bench7 — the f_kappa RE-OPEN campaign on Helix (KAPPA_REOPEN_PLAN.md K1–K4, ~102 arms).
+# 📏 bench7 — the f_kappa RE-OPEN campaign on Helix (KAPPA_REOPEN_PLAN.md K1–K4, 174 arms).
 # All five K-phases share this ONE array: a phase is just a filename prefix in params/bench7/, so
 # there is one submit, one reduce and one download for the whole campaign.
 #   K1  bench1/2/3 × f_kappa grid × prod/diag — the missing third leg of the band-entry head-to-head
-#   K1b bench4/bench5 × f_kappa — dense fire-map completeness
-#   K2  the 6 band configs × f_kappa {5,7,9} — the condensation-squeeze fine grid
+#   K1b bench4/bench5 × f_kappa {2,4,8,12,16} — dense fire-map completeness
+#   K2  the 6 band configs × f_kappa {1,2,3,4,5,6,7,8,9,12,16} — the whole f_kappa fire map,
+#       re-measured today (ALL-FRESH ruling) and filled in across the condensation squeeze
 #   K3  the 5 fate-flip arms, each run twice — determinism (P4)
-#   K4  bench1/bench2 × f_mix {12,16} × prod/diag — the f_mix band-entry closure (P5)
-# Params are committed by make_kappa_reopen_params.py; purpose, predictions P1–P5 and gates G0–G5
+#   K4  bench1/bench2 × f_mix {2,3,4,8,12,16} × prod/diag — the f_mix ladder REDO (P5)
+# Params are committed by make_kappa_reopen_params.py; purpose, predictions P1–P5 and gates G0–G6
 # live in KAPPA_REOPEN_PLAN.md. Same cluster conventions as run_bench6.sbatch.
+# NB the in-file --array default is only a fallback: ./sync_bench.sh bench7 submit auto-sizes
+# --array from the committed param count, so a grid change needs no edit here.
 #
 #   emit params (once, committed):  python docs/dev/transition/pdv-trigger/runs/make_kappa_reopen_params.py
 #   submit:  ./sync_bench.sh bench7 submit      # AUTO-SIZES --array from the committed param count
@@ -39,7 +42,7 @@
 #SBATCH --export=NONE
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=2G
-#SBATCH --array=1-102
+#SBATCH --array=1-174
 #SBATCH --time=1:30:00
 #SBATCH --output=/gpfs/bwfor/work/ws/hd_cq295-trinity/jobs_bench7/logs/%A_%a.out
 

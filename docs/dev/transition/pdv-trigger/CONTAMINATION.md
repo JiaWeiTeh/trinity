@@ -1,5 +1,29 @@
 # CONTAMINATION REGISTER — what you may and may not quote from this workstream
 
+> ---
+>
+> ⚠️⚠️ **DEMOTED 2026-07-29 — read this as "could be true, verify before use".** The maintainer no
+> longer trusts this workstream's measured numbers without re-measurement, and three corrections in
+> five days say that is the right call: `§18` (a metric artifact published "f_mix eliminated" for
+> eight days across four documents), `§23` (the "wrong El-Badry sign" argument used to retire f_κ was
+> false), `§24` (a correct result with a wrong stated cause). None of these were caught by
+> `CONTAMINATION.md` — they were **correct data with a wrong reading**, which a per-artifact grade
+> cannot detect.
+>
+> **The active workstream is now [`docs/dev/transition/kappa-3way/`](../kappa-3way/README.md)** — its
+> `report.html` is the source of truth, and its rule is: a number is quotable only if its own
+> provenance stamp is dated **on or after 2026-07-29**.
+>
+> **What this doc is still good for:** the history, the physics reasoning, the design rationale, the
+> literature imprints (`LANCASTER_REFERENCE.md`, `ELBADRY_REFERENCE.md` — published values, still
+> `[V]`), the measurement rules, and the param/HPC tooling under `runs/` (which stays here and is
+> actively used). **What it is not good for:** quoting a measured value. Every Θ_cum, band-entry
+> dose, spread, fire map and threshold in here is ⚠️ **VERIFY** until the 294-arm re-run reproduces
+> it — see [`../kappa-3way/PROVENANCE.md`](../kappa-3way/PROVENANCE.md).
+>
+> ---
+
+
 > ⚠️ **This document may be out of date — verify before trusting it.** It is a
 > point-in-time analysis/audit, not a maintained spec; the code moves faster
 > than these notes (paths, line numbers, and "what shipped" status drift).
@@ -146,6 +170,8 @@ Status legend: **CLEAN** (quotable for its stated question) · **FLAG-x** (usabl
 | `rosette_fm4_doubleboost_check.csv` (built 07-28, `data/make_rosette_fm4_doubleboost_check.py`) | E8 | multiplier fm4 (rosette-cf) | ✅ CLEAN re-analysis of a SIBLING campaign's historical dictionaries (git `5aa84723`; dropped from the tree at `591e5e4`). Establishes that `§19`'s double-boost bound does **not** generalize: 1/36 rosette-cf fm4 fires is `DOUBLE_BOOST_DEPENDENT` (`FINDINGS §21`). Quote for the *existence* of a load-bearing case, not as a rate — one campaign, one f_mix value. |
 | `zone_profiles.csv` + `zone_profiles.png` (built 07-28, `data/make_zone_profiles.py`) | E8 | fA=1 baseline, 3 short probe runs | ✅ CLEAN as **structure** (`FINDINGS §22`): T(r), n(r) and the emission integrand per L1/L2/L3 zone, captured from the real solver; `n` is exact (as the solver sets it), not inferred. FLAG-(a): a single settled energy-phase evaluation per bench, not a time-integrated quantity — quote the ~70/26/2% L1/L2/L3 emission split as an epoch snapshot, not a run-average. |
 | `kappa_eq47_check.csv` (built 07-29, `data/make_kappa_eq47_check.py`) | E8 | — (re-read of `fkappa_leverage.csv`, `kappa_backreaction.csv`, `theta5k_fire_map.csv`) | ✅ CLEAN re-analysis (`FINDINGS §24`; plan `KAPPA_REOPEN_PLAN.md`). Q1 uses `fkappa_leverage.csv` for its per-call dMdt/L_cool **ratios at a fixed state** only — untouched by that file's SUPERSEDED grade above, which attaches to its **θ-leverage exponent p**. Q1b/Q2 sources are graded CLEAN for exactly these uses. ⚠️ Both Q1 sources carry FLAG-(a) (early-time), which is why Q1b's back-reaction decay is reported alongside — the fixed-state Eq-47 match is **not** a full-run claim. Q2 reproduces `§12`'s 5/6 headline on the same 6-config denominator. |
+| `bench7_gate_g0.csv` (built 07-29, `data/make_bench7_gate_g0.py`) | E8 | — (re-read of the 120 bench5_hpc/bench6 trajectories) | ✅ CLEAN re-analysis (`FINDINGS §25`; plan `KAPPA_REOPEN_PLAN.md §5`). Table **G0** recomputes Θ₀ and the `§18` band-entry/spread table from the committed trajectories via `make_bench6_analysis`'s own functions, and inherits those arms' grades exactly — in particular the two f_mix legs it reports (bench2 8.16, bench1 11.9) are **EXTRAPOLATED, not measured**, and every row says so in its `note` column. It is a **reproduction check, not a new measurement**: no number here is independent of `bench6_analysis.csv`. Table **P1** rows are *predictions* with `verdict=PENDING` — ⛔ never quote a P1 row as a result. |
+| `runs/params/bench7/` (118 `.param` files, built 07-29, `runs/make_kappa_reopen_params.py`) | E8 | kappa 2–32 + fmix 2–16 | ✅ CLEAN as **inputs**; carries **no data at all**. K1–K4 are **NOT RUN** as of 2026-07-29 — there is no `bench7_summary.csv`, no `bench7_traj/`, no `bench7_hashes.csv`. ⚠️ The K4 phase (24 f_mix arms) rests on a **read, not confirmed**, §6.0(c) ruling; check `F_MIX_K4` before submitting. Pinned by `test/test_bench7_params.py`. |
 | ⛔ all-NaN θ arms (theta5 dense mult4/mult8 pattern) | — | any | **never a physics outcome**: NaN = `bubble_Lloss` registry default, written because the β–δ solve never succeeded (root at the integrable-domain edge, machine-flippable — FINDINGS §14). Use the finite-θ neighboring arms; never average or interpret NaN arms |
 
 ### `runs/data/`
@@ -166,7 +192,7 @@ Status legend: **CLEAN** (quotable for its stated question) · **FLAG-x** (usabl
 | item | status |
 |---|---|
 | `cooling_boost_mode` = `none` (default) / `multiplier` / `theta_target` | shipped, gated, default byte-identical; `theta_target` = documented opt-in override (demoted direction) |
-| `cooling_boost_kappa` (numeric) | shipped, gated (×1.0 exact); **structural probe only** — breaks at f_κ=8 (§8e). It raises evaporation, which `§23`/`§24` establish is **El-Badry Eq-47-CORRECT** (ṁ ∝ C^{2/7}, matched to 0.34–1.63% over f_κ ∈ [1,64]), not the defect the earlier record called it; the surviving objections are the whole-band failure (`§12`, cause re-attributed in `§24`) and κ_mix/κ_Spitzer ≈ 10³–10⁷ (`§9b`). Re-opening is planned in `KAPPA_REOPEN_PLAN.md` — **not yet run** |
+| `cooling_boost_kappa` (numeric) | shipped, gated (×1.0 exact); **structural probe only** — breaks at f_κ=8 (§8e). It raises evaporation, which `§23`/`§24` establish is **El-Badry Eq-47-CORRECT** (ṁ ∝ C^{2/7}, matched to 0.34–1.63% over f_κ ∈ [1,64]), not the defect the earlier record called it; the surviving objections are the whole-band failure (`§12`, cause re-attributed in `§24`) and κ_mix/κ_Spitzer ≈ 10³–10⁷ (`§9b`). Re-opening is planned in `KAPPA_REOPEN_PLAN.md`; as of 2026-07-29 its gates G0/G1 are cleared and 118 params are committed (`§25`), but **no arm has been run** |
 | `cooling_boost_kappa = 'auto'` (pt3) | shipped, gated, opt-in; **PROVISIONAL** — lookup grid is E4-contaminated (see ⛔ #4); revalidate under the standard protocol before relying on it |
 | `theta_elbadry` mode | **never merged** — docs/harness only (`THETA_ELBADRY_SPEC.md`) |
 | PR #715 Eb≤0→momentum routing; Pb-collapse guard; `_MINT_LOG_TOL` log gate | shipped, behavior-verified |

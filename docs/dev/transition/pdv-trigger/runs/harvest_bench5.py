@@ -87,6 +87,12 @@ def write_traj(run_dir, traj_dir, extra=()):
         return 0
     traj_dir.mkdir(parents=True, exist_ok=True)
     with (traj_dir / f"{run_dir.name}.csv").open("w", newline="") as fh:
+        # Stamped like every other artifact (maintainer ALL-FRESH ruling 2026-07-29): the trajectory
+        # CSVs ARE the data the Theta_cum metric reads, so "when was this measured" has to be legible
+        # on the file itself, not inferred from the summary next to it. Readers already skip leading
+        # '#' lines (make_bench5_analysis._read_csv), and the campaign hash is taken over the
+        # non-comment lines (sync_bench.sh), so the stamp cannot make two identical runs differ.
+        fh.write(stamp(__file__) + "\n")
         w = csv.writer(fh)
         w.writerow(TRAJ_COLS + list(extra))
         w.writerows(rows)

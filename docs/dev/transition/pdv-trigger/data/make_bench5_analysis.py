@@ -24,6 +24,7 @@ Deliverables: data/bench5_analysis.csv + bench5_theta_tracks.png
 """
 import csv
 import math
+import sys
 from pathlib import Path
 
 import matplotlib
@@ -33,9 +34,17 @@ import matplotlib.pyplot as plt  # noqa: E402
 HERE = Path(__file__).resolve().parent
 PDV = HERE.parent
 _RD = PDV / "runs" / "data"
-# prefer the authoritative HPC harvest (2026-07-19, FIDELITY OK vs in-container — compare_bench5_hpc.py)
-SUMMARY = _RD / ("bench5_summary_hpc.csv" if (_RD / "bench5_summary_hpc.csv").exists() else "bench5_summary.csv")
-TRAJ = _RD / ("bench5_traj_hpc" if (_RD / "bench5_traj_hpc").is_dir() else "bench5_traj")
+sys.path.insert(0, str(PDV))
+from _stamp import stamp  # noqa: E402
+# Source precedence, newest-trustworthy first (ALL-FRESH ruling 2026-07-29):
+#   1. bench5r_summary.csv   — the re-run ordered on 2026-07-29; today's numbers, one code state
+#   2. bench5_summary_hpc.csv — the 2026-07-19 Helix harvest (FIDELITY OK — compare_bench5_hpc.py)
+#   3. bench5_summary.csv     — the 2026-07-12 in-container run (PROVISIONAL)
+# The chosen file is echoed on stdout and written into the output CSV header, so which generation
+# of data produced a number is never a guess.
+_S = [("bench5r_summary.csv", "bench5r_traj"), ("bench5_summary_hpc.csv", "bench5_traj_hpc"),
+      ("bench5_summary.csv", "bench5_traj")]
+SUMMARY, TRAJ = next(((_RD / a, _RD / b) for a, b in _S if (_RD / a).exists()), (_RD / _S[-1][0], _RD / _S[-1][1]))
 ELBADRY = HERE / "bench5_elbadry_prediction.csv"
 L21B_BAND = (0.90, 0.99)
 FIRE = 0.95
@@ -173,6 +182,8 @@ def main():
     out = HERE / "bench5_analysis.csv"
     cols = list(rows[0].keys())
     with out.open("w", newline="") as fh:
+        fh.write(stamp(__file__) + "\n")
+        fh.write(f"# SOURCES READ: summary={SUMMARY.name}, traj={TRAJ.name}\n")
         fh.write("# bench5 Phase-5 analysis (HPC-sourced when bench5_summary_hpc.csv is present — the "
                  "2026-07-19 Helix harvest, FIDELITY OK vs in-container, fire map identical). "
                  "60/60 arms (59 compliant; 1 dense diag stiffness freeze on both platforms). FIRE MAP + theta_max "
