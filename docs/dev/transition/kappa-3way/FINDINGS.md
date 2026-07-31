@@ -72,8 +72,38 @@ crossing 74.8 → 83.2 and the spread 5.39 → 6.00.
 > **⚠️ The consequence is bigger than the gate.** f_A's bench1 band-entry dose — and therefore f_A's
 > **5.39× spread, the number the entire published head-to-head rests on** — is **not a converged
 > measurement**. It is a function of where the run happened to stop. Two runs of identical code on
-> identical params give 74.8 and 83.2. Neither is *the* answer; the honest statement is
-> **f_A spread ≈ 5.4–6.0×, wall-limited**.
+> identical params give 74.8 and 83.2.
+
+### §1a. …but the truncation bias has a SIGN, so the number can be bounded without re-running
+
+Added 2026-07-30 after the maintainer pointed out that `--time=1:30:00` was already the value in the
+committed sbatch — i.e. **both runs used the same cap**, and no re-run at that cap changes anything a
+deterministic code would do differently. That reframes the question from *"how do we complete this
+arm?"* to *"what can we prove without completing it?"* — and the answer turns out to be: enough.
+
+`bench1__fa128_diag` is cut off while **θ = 1.44**, far above its own running mean of Θ_cum = 0.959.
+Θ_cum is the L_mech-weighted mean of θ over the window, so extending the window can only **raise**
+it. **Every measured Θ_cum on a truncated arm is therefore a LOWER bound on the truth**, and the two
+runs order exactly as that predicts: the longer window (July, 212 steps) gave the higher value
+(1.024) and the shorter one (07-30, 182 steps) the lower (0.959).
+
+Band entry is log-interpolated between fa64 (Θ = 0.864, **complete**, below the band) and fa128, and
+falls monotonically as fa128's Θ_cum rises:
+
+| Θ_cum(fa128) | 0.959 (07-30) | 1.024 (07-19) | 1.20 | 1.44 (θ at cutoff) | → ∞ |
+|---|---|---|---|---|---|
+| entry | 83.18 | **74.79** | 68.93 | 66.83 | 64.02 |
+
+Since the true Θ_cum ≥ 1.024 and the crossing can never fall below fa64:
+
+> **f_A bench1 entry ∈ (64, 74.8] → f_A spread ∈ (4.61, 5.39×].**
+
+Three consequences. **(i)** The pre-registered G0 target of 74.8 is the correct **upper bound** — the
+July number was closer to the truth than today's, and G0 "failed" against a value that was never
+wrong, only unconverged. **(ii)** f_A's spread is **at most 5.39×**, still roughly double f_mix's
+2.745×, so **the ranking f_mix > f_A ≫ f_κ holds across the entire bound** and does not depend on
+finishing the arm. **(iii)** The honest published form is a bound, not a point: **f_A spread
+≤ 5.4×**.
 
 **What "truncated" precisely means, and what is still inferred.** `outcome` is copied from
 `metadata.json`'s `termination` block, which `trinity/_output/simulation_end.py` writes **only when
@@ -110,7 +140,7 @@ clean-blowout benches only.
 | knob | bench3 (n̄=5520) | bench2 (n̄=690) | bench1 (n̄=43) | **spread** | in-grid? |
 |---|---|---|---|---|---|
 | **f_mix** | 4.02 | 9.69 | 11.02 | **2.75×** | ✅ all measured |
-| **f_A** | 13.88 | 53.51 | 83.24 ⚠️ | **6.00×** ⚠️ | measured, bench1 wall-limited |
+| **f_A** | 13.88 | 53.51 | **(64, 74.8]** | **(4.61, 5.39×]** | bench1 bounded, not point-measured (§1a) |
 | **f_κ** | 10.43 | *169* | *143* | **≥16×** | ❌ **2/3 EXTRAPOLATED** |
 
 *Italic = extrapolated past the grid, not measured.*
@@ -128,7 +158,8 @@ bench2's flattening is *not* a window artifact: its integration window is still 
 range (t_end 0.563 → 0.606) and every arm completed to `stop_t = 5`. f_κ appears to **asymptote just
 below the band** on the intermediate-density cloud.
 
-**Ranking, on measured evidence: f_mix (2.75×) > f_A (6.0×) ≫ f_κ (≥16×).** f_κ is closed as a
+**Ranking, on measured evidence: f_mix (2.75×) > f_A (≤5.39×) ≫ f_κ (≥16×).** The f_A entry is a
+bound (§1a), and the ranking holds across the whole of it — no re-run can change the order. f_κ is closed as a
 single-constant calibration knob — this time on a *measurement*, not on the falsified El-Badry-sign
 argument that `§23` deleted. That correction stands regardless; it was always about honesty, never
 about promoting f_κ.
@@ -251,24 +282,25 @@ reason — the integrated exponent is half the fixed-state one — is itself a r
 f_A = 1.0. The `§23` Eq-47 correction stands. `§12`'s 5/6 and `§24`'s re-attribution are both
 independently reproduced.
 
-**Newly known to be soft.** f_A's bench1 entry and its spread are wall-limited (§1). Any future
-quote of "f_A spread = 5.39×" should be **5.4–6.0×, wall-limited**. Since the partition caps at
-1:30:00 and that is already what these arms ran under, this may be **permanent**: if
-`bench1__fa128_diag` cannot complete on this cluster, then f_A's bench1 entry is not a value but a
-**lower bound** (`≳75`, unconverged), and the same applies to `pl2_steep`'s firing-window left edge.
-Report bounds, not values.
+**Newly known to be soft.** f_A's bench1 entry is not a point measurement — it is the **bound
+(64, 74.8]**, giving **f_A spread ≤ 5.39×** (§1a). Quote the bound. The pre-registered 74.8 is its
+correct upper end, so nothing published on the f_A side was *wrong*; it was unconverged and stated
+as if converged. `pl2_steep`'s firing-window left edge is the one thing still genuinely unmeasured
+(f_κ = 5, 6, 7 all truncated) — but the non-overlap with `simple_cluster` holds regardless, so P3 is
+unaffected.
 
 ---
 
 ## §9. Next
 
-1. **The 21 truncated arms cannot be fixed by more walltime** — the partition caps at
-   `--time=1:30:00`, which is already what they ran under (maintainer, 2026-07-30). Two things are
-   still worth trying, in order: (a) **re-run just those 21 arms alone**, with no 294-arm array
-   competing for the node — if contention was the difference they may complete under the same cap;
-   (b) if they still truncate, they are a **permanent, recorded limitation of this partition**, and
-   the numbers that depend on them must be reported as bounds, not values (see §8's "newly known to
-   be soft").
+1. **Do NOT re-run the truncated arms to fix f_A — §1a already bounds it**, and the bound is tight
+   enough that the ranking cannot change. `--time=1:30:00` was already the committed value for both
+   runs, and P4 proves the code is deterministic, so a re-run at the same cap is only worth anything
+   if the arms were **wall-killed** *and* node contention (294 arms vs 21) was the binding
+   difference. **Read the exit codes first** —
+   `cat $WS/outputs/bench7/*/.exit_code | sort | uniq -c`. `124` ⇒ a contention-free retry is worth
+   one shot; anything else ⇒ deterministic, and re-running reproduces it exactly. Either way it is
+   now a *nice-to-have*, not a blocker.
 2. **Extend the f_κ grid past 32 on bench1/bench2**, or accept "does not reach the band by 32" as the
    final answer. Given bench2's saturation at 0.890, the second is defensible and much cheaper.
 3. **Settle Q3** (frozen-row Θ_cum convention) — it now visibly moves numbers.
