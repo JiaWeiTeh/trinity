@@ -1,4 +1,4 @@
-# generated 2026-07-30T19:22:18Z | builder make_bench7_analysis.py | code 50c5606+dirty
+# generated 2026-07-31T14:05:51Z | builder make_bench7_analysis.py | code a7b5b167+dirty
 # SOURCES READ: bench7_summary.csv, bench5r_summary.csv, bench6r_summary.csv (2026-07-30 ALL-FRESH harvests only — no pre-cutoff fallback)
 # TRUNCATED = the arm stopped with no `outcome`: it ran out of wall-clock mid-solve, so its Theta_cum integrates a SHORTER window and is biased LOW with no physics change. A band-entry dose whose bracketing arms include a truncated arm is an artifact of wall-clock, NOT a measurement — see the G0 failure (bench1 f_A 74.8 -> 83.2 from one truncated arm).
 table,run_name,phase,subject,knob,dose,arm,bench,n_bar_H,theta_max,theta_cum,t_final,n_impl,fate,entry_dose,measured_in_grid,grid_max,n_doses,truncated_arms,truncated,track

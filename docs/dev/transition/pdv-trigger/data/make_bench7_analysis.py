@@ -517,7 +517,59 @@ def main():
     for r in trunc:
         print(f"      {r['run_name']:<44s} t={float(r['t_final']):.4f} n_impl={r['n_impl']}")
 
-    # plots
+    # ---------------------------------------------------------------- plot 2: the fire map
+    fm = [r for r in rows if r["table"] == "FIREMAP"]
+    if fm:
+        COL = {
+            "FIRED": "#1a9850",
+            "CONDENSE": "#4575b4",
+            "DRAIN": "#fdae61",
+            "NOFIRE": "#d9d9d9",
+            "TRUNC": "#d73027",
+            "-": "#ffffff",
+        }
+        doses = sorted({float(c.split(":")[0]) for r in fm for c in r["track"].split("  ")})
+        figf, axf = plt.subplots(figsize=(1.05 * len(doses) + 3.4, 0.52 * len(fm) + 1.9))
+        for y, r in enumerate(reversed(fm)):
+            cells = dict(c.split(":") for c in r["track"].split("  "))
+            for x, d in enumerate(doses):
+                v = cells.get(f"{d:g}", "-")
+                axf.add_patch(
+                    plt.Rectangle(
+                        (x, y), 1, 1, facecolor=COL.get(v, "#fff"), edgecolor="white", lw=1.5
+                    )
+                )
+                if v not in ("-",):
+                    axf.text(
+                        x + 0.5,
+                        y + 0.5,
+                        v[0],
+                        ha="center",
+                        va="center",
+                        fontsize=8,
+                        color="white" if v != "NOFIRE" else "#555",
+                        weight="bold",
+                    )
+        axf.set_xlim(0, len(doses))
+        axf.set_ylim(0, len(fm))
+        axf.set_xticks([i + 0.5 for i in range(len(doses))])
+        axf.set_xticklabels([f"{d:g}" for d in doses], fontsize=9)
+        axf.set_yticks([i + 0.5 for i in range(len(fm))])
+        axf.set_yticklabels([r["subject"] for r in reversed(fm)], fontsize=9)
+        axf.set_xlabel(r"$f_\kappa$", fontsize=11)
+        axf.set_title(
+            "f_kappa fire map — F=FIRED  C=CONDENSE  D=DRAIN  N=NOFIRE  T=truncated\n"
+            "no single dose fires all 6 band configs (best 5/6 at 8, 9, 12)",
+            fontsize=10,
+        )
+        for sp in axf.spines.values():
+            sp.set_visible(False)
+        axf.tick_params(length=0)
+        figf.tight_layout()
+        figf.savefig(PDV / "bench7_firemap.png", dpi=135)
+        print(f"wrote {PDV / 'bench7_firemap.png'}")
+
+    # ---------------------------------------------------------------- plot 1: the three-way tracks
     fig, axes = plt.subplots(1, 3, figsize=(15, 4.4))
     for ax, bench in zip(axes, CLEAN):
         for knob, style in (("fA", "o-"), ("fmix", "s-"), ("fkappa", "^-")):

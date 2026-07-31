@@ -23,6 +23,7 @@ REPRODUCE
     python docs/dev/transition/kappa-3way/make_report.py     # -> report.html
 """
 
+import base64
 import csv
 import datetime as dt
 import html
@@ -75,6 +76,16 @@ def _arm_counts():
     for name, label in (("bench5", "bench5r"), ("bench6", "bench6r")):
         out[label] = len(list((PDV / "runs" / "params" / name).glob("*.param")))
     return out
+
+
+def fig(name, alt, caption=""):
+    """Embed a committed PNG as a data URI — the page must stay self-contained and offline."""
+    p = PDV / name
+    if not p.exists():
+        return f'<p class="note">missing figure <code>{esc(name)}</code> — run make_bench7_analysis.py</p>'
+    b64 = base64.b64encode(p.read_bytes()).decode()
+    cap = f'<figcaption class="note">{caption}</figcaption>' if caption else ""
+    return f'<figure><img src="data:image/png;base64,{b64}" alt="{esc(alt)}">{cap}</figure>'
 
 
 def esc(x):
@@ -288,12 +299,31 @@ def build():
         freshness=panel_freshness(fresh),
         g0_stamp=esc(_stamp_of(PDV / "data" / "bench7_gate_g0.csv") or "not built"),
         threeway=panel_threeway(ana),
+        fig_entry=fig(
+            "bench7_entry.png",
+            "Theta_cum vs dose for f_A, f_mix and f_kappa on the three "
+            "clean-blowout benches, with the L21b band shaded",
+            "Θ<sub>cum</sub> vs dose, L21b band shaded. <b>f_κ (triangles) is the flattest "
+            "curve on every panel</b> — that is the result. On bench2 and bench1 it never "
+            "reaches the band within the measured grid.",
+        ),
+        fig_firemap=fig(
+            "bench7_firemap.png",
+            "f_kappa fate versus dose for the six band configs",
+            "K2's 66 arms. <code>simple_cluster</code> fires only at 4–6 then condenses; "
+            "<code>pl2_steep</code> needs ≥8. The two firing windows never overlap.",
+        ),
         firemap=panel_firemap(ana),
         ran="yes" if ana else "no",
     )
 
 
-TEMPLATE = """<h1>kappa-3way — the three-way band-entry calibration</h1>
+TEMPLATE = """<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>kappa-3way — the three-way band-entry calibration</title>
+</head><body>
+<h1>kappa-3way — the three-way band-entry calibration</h1>
 <p class="sub">The source of truth for the f_&kappa; / f_A / f_mix decision, measured fresh.
 Built {now} from the committed artifacts &middot; code <code>{sha}</code>.</p>
 
@@ -339,6 +369,12 @@ Built {now} from the committed artifacts &middot; code <code>{sha}</code>.</p>
   .k3 .box.hold {{ border-color:var(--warn); background:var(--warnbg); }}
   .k3 .box p:first-child {{ margin-top:0; }} .k3 .box p:last-child {{ margin-bottom:0; }}
   .k3 .lede {{ font-size:1.05em; }}
+  .k3 figure {{ margin:1.4em 0; }}
+  .k3 figure img {{ max-width:100%; height:auto; display:block; border-radius:6px;
+                   background:#fff; padding:.4em; }}
+  .k3 figcaption {{ margin-top:.5em; }}
+  html, body {{ margin:0; padding:0; }}
+  body {{ max-width:1080px; margin:0 auto; padding:1.5rem 1.2rem 4rem; }}
 </style>
 
 <div class="k3">
@@ -393,6 +429,8 @@ Read from <code>bench7_analysis.csv</code> at build time.</p>
 
 <div class="tw">{threeway}</div>
 
+{fig_entry}
+
 <p class="note"><b>The extrapolation-free statement</b>, which needs no model: at the top of the
 f_&kappa; grid (f_&kappa; = 32), &Theta;<sub>cum</sub> = <b>0.913</b> on bench3 (in band),
 <b>0.890</b> on bench2 (below, and <i>saturating</i> &mdash; 24&rarr;32 moves it 0.889&rarr;0.890 while
@@ -418,6 +456,8 @@ ranking, not an independent fact.</p>
 &ge;8. <b>The windows do not overlap</b> &mdash; the squeeze is real, now bounded to one dose unit.</p>
 
 <div class="tw">{firemap}</div>
+
+{fig_firemap}
 
 <h2>3. What happened — why the old numbers were not trusted</h2>
 
@@ -610,6 +650,7 @@ factor, the single-constant program <b>stops</b> rather than being re-scoped int
 <code>cooling_boost_mode='none'</code>, f_&kappa; = 1.0, f_A = 1.0.</p>
 
 </div>
+</body></html>
 """
 
 
