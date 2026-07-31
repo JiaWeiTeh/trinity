@@ -307,6 +307,11 @@ def build():
             "curve on every panel</b> — that is the result. On bench2 and bench1 it never "
             "reaches the band within the measured grid.",
         ),
+        fig_mass=fig("bench7_massloading.png",
+                     "dMdt ratio vs dose for f_kappa and f_A, with f_mix flat at 1",
+                     "Mass loading vs dose. The shaded region is <b>suppression</b> — the wrong side "
+                     "for a wrinkled interface. f_A sits in it throughout; f_&kappa; enters it above "
+                     "f &asymp; 7; f_mix never responds."),
         fig_firemap=fig(
             "bench7_firemap.png",
             "f_kappa fate versus dose for the six band configs",
@@ -456,7 +461,53 @@ ranking, not an independent fact.</p>
 
 {fig_firemap}
 
-<h2>3. What happened — why the old numbers were not trusted</h2>
+<h2>3. The mechanism check — none of the three is the wrinkled-interface knob</h2>
+
+<p>The Θ<sub>cum</sub> calibration above scores only the <i>radiative bookkeeping</i>. The physical
+motivation for all three knobs is that turbulent mixing <b>wrinkles</b> the contact discontinuity, so
+its true area exceeds the 1-D spherical area. In the thin-layer limit that raises every interface
+flux <i>together</i> — conduction, radiation, <b>and the evaporative mass flux</b>. So an
+area-faithful knob has an unambiguous signature: <b>Ṁ must RISE with dose.</b></p>
+
+{fig_mass}
+
+<div class="tw"><table>
+<thead><tr><th>knob</th><th>where it acts</th><th>structure responds?</th><th>Ṁ(f)/Ṁ(1)</th><th>vs the wrinkle picture</th></tr></thead>
+<tbody>
+<tr><td><b>f_mix</b></td><td><code>L_leak + f·L_cool</code> on the <i>integrated output</i>, feeding the
+    energy equation</td><td><b>no</b> — structure-frozen, energetics-live</td><td>&equiv; 1</td>
+    <td>❌ no mass-loading response at all</td></tr>
+<tr><td><b>f_A</b></td><td><code>dudt = f·dudt</code> <i>inside the ODE</i>, interface band only</td>
+    <td>yes (radiative source)</td><td><b>0.988 &rarr; 0.855</b></td>
+    <td>❌ <b>wrong sign</b> — cooler interface evaporates less</td></tr>
+<tr><td><b>f_&kappa;</b></td><td><code>C_thermal</code> — the Spitzer conduction coefficient</td>
+    <td>yes (transport)</td><td><b>1.07 &rarr; 0.94 &rarr; 0.29</b></td>
+    <td>⚠️ right sign only below f_&kappa; &asymp; 7</td></tr>
+</tbody></table></div>
+
+<div class="box stop">
+<p><b>In the dose range where any of these would actually be calibrated, not one raises mass
+loading.</b> f_&kappa;'s ratio crosses 1 between f = 6 and 8; by f_&kappa; = 12 — bench3's own
+band-entry dose — evaporation is already suppressed 20%. The knob family whose whole motivation is
+extra interface area produces, at the operating point, an interface that evaporates <i>less</i>.</p>
+</div>
+
+<p><b>The mechanism ranking is the REVERSE of the calibration ranking.</b> f_&kappa; moves a real
+transport coefficient and is the only one ever correct on Ṁ; f_A is in-solve but trades the Ṁ-channel
+against the θ-channel; f_mix is a scalar on the integrated answer and <b>wins §2 precisely because it
+is unconstrained by the physics it represents</b>. Reporting either ranking alone is misleading —
+see <a href="FINDINGS.md">FINDINGS §10</a>.</p>
+
+<div class="box">
+<p><b>The experiment this implies (36 arms, ~12% of this campaign).</b> An <b>f_area</b> knob applying
+f_&kappa; and f_A <i>simultaneously with one shared constant</i>: f_&kappa; carries the
+conduction + evaporation channel, f_A the radiative one. Predictions from the measured single-knob
+exponents — Ṁ stays rising (net ≈ f<sup>+0.23</sup>) instead of crossing below 1 near f &asymp; 7, and
+the Θ<sub>cum</sub> exponent exceeds either alone. <b>0 of 174 arms set more than one knob</b>, so this
+is entirely unmeasured — single-knob was enforced by construction for clean attribution.</p>
+</div>
+
+<h2>4. What happened — why the old numbers were not trusted</h2>
 
 <p>Three corrections inside five days, all in the parent workstream
 <code>docs/dev/transition/pdv-trigger/</code>. None of them was corrupt data. Every one passed the
@@ -497,7 +548,7 @@ true, not citable until re-measured. One date comparison, applied mechanically b
 <code>make_freshness_audit.py</code>, replacing a five-week register whose failure mode was silent.</p>
 </div>
 
-<h2>4. The campaign — {total} arms</h2>
+<h2>5. The campaign — {total} arms</h2>
 
 <p>All arms <code>stop_t = 5 Myr</code>, one process each, <b>single-knob by construction</b>, with the
 two-arm protocol: <b>production</b> (live <code>cooling_balance</code> &rarr; the fire map) and
@@ -526,7 +577,7 @@ old-vs-new is a file diff.</p>
     <code>F_MIX_K4</code>, changes it, and it is free only until <code>submit</code>.</li>
 </ul>
 
-<h2>5. Pre-registered predictions — scored</h2>
+<h2>6. Pre-registered predictions — scored</h2>
 
 <p>Frozen before any arm runs, in <code>pdv-trigger/data/bench7_gate_g0.csv</code>. A miss is
 <b>recorded as a miss</b>, never re-negotiated.</p>
@@ -549,7 +600,7 @@ old-vs-new is a file diff.</p>
 
 <div class="tw">{p1}</div>
 
-<h2>6. Gate G0 — the baseline check, which does double duty</h2>
+<h2>7. Gate G0 — the baseline check, which does double duty</h2>
 
 <p class="note">Artifact stamp: <code>{g0_stamp}</code></p>
 
@@ -566,11 +617,11 @@ downstream. Never silently adopt either value, and never merge a fresh and a pre
 into one fit.</p>
 </div>
 
-<h2>7. Freshness — what on disk is actually from today</h2>
+<h2>8. Freshness — what on disk is actually from today</h2>
 
 {freshness}
 
-<h2>8. What was run</h2>
+<h2>9. What was run</h2>
 
 <pre><code>git pull                                  # branch feature/pdv-trigger-5b
 cd docs/dev/transition/pdv-trigger/runs
@@ -603,7 +654,7 @@ python docs/dev/transition/kappa-3way/make_report.py                  # rebuild 
 else your analysis will need must be added <i>before</i> the first reduce.</p>
 </div>
 
-<h2>9. What the result means</h2>
+<h2>10. What the result means</h2>
 
 <p>The deliverable is the three-way table this program has been missing — per knob: band-entry dose on
 each bench, the spread, and whether it was <b>measured in-grid or extrapolated</b>. Per gate G5, both
@@ -627,7 +678,7 @@ about honesty, never about promoting f_&kappa;.</p>
 factor, the single-constant program <b>stops</b> rather than being re-scoped into a fitted f(n).</p>
 </div>
 
-<h2>10. Where things live</h2>
+<h2>11. Where things live</h2>
 
 <div class="tw"><table>
 <thead><tr><th>what</th><th>where</th><th>why</th></tr></thead>

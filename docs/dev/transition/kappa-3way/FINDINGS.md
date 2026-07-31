@@ -305,3 +305,107 @@ unaffected.
    final answer. Given bench2's saturation at 0.890, the second is defensible and much cheaper.
 3. **Settle Q3** (frozen-row Θ_cum convention) — it now visibly moves numbers.
 4. A **matched-`t` back-reaction harness** for P2, replacing the coarse log-t nearest-neighbour match.
+
+---
+
+## §10. [physics] Where each knob actually acts, and why NONE of them is the wrinkled-interface knob
+
+Raised by the maintainer 2026-07-30: *"which one is more physically true? what about the mass loading
+due to extra surface area from wrinkles (which is the whole motivation of adding the extra cooling)?"*
+That question turns out to discriminate the three knobs far more sharply than the Θ_cum calibration
+does, and it changes what the campaign's "winner" means. Figure: `bench7_massloading.png`.
+
+### §10a. What the code actually does — verified at the call sites, not from memory
+
+| knob | site | what it multiplies | does the bubble *structure* respond? |
+|---|---|---|---|
+| **f_mix** | `phase1b_energy_implicit/get_betadelta.py:360` | `L_loss = L_leak + f_mix·L_cool` — applied to the **integrated output** of the structure solve, feeding the β/δ residual and the energy equation | **No.** The structure ODE never sees it. T(r), ρ(r), Ṁ are identical to the unboosted run at the same state. |
+| **f_A** | `bubble_structure/bubble_luminosity.py:435` | `dudt = f_A·dudt` **inside the ODE**, and only where `T < _T_INTERFACE_BAND`; plus L2+L3 in the integrals (`:845`) | **Yes** — the radiative source term is perturbed, so T(r) reorganises. The in-code comment is explicit: *"Conduction, ICs and the dMdt seed untouched."* |
+| **f_κ** | `bubble_structure/bubble_luminosity.py:441` (also `:304`, `:398`) | `C_thermal` in `dTdrr` — the **Spitzer conduction coefficient** | **Yes**, and deepest: it changes how heat is *transported*, so the whole conduction zone restructures. |
+
+⚠️ **Correction to an earlier statement in this conversation.** It is **f_A**, not f_mix, that acts on
+`dudt`. And "f_mix is frozen by construction" was too strong: f_mix *is* frozen at the **structure**
+level, but it still enters the global energy equation, so E_b, P_b and R2 do respond. The precise
+statement is *structure-frozen, energetics-live*.
+
+### §10b. The wrinkling picture makes a prediction, and it is about Ṁ
+
+The physical motivation for all of this is that turbulent mixing **wrinkles** the contact
+discontinuity, so its true area exceeds the 1-D spherical area by some factor `f_area`. In the
+thin-layer limit every interface flux is proportional to that area **together**:
+
+- conductive flux through the interface ∝ A
+- **evaporative mass flux Ṁ ∝ A**  ← the channel nobody was checking
+- radiative loss from the interface layer ∝ A (layer volume at fixed thickness)
+
+So the signature of an area-faithful knob is unambiguous: **Ṁ must RISE with dose.** Measured:
+
+| knob | Ṁ(f)/Ṁ(1) | verdict vs the wrinkle picture |
+|---|---|---|
+| **f_mix** | ≡ 1 (structure untouched) | ❌ no mass-loading response at all |
+| **f_A** | **0.988 → 0.855** over f_A 2→32 (`theta5s_dmdt_suppression.csv`, 9 configs) | ❌ **wrong sign** — more interface cooling ⇒ cooler interface ⇒ *less* evaporation |
+| **f_κ** | **1.066 → 1.075 → 1.011 → 0.944 → 0.799 → 0.289** over f_κ 2→3→6→8→12→32 | ⚠️ **right sign only below f_κ ≈ 7** |
+
+**f_κ's sign flips inside the useful range.** At fixed state it follows Eq 47's `f^{2/7}` to within
+1.6% (`§24` Q1) — the correct area-like behaviour. But on a **full run** the back-reaction takes over:
+the boosted arm radiates more, drains E_b, pressure falls, and evaporation falls with it. The ratio
+crosses 1 between f_κ = 6 and 8, and by f_κ = 12 — which is *bench3's own band-entry dose* — mass
+loading is already **suppressed by 20%**.
+
+> **So in the dose range where any of these knobs would actually be calibrated, not one of them
+> raises mass loading.** The knob whose *whole motivation* is extra interface area produces, at the
+> operating point, an interface that evaporates *less*. That is a physics-level indictment that the
+> Θ_cum calibration cannot see, because Θ_cum only scores the radiative bookkeeping.
+
+### §10c. Which is "more physically true"
+
+Ranked by faithfulness to the mechanism rather than by calibration score — the reverse of `§2`:
+
+1. **f_κ** — the only one that moves a real transport coefficient, and the only one with the correct
+   Ṁ sign anywhere. Its failure is that it moves **only** the conduction channel, so the radiative
+   loss rises only indirectly; that is why its Θ_cum exponent is q ≈ 0.28 and why it saturates below
+   the band (`§2`, `§3`).
+2. **f_A** — in-solve and physically interpretable as an emissivity/efficiency boost in the interface
+   band, but it moves the θ-channel **at the cost of** the Ṁ-channel. Under the wrinkle picture those
+   two should move together; here they anti-correlate.
+3. **f_mix** — a scalar on the integrated answer. It cannot be wrong about the structure because it
+   never consults it. **It wins the calibration (`§2`: 2.745× spread, all in-grid) precisely because
+   it is unconstrained by the physics it is meant to represent.**
+
+**That inversion is the real result of this campaign.** The measurement ranking (`§2`) and the
+mechanism ranking (here) are *opposite*. Reporting either alone would be misleading.
+
+### §10d. The experiment this implies — an area-faithful knob, and it is nearly free
+
+`pdv-trigger/PLAN.md` item 9 already registered "the area-faithful successor" as the discriminating
+experiment. `§10b` now supplies the missing quantitative case *and* a concrete construction:
+
+> **f_area applies f_κ and f_A simultaneously with ONE shared constant.** f_κ carries the
+> conduction + evaporation channel; f_A carries the radiative channel. Together they are the closest
+> thing the current code can express to "multiply the interface area".
+
+Two falsifiable predictions, from the measured single-knob exponents:
+
+- **Ṁ:** f_κ contributes ≈ `f^{+0.28}` and f_A ≈ `f^{-0.05}` (from 0.988→0.855 over a 16× dose), so
+  the combination should keep **Ṁ rising** — net ≈ `f^{+0.23}` — instead of crossing below 1 near
+  f ≈ 7. **This is the test of whether the code can represent a wrinkled interface at all.**
+- **Θ_cum:** both channels push θ up, so the combined exponent should **exceed** either alone
+  (f_κ 0.28, f_A 0.25 ⇒ expect ≳ 0.4, possibly approaching f_mix's 0.46–0.56 — but from
+  *mechanism* rather than from a scalar on the output).
+
+**It is unmeasured, and deliberately so:** `0 of 174` bench7 arms set more than one knob — the
+campaign enforced single-knob by construction so every effect could be attributed. That was right for
+attribution and it is exactly why the combination is now the open question.
+
+**Cost: small.** A dual-knob ladder on the three clean benches — f_area ∈ {2,4,8,12,16,24}, prod+diag
+— is **36 arms**, ~12% of what this campaign just spent. It needs one change: `make_kappa_reopen_params.py`
+would have to emit an arm setting `cooling_boost_kappa` *and* `cooling_boost_fA`, and
+`test_bench7_params.py`'s single-knob assertion would need a documented exemption for that phase.
+
+### §10e. What this does NOT change
+
+Every number in `§1`–`§9` stands — this section re-reads them, it does not revise them. f_κ remains
+closed *as a single-constant calibration knob* (it does not reach the band; ≥16× spread). The point
+here is narrower and sharper: **it was closed on the calibration axis while being the least wrong on
+the mechanism axis**, and the knob that won the calibration is the one that models the mechanism
+least. Any recommendation that quotes `§2` without `§10` is quoting half the evidence.
