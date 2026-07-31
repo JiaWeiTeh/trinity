@@ -194,6 +194,30 @@ def panel_freshness(rows):
     )
 
 
+def panel_trigger(rows):
+    """The INSTANTANEOUS calibration — the criterion the trigger actually uses."""
+    tr = [r for r in rows if r.get("table") == "TRIGGER"]
+    if not tr:
+        return ""
+    per = {(r["knob"], r["bench"]): r for r in tr if "SPREAD" not in r.get("bench", "")}
+    spr = {r["knob"]: r for r in tr if r.get("bench") == "SPREAD(max/min)"}
+    TC = {"fmix": "2.745&times;", "fA": "&le;5.39&times;", "fkappa": "&ge;16&times;"}
+    benches = ["bench3_m1e5_r5", "bench2_m1e5_r10", "bench1_m5e4_r20"]
+    body = []
+    for knob in ("fmix", "fA", "fkappa"):
+        cells = []
+        for b in benches:
+            r = per.get((knob, b))
+            cells.append(esc(r["entry_dose"]) if r and r["entry_dose"]
+                         else '<span class="pill bad">never</span>')
+        s_ = spr.get(knob)
+        sv = (f"<b>{esc(s_['entry_dose'])}&times;</b>" if s_ and s_["entry_dose"]
+              else '<span class="pill bad">—</span>')
+        body.append([f"<b>{esc(knob)}</b>", *cells, sv, TC[knob]])
+    return table(["knob", "bench3 (n=5520)", "bench2 (n=690)", "bench1 (n=43)",
+                  "spread — TRIGGER metric", "spread — Θ_cum, for contrast"], body, "wide")
+
+
 def panel_scored(rows):
     """P1-P5 with their MEASURED verdicts. The P1 rows in bench7_gate_g0.csv stay PENDING on
     purpose -- they are the frozen pre-registration -- so the scoring is done here, against the
@@ -340,6 +364,7 @@ def build():
         g0_stamp=esc(_stamp_of(PDV / "data" / "bench7_gate_g0.csv") or "not built"),
         threeway=panel_threeway(ana),
         scored=panel_scored(ana),
+        trigger=panel_trigger(ana),
         fig_entry=fig(
             "bench7_entry.png",
             "Theta_cum vs dose for f_A, f_mix and f_kappa on the three "
@@ -424,9 +449,10 @@ Built {now} from the committed artifacts &middot; code <code>{sha}</code>.</p>
 
 <div class="box win">
 <p><b>{total}/{total} arms ran on 2026-07-30. The three-way table is MEASURED.</b> Headline:
-<b>f_&kappa; is the worst of the three knobs</b> &mdash; spread &ge;16&times; against f_mix's 2.75&times;
-and f_A's 6.0&times;, and it does not reach the L21b band at all on the two diffuse benches by
-f_&kappa;&nbsp;=&nbsp;32. Prediction <b>P1 is falsified</b> (predicted 3.4&times;). Full record:
+<b>f_&kappa; is the worst of the three knobs</b> on both metrics &mdash; it never even reaches the
+trigger θ = 0.95 on bench1. Prediction <b>P1 is falsified</b> (predicted 3.4&times;). ⚠️ But
+<b>f_A and f_mix are TIED</b> on the instantaneous trigger criterion (§3); the &sect;2 ranking between
+them is an artifact of the integrated metric. Full record:
 <a href="FINDINGS.md">FINDINGS.md</a>.</p>
 </div>
 
@@ -502,7 +528,38 @@ ranking, not an independent fact.</p>
 
 {fig_firemap}
 
-<h2>3. The mechanism check — none of the three is the wrinkled-interface knob</h2>
+<h2>3. Is Θ<sub>cum</sub> even the right metric? — no, and it changes the f_A verdict</h2>
+
+<p>TRINITY's trigger has <b>no memory</b>. <code>run_energy_implicit_phase.py:1250</code> fires on
+<code>(L_gain − L_loss)/L_gain ≤ 0.05</code>, i.e. <b>θ ≥ 0.95</b>, evaluated per step on the current
+state. A cloud fires the instant θ first crosses the threshold, so <b>θ<sub>max</sub> ≥ 0.95 is
+exactly "this cloud fires"</b>. Θ<sub>cum</sub> is a different object — the L<sub>mech</sub>-weighted
+<i>mean</i> of θ over the whole window.</p>
+
+<p class="note"><b>Θ<sub>cum</sub> is not a mistake — it is a mismatch.</b> Lancaster 2021b measures a
+<i>cumulative radiated fraction</i>, so reproducing L21b genuinely requires an integrated quantity,
+and §15h adopted it correctly for that. The error was carrying a Lancaster-comparison metric into a
+<i>knob-selection</i> decision. The workstream's own 📏 rule 3 already says θ is reported as
+θ<sub>max</sub>; the band-entry calibration drifted off it and nobody re-checked whether the ranking
+survived the swap.</p>
+
+<div class="tw">{trigger}</div>
+
+<div class="box stop">
+<p><b>f_A and f_mix are TIED on the criterion the code actually uses</b> — 2.71&times; vs 2.64&times;,
+a 3% difference. <b>f_A's 2&times; disadvantage in §2 is an artifact of the metric</b>, and "f_mix
+beats f_A" must not be quoted as a physical result. Note also that the absolute doses differ ~4&times;
+(f_mix 3–8, f_A 11–31) while the spreads match, so uniformity <i>cannot</i> choose between them at
+all.</p>
+</div>
+
+<p class="note"><b>f_κ loses on both metrics, and worse on this one</b> — it never reaches θ = 0.95 on
+bench1 at any dose ≤ 32. §2's closure of f_κ is strengthened, not weakened. This metric is also far
+less exposed to §1's truncation problem: θ<sub>max</sub> is a maximum over whatever ran, and the f_A
+and f_mix trigger tracks contain <b>zero</b> truncated arms. Full treatment:
+<a href="FINDINGS.md">FINDINGS §11</a>.</p>
+
+<h2>4. The mechanism check — none of the three is the wrinkled-interface knob</h2>
 
 <p>The Θ<sub>cum</sub> calibration above scores only the <i>radiative bookkeeping</i>. The physical
 motivation for all three knobs is that turbulent mixing <b>wrinkles</b> the contact discontinuity, so
@@ -548,7 +605,7 @@ the Θ<sub>cum</sub> exponent exceeds either alone. <b>0 of 174 arms set more th
 is entirely unmeasured — single-knob was enforced by construction for clean attribution.</p>
 </div>
 
-<h2>4. What happened — why the old numbers were not trusted</h2>
+<h2>5. What happened — why the old numbers were not trusted</h2>
 
 <p>Three corrections inside five days, all in the parent workstream
 <code>docs/dev/transition/pdv-trigger/</code>. None of them was corrupt data. Every one passed the
@@ -589,7 +646,7 @@ true, not citable until re-measured. One date comparison, applied mechanically b
 <code>make_freshness_audit.py</code>, replacing a five-week register whose failure mode was silent.</p>
 </div>
 
-<h2>5. The campaign — {total} arms</h2>
+<h2>6. The campaign — {total} arms</h2>
 
 <p>All arms <code>stop_t = 5 Myr</code>, one process each, <b>single-knob by construction</b>, with the
 two-arm protocol: <b>production</b> (live <code>cooling_balance</code> &rarr; the fire map) and
@@ -618,7 +675,7 @@ old-vs-new is a file diff.</p>
     <code>F_MIX_K4</code>, changes it, and it is free only until <code>submit</code>.</li>
 </ul>
 
-<h2>6. Pre-registered predictions — scored</h2>
+<h2>7. Pre-registered predictions — scored</h2>
 
 <p>Frozen in <code>pdv-trigger/data/bench7_gate_g0.csv</code> before any arm ran; scored below
 against the measured tables. <b>A miss is recorded as a miss</b>, never re-negotiated &mdash; and P1
@@ -646,7 +703,7 @@ missed.</p>
 
 <div class="tw">{p1}</div>
 
-<h2>7. Gate G0 — the baseline check, which does double duty</h2>
+<h2>8. Gate G0 — the baseline check, which does double duty</h2>
 
 <p class="note">Artifact stamp: <code>{g0_stamp}</code></p>
 
@@ -663,11 +720,11 @@ downstream. Never silently adopt either value, and never merge a fresh and a pre
 into one fit.</p>
 </div>
 
-<h2>8. Freshness — what on disk is actually from today</h2>
+<h2>9. Freshness — what on disk is actually from today</h2>
 
 {freshness}
 
-<h2>9. What was run</h2>
+<h2>10. What was run</h2>
 
 <pre><code>git pull                                  # branch feature/pdv-trigger-5b
 cd docs/dev/transition/pdv-trigger/runs
@@ -700,7 +757,7 @@ python docs/dev/transition/kappa-3way/make_report.py                  # rebuild 
 else your analysis will need must be added <i>before</i> the first reduce.</p>
 </div>
 
-<h2>10. What the result means</h2>
+<h2>11. What the result means</h2>
 
 <p>The deliverable &mdash; the three-way table this program had been missing &mdash; is &sect;2.
 Per gate G5 both &Theta;<sub>cum</sub> variants and the frozen-no-root share sit beside every
@@ -742,7 +799,7 @@ at once, and it has never been run.</p>
     bracket's truncated count in <code>bench7_analysis.csv</code>.</li>
 </ul>
 
-<h2>11. Where things live</h2>
+<h2>12. Where things live</h2>
 
 <div class="tw"><table>
 <thead><tr><th>what</th><th>where</th><th>why</th></tr></thead>

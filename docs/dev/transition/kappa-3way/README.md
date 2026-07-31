@@ -33,7 +33,10 @@
 > update one in isolation.
 
 **Status (2026-07-30):** 🔵 actionable — **294/294 arms ran; the three-way table is MEASURED**
-(`FINDINGS.md`, `report.html`). Headline: **f_κ is the worst of the three knobs** and **P1 is falsified**.
+(`FINDINGS.md`, `report.html`). Headline: **f_κ is the worst of the three knobs** on both metrics and **P1 is falsified**. ⚠️ But
+`FINDINGS §11`: Θ_cum is the wrong metric for the knob decision — on the trigger's own instantaneous
+criterion **f_A and f_mix are tied**, and `§10` shows the mechanism ranking is the reverse of the
+calibration one.
 Gate **G0 failed 2/11** — traced to wall-clock truncation, which also makes f_A's published 5.39× spread
 non-converged. Nothing here changes production.
 

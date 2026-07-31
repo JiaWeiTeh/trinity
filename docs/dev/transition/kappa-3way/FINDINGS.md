@@ -32,9 +32,13 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-07-30):** 🔵 actionable — **294/294 arms ran; the three-way table is MEASURED.** The
-headline: **f_κ is the worst of the three knobs**, and P1 is falsified. One gate (G0) failed, and the
-failure is understood.
+**Status (2026-07-30):** 🔵 actionable — **294/294 arms ran; the three-way table is MEASURED.**
+**f_κ is the worst of the three on both metrics** (it never even reaches the trigger θ = 0.95 on
+bench1) and **P1 is falsified**. ⚠️ **`§2`'s ranking of f_mix over f_A is superseded by `§11`:** on
+the instantaneous criterion the trigger actually uses, the two are **tied** (2.71× vs 2.64×) — the
+gap was an artifact of the integrated metric. `§10` (mechanism) and `§11` (metric) are the two
+sections that change what this campaign concludes; read them before quoting `§2`. G0 failed on a
+truncation artifact (`§1`, bounded in `§1a`).
 
 ---
 
@@ -409,3 +413,96 @@ closed *as a single-constant calibration knob* (it does not reach the band; ≥1
 here is narrower and sharper: **it was closed on the calibration axis while being the least wrong on
 the mechanism axis**, and the knob that won the calibration is the one that models the mechanism
 least. Any recommendation that quotes `§2` without `§10` is quoting half the evidence.
+
+---
+
+## §11. [metric] Θ_cum is the wrong metric for the knob decision — and on the right one, f_A and f_mix are TIED
+
+Raised by the maintainer 2026-07-30: *"why are we looking at Θ_cum? Only the instantaneous
+L_loss/L_gain matters — the bubble goes into momentum the moment cooling beats gain, it doesn't care
+about the history."* That is correct about the code, and acting on it **changes §2's headline.**
+
+### §11a. The trigger has no memory — verified in source
+
+`phase1b_energy_implicit/run_energy_implicit_phase.py:1250` fires on
+
+```
+(L_gain − L_loss) / L_gain  ≤  phaseSwitch_LlossLgain   (default 0.05)   ⟺   θ ≥ 0.95
+```
+
+evaluated **per step**, on the current state. Nothing integrates. A cloud fires the instant θ first
+crosses 0.95, and `θ_max ≥ 0.95` is therefore *exactly* the statement "this cloud fires".
+
+Θ_cum, by contrast, is the L_mech-weighted **mean of θ over the whole blowout window**. It is a
+different object, and it can be high while θ never crosses the threshold (a long warm interval), or
+low while θ spikes over it briefly (a short sharp peak). **The two metrics can disagree, and here
+they do.**
+
+### §11b. Why Θ_cum was used anyway — it is not a mistake, it is a mismatch
+
+Θ_cum is the **right** metric for its actual purpose: Lancaster 2021b measures a *cumulative radiated
+fraction* over the breakout window, so reproducing L21b requires an integrated quantity. `§15h`
+adopted it for exactly that, correctly.
+
+The error was **carrying a Lancaster-comparison metric into a knob-selection decision.** Those answer
+different questions:
+
+| question | right metric |
+|---|---|
+| does TRINITY reproduce L21b's **energy budget**? | **Θ_cum** — integrated, matches the observable |
+| what dose makes a cloud **fire the trigger**? | **θ_max** — instantaneous, matches the code |
+
+The workstream's own `runs/README.md` 📏 **rule 3** already says *"θ is reported as `theta_max` over
+the whole run"*. The band-entry calibration drifted off that rule when it borrowed Θ_cum from the L21b
+comparison, and nobody re-checked whether the ranking survived the swap. It does not.
+
+### §11c. The instantaneous calibration — `table=TRIGGER` in `bench7_analysis.csv`
+
+Dose at which θ_max first reaches **0.95**, PROD arms (the ones running the live trigger):
+
+| knob | bench3 (n̄=5520) | bench2 (690) | bench1 (43) | **spread** | Θ_cum spread, for contrast |
+|---|---|---|---|---|---|
+| **f_mix** | 3.00 | 6.41 | 7.93 | **2.64×** | 2.745× |
+| **f_A** | 11.3 | 23.5 | 30.8 | **2.71×** | ≤5.39× |
+| **f_κ** | 6.53 | 13.8 | **never** | — | ≥16× |
+
+**f_A and f_mix are tied: 2.71× vs 2.64×, a 3% difference.**
+
+> **f_A's apparent 2× disadvantage in `§2` is an artifact of the metric.** On the criterion TRINITY
+> actually uses, the two knobs are indistinguishable as single constants. `§2`'s "f_mix > f_A" must
+> not be quoted as a physical result — it is a statement about Θ_cum, not about firing.
+
+Three further points, all favouring this metric for this decision:
+
+1. **f_κ's failure is robust and gets *worse*.** Under Θ_cum it "reached the band on bench3 and
+   saturated below it elsewhere"; under the trigger it **never fires bench1 at any dose ≤ 32**. The
+   `§2` conclusion that f_κ is closed stands — strengthened, not weakened.
+2. **The absolute doses differ by ~4× between the two knobs** (f_mix 3–8, f_A 11–31) even though the
+   spreads match. Uniformity therefore *cannot* choose between them; only the mechanism (`§10`) or an
+   independent constraint can.
+3. **It is far less exposed to the truncation problem of `§1`.** θ_max is a maximum over whatever
+   ran, so an arm cut short after its peak is unaffected; and the f_A and f_mix trigger tracks contain
+   **zero** truncated arms (only f_κ/bench3 has any). The metric that broke G0 is the integrated one.
+
+### §11d. What this revises, and what it does not
+
+**Revised.** `§2`'s ranking of f_mix over f_A. The correct statement is: **on the trigger criterion
+f_A ≈ f_mix (2.71× vs 2.64×); on the L21b energy-budget criterion f_mix is better (2.745× vs
+≤5.39×).** Both are true, of different questions, and the knob decision should rest on the first.
+
+**Unchanged.** Everything about f_κ (`§2`, `§3`, `§4`) — it loses on both metrics. `§10`'s mechanism
+analysis, which was never metric-dependent. P3/P4/P5/G6. `§1`'s truncation diagnosis.
+
+**Newly sharpened.** With f_A and f_mix tied on uniformity, the decision falls entirely to `§10`'s
+mechanism axis — where f_A acts in-solve and f_mix does not. **The two axes no longer conflict for
+f_A vs f_mix: uniformity says "tied", mechanism says "f_A".** The conflict that remains is only that
+neither has the right mass-loading sign, which is what the `f_area` experiment is for.
+
+### §11e. Follow-up
+
+- Report **both** metrics in any published table, labelled by the question each answers. Never one
+  alone — that is exactly how this drifted.
+- The pre-registered gates G4/G5 should be extended to require the trigger metric alongside Θ_cum;
+  they currently only constrain the integrated one.
+- `data/make_bench7_analysis.py` now emits `table=TRIGGER` alongside `table=ENTRY`, so both are
+  regenerated together and cannot drift apart again.

@@ -1,4 +1,4 @@
-# generated 2026-07-31T14:05:51Z | builder make_bench7_analysis.py | code a7b5b167+dirty
+# generated 2026-07-31T16:04:11Z | builder make_bench7_analysis.py | code f6e92d15+dirty
 # SOURCES READ: bench7_summary.csv, bench5r_summary.csv, bench6r_summary.csv (2026-07-30 ALL-FRESH harvests only — no pre-cutoff fallback)
 # TRUNCATED = the arm stopped with no `outcome`: it ran out of wall-clock mid-solve, so its Theta_cum integrates a SHORTER window and is biased LOW with no physics change. A band-entry dose whose bracketing arms include a truncated arm is an artifact of wall-clock, NOT a measurement — see the G0 failure (bench1 f_A 74.8 -> 83.2 from one truncated arm).
 table,run_name,phase,subject,knob,dose,arm,bench,n_bar_H,theta_max,theta_cum,t_final,n_impl,fate,entry_dose,measured_in_grid,grid_max,n_doses,truncated_arms,truncated,track
@@ -197,6 +197,18 @@ EXPONENT,,,,fkappa,,,bench2_m1e5_r10,,,,,,,0.2732,"BELOW P1 [0.55,0.70] — pred
 EXPONENT,,,,fA,,,bench1_m5e4_r20,,,,,,,0.3073,"BELOW P1 [0.55,0.70] — prediction missed",,9,1,,excluded doses: 128
 EXPONENT,,,,fmix,,,bench1_m5e4_r20,,,,,,,0.5633,"within P1 [0.55,0.70]",,6,1,,excluded doses: 16
 EXPONENT,,,,fkappa,,,bench1_m5e4_r20,,,,,,,0.3183,"BELOW P1 [0.55,0.70] — prediction missed",,10,0,,excluded doses: none
+TRIGGER,,,,fmix,,,bench3_m1e5_r5,5520,,,,,,3.004,yes,8,5,0,,1:0.580  2:0.788  3:0.949  4:1.137  8:0.970
+TRIGGER,,,,fA,,,bench3_m1e5_r5,5520,,,,,,11.35,yes,32,8,0,,1:0.580  4:0.643  6:0.704  8:0.749  12:0.982  16:1.340  24:1.066  32:1.326
+TRIGGER,,,,fkappa,,,bench3_m1e5_r5,5520,,,,,,6.526,yes,32,10,3,,1:0.580  2:0.700  3:0.747  4:0.836  6:0.902  8:1.067  12:0.980  16:1.012  24:0.880  32:0.996
+TRIGGER,,,,fmix,,,bench2_m1e5_r10,690,,,,,,6.413,yes,16,7,0,,1:0.447  2:0.643  3:0.754  4:0.831  8:1.006  12:0.933  16:0.965
+TRIGGER,,,,fA,,,bench2_m1e5_r10,690,,,,,,23.53,yes,128,10,0,,1:0.447  4:0.507  6:0.545  8:0.585  12:0.657  16:0.686  24:0.964  32:1.035  64:1.064  128:1.232
+TRIGGER,,,,fkappa,,,bench2_m1e5_r10,690,,,,,,13.79,yes,32,10,0,,1:0.447  2:0.546  3:0.609  4:0.643  6:0.698  8:0.751  12:0.844  16:1.064  24:1.051  32:1.160
+TRIGGER,,,,fmix,,,bench1_m5e4_r20,43.1,,,,,,7.933,yes,16,7,0,,1:0.301  2:0.487  3:0.619  4:0.744  8:0.953  12:0.955  16:1.048
+TRIGGER,,,,fA,,,bench1_m5e4_r20,43.1,,,,,,30.81,yes,128,10,0,,1:0.301  4:0.367  6:0.401  8:0.435  12:0.501  16:0.564  24:0.676  32:0.992  64:0.987  128:1.290
+TRIGGER,,,,fkappa,,,bench1_m5e4_r20,43.1,,,,,,,NEVER reaches 0.95 within the grid,32,10,0,,1:0.301  2:0.399  3:0.452  4:0.499  6:0.550  8:0.589  12:0.656  16:0.706  24:0.768  32:0.813
+TRIGGER,,,,fmix,,,SPREAD(max/min),,,,,,,2.641,all benches fire,,3,,,"bench3:3, bench2:6.41, bench1:7.93"
+TRIGGER,,,,fA,,,SPREAD(max/min),,,,,,,2.715,all benches fire,,3,,,"bench3:11.3, bench2:23.5, bench1:30.8"
+TRIGGER,,,,fkappa,,,SPREAD(max/min),,,,,,,,UNREACHED on bench1_m5e4_r20,,2,,,"bench3:6.53, bench2:13.8"
 FIREMAP,,,simple_cluster,fkappa,,,,,,,,,,"4,5,6",,,11,0,,1:NOFIRE  2:DRAIN  3:DRAIN  4:FIRED  5:FIRED  6:FIRED  7:CONDENSE  8:CONDENSE  9:CONDENSE  12:CONDENSE  16:CONDENSE
 FIREMAP,,,small_dense_highsfe,fkappa,,,,,,,,,,"3,4,5,7,8,9,12,16",,,11,1,,1:NOFIRE  2:TRUNC  3:FIRED  4:FIRED  5:FIRED  6:DRAIN  7:FIRED  8:FIRED  9:FIRED  12:FIRED  16:FIRED
 FIREMAP,,,pl2_steep,fkappa,,,,,,,,,,"8,9,12",,,11,3,,1:NOFIRE  2:NOFIRE  3:NOFIRE  4:NOFIRE  5:TRUNC  6:TRUNC  7:TRUNC  8:FIRED  9:FIRED  12:FIRED  16:CONDENSE

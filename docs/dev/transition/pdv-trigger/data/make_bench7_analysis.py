@@ -282,6 +282,84 @@ def main():
             }
         )
 
+    # ---------------------------------------------------------------- TRIGGER (instantaneous)
+    # Theta_cum is an INTEGRATED, L_mech-weighted mean over the blowout window. It is the right
+    # metric for the L21b comparison, because Lancaster measures a cumulative radiated fraction.
+    # It is NOT what TRINITY's trigger uses: run_energy_implicit_phase.py:1250 fires on
+    # (Lgain - Lloss)/Lgain <= phaseSwitch_LlossLgain, i.e. theta >= 0.95, evaluated per step with
+    # no memory. So the dose that makes a cloud FIRE is set by max_t theta, not by the integral --
+    # and the standard protocol's own rule 3 already says theta is reported as theta_max.
+    # This table recomputes band entry on that instantaneous criterion, on the PROD arms (the ones
+    # running the live trigger). theta_max >= 0.95 is exactly "the trigger fires at some point".
+    TRIG = 0.95
+
+    def _tmax(r):
+        try:
+            v = float(r.get("theta_max"))
+            return v if math.isfinite(v) else None
+        except (TypeError, ValueError):
+            return None
+
+    def _trigger_track(bench, knob):
+        pts = {}
+        base = b5.get(f"{bench}__none")
+        if base and _tmax(base) is not None:
+            pts[1.0] = (_tmax(base), bool(base.get("outcome")))
+        srcs = {"fA": [(b5, "__fa"), (b6, "__fa")], "fmix": [(b6, "__fm"), (b7, "__fm")],
+                "fkappa": [(b7, "__fk")]}[knob]
+        for src, tag in srcs:
+            for n, r in src.items():
+                if n.endswith("_diag"):
+                    continue
+                stem = n[3:] if n[:3] in ("k1_", "k4_") else n
+                if not stem.startswith(bench + tag):
+                    continue
+                try:
+                    d = float(stem.split(tag)[1])
+                except ValueError:
+                    continue
+                v = _tmax(r)
+                if v is not None:
+                    pts[d] = (v, bool(r.get("outcome")))
+        return pts
+
+    trig_entries = {}
+    for bench in CLEAN:
+        for knob in ("fmix", "fA", "fkappa"):
+            pts = _trigger_track(bench, knob)
+            if len(pts) < 2:
+                continue
+            p = sorted((d, v) for d, (v, _) in pts.items())
+            e = None
+            for (d0, t0), (d1, t1) in zip(p, p[1:]):
+                if t0 < TRIG <= t1:
+                    f = (TRIG - t0) / (t1 - t0)
+                    e = math.exp(math.log(d0) + f * (math.log(d1) - math.log(d0)))
+                    break
+            if e is None and p and p[0][1] >= TRIG:
+                e = p[0][0]
+            trig_entries.setdefault(knob, {})[bench] = e
+            rows.append({
+                "table": "TRIGGER", "knob": knob, "bench": bench,
+                "n_bar_H": f"{NBAR[bench]:g}",
+                "entry_dose": f"{e:.4g}" if e else "",
+                "measured_in_grid": "yes" if e else f"NEVER reaches {TRIG} within the grid",
+                "grid_max": f"{max(p)[0]:g}", "n_doses": str(len(p)),
+                "truncated_arms": str(sum(1 for v, ok in pts.values() if not ok)),
+                "track": "  ".join(f"{d:g}:{v:.3f}" for d, v in p),
+            })
+    for knob in ("fmix", "fA", "fkappa"):
+        v = trig_entries.get(knob, {})
+        vals = [x for x in v.values() if x]
+        rows.append({
+            "table": "TRIGGER", "knob": knob, "bench": "SPREAD(max/min)",
+            "entry_dose": f"{max(vals) / min(vals):.3f}" if len(vals) == len(CLEAN) else "",
+            "measured_in_grid": "all benches fire" if len(vals) == len(CLEAN)
+            else "UNREACHED on " + ", ".join(b for b in CLEAN if not v.get(b)),
+            "n_doses": str(len(vals)),
+            "track": ", ".join(f"{b.split('_')[0]}:{v[b]:.3g}" for b in CLEAN if v.get(b)),
+        })
+
     # ---------------------------------------------------------------- FIREMAP
     def firemap(subjects, prefix):
         doses = sorted({parse7(n)[3] for n in b7 if n.startswith(prefix)})
