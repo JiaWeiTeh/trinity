@@ -260,7 +260,8 @@ line is how you know whether you are looking at fresh or 07-19 data.
 contention (`pdv-trigger/data/bench5_durations.csv`, VERIFY), so the array is the wall-clock constraint, not
 any single job. The known expensive corner is **diffuse × high dose** (bench1 at f_κ ≥ 24): f_κ enters the
 structure ODE, making those the analogue of the `bench5_fa16_diag` stiffness freeze. A wall-kill is a
-**recorded G3 non-compliance**, not a silent drop; resubmit those ids with `--time=3:00:00`.
+**recorded G3 non-compliance**, not a silent drop. ⚠️ **1:30:00 is the partition cap** — there is no
+more-walltime fix; the only retry is to re-run the truncated ids alone, free of array contention.
 
 ---
 

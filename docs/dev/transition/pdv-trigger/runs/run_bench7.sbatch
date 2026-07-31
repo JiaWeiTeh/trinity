@@ -26,14 +26,17 @@
 # lesson). Do not hand-run the harvest without those columns.
 #
 # --time=1:30:00 (maintainer ruling 2026-07-13; evidence data/bench5_durations.csv — longest
-# compliant bench5 arm 64 min under 3-worker contention). The UNMEASURED-cost arms here are the
+# compliant bench5 arm 64 min under 3-worker contention). ⚠️ 1:30:00 is the PARTITION CAP
+# (maintainer, 2026-07-30) — a longer --time is not available, so a truncated arm cannot be fixed by
+# asking for more. The only retry is to resubmit those ids ALONE, without a full array competing. The UNMEASURED-cost arms here are the
 # diffuse HIGH-DOSE f_kappa diag ones (bench1 at f_kappa ≥ 24): f_kappa enters the structure ODE, so
 # they are the analogue of bench5_fa16_diag's stiffness corner. If one wall-kills (exit 124 with t
 # still advancing in dictionary.jsonl), resubmit just those ids with a CLI override — it beats the
 # in-file directive:
-#     sbatch --time=3:00:00 --array=<id1>,<id2> docs/dev/transition/pdv-trigger/runs/run_bench7.sbatch
+#     sbatch --array=<id1>,<id2> docs/dev/transition/pdv-trigger/runs/run_bench7.sbatch
 # and re-reduce; quote no theta from a wall-killed arm, and record it as a G3 non-compliance rather
-# than dropping it silently. A FROZEN arm (t stalled at a fixed step, cf. bench5_fa16_diag §15h) is a
+# than dropping it silently. If it truncates again alone, it is a permanent limit of this partition
+# and whatever depends on it is a BOUND, not a value. A FROZEN arm (t stalled at a fixed step, cf. bench5_fa16_diag §15h) is a
 # stiffness signature, not a walltime problem — record, don't chase.
 #
 #SBATCH --job-name=trinity-bench7

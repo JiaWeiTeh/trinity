@@ -38,7 +38,7 @@ failure is understood.
 
 ---
 
-## §1. [gate] G0 FAILED 2/11 — and the cause is wall-clock truncation, not physics
+## §1. [gate] G0 FAILED 2/11 — and the cause is truncation, not physics
 
 **Sources.** `runs/data/{bench5r,bench6r,bench7}_summary.csv` + `*_traj/`, all stamped
 2026-07-30T19:01–19:02Z, `code 1056c6d`. 60 + 60 + 174 arms, none missing.
@@ -58,8 +58,8 @@ against the 2026-07-19 harvest arm by arm:
 - **bench5r: 60/60 arms have BIT-IDENTICAL `theta_max`. bench6r: 56/60.** The code is deterministic
   and numerically unchanged. (`git diff 89e802dd HEAD -- trinity/` touches only two **info strings**;
   no numerical code moved.)
-- **Every arm that differs is a *truncated* arm** — one that stopped with no `outcome` recorded,
-  i.e. ran out of wall-clock mid-solve. Eight such arms; five completed normally in July.
+- **Every arm that differs is a *truncated* arm** — one that stopped with **no `outcome` recorded**.
+  Eight such arms; five completed normally in July.
 - Of those eight, **four still have bit-identical `theta_max`** — they simply executed **fewer
   implicit steps** before being cut off (e.g. `bench1__fa128_diag`: 212 → 182 steps, θ_max identical
   to the last digit).
@@ -71,14 +71,30 @@ crossing 74.8 → 83.2 and the spread 5.39 → 6.00.
 
 > **⚠️ The consequence is bigger than the gate.** f_A's bench1 band-entry dose — and therefore f_A's
 > **5.39× spread, the number the entire published head-to-head rests on** — is **not a converged
-> measurement**. It is a function of where the wall-clock fell. Two runs of identical code on
+> measurement**. It is a function of where the run happened to stop. Two runs of identical code on
 > identical params give 74.8 and 83.2. Neither is *the* answer; the honest statement is
 > **f_A spread ≈ 5.4–6.0×, wall-limited**.
 
-**P4 is the control that makes this airtight** (§5): 5/5 K3 pairs are **bit-identical**, including
-the pair that truncated — both truncated at the *identical* step. Within one submission the code is
-perfectly reproducible. The July↔July-30 difference is therefore not solver noise; it is how much
-wall-clock the stiff arms got, and 294 concurrent arms is a different contention regime from 60.
+**What "truncated" precisely means, and what is still inferred.** `outcome` is copied from
+`metadata.json`'s `termination` block, which `trinity/_output/simulation_end.py` writes **only when
+TRINITY itself decides to stop** (`stopping_time`, `shell_collapsed`, `shell_dissolved`, …). An empty
+`outcome` therefore means exactly one thing, and it is a statement about the *process*, not the
+physics: **the run ended without TRINITY ending it.**
+
+What that does **not** tell us is *why*. Three candidates fit the evidence — a SIGTERM at the
+walltime limit, a crash, or an OOM kill — and the downloaded artifacts cannot separate them, because
+the exit codes live in `$WS/outputs/<campaign>/<arm>/.exit_code` on gpfs and were never shipped down.
+**Walltime is the leading hypothesis, not a verified fact**: these are the slowest, stiffest arms
+(`§15h` documented this exact class as a stiffness stall, where steps shrink until the run makes no
+useful progress), and 294 concurrent arms is a different contention regime from July's 60. ⚠️ Until
+someone reads `.exit_code` (a `124` would confirm it), this attribution is **inferred**. One command
+settles it:
+`cat $WS/outputs/bench7/*/.exit_code | sort | uniq -c`
+
+**P4 is the control that rules out the alternative** (§5): 5/5 K3 pairs are **bit-identical**,
+including the pair that truncated — both truncated at the *identical* step. So within one submission
+the code is perfectly reproducible, and the July↔July-30 difference is **not solver nondeterminism**.
+Something outside the physics changed how far these arms got.
 
 **G3 (compliance): 21/294 arms truncated (7.1%)**, 12 of them `_diag` arms — each one a poisoned
 point in a dose–response track. All 21 are listed in `data/bench7_analysis.csv` (`table=ARMS`,
@@ -236,15 +252,23 @@ f_A = 1.0. The `§23` Eq-47 correction stands. `§12`'s 5/6 and `§24`'s re-attr
 independently reproduced.
 
 **Newly known to be soft.** f_A's bench1 entry and its spread are wall-limited (§1). Any future
-quote of "f_A spread = 5.39×" should be **5.4–6.0×, wall-limited**, until the stiff arms are re-run
-with enough walltime to complete.
+quote of "f_A spread = 5.39×" should be **5.4–6.0×, wall-limited**. Since the partition caps at
+1:30:00 and that is already what these arms ran under, this may be **permanent**: if
+`bench1__fa128_diag` cannot complete on this cluster, then f_A's bench1 entry is not a value but a
+**lower bound** (`≳75`, unconverged), and the same applies to `pl2_steep`'s firing-window left edge.
+Report bounds, not values.
 
 ---
 
 ## §9. Next
 
-1. **Re-run the 21 truncated arms with `--time=3:00:00`** and re-reduce. That is the only way to turn
-   f_A's bench1 entry — and `pl2_steep`'s firing window — from wall-limited into measured.
+1. **The 21 truncated arms cannot be fixed by more walltime** — the partition caps at
+   `--time=1:30:00`, which is already what they ran under (maintainer, 2026-07-30). Two things are
+   still worth trying, in order: (a) **re-run just those 21 arms alone**, with no 294-arm array
+   competing for the node — if contention was the difference they may complete under the same cap;
+   (b) if they still truncate, they are a **permanent, recorded limitation of this partition**, and
+   the numbers that depend on them must be reported as bounds, not values (see §8's "newly known to
+   be soft").
 2. **Extend the f_κ grid past 32 on bench1/bench2**, or accept "does not reach the band by 32" as the
    final answer. Given bench2's saturation at 0.890, the second is defensible and much cheaper.
 3. **Settle Q3** (frozen-row Θ_cum convention) — it now visibly moves numbers.

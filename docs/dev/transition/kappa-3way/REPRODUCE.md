@@ -75,5 +75,7 @@ only pre-cutoff inputs this workstream quotes without a VERIFY tag. See `PROVENA
 294 arms at `--time=1:30:00`. The longest compliant bench5 arm was 64 min under 3-worker contention
 (`pdv-trigger/data/bench5_durations.csv`, ⚠️ VERIFY — a pre-cutoff number, used here only for sizing).
 Expensive corner: **diffuse × high dose** (bench1 at f_κ ≥ 24), where f_κ enters the structure ODE. A
-wall-kill is a recorded **G3 non-compliance**, never a silent drop — resubmit those ids with
-`--time=3:00:00` and re-reduce.
+wall-kill is a recorded **G3 non-compliance**, never a silent drop. ⚠️ **1:30:00 is the partition cap**
+(maintainer, 2026-07-30) — there is no "resubmit with more time" fix. The only retry available is to
+re-run the truncated ids *alone*, so they are not competing with a 294-arm array; if they still
+truncate, the affected numbers are bounds, not values.
