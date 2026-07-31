@@ -321,6 +321,7 @@ def build():
 TEMPLATE = """<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
 <title>kappa-3way — the three-way band-entry calibration</title>
 </head><body>
 <h1>kappa-3way — the three-way band-entry calibration</h1>
@@ -328,14 +329,9 @@ TEMPLATE = """<!DOCTYPE html>
 Built {now} from the committed artifacts &middot; code <code>{sha}</code>.</p>
 
 <style>
-  .k3 {{ --ink:#1a1a1a; --dim:#6b7280; --line:#e5e7eb; --bg:#fff;
-        --ok:#0f7b3f; --okbg:#e7f6ec; --bad:#b42318; --badbg:#fee4e2;
-        --warn:#9a6700; --warnbg:#fff4d6; --acc:#1f4fd8; --accbg:#eef2ff; }}
-  @media (prefers-color-scheme: dark) {{
-    .k3 {{ --ink:#e8e8ea; --dim:#9aa1ad; --line:#2b2f36; --bg:#14161a;
-          --okbg:#0f2a1b; --ok:#5fd39a; --badbg:#3a1614; --bad:#ff9a90;
-          --warnbg:#332a10; --warn:#f0c65a; --accbg:#161d33; --acc:#93aaff; }}
-  }}
+  :root {{ --ink:#1a1a1a; --dim:#6b7280; --line:#e5e7eb; --bg:#fff;
+          --ok:#0f7b3f; --okbg:#e7f6ec; --bad:#b42318; --badbg:#fee4e2;
+          --warn:#9a6700; --warnbg:#fff4d6; --acc:#1f4fd8; --accbg:#eef2ff; }}
   .k3 {{ color:var(--ink); background:var(--bg); line-height:1.6;
         font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; }}
   .k3 h2 {{ margin:2.2em 0 .6em; padding-bottom:.25em; border-bottom:2px solid var(--line);
@@ -373,8 +369,9 @@ Built {now} from the committed artifacts &middot; code <code>{sha}</code>.</p>
   .k3 figure img {{ max-width:100%; height:auto; display:block; border-radius:6px;
                    background:#fff; padding:.4em; }}
   .k3 figcaption {{ margin-top:.5em; }}
-  html, body {{ margin:0; padding:0; }}
-  body {{ max-width:1080px; margin:0 auto; padding:1.5rem 1.2rem 4rem; }}
+  html {{ background:var(--bg); }}
+  body {{ background:var(--bg); color:var(--ink); margin:0 auto; max-width:1080px;
+         padding:1.5rem 1.2rem 4rem; }}
 </style>
 
 <div class="k3">
