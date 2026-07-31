@@ -6,7 +6,7 @@
 </head><body>
 <h1>kappa-3way — the three-way band-entry calibration</h1>
 <p class="sub">The source of truth for the f_&kappa; / f_A / f_mix decision, measured fresh.
-Built 2026-07-31T14:48:38Z from the committed artifacts &middot; code <code>d5e3e2af</code>.</p>
+Built 2026-07-31T15:56:15Z from the committed artifacts &middot; code <code>f080e243</code>.</p>
 
 <style>
   :root { --ink:#1a1a1a; --dim:#6b7280; --line:#e5e7eb; --bg:#fff;
@@ -254,8 +254,13 @@ old-vs-new is a file diff.</p>
 
 <h2>6. Pre-registered predictions — scored</h2>
 
-<p>Frozen before any arm runs, in <code>pdv-trigger/data/bench7_gate_g0.csv</code>. A miss is
-<b>recorded as a miss</b>, never re-negotiated.</p>
+<p>Frozen in <code>pdv-trigger/data/bench7_gate_g0.csv</code> before any arm ran; scored below
+against the measured tables. <b>A miss is recorded as a miss</b>, never re-negotiated &mdash; and P1
+missed.</p>
+
+<div class="tw"><table class="wide"><thead><tr><th>#</th><th>pre-registered</th><th>measured</th><th>verdict</th></tr></thead><tbody><tr><td><b>P1</b></td><td>f_&kappa; spread &asymp; 2.9&ndash;3.8&times; (central 3.4&times;), from q &isin; [0.55, 0.70]</td><td><b>&ge;16.242&times;</b>; measured q = 0.28, 0.27, 0.32 &mdash; about <b>half</b> the assumed exponent</td><td><span class="pill bad">FALSIFIED</span></td></tr><tr><td><b>P2</b></td><td>&Mdot; rises with f_&kappa;, ratio decays along the run as E_b drains</td><td>direction confirmed and extended far past &sect;24's horizon; ratio crosses <b>below 1</b> near f_&kappa; &asymp; 7 (&sect;3)</td><td><span class="pill ok">CONFIRMED*</span></td></tr><tr><td><b>P3</b></td><td>no single f_&kappa; fires all 6 band configs; failures are CONDENSE/DRAIN</td><td>best <b>5/6 at f_&kappa; &isin; {8, 9, 12}</b>, reproducing &sect;12 exactly; firing windows do not overlap</td><td><span class="pill ok">CONFIRMED</span></td></tr><tr><td><b>P4</b></td><td>the non-monotonic fates are deterministic</td><td><b>5/5 pairs bit-identical</b>, including the pair that truncated</td><td><span class="pill ok">CONFIRMED</span></td></tr><tr><td><b>P5</b></td><td>f_mix reaches the band in-grid by fm &le; 16 on bench1 and bench2</td><td>reached in-grid on <b>all three</b> benches; &sect;18's 2.96&times; estimate measures <b>2.745&times;</b></td><td><span class="pill ok">CONFIRMED</span></td></tr><tr><td><b>G6</b></td><td>K4's overlapping f_mix doses reproduce bench6r within 2%</td><td><b>8/8</b> within 2% &mdash; the two campaigns are one measurement</td><td><span class="pill ok">PASS</span></td></tr></tbody></table><p class="note">* P2 is confirmed <i>directionally</i>. The comparison matches boosted and unboosted trajectories by nearest log-t within 0.05 dex, which is coarse where sampling is sparse; a dedicated matched-<i>t</i> harness is the follow-up.</p></div>
+
+<h3>The frozen pre-registration, for the record</h3>
 
 <div class="tw"><table>
 <thead><tr><th>#</th><th>prediction</th><th>decided by</th></tr></thead>
@@ -331,27 +336,45 @@ else your analysis will need must be added <i>before</i> the first reduce.</p>
 
 <h2>10. What the result means</h2>
 
-<p>The deliverable is the three-way table this program has been missing — per knob: band-entry dose on
-each bench, the spread, and whether it was <b>measured in-grid or extrapolated</b>. Per gate G5, both
-&Theta;<sub>cum</sub> variants and the frozen-no-root share are reported beside every band-setting
-number.</p>
+<p>The deliverable &mdash; the three-way table this program had been missing &mdash; is &sect;2.
+Per gate G5 both &Theta;<sub>cum</sub> variants and the frozen-no-root share sit beside every
+band-setting number in <code>bench7_analysis.csv</code>. The pre-registered decision tree had three
+branches; the measurement landed on the third.</p>
 
-<div class="box win">
-<p><b>f_&kappa; spread smallest, doses reachable</b> &rarr; f_&kappa; re-enters as a live candidate and
-the two-way comparison is corrected to three-way.</p>
-</div>
-<div class="box hold">
-<p><b>f_&kappa; spread smallest, doses unreachable</b> (entry beyond the condensation boundary) &rarr; a
-<b>real result, not a failure</b> — and precisely why G5 forbids publishing the uniformity number
-without the reachability number beside it.</p>
-</div>
 <div class="box stop">
-<p><b>f_&kappa; spread largest</b> &rarr; f_&kappa; closes as a calibration knob, this time on a
-<i>measured</i> basis rather than a falsified argument. The &sect;23 correction stands either way: it was
-about honesty, never about promoting f_&kappa;.</p>
-<p><b>Pre-registered terminal stop:</b> if no knob holds one constant across the band to the agreed
-factor, the single-constant program <b>stops</b> rather than being re-scoped into a fitted f(n).</p>
+<p><b>f_&kappa; has the largest spread &rarr; it closes as a single-constant calibration knob.</b>
+This time on a <i>measurement</i> &mdash; &ge;16&times;, and it does not reach the band at all on the
+two diffuse benches &mdash; rather than on the falsified El-Badry-sign argument that &sect;23 deleted.
+That correction stands either way: it was about honesty, never about promoting f_&kappa;.</p>
 </div>
+
+<div class="box hold">
+<p><b>But the mechanism axis reverses the order (&sect;3), and that is the finding that matters.</b>
+f_mix wins the calibration <i>because</i> it is a scalar on the integrated answer, unconstrained by
+the structure it is meant to represent. f_&kappa; loses the calibration while being the only knob ever
+correct on mass loading. <b>Neither ranking is publishable alone.</b></p>
+</div>
+
+<div class="box">
+<p><b>What actually follows.</b> The pre-registered TERMINAL stop &mdash; <i>if no knob holds one
+constant across the band to the agreed factor, the single-constant program stops rather than being
+re-scoped into a fitted f(n)</i> &mdash; is <b>live</b>: the best measured spread is f_mix's
+2.745&times;, and it comes from the knob with the weakest physical claim. Before invoking it, the
+cheap discriminator is the <b>f_area</b> experiment of &sect;3: 36 arms, one shared constant across
+f_&kappa; and f_A, with two falsifiable predictions. It is the one test that could satisfy both axes
+at once, and it has never been run.</p>
+</div>
+
+<h3>Still soft, and stated as such</h3>
+<ul>
+<li><b>f_A's bench1 entry is a bound, not a point</b> &mdash; (64, 74.8], so spread &le; 5.39&times;.
+    The pre-registered 74.8 is its correct upper end, so nothing published on the f_A side was
+    <i>wrong</i>; it was unconverged and stated as if converged.</li>
+<li><b><code>pl2_steep</code>'s firing-window left edge is unmeasured</b> (f_&kappa; = 5, 6, 7 all
+    truncated). The non-overlap with <code>simple_cluster</code> holds regardless, so P3 stands.</li>
+<li><b>21/294 arms truncated</b>, 12 of them diagnostic arms. Every band-entry number carries its
+    bracket's truncated count in <code>bench7_analysis.csv</code>.</li>
+</ul>
 
 <h2>11. Where things live</h2>
 

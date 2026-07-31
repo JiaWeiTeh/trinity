@@ -194,6 +194,46 @@ def panel_freshness(rows):
     )
 
 
+def panel_scored(rows):
+    """P1-P5 with their MEASURED verdicts. The P1 rows in bench7_gate_g0.csv stay PENDING on
+    purpose -- they are the frozen pre-registration -- so the scoring is done here, against the
+    measured tables, and the two are shown side by side."""
+    if not rows:
+        return ""
+    det = [r for r in rows if r.get("table") == "DETERM"]
+    g6 = [r for r in rows if r.get("table") == "G6"]
+    exps = [r for r in rows if r.get("table") == "EXPONENT" and r.get("knob") == "fkappa"]
+    qs = ", ".join(f"{float(r['entry_dose']):.2f}" for r in exps)
+    fk = [r for r in rows if r.get("table") == "ENTRY" and r.get("knob") == "fkappa"
+          and r.get("bench") == "SPREAD(max/min)"]
+    spread = fk[0]["entry_dose"] if fk else "?"
+    body = [
+        ["<b>P1</b>", "f_&kappa; spread &asymp; 2.9&ndash;3.8&times; (central 3.4&times;), from "
+         "q &isin; [0.55, 0.70]",
+         f"<b>&ge;{esc(spread)}&times;</b>; measured q = {esc(qs)} &mdash; about <b>half</b> the "
+         "assumed exponent", pill("FALSIFIED", "bad")],
+        ["<b>P2</b>", "&Mdot; rises with f_&kappa;, ratio decays along the run as E_b drains",
+         "direction confirmed and extended far past &sect;24's horizon; ratio crosses <b>below 1</b> "
+         "near f_&kappa; &asymp; 7 (&sect;3)", pill("CONFIRMED*", "ok")],
+        ["<b>P3</b>", "no single f_&kappa; fires all 6 band configs; failures are CONDENSE/DRAIN",
+         "best <b>5/6 at f_&kappa; &isin; {8, 9, 12}</b>, reproducing &sect;12 exactly; firing "
+         "windows do not overlap", pill("CONFIRMED", "ok")],
+        ["<b>P4</b>", "the non-monotonic fates are deterministic",
+         f"<b>{sum(1 for r in det if r['measured_in_grid'] == 'IDENTICAL')}/{len(det)} pairs "
+         "bit-identical</b>, including the pair that truncated", pill("CONFIRMED", "ok")],
+        ["<b>P5</b>", "f_mix reaches the band in-grid by fm &le; 16 on bench1 and bench2",
+         "reached in-grid on <b>all three</b> benches; &sect;18's 2.96&times; estimate measures "
+         "<b>2.745&times;</b>", pill("CONFIRMED", "ok")],
+        ["<b>G6</b>", "K4's overlapping f_mix doses reproduce bench6r within 2%",
+         f"<b>{sum(1 for r in g6 if r['measured_in_grid'].startswith('PASS'))}/{len(g6)}</b> within "
+         "2% &mdash; the two campaigns are one measurement", pill("PASS", "ok")],
+    ]
+    return (table(["#", "pre-registered", "measured", "verdict"], body, "wide")
+            + '<p class="note">* P2 is confirmed <i>directionally</i>. The comparison matches boosted '
+              "and unboosted trajectories by nearest log-t within 0.05 dex, which is coarse where "
+              "sampling is sparse; a dedicated matched-<i>t</i> harness is the follow-up.</p>")
+
+
 def panel_threeway(rows):
     """The deliverable: band entry per knob per bench + the uniformity spread."""
     ent = [r for r in rows if r.get("table") == "ENTRY"]
@@ -299,6 +339,7 @@ def build():
         freshness=panel_freshness(fresh),
         g0_stamp=esc(_stamp_of(PDV / "data" / "bench7_gate_g0.csv") or "not built"),
         threeway=panel_threeway(ana),
+        scored=panel_scored(ana),
         fig_entry=fig(
             "bench7_entry.png",
             "Theta_cum vs dose for f_A, f_mix and f_kappa on the three "
@@ -579,8 +620,13 @@ old-vs-new is a file diff.</p>
 
 <h2>6. Pre-registered predictions — scored</h2>
 
-<p>Frozen before any arm runs, in <code>pdv-trigger/data/bench7_gate_g0.csv</code>. A miss is
-<b>recorded as a miss</b>, never re-negotiated.</p>
+<p>Frozen in <code>pdv-trigger/data/bench7_gate_g0.csv</code> before any arm ran; scored below
+against the measured tables. <b>A miss is recorded as a miss</b>, never re-negotiated &mdash; and P1
+missed.</p>
+
+<div class="tw">{scored}</div>
+
+<h3>The frozen pre-registration, for the record</h3>
 
 <div class="tw"><table>
 <thead><tr><th>#</th><th>prediction</th><th>decided by</th></tr></thead>
@@ -656,27 +702,45 @@ else your analysis will need must be added <i>before</i> the first reduce.</p>
 
 <h2>10. What the result means</h2>
 
-<p>The deliverable is the three-way table this program has been missing — per knob: band-entry dose on
-each bench, the spread, and whether it was <b>measured in-grid or extrapolated</b>. Per gate G5, both
-&Theta;<sub>cum</sub> variants and the frozen-no-root share are reported beside every band-setting
-number.</p>
+<p>The deliverable &mdash; the three-way table this program had been missing &mdash; is &sect;2.
+Per gate G5 both &Theta;<sub>cum</sub> variants and the frozen-no-root share sit beside every
+band-setting number in <code>bench7_analysis.csv</code>. The pre-registered decision tree had three
+branches; the measurement landed on the third.</p>
 
-<div class="box win">
-<p><b>f_&kappa; spread smallest, doses reachable</b> &rarr; f_&kappa; re-enters as a live candidate and
-the two-way comparison is corrected to three-way.</p>
-</div>
-<div class="box hold">
-<p><b>f_&kappa; spread smallest, doses unreachable</b> (entry beyond the condensation boundary) &rarr; a
-<b>real result, not a failure</b> — and precisely why G5 forbids publishing the uniformity number
-without the reachability number beside it.</p>
-</div>
 <div class="box stop">
-<p><b>f_&kappa; spread largest</b> &rarr; f_&kappa; closes as a calibration knob, this time on a
-<i>measured</i> basis rather than a falsified argument. The &sect;23 correction stands either way: it was
-about honesty, never about promoting f_&kappa;.</p>
-<p><b>Pre-registered terminal stop:</b> if no knob holds one constant across the band to the agreed
-factor, the single-constant program <b>stops</b> rather than being re-scoped into a fitted f(n).</p>
+<p><b>f_&kappa; has the largest spread &rarr; it closes as a single-constant calibration knob.</b>
+This time on a <i>measurement</i> &mdash; &ge;16&times;, and it does not reach the band at all on the
+two diffuse benches &mdash; rather than on the falsified El-Badry-sign argument that &sect;23 deleted.
+That correction stands either way: it was about honesty, never about promoting f_&kappa;.</p>
 </div>
+
+<div class="box hold">
+<p><b>But the mechanism axis reverses the order (&sect;3), and that is the finding that matters.</b>
+f_mix wins the calibration <i>because</i> it is a scalar on the integrated answer, unconstrained by
+the structure it is meant to represent. f_&kappa; loses the calibration while being the only knob ever
+correct on mass loading. <b>Neither ranking is publishable alone.</b></p>
+</div>
+
+<div class="box">
+<p><b>What actually follows.</b> The pre-registered TERMINAL stop &mdash; <i>if no knob holds one
+constant across the band to the agreed factor, the single-constant program stops rather than being
+re-scoped into a fitted f(n)</i> &mdash; is <b>live</b>: the best measured spread is f_mix's
+2.745&times;, and it comes from the knob with the weakest physical claim. Before invoking it, the
+cheap discriminator is the <b>f_area</b> experiment of &sect;3: 36 arms, one shared constant across
+f_&kappa; and f_A, with two falsifiable predictions. It is the one test that could satisfy both axes
+at once, and it has never been run.</p>
+</div>
+
+<h3>Still soft, and stated as such</h3>
+<ul>
+<li><b>f_A's bench1 entry is a bound, not a point</b> &mdash; (64, 74.8], so spread &le; 5.39&times;.
+    The pre-registered 74.8 is its correct upper end, so nothing published on the f_A side was
+    <i>wrong</i>; it was unconverged and stated as if converged.</li>
+<li><b><code>pl2_steep</code>'s firing-window left edge is unmeasured</b> (f_&kappa; = 5, 6, 7 all
+    truncated). The non-overlap with <code>simple_cluster</code> holds regardless, so P3 stands.</li>
+<li><b>21/294 arms truncated</b>, 12 of them diagnostic arms. Every band-entry number carries its
+    bracket's truncated count in <code>bench7_analysis.csv</code>.</li>
+</ul>
 
 <h2>11. Where things live</h2>
 
