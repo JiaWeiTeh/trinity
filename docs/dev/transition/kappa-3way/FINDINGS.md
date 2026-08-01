@@ -104,10 +104,16 @@ Since the true Θ_cum ≥ 1.024 and the crossing can never fall below fa64:
 
 Three consequences. **(i)** The pre-registered G0 target of 74.8 is the correct **upper bound** — the
 July number was closer to the truth than today's, and G0 "failed" against a value that was never
-wrong, only unconverged. **(ii)** f_A's spread is **at most 5.39×**, still roughly double f_mix's
-2.745×, so **the ranking f_mix > f_A ≫ f_κ holds across the entire bound** and does not depend on
-finishing the arm. **(iii)** The honest published form is a bound, not a point: **f_A spread
-≤ 5.4×**.
+wrong, only unconverged. **(ii)** f_A's **Θ_cum** spread is at most 5.39×, so the *Θ_cum* ordering
+f_mix > f_A ≫ f_κ holds across the entire bound and does not depend on finishing the arm.
+**(iii)** The honest published form is a bound, not a point: **f_A Θ_cum spread ≤ 5.4×**.
+
+> ⚠️ **Superseded in part by `§11` (same day).** Consequence (ii) is a statement about **Θ_cum only**,
+> and Θ_cum turns out to be the wrong metric for ranking the knobs — TRINITY's trigger is
+> instantaneous and memoryless. On the trigger's own criterion **f_A and f_mix are tied**
+> (2.71× vs 2.64×). This whole subsection still stands as written *about Θ_cum*, and the f_κ part of
+> the ordering is unaffected; only "f_mix > f_A" does not survive the metric change. The bound
+> derivation itself is untouched.
 
 **What "truncated" precisely means, and what is still inferred.** `outcome` is copied from
 `metadata.json`'s `termination` block, which `trinity/_output/simulation_end.py` writes **only when
