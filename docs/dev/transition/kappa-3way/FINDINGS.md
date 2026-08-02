@@ -32,13 +32,14 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-07-30):** 🔵 actionable — **294/294 arms ran; the three-way table is MEASURED.**
+**Status (2026-08-02):** 🔵 actionable — **294/294 arms ran; the three-way table is MEASURED.**
 **f_κ is the worst of the three on both metrics** (it never even reaches the trigger θ = 0.95 on
-bench1) and **P1 is falsified**. ⚠️ **`§2`'s ranking of f_mix over f_A is superseded by `§11`:** on
-the instantaneous criterion the trigger actually uses, the two are **tied** (2.71× vs 2.64×) — the
-gap was an artifact of the integrated metric. `§10` (mechanism) and `§11` (metric) are the two
-sections that change what this campaign concludes; read them before quoting `§2`. G0 failed on a
-truncation artifact (`§1`, bounded in `§1a`).
+bench1) and **P1 is falsified**. ⚠️ **`§2`'s ranking of f_mix over f_A is superseded twice:** `§11`
+(instantaneous criterion → f_A/f_mix **tied**, 2.71× vs 2.64×) and then `§12` (stale-row exclusion
+→ f_mix's solved-row spread degrades to **3.70×** while f_A holds **2.71×** — **f_A is the best
+single knob on both axes**). `§10` (mechanism), `§11` (metric) and `§12` (staleness) are the three
+sections that change what this campaign concludes; read them before quoting `§2` or `§11` alone.
+G0 failed on a truncation artifact (`§1`, bounded in `§1a`). Next experiment: `F_AREA_PLAN.md`.
 
 ---
 
@@ -512,3 +513,86 @@ neither has the right mass-loading sign, which is what the `f_area` experiment i
   they currently only constrain the integrated one.
 - `data/make_bench7_analysis.py` now emits `table=TRIGGER` alongside `table=ENTRY`, so both are
   regenerated together and cannot drift apart again.
+
+---
+
+## §12. [metric] "Frozen" is three different things — one is harmless, one is bounded, and one just broke §11's tie
+
+Raised by the maintainer 2026-07-30: *"is the frozen thing doing us more harm than good?"* Answer:
+"frozen" names three distinct things in this record, and they deserve three different verdicts. The
+third one, measured fresh here, **changes a §11 conclusion**. Artifact:
+`data/bench_stale_segments.csv`, regenerated on the ALL-FRESH harvests with two new columns
+(`thetamax_row_stale`, `theta_max_solved`).
+
+### §12a. Frozen-state SCREENS (the methodology) — good as falsifiers, harmful as forecasters
+
+The record's receipt is P1: the fixed-state L_cool exponents (0.586/0.669, `§24` Q1) were carried
+into a full-run prediction and missed by ~5× in spread (3.4× predicted, ≥16× measured), because the
+integrated exponent is half the frozen one (`§3`). The same pattern is older: the 2026-06-25 frozen
+f_mix screen "bounds but does not forecast" (`runs/README.md` §9), and blowout-θ was retired for a
+2× under-read. **But the frozen screens' falsifications have all held** — P0's edge check, SC-0's
+three kills, the Eq-47 sign verification. Verdict: **keep frozen screens, scoped as falsifiers and
+sign-checks only; never quote a frozen number as a full-run calibration.** (CLAUDE.md rule 5, now
+with three independent confirmations.) The f_area plan's Phase A0 is scoped exactly this way — with
+one principled exception: the layer-invariance identity is *itself* a per-call statement, so a
+frozen state tests it in its own regime.
+
+### §12b. TRUNCATED arms (wall-clock) — harm bounded
+
+Covered in `§1`/`§1a`: the bias has a sign, the affected number became a bound, no conclusion
+depends on it. Closed.
+
+### §12c. Frozen NO-ROOT rows — real harm to Θ_cum, and one material bite on the trigger metric
+
+**What a stale row is.** On a no-root β–δ segment the solver leaves `bubble_props`/`bubble_Lloss`
+frozen at the last accepted values but keeps logging rows (`run_energy_implicit_phase.py:893/:929`).
+Offline signature: `Lcool` repeats **bit-identically**. Crucially, θ = L_loss/L_mech keeps *moving*
+on stale rows — L_mech evolves under the frozen numerator — so staleness is invisible to a
+duplicate-θ check and **can inflate θ_max when L_mech falls**.
+
+**Measured fresh (291 arms):**
+
+| quantity | fresh measurement |
+|---|---|
+| Θ_cum stale share, band-setting diag arms | **30–65%** (bench3 fa16 64.7%, bench2 fa64 61.6%, bench1 fa128 57.5%, k4 fm12 53.9%, k1 fk12 49.5%) |
+| Θ_cum stale share, all boosted diag arms | median 9.3%, max 100% |
+| Θ_cum stale share, baselines (dose 1) | median 0.0% — staleness is **dose-induced** |
+| arms whose θ_max row is itself stale | **76/291** — overwhelmingly dense benches, top-of-grid doses, and K2 band configs |
+
+**Does it change conclusions?** Recomputing every trigger band entry with **solved-only θ_max**:
+
+- 8 of 9 clean-bench entries move in the **4th decimal** — noise.
+- **One moves materially: bench1 f_mix 7.93 → 11.11.** Its fm8 bracket arm peaks on a stale row
+  (solved-max 0.927 < 0.95), so the crossing slides from the fm4–fm8 bracket to fm8–fm12.
+- **K2 fire map: 2/66 FIRED labels are stale-dependent** (`large_diffuse fk16`, `midrange fk4`
+  → NOFIRE on solved rows). Neither sits in the best-dose set {8, 9, 12}, so `§4`'s P3 (no
+  whole-band f_κ, best 5/6) is **unchanged**.
+
+> **⚠️ Supersedes `§11` in part: the f_A–f_mix "tie" does not survive stale exclusion.**
+>
+> | trigger-metric spread | stale rows counted (`§11`) | solved rows only |
+> |---|---|---|
+> | f_mix | 2.64× | **3.70×** (3.00 / 6.41 / 11.11) |
+> | f_A | 2.71× | **2.71×** (unchanged — every f_A bracket peaks on a solved row) |
+> | f_κ | never fires bench1 | never fires bench1 |
+>
+> Which convention is *right* depends on the question. The live trigger genuinely evaluates on
+> no-root segments (it reads the frozen `bubble_Lloss`), so counting stale rows answers "would the
+> code fire" — but that path is also exactly where the `§16` f_mix double-boost bug lives (`§21`
+> showed a rosette fm4 fire was bug-dependent), so the stale-row f_mix advantage is entangled with
+> a known defect. For **knob comparison**, the physics-only (solved) convention is the defensible
+> one — and under it, **f_A is the most uniform knob outright (2.71× vs 3.70×), which now agrees
+> with `§10`'s mechanism ranking.** The two axes no longer disagree about f_A vs f_mix at all.
+
+**This also effectively resolves open question Q3** (exclude stale rows vs carry an uncertainty
+band): for the *trigger* metric, exclusion is cheap, changes exactly one bracket, and is the
+physically defensible convention; for **Θ_cum** the stale share is so large (30–65%) that no
+convention rescues it as a knob-selection metric — which independently re-confirms `§11`'s
+demotion of Θ_cum to the L21b energy-budget comparison only, always with the stale share printed
+beside it.
+
+**Net verdict on "the frozen thing":** the screens are good when used as falsifiers (and the f_area
+A0 uses them that way); the truncation is bounded; the no-root staleness was doing quiet,
+measurable harm — to Θ_cum massively, and to exactly one trigger bracket, whose correction breaks
+the f_A/f_mix tie **in f_A's favour**. Follow-up: fold `theta_max_solved` into
+`make_bench7_analysis.py`'s TRIGGER table so both conventions regenerate from one builder.
