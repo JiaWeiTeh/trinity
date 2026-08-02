@@ -6,7 +6,7 @@
 </head><body>
 <h1>kappa-3way — the three-way band-entry calibration</h1>
 <p class="sub">The source of truth for the f_&kappa; / f_A / f_mix decision, measured fresh.
-Built 2026-08-01T14:39:11Z from the committed artifacts &middot; code <code>ff4af3a5</code>.</p>
+Built 2026-08-02T22:07:55Z from the committed artifacts &middot; code <code>d4b5f1b5</code>.</p>
 
 <style>
   :root { --ink:#1a1a1a; --dim:#6b7280; --line:#e5e7eb; --bg:#fff;
@@ -60,9 +60,11 @@ Built 2026-08-01T14:39:11Z from the committed artifacts &middot; code <code>ff4a
 <p><b>294/294 arms ran on 2026-07-30. The three-way table is MEASURED.</b> Headline:
 <b>f_&kappa; is the worst of the three knobs</b> on both metrics &mdash; it never even reaches the
 trigger θ = 0.95 on bench1. Prediction <b>P1 is falsified</b> (predicted 3.4&times;). ⚠️ But
-<b>f_A and f_mix are TIED</b> on the instantaneous trigger criterion (§3); the &sect;2 ranking between
-them is an artifact of the integrated metric. Full record:
-<a href="FINDINGS.md">FINDINGS.md</a>.</p>
+on the instantaneous trigger criterion (§3) f_A and f_mix first looked <b>tied</b>, and after
+excluding stale no-root rows (FINDINGS §12) <b>f_A is the best single knob on both axes</b> — the
+&sect;2 ranking between them is an artifact of the integrated metric plus solver staleness. Full
+record: <a href="FINDINGS.md">FINDINGS.md</a>. Next experiment:
+<a href="F_AREA_PLAN.md">F_AREA_PLAN.md</a>.</p>
 </div>
 
 <div class="box stop">
@@ -124,8 +126,9 @@ measured &ge;16&times;. It is <code>CLAUDE.md</code> rule 5 again: a per-call eq
 but not sufficient.</p>
 
 <p class="note">f_mix's exponent (0.46&ndash;0.56) is about <b>double</b> f_A's and f_&kappa;'s. That is
-<i>why</i> it is the most uniform knob &mdash; the uniformity ranking is a consequence of the exponent
-ranking, not an independent fact.</p>
+<i>why</i> it is the most uniform knob <i>on &Theta;<sub>cum</sub></i> &mdash; the uniformity ranking is
+a consequence of the exponent ranking, not an independent fact (and it does not survive the metric +
+staleness corrections of &sect;3).</p>
 
 <h3>The f_&kappa; fire map (K2, 66 arms) — P3 confirmed</h3>
 <p class="note">No single f_&kappa; fires all 6 band configs; best is <b>5/6 at f_&kappa; &isin;
@@ -155,18 +158,30 @@ survived the swap.</p>
 <div class="tw"><table class="wide"><thead><tr><th>knob</th><th>bench3 (n=5520)</th><th>bench2 (n=690)</th><th>bench1 (n=43)</th><th>spread — TRIGGER metric</th><th>spread — Θ_cum, for contrast</th></tr></thead><tbody><tr><td><b>fmix</b></td><td>3.004</td><td>6.413</td><td>7.933</td><td><b>2.641&times;</b></td><td>2.745&times;</td></tr><tr><td><b>fA</b></td><td>11.35</td><td>23.53</td><td>30.81</td><td><b>2.715&times;</b></td><td>&le;5.39&times;</td></tr><tr><td><b>fkappa</b></td><td>6.526</td><td>13.79</td><td><span class="pill bad">never</span></td><td><span class="pill bad">—</span></td><td>&ge;16&times;</td></tr></tbody></table></div>
 
 <div class="box stop">
-<p><b>f_A and f_mix are TIED on the criterion the code actually uses</b> — 2.71&times; vs 2.64&times;,
-a 3% difference. <b>f_A's 2&times; disadvantage in §2 is an artifact of the metric</b>, and "f_mix
-beats f_A" must not be quoted as a physical result. Note also that the absolute doses differ ~4&times;
-(f_mix 3–8, f_A 11–31) while the spreads match, so uniformity <i>cannot</i> choose between them at
-all.</p>
+<p><b>On the criterion the code actually uses, f_A and f_mix first came out TIED</b> — 2.71&times; vs
+2.64&times;, a 3% difference. <b>f_A's 2&times; disadvantage in §2 is an artifact of the metric</b>,
+and "f_mix beats f_A" must not be quoted as a physical result. Note also that the absolute doses
+differ ~4&times; (f_mix 3–8, f_A 11–31) while the spreads match.</p>
+</div>
+
+<div class="box hold">
+<p><b>Then the stale-row exclusion broke the tie — toward f_A</b> (FINDINGS §12). On no-root β–δ
+segments the solver leaves L<sub>cool</sub> frozen while L<sub>mech</sub> keeps evolving, so θ can
+drift up on rows the solver never actually solved; 76/291 arms have their θ<sub>max</sub> set on such
+a row. Recomputing θ<sub>max</sub> over <b>solved rows only</b>: f_A's entries barely move
+(spread <b>2.71&times;</b>, unchanged) but f_mix's bench1 entry slides 7.93&nbsp;&rarr;&nbsp;11.11
+(fm=8's solved-row max is 0.927&nbsp;&lt;&nbsp;0.95), degrading its spread
+2.64&nbsp;&rarr;&nbsp;<b>3.70&times;</b>. <b>f_A is now the most uniform knob outright — and it
+agrees with §4's mechanism ranking</b> (f_A is in-solve; f_mix is a scalar on the answer).</p>
 </div>
 
 <p class="note"><b>f_κ loses on both metrics, and worse on this one</b> — it never reaches θ = 0.95 on
 bench1 at any dose ≤ 32. §2's closure of f_κ is strengthened, not weakened. This metric is also far
 less exposed to §1's truncation problem: θ<sub>max</sub> is a maximum over whatever ran, and the f_A
 and f_mix trigger tracks contain <b>zero</b> truncated arms. Full treatment:
-<a href="FINDINGS.md">FINDINGS §11</a>.</p>
+<a href="FINDINGS.md">FINDINGS §11–§12</a>; per-arm columns
+(<code>thetamax_row_stale</code>, <code>theta_max_solved</code>) in
+<code>pdv-trigger/data/bench_stale_segments.csv</code>.</p>
 
 <h2>4. The mechanism check — none of the three is the wrinkled-interface knob</h2>
 
@@ -206,12 +221,15 @@ is unconstrained by the physics it represents</b>. Reporting either ranking alon
 see <a href="FINDINGS.md">FINDINGS §10</a>.</p>
 
 <div class="box">
-<p><b>The experiment this implies (36 arms, ~12% of this campaign).</b> An <b>f_area</b> knob applying
-f_&kappa; and f_A <i>simultaneously with one shared constant</i>: f_&kappa; carries the
-conduction + evaporation channel, f_A the radiative one. Predictions from the measured single-knob
-exponents — Ṁ stays rising (net ≈ f<sup>+0.23</sup>) instead of crossing below 1 near f &asymp; 7, and
-the Θ<sub>cum</sub> exponent exceeds either alone. <b>0 of 174 arms set more than one knob</b>, so this
-is entirely unmeasured — single-knob was enforced by construction for clean attribution.</p>
+<p><b>The experiment this implies is now fully designed: <a href="F_AREA_PLAN.md">F_AREA_PLAN.md</a>.</b>
+An <b>f_area</b> knob applying f_&kappa; and f_A <i>simultaneously with one shared constant</i> —
+which in the thin-layer limit is the <i>exact</i> 1-D representation of multiplying interface area
+by f (the layer's T-profile is invariant while every flux, Ṁ included, scales by exactly f).
+Pre-registered predictions: band entries &asymp; 3.6/5.0/7.3 with spread &asymp; 2.1&times;, and
+<b>Ṁ rising with dose</b> — the unique area signature no shipped knob shows. <b>0 of 174 arms set
+more than one knob</b>, so this is entirely unmeasured — single-knob was enforced by construction
+for clean attribution. Design: offline screen (A0, free) then one 514-arm <code>bench8</code>
+submission (fine 24-dose ladder + matched-dose single-knob margins + band configs).</p>
 </div>
 
 <h2>5. What happened — why the old numbers were not trusted</h2>
@@ -390,11 +408,12 @@ correct on mass loading. <b>Neither ranking is publishable alone.</b></p>
 <div class="box">
 <p><b>What actually follows.</b> The pre-registered TERMINAL stop &mdash; <i>if no knob holds one
 constant across the band to the agreed factor, the single-constant program stops rather than being
-re-scoped into a fitted f(n)</i> &mdash; is <b>live</b>: the best measured spread is f_mix's
-2.745&times;, and it comes from the knob with the weakest physical claim. Before invoking it, the
-cheap discriminator is the <b>f_area</b> experiment of &sect;3: 36 arms, one shared constant across
-f_&kappa; and f_A, with two falsifiable predictions. It is the one test that could satisfy both axes
-at once, and it has never been run.</p>
+re-scoped into a fitted f(n)</i> &mdash; is <b>live</b>: the best measured spread is f_A's
+2.71&times; (solved rows, &sect;3), from a knob whose mechanism sign is wrong on Ṁ. Before invoking
+it, the discriminator is the <b>f_area</b> experiment of &sect;4 — one shared constant across
+f_&kappa; and f_A, pre-registered in <a href="F_AREA_PLAN.md">F_AREA_PLAN.md</a> with falsifiable
+predictions and a TERMINAL clause of its own. It is the one test that could satisfy both axes at
+once, and it has never been run.</p>
 </div>
 
 <h3>Still soft, and stated as such</h3>

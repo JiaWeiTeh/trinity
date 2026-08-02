@@ -58,7 +58,9 @@ Emit gates (G1 — the builder self-checks; a failing gate aborts the emit BEFOR
   2. the exact L21b mapping holds for every bench: rCloud from the post-SF gas mass matches R_cl to
      <2% (2%, not 1%, for Table-1's own 2.5-pc rounding — see make_bench5_params.py);
   3. end-to-end `read_param` load-check on every emitted file (parses, resolves, no validator
-     raises — this is what catches a cross-knob/double-boost combination);
+     raises — NOTE this cannot catch a cross-knob/double-boost combination: the only cross-knob
+     guard, `_validate_cooling_boost_fA`, warns and never raises. Single-knob is enforced by
+     `test/test_bench7_params.py` instead);
   4. the emitted count matches the per-phase arithmetic above.
 
 Submit / reduce / download (tooling already committed; the reduce is ONE-SHOT — it declares
