@@ -32,7 +32,12 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-07-29):** 🔵 ACTIVE — method + gates for the `bugfix/code-audit` review of `trinity/` (72 files, 26,359 lines).
+**Status (2026-07-30):** 🔵 ACTIVE — method + gates for the `bugfix/code-audit` review of
+`trinity/` (72 files, 26,359 lines). Phases 0–2 complete and machine-verified (8/8 artifacts;
+partition asserted; 63/63 lens + reconciler reports). Phase 3 at 5/9 sweeps with ①②⑦⑨ in
+flight. Phases 4–7 not started. **Do not trust this line — run
+`harness/check_completeness.py`**, which is authoritative and was written after this line
+said something false.
 
 ## Why this audit exists and what it is designed against
 
@@ -160,11 +165,67 @@ physically plausible parameter values throughout.
 8. **Finders are read-only.** All source changes are applied by the orchestrator, after the gate.
 9. **Off-limits to everyone:** `old_doNotRead/`, `outputs/`, `scratch/`, `tbd/`, `fig/`.
 
+## Completion is checked, not asserted
+
+**Run `python docs/dev/code-audit/harness/check_completeness.py` before claiming any phase
+is done, and again before declaring the audit finished.** Exit status 0 is the only thing
+entitled to say a phase is complete. Never conclude "done" from a directory listing.
+
+This rule exists because it was broken. On 2026-07-30 Phase 3 was reported complete and the
+audit was about to advance to Phase 4 — with **5 of its 9 sweeps** written. The five that
+existed were real and thorough, the listing looked substantial, and the four absent ones
+(units, signs/factors/exponents, table bounds, numerical hygiene) were simply not noticed.
+Sweep ① is the repo's *declared* recurring bug class; skipping it would have carried a
+known hole straight into the verification gate.
+
+The checker enumerates every phase's required artifacts, asserts the slice partition, and
+prints what is missing. When a phase gains a deliverable, **add it to `PHASES` first** so
+the checklist can never lag the plan. A phase with no file-based artifact still gets an
+entry with an explicit check (Phase 1 asserts the partition).
+
+## Phases revise each other — the audit is not append-only
+
+Each phase sees things earlier phases could not, so **later evidence must be pushed back
+onto earlier conclusions.** A finding is a live claim with a current state, never a fact
+fixed at the moment it was written. Three obligations, on every phase:
+
+1. **On entry, re-open.** Before generating anything new, collect the open questions and
+   `low`/`medium`-confidence findings from prior phases that *this* phase's evidence can now
+   settle, and settle them. Every reconciler ends with a named "open questions" section
+   phrased as one-step lookups precisely so a later phase can consume it as a worklist.
+2. **Record every revision, in both directions.** `data/resolutions.md` is the register:
+   the original claim, the lookup, the verdict, and the severity change. **Downgrades and
+   withdrawals are recorded as prominently as upgrades** — an audit that only ratchets
+   upward is measuring its own enthusiasm. Precedent from Phase 2: `S9-R-01` (Lens A's
+   inference refuted, code cleared), `S12b-B-01` (S2→S3, comment-only), `S13a-B-05`
+   (withdrawn — interval notation misread as a Python list literal), `S12a-R-01` (S1
+   upheld, medium→high). A prose-only lens reliably yields *true observations with
+   over-severe ratings*, because from the prose side a doc defect and a code defect are
+   indistinguishable; every B-only claim therefore needs a lookup before it reaches
+   `FINDINGS.md`.
+3. **Chase clearances too.** Verifying a suspected defect *away* is a result, and it is
+   cheap insurance against a future session re-chasing it. It also finds things: the
+   `S13b-R-02` lookup cleared the hypothesised 1.85 dex `ZREL` error and, in passing,
+   exposed a real `--z-override` validator bypass that no lens was scoped to see.
+
+**Assumptions are provisional until pinned.** Where a phase reasons from an unverified
+premise, it must say so and name the lookup that would settle it. Two Phase-2 examples of
+premises that failed: "no channel distinguishes solver failure from physical fate" (false —
+every phase runner checks `sol.status`; the claim was true only inside one slice and got
+generalised), and "nothing changes numbers on a nominal run of a *tracked* config" (sound
+generally, circular for the parameter reader, whose whole job is untracked configs).
+Agreement between lenses is **not** verification — all three can share a wrong premise.
+
 ## Deliverables
 
 `README.md` (verdict) · `FINDINGS.md` (ranked S1→S4, each with repro + fix outline) ·
 `UNVERIFIED.md` (demoted candidates) · `slices/*.md` (raw per-agent reports) ·
-`harness/` · `data/` · new `pytest` cases for every confirmed S1/S2, failing first.
+`data/resolutions.md` (the revision register) · `harness/` · `data/` · new `pytest` cases
+for every confirmed S1/S2, failing first.
+
+**Final gate.** The audit is done when `check_completeness.py` exits 0, `pytest` is green,
+and every finding in `FINDINGS.md` carries its current (post-revision) severity — not the
+one it was born with.
 
 Fixes are staged **separately** from the audit, by severity, on maintainer approval. Anything
 touching a solver, residual or hot loop goes through the CLAUDE.md rule-5 ladder: gate defined

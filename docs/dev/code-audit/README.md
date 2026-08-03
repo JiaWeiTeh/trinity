@@ -32,7 +32,14 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-07-29):** 🔵 ACTIVE — audit in progress on `bugfix/code-audit`; Phase 0 complete, findings not yet consolidated.
+**Status (2026-07-30):** 🔵 ACTIVE — audit in progress on `bugfix/code-audit`. Phases 0–2
+complete (ground truth, slice partition, blind-lens triangulation over all 17 slices);
+Phase 3 partial; Phases 4–7 not started; findings not yet consolidated.
+
+**Ask the checker, not this line:** `python docs/dev/code-audit/harness/check_completeness.py`
+prints per-phase completion and exits non-zero while anything is missing. It is the only
+authority on what is done — status prose in these docs goes stale, and once did so in the
+direction that matters (Phase 3 was called complete at 5/9 sweeps).
 
 Entry point for the full correctness audit of the `trinity/` package (72 files, 26,359 lines)
 requested on `bugfix/code-audit`: no sloppiness, wrong physics, wrong logic, misinterpreted
@@ -60,6 +67,12 @@ python docs/dev/code-audit/harness/strip_comments.py trinity <outdir>
 
 # The closed checklist: every prose claim, numeric literal, guard, and param
 python docs/dev/code-audit/harness/extract_claims.py trinity docs/dev/code-audit/data
+
+# Per-slice Lens A/B/C inputs (stripped code, prose-only, signatures-only)
+python docs/dev/code-audit/harness/slices.py <outdir>
+
+# Which phases are actually complete — exits 0 only when all are
+python docs/dev/code-audit/harness/check_completeness.py
 ```
 
 ## Data
