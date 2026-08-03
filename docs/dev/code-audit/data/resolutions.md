@@ -333,7 +333,8 @@ is silently omitted. S1 confirmed, and worse than "census undercount".
 
 - `y_index=2` under the 2-component momentum state (from Q14). One lookup.
 - Q8's `COOLING_PHASE_KEYS` tail beyond the first 20 entries.
-- R-01's classification-by-list-index sibling, which Q1/Q2 did not reach.
+- ~~R-01's classification-by-list-index sibling, which Q1/Q2 did not reach.~~
+  **CLOSED 2026-07-30 by Phase-3 sweep ⑨ (NUM-02)** — see below. Confirmed S1.
 
 ---
 
@@ -615,3 +616,91 @@ trinity._analysis.check_yesno` works for any user — so the reconciler's logic
 defects inside it (chiefly R-01, the ram-pressure/narrative mismatch) still
 matter for anyone who runs it. Per CLAUDE.md rule 3, flagged for the
 maintainer, not removed.
+
+---
+
+## NUM-01 supersedes S13a-A's `np.isclose` crossover → **earlier number was wrong by 1000x**
+
+**The conflict.** S13a Lens A reported `trinity_reader.py:721`'s
+`np.isclose(times, t, rtol=1e-10)` as leaving the intended relative tolerance
+"inert for all t < 0.1 Myr". Phase-3 sweep ⑨ (NUM-01) reported the same line as
+inert for **t < 100 Myr**. Same line, same quantity, two different numbers —
+the highest-value kind of disagreement, since one of them is arithmetic.
+
+**Arithmetic.** `np.isclose` tests `|a-b| <= atol + rtol*|b|`. `rtol` overtakes
+the defaulted `atol=1e-8` when `rtol*t > atol`, i.e. `t > atol/rtol =`
+**100 Myr**. Sweep ⑨ is right; Lens A's 0.1 Myr is wrong, and wrong in the
+*reassuring* direction — it implied the tolerance works for most of a run.
+
+**Consequence, corrected.** `stop_t` defaults to 15 Myr and no tracked config
+exceeds it, so `rtol=1e-10` **never binds on any run this code performs**. The
+operative tolerance is a flat absolute window of `1e-8` Myr at every time.
+
+One further correction, to sweep ⑨'s own characterisation: it called this "a
+flat 10-year window". `1e-8 Myr = 1e-2 yr` — about **3.7 days**, not 10 years,
+off by 1000x. The direction of the finding is unaffected: `rtol` is inert and
+`atol` governs everywhere. Recording both corrections because a wrong magnitude
+in a resolution is exactly what the next session would build on.
+
+---
+
+## NUM-02 closes S11's last open item → **CONFIRMED S1**
+
+**What it closes.** The S11 "remaining open" list carried *"R-01's
+classification-by-list-index sibling, which Q1/Q2 did not reach."* Phase-3
+sweep ⑨ reached it independently and demonstrated it.
+
+**Verified at source, every link:**
+
+- `trinity/phase_general/phase_events.py:392` — `for i, (t_ev, y_ev) in
+  enumerate(zip(sol.t_events, sol.y_events)):` returns on the **first index**
+  with a non-empty event list. `event.terminal` is never consulted;
+  `is_simulation_ending` is read off whichever event that index happens to be.
+- `phase_events.py:487-491` — the implicit-phase list is built in this order:
+  `[make_velocity_sign_event(), make_min_radius_event(min_r),
+  make_velocity_runaway_event(...)]`, with `max_radius` appended fourth. So
+  **`velocity_sign` is index 0** — and `:463` documents it as *"v2 crosses zero
+  (monitoring, non-terminal)"*, while `min_radius`, `velocity_runaway` and
+  `max_radius` at indices 1-3 are all simulation-ending.
+- `run_energy_implicit_phase.py:1096` — the runner `break`s on
+  `event_result.triggered` regardless of `is_simulation_ending`.
+
+**Consequence.** Whenever `velocity_sign` has fired *and* a terminal event has
+also fired in the same `solve_ivp` call, the non-terminal monitoring event at
+index 0 is reported, `is_simulation_ending=False`, and the terminal event is
+discarded — while the runner stops anyway. Sweep ⑨ demonstrated it standalone
+on scipy 1.17.1: a terminal `min_radius` genuinely stopped the solve at
+`R2=1.5` pc, but the loop reported `velocity_sign` at t=0.25 with the state
+rewound to `R2=3.125`, `EndSimulationDirectly`/`isCollapse` unset, and the run
+continuing into phase 1c. The collapse detector at `:1301-1303` sits *after*
+the break and is unreachable for the case it was written for.
+
+**S1 confirmed.** This is the third member of the family this audit keeps
+finding: the fate is computed correctly and then destroyed by the encoding
+around it (cf. the `isCollapse` mis-classification reaching
+`paper/_lib/plot_markers.py`, and S13a's six-way termination narrowing).
+
+---
+
+## Severity inconsistency: SIGN-01 vs S12a-R-01 → **for the Phase-5 gate, not resolved here**
+
+Phase-3 sweep ② rated **SIGN-01** (`gamma_adia` honoured by `bubble_E2P` and
+`get_leak_luminosity`, hardcoded `5/3` through `get_r1`, the Rahner-A12 pair
+and the Weaver structure chain; 67% pressure imbalance at the contact
+discontinuity at γ=1.4) as **S2**.
+
+`gamma_adia` is user-settable: `default.param:251` (`gamma_adia    5/3`),
+`registry.py:376`. So the finding has *exactly* the shape the S12a reconciler
+used to justify promoting `mu_*` to **S1**, a call this file upheld above: *a
+user value is accepted by the schema, warns nothing, and a different value
+silently drives the physics.* Both are inert at their defaults (γ=5/3 equals
+the hardcode; derived `mu_*` equals the declared value) and both bite only when
+a user sets them.
+
+The two ratings cannot both be right. This is a **rubric-boundary question**,
+not a facts question — does "a user can set it, but no tracked config does"
+read as S1 (results-wrong for that user) or S2 (unreachable in current
+configs)? Deliberately **not** settled unilaterally here: it re-rates findings
+across two phases and belongs at the Phase-5 gate, applied to both at once.
+Whichever way it goes, `gamma_adia` and `mu_*` must end up with the same
+severity, and `FINDINGS.md` must not ship with them split.
