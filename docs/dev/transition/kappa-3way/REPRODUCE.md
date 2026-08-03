@@ -32,8 +32,10 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-07-30):** ✅ all rows runnable — the 294 arms ran, reduced and landed; row 10's
-`make_bench7_analysis.py` is written and is the three-way deliverable.
+**Status (2026-08-03):** ✅ all rows runnable — the 294 arms ran, reduced and landed; row 10's
+`make_bench7_analysis.py` is written and is the three-way deliverable. Row 11 (new) is the f_area
+Phase A0 screen, which ran 2026-08-03 and **failed its gate GA0**, so the 514-arm bench8 campaign it
+gated was never submitted and has no rows here.
 
 ---
 
@@ -52,12 +54,14 @@ All commands run **from the repo root**. Cost: 🟢 seconds (reads committed CSV
 | 8 | **K1–K4 — the f_κ campaign** (54 + 20 + 66 + 10 + 24) | `./sync_bench.sh bench7 submit` → `reduce` → `down` | `runs/data/bench7_{summary,hashes}.csv` + `bench7_traj/` (174) | 🔴 | ✅ ran 2026-07-30 |
 | 9 | **The re-derivation from fresh data** — each builder prints and records a `SOURCES READ:` line | `python .../make_bench5_analysis.py`; `.../make_bench6_analysis.py`; `.../make_bench7_gate_g0.py` | regenerated `bench5_analysis.csv`, `bench6_analysis.csv`, `bench7_gate_g0.csv` | 🟢 | ✅ |
 | 10 | **The three-way band-entry table** — the deliverable | `python .../data/make_bench7_analysis.py` | `pdv-trigger/data/bench7_analysis.csv` (234 rows: ARMS/ENTRY/EXPONENT/FIREMAP/DETERM/G6/BACKREACT) + `bench7_entry.png` | 🟢 | ✅ **the deliverable** |
+| 11 | **f_area Phase A0 — the pre-registered offline screen of the combined knob** (`F_AREA_PLAN §5`/`§5a`): 30 production solves at the two committed captured states, f ∈ {1,2,4,8,16} × {κ-only, fA-only, combined}, scoring A0.1–A0.5 | `python docs/dev/transition/pdv-trigger/data/make_farea_screen.py` | `pdv-trigger/data/farea_screen.csv` (30 CALL rows + the CHECK scorecard) + `pdv-trigger/farea_screen.png` | 🟡 ~40 s | ❌ **GA0 FAILED** — `FINDINGS §13`; bench8 not submitted |
 
 ## Rebuild everything runnable today, in one block
 
 ```bash
 python docs/dev/transition/pdv-trigger/runs/make_kappa_reopen_params.py
 python docs/dev/transition/pdv-trigger/data/make_bench7_gate_g0.py
+python docs/dev/transition/pdv-trigger/data/make_farea_screen.py
 python docs/dev/transition/pdv-trigger/data/make_freshness_audit.py
 python docs/dev/transition/kappa-3way/make_report.py
 pytest test/test_bench7_params.py

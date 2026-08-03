@@ -47,7 +47,7 @@ deleted by the maintainer (`9459234a`, 2026-07-06).
 |---|---|---|:---:|
 | `roadmap/` | 🔵 ACTIVE — repo-wide execution queue + solver audit (F1 ✅ fixed; B/C lanes open) + REORG hand-off spec | `README.md` | 2026-07-06 |
 | `test-suite/` | 🔵 ACTIVE — test-suite remediation plan (2026-07-06 four-slice audit @ `70f07532`) | `PLAN.md` | 2026-07-06 |
-| `transition/kappa-3way/` | 🔵 ACTIVE — the three-way f_κ/f_A/f_mix band-entry calibration, measured fresh (cutoff 2026-07-29); 294 arms designed + gated, **not run** | `report.html` | 2026-07-29 |
+| `transition/kappa-3way/` | 🔵 ACTIVE — the three-way f_κ/f_A/f_mix band-entry calibration, measured fresh (cutoff 2026-07-29); **294/294 arms ran 2026-07-30 and the table is measured**; the f_area successor's offline screen ran 2026-08-03 and failed gate GA0, so bench8 was never submitted | `report.html` | 2026-08-03 |
 | `transition/pdv-trigger/` | ⚠️ DEMOTED 2026-07-29 — "could be true, verify before use". History, physics reasoning, literature imprints and HPC tooling stay live; measured values are VERIFY until re-run | `INDEX.md` | 2026-07-29 |
 | `transition/cleanroom/` | ✅ concluded — "transition is geometric, not thermal" (live evidence for pdv-trigger) | `FINDINGS.md` | 2026-07-06 |
 | `transition/pt4/` | ✅ concluded audits (H1–H5 + R1 shadow) — feed pdv-trigger | `README.md` | 2026-07-06 |

@@ -33,7 +33,10 @@ def git(*args):
 
 
 def last_commit(relpath):
-    out = git("log", "-1", "--follow", "--format=%as %h", "--", relpath)
+    # %h auto-scales its abbreviation with the repo's object count, so a fresh or shallower clone
+    # renders every SHA one character shorter and the regenerated manifest diffs on all ~1200 rows.
+    # -c core.abbrev=8 pins it, so a regeneration only shows the artifacts that actually moved.
+    out = git("-c", "core.abbrev=8", "log", "-1", "--follow", "--format=%as %h", "--", relpath)
     return out.split() if out else (None, None)
 
 

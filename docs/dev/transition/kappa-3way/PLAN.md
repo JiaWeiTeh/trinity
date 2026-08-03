@@ -32,9 +32,16 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-07-30):** 🟡 campaign COMPLETE — 294/294 arms ran and are reduced. Results in
-`FINDINGS.md`; §5's analysis plan is executed. G0 **failed 2/11** (wall-clock truncation, §1 there).
-Remaining work is §9 of `FINDINGS.md`, chiefly re-running the 21 truncated arms with more walltime.
+**Status (2026-08-03):** 🟡 campaign COMPLETE — 294/294 arms ran and are reduced. Results in
+`FINDINGS.md`; §5's analysis plan is executed and `make_bench7_analysis.py` is written. G0 **failed
+2/11** (truncation, §1 there — mechanism *inferred*, not verified). ⚠️ **Corrected 2026-08-03:** the
+old status line called for "re-running the 21 truncated arms with more walltime" — `FINDINGS §1a`
+and §9 item 1 say the opposite and are the current rule. **1:30:00 is the partition cap, so no
+more-walltime option exists**, the truncation bias has a known sign (§1a bounds f_A's bench1 entry
+to (64, 74.8] without re-running), and the code is deterministic (P4, 5/5 bit-identical), so a
+re-run only pays if the arms were wall-killed AND array contention was the binding difference —
+read `.exit_code` first. Successor experiment: `F_AREA_PLAN.md` — **its Phase A0 ran 2026-08-03 and
+GA0 failed, so bench8 was never submitted** (`FINDINGS §13`).
 
 ---
 
@@ -333,16 +340,20 @@ and it applies here unchanged.
 
 ## 7. STATE OF PLAY
 
+*(Refreshed 2026-08-03 — the last three rows still read NOT RUN / not written / every cell a
+prediction, which `FINDINGS §1`–`§12` had already superseded. They are measured.)*
+
 | item | state |
 |---|---|
 | K0 offline re-read | ✅ done (VERIFY tier — pre-cutoff) |
 | Campaign design + pre-registration | ✅ frozen |
-| G0 (baseline reproduction, pre-run) | ✅ 11/11 |
+| G0 (baseline reproduction) | ✅ 11/11 pre-run · ❌ **2/11 against the fresh arms** — truncation artifact, bounded (`FINDINGS §1`/`§1a`) |
 | G1 (param emit) | ✅ 4/4 — 174 params committed |
 | Freshness plumbing + audit | ✅ committed |
 | This workstream's docs + `report.html` | ✅ committed |
-| **294 arms** | 🔴 **NOT RUN** — needs `ssh helix` |
-| `make_bench7_analysis.py` | 🔴 not written (deliberately — shape depends on the reduce) |
-| The three-way table | 🔴 **every cell is a prediction** |
+| **294 arms** | ✅ **ran 2026-07-30**, reduced and downloaded (21 truncated, all listed — G3) |
+| `make_bench7_analysis.py` | ✅ written — `data/bench7_analysis.csv` (ARMS/ENTRY/TRIGGER/EXPONENT/FIREMAP/DETERM/G6/BACKREACT) |
+| The three-way table | ✅ **measured** (`FINDINGS §2`, `§11c`, `§12c`): f_κ worst on both metrics; f_A the best single knob on solved rows |
+| Successor: f_area (`F_AREA_PLAN.md`) | ⛔ **Phase A0 ran 2026-08-03, GA0 FAILED** — bench8 (514 arms) not submitted, no params emitted (`FINDINGS §13`) |
 
 **Production is untouched.** Default remains `cooling_boost_mode='none'`, f_κ = 1.0, f_A = 1.0.

@@ -454,8 +454,9 @@ trigger θ = 0.95 on bench1. Prediction <b>P1 is falsified</b> (predicted 3.4&ti
 on the instantaneous trigger criterion (§3) f_A and f_mix first looked <b>tied</b>, and after
 excluding stale no-root rows (FINDINGS §12) <b>f_A is the best single knob on both axes</b> — the
 &sect;2 ranking between them is an artifact of the integrated metric plus solver staleness. Full
-record: <a href="FINDINGS.md">FINDINGS.md</a>. Next experiment:
-<a href="F_AREA_PLAN.md">F_AREA_PLAN.md</a>.</p>
+record: <a href="FINDINGS.md">FINDINGS.md</a>. Successor experiment:
+<a href="F_AREA_PLAN.md">F_AREA_PLAN.md</a> &mdash; <b>its offline screen ran 2026-08-03 and FAILED
+gate GA0</b>, so the 514-arm bench8 campaign was never submitted (FINDINGS §13).</p>
 </div>
 
 <div class="box stop">
@@ -621,6 +622,22 @@ Pre-registered predictions: band entries &asymp; 3.6/5.0/7.3 with spread &asymp;
 more than one knob</b>, so this is entirely unmeasured — single-knob was enforced by construction
 for clean attribution. Design: offline screen (A0, free) then one 514-arm <code>bench8</code>
 submission (fine 24-dose ladder + matched-dose single-knob margins + band configs).</p>
+</div>
+
+<div class="box stop">
+<p><b>&#9940; MEASURED 2026-08-03 &mdash; the f_area construction is REFUTED at the screen, and
+bench8 was never submitted.</b> Phase A0 ran the production solve at two captured states over
+f &isin; {{1,2,4,8,16}} &times; {{&kappa;-only, f_A-only, combined}} and scored the five pre-registered
+checks: <b>A0.1 5/8 · A0.2 0/8 · A0.3 0/8 · A0.4 2/2 ✅ · A0.5 0/8</b> &rarr; <b>GA0 FAILED</b>
+(<code>data/farea_screen.csv</code>, <code>farea_screen.png</code>). One measurement explains it:
+TRINITY's Ṁ is the <b>Weaver v(R1)=0 eigenvalue</b> and tracks <b>f<sup>2/7</sup></b> (fitted
+q = 0.279–0.285) &mdash; not the f<sup>1</sup> that area multiplication requires &mdash; and f_A
+never reaches it (per-call q = &minus;0.001). So the Eq-44 front anchor
+dR<sub>2</sub> &prop; f_&kappa;/Ṁ <b>thickens as f<sup>5/7</sup></b> (7.3&times; at f = 16) instead
+of standing still, and the layer cannot stay invariant. The identity holds for a layer whose
+evaporative flux is set <i>locally</i>; TRINITY's is set by a <i>global</i> boundary condition.
+<b>The pre-registered PA1–PA6 are NOT SCORED</b> &mdash; they are full-run predictions and no arm
+ran. Details: <a href="F_AREA_PLAN.md">F_AREA_PLAN §5a</a>, <a href="FINDINGS.md">FINDINGS §13</a>.</p>
 </div>
 
 <h2>5. What happened — why the old numbers were not trusted</h2>
@@ -800,11 +817,16 @@ correct on mass loading. <b>Neither ranking is publishable alone.</b></p>
 <p><b>What actually follows.</b> The pre-registered TERMINAL stop &mdash; <i>if no knob holds one
 constant across the band to the agreed factor, the single-constant program stops rather than being
 re-scoped into a fitted f(n)</i> &mdash; is <b>live</b>: the best measured spread is f_A's
-2.71&times; (solved rows, &sect;3), from a knob whose mechanism sign is wrong on Ṁ. Before invoking
-it, the discriminator is the <b>f_area</b> experiment of &sect;4 — one shared constant across
-f_&kappa; and f_A, pre-registered in <a href="F_AREA_PLAN.md">F_AREA_PLAN.md</a> with falsifiable
-predictions and a TERMINAL clause of its own. It is the one test that could satisfy both axes at
-once, and it has never been run.</p>
+2.71&times; (solved rows, &sect;3), from a knob whose mechanism sign is wrong on Ṁ. The discriminator
+was the <b>f_area</b> experiment of &sect;4 — one shared constant across f_&kappa; and f_A,
+pre-registered in <a href="F_AREA_PLAN.md">F_AREA_PLAN.md</a> with falsifiable predictions and a
+TERMINAL clause of its own. It was the one test that could satisfy both axes at once, and
+<b>2026-08-03 its free offline screen refuted it</b> (GA0 failed; box in &sect;4): the combined knob
+reproduces f_&kappa; alone on Ṁ, so no shipped-knob combination is area-faithful and the zero-code
+route is closed. f_area's own TERMINAL clause is <i>not</i> triggered (it is defined on the full-run
+reads PA1/PA3, which never ran); the parent single-constant TERMINAL stop above is what remains
+live, alongside one SC-1 proposal — carry the area factor on the evaporative flux itself, which
+needs a derived truncation scale first.</p>
 </div>
 
 <h3>Still soft, and stated as such</h3>

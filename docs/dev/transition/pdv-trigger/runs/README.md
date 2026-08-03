@@ -28,21 +28,20 @@
 > `--traj-bundle` flags, and why `down` fetches 3 files instead of 514 are in the `sync_bench.sh`
 > header and [`../../kappa-3way/F_AREA_PLAN.md`](../../kappa-3way/F_AREA_PLAN.md) §9a; the
 > arithmetic is pinned by `test/test_bench_derived.py`. bench5–bench7 are unaffected.
+> ⛔ **bench8 was never submitted (2026-08-03):** its gate, the f_area Phase A0 offline screen,
+> **failed** (`../../kappa-3way/FINDINGS.md §13`), so no `params/bench8/`, no `make_farea_params.py`,
+> no `test_bench8_params.py`. The machinery above is campaign-agnostic and stays.
 >
-> **bench7 status (2026-07-29):** its **174 params are generated and committed** in `params/bench7/`
-> (`python make_kappa_reopen_params.py`, self-gating; pinned by `test/test_bench7_params.py`), and gates
-> G0/G1 are cleared (`FINDINGS §25`). **No arm has been run.** All five K-phases live in that one directory
-> and differ only by prefix — `k1_` 54, `k1b_` 20, `k2_` 66, `k3_` 10, `k4_` 24 — so it is one submit, one
-> reduce, one download. Before `submit`, check `F_MIX_K4` in the builder: the K4 phase rests on a *read* of
-> the `KAPPA_REOPEN_PLAN §6.0(c)` ruling, not a confirmed one.
->
-> **⚠️ bench7 does NOT run alone (ALL-FRESH ruling, 2026-07-29 — `FINDINGS §26`).** The maintainer requires
-> every number the conclusions rest on to be measured today, so the baselines are re-run too:
-> `./sync_bench.sh bench5r submit` and `bench6r submit` re-run bench5's and bench6's committed params under
-> **fresh landing names**, leaving the 2026-07-19 harvests untouched for comparison. 294 arms in total.
-> Every artifact is stamped with its UTC generation moment — including, as of this ruling, the per-arm
-> trajectory CSVs and `<campaign>_hashes.csv` — and `data/make_freshness_audit.py` reports what is fresh.
-> **The full run order is `../KAPPA_REOPEN_PLAN.md §6.2`; follow it there.**
+> **bench7 + bench5r/bench6r — ✅ 294/294 arms RAN 2026-07-30** (updated 2026-08-03; this block used
+> to say "No arm has been run"). bench7's 174 params are committed in `params/bench7/`
+> (`make_kappa_reopen_params.py`, self-gating, pinned by `test/test_bench7_params.py`); all five
+> K-phases share that directory and differ only by prefix (`k1_` 54, `k1b_` 20, `k2_` 66, `k3_` 10,
+> `k4_` 24), so it was one submit/reduce/download. Under the ALL-FRESH ruling (`FINDINGS §26`) the
+> baselines were re-run alongside as `bench5r`/`bench6r` under fresh landing names, leaving the
+> 2026-07-19 harvests intact. Results: `../../kappa-3way/FINDINGS.md`. ⚠️ 21 arms truncated (7.1%),
+> all listed in `../data/bench7_analysis.csv`; per `kappa-3way/FINDINGS §1a` they are **not** to be
+> re-run for more walltime — 1:30:00 is the partition cap, the bias has a known sign, and the one
+> affected number is published as a bound.
 
 > ⚠️ **This document may be out of date — verify before trusting it.** It is a
 > point-in-time analysis/audit, not a maintained spec; the code moves faster

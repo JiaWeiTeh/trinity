@@ -32,18 +32,30 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-02):** 🔵 actionable — physics derived, code path verified (zero `trinity/`
-changes needed for the experiment), predictions pre-registered from fresh data, campaign designed
-(**A0 offline free + A1 one bench8 submission, 514 arms**). **Nothing has been run.** Every number
-in §6 is a prediction. *(2026-08-02 revision: the maintainer's HPC can hold <1000 arms in one
-array, so the original 48-arm coarse grid was redesigned — fine dose ladder, in-campaign
-single-knob margins, band-config fire map promoted from "optional A2" to a first-class tier,
-determinism pairs. The predictions in §6 are unchanged: nothing had been run, and they are
-grid-independent — a finer grid only tightens the brackets they are judged against.)*
+**Status (2026-08-03):** 🟡 partial — **Phase A0 RAN and GA0 FAILED. bench8 is NOT submitted, no
+params were emitted, and no `trinity/` line was touched.** Scorecard: **A0.1 5/8 · A0.2 0/8 ·
+A0.3 0/8 · A0.4 2/2 ✅ · A0.5 0/8** (`pdv-trigger/data/farea_screen.csv`, `farea_screen.png`). One
+measurement explains every failure: TRINITY's Ṁ is the Weaver v(R1)=0 eigenvalue and tracks
+**f_κ^{2/7}**, with f_A moving it by ≤1.2% and only downward — so §2.2's Ṁ ∝ f does not transfer to
+the real solver, the Eq-44 front anchor **thickens as f^{5/7}** instead of standing still (§2.3(3)
+refuted), and the layer cannot stay invariant. A0.1/A0.2 are pre-registered STOP conditions (§7).
+**§6's PA1–PA6 are NOT SCORED** — they are A1 reads and A1 did not run; they stay frozen as written.
+The measurement, the diagnosis and what survives are in **§5a**.
+
+*(2026-08-02 revision, superseded by the A0 result above but kept as the pre-registration record:
+the maintainer's HPC can hold <1000 arms in one array, so the original 48-arm coarse grid was
+redesigned — fine dose ladder, in-campaign single-knob margins, band-config fire map promoted from
+"optional A2" to a first-class tier, determinism pairs. The predictions in §6 are unchanged: nothing
+had been run, and they are grid-independent — a finer grid only tightens the brackets they are
+judged against.)*
 
 ---
 
 ## 0. TL;DR
+
+> ⛔ **2026-08-03 — read §5a first.** A0 ran and refuted the construction below at the per-call
+> level: the combined knob reproduces f_κ alone on Ṁ (f^{2/7}, not f^{1}), so it does not multiply
+> interface area inside TRINITY. This section is preserved verbatim as the pre-registration it was.
 
 TRINITY's three cooling knobs each move one channel of the wind/shell interface and each fails a
 different test: f_κ (conduction) never reaches the trigger on the diffuse bench; f_A (radiation)
@@ -151,6 +163,16 @@ strict invariance, precisely enumerated:
    scales ≈ f (the identity's prediction), then dR2 ∝ f/f is invariant too** — the anchor sits
    still. That is a directly measurable A0 observable.
 
+> ⛔ **Measured 2026-08-03 (§5a): deviation 3 is not a deviation, it is the whole story.** The
+> converged dMdt scales **f^{2/7}**, not f, so the antecedent of the self-consistency argument is
+> false and `dR2 ∝ f_κ/dMdt` grows as **f^{5/7}** — 7.3× at f = 16. The layer thickens instead of
+> standing still, and with it the invariance of the internal T-profile goes: max|ΔT/T| ≈ 0.55 at
+> f = 16 under the combined knob, within a few per cent of κ-only's. The f_A/f_κ cancellation in
+> the radiative term is real and measurable (it is worth 3–7% on the stiff state) but it is
+> second-order against the anchor motion. The identity holds for a layer whose evaporative flux is
+> set locally; TRINITY's is set by the global v(R1) = 0 boundary condition, which f_A barely sees.
+> Line references above re-verified against current source on the same date.
+
 The identity also **dissolves the record's standing objection** to f_A as an area factor
 (`registry.py:388`: the L2+L3 band is *"NOT the interface surface itself"*; `FINDINGS §22`): a
 volume-integrated emission × f equals area × f **exactly when the layer thickness is invariant** —
@@ -252,10 +274,12 @@ structure. Neither knob touches `L_leak`, the shell, the momentum phase, or the 
 `cooling_boost_mode`/`fmix` stay at their defaults in every arm — the §16 double-boost path is
 f_mix-specific and f_A is the identity on it (`FINDINGS §16`, verified).
 
-**Known bug to fix in passing (independent of bench8):** `make_kappa_reopen_params.py:60-61`
+~~**Known bug to fix in passing (independent of bench8):** `make_kappa_reopen_params.py:60-61`
 claims Gate 3's `read_param` load-check "catches a cross-knob/double-boost combination" — it
 cannot (warnings aren't exceptions). The single-knob guarantee always lived in
-`test_bench7_params.py:82`. One-line docstring fix.
+`test_bench7_params.py:82`.~~ ✅ **Already fixed** (verified at source 2026-08-03): the builder's
+gate-3 docstring now says the load-check *cannot* catch a cross-knob combination and points at
+`test/test_bench7_params.py`, where the `len(active) == 1` assertion lives (`:82`, re-verified).
 
 **Option B (ship path only, NOT this experiment):** a first-class `cooling_boost_farea` param whose
 resolver sets both knobs — cleaner semantics, enforces equality by construction, and retires the
@@ -294,7 +318,86 @@ statement, so A0 tests it in its own regime.
 | A0.4 | viability ceiling | combined solve healthy (fsolve converges, dMdt > 0, T monotonic) to **f ≥ 8** at both states | grid cap lowered accordingly; if ceiling < 4, STOP |
 | A0.5 | anchor invariance | \|Δr2_prime\|(combined) < \|Δr2_prime\|(κ-only) at every f | §2.3's self-consistency fails — flag, proceed with caution |
 
+### 5a. Phase A0 — MEASURED 2026-08-03: **GA0 FAILED, bench8 not submitted**
+
+Ran exactly as specified above — `python docs/dev/transition/pdv-trigger/data/make_farea_screen.py`,
+~40 s in-container, 30 production solves, zero `trinity/` changes. Artifacts:
+`pdv-trigger/data/farea_screen.csv` (`table=CALL`, one row per solve; `table=CHECK`, the scorecard)
+and `pdv-trigger/farea_screen.png`. Both states solved healthily at every dose, so **nothing is
+scored SKIP** — every check below is decided on data.
+
+| # | result | the measurement |
+|---|---|---|
+| **A0.1** | ❌ **5 PASS / 3 FAIL** | stiff: combined deviates **3.2–6.6% LESS** than κ-only (PASS ×4). mild: **0.02–0.27% MORE** (FAIL at f = 4, 8, 16; PASS at f = 2). But both modes reach **max\|ΔT/T\| ≈ 0.55 at f = 16** — the combined knob is nowhere near invariant, and the margin it wins on the stiff state is a few per cent. ⚠️ The three mild failures are coordinate-fragile: in the secondary depth-from-front coordinate (`maxdT_z`) combined sits below κ-only at every mild dose. Scored on the pre-registered primary (absolute-r), as frozen. |
+| **A0.2** | ❌ **0 PASS / 8 FAIL** | combined/κ-only Ṁ ratio = **0.9994 → 0.9882** (stiff) and 0.9998 → 0.9914 (mild) — combined sits *below* κ-only at every dose, on both states. f_A alone moves Ṁ by ≤0.35%, **downward** (q = −0.0006 … −0.0013): there is no second channel to add. |
+| **A0.3** | ❌ **0 PASS / 8 FAIL** | measured/model = **+41% … +137%** (stiff), **+59% … +446%** (mild) — the response is far *stronger* than `1 + s(f−1)`, not weaker. The two channels compose ≈ **multiplicatively** (κ-only × fA-only reproduces combined to −12.1% … +1.3%), because f_κ enlarges L2+L3 *before* f_A multiplies them. |
+| **A0.4** | ✅ **2 PASS / 0 FAIL** | combined solves healthily at **every dose through f = 16** on both states; \|velocity residual\| ≤ 2.6e-6 throughout. No viability ceiling exists in the A0 grid — the one check that passed. |
+| **A0.5** | ❌ **0 PASS / 8 FAIL** | combined's \|Δr₂′\| exceeds κ-only's by 0.05–1.4% at every dose. And both anchors move **hard**: `dR2(f)/dR2(1)` = **7.30 (κ-only) / 7.38 (combined)** at f = 16, i.e. ≈ f^{5/7}, not ≈ 1. |
+| *f1_identity* | ✅ 2/2 | the harness's own correctness check: f = 1 is the identical solve in all three modes (both knobs gated), and a profile deviates from **itself** by exactly 0. The second half caught a real artifact — the mild state's 60k grid carries one duplicated radius at the T = 10^5.5 CIE switch, and `np.interp` had been resolving the tie to one side, putting a spurious 1.2e-3 floor under every deviation. Fixed by de-duplicating the abscissa; no verdict changed. |
+
+**One measurement explains A0.1, A0.2 and A0.5 together.** The converged Ṁ is the Weaver v(R1) = 0
+eigenvalue, and it tracks the **Eq-33 conduction scaling f_κ^{2/7}**, not the identity's f^{1}: the
+fitted exponent is **q = 0.279–0.285 for combined**, 0.283–0.285 for κ-only (2/7 = 0.2857), and
+Ṁ/seed is flat to 1.9% over a 16× dose. f_A is invisible to it. §2.3(3)'s self-consistency argument
+was explicitly *conditional* — "**if** the converged dMdt scales ≈ f … the anchor sits still" — and
+the antecedent is false, so `dR2 ∝ f_κ/Ṁ` grows as f^{1−2/7} = **f^{5/7}**. The measured `dR2` ratio
+reproduces `f_κ/Ṁ` to machine precision (16 / 2.16714 = 7.3830, measured 7.3830), which is the
+internal check that the harness reads the right anchor. With the layer **7.3× thicker at f = 16**,
+its internal structure cannot be invariant — and the f_A/f_κ cancellation in the radiative term,
+which *is* real and is exactly the 3–7% by which combined beats κ-only on the stiff state, is a
+small correction riding on that motion rather than a cancellation of it.
+
+**What is falsified, and what is not.** §2.2's identity is not wrong as stated — it is a statement
+about a layer whose evaporative flux is set by the *local* enthalpy balance across the front.
+TRINITY does not set Ṁ that way: it is fixed by a *global* boundary condition over the whole
+R1 → r₂′ domain, whose interior carries **80% (stiff) / 68% (mild)** of L_cool at f = 1 and where
+f_A does nothing by construction (`registry.py:388`, `_T_INTERFACE_BAND`). **So the two shipped
+knobs cannot express area multiplication at equal doses, and no choice of dose changes that** — the
+failure is structural, not a matter of grid, dose range or calibration. Which is the SC-0-style
+screen doing precisely its job: ~40 s of container time retired a 514-arm submission.
+
+**Scope discipline (`FINDINGS §12a`), stated because the temptation runs the other way.** A0 is a
+falsifier and it fired; it does **not** license the converse. Nothing here measures a full-run band
+entry, a spread, or a Θ_cum exponent, and **§6's PA1–PA6 are NOT SCORED** — they are A1 reads, A1
+did not run, and they remain frozen exactly as written. The one A0 number that is a per-call
+statement in its own right is the §2.2 invariance identity — and that is the one this screen
+refutes inside TRINITY's ODE.
+
+**The §9 warm-start hazard: measured, and it does NOT hold — the candidate `trinity/` edit is
+withdrawn.** §9 reasoned that the fsolve seed scales f^{2/7} while a layer-invariant root scales
+≈ f, so the seed would undershoot at high dose, and gated a seed correction (× f^{5/7} when both
+knobs are active) behind A0 evidence. Measured: the *root itself* scales f^{2/7}, so Ṁ/seed is flat
+— **1.3466 → 1.3215** (stiff) and 1.3486 → 1.3352 (mild) over a 16× dose — every solve converges
+(residual ≤ 2.6e-6) and none is stranded. The correction would move the seed ~7× away from the true
+root at f = 16. **Recorded as: do not make that edit.**
+
+**Where this leaves the area program.** The pre-registered TERMINAL clause (§7) is *not* triggered —
+it is defined on PA3 + PA1, which are A1 reads. What closes is narrower and cleaner: **f_κ = f_A = f
+is not an area knob in TRINITY**, and that is now measured rather than argued. What survives, in the
+order a next visit should weigh it:
+
+1. **Stop here with the existing knobs.** `FINDINGS §10b`'s indictment — *no shipped knob raises
+   mass loading at the operating doses* — now has its last loophole closed, by measurement.
+2. **Put the area factor where Ṁ is actually set.** The evaporative flux would have to carry f
+   explicitly at the Eq-33 seed / Eq-44 front pair (`bubble_luminosity.py:304`/`:398`) rather than
+   inheriting it through conduction. That is a `trinity/` change, so it is an SC-1 wiring proposal
+   needing a maintainer nod **and** a derived value (§3.3) — and it needs its own derivation before
+   it is even a candidate. A0 says nothing about whether it would calibrate; it says only that the
+   zero-code route does not exist.
+3. **The Θ → 1 saturated-flux limit** (Lancaster Eq 12 ≤ Eq 15), already named in §8 as the
+   remaining 1-D-portable idea.
+
+Option 2 is the only one that keeps the area program alive inside TRINITY, and it is squarely the
+"new physical idea for the truncation scale / interface area, not another fit" that `FINDINGS §15k`
+and SC-0 require. **It is not started, and nothing below §5a has been acted on.**
+
 ### Phase A1 — the HPC campaign: **bench8**, 514 arms, ONE submission
+
+> ⛔ **NOT SUBMITTED — blocked by GA0 (§5a, 2026-08-03).** No params were emitted, `sync_bench.sh`
+> was not run, and `make_farea_params.py` / `test_bench8_params.py` were not written. The tier
+> design below stands as the record of what *would* have been submitted had A0 cleared; it is not a
+> to-do list. The bench8 reduce/download machinery (§9a) landed independently at `44667a9f` and is
+> tested (`test/test_bench_derived.py`) — it is campaign-agnostic and needs no revisiting.
 
 **The fine dose ladder F24** (24 values, geometric-ish, densest where the zeroth-order entries
 sit at 3.5–7.3 so every band entry is bracketed to ≲14% instead of the old ladder's ~50%):
@@ -341,6 +444,12 @@ stays deterministic** — a builder emit-gate, not a convention.
 
 ## 6. Pre-registered predictions — frozen HERE, before any run
 
+> ⛔ **NOT SCORED (2026-08-03).** PA1–PA6 are all decided by A1 arms, and A1 was never submitted
+> (GA0 failed, §5a). They are recorded here unchanged — not withdrawn, not retuned, not
+> reinterpreted against A0 numbers, which `FINDINGS §12a` forbids. If the area program is ever
+> reopened along §5a's option 2 it will need **new** predictions for a **different** construction;
+> these belong to the equal-doses one.
+
 ### 6.1 Measured inputs (all FRESH, 2026-07-30)
 
 | bench | θ₀ = θ_max at f=1 (prod) | interface share s = (L2+L3)/L_cool (median, diag) |
@@ -386,7 +495,7 @@ lesson).
 
 | gate | bar | fail ⇒ |
 |---|---|---|
-| **GA0** | A0 checks A0.1–A0.5 | STOP before HPC (A0.1/A0.2/A0.4-severe) or shrink grid |
+| **GA0** ❌ **FAILED 2026-08-03** (§5a: A0.1 5/8, A0.2 0/8, A0.3 0/8, A0.4 ✅, A0.5 0/8) | A0 checks A0.1–A0.5 | STOP before HPC (A0.1/A0.2/A0.4-severe) or shrink grid — **A0.1 and A0.2 both failed, so: STOPPED. GA1–GA6 below were never reached.** |
 | **GA1** | emit gates incl. per-mode knob rules (combined: fk==fA + warning-fires-once; margins: exactly one knob, no warning) + deterministic tag ordering | fix builder, don't submit |
 | **GA2** | each arm's cloud == its bench5 `__none` sibling (test-pinned) | not a controlled comparison — stop |
 | **GA2b** | A1-margin arms at the doses bench5r/6r/7 already ran reproduce those fresh anchors (θ_max within numerical noise) | code state drifted between campaigns — cross-campaign comparisons in §6.1 are void; re-derive anchors from bench8 alone |
@@ -404,6 +513,9 @@ not stops — the construction would then be area-faithful but not density-unifo
 the answer to `PLAN` item 9.
 
 ## 8. Decision tree after A1
+
+> ⛔ **Never entered (2026-08-03).** A1 did not run — GA0 stopped the campaign at A0 (§5a). The tree
+> below is the pre-registered decision rule, kept as the record; the live decision is §11 item 4.
 
 - **PA1–PA3 pass** → f_area is the first knob that is both calibration-viable *and*
   mechanism-faithful. Then, and only then, Option B (a first-class `cooling_boost_farea` param,
@@ -424,6 +536,14 @@ hazard: the fsolve seed scales f^{2/7} while the layer-invariant root scales ≈
 undershoot at high dose; if A0 shows stranded solves, note the seed correction (multiply the Eq-33
 seed by f^{5/7} when both knobs are active) as the *one* candidate `trinity/` edit, gated behind
 A0 evidence. Truncated arms: handled per GA3; no "more walltime" option exists.
+
+> ⛔ **Measured 2026-08-03 (§5a): the warm-start hazard does not exist and the candidate edit is
+> withdrawn.** The root scales f^{2/7} like the seed, so Ṁ/seed is flat (1.3466 → 1.3215 stiff,
+> 1.3486 → 1.3352 mild over 16×), every solve converged (residual ≤ 2.6e-6) and none stranded. The
+> f^{5/7} correction would move the seed ~7× off the true root. Also measured: **no viability
+> ceiling** — the combined solve is healthy to f = 16 at both captured states (A0.4, the one check
+> that passed), so the stiffness corner this section anticipated did not appear at the per-call
+> level. Neither finding is a full-run statement (`FINDINGS §12a`).
 
 ## 9a. What comes DOWN — the size budget (measured 2026-08-02)
 
@@ -472,9 +592,11 @@ string-identical to the per-arm files it replaces.
 ## 10. Reproduce (in dependency order)
 
 ```bash
-# A0 (in-container, free) — write + run the screen, commit CSV + figure
+# A0 (in-container, ~40 s) — RAN 2026-08-03; regenerates farea_screen.csv + farea_screen.png
 python docs/dev/transition/pdv-trigger/data/make_farea_screen.py
+#   -> data/farea_screen.csv  30 solves + the A0.1-A0.5 scorecard   <- GA0 FAILED (§5a)
 
+# ⛔ EVERYTHING BELOW IS BLOCKED BY GA0 AND WAS NOT RUN. Kept as the design record.
 # A1 params + tests (after GA0)
 python docs/dev/transition/pdv-trigger/runs/make_farea_params.py     # -> runs/params/bench8/ (514)
 pytest test/test_bench8_params.py
@@ -496,16 +618,22 @@ python docs/dev/transition/pdv-trigger/data/make_freshness_audit.py
 python docs/dev/transition/kappa-3way/make_report.py
 ```
 
-## 11. Open questions for the maintainer (none block A0)
+## 11. Open questions for the maintainer
 
-1. **Approve the A0 → A1 sequence and the 514-arm layout** (§5) — in particular whether the
-   288-arm A1-margin tier is worth the queue time (it can be halved to prod-only, 144, at the
-   cost of same-campaign Ṁ margins; the coarse bench5r/6r/7 anchors would then carry PA3/PA4's
-   single-knob side alone).
-2. **The cross-knob warning**: for bench8 it stays and is asserted-on (provenance). If f_area ever
-   ships as Option B, the warning text needs a carve-out — maintainer wording preferred.
+*(2026-08-03: A0 ran and GA0 failed, so questions 1 and 2 — both about how to spend the bench8
+submission — are moot and struck. What replaces them is a single decision.)*
+
+1. ~~Approve the A0 → A1 sequence and the 514-arm layout.~~ **Moot** — GA0 failed; A1 is not
+   submitted and no queue time is at stake.
+2. ~~The cross-knob warning carve-out for an Option-B ship.~~ **Moot** — nothing ships; the warning
+   is untouched.
 3. **The stale-row convention** (`§12` resolved it for analysis; blessing it as the standing rule
-   retires open question Q3).
+   retires open question Q3). Still open, unaffected by A0.
+4. **NEW — does the area program continue, and along which of §5a's three options?** Option 2
+   (carry f explicitly on the evaporative flux, `bubble_luminosity.py:304`/`:398`) is the only one
+   that keeps it alive inside TRINITY, and it is a `trinity/` change: SC-1 wiring, so it needs both
+   a maintainer nod and the truncation-scale physics (§3.3) to supply a value first. **Nothing has
+   been started on it.** The default, absent a nod, is option 1: stop with the existing knobs.
 
 ---
 

@@ -39,7 +39,12 @@ bench1) and **P1 is falsified**. ⚠️ **`§2`'s ranking of f_mix over f_A is s
 → f_mix's solved-row spread degrades to **3.70×** while f_A holds **2.71×** — **f_A is the best
 single knob on both axes**). `§10` (mechanism), `§11` (metric) and `§12` (staleness) are the three
 sections that change what this campaign concludes; read them before quoting `§2` or `§11` alone.
-G0 failed on a truncation artifact (`§1`, bounded in `§1a`). Next experiment: `F_AREA_PLAN.md`.
+G0 failed on a truncation artifact (`§1`, bounded in `§1a`).
+**2026-08-03 — `§13`: the f_area successor is dead at the screen.** Its Phase A0 ran offline and
+**GA0 failed** (A0.1 5/8, A0.2 0/8, A0.3 0/8, A0.5 0/8; only the viability check passed): the
+combined knob reproduces f_κ alone on Ṁ (f^{2/7}, not the f^{1} area multiplication requires), so
+the 514-arm bench8 campaign was **not submitted** and `§10d`'s two predictions are answered — in the
+negative — for ~40 s of container time.
 
 ---
 
@@ -596,3 +601,73 @@ A0 uses them that way); the truncation is bounded; the no-root staleness was doi
 measurable harm — to Θ_cum massively, and to exactly one trigger bracket, whose correction breaks
 the f_A/f_mix tie **in f_A's favour**. Follow-up: fold `theta_max_solved` into
 `make_bench7_analysis.py`'s TRIGGER table so both conventions regenerate from one builder.
+
+---
+
+## §13. [falsified] The f_area successor dies at its own screen — TRINITY's Ṁ is a Weaver eigenvalue, and f_A cannot reach it
+
+`§10d` proposed the discriminating experiment: apply f_κ and f_A at **one shared constant** and see
+whether the combination raises mass loading — the signature no single knob shows.
+`F_AREA_PLAN.md` derived it into an identity (its §2.2: at f_κ = f_A = f the interface layer's
+T-profile is invariant and every flux scales by exactly f), pre-registered five offline checks
+A0.1–A0.5 and six full-run predictions PA1–PA6, and sized a 514-arm bench8 campaign behind gate GA0.
+
+**A0 ran 2026-08-03 and GA0 FAILED.** Builder `data/make_farea_screen.py` (~40 s in-container, 30
+production solves at the two committed captured states, zero `trinity/` changes); artifacts
+`data/farea_screen.csv` + `farea_screen.png`.
+
+| check | bar | result |
+|---|---|---|
+| A0.1 T-profile invariance ranking | combined below κ-only at every f | ❌ **5/8** — stiff 3.2–6.6% below (pass ×4), mild 0.02–0.27% **above** (fail ×3) |
+| A0.2 Ṁ superadditivity | combined above κ-only at every f | ❌ **0/8** — combined is 0.02–1.2% **below**, both states |
+| A0.3 L_total linearity | within ±30% of 1 + s(f−1) | ❌ **0/8** — measured is **+41% … +446%** above the model |
+| A0.4 viability ceiling | combined healthy to f ≥ 8 | ✅ **2/2** — healthy to f = 16, residual ≤ 2.6e-6 |
+| A0.5 anchor invariance | combined below κ-only at every f | ❌ **0/8** — and both anchors move as **f^{5/7}** |
+
+**The single measurement behind all four failures.** TRINITY's Ṁ is not set by the interface layer's
+local enthalpy balance — it is the **Weaver v(R1) = 0 eigenvalue over the whole R1 → r₂′ domain**,
+and it tracks the Eq-33/Eq-47 conduction scaling **f^{2/7}**: fitted q = **0.279–0.285** for the
+combined knob against 0.283–0.285 for f_κ alone, versus the f^{1.0} that area multiplication
+requires. f_A never reaches it (per-call q = −0.0006 … −0.0013). Because Ṁ ∝ f^{2/7} rather than f,
+the Eq-44 front anchor `dR2 ∝ f_κ/Ṁ` grows as **f^{5/7}** — the layer is **7.3× thicker at f = 16**
+instead of standing still — so its internal structure cannot be invariant either (max|ΔT/T| ≈ 0.55
+at f = 16, within a few per cent of f_κ alone). The f_A/f_κ cancellation in the radiative source
+term is real, and is exactly the 3–7% by which combined beats κ-only on the stiff state; it is a
+second-order correction riding on the anchor motion, not a cancellation of it.
+
+**So `§10d`'s construction is answered, in the negative and for ~40 s.** The combined knob's Ṁ
+ladder *is* rising (×2.17 at f = 16) — but by no more than f_κ alone delivers, so nothing moves the
+full-run crossing below 1 at f_κ ≈ 7 that `§10b` measured, and there is no mechanism left by which
+the pair could beat the single knob. ⚠️ Per `§12a` that last clause is a *scope* statement, not a
+forecast: A0 cannot decide a full-run question, and **PA1–PA6 are recorded NOT SCORED** — A1 was
+never submitted, and they are not reinterpreted against A0 numbers.
+
+**A second result falls out, and it sharpens `§10b`.** f_A's Ṁ suppression is **not structural**.
+Per call it is **−0.04% at f_A = 2 and −0.35% at f_A = 16** (stiff; −0.01% / −0.16% mild), against
+the full-run ratios `§10b` measured — 0.988 at f_A = 2, i.e. **−1.2% at the same dose**, falling to
+−14.5% by f_A = 32. An order of magnitude larger, so the full-run suppression must be dominated by
+the same **integrated back-reaction** that decays f_κ's Ṁ ratio (`§7`/P2: radiate more → drain E_b
+→ P_b falls → evaporation falls), not by an instantaneous restructuring of the interface.
+⚠️ The two measurements are on different configs (two captured states here, nine theta5s configs
+there), so read the factor as indicative of the mechanism, not as a calibrated ratio. `§10c`'s
+ranking is unaffected; its *reason* for placing f_A second is now more precisely attributed.
+
+**Two housekeeping results.** (i) The plan's §9 warm-start hazard — "the seed scales f^{2/7} while
+the layer-invariant root scales ≈ f, so it will undershoot" — **does not hold**: the root scales
+f^{2/7} too, Ṁ/seed is flat to 1.9% over a 16× dose, and no solve stranded. The one candidate
+`trinity/` edit the plan gated behind A0 evidence (multiply the Eq-33 seed by f^{5/7}) is therefore
+**withdrawn, not deferred** — it would move the seed ~7× off the root. (ii) The harness's own
+f = 1 self-check earned its keep: requiring a profile to deviate from *itself* by exactly zero
+exposed a duplicated radius in the production 60k grid at the T = 10^5.5 CIE switch, where
+`np.interp` was resolving the tie arbitrarily and putting a spurious 1.2e-3 floor under every
+deviation. Fixed in the builder; no verdict changed.
+
+**What this changes.** Nothing in production (`cooling_boost_mode='none'`, f_κ = f_A = 1.0) and
+nothing in `§1`–`§12`. What it closes is the last loophole in `§10b`'s indictment: **no combination
+of the three shipped knobs raises mass loading**, and the zero-code route to an area-faithful knob
+does not exist. The pre-registered TERMINAL clause (`F_AREA_PLAN §7`) is *not* triggered — it is
+defined on PA3 + PA1, which are A1 reads. The live decision is `F_AREA_PLAN §11` item 4: stop with
+the existing knobs, or carry the area factor explicitly on the evaporative flux itself
+(`bubble_luminosity.py:304`/`:398`) — a `trinity/` change, so SC-1 wiring, needing a maintainer nod
+and a derived value (`F_AREA_PLAN §3.3`) before it is even a candidate. **Nothing has been started
+on it.**

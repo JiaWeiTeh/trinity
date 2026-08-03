@@ -39,8 +39,11 @@ criterion f_A and f_mix looked tied, and `§12` (stale-row exclusion) breaks the
 best single knob on both axes** (2.71× vs f_mix's 3.70× solved-row spread); `§10` shows the
 mechanism ranking is the reverse of the calibration one either way.
 Gate **G0 failed 2/11** — traced to truncation (mechanism inferred, not verified — `FINDINGS §1`), which also makes f_A's published 5.39× spread
-non-converged. Nothing here changes production. Next experiment: **`F_AREA_PLAN.md`** (the
-combined-knob area construction, pre-registered, 514-arm bench8 design).
+non-converged. Nothing here changes production. Successor experiment: **`F_AREA_PLAN.md`** (the
+combined-knob area construction, pre-registered, 514-arm bench8 design) — **its Phase A0 ran
+2026-08-03 and GA0 FAILED, so bench8 was never submitted**: the combined knob reproduces f_κ alone
+on Ṁ (f^{2/7}, not the f^{1} area multiplication needs), closing the last loophole in `§10b`'s
+"no shipped knob raises mass loading". See `FINDINGS §13` and `F_AREA_PLAN §5a`.
 
 ---
 

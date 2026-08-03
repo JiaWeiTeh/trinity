@@ -2088,7 +2088,15 @@ and gate.*
    is a falsifiable, discriminating prediction testable against the existing theta5s baseline with
    no new sims for the first pass (`theta5s_dmdt_suppression.csv` already measures the f_A side:
    ratio 0.988 at f_A=2 → 0.857 at f_A=32). Design note belongs in `SOURCE_TERM_DESIGN.md §4`.
-   *Owner: maintainer go/no-go; scoping is cheap.*
+   **✅ ANSWERED 2026-08-03 — in the negative.** `kappa-3way/F_AREA_PLAN.md` designed the successor
+   (apply f_κ = f_A = f, one shared constant), pre-registered checks + predictions and a 514-arm
+   bench8 campaign; its free offline screen ran and **failed gate GA0**
+   (`kappa-3way/FINDINGS.md §13`, `data/farea_screen.csv`). TRINITY's Ṁ is the Weaver v(R1)=0
+   eigenvalue and tracks **f^{2/7}** whatever f_A does (per-call q = −0.001), so the combined knob
+   reproduces f_κ alone and cannot multiply interface area. bench8 was never submitted. **No
+   combination of the three shipped knobs raises mass loading** — the zero-code route is closed;
+   what remains is an SC-1 `trinity/` proposal (carry f on the evaporative flux itself) that needs
+   a derived truncation scale first. *Owner: maintainer — go/no-go on `F_AREA_PLAN §11` item 4.*
 10. **Standing measurement debt** (unchanged, parent ledger): Fig-17 re-digitization (metric 2's
    dex half), metric 3 α_p (needs a re-harvest with momentum columns), the dMdt reducer on
    Helix theta5s raw arms, V_w [I]-grade.
@@ -2104,9 +2112,12 @@ and gate.*
    stop) and **item 5 above is folded in as its K4**. **Status (`FINDINGS §25`): §6.0 ruled; G0
    cleared 11/11 (`data/bench7_gate_g0.csv` — the published Θ₀ and band-entry table reproduce
    exactly from the committed trajectories); G1 cleared 4/4; 174 params committed in
-   `runs/params/bench7/` and pinned by `test/test_bench7_params.py`. NO arm has been run** — §6.2's
-   `sync_bench.sh` loop needs `ssh helix`. **ALL-FRESH ruling (`FINDINGS §26`): bench7 does not run
-   alone.** K2's grid was widened to the full f_κ range so `theta5k` stops being an input, and the
+   `runs/params/bench7/` and pinned by `test/test_bench7_params.py`.** ⚠️ *Updated 2026-08-03: this
+   item used to end "NO arm has been run" — **all 294 arms ran 2026-07-30**, were reduced and
+   downloaded, and the three-way table is measured in `kappa-3way/FINDINGS.md` (f_κ is the worst of
+   the three knobs; P1 falsified; G0 2/11 on a truncation artifact). The successor experiment
+   (`kappa-3way/F_AREA_PLAN.md`, item 9 above) then failed its own offline gate.* **ALL-FRESH ruling
+   (`FINDINGS §26`): bench7 does not run alone.** K2's grid was widened to the full f_κ range so `theta5k` stops being an input, and the
    L21b baselines are re-run as `bench5r`/`bench6r` under fresh landing names so Θ₀ and the
    f_A/f_mix ladders are today's numbers — **294 arms**, run order in `KAPPA_REOPEN_PLAN §6.2`.
    Every artifact now carries its UTC generation stamp (trajectories and hash files included) and
