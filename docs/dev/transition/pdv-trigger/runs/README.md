@@ -24,6 +24,11 @@
 > gpfs is cleaned and the raw arms do not come back (the theta5s lesson); declare every column you might
 > need *before* the first reduce, not after.
 >
+> **Big campaigns (`bench8`, 514 arms) distil ON the cluster** — measured sizes, the `--derived` /
+> `--traj-bundle` flags, and why `down` fetches 3 files instead of 514 are in the `sync_bench.sh`
+> header and [`../../kappa-3way/F_AREA_PLAN.md`](../../kappa-3way/F_AREA_PLAN.md) §9a; the
+> arithmetic is pinned by `test/test_bench_derived.py`. bench5–bench7 are unaffected.
+>
 > **bench7 status (2026-07-29):** its **174 params are generated and committed** in `params/bench7/`
 > (`python make_kappa_reopen_params.py`, self-gating; pinned by `test/test_bench7_params.py`), and gates
 > G0/G1 are cleared (`FINDINGS §25`). **No arm has been run.** All five K-phases live in that one directory

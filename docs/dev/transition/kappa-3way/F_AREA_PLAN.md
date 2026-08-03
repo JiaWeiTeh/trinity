@@ -425,6 +425,50 @@ undershoot at high dose; if A0 shows stranded solves, note the seed correction (
 seed by f^{5/7} when both knobs are active) as the *one* candidate `trinity/` edit, gated behind
 A0 evidence. Truncated arms: handled per GA3; no "more walltime" option exists.
 
+## 9a. What comes DOWN — the size budget (measured 2026-08-02)
+
+A 514-arm campaign only works if the cluster keeps the bulk and git gets the distillate. Measured
+from the campaigns already on disk, not estimated:
+
+| stage | per arm | × 514 | travels? |
+|---|---|---|---|
+| raw `dictionary.jsonl` (gpfs) | 3–4.5 MB | **≈ 1.8–2.3 GB** | **never** — stays on gpfs, reduced in place |
+| reduced trajectory (bench7, 10 cols) | 18 KB mean / 30 KB max | ≈ 9–15 MB | yes, but as ONE bundled file |
+| summary + derived scalars | ~160 B | **≈ 90 KB** | yes — **this is the analysis surface** |
+| hashes (K3 determinism) | ~90 B | ≈ 45 KB | yes |
+
+So the fear that `down` pulls "many GB" does not apply to this workflow: the raw arms were never
+downloadable, `reduce` has always run on the cluster, and the reduced total is ~10 MB. The real
+problems at 514 arms were **file count** (514 per-arm CSVs is not a reviewable commit, and no
+analysis wants 514 opens) and **where the arithmetic ran** — Θ_cum and the solved/stale split were
+being recomputed laptop-side on every visit. Both are fixed for bench8:
+
+- **`harvest_bench5.py --derived`** computes the distilled per-arm scalars ON the cluster and writes
+  them into the summary: `n_rows, n_stale, stale_time_frac, theta_cum, theta_cum_raw,
+  theta_cum_solved, theta_cum_stale, t_window_end, leak_frac, theta_max_solved, theta_max_is_stale`.
+  `theta_max_solved` is the §12 stale-corrected trigger metric — computed once, at reduce time,
+  never re-derived. **The headline reads (PA1–PA6, the fire map, the band entries) are all
+  answerable from `bench8_summary.csv` alone — ~90 KB, one file, one `git diff`.**
+- **`--traj-bundle`** writes every arm's θ(t) into ONE `bench8_traj.csv` keyed by a leading
+  `run_name` column — same rows, same float precision, ~10 MB, one file. Read it back with
+  `data/read_bundle.py::load` → `{run_name: [row dicts]}`, which yields exactly the dicts the
+  per-arm readers already consume, so `theta_cum_prefire`, `decompose` and the track plots work
+  unchanged. Per-arm CSVs are still written on gpfs (the K3 hashes are taken over them) but for
+  bench8 `down` does **not** fetch them.
+- Flags are **opt-in**: bench5–bench7 reduce exactly as before, so the frozen record's column sets
+  and file layouts do not move.
+- Side benefit: `pdv-trigger/MANIFEST.md` carries one provenance row per committed data file, so the
+  bundle keeps bench8 to ~3 manifest rows instead of ~514.
+
+**Equivalence gate (met).** The on-cluster `derived` cannot import the canonical laptop-side
+implementations — they live in `data/` modules that import matplotlib at module level, and reduce
+must stay dependency-light — so the arithmetic is duplicated and pinned by
+`test/test_bench_derived.py`: against `make_bench5_analysis.theta_cum_prefire` and
+`make_bench_stale_segments.decompose` on synthetic rows (~ULP), **and replayed over all 173
+committed bench7 trajectories** — `n_rows`/`n_stale` exact on every arm, every float within
+5.0e-05, which is the half-ulp of the `%.4f` the record is stored at. The bundle is pinned to be
+string-identical to the per-arm files it replaces.
+
 ## 10. Reproduce (in dependency order)
 
 ```bash
@@ -438,8 +482,13 @@ pytest test/test_bench8_params.py
 # HPC (maintainer; needs ssh helix)
 ./docs/dev/transition/pdv-trigger/runs/sync_bench.sh bench8 up
 ./docs/dev/transition/pdv-trigger/runs/sync_bench.sh bench8 submit   # auto-sized --array=1-514
-./docs/dev/transition/pdv-trigger/runs/sync_bench.sh bench8 reduce   # ⚠️ ONE-SHOT
-./docs/dev/transition/pdv-trigger/runs/sync_bench.sh bench8 down
+./docs/dev/transition/pdv-trigger/runs/sync_bench.sh bench8 reduce   # ⚠️ ONE-SHOT; --derived + bundle
+./docs/dev/transition/pdv-trigger/runs/sync_bench.sh bench8 down     # 3 files, ~10 MB (§9a)
+#   -> runs/data/bench8_summary.csv   fire map + the distilled scalars  <- the analysis surface
+#      runs/data/bench8_traj.csv      all 514 trajectories in one file  <- evidence/backup
+#      runs/data/bench8_hashes.csv    K3 determinism hashes
+python docs/dev/transition/pdv-trigger/data/read_bundle.py \
+    docs/dev/transition/pdv-trigger/runs/data/bench8_traj.csv        # sanity: arms + row count
 
 # analysis + the source of truth
 python docs/dev/transition/pdv-trigger/data/make_bench8_analysis.py  # (written post-reduce)
