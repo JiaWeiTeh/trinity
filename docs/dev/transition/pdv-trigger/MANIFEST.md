@@ -12,1229 +12,1231 @@
 > are exact; stamp-less artifacts predate the convention (2026-07-02) — for those, only
 > the commit date is known. **Every new/edited builder must write the stamp.**
 
-1222 artifacts · 2 stale-risk · 0 untracked · 323 stamped 🕐
+1224 artifacts · 2 stale-risk · 0 untracked · 324 stamped 🕐
 
 | last updated (commit) | artifact | producer / flags |
 |---|---|---|
-| 2026-07-30 `d23494e` | `bench5_theta_tracks.png` | producer unknown (HPC/hand-made); refs: `make_bench5_analysis.py`, `make_pdvtrigger_report.py` |
-| 2026-07-30 `d23494e` | `bench7_entry.png` | producer unknown (HPC/hand-made); refs: `make_bench7_analysis.py` |
-| 2026-07-30 `d23494e` | `data/bench5_analysis.csv` | by `make_bench5_analysis.py` · 🕐 generated 2026-07-30T19:12:47Z | builder make_bench5_analysis.py | code 50c5606+dirty |
-| 2026-07-30 `d23494e` | `data/bench6_analysis.csv` | by `make_bench6_analysis.py` · 🕐 generated 2026-07-30T19:12:56Z | builder make_bench6_analysis.py | code 50c5606+dirty |
-| 2026-07-30 `d23494e` | `data/bench7_analysis.csv` | by `make_bench7_analysis.py` · 🕐 generated 2026-07-30T19:22:18Z | builder make_bench7_analysis.py | code 50c5606+dirty |
-| 2026-07-30 `d23494e` | `data/bench7_gate_g0.csv` | by `make_bench7_gate_g0.py` · 🕐 generated 2026-07-30T19:13:03Z | builder make_bench7_gate_g0.py | code 50c5606+dirty |
-| 2026-07-30 `d23494e` | `data/freshness_audit.csv` | by `make_freshness_audit.py` · 🕐 generated 2026-07-30T19:22:20Z | builder make_freshness_audit.py | code 50c5606+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_hashes.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:35Z | builder sync_bench.sh bench5r reduce | code 1056c6d7 |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_summary.csv` | producer unknown (HPC/hand-made); refs: `make_bench5_analysis.py`, `make_bench6_analysis.py` · 🕐 generated 2026-07-30T19:01:35Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench1_m5e4_r20__fa12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:25Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench1_m5e4_r20__fa12_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:25Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench1_m5e4_r20__fa16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:25Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench1_m5e4_r20__fa16_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:25Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench1_m5e4_r20__fa4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:25Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench1_m5e4_r20__fa4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:25Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench1_m5e4_r20__fa6.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:26Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench1_m5e4_r20__fa6_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:26Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench1_m5e4_r20__fa8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:26Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench1_m5e4_r20__fa8_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:26Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench1_m5e4_r20__none.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:26Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench1_m5e4_r20__none_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:27Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench2_m1e5_r10__fa12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:27Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench2_m1e5_r10__fa12_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:27Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench2_m1e5_r10__fa16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:27Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench2_m1e5_r10__fa16_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:27Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench2_m1e5_r10__fa4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:28Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench2_m1e5_r10__fa4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:28Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench2_m1e5_r10__fa6.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:28Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench2_m1e5_r10__fa6_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:28Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench2_m1e5_r10__fa8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:28Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench2_m1e5_r10__fa8_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:29Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench2_m1e5_r10__none.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:29Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench2_m1e5_r10__none_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:29Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench3_m1e5_r5__fa12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:29Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench3_m1e5_r5__fa12_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:30Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench3_m1e5_r5__fa16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:30Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench3_m1e5_r5__fa16_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:30Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench3_m1e5_r5__fa4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:30Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench3_m1e5_r5__fa4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:30Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench3_m1e5_r5__fa6.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:31Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench3_m1e5_r5__fa6_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:31Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench3_m1e5_r5__fa8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:31Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench3_m1e5_r5__fa8_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:31Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench3_m1e5_r5__none.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:31Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench3_m1e5_r5__none_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:32Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench4_m1e5_r2p5__fa12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:32Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench4_m1e5_r2p5__fa12_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:32Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench4_m1e5_r2p5__fa16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:32Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench4_m1e5_r2p5__fa16_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:32Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench4_m1e5_r2p5__fa4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:32Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench4_m1e5_r2p5__fa4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:33Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench4_m1e5_r2p5__fa6.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:33Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench4_m1e5_r2p5__fa6_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:33Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench4_m1e5_r2p5__fa8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:33Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench4_m1e5_r2p5__fa8_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:33Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench4_m1e5_r2p5__none.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:34Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench4_m1e5_r2p5__none_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:34Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench5_m5e5_r2p5__fa12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:34Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench5_m5e5_r2p5__fa12_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:34Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench5_m5e5_r2p5__fa16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:34Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench5_m5e5_r2p5__fa16_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:34Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench5_m5e5_r2p5__fa4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:34Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench5_m5e5_r2p5__fa4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:34Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench5_m5e5_r2p5__fa6.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:35Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench5_m5e5_r2p5__fa6_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:35Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench5_m5e5_r2p5__fa8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:35Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench5_m5e5_r2p5__fa8_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:35Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench5_m5e5_r2p5__none.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:35Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench5r_traj/bench5_m5e5_r2p5__none_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:35Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_hashes.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:51Z | builder sync_bench.sh bench6r reduce | code 1056c6d7 |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_summary.csv` | producer unknown (HPC/hand-made); refs: `make_bench6_analysis.py`, `make_bench7_analysis.py` · 🕐 generated 2026-07-30T19:01:51Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench1_m5e4_r20__fa128.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:39Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench1_m5e4_r20__fa128_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:40Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench1_m5e4_r20__fa24.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:40Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench1_m5e4_r20__fa24_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:40Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench1_m5e4_r20__fa32.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:40Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench1_m5e4_r20__fa32_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:40Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench1_m5e4_r20__fa64.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:41Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench1_m5e4_r20__fa64_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:41Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench1_m5e4_r20__fm2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:41Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench1_m5e4_r20__fm2_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:41Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench1_m5e4_r20__fm3.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:41Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench1_m5e4_r20__fm3_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:42Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench1_m5e4_r20__fm4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:42Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench1_m5e4_r20__fm4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:42Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench1_m5e4_r20__fm8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:42Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench1_m5e4_r20__fm8_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:42Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench2_m1e5_r10__fa128.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:43Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench2_m1e5_r10__fa128_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:43Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench2_m1e5_r10__fa24.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:43Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench2_m1e5_r10__fa24_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:43Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench2_m1e5_r10__fa32.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:43Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench2_m1e5_r10__fa32_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:44Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench2_m1e5_r10__fa64.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:44Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench2_m1e5_r10__fa64_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:44Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench2_m1e5_r10__fm2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:44Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench2_m1e5_r10__fm2_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:44Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench2_m1e5_r10__fm3.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:45Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench2_m1e5_r10__fm3_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:45Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench2_m1e5_r10__fm4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:45Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench2_m1e5_r10__fm4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:45Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench2_m1e5_r10__fm8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:46Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench2_m1e5_r10__fm8_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:46Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench3_m1e5_r5__fa24.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:46Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench3_m1e5_r5__fa24_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:46Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench3_m1e5_r5__fa32.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:46Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench3_m1e5_r5__fa32_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:47Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench3_m1e5_r5__fm2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:47Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench3_m1e5_r5__fm2_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:47Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench3_m1e5_r5__fm3.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:48Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench3_m1e5_r5__fm3_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:48Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench3_m1e5_r5__fm4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:48Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench3_m1e5_r5__fm4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:48Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench3_m1e5_r5__fm8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:49Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench3_m1e5_r5__fm8_diag.csv` | producer unknown (HPC/hand-made); refs: `make_phase6_figures.py` · 🕐 generated 2026-07-30T19:01:49Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench4_m1e5_r2p5__fm2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:49Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench4_m1e5_r2p5__fm2_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:49Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench4_m1e5_r2p5__fm3.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:49Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench4_m1e5_r2p5__fm3_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:49Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench4_m1e5_r2p5__fm4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:50Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench4_m1e5_r2p5__fm4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:50Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench4_m1e5_r2p5__fm8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:50Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench4_m1e5_r2p5__fm8_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:50Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench5_m5e5_r2p5__fm2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:50Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench5_m5e5_r2p5__fm2_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:51Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench5_m5e5_r2p5__fm3.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:51Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench5_m5e5_r2p5__fm3_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:51Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench5_m5e5_r2p5__fm4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:51Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench5_m5e5_r2p5__fm4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:51Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench5_m5e5_r2p5__fm8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:51Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench6r_traj/bench5_m5e5_r2p5__fm8_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:51Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_hashes.csv` | producer unknown (HPC/hand-made); refs: `make_bench7_analysis.py`, `make_kappa_reopen_params.py` · 🕐 generated 2026-07-30T19:02:28Z | builder sync_bench.sh bench7 reduce | code 1056c6d7 |
-| 2026-07-30 `50c5606` | `runs/data/bench7_summary.csv` | producer unknown (HPC/hand-made); refs: `make_bench7_analysis.py` · 🕐 generated 2026-07-30T19:02:28Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:58Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk12_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:58Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:59Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk16_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:59Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:59Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk24.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:59Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk24_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:59Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk2_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:00Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk3.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:00Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk32.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:00Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk32_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:00Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk3_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:00Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:00Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:01Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk6.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:01Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk6_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:01Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:01Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk8_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:01Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:02Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk12_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:02Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:02Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk16_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:02Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:02Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk24.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:03Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk24_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:03Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk2_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:03Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk3.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:03Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk32.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:04Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk32_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:04Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk3_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:04Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:04Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:04Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk6.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:05Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk6_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:05Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:05Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk8_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:05Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:05Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk12_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:06Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:06Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk16_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:06Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:06Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk24.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:07Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk24_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:07Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk2_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:07Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk3.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:07Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk32.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:07Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk32_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:08Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk3_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:08Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:08Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:08Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk6.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:08Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk6_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:09Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:09Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk8_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:09Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1b_bench4_m1e5_r2p5__fk12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:55Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1b_bench4_m1e5_r2p5__fk12_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:55Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1b_bench4_m1e5_r2p5__fk16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:55Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1b_bench4_m1e5_r2p5__fk16_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:55Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1b_bench4_m1e5_r2p5__fk2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:55Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1b_bench4_m1e5_r2p5__fk2_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:56Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1b_bench4_m1e5_r2p5__fk4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:56Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1b_bench4_m1e5_r2p5__fk4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:56Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1b_bench4_m1e5_r2p5__fk8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:56Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1b_bench4_m1e5_r2p5__fk8_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:56Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1b_bench5_m5e5_r2p5__fk12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:57Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1b_bench5_m5e5_r2p5__fk12_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:57Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1b_bench5_m5e5_r2p5__fk16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:57Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1b_bench5_m5e5_r2p5__fk16_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:57Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1b_bench5_m5e5_r2p5__fk2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:57Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1b_bench5_m5e5_r2p5__fk2_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:57Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1b_bench5_m5e5_r2p5__fk4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:58Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1b_bench5_m5e5_r2p5__fk4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:58Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1b_bench5_m5e5_r2p5__fk8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:58Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k1b_bench5_m5e5_r2p5__fk8_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:58Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_be_sphere__fk1.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:09Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_be_sphere__fk12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:09Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_be_sphere__fk16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:10Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_be_sphere__fk2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:10Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_be_sphere__fk3.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:10Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_be_sphere__fk4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:10Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_be_sphere__fk5.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:11Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_be_sphere__fk6.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:11Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_be_sphere__fk7.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:11Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_be_sphere__fk8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:11Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_be_sphere__fk9.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:11Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_large_diffuse_lowsfe__fk1.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:12Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_large_diffuse_lowsfe__fk12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:12Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_large_diffuse_lowsfe__fk16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:12Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_large_diffuse_lowsfe__fk2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:12Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_large_diffuse_lowsfe__fk3.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:12Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_large_diffuse_lowsfe__fk4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:13Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_large_diffuse_lowsfe__fk5.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:13Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_large_diffuse_lowsfe__fk6.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:13Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_large_diffuse_lowsfe__fk7.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:13Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_large_diffuse_lowsfe__fk8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:13Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_large_diffuse_lowsfe__fk9.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:14Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_midrange_pl0__fk1.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:14Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_midrange_pl0__fk12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:14Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_midrange_pl0__fk16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:14Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_midrange_pl0__fk2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:14Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_midrange_pl0__fk3.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:14Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_midrange_pl0__fk4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:15Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_midrange_pl0__fk5.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:15Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_midrange_pl0__fk6.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:15Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_midrange_pl0__fk7.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:15Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_midrange_pl0__fk8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:15Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_midrange_pl0__fk9.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:16Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_pl2_steep__fk1.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:16Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_pl2_steep__fk12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:16Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_pl2_steep__fk16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:16Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_pl2_steep__fk2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:16Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_pl2_steep__fk3.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:17Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_pl2_steep__fk4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:17Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_pl2_steep__fk5.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:17Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_pl2_steep__fk6.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:17Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_pl2_steep__fk7.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:17Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_pl2_steep__fk8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:17Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_pl2_steep__fk9.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:18Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_simple_cluster__fk1.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:18Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_simple_cluster__fk12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:18Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_simple_cluster__fk16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:18Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_simple_cluster__fk2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:18Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_simple_cluster__fk3.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:19Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_simple_cluster__fk4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:19Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_simple_cluster__fk5.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:19Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_simple_cluster__fk6.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:19Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_simple_cluster__fk7.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:19Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_simple_cluster__fk8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:19Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_simple_cluster__fk9.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:20Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_small_dense_highsfe__fk1.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:20Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_small_dense_highsfe__fk12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:20Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_small_dense_highsfe__fk16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:20Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_small_dense_highsfe__fk2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:20Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_small_dense_highsfe__fk3.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:20Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_small_dense_highsfe__fk4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:20Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_small_dense_highsfe__fk5.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:21Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_small_dense_highsfe__fk6.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:21Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_small_dense_highsfe__fk7.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:21Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_small_dense_highsfe__fk8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:21Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k2_small_dense_highsfe__fk9.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:21Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k3_be_sphere__fk8_a.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:21Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k3_be_sphere__fk8_b.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:22Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k3_normal_n1e3__fk16_a.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:22Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k3_normal_n1e3__fk16_b.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:22Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k3_pl2_steep__fk16_a.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:22Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k3_pl2_steep__fk16_b.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:22Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k3_simple_cluster__fk8_a.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:23Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k3_simple_cluster__fk8_b.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:23Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k3_small_dense_highsfe__fk6_a.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:23Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k3_small_dense_highsfe__fk6_b.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:23Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k4_bench1_m5e4_r20__fm12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:23Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k4_bench1_m5e4_r20__fm12_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:23Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k4_bench1_m5e4_r20__fm16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:24Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k4_bench1_m5e4_r20__fm16_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:24Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k4_bench1_m5e4_r20__fm2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:24Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k4_bench1_m5e4_r20__fm2_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:24Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k4_bench1_m5e4_r20__fm3.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:24Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k4_bench1_m5e4_r20__fm3_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:25Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k4_bench1_m5e4_r20__fm4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:25Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k4_bench1_m5e4_r20__fm4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:25Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k4_bench1_m5e4_r20__fm8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:25Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k4_bench1_m5e4_r20__fm8_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:25Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k4_bench2_m1e5_r10__fm12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:26Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k4_bench2_m1e5_r10__fm12_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:26Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k4_bench2_m1e5_r10__fm16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:26Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k4_bench2_m1e5_r10__fm16_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:26Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k4_bench2_m1e5_r10__fm2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:26Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k4_bench2_m1e5_r10__fm2_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:26Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k4_bench2_m1e5_r10__fm3.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:27Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k4_bench2_m1e5_r10__fm3_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:27Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k4_bench2_m1e5_r10__fm4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:27Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k4_bench2_m1e5_r10__fm4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:27Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k4_bench2_m1e5_r10__fm8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:27Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-30 `50c5606` | `runs/data/bench7_traj/k4_bench2_m1e5_r10__fm8_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:28Z | builder harvest_bench5.py | code 1056c6d7+dirty |
-| 2026-07-29 `ab1e319` | `_eqp.html` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `db353aa` | `data/kappa_eq47_check.csv` | by `make_kappa_eq47_check.py` |
-| 2026-07-29 `ab1e319` | `data/zone_profiles.csv` | by `make_zone_profiles.py` |
-| 2026-07-29 `2b381bd` | `pdvtrigger_report.html` | by `make_pdvtrigger_report.py` |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench1_m5e4_r20__fk12.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench1_m5e4_r20__fk12_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench1_m5e4_r20__fk16.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench1_m5e4_r20__fk16_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench1_m5e4_r20__fk2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench1_m5e4_r20__fk24.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench1_m5e4_r20__fk24_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench1_m5e4_r20__fk2_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench1_m5e4_r20__fk3.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench1_m5e4_r20__fk32.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench1_m5e4_r20__fk32_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench1_m5e4_r20__fk3_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench1_m5e4_r20__fk4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench1_m5e4_r20__fk4_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench1_m5e4_r20__fk6.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench1_m5e4_r20__fk6_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench1_m5e4_r20__fk8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench1_m5e4_r20__fk8_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench2_m1e5_r10__fk12.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench2_m1e5_r10__fk12_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench2_m1e5_r10__fk16.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench2_m1e5_r10__fk16_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench2_m1e5_r10__fk2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench2_m1e5_r10__fk24.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench2_m1e5_r10__fk24_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench2_m1e5_r10__fk2_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench2_m1e5_r10__fk3.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench2_m1e5_r10__fk32.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench2_m1e5_r10__fk32_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench2_m1e5_r10__fk3_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench2_m1e5_r10__fk4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench2_m1e5_r10__fk4_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench2_m1e5_r10__fk6.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench2_m1e5_r10__fk6_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench2_m1e5_r10__fk8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench2_m1e5_r10__fk8_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench3_m1e5_r5__fk12.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench3_m1e5_r5__fk12_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench3_m1e5_r5__fk16.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench3_m1e5_r5__fk16_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench3_m1e5_r5__fk2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench3_m1e5_r5__fk24.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench3_m1e5_r5__fk24_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench3_m1e5_r5__fk2_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench3_m1e5_r5__fk3.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench3_m1e5_r5__fk32.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench3_m1e5_r5__fk32_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench3_m1e5_r5__fk3_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench3_m1e5_r5__fk4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench3_m1e5_r5__fk4_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench3_m1e5_r5__fk6.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench3_m1e5_r5__fk6_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench3_m1e5_r5__fk8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1_bench3_m1e5_r5__fk8_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `42b084f` | `runs/params/bench7/k1b_bench4_m1e5_r2p5__fk12.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `42b084f` | `runs/params/bench7/k1b_bench4_m1e5_r2p5__fk12_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `42b084f` | `runs/params/bench7/k1b_bench4_m1e5_r2p5__fk16.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `42b084f` | `runs/params/bench7/k1b_bench4_m1e5_r2p5__fk16_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1b_bench4_m1e5_r2p5__fk2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1b_bench4_m1e5_r2p5__fk2_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1b_bench4_m1e5_r2p5__fk4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1b_bench4_m1e5_r2p5__fk4_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1b_bench4_m1e5_r2p5__fk8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1b_bench4_m1e5_r2p5__fk8_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `42b084f` | `runs/params/bench7/k1b_bench5_m5e5_r2p5__fk12.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `42b084f` | `runs/params/bench7/k1b_bench5_m5e5_r2p5__fk12_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `42b084f` | `runs/params/bench7/k1b_bench5_m5e5_r2p5__fk16.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `42b084f` | `runs/params/bench7/k1b_bench5_m5e5_r2p5__fk16_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1b_bench5_m5e5_r2p5__fk2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1b_bench5_m5e5_r2p5__fk2_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1b_bench5_m5e5_r2p5__fk4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1b_bench5_m5e5_r2p5__fk4_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1b_bench5_m5e5_r2p5__fk8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k1b_bench5_m5e5_r2p5__fk8_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `runs/params/bench7/k2_be_sphere__fk1.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `runs/params/bench7/k2_be_sphere__fk12.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `runs/params/bench7/k2_be_sphere__fk16.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `runs/params/bench7/k2_be_sphere__fk2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `runs/params/bench7/k2_be_sphere__fk3.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `runs/params/bench7/k2_be_sphere__fk4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k2_be_sphere__fk5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `runs/params/bench7/k2_be_sphere__fk6.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k2_be_sphere__fk7.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `runs/params/bench7/k2_be_sphere__fk8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k2_be_sphere__fk9.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `runs/params/bench7/k2_large_diffuse_lowsfe__fk1.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `runs/params/bench7/k2_large_diffuse_lowsfe__fk12.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `runs/params/bench7/k2_large_diffuse_lowsfe__fk16.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `runs/params/bench7/k2_large_diffuse_lowsfe__fk2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `runs/params/bench7/k2_large_diffuse_lowsfe__fk3.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `runs/params/bench7/k2_large_diffuse_lowsfe__fk4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k2_large_diffuse_lowsfe__fk5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `runs/params/bench7/k2_large_diffuse_lowsfe__fk6.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k2_large_diffuse_lowsfe__fk7.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `runs/params/bench7/k2_large_diffuse_lowsfe__fk8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k2_large_diffuse_lowsfe__fk9.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `runs/params/bench7/k2_midrange_pl0__fk1.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `runs/params/bench7/k2_midrange_pl0__fk12.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `runs/params/bench7/k2_midrange_pl0__fk16.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `runs/params/bench7/k2_midrange_pl0__fk2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `runs/params/bench7/k2_midrange_pl0__fk3.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `runs/params/bench7/k2_midrange_pl0__fk4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k2_midrange_pl0__fk5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `runs/params/bench7/k2_midrange_pl0__fk6.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k2_midrange_pl0__fk7.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `runs/params/bench7/k2_midrange_pl0__fk8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k2_midrange_pl0__fk9.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `runs/params/bench7/k2_pl2_steep__fk1.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `runs/params/bench7/k2_pl2_steep__fk12.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `runs/params/bench7/k2_pl2_steep__fk16.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `runs/params/bench7/k2_pl2_steep__fk2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `runs/params/bench7/k2_pl2_steep__fk3.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `runs/params/bench7/k2_pl2_steep__fk4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k2_pl2_steep__fk5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `runs/params/bench7/k2_pl2_steep__fk6.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k2_pl2_steep__fk7.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `runs/params/bench7/k2_pl2_steep__fk8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k2_pl2_steep__fk9.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `runs/params/bench7/k2_simple_cluster__fk1.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `runs/params/bench7/k2_simple_cluster__fk12.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `runs/params/bench7/k2_simple_cluster__fk16.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `runs/params/bench7/k2_simple_cluster__fk2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `runs/params/bench7/k2_simple_cluster__fk3.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `runs/params/bench7/k2_simple_cluster__fk4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k2_simple_cluster__fk5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `runs/params/bench7/k2_simple_cluster__fk6.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k2_simple_cluster__fk7.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `runs/params/bench7/k2_simple_cluster__fk8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k2_simple_cluster__fk9.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `runs/params/bench7/k2_small_dense_highsfe__fk1.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `runs/params/bench7/k2_small_dense_highsfe__fk12.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `runs/params/bench7/k2_small_dense_highsfe__fk16.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `runs/params/bench7/k2_small_dense_highsfe__fk2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `runs/params/bench7/k2_small_dense_highsfe__fk3.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `runs/params/bench7/k2_small_dense_highsfe__fk4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k2_small_dense_highsfe__fk5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `runs/params/bench7/k2_small_dense_highsfe__fk6.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k2_small_dense_highsfe__fk7.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `afb969f` | `runs/params/bench7/k2_small_dense_highsfe__fk8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k2_small_dense_highsfe__fk9.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k3_be_sphere__fk8_a.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k3_be_sphere__fk8_b.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k3_normal_n1e3__fk16_a.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k3_normal_n1e3__fk16_b.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k3_pl2_steep__fk16_a.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k3_pl2_steep__fk16_b.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k3_simple_cluster__fk8_a.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k3_simple_cluster__fk8_b.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k3_small_dense_highsfe__fk6_a.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k3_small_dense_highsfe__fk6_b.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k4_bench1_m5e4_r20__fm12.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k4_bench1_m5e4_r20__fm12_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k4_bench1_m5e4_r20__fm16.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k4_bench1_m5e4_r20__fm16_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k4_bench1_m5e4_r20__fm2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k4_bench1_m5e4_r20__fm2_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k4_bench1_m5e4_r20__fm3.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k4_bench1_m5e4_r20__fm3_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k4_bench1_m5e4_r20__fm4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k4_bench1_m5e4_r20__fm4_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k4_bench1_m5e4_r20__fm8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k4_bench1_m5e4_r20__fm8_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k4_bench2_m1e5_r10__fm12.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k4_bench2_m1e5_r10__fm12_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k4_bench2_m1e5_r10__fm16.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k4_bench2_m1e5_r10__fm16_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k4_bench2_m1e5_r10__fm2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k4_bench2_m1e5_r10__fm2_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k4_bench2_m1e5_r10__fm3.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k4_bench2_m1e5_r10__fm3_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k4_bench2_m1e5_r10__fm4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k4_bench2_m1e5_r10__fm4_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k4_bench2_m1e5_r10__fm8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `1e82a37` | `runs/params/bench7/k4_bench2_m1e5_r10__fm8_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-29 `42b084f` | `runs/run_bench7.sbatch` | producer unknown (HPC/hand-made); refs: `make_kappa_reopen_params.py` |
-| 2026-07-29 `ab1e319` | `zone_profiles.png` | by `make_zone_profiles.py` |
-| 2026-07-28 `0493f63` | `data/bench_stale_segments.csv` | by `make_bench_stale_segments.py` |
-| 2026-07-28 `dd9b4ca` | `data/rosette_fm4_doubleboost_check.csv` | by `make_rosette_fm4_doubleboost_check.py` |
-| 2026-07-28 `b38aa74` | `phase6_fig1_correction.png` | producer unknown (HPC/hand-made); refs: `make_phase6_figures.py`, `make_pdvtrigger_report.py` |
-| 2026-07-28 `b38aa74` | `phase6_fig2_headtohead.png` | producer unknown (HPC/hand-made); refs: `make_phase6_figures.py`, `make_pdvtrigger_report.py` |
-| 2026-07-28 `b38aa74` | `phase6_fig3_uniformity.png` | producer unknown (HPC/hand-made); refs: `make_phase6_figures.py`, `make_pdvtrigger_report.py` |
-| 2026-07-28 `b38aa74` | `phase6_fig4_stale.png` | producer unknown (HPC/hand-made); refs: `make_phase6_figures.py`, `make_pdvtrigger_report.py` |
-| 2026-07-28 `b38aa74` | `phase6_fig5_windcap.png` | producer unknown (HPC/hand-made); refs: `make_phase6_figures.py`, `make_pdvtrigger_report.py` |
-| 2026-07-28 `b38aa74` | `phase6_fig6_slope.png` | producer unknown (HPC/hand-made); refs: `make_phase6_figures.py`, `make_pdvtrigger_report.py` |
-| 2026-07-28 `b38aa74` | `phase6_fig7_mechanism.png` | producer unknown (HPC/hand-made); refs: `make_phase6_figures.py`, `make_pdvtrigger_report.py` |
-| 2026-07-25 `f8d903b` | `data/fa_state_screen.csv` | by `make_fa_state_screen.py` |
-| 2026-07-25 `c4423bc` | `fa_state_screen.png` | producer unknown (HPC/hand-made); refs: `make_fa_state_figures.py`, `make_pdvtrigger_report.py` |
-| 2026-07-25 `400a73f` | `runs/data/bench_state_traj/be_sphere__none.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-25 `f8d903b` | `runs/data/bench_state_traj/bench1_m5e4_r20__none_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-25 `f8d903b` | `runs/data/bench_state_traj/bench2_m1e5_r10__none_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-25 `f8d903b` | `runs/data/bench_state_traj/bench3_m1e5_r5__none_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-25 `f8d903b` | `runs/data/bench_state_traj/bench4_m1e5_r2p5__none_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-25 `f8d903b` | `runs/data/bench_state_traj/bench5_m5e5_r2p5__none_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-25 `400a73f` | `runs/data/bench_state_traj/fail_repro__none.csv` | producer unknown (HPC/hand-made); refs: `make_kmix_prototype.py` |
-| 2026-07-25 `400a73f` | `runs/data/bench_state_traj/large_diffuse_lowsfe__none.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-25 `400a73f` | `runs/data/bench_state_traj/midrange_pl0__none.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-25 `400a73f` | `runs/data/bench_state_traj/normal_n1e3__none.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-25 `f8d903b` | `runs/data/bench_state_traj/pl2_steep__none.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-25 `f8d903b` | `runs/data/bench_state_traj/simple_cluster__none.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-25 `f8d903b` | `runs/data/bench_state_traj/small_1e6__none.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-25 `f8d903b` | `runs/data/bench_state_traj/small_dense_highsfe__none.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-25 `f8d903b` | `runs/data/sc0_state_summary.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-25T16:57:36Z | builder harvest_bench5.py | code 400a73f+dirty |
-| 2026-07-24 `6418992` | `data/zone_resolution.csv` | by `make_zone_resolution.py` · ⚠️ STALE-RISK: builder newer (make_zone_resolution.py 2026-07-28) — regenerate or justify |
-| 2026-07-19 `88a4738` | `data/theta5s_collapse_law.csv` | producer unknown (HPC/hand-made); refs: `make_theta5s_analysis.py` · 🕐 generated 2026-07-19T11:08:03Z | builder make_theta5s_analysis.py | code 075c73b+dirty |
-| 2026-07-19 `88a4738` | `data/theta5s_fire_map.csv` | producer unknown (HPC/hand-made); refs: `make_fa_state_screen.py`, `make_theta5s_analysis.py` · 🕐 generated 2026-07-19T11:08:03Z | builder make_theta5s_analysis.py | code 075c73b+dirty |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_summary_hpc.csv` | producer unknown (HPC/hand-made); refs: `compare_bench5_hpc.py`, `make_bench5_analysis.py` · 🕐 generated 2026-07-19T10:48:17Z | builder harvest_bench5.py | code 89e802dd+dirty |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench1_m5e4_r20__fa12.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench1_m5e4_r20__fa12_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench1_m5e4_r20__fa16.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench1_m5e4_r20__fa16_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench1_m5e4_r20__fa4.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench1_m5e4_r20__fa4_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench1_m5e4_r20__fa6.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench1_m5e4_r20__fa6_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench1_m5e4_r20__fa8.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench1_m5e4_r20__fa8_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench1_m5e4_r20__none.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench1_m5e4_r20__none_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench2_m1e5_r10__fa12.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench2_m1e5_r10__fa12_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench2_m1e5_r10__fa16.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench2_m1e5_r10__fa16_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench2_m1e5_r10__fa4.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench2_m1e5_r10__fa4_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench2_m1e5_r10__fa6.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench2_m1e5_r10__fa6_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench2_m1e5_r10__fa8.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench2_m1e5_r10__fa8_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench2_m1e5_r10__none.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench2_m1e5_r10__none_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench3_m1e5_r5__fa12.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench3_m1e5_r5__fa12_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench3_m1e5_r5__fa16.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench3_m1e5_r5__fa16_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench3_m1e5_r5__fa4.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench3_m1e5_r5__fa4_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench3_m1e5_r5__fa6.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench3_m1e5_r5__fa6_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench3_m1e5_r5__fa8.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench3_m1e5_r5__fa8_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench3_m1e5_r5__none.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench3_m1e5_r5__none_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench4_m1e5_r2p5__fa12.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench4_m1e5_r2p5__fa12_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench4_m1e5_r2p5__fa16.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench4_m1e5_r2p5__fa16_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench4_m1e5_r2p5__fa4.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench4_m1e5_r2p5__fa4_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench4_m1e5_r2p5__fa6.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench4_m1e5_r2p5__fa6_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench4_m1e5_r2p5__fa8.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench4_m1e5_r2p5__fa8_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench4_m1e5_r2p5__none.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench4_m1e5_r2p5__none_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench5_m5e5_r2p5__fa12.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench5_m5e5_r2p5__fa12_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench5_m5e5_r2p5__fa16.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench5_m5e5_r2p5__fa16_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench5_m5e5_r2p5__fa4.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench5_m5e5_r2p5__fa4_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench5_m5e5_r2p5__fa6.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench5_m5e5_r2p5__fa6_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench5_m5e5_r2p5__fa8.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench5_m5e5_r2p5__fa8_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench5_m5e5_r2p5__none.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench5_traj_hpc/bench5_m5e5_r2p5__none_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_summary.csv` | producer unknown (HPC/hand-made); refs: `make_bench6_analysis.py`, `make_bench7_gate_g0.py` · 🕐 generated 2026-07-19T10:48:56Z | builder harvest_bench5.py | code 89e802dd+dirty |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench1_m5e4_r20__fa128.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench1_m5e4_r20__fa128_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench1_m5e4_r20__fa24.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench1_m5e4_r20__fa24_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench1_m5e4_r20__fa32.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench1_m5e4_r20__fa32_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench1_m5e4_r20__fa64.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench1_m5e4_r20__fa64_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench1_m5e4_r20__fm2.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench1_m5e4_r20__fm2_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench1_m5e4_r20__fm3.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench1_m5e4_r20__fm3_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench1_m5e4_r20__fm4.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench1_m5e4_r20__fm4_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench1_m5e4_r20__fm8.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench1_m5e4_r20__fm8_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench2_m1e5_r10__fa128.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench2_m1e5_r10__fa128_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench2_m1e5_r10__fa24.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench2_m1e5_r10__fa24_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench2_m1e5_r10__fa32.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench2_m1e5_r10__fa32_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench2_m1e5_r10__fa64.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench2_m1e5_r10__fa64_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench2_m1e5_r10__fm2.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench2_m1e5_r10__fm2_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench2_m1e5_r10__fm3.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench2_m1e5_r10__fm3_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench2_m1e5_r10__fm4.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench2_m1e5_r10__fm4_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench2_m1e5_r10__fm8.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench2_m1e5_r10__fm8_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench3_m1e5_r5__fa24.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench3_m1e5_r5__fa24_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench3_m1e5_r5__fa32.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench3_m1e5_r5__fa32_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench3_m1e5_r5__fm2.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench3_m1e5_r5__fm2_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench3_m1e5_r5__fm3.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench3_m1e5_r5__fm3_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench3_m1e5_r5__fm4.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench3_m1e5_r5__fm4_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench3_m1e5_r5__fm8.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench3_m1e5_r5__fm8_diag.csv` | producer unknown (HPC/hand-made); refs: `make_phase6_figures.py` |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench4_m1e5_r2p5__fm2.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench4_m1e5_r2p5__fm2_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench4_m1e5_r2p5__fm3.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench4_m1e5_r2p5__fm3_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench4_m1e5_r2p5__fm4.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench4_m1e5_r2p5__fm4_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench4_m1e5_r2p5__fm8.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench4_m1e5_r2p5__fm8_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench5_m5e5_r2p5__fm2.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench5_m5e5_r2p5__fm2_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench5_m5e5_r2p5__fm3.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench5_m5e5_r2p5__fm3_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench5_m5e5_r2p5__fm4.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench5_m5e5_r2p5__fm4_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench5_m5e5_r2p5__fm8.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/bench6_traj/bench5_m5e5_r2p5__fm8_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-19 `591e5e4` | `runs/data/theta5s_summary.csv` | producer unknown (HPC/hand-made); refs: `make_theta5s_analysis.py`, `checkpoint_theta5s.py` · 🕐 generated 2026-07-19T10:48:14Z | builder harvest_theta_max.py | code 89e802dd+dirty |
-| 2026-07-19 `88a4738` | `theta5s_fire_map.png` | producer unknown (HPC/hand-made); refs: `make_theta5s_analysis.py` |
-| 2026-07-19 `88a4738` | `theta5s_theta_rise.png` | producer unknown (HPC/hand-made); refs: `make_theta5s_analysis.py` |
-| 2026-07-14 `31265d0` | `closure_stage1_gate.png` | producer unknown (HPC/hand-made); refs: `make_closure_plots.py` |
-| 2026-07-14 `31265d0` | `closure_stage2_heatmap.png` | producer unknown (HPC/hand-made); refs: `make_closure_plots.py` |
-| 2026-07-14 `31265d0` | `closure_stage2_heatmap_theta.png` | producer unknown (HPC/hand-made); refs: `make_closure_plots.py` |
-| 2026-07-14 `31265d0` | `closure_stage2_sweep.png` | producer unknown (HPC/hand-made); refs: `make_closure_plots.py` |
-| 2026-07-14 `31265d0` | `closure_stage2_theta.png` | producer unknown (HPC/hand-made); refs: `make_closure_plots.py` |
-| 2026-07-14 `31265d0` | `closure_stage3_doublecount.png` | producer unknown (HPC/hand-made); refs: `make_closure_plots.py` |
-| 2026-07-14 `31265d0` | `closure_stage4_summary.png` | producer unknown (HPC/hand-made); refs: `make_closure_plots.py` |
-| 2026-07-14 `31265d0` | `da_replay.png` | by `make_da_replay.py` |
-| 2026-07-14 `31265d0` | `da_screen.png` | by `make_da_screen.py` |
-| 2026-07-14 `075c73b` | `data/bench5_durations.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `data/bench5_elbadry_prediction.csv` | by `make_bench5_elbadry_prediction.py` |
-| 2026-07-14 `31265d0` | `data/closure_test.csv` | by `make_closure_test.py` |
-| 2026-07-14 `31265d0` | `data/da_replay.csv` | by `make_da_replay.py` |
-| 2026-07-14 `31265d0` | `data/da_screen.csv` | by `make_da_screen.py` |
-| 2026-07-14 `31265d0` | `data/dense_stiffness_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `data/dmdt_trace_dense.csv` | producer unknown (HPC/hand-made); refs: `make_dmdt_dip_figures.py` · 🕐 generated 2026-07-03T12:33:07Z | builder make_dmdt_dip_figures.py | code 4568aa4+dirty |
-| 2026-07-14 `31265d0` | `data/doublecount_mc.csv` | by `make_doublecount_mc.py` |
-| 2026-07-14 `31265d0` | `data/ebpeak_8config_xcheck.csv` | by `make_ebpeak_8config_xcheck.py` |
-| 2026-07-14 `31265d0` | `data/ebpeak_trigger_test.csv` | by `make_ebpeak_trigger_test.py` |
-| 2026-07-14 `31265d0` | `data/elbadry_overlay.csv` | by `make_elbadry_overlay.py` |
-| 2026-07-14 `31265d0` | `data/elbadry_theta.csv` | by `make_elbadry_theta.py` |
-| 2026-07-14 `31265d0` | `data/fA_coverage9.csv` | producer unknown (HPC/hand-made); refs: `make_fA_edge_map.py` |
-| 2026-07-14 `31265d0` | `data/fA_edge_map.csv` | by `make_fA_edge_map.py` |
-| 2026-07-14 `31265d0` | `data/fA_source_boost.csv` | by `make_fA_source_boost.py` |
-| 2026-07-14 `31265d0` | `data/fA_source_boost_summary.csv` | by `make_fA_source_boost.py` |
-| 2026-07-14 `31265d0` | `data/fkappa_auto_verify.csv` | by `make_fkappa_auto_verify.py` |
-| 2026-07-14 `31265d0` | `data/fkappa_cliff_metric.csv` | by `make_fkappa_cliff_metric.py` |
-| 2026-07-14 `31265d0` | `data/fkappa_emergent_calibration.csv` | by `make_fkappa_emergent_calibration.py` |
-| 2026-07-14 `31265d0` | `data/fkappa_functional_form.csv` | by `make_fkappa_functional_form.py` |
-| 2026-07-14 `31265d0` | `data/fkappa_leverage.csv` | by `make_fkappa_leverage.py` |
-| 2026-07-14 `31265d0` | `data/fkappa_nH_sweep.csv` | by `make_fkappa_nH_sweep.py` |
-| 2026-07-14 `31265d0` | `data/fkappa_physical_cap.csv` | by `make_fkappa_physical_cap.py` |
-| 2026-07-14 `31265d0` | `data/fkappa_physical_derivation.csv` | by `make_fkappa_physical_derivation.py` |
-| 2026-07-14 `31265d0` | `data/fkappa_sweep_scorecard.csv` | producer unknown (HPC/hand-made); refs: `make_fkappa_sweep_analysis.py` |
-| 2026-07-14 `31265d0` | `data/fkappa_theta1_collapse.csv` | by `make_fkappa_theta1_collapse.py` |
-| 2026-07-14 `31265d0` | `data/fm1_rootcheck.csv` | by `make_fm1_rootcheck.py` |
-| 2026-07-14 `31265d0` | `data/fm1b_evapsign.csv` | by `make_fm1b_evapsign.py` |
-| 2026-07-14 `31265d0` | `data/fmix_table.csv` | by `make_fmix_table.py` |
-| 2026-07-14 `31265d0` | `data/gate_prototype.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `data/kappa_backreaction.csv` | by `make_kappa_backreaction.py` |
-| 2026-07-14 `31265d0` | `data/kappa_blowout_calibration.csv` | by `make_kappa_blowout_calibration.py` |
-| 2026-07-14 `31265d0` | `data/kappa_calibration_estimate.csv` | by `make_kappa_calibration_estimate.py` |
-| 2026-07-14 `31265d0` | `data/kappa_freeze_autopsy.csv` | by `make_kappa_freeze_autopsy.py` · 🕐 generated 2026-07-02T22:05:48Z | builder make_kappa_freeze_autopsy.py | code d8ec046+dirty |
-| 2026-07-14 `31265d0` | `data/kappa_stability_map.csv` | by `make_kappa_stability_map.py` · 🕐 generated 2026-07-02T12:05:54Z | builder make_kappa_stability_map.py | code 8a27ba9 |
-| 2026-07-14 `31265d0` | `data/kmix_prototype.csv` | by `make_kmix_prototype.py` |
-| 2026-07-14 `31265d0` | `data/kmix_selfconsistent.csv` | by `make_kmix_selfconsistent.py` |
-| 2026-07-14 `31265d0` | `data/kmix_theta_trajectory.csv` | by `make_kmix_theta_trajectory.py` |
-| 2026-07-14 `31265d0` | `data/kmix_theta_trajectory_summary.csv` | by `make_kmix_theta_trajectory.py` |
-| 2026-07-14 `31265d0` | `data/live_pdv_decomp.csv` | by `make_live_pdv_decomp.py` |
-| 2026-07-14 `31265d0` | `data/newcode_default_vs_theta.csv` | producer unknown (HPC/hand-made); refs: `make_elbadry_story_figs.py`, `make_pdvtrigger_report.py` |
-| 2026-07-14 `31265d0` | `data/nmap_verify.csv` | by `make_nmap_verify.py` |
-| 2026-07-14 `31265d0` | `data/pdv_combined_trigger.csv` | producer unknown (HPC/hand-made); refs: `make_combined_trigger_table.py`, `make_ebpeak_8config_xcheck.py` |
-| 2026-07-14 `31265d0` | `data/pdv_regime_budget.csv` | producer unknown (HPC/hand-made); refs: `make_ebpeak_8config_xcheck.py`, `make_pdv_regime_table.py` |
-| 2026-07-14 `31265d0` | `data/pdv_trigger_compare.csv` | by `make_pdv_trigger_compare.py` |
-| 2026-07-14 `31265d0` | `data/shadow_te_fate.csv` | by `harvest_shadow.py` |
-| 2026-07-14 `31265d0` | `data/summary.csv` | producer unknown (HPC/hand-made); refs: `compare_bench5_hpc.py`, `make_bench5_analysis.py` |
-| 2026-07-14 `31265d0` | `data/sweep_report.txt` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `data/sweep_tmax_fate.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `data/theta5_fire_map.csv` | producer unknown (HPC/hand-made); refs: `make_theta5b_analysis.py` · 🕐 generated 2026-07-03T13:59:45Z | builder make_theta5b_analysis.py | code 5762c05+dirty |
-| 2026-07-14 `31265d0` | `data/theta5_law_check.csv` | producer unknown (HPC/hand-made); refs: `make_theta5b_analysis.py` · 🕐 generated 2026-07-03T13:59:45Z | builder make_theta5b_analysis.py | code 5762c05+dirty |
-| 2026-07-14 `31265d0` | `data/theta5k_fire_map.csv` | producer unknown (HPC/hand-made); refs: `make_kappa_eq47_check.py`, `make_theta5k_analysis.py` · 🕐 generated 2026-07-03T13:33:46Z | builder make_theta5k_analysis.py | code 4b5fa32+dirty |
-| 2026-07-14 `31265d0` | `data/theta5s_dmdt_suppression.csv` | producer unknown (HPC/hand-made); refs: `make_theta5s_analysis.py`, `harvest_dmdt_suppression.py` |
-| 2026-07-14 `31265d0` | `data/traj_normal_n1e3.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `data/traj_small_1e6.csv` | producer unknown (HPC/hand-made); refs: `make_fA_edge_map.py` |
-| 2026-07-14 `31265d0` | `dmdt_dip_traces.png` | producer unknown (HPC/hand-made); refs: `make_dmdt_dip_figures.py` |
-| 2026-07-14 `31265d0` | `dmdt_tackle_flow.png` | producer unknown (HPC/hand-made); refs: `make_dmdt_dip_figures.py`, `make_pdvtrigger_report.py` |
-| 2026-07-14 `31265d0` | `ebpeak_8config_xcheck.png` | by `make_ebpeak_8config_xcheck.py` |
-| 2026-07-14 `31265d0` | `ebpeak_trigger_test.png` | by `make_ebpeak_trigger_test.py` |
-| 2026-07-14 `31265d0` | `elbadry_overlay.png` | by `make_elbadry_overlay.py` |
-| 2026-07-14 `31265d0` | `elbadry_theta.png` | by `make_elbadry_theta.py` |
-| 2026-07-14 `31265d0` | `fA_edge_map.png` | by `make_fA_edge_map.py` |
-| 2026-07-14 `31265d0` | `fA_source_boost.png` | by `make_fA_source_boost.py` |
-| 2026-07-14 `31265d0` | `fkappa_cliff_metric.png` | by `make_fkappa_cliff_metric.py` |
-| 2026-07-14 `31265d0` | `fkappa_definition.png` | by `make_fkappa_definition.py` |
-| 2026-07-14 `31265d0` | `fkappa_emergent_calibration.png` | by `make_fkappa_emergent_calibration.py` |
-| 2026-07-14 `31265d0` | `fkappa_emergent_routea.png` | producer unknown (HPC/hand-made); refs: `make_fkappa_emergent_calibration.py` |
-| 2026-07-14 `31265d0` | `fkappa_functional_form.png` | by `make_fkappa_functional_form.py` |
-| 2026-07-14 `31265d0` | `fkappa_leverage.png` | by `make_fkappa_leverage.py` |
-| 2026-07-14 `31265d0` | `fkappa_nH_sweep.png` | by `make_fkappa_nH_sweep.py` |
-| 2026-07-14 `31265d0` | `fkappa_physical_cap.png` | by `make_fkappa_physical_cap.py` |
-| 2026-07-14 `31265d0` | `fkappa_physical_derivation.png` | by `make_fkappa_physical_derivation.py` |
-| 2026-07-14 `31265d0` | `fkappa_sweep_analysis.png` | by `make_fkappa_sweep_analysis.py` |
-| 2026-07-14 `31265d0` | `fkappa_theta1_collapse.png` | by `make_fkappa_theta1_collapse.py` |
-| 2026-07-14 `31265d0` | `fm1_rootcheck.png` | by `make_fm1_rootcheck.py` |
-| 2026-07-14 `31265d0` | `fm1b_evapsign.png` | by `make_fm1b_evapsign.py` |
-| 2026-07-14 `31265d0` | `fmix_vs_density.png` | producer unknown (HPC/hand-made); refs: `make_fmix_spread_plot.py` |
-| 2026-07-14 `31265d0` | `ideas_comparison.png` | by `make_ideas_comparison.py` |
-| 2026-07-14 `31265d0` | `kappa_backreaction.png` | by `make_kappa_backreaction.py` |
-| 2026-07-14 `31265d0` | `kappa_blowout_calibration.png` | by `make_kappa_blowout_calibration.py` |
-| 2026-07-14 `31265d0` | `kappa_calibration_estimate.png` | by `make_kappa_calibration_estimate.py` |
-| 2026-07-14 `31265d0` | `kmix_prototype.png` | by `make_kmix_prototype.py` |
-| 2026-07-14 `31265d0` | `kmix_selfconsistent.png` | by `make_kmix_selfconsistent.py` |
-| 2026-07-14 `31265d0` | `kmix_theta_trajectory.png` | by `make_kmix_theta_trajectory.py` |
-| 2026-07-14 `31265d0` | `nmap_verify.png` | by `make_nmap_verify.py` |
-| 2026-07-14 `31265d0` | `pdv_combined_trigger.png` | producer unknown (HPC/hand-made); refs: `make_combined_trigger_table.py` |
-| 2026-07-14 `31265d0` | `pdv_trigger_compare.png` | by `make_pdv_trigger_compare.py` |
-| 2026-07-14 `31265d0` | `runs/data/bench5_summary.csv` | by `harvest_bench5.py` · ⚠️ STALE-RISK: builder newer (harvest_bench5.py 2026-07-29) — regenerate or justify |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench1_m5e4_r20__fa12.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench1_m5e4_r20__fa12_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench1_m5e4_r20__fa16.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench1_m5e4_r20__fa16_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench1_m5e4_r20__fa4.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench1_m5e4_r20__fa4_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench1_m5e4_r20__fa6.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench1_m5e4_r20__fa6_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench1_m5e4_r20__fa8.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench1_m5e4_r20__fa8_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench1_m5e4_r20__none.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench1_m5e4_r20__none_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench2_m1e5_r10__fa12.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench2_m1e5_r10__fa12_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench2_m1e5_r10__fa16.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench2_m1e5_r10__fa16_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench2_m1e5_r10__fa4.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench2_m1e5_r10__fa4_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench2_m1e5_r10__fa6.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench2_m1e5_r10__fa6_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench2_m1e5_r10__fa8.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench2_m1e5_r10__fa8_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench2_m1e5_r10__none.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench2_m1e5_r10__none_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench3_m1e5_r5__fa12.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench3_m1e5_r5__fa12_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench3_m1e5_r5__fa16.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench3_m1e5_r5__fa16_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench3_m1e5_r5__fa4.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench3_m1e5_r5__fa4_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench3_m1e5_r5__fa6.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench3_m1e5_r5__fa6_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench3_m1e5_r5__fa8.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench3_m1e5_r5__fa8_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench3_m1e5_r5__none.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench3_m1e5_r5__none_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench4_m1e5_r2p5__fa12.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench4_m1e5_r2p5__fa12_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench4_m1e5_r2p5__fa16.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench4_m1e5_r2p5__fa16_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench4_m1e5_r2p5__fa4.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench4_m1e5_r2p5__fa4_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench4_m1e5_r2p5__fa6.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench4_m1e5_r2p5__fa6_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench4_m1e5_r2p5__fa8.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench4_m1e5_r2p5__fa8_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench4_m1e5_r2p5__none.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench4_m1e5_r2p5__none_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench5_m5e5_r2p5__fa12.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench5_m5e5_r2p5__fa12_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench5_m5e5_r2p5__fa16.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench5_m5e5_r2p5__fa16_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench5_m5e5_r2p5__fa4.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench5_m5e5_r2p5__fa4_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench5_m5e5_r2p5__fa6.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench5_m5e5_r2p5__fa6_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench5_m5e5_r2p5__fa8.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench5_m5e5_r2p5__fa8_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench5_m5e5_r2p5__none.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/bench5_traj/bench5_m5e5_r2p5__none_diag.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/harvest_cal_compact__k1.csv` | producer unknown (HPC/hand-made); refs: `make_kmix_prototype.py` |
-| 2026-07-14 `31265d0` | `runs/data/harvest_cal_dense__ek1.csv` | producer unknown (HPC/hand-made); refs: `make_kmix_prototype.py` |
-| 2026-07-14 `31265d0` | `runs/data/harvest_cal_diffuse__k1.csv` | producer unknown (HPC/hand-made); refs: `make_kmix_prototype.py` |
-| 2026-07-14 `31265d0` | `runs/data/harvest_cal_mid__ek1.csv` | producer unknown (HPC/hand-made); refs: `make_kmix_prototype.py` |
-| 2026-07-14 `31265d0` | `runs/data/harvest_f1edge_hidens__mult2.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/harvest_f1edge_hidens__none.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/harvest_f1edge_lowdens__mult2.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/harvest_f1edge_lowdens__mult3.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/harvest_f1edge_lowdens__none.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/harvest_fail_repro__none.csv` | producer unknown (HPC/hand-made); refs: `make_kmix_prototype.py` |
-| 2026-07-14 `31265d0` | `runs/data/harvest_simple_cluster__mult2.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/harvest_simple_cluster__none.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/live_compare.csv` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/data/theta5_calibration.csv` | by `make_theta5_calibration.py` · 🕐 generated 2026-07-02T14:00:21Z | builder make_theta5_calibration.py | code ad15816 |
-| 2026-07-14 `31265d0` | `runs/data/theta5_fmix_scorecard.csv` | producer unknown (HPC/hand-made); refs: `make_theta5_figures.py` · 🕐 generated 2026-07-03T21:58:20Z | builder make_theta5_figures.py | code f667df5+dirty |
-| 2026-07-14 `31265d0` | `runs/data/theta5_summary.csv` | producer unknown (HPC/hand-made); refs: `make_theta5_figures.py`, `make_theta5b_analysis.py` · 🕐 generated 2026-07-02T13:50:54Z | builder harvest_theta_max.py | code 23f623d3+dirty |
-| 2026-07-14 `31265d0` | `runs/data/theta5b_summary.csv` | producer unknown (HPC/hand-made); refs: `make_theta5b_analysis.py`, `make_theta5b_params.py` · 🕐 generated 2026-07-02T21:13:23Z | builder harvest_theta_max.py | code 049d3905+dirty |
-| 2026-07-14 `31265d0` | `runs/data/theta5k_summary.csv` | producer unknown (HPC/hand-made); refs: `make_theta5k_analysis.py`, `make_pdvtrigger_report.py` · 🕐 generated 2026-07-03T11:48:20Z | builder harvest_theta_max.py | code fa9dc7ed+dirty |
-| 2026-07-14 `31265d0` | `runs/data/theta5n_summary.csv` | producer unknown (HPC/hand-made); refs: `make_theta5b_analysis.py`, `make_theta5k_analysis.py` · 🕐 generated 2026-07-03T13:30:11Z | builder harvest_theta_max.py | code c7c58738+dirty |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench1_m5e4_r20__fa12.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench1_m5e4_r20__fa12_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench1_m5e4_r20__fa16.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench1_m5e4_r20__fa16_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench1_m5e4_r20__fa4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench1_m5e4_r20__fa4_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench1_m5e4_r20__fa6.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench1_m5e4_r20__fa6_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench1_m5e4_r20__fa8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench1_m5e4_r20__fa8_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench1_m5e4_r20__none.param` | producer unknown (HPC/hand-made); refs: `make_zone_profiles.py`, `make_zone_resolution.py` |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench1_m5e4_r20__none_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench2_m1e5_r10__fa12.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench2_m1e5_r10__fa12_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench2_m1e5_r10__fa16.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench2_m1e5_r10__fa16_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench2_m1e5_r10__fa4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench2_m1e5_r10__fa4_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench2_m1e5_r10__fa6.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench2_m1e5_r10__fa6_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench2_m1e5_r10__fa8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench2_m1e5_r10__fa8_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench2_m1e5_r10__none.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench2_m1e5_r10__none_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench3_m1e5_r5__fa12.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench3_m1e5_r5__fa12_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench3_m1e5_r5__fa16.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench3_m1e5_r5__fa16_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench3_m1e5_r5__fa4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench3_m1e5_r5__fa4_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench3_m1e5_r5__fa6.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench3_m1e5_r5__fa6_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench3_m1e5_r5__fa8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench3_m1e5_r5__fa8_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench3_m1e5_r5__none.param` | producer unknown (HPC/hand-made); refs: `make_fa_state_screen.py`, `make_zone_profiles.py` |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench3_m1e5_r5__none_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench4_m1e5_r2p5__fa12.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench4_m1e5_r2p5__fa12_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench4_m1e5_r2p5__fa16.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench4_m1e5_r2p5__fa16_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench4_m1e5_r2p5__fa4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench4_m1e5_r2p5__fa4_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench4_m1e5_r2p5__fa6.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench4_m1e5_r2p5__fa6_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench4_m1e5_r2p5__fa8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench4_m1e5_r2p5__fa8_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench4_m1e5_r2p5__none.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench4_m1e5_r2p5__none_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench5_m5e5_r2p5__fa12.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench5_m5e5_r2p5__fa12_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench5_m5e5_r2p5__fa16.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench5_m5e5_r2p5__fa16_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench5_m5e5_r2p5__fa4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench5_m5e5_r2p5__fa4_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench5_m5e5_r2p5__fa6.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench5_m5e5_r2p5__fa6_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench5_m5e5_r2p5__fa8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench5_m5e5_r2p5__fa8_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench5_m5e5_r2p5__none.param` | producer unknown (HPC/hand-made); refs: `make_zone_profiles.py`, `make_zone_resolution.py` |
-| 2026-07-14 `31265d0` | `runs/params/bench5/bench5_m5e5_r2p5__none_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench1_m5e4_r20__fa128.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench1_m5e4_r20__fa128_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench1_m5e4_r20__fa24.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench1_m5e4_r20__fa24_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench1_m5e4_r20__fa32.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench1_m5e4_r20__fa32_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench1_m5e4_r20__fa64.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench1_m5e4_r20__fa64_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench1_m5e4_r20__fm2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench1_m5e4_r20__fm2_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench1_m5e4_r20__fm3.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench1_m5e4_r20__fm3_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench1_m5e4_r20__fm4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench1_m5e4_r20__fm4_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench1_m5e4_r20__fm8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench1_m5e4_r20__fm8_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench2_m1e5_r10__fa128.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench2_m1e5_r10__fa128_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench2_m1e5_r10__fa24.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench2_m1e5_r10__fa24_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench2_m1e5_r10__fa32.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench2_m1e5_r10__fa32_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench2_m1e5_r10__fa64.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench2_m1e5_r10__fa64_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench2_m1e5_r10__fm2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench2_m1e5_r10__fm2_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench2_m1e5_r10__fm3.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench2_m1e5_r10__fm3_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench2_m1e5_r10__fm4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench2_m1e5_r10__fm4_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench2_m1e5_r10__fm8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench2_m1e5_r10__fm8_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench3_m1e5_r5__fa24.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench3_m1e5_r5__fa24_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench3_m1e5_r5__fa32.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench3_m1e5_r5__fa32_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench3_m1e5_r5__fm2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench3_m1e5_r5__fm2_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench3_m1e5_r5__fm3.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench3_m1e5_r5__fm3_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench3_m1e5_r5__fm4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench3_m1e5_r5__fm4_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench3_m1e5_r5__fm8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench3_m1e5_r5__fm8_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench4_m1e5_r2p5__fm2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench4_m1e5_r2p5__fm2_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench4_m1e5_r2p5__fm3.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench4_m1e5_r2p5__fm3_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench4_m1e5_r2p5__fm4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench4_m1e5_r2p5__fm4_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench4_m1e5_r2p5__fm8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench4_m1e5_r2p5__fm8_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench5_m5e5_r2p5__fm2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench5_m5e5_r2p5__fm2_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench5_m5e5_r2p5__fm3.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench5_m5e5_r2p5__fm3_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench5_m5e5_r2p5__fm4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench5_m5e5_r2p5__fm4_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench5_m5e5_r2p5__fm8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `fcdc851` | `runs/params/bench6/bench5_m5e5_r2p5__fm8_diag.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/cal_compact__ebpeak.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/cal_compact__k1.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/cal_compact__k2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/cal_compact__k4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/cal_dense__ek1.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/cal_dense__ek2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/cal_dense__ek4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/cal_diffuse__ebpeak.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/cal_diffuse__k1.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/cal_diffuse__k2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/cal_diffuse__k4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/cal_mid__ek1.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/cal_mid__ek2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/cal_mid__ek4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/diag_dense_hybr.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/diag_dense_legacy.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/dmdt_trace/dense_k6.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/dmdt_trace/dense_k8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/f1edge_hidens__kappa2.param` | producer unknown (HPC/hand-made); refs: `make_kappa_backreaction.py` |
-| 2026-07-14 `31265d0` | `runs/params/f1edge_hidens__mult2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/f1edge_hidens__none.param` | producer unknown (HPC/hand-made); refs: `make_kappa_backreaction.py` |
-| 2026-07-14 `31265d0` | `runs/params/f1edge_lowdens__mult2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/f1edge_lowdens__mult3.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/f1edge_lowdens__none.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/fail_repro__mult2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/fail_repro__none.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/fkauto_verify.param` | producer unknown (HPC/hand-made); refs: `make_fkappa_auto_verify.py` |
-| 2026-07-14 `31265d0` | `runs/params/simple_cluster__mult2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/simple_cluster__none.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/sweep_fkappa_nH.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5/be_sphere__mult2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5/be_sphere__mult4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5/be_sphere__mult8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5/be_sphere__none.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5/fail_repro__mult2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5/fail_repro__mult4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5/fail_repro__mult8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5/fail_repro__none.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5/large_diffuse_lowsfe__mult2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5/large_diffuse_lowsfe__mult4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5/large_diffuse_lowsfe__mult8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5/large_diffuse_lowsfe__none.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5/midrange_pl0__mult2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5/midrange_pl0__mult4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5/midrange_pl0__mult8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5/midrange_pl0__none.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5/pl2_steep__mult2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5/pl2_steep__mult4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5/pl2_steep__mult8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5/pl2_steep__none.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5/simple_cluster__mult2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5/simple_cluster__mult4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5/simple_cluster__mult8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5/simple_cluster__none.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5/small_1e6__mult2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5/small_1e6__mult4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5/small_1e6__mult8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5/small_1e6__none.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5/small_dense_highsfe__mult2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5/small_dense_highsfe__mult4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5/small_dense_highsfe__mult8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5/small_dense_highsfe__none.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5b/be_sphere__mult2p5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5b/be_sphere__mult3.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5b/be_sphere__mult3p5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5b/be_sphere__mult4p5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5b/be_sphere__mult5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5b/fail_repro__mult2p5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5b/fail_repro__mult3.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5b/fail_repro__mult3p5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5b/fail_repro__mult4p5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5b/fail_repro__mult5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5b/large_diffuse_lowsfe__mult2p5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5b/large_diffuse_lowsfe__mult3.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5b/large_diffuse_lowsfe__mult3p5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5b/large_diffuse_lowsfe__mult4p5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5b/large_diffuse_lowsfe__mult5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5b/large_diffuse_lowsfe_t8__mult2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5b/large_diffuse_lowsfe_t8__mult2p5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5b/large_diffuse_lowsfe_t8__none.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5b/midrange_pl0__mult2p5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5b/midrange_pl0__mult3.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5b/midrange_pl0__mult3p5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5b/midrange_pl0__mult4p5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5b/midrange_pl0__mult5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5b/pl2_steep__mult2p5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5b/pl2_steep__mult3.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5b/pl2_steep__mult3p5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5b/pl2_steep__mult4p5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5b/pl2_steep__mult5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5b/simple_cluster__mult2p5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5b/simple_cluster__mult3.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5b/simple_cluster__mult3p5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5b/simple_cluster__mult4p5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5b/simple_cluster__mult5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5b/small_1e6__mult2p5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5b/small_1e6__mult3.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5b/small_1e6__mult3p5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5b/small_1e6__mult4p5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5b/small_1e6__mult5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5b/small_dense_highsfe__mult2p5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5b/small_dense_highsfe__mult3.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5b/small_dense_highsfe__mult3p5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5b/small_dense_highsfe__mult4p5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5b/small_dense_highsfe__mult5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/be_sphere__kappa12.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/be_sphere__kappa16.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/be_sphere__kappa2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/be_sphere__kappa4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/be_sphere__kappa6.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/be_sphere__kappa8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/be_sphere__none.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/fail_repro__kappa12.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/fail_repro__kappa16.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/fail_repro__kappa2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/fail_repro__kappa4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/fail_repro__kappa6.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/fail_repro__kappa8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/fail_repro__none.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/large_diffuse_lowsfe__kappa12.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/large_diffuse_lowsfe__kappa16.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/large_diffuse_lowsfe__kappa2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/large_diffuse_lowsfe__kappa4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/large_diffuse_lowsfe__kappa6.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/large_diffuse_lowsfe__kappa8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/large_diffuse_lowsfe__none.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/midrange_pl0__kappa12.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/midrange_pl0__kappa16.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/midrange_pl0__kappa2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/midrange_pl0__kappa4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/midrange_pl0__kappa6.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/midrange_pl0__kappa8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/midrange_pl0__none.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/pl2_steep__kappa12.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/pl2_steep__kappa16.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/pl2_steep__kappa2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/pl2_steep__kappa4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/pl2_steep__kappa6.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/pl2_steep__kappa8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/pl2_steep__none.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/simple_cluster__kappa12.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/simple_cluster__kappa16.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/simple_cluster__kappa2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/simple_cluster__kappa4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/simple_cluster__kappa6.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/simple_cluster__kappa8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/simple_cluster__none.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/small_1e6__kappa12.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/small_1e6__kappa16.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/small_1e6__kappa2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/small_1e6__kappa4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/small_1e6__kappa6.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/small_1e6__kappa8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/small_1e6__none.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/small_dense_highsfe__kappa12.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/small_dense_highsfe__kappa16.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/small_dense_highsfe__kappa2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/small_dense_highsfe__kappa4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/small_dense_highsfe__kappa6.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/small_dense_highsfe__kappa8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5k/small_dense_highsfe__none.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5n/normal_n1e3__kappa12.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5n/normal_n1e3__kappa16.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5n/normal_n1e3__kappa2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5n/normal_n1e3__kappa4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5n/normal_n1e3__kappa6.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5n/normal_n1e3__kappa8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5n/normal_n1e3__mult2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5n/normal_n1e3__mult2p5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5n/normal_n1e3__mult3.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5n/normal_n1e3__mult3p5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5n/normal_n1e3__mult4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5n/normal_n1e3__mult4p5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5n/normal_n1e3__mult5.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5n/normal_n1e3__mult8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5n/normal_n1e3__none.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/be_sphere__fa12.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/be_sphere__fa16.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/be_sphere__fa2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/be_sphere__fa24.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/be_sphere__fa32.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/be_sphere__fa4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/be_sphere__fa6.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/be_sphere__fa8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/be_sphere__none.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/fail_repro__fa12.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/fail_repro__fa16.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/fail_repro__fa2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/fail_repro__fa24.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/fail_repro__fa32.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/fail_repro__fa4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/fail_repro__fa6.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/fail_repro__fa8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/fail_repro__none.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/large_diffuse_lowsfe__fa12.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/large_diffuse_lowsfe__fa16.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/large_diffuse_lowsfe__fa2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/large_diffuse_lowsfe__fa24.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/large_diffuse_lowsfe__fa32.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/large_diffuse_lowsfe__fa4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/large_diffuse_lowsfe__fa6.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/large_diffuse_lowsfe__fa8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/large_diffuse_lowsfe__none.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/midrange_pl0__fa12.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/midrange_pl0__fa16.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/midrange_pl0__fa2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/midrange_pl0__fa24.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/midrange_pl0__fa32.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/midrange_pl0__fa4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/midrange_pl0__fa6.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/midrange_pl0__fa8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/midrange_pl0__none.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/normal_n1e3__fa12.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/normal_n1e3__fa16.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/normal_n1e3__fa2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/normal_n1e3__fa24.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/normal_n1e3__fa32.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/normal_n1e3__fa4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/normal_n1e3__fa6.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/normal_n1e3__fa8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/normal_n1e3__none.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/pl2_steep__fa12.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/pl2_steep__fa16.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/pl2_steep__fa2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/pl2_steep__fa24.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/pl2_steep__fa32.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/pl2_steep__fa4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/pl2_steep__fa6.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/pl2_steep__fa8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/pl2_steep__none.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/simple_cluster__fa12.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/simple_cluster__fa16.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/simple_cluster__fa2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/simple_cluster__fa24.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/simple_cluster__fa32.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/simple_cluster__fa4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/simple_cluster__fa6.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/simple_cluster__fa8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/simple_cluster__none.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/small_1e6__fa12.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/small_1e6__fa16.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/small_1e6__fa2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/small_1e6__fa24.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/small_1e6__fa32.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/small_1e6__fa4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/small_1e6__fa6.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/small_1e6__fa8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/small_1e6__none.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/small_dense_highsfe__fa12.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/small_dense_highsfe__fa16.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/small_dense_highsfe__fa2.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/small_dense_highsfe__fa24.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/small_dense_highsfe__fa32.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/small_dense_highsfe__fa4.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/small_dense_highsfe__fa6.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/small_dense_highsfe__fa8.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/params/theta5s/small_dense_highsfe__none.param` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `075c73b` | `runs/run_bench5.sbatch` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `075c73b` | `runs/run_bench6.sbatch` | — (hand-made/HPC, unreferenced) |
-| 2026-07-14 `31265d0` | `runs/run_fkappa.sbatch` | producer unknown (HPC/hand-made); refs: `make_fkappa_nH_sweep.py` |
-| 2026-07-14 `31265d0` | `runs/run_theta5.sbatch` | producer unknown (HPC/hand-made); refs: `make_theta5_params.py` |
-| 2026-07-14 `31265d0` | `runs/run_theta5b.sbatch` | producer unknown (HPC/hand-made); refs: `make_theta5b_params.py` |
-| 2026-07-14 `31265d0` | `runs/run_theta5k.sbatch` | producer unknown (HPC/hand-made); refs: `make_theta5k_params.py` |
-| 2026-07-14 `31265d0` | `runs/run_theta5n.sbatch` | producer unknown (HPC/hand-made); refs: `make_theta5n_params.py` |
-| 2026-07-14 `31265d0` | `runs/run_theta5s.sbatch` | producer unknown (HPC/hand-made); refs: `checkpoint_theta5s.py`, `make_theta5s_params.py` |
-| 2026-07-14 `31265d0` | `story_elbadry_f1_closedform.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_story_figs.py`, `make_pdvtrigger_report.py` |
-| 2026-07-14 `31265d0` | `story_elbadry_f2_impose.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_story_figs.py` |
-| 2026-07-14 `31265d0` | `story_elbadry_f3_check.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_story_figs.py` |
-| 2026-07-14 `31265d0` | `story_elbadry_f4_fatemap.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_story_figs.py` |
-| 2026-07-14 `31265d0` | `story_elbadry_f5_reversal.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_story_figs.py`, `make_pdvtrigger_report.py` |
-| 2026-07-14 `31265d0` | `story_elbadry_f6_regime.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_story_figs.py`, `make_pdvtrigger_report.py` |
-| 2026-07-14 `31265d0` | `storyline_figs/fig_closure_heatmap.png` | producer unknown (HPC/hand-made); refs: `make_storyline_figs.py` |
-| 2026-07-14 `31265d0` | `storyline_figs/fig_doublecount.png` | producer unknown (HPC/hand-made); refs: `make_pdvtrigger_report.py`, `make_storyline_figs.py` |
-| 2026-07-14 `31265d0` | `storyline_figs/fig_fmix_convention.png` | producer unknown (HPC/hand-made); refs: `make_storyline_figs.py` |
-| 2026-07-14 `31265d0` | `storyline_figs/fig_regime_split.png` | producer unknown (HPC/hand-made); refs: `make_pdvtrigger_report.py`, `make_storyline_figs.py` |
-| 2026-07-14 `31265d0` | `theta5_arms.png` | producer unknown (HPC/hand-made); refs: `make_theta5_figures.py`, `make_pdvtrigger_report.py` |
-| 2026-07-14 `31265d0` | `theta5_collapse_law.png` | producer unknown (HPC/hand-made); refs: `make_theta5_figures.py`, `make_pdvtrigger_report.py` |
-| 2026-07-14 `31265d0` | `theta5_knob_choice.png` | producer unknown (HPC/hand-made); refs: `make_theta5_figures.py` |
-| 2026-07-14 `31265d0` | `theta5_metric_correction.png` | producer unknown (HPC/hand-made); refs: `make_theta5_figures.py`, `make_pdvtrigger_report.py` |
-| 2026-07-14 `31265d0` | `theta5_target_vs_emergent.png` | producer unknown (HPC/hand-made); refs: `make_theta5_figures.py` |
-| 2026-07-14 `31265d0` | `theta5b_fire_map.png` | producer unknown (HPC/hand-made); refs: `make_theta5b_analysis.py`, `make_pdvtrigger_report.py` |
-| 2026-07-14 `31265d0` | `theta5b_law_check.png` | producer unknown (HPC/hand-made); refs: `make_theta5b_analysis.py` |
-| 2026-07-14 `31265d0` | `theta5k_fire_map.png` | producer unknown (HPC/hand-made); refs: `make_theta5k_analysis.py`, `make_pdvtrigger_report.py` |
-| 2026-07-14 `31265d0` | `theta5k_theta_rise.png` | producer unknown (HPC/hand-made); refs: `make_theta5k_analysis.py` |
-| 2026-07-14 `31265d0` | `theta_vs_density.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_overlay.py`, `make_fmix_spread_plot.py` |
+| 2026-07-31 `ea39c5f8` | `bench7_firemap.png` | producer unknown (HPC/hand-made); refs: `make_bench7_analysis.py` |
+| 2026-07-31 `f080e243` | `bench7_massloading.png` | — (hand-made/HPC, unreferenced) |
+| 2026-07-31 `ff4af3a5` | `data/bench7_analysis.csv` | by `make_bench7_analysis.py` · 🕐 generated 2026-07-31T16:04:11Z | builder make_bench7_analysis.py | code f6e92d15+dirty |
+| 2026-07-31 `acc17ff4` | `runs/run_bench7.sbatch` | producer unknown (HPC/hand-made); refs: `make_kappa_reopen_params.py` |
+| 2026-07-30 `5e1812bd` | `bench5_theta_tracks.png` | producer unknown (HPC/hand-made); refs: `make_bench5_analysis.py`, `make_pdvtrigger_report.py` |
+| 2026-07-30 `5e1812bd` | `bench7_entry.png` | producer unknown (HPC/hand-made); refs: `make_bench7_analysis.py` |
+| 2026-07-30 `5e1812bd` | `data/bench5_analysis.csv` | by `make_bench5_analysis.py` · 🕐 generated 2026-07-30T19:12:47Z | builder make_bench5_analysis.py | code 50c5606+dirty |
+| 2026-07-30 `5e1812bd` | `data/bench6_analysis.csv` | by `make_bench6_analysis.py` · 🕐 generated 2026-07-30T19:12:56Z | builder make_bench6_analysis.py | code 50c5606+dirty |
+| 2026-07-30 `5e1812bd` | `data/bench7_gate_g0.csv` | by `make_bench7_gate_g0.py` · 🕐 generated 2026-07-30T19:13:03Z | builder make_bench7_gate_g0.py | code 50c5606+dirty |
+| 2026-07-30 `5e1812bd` | `data/freshness_audit.csv` | by `make_freshness_audit.py` · 🕐 generated 2026-07-30T19:22:20Z | builder make_freshness_audit.py | code 50c5606+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_hashes.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:35Z | builder sync_bench.sh bench5r reduce | code 1056c6d7 |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_summary.csv` | producer unknown (HPC/hand-made); refs: `make_bench5_analysis.py`, `make_bench6_analysis.py` · 🕐 generated 2026-07-30T19:01:35Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench1_m5e4_r20__fa12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:25Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench1_m5e4_r20__fa12_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:25Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench1_m5e4_r20__fa16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:25Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench1_m5e4_r20__fa16_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:25Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench1_m5e4_r20__fa4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:25Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench1_m5e4_r20__fa4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:25Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench1_m5e4_r20__fa6.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:26Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench1_m5e4_r20__fa6_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:26Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench1_m5e4_r20__fa8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:26Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench1_m5e4_r20__fa8_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:26Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench1_m5e4_r20__none.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:26Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench1_m5e4_r20__none_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:27Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench2_m1e5_r10__fa12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:27Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench2_m1e5_r10__fa12_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:27Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench2_m1e5_r10__fa16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:27Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench2_m1e5_r10__fa16_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:27Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench2_m1e5_r10__fa4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:28Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench2_m1e5_r10__fa4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:28Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench2_m1e5_r10__fa6.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:28Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench2_m1e5_r10__fa6_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:28Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench2_m1e5_r10__fa8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:28Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench2_m1e5_r10__fa8_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:29Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench2_m1e5_r10__none.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:29Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench2_m1e5_r10__none_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:29Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench3_m1e5_r5__fa12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:29Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench3_m1e5_r5__fa12_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:30Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench3_m1e5_r5__fa16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:30Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench3_m1e5_r5__fa16_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:30Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench3_m1e5_r5__fa4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:30Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench3_m1e5_r5__fa4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:30Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench3_m1e5_r5__fa6.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:31Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench3_m1e5_r5__fa6_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:31Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench3_m1e5_r5__fa8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:31Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench3_m1e5_r5__fa8_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:31Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench3_m1e5_r5__none.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:31Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench3_m1e5_r5__none_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:32Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench4_m1e5_r2p5__fa12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:32Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench4_m1e5_r2p5__fa12_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:32Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench4_m1e5_r2p5__fa16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:32Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench4_m1e5_r2p5__fa16_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:32Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench4_m1e5_r2p5__fa4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:32Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench4_m1e5_r2p5__fa4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:33Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench4_m1e5_r2p5__fa6.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:33Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench4_m1e5_r2p5__fa6_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:33Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench4_m1e5_r2p5__fa8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:33Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench4_m1e5_r2p5__fa8_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:33Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench4_m1e5_r2p5__none.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:34Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench4_m1e5_r2p5__none_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:34Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench5_m5e5_r2p5__fa12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:34Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench5_m5e5_r2p5__fa12_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:34Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench5_m5e5_r2p5__fa16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:34Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench5_m5e5_r2p5__fa16_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:34Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench5_m5e5_r2p5__fa4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:34Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench5_m5e5_r2p5__fa4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:34Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench5_m5e5_r2p5__fa6.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:35Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench5_m5e5_r2p5__fa6_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:35Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench5_m5e5_r2p5__fa8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:35Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench5_m5e5_r2p5__fa8_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:35Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench5_m5e5_r2p5__none.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:35Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench5r_traj/bench5_m5e5_r2p5__none_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:35Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_hashes.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:51Z | builder sync_bench.sh bench6r reduce | code 1056c6d7 |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_summary.csv` | producer unknown (HPC/hand-made); refs: `make_bench6_analysis.py`, `make_bench7_analysis.py` · 🕐 generated 2026-07-30T19:01:51Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench1_m5e4_r20__fa128.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:39Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench1_m5e4_r20__fa128_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:40Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench1_m5e4_r20__fa24.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:40Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench1_m5e4_r20__fa24_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:40Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench1_m5e4_r20__fa32.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:40Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench1_m5e4_r20__fa32_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:40Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench1_m5e4_r20__fa64.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:41Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench1_m5e4_r20__fa64_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:41Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench1_m5e4_r20__fm2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:41Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench1_m5e4_r20__fm2_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:41Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench1_m5e4_r20__fm3.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:41Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench1_m5e4_r20__fm3_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:42Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench1_m5e4_r20__fm4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:42Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench1_m5e4_r20__fm4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:42Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench1_m5e4_r20__fm8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:42Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench1_m5e4_r20__fm8_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:42Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench2_m1e5_r10__fa128.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:43Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench2_m1e5_r10__fa128_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:43Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench2_m1e5_r10__fa24.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:43Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench2_m1e5_r10__fa24_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:43Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench2_m1e5_r10__fa32.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:43Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench2_m1e5_r10__fa32_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:44Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench2_m1e5_r10__fa64.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:44Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench2_m1e5_r10__fa64_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:44Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench2_m1e5_r10__fm2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:44Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench2_m1e5_r10__fm2_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:44Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench2_m1e5_r10__fm3.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:45Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench2_m1e5_r10__fm3_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:45Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench2_m1e5_r10__fm4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:45Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench2_m1e5_r10__fm4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:45Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench2_m1e5_r10__fm8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:46Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench2_m1e5_r10__fm8_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:46Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench3_m1e5_r5__fa24.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:46Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench3_m1e5_r5__fa24_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:46Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench3_m1e5_r5__fa32.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:46Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench3_m1e5_r5__fa32_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:47Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench3_m1e5_r5__fm2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:47Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench3_m1e5_r5__fm2_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:47Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench3_m1e5_r5__fm3.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:48Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench3_m1e5_r5__fm3_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:48Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench3_m1e5_r5__fm4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:48Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench3_m1e5_r5__fm4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:48Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench3_m1e5_r5__fm8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:49Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench3_m1e5_r5__fm8_diag.csv` | producer unknown (HPC/hand-made); refs: `make_phase6_figures.py` · 🕐 generated 2026-07-30T19:01:49Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench4_m1e5_r2p5__fm2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:49Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench4_m1e5_r2p5__fm2_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:49Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench4_m1e5_r2p5__fm3.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:49Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench4_m1e5_r2p5__fm3_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:49Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench4_m1e5_r2p5__fm4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:50Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench4_m1e5_r2p5__fm4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:50Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench4_m1e5_r2p5__fm8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:50Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench4_m1e5_r2p5__fm8_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:50Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench5_m5e5_r2p5__fm2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:50Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench5_m5e5_r2p5__fm2_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:51Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench5_m5e5_r2p5__fm3.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:51Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench5_m5e5_r2p5__fm3_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:51Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench5_m5e5_r2p5__fm4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:51Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench5_m5e5_r2p5__fm4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:51Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench5_m5e5_r2p5__fm8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:51Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench6r_traj/bench5_m5e5_r2p5__fm8_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:51Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_hashes.csv` | producer unknown (HPC/hand-made); refs: `make_bench7_analysis.py`, `make_kappa_reopen_params.py` · 🕐 generated 2026-07-30T19:02:28Z | builder sync_bench.sh bench7 reduce | code 1056c6d7 |
+| 2026-07-30 `50c56060` | `runs/data/bench7_summary.csv` | producer unknown (HPC/hand-made); refs: `make_bench7_analysis.py` · 🕐 generated 2026-07-30T19:02:28Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:58Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk12_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:58Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:59Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk16_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:59Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:59Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk24.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:59Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk24_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:59Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk2_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:00Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk3.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:00Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk32.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:00Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk32_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:00Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk3_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:00Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:00Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:01Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk6.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:01Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk6_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:01Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:01Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench1_m5e4_r20__fk8_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:01Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:02Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk12_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:02Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:02Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk16_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:02Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:02Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk24.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:03Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk24_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:03Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk2_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:03Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk3.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:03Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk32.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:04Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk32_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:04Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk3_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:04Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:04Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:04Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk6.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:05Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk6_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:05Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:05Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench2_m1e5_r10__fk8_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:05Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:05Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk12_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:06Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:06Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk16_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:06Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:06Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk24.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:07Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk24_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:07Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk2_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:07Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk3.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:07Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk32.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:07Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk32_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:08Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk3_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:08Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:08Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:08Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk6.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:08Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk6_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:09Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:09Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1_bench3_m1e5_r5__fk8_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:09Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1b_bench4_m1e5_r2p5__fk12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:55Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1b_bench4_m1e5_r2p5__fk12_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:55Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1b_bench4_m1e5_r2p5__fk16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:55Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1b_bench4_m1e5_r2p5__fk16_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:55Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1b_bench4_m1e5_r2p5__fk2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:55Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1b_bench4_m1e5_r2p5__fk2_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:56Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1b_bench4_m1e5_r2p5__fk4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:56Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1b_bench4_m1e5_r2p5__fk4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:56Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1b_bench4_m1e5_r2p5__fk8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:56Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1b_bench4_m1e5_r2p5__fk8_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:56Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1b_bench5_m5e5_r2p5__fk12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:57Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1b_bench5_m5e5_r2p5__fk12_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:57Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1b_bench5_m5e5_r2p5__fk16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:57Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1b_bench5_m5e5_r2p5__fk16_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:57Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1b_bench5_m5e5_r2p5__fk2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:57Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1b_bench5_m5e5_r2p5__fk2_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:57Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1b_bench5_m5e5_r2p5__fk4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:58Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1b_bench5_m5e5_r2p5__fk4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:58Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1b_bench5_m5e5_r2p5__fk8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:58Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k1b_bench5_m5e5_r2p5__fk8_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:01:58Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_be_sphere__fk1.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:09Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_be_sphere__fk12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:09Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_be_sphere__fk16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:10Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_be_sphere__fk2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:10Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_be_sphere__fk3.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:10Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_be_sphere__fk4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:10Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_be_sphere__fk5.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:11Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_be_sphere__fk6.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:11Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_be_sphere__fk7.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:11Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_be_sphere__fk8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:11Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_be_sphere__fk9.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:11Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_large_diffuse_lowsfe__fk1.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:12Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_large_diffuse_lowsfe__fk12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:12Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_large_diffuse_lowsfe__fk16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:12Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_large_diffuse_lowsfe__fk2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:12Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_large_diffuse_lowsfe__fk3.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:12Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_large_diffuse_lowsfe__fk4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:13Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_large_diffuse_lowsfe__fk5.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:13Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_large_diffuse_lowsfe__fk6.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:13Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_large_diffuse_lowsfe__fk7.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:13Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_large_diffuse_lowsfe__fk8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:13Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_large_diffuse_lowsfe__fk9.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:14Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_midrange_pl0__fk1.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:14Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_midrange_pl0__fk12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:14Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_midrange_pl0__fk16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:14Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_midrange_pl0__fk2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:14Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_midrange_pl0__fk3.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:14Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_midrange_pl0__fk4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:15Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_midrange_pl0__fk5.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:15Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_midrange_pl0__fk6.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:15Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_midrange_pl0__fk7.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:15Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_midrange_pl0__fk8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:15Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_midrange_pl0__fk9.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:16Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_pl2_steep__fk1.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:16Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_pl2_steep__fk12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:16Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_pl2_steep__fk16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:16Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_pl2_steep__fk2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:16Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_pl2_steep__fk3.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:17Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_pl2_steep__fk4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:17Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_pl2_steep__fk5.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:17Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_pl2_steep__fk6.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:17Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_pl2_steep__fk7.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:17Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_pl2_steep__fk8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:17Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_pl2_steep__fk9.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:18Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_simple_cluster__fk1.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:18Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_simple_cluster__fk12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:18Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_simple_cluster__fk16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:18Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_simple_cluster__fk2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:18Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_simple_cluster__fk3.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:19Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_simple_cluster__fk4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:19Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_simple_cluster__fk5.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:19Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_simple_cluster__fk6.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:19Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_simple_cluster__fk7.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:19Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_simple_cluster__fk8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:19Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_simple_cluster__fk9.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:20Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_small_dense_highsfe__fk1.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:20Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_small_dense_highsfe__fk12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:20Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_small_dense_highsfe__fk16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:20Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_small_dense_highsfe__fk2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:20Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_small_dense_highsfe__fk3.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:20Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_small_dense_highsfe__fk4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:20Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_small_dense_highsfe__fk5.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:21Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_small_dense_highsfe__fk6.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:21Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_small_dense_highsfe__fk7.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:21Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_small_dense_highsfe__fk8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:21Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k2_small_dense_highsfe__fk9.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:21Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k3_be_sphere__fk8_a.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:21Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k3_be_sphere__fk8_b.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:22Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k3_normal_n1e3__fk16_a.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:22Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k3_normal_n1e3__fk16_b.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:22Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k3_pl2_steep__fk16_a.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:22Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k3_pl2_steep__fk16_b.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:22Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k3_simple_cluster__fk8_a.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:23Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k3_simple_cluster__fk8_b.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:23Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k3_small_dense_highsfe__fk6_a.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:23Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k3_small_dense_highsfe__fk6_b.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:23Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k4_bench1_m5e4_r20__fm12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:23Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k4_bench1_m5e4_r20__fm12_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:23Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k4_bench1_m5e4_r20__fm16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:24Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k4_bench1_m5e4_r20__fm16_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:24Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k4_bench1_m5e4_r20__fm2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:24Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k4_bench1_m5e4_r20__fm2_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:24Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k4_bench1_m5e4_r20__fm3.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:24Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k4_bench1_m5e4_r20__fm3_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:25Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k4_bench1_m5e4_r20__fm4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:25Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k4_bench1_m5e4_r20__fm4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:25Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k4_bench1_m5e4_r20__fm8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:25Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k4_bench1_m5e4_r20__fm8_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:25Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k4_bench2_m1e5_r10__fm12.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:26Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k4_bench2_m1e5_r10__fm12_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:26Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k4_bench2_m1e5_r10__fm16.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:26Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k4_bench2_m1e5_r10__fm16_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:26Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k4_bench2_m1e5_r10__fm2.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:26Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k4_bench2_m1e5_r10__fm2_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:26Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k4_bench2_m1e5_r10__fm3.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:27Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k4_bench2_m1e5_r10__fm3_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:27Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k4_bench2_m1e5_r10__fm4.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:27Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k4_bench2_m1e5_r10__fm4_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:27Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k4_bench2_m1e5_r10__fm8.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:27Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-30 `50c56060` | `runs/data/bench7_traj/k4_bench2_m1e5_r10__fm8_diag.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-30T19:02:28Z | builder harvest_bench5.py | code 1056c6d7+dirty |
+| 2026-07-29 `ab1e319a` | `_eqp.html` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `db353aa1` | `data/kappa_eq47_check.csv` | by `make_kappa_eq47_check.py` |
+| 2026-07-29 `ab1e319a` | `data/zone_profiles.csv` | by `make_zone_profiles.py` |
+| 2026-07-29 `2b381bd1` | `pdvtrigger_report.html` | by `make_pdvtrigger_report.py` |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench1_m5e4_r20__fk12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench1_m5e4_r20__fk12_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench1_m5e4_r20__fk16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench1_m5e4_r20__fk16_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench1_m5e4_r20__fk2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench1_m5e4_r20__fk24.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench1_m5e4_r20__fk24_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench1_m5e4_r20__fk2_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench1_m5e4_r20__fk3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench1_m5e4_r20__fk32.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench1_m5e4_r20__fk32_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench1_m5e4_r20__fk3_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench1_m5e4_r20__fk4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench1_m5e4_r20__fk4_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench1_m5e4_r20__fk6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench1_m5e4_r20__fk6_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench1_m5e4_r20__fk8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench1_m5e4_r20__fk8_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench2_m1e5_r10__fk12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench2_m1e5_r10__fk12_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench2_m1e5_r10__fk16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench2_m1e5_r10__fk16_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench2_m1e5_r10__fk2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench2_m1e5_r10__fk24.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench2_m1e5_r10__fk24_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench2_m1e5_r10__fk2_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench2_m1e5_r10__fk3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench2_m1e5_r10__fk32.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench2_m1e5_r10__fk32_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench2_m1e5_r10__fk3_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench2_m1e5_r10__fk4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench2_m1e5_r10__fk4_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench2_m1e5_r10__fk6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench2_m1e5_r10__fk6_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench2_m1e5_r10__fk8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench2_m1e5_r10__fk8_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench3_m1e5_r5__fk12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench3_m1e5_r5__fk12_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench3_m1e5_r5__fk16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench3_m1e5_r5__fk16_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench3_m1e5_r5__fk2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench3_m1e5_r5__fk24.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench3_m1e5_r5__fk24_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench3_m1e5_r5__fk2_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench3_m1e5_r5__fk3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench3_m1e5_r5__fk32.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench3_m1e5_r5__fk32_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench3_m1e5_r5__fk3_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench3_m1e5_r5__fk4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench3_m1e5_r5__fk4_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench3_m1e5_r5__fk6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench3_m1e5_r5__fk6_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench3_m1e5_r5__fk8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1_bench3_m1e5_r5__fk8_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `42b084f3` | `runs/params/bench7/k1b_bench4_m1e5_r2p5__fk12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `42b084f3` | `runs/params/bench7/k1b_bench4_m1e5_r2p5__fk12_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `42b084f3` | `runs/params/bench7/k1b_bench4_m1e5_r2p5__fk16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `42b084f3` | `runs/params/bench7/k1b_bench4_m1e5_r2p5__fk16_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1b_bench4_m1e5_r2p5__fk2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1b_bench4_m1e5_r2p5__fk2_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1b_bench4_m1e5_r2p5__fk4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1b_bench4_m1e5_r2p5__fk4_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1b_bench4_m1e5_r2p5__fk8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1b_bench4_m1e5_r2p5__fk8_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `42b084f3` | `runs/params/bench7/k1b_bench5_m5e5_r2p5__fk12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `42b084f3` | `runs/params/bench7/k1b_bench5_m5e5_r2p5__fk12_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `42b084f3` | `runs/params/bench7/k1b_bench5_m5e5_r2p5__fk16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `42b084f3` | `runs/params/bench7/k1b_bench5_m5e5_r2p5__fk16_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1b_bench5_m5e5_r2p5__fk2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1b_bench5_m5e5_r2p5__fk2_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1b_bench5_m5e5_r2p5__fk4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1b_bench5_m5e5_r2p5__fk4_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1b_bench5_m5e5_r2p5__fk8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k1b_bench5_m5e5_r2p5__fk8_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969fe` | `runs/params/bench7/k2_be_sphere__fk1.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969fe` | `runs/params/bench7/k2_be_sphere__fk12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969fe` | `runs/params/bench7/k2_be_sphere__fk16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969fe` | `runs/params/bench7/k2_be_sphere__fk2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969fe` | `runs/params/bench7/k2_be_sphere__fk3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969fe` | `runs/params/bench7/k2_be_sphere__fk4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k2_be_sphere__fk5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969fe` | `runs/params/bench7/k2_be_sphere__fk6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k2_be_sphere__fk7.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969fe` | `runs/params/bench7/k2_be_sphere__fk8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k2_be_sphere__fk9.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969fe` | `runs/params/bench7/k2_large_diffuse_lowsfe__fk1.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969fe` | `runs/params/bench7/k2_large_diffuse_lowsfe__fk12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969fe` | `runs/params/bench7/k2_large_diffuse_lowsfe__fk16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969fe` | `runs/params/bench7/k2_large_diffuse_lowsfe__fk2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969fe` | `runs/params/bench7/k2_large_diffuse_lowsfe__fk3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969fe` | `runs/params/bench7/k2_large_diffuse_lowsfe__fk4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k2_large_diffuse_lowsfe__fk5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969fe` | `runs/params/bench7/k2_large_diffuse_lowsfe__fk6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k2_large_diffuse_lowsfe__fk7.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969fe` | `runs/params/bench7/k2_large_diffuse_lowsfe__fk8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k2_large_diffuse_lowsfe__fk9.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969fe` | `runs/params/bench7/k2_midrange_pl0__fk1.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969fe` | `runs/params/bench7/k2_midrange_pl0__fk12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969fe` | `runs/params/bench7/k2_midrange_pl0__fk16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969fe` | `runs/params/bench7/k2_midrange_pl0__fk2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969fe` | `runs/params/bench7/k2_midrange_pl0__fk3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969fe` | `runs/params/bench7/k2_midrange_pl0__fk4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k2_midrange_pl0__fk5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969fe` | `runs/params/bench7/k2_midrange_pl0__fk6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k2_midrange_pl0__fk7.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969fe` | `runs/params/bench7/k2_midrange_pl0__fk8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k2_midrange_pl0__fk9.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969fe` | `runs/params/bench7/k2_pl2_steep__fk1.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969fe` | `runs/params/bench7/k2_pl2_steep__fk12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969fe` | `runs/params/bench7/k2_pl2_steep__fk16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969fe` | `runs/params/bench7/k2_pl2_steep__fk2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969fe` | `runs/params/bench7/k2_pl2_steep__fk3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969fe` | `runs/params/bench7/k2_pl2_steep__fk4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k2_pl2_steep__fk5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969fe` | `runs/params/bench7/k2_pl2_steep__fk6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k2_pl2_steep__fk7.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969fe` | `runs/params/bench7/k2_pl2_steep__fk8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k2_pl2_steep__fk9.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969fe` | `runs/params/bench7/k2_simple_cluster__fk1.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969fe` | `runs/params/bench7/k2_simple_cluster__fk12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969fe` | `runs/params/bench7/k2_simple_cluster__fk16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969fe` | `runs/params/bench7/k2_simple_cluster__fk2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969fe` | `runs/params/bench7/k2_simple_cluster__fk3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969fe` | `runs/params/bench7/k2_simple_cluster__fk4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k2_simple_cluster__fk5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969fe` | `runs/params/bench7/k2_simple_cluster__fk6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k2_simple_cluster__fk7.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969fe` | `runs/params/bench7/k2_simple_cluster__fk8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k2_simple_cluster__fk9.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969fe` | `runs/params/bench7/k2_small_dense_highsfe__fk1.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969fe` | `runs/params/bench7/k2_small_dense_highsfe__fk12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969fe` | `runs/params/bench7/k2_small_dense_highsfe__fk16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969fe` | `runs/params/bench7/k2_small_dense_highsfe__fk2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969fe` | `runs/params/bench7/k2_small_dense_highsfe__fk3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969fe` | `runs/params/bench7/k2_small_dense_highsfe__fk4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k2_small_dense_highsfe__fk5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969fe` | `runs/params/bench7/k2_small_dense_highsfe__fk6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k2_small_dense_highsfe__fk7.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `afb969fe` | `runs/params/bench7/k2_small_dense_highsfe__fk8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k2_small_dense_highsfe__fk9.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k3_be_sphere__fk8_a.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k3_be_sphere__fk8_b.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k3_normal_n1e3__fk16_a.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k3_normal_n1e3__fk16_b.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k3_pl2_steep__fk16_a.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k3_pl2_steep__fk16_b.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k3_simple_cluster__fk8_a.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k3_simple_cluster__fk8_b.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k3_small_dense_highsfe__fk6_a.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k3_small_dense_highsfe__fk6_b.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k4_bench1_m5e4_r20__fm12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k4_bench1_m5e4_r20__fm12_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k4_bench1_m5e4_r20__fm16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k4_bench1_m5e4_r20__fm16_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k4_bench1_m5e4_r20__fm2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k4_bench1_m5e4_r20__fm2_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k4_bench1_m5e4_r20__fm3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k4_bench1_m5e4_r20__fm3_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k4_bench1_m5e4_r20__fm4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k4_bench1_m5e4_r20__fm4_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k4_bench1_m5e4_r20__fm8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k4_bench1_m5e4_r20__fm8_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k4_bench2_m1e5_r10__fm12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k4_bench2_m1e5_r10__fm12_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k4_bench2_m1e5_r10__fm16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k4_bench2_m1e5_r10__fm16_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k4_bench2_m1e5_r10__fm2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k4_bench2_m1e5_r10__fm2_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k4_bench2_m1e5_r10__fm3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k4_bench2_m1e5_r10__fm3_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k4_bench2_m1e5_r10__fm4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k4_bench2_m1e5_r10__fm4_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k4_bench2_m1e5_r10__fm8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `1e82a375` | `runs/params/bench7/k4_bench2_m1e5_r10__fm8_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-29 `ab1e319a` | `zone_profiles.png` | by `make_zone_profiles.py` |
+| 2026-07-28 `0493f630` | `data/bench_stale_segments.csv` | by `make_bench_stale_segments.py` · 🕐 generated 2026-08-02T21:55:05Z | builder make_bench_stale_segments.py | code d4b5f1b5+dirty |
+| 2026-07-28 `dd9b4caa` | `data/rosette_fm4_doubleboost_check.csv` | by `make_rosette_fm4_doubleboost_check.py` |
+| 2026-07-28 `b38aa74c` | `phase6_fig1_correction.png` | producer unknown (HPC/hand-made); refs: `make_phase6_figures.py`, `make_pdvtrigger_report.py` |
+| 2026-07-28 `b38aa74c` | `phase6_fig2_headtohead.png` | producer unknown (HPC/hand-made); refs: `make_phase6_figures.py`, `make_pdvtrigger_report.py` |
+| 2026-07-28 `b38aa74c` | `phase6_fig3_uniformity.png` | producer unknown (HPC/hand-made); refs: `make_phase6_figures.py`, `make_pdvtrigger_report.py` |
+| 2026-07-28 `b38aa74c` | `phase6_fig4_stale.png` | producer unknown (HPC/hand-made); refs: `make_phase6_figures.py`, `make_pdvtrigger_report.py` |
+| 2026-07-28 `b38aa74c` | `phase6_fig5_windcap.png` | producer unknown (HPC/hand-made); refs: `make_phase6_figures.py`, `make_pdvtrigger_report.py` |
+| 2026-07-28 `b38aa74c` | `phase6_fig6_slope.png` | producer unknown (HPC/hand-made); refs: `make_phase6_figures.py`, `make_pdvtrigger_report.py` |
+| 2026-07-28 `b38aa74c` | `phase6_fig7_mechanism.png` | producer unknown (HPC/hand-made); refs: `make_phase6_figures.py`, `make_pdvtrigger_report.py` |
+| 2026-07-25 `f8d903b8` | `data/fa_state_screen.csv` | by `make_fa_state_screen.py` |
+| 2026-07-25 `c4423bc3` | `fa_state_screen.png` | producer unknown (HPC/hand-made); refs: `make_fa_state_figures.py`, `make_pdvtrigger_report.py` |
+| 2026-07-25 `400a73ff` | `runs/data/bench_state_traj/be_sphere__none.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-25 `f8d903b8` | `runs/data/bench_state_traj/bench1_m5e4_r20__none_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-25 `f8d903b8` | `runs/data/bench_state_traj/bench2_m1e5_r10__none_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-25 `f8d903b8` | `runs/data/bench_state_traj/bench3_m1e5_r5__none_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-25 `f8d903b8` | `runs/data/bench_state_traj/bench4_m1e5_r2p5__none_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-25 `f8d903b8` | `runs/data/bench_state_traj/bench5_m5e5_r2p5__none_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-25 `400a73ff` | `runs/data/bench_state_traj/fail_repro__none.csv` | producer unknown (HPC/hand-made); refs: `make_kmix_prototype.py` |
+| 2026-07-25 `400a73ff` | `runs/data/bench_state_traj/large_diffuse_lowsfe__none.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-25 `400a73ff` | `runs/data/bench_state_traj/midrange_pl0__none.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-25 `400a73ff` | `runs/data/bench_state_traj/normal_n1e3__none.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-25 `f8d903b8` | `runs/data/bench_state_traj/pl2_steep__none.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-25 `f8d903b8` | `runs/data/bench_state_traj/simple_cluster__none.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-25 `f8d903b8` | `runs/data/bench_state_traj/small_1e6__none.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-25 `f8d903b8` | `runs/data/bench_state_traj/small_dense_highsfe__none.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-25 `f8d903b8` | `runs/data/sc0_state_summary.csv` | — (hand-made/HPC, unreferenced) · 🕐 generated 2026-07-25T16:57:36Z | builder harvest_bench5.py | code 400a73f+dirty |
+| 2026-07-24 `6418992d` | `data/zone_resolution.csv` | by `make_zone_resolution.py` · ⚠️ STALE-RISK: builder newer (make_zone_resolution.py 2026-07-28) — regenerate or justify |
+| 2026-07-19 `88a4738a` | `data/theta5s_collapse_law.csv` | producer unknown (HPC/hand-made); refs: `make_theta5s_analysis.py` · 🕐 generated 2026-07-19T11:08:03Z | builder make_theta5s_analysis.py | code 075c73b+dirty |
+| 2026-07-19 `88a4738a` | `data/theta5s_fire_map.csv` | producer unknown (HPC/hand-made); refs: `make_fa_state_screen.py`, `make_theta5s_analysis.py` · 🕐 generated 2026-07-19T11:08:03Z | builder make_theta5s_analysis.py | code 075c73b+dirty |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_summary_hpc.csv` | producer unknown (HPC/hand-made); refs: `compare_bench5_hpc.py`, `make_bench5_analysis.py` · 🕐 generated 2026-07-19T10:48:17Z | builder harvest_bench5.py | code 89e802dd+dirty |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench1_m5e4_r20__fa12.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench1_m5e4_r20__fa12_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench1_m5e4_r20__fa16.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench1_m5e4_r20__fa16_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench1_m5e4_r20__fa4.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench1_m5e4_r20__fa4_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench1_m5e4_r20__fa6.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench1_m5e4_r20__fa6_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench1_m5e4_r20__fa8.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench1_m5e4_r20__fa8_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench1_m5e4_r20__none.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench1_m5e4_r20__none_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench2_m1e5_r10__fa12.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench2_m1e5_r10__fa12_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench2_m1e5_r10__fa16.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench2_m1e5_r10__fa16_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench2_m1e5_r10__fa4.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench2_m1e5_r10__fa4_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench2_m1e5_r10__fa6.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench2_m1e5_r10__fa6_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench2_m1e5_r10__fa8.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench2_m1e5_r10__fa8_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench2_m1e5_r10__none.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench2_m1e5_r10__none_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench3_m1e5_r5__fa12.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench3_m1e5_r5__fa12_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench3_m1e5_r5__fa16.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench3_m1e5_r5__fa16_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench3_m1e5_r5__fa4.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench3_m1e5_r5__fa4_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench3_m1e5_r5__fa6.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench3_m1e5_r5__fa6_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench3_m1e5_r5__fa8.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench3_m1e5_r5__fa8_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench3_m1e5_r5__none.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench3_m1e5_r5__none_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench4_m1e5_r2p5__fa12.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench4_m1e5_r2p5__fa12_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench4_m1e5_r2p5__fa16.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench4_m1e5_r2p5__fa16_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench4_m1e5_r2p5__fa4.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench4_m1e5_r2p5__fa4_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench4_m1e5_r2p5__fa6.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench4_m1e5_r2p5__fa6_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench4_m1e5_r2p5__fa8.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench4_m1e5_r2p5__fa8_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench4_m1e5_r2p5__none.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench4_m1e5_r2p5__none_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench5_m5e5_r2p5__fa12.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench5_m5e5_r2p5__fa12_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench5_m5e5_r2p5__fa16.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench5_m5e5_r2p5__fa16_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench5_m5e5_r2p5__fa4.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench5_m5e5_r2p5__fa4_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench5_m5e5_r2p5__fa6.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench5_m5e5_r2p5__fa6_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench5_m5e5_r2p5__fa8.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench5_m5e5_r2p5__fa8_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench5_m5e5_r2p5__none.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench5_traj_hpc/bench5_m5e5_r2p5__none_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_summary.csv` | producer unknown (HPC/hand-made); refs: `make_bench6_analysis.py`, `make_bench7_gate_g0.py` · 🕐 generated 2026-07-19T10:48:56Z | builder harvest_bench5.py | code 89e802dd+dirty |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench1_m5e4_r20__fa128.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench1_m5e4_r20__fa128_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench1_m5e4_r20__fa24.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench1_m5e4_r20__fa24_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench1_m5e4_r20__fa32.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench1_m5e4_r20__fa32_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench1_m5e4_r20__fa64.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench1_m5e4_r20__fa64_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench1_m5e4_r20__fm2.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench1_m5e4_r20__fm2_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench1_m5e4_r20__fm3.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench1_m5e4_r20__fm3_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench1_m5e4_r20__fm4.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench1_m5e4_r20__fm4_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench1_m5e4_r20__fm8.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench1_m5e4_r20__fm8_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench2_m1e5_r10__fa128.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench2_m1e5_r10__fa128_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench2_m1e5_r10__fa24.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench2_m1e5_r10__fa24_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench2_m1e5_r10__fa32.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench2_m1e5_r10__fa32_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench2_m1e5_r10__fa64.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench2_m1e5_r10__fa64_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench2_m1e5_r10__fm2.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench2_m1e5_r10__fm2_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench2_m1e5_r10__fm3.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench2_m1e5_r10__fm3_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench2_m1e5_r10__fm4.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench2_m1e5_r10__fm4_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench2_m1e5_r10__fm8.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench2_m1e5_r10__fm8_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench3_m1e5_r5__fa24.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench3_m1e5_r5__fa24_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench3_m1e5_r5__fa32.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench3_m1e5_r5__fa32_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench3_m1e5_r5__fm2.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench3_m1e5_r5__fm2_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench3_m1e5_r5__fm3.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench3_m1e5_r5__fm3_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench3_m1e5_r5__fm4.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench3_m1e5_r5__fm4_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench3_m1e5_r5__fm8.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench3_m1e5_r5__fm8_diag.csv` | producer unknown (HPC/hand-made); refs: `make_phase6_figures.py` |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench4_m1e5_r2p5__fm2.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench4_m1e5_r2p5__fm2_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench4_m1e5_r2p5__fm3.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench4_m1e5_r2p5__fm3_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench4_m1e5_r2p5__fm4.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench4_m1e5_r2p5__fm4_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench4_m1e5_r2p5__fm8.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench4_m1e5_r2p5__fm8_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench5_m5e5_r2p5__fm2.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench5_m5e5_r2p5__fm2_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench5_m5e5_r2p5__fm3.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench5_m5e5_r2p5__fm3_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench5_m5e5_r2p5__fm4.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench5_m5e5_r2p5__fm4_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench5_m5e5_r2p5__fm8.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/bench6_traj/bench5_m5e5_r2p5__fm8_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-19 `591e5e40` | `runs/data/theta5s_summary.csv` | producer unknown (HPC/hand-made); refs: `make_theta5s_analysis.py`, `checkpoint_theta5s.py` · 🕐 generated 2026-07-19T10:48:14Z | builder harvest_theta_max.py | code 89e802dd+dirty |
+| 2026-07-19 `88a4738a` | `theta5s_fire_map.png` | producer unknown (HPC/hand-made); refs: `make_theta5s_analysis.py` |
+| 2026-07-19 `88a4738a` | `theta5s_theta_rise.png` | producer unknown (HPC/hand-made); refs: `make_theta5s_analysis.py` |
+| 2026-07-14 `31265d07` | `closure_stage1_gate.png` | producer unknown (HPC/hand-made); refs: `make_closure_plots.py` |
+| 2026-07-14 `31265d07` | `closure_stage2_heatmap.png` | producer unknown (HPC/hand-made); refs: `make_closure_plots.py` |
+| 2026-07-14 `31265d07` | `closure_stage2_heatmap_theta.png` | producer unknown (HPC/hand-made); refs: `make_closure_plots.py` |
+| 2026-07-14 `31265d07` | `closure_stage2_sweep.png` | producer unknown (HPC/hand-made); refs: `make_closure_plots.py` |
+| 2026-07-14 `31265d07` | `closure_stage2_theta.png` | producer unknown (HPC/hand-made); refs: `make_closure_plots.py` |
+| 2026-07-14 `31265d07` | `closure_stage3_doublecount.png` | producer unknown (HPC/hand-made); refs: `make_closure_plots.py` |
+| 2026-07-14 `31265d07` | `closure_stage4_summary.png` | producer unknown (HPC/hand-made); refs: `make_closure_plots.py` |
+| 2026-07-14 `31265d07` | `da_replay.png` | by `make_da_replay.py` |
+| 2026-07-14 `31265d07` | `da_screen.png` | by `make_da_screen.py` |
+| 2026-07-14 `075c73b5` | `data/bench5_durations.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `data/bench5_elbadry_prediction.csv` | by `make_bench5_elbadry_prediction.py` |
+| 2026-07-14 `31265d07` | `data/closure_test.csv` | by `make_closure_test.py` |
+| 2026-07-14 `31265d07` | `data/da_replay.csv` | by `make_da_replay.py` |
+| 2026-07-14 `31265d07` | `data/da_screen.csv` | by `make_da_screen.py` |
+| 2026-07-14 `31265d07` | `data/dense_stiffness_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `data/dmdt_trace_dense.csv` | producer unknown (HPC/hand-made); refs: `make_dmdt_dip_figures.py` · 🕐 generated 2026-07-03T12:33:07Z | builder make_dmdt_dip_figures.py | code 4568aa4+dirty |
+| 2026-07-14 `31265d07` | `data/doublecount_mc.csv` | by `make_doublecount_mc.py` |
+| 2026-07-14 `31265d07` | `data/ebpeak_8config_xcheck.csv` | by `make_ebpeak_8config_xcheck.py` |
+| 2026-07-14 `31265d07` | `data/ebpeak_trigger_test.csv` | by `make_ebpeak_trigger_test.py` |
+| 2026-07-14 `31265d07` | `data/elbadry_overlay.csv` | by `make_elbadry_overlay.py` |
+| 2026-07-14 `31265d07` | `data/elbadry_theta.csv` | by `make_elbadry_theta.py` |
+| 2026-07-14 `31265d07` | `data/fA_coverage9.csv` | producer unknown (HPC/hand-made); refs: `make_fA_edge_map.py` |
+| 2026-07-14 `31265d07` | `data/fA_edge_map.csv` | by `make_fA_edge_map.py` |
+| 2026-07-14 `31265d07` | `data/fA_source_boost.csv` | by `make_fA_source_boost.py` |
+| 2026-07-14 `31265d07` | `data/fA_source_boost_summary.csv` | by `make_fA_source_boost.py` |
+| 2026-07-14 `31265d07` | `data/fkappa_auto_verify.csv` | by `make_fkappa_auto_verify.py` |
+| 2026-07-14 `31265d07` | `data/fkappa_cliff_metric.csv` | by `make_fkappa_cliff_metric.py` |
+| 2026-07-14 `31265d07` | `data/fkappa_emergent_calibration.csv` | by `make_fkappa_emergent_calibration.py` |
+| 2026-07-14 `31265d07` | `data/fkappa_functional_form.csv` | by `make_fkappa_functional_form.py` |
+| 2026-07-14 `31265d07` | `data/fkappa_leverage.csv` | by `make_fkappa_leverage.py` |
+| 2026-07-14 `31265d07` | `data/fkappa_nH_sweep.csv` | by `make_fkappa_nH_sweep.py` |
+| 2026-07-14 `31265d07` | `data/fkappa_physical_cap.csv` | by `make_fkappa_physical_cap.py` |
+| 2026-07-14 `31265d07` | `data/fkappa_physical_derivation.csv` | by `make_fkappa_physical_derivation.py` |
+| 2026-07-14 `31265d07` | `data/fkappa_sweep_scorecard.csv` | producer unknown (HPC/hand-made); refs: `make_fkappa_sweep_analysis.py` |
+| 2026-07-14 `31265d07` | `data/fkappa_theta1_collapse.csv` | by `make_fkappa_theta1_collapse.py` |
+| 2026-07-14 `31265d07` | `data/fm1_rootcheck.csv` | by `make_fm1_rootcheck.py` |
+| 2026-07-14 `31265d07` | `data/fm1b_evapsign.csv` | by `make_fm1b_evapsign.py` |
+| 2026-07-14 `31265d07` | `data/fmix_table.csv` | by `make_fmix_table.py` |
+| 2026-07-14 `31265d07` | `data/gate_prototype.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `data/kappa_backreaction.csv` | by `make_kappa_backreaction.py` |
+| 2026-07-14 `31265d07` | `data/kappa_blowout_calibration.csv` | by `make_kappa_blowout_calibration.py` |
+| 2026-07-14 `31265d07` | `data/kappa_calibration_estimate.csv` | by `make_kappa_calibration_estimate.py` |
+| 2026-07-14 `31265d07` | `data/kappa_freeze_autopsy.csv` | by `make_kappa_freeze_autopsy.py` · 🕐 generated 2026-07-02T22:05:48Z | builder make_kappa_freeze_autopsy.py | code d8ec046+dirty |
+| 2026-07-14 `31265d07` | `data/kappa_stability_map.csv` | by `make_kappa_stability_map.py` · 🕐 generated 2026-07-02T12:05:54Z | builder make_kappa_stability_map.py | code 8a27ba9 |
+| 2026-07-14 `31265d07` | `data/kmix_prototype.csv` | by `make_kmix_prototype.py` |
+| 2026-07-14 `31265d07` | `data/kmix_selfconsistent.csv` | by `make_kmix_selfconsistent.py` |
+| 2026-07-14 `31265d07` | `data/kmix_theta_trajectory.csv` | by `make_kmix_theta_trajectory.py` |
+| 2026-07-14 `31265d07` | `data/kmix_theta_trajectory_summary.csv` | by `make_kmix_theta_trajectory.py` |
+| 2026-07-14 `31265d07` | `data/live_pdv_decomp.csv` | by `make_live_pdv_decomp.py` |
+| 2026-07-14 `31265d07` | `data/newcode_default_vs_theta.csv` | producer unknown (HPC/hand-made); refs: `make_elbadry_story_figs.py`, `make_pdvtrigger_report.py` |
+| 2026-07-14 `31265d07` | `data/nmap_verify.csv` | by `make_nmap_verify.py` |
+| 2026-07-14 `31265d07` | `data/pdv_combined_trigger.csv` | producer unknown (HPC/hand-made); refs: `make_combined_trigger_table.py`, `make_ebpeak_8config_xcheck.py` |
+| 2026-07-14 `31265d07` | `data/pdv_regime_budget.csv` | producer unknown (HPC/hand-made); refs: `make_ebpeak_8config_xcheck.py`, `make_pdv_regime_table.py` |
+| 2026-07-14 `31265d07` | `data/pdv_trigger_compare.csv` | by `make_pdv_trigger_compare.py` |
+| 2026-07-14 `31265d07` | `data/shadow_te_fate.csv` | by `harvest_shadow.py` |
+| 2026-07-14 `31265d07` | `data/summary.csv` | producer unknown (HPC/hand-made); refs: `compare_bench5_hpc.py`, `make_bench5_analysis.py` |
+| 2026-07-14 `31265d07` | `data/sweep_report.txt` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `data/sweep_tmax_fate.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `data/theta5_fire_map.csv` | producer unknown (HPC/hand-made); refs: `make_theta5b_analysis.py` · 🕐 generated 2026-07-03T13:59:45Z | builder make_theta5b_analysis.py | code 5762c05+dirty |
+| 2026-07-14 `31265d07` | `data/theta5_law_check.csv` | producer unknown (HPC/hand-made); refs: `make_theta5b_analysis.py` · 🕐 generated 2026-07-03T13:59:45Z | builder make_theta5b_analysis.py | code 5762c05+dirty |
+| 2026-07-14 `31265d07` | `data/theta5k_fire_map.csv` | producer unknown (HPC/hand-made); refs: `make_kappa_eq47_check.py`, `make_theta5k_analysis.py` · 🕐 generated 2026-07-03T13:33:46Z | builder make_theta5k_analysis.py | code 4b5fa32+dirty |
+| 2026-07-14 `31265d07` | `data/theta5s_dmdt_suppression.csv` | producer unknown (HPC/hand-made); refs: `make_theta5s_analysis.py`, `harvest_dmdt_suppression.py` |
+| 2026-07-14 `31265d07` | `data/traj_normal_n1e3.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `data/traj_small_1e6.csv` | producer unknown (HPC/hand-made); refs: `make_fA_edge_map.py` |
+| 2026-07-14 `31265d07` | `dmdt_dip_traces.png` | producer unknown (HPC/hand-made); refs: `make_dmdt_dip_figures.py` |
+| 2026-07-14 `31265d07` | `dmdt_tackle_flow.png` | producer unknown (HPC/hand-made); refs: `make_dmdt_dip_figures.py`, `make_pdvtrigger_report.py` |
+| 2026-07-14 `31265d07` | `ebpeak_8config_xcheck.png` | by `make_ebpeak_8config_xcheck.py` |
+| 2026-07-14 `31265d07` | `ebpeak_trigger_test.png` | by `make_ebpeak_trigger_test.py` |
+| 2026-07-14 `31265d07` | `elbadry_overlay.png` | by `make_elbadry_overlay.py` |
+| 2026-07-14 `31265d07` | `elbadry_theta.png` | by `make_elbadry_theta.py` |
+| 2026-07-14 `31265d07` | `fA_edge_map.png` | by `make_fA_edge_map.py` |
+| 2026-07-14 `31265d07` | `fA_source_boost.png` | by `make_fA_source_boost.py` |
+| 2026-07-14 `31265d07` | `fkappa_cliff_metric.png` | by `make_fkappa_cliff_metric.py` |
+| 2026-07-14 `31265d07` | `fkappa_definition.png` | by `make_fkappa_definition.py` |
+| 2026-07-14 `31265d07` | `fkappa_emergent_calibration.png` | by `make_fkappa_emergent_calibration.py` |
+| 2026-07-14 `31265d07` | `fkappa_emergent_routea.png` | producer unknown (HPC/hand-made); refs: `make_fkappa_emergent_calibration.py` |
+| 2026-07-14 `31265d07` | `fkappa_functional_form.png` | by `make_fkappa_functional_form.py` |
+| 2026-07-14 `31265d07` | `fkappa_leverage.png` | by `make_fkappa_leverage.py` |
+| 2026-07-14 `31265d07` | `fkappa_nH_sweep.png` | by `make_fkappa_nH_sweep.py` |
+| 2026-07-14 `31265d07` | `fkappa_physical_cap.png` | by `make_fkappa_physical_cap.py` |
+| 2026-07-14 `31265d07` | `fkappa_physical_derivation.png` | by `make_fkappa_physical_derivation.py` |
+| 2026-07-14 `31265d07` | `fkappa_sweep_analysis.png` | by `make_fkappa_sweep_analysis.py` |
+| 2026-07-14 `31265d07` | `fkappa_theta1_collapse.png` | by `make_fkappa_theta1_collapse.py` |
+| 2026-07-14 `31265d07` | `fm1_rootcheck.png` | by `make_fm1_rootcheck.py` |
+| 2026-07-14 `31265d07` | `fm1b_evapsign.png` | by `make_fm1b_evapsign.py` |
+| 2026-07-14 `31265d07` | `fmix_vs_density.png` | producer unknown (HPC/hand-made); refs: `make_fmix_spread_plot.py` |
+| 2026-07-14 `31265d07` | `ideas_comparison.png` | by `make_ideas_comparison.py` |
+| 2026-07-14 `31265d07` | `kappa_backreaction.png` | by `make_kappa_backreaction.py` |
+| 2026-07-14 `31265d07` | `kappa_blowout_calibration.png` | by `make_kappa_blowout_calibration.py` |
+| 2026-07-14 `31265d07` | `kappa_calibration_estimate.png` | by `make_kappa_calibration_estimate.py` |
+| 2026-07-14 `31265d07` | `kmix_prototype.png` | by `make_kmix_prototype.py` |
+| 2026-07-14 `31265d07` | `kmix_selfconsistent.png` | by `make_kmix_selfconsistent.py` |
+| 2026-07-14 `31265d07` | `kmix_theta_trajectory.png` | by `make_kmix_theta_trajectory.py` |
+| 2026-07-14 `31265d07` | `nmap_verify.png` | by `make_nmap_verify.py` |
+| 2026-07-14 `31265d07` | `pdv_combined_trigger.png` | producer unknown (HPC/hand-made); refs: `make_combined_trigger_table.py` |
+| 2026-07-14 `31265d07` | `pdv_trigger_compare.png` | by `make_pdv_trigger_compare.py` |
+| 2026-07-14 `31265d07` | `runs/data/bench5_summary.csv` | by `harvest_bench5.py` · ⚠️ STALE-RISK: builder newer (harvest_bench5.py 2026-07-29) — regenerate or justify |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench1_m5e4_r20__fa12.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench1_m5e4_r20__fa12_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench1_m5e4_r20__fa16.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench1_m5e4_r20__fa16_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench1_m5e4_r20__fa4.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench1_m5e4_r20__fa4_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench1_m5e4_r20__fa6.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench1_m5e4_r20__fa6_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench1_m5e4_r20__fa8.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench1_m5e4_r20__fa8_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench1_m5e4_r20__none.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench1_m5e4_r20__none_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench2_m1e5_r10__fa12.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench2_m1e5_r10__fa12_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench2_m1e5_r10__fa16.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench2_m1e5_r10__fa16_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench2_m1e5_r10__fa4.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench2_m1e5_r10__fa4_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench2_m1e5_r10__fa6.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench2_m1e5_r10__fa6_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench2_m1e5_r10__fa8.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench2_m1e5_r10__fa8_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench2_m1e5_r10__none.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench2_m1e5_r10__none_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench3_m1e5_r5__fa12.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench3_m1e5_r5__fa12_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench3_m1e5_r5__fa16.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench3_m1e5_r5__fa16_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench3_m1e5_r5__fa4.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench3_m1e5_r5__fa4_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench3_m1e5_r5__fa6.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench3_m1e5_r5__fa6_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench3_m1e5_r5__fa8.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench3_m1e5_r5__fa8_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench3_m1e5_r5__none.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench3_m1e5_r5__none_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench4_m1e5_r2p5__fa12.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench4_m1e5_r2p5__fa12_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench4_m1e5_r2p5__fa16.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench4_m1e5_r2p5__fa16_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench4_m1e5_r2p5__fa4.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench4_m1e5_r2p5__fa4_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench4_m1e5_r2p5__fa6.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench4_m1e5_r2p5__fa6_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench4_m1e5_r2p5__fa8.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench4_m1e5_r2p5__fa8_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench4_m1e5_r2p5__none.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench4_m1e5_r2p5__none_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench5_m5e5_r2p5__fa12.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench5_m5e5_r2p5__fa12_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench5_m5e5_r2p5__fa16.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench5_m5e5_r2p5__fa16_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench5_m5e5_r2p5__fa4.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench5_m5e5_r2p5__fa4_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench5_m5e5_r2p5__fa6.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench5_m5e5_r2p5__fa6_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench5_m5e5_r2p5__fa8.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench5_m5e5_r2p5__fa8_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench5_m5e5_r2p5__none.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/bench5_traj/bench5_m5e5_r2p5__none_diag.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/harvest_cal_compact__k1.csv` | producer unknown (HPC/hand-made); refs: `make_kmix_prototype.py` |
+| 2026-07-14 `31265d07` | `runs/data/harvest_cal_dense__ek1.csv` | producer unknown (HPC/hand-made); refs: `make_kmix_prototype.py` |
+| 2026-07-14 `31265d07` | `runs/data/harvest_cal_diffuse__k1.csv` | producer unknown (HPC/hand-made); refs: `make_kmix_prototype.py` |
+| 2026-07-14 `31265d07` | `runs/data/harvest_cal_mid__ek1.csv` | producer unknown (HPC/hand-made); refs: `make_kmix_prototype.py` |
+| 2026-07-14 `31265d07` | `runs/data/harvest_f1edge_hidens__mult2.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/harvest_f1edge_hidens__none.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/harvest_f1edge_lowdens__mult2.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/harvest_f1edge_lowdens__mult3.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/harvest_f1edge_lowdens__none.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/harvest_fail_repro__none.csv` | producer unknown (HPC/hand-made); refs: `make_kmix_prototype.py` |
+| 2026-07-14 `31265d07` | `runs/data/harvest_simple_cluster__mult2.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/harvest_simple_cluster__none.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/live_compare.csv` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/data/theta5_calibration.csv` | by `make_theta5_calibration.py` · 🕐 generated 2026-07-02T14:00:21Z | builder make_theta5_calibration.py | code ad15816 |
+| 2026-07-14 `31265d07` | `runs/data/theta5_fmix_scorecard.csv` | producer unknown (HPC/hand-made); refs: `make_theta5_figures.py` · 🕐 generated 2026-07-03T21:58:20Z | builder make_theta5_figures.py | code f667df5+dirty |
+| 2026-07-14 `31265d07` | `runs/data/theta5_summary.csv` | producer unknown (HPC/hand-made); refs: `make_theta5_figures.py`, `make_theta5b_analysis.py` · 🕐 generated 2026-07-02T13:50:54Z | builder harvest_theta_max.py | code 23f623d3+dirty |
+| 2026-07-14 `31265d07` | `runs/data/theta5b_summary.csv` | producer unknown (HPC/hand-made); refs: `make_theta5b_analysis.py`, `make_theta5b_params.py` · 🕐 generated 2026-07-02T21:13:23Z | builder harvest_theta_max.py | code 049d3905+dirty |
+| 2026-07-14 `31265d07` | `runs/data/theta5k_summary.csv` | producer unknown (HPC/hand-made); refs: `make_theta5k_analysis.py`, `make_pdvtrigger_report.py` · 🕐 generated 2026-07-03T11:48:20Z | builder harvest_theta_max.py | code fa9dc7ed+dirty |
+| 2026-07-14 `31265d07` | `runs/data/theta5n_summary.csv` | producer unknown (HPC/hand-made); refs: `make_theta5b_analysis.py`, `make_theta5k_analysis.py` · 🕐 generated 2026-07-03T13:30:11Z | builder harvest_theta_max.py | code c7c58738+dirty |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench1_m5e4_r20__fa12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench1_m5e4_r20__fa12_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench1_m5e4_r20__fa16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench1_m5e4_r20__fa16_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench1_m5e4_r20__fa4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench1_m5e4_r20__fa4_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench1_m5e4_r20__fa6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench1_m5e4_r20__fa6_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench1_m5e4_r20__fa8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench1_m5e4_r20__fa8_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench1_m5e4_r20__none.param` | producer unknown (HPC/hand-made); refs: `make_zone_profiles.py`, `make_zone_resolution.py` |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench1_m5e4_r20__none_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench2_m1e5_r10__fa12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench2_m1e5_r10__fa12_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench2_m1e5_r10__fa16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench2_m1e5_r10__fa16_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench2_m1e5_r10__fa4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench2_m1e5_r10__fa4_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench2_m1e5_r10__fa6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench2_m1e5_r10__fa6_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench2_m1e5_r10__fa8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench2_m1e5_r10__fa8_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench2_m1e5_r10__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench2_m1e5_r10__none_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench3_m1e5_r5__fa12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench3_m1e5_r5__fa12_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench3_m1e5_r5__fa16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench3_m1e5_r5__fa16_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench3_m1e5_r5__fa4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench3_m1e5_r5__fa4_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench3_m1e5_r5__fa6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench3_m1e5_r5__fa6_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench3_m1e5_r5__fa8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench3_m1e5_r5__fa8_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench3_m1e5_r5__none.param` | producer unknown (HPC/hand-made); refs: `make_fa_state_screen.py`, `make_zone_profiles.py` |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench3_m1e5_r5__none_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench4_m1e5_r2p5__fa12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench4_m1e5_r2p5__fa12_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench4_m1e5_r2p5__fa16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench4_m1e5_r2p5__fa16_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench4_m1e5_r2p5__fa4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench4_m1e5_r2p5__fa4_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench4_m1e5_r2p5__fa6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench4_m1e5_r2p5__fa6_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench4_m1e5_r2p5__fa8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench4_m1e5_r2p5__fa8_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench4_m1e5_r2p5__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench4_m1e5_r2p5__none_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench5_m5e5_r2p5__fa12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench5_m5e5_r2p5__fa12_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench5_m5e5_r2p5__fa16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench5_m5e5_r2p5__fa16_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench5_m5e5_r2p5__fa4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench5_m5e5_r2p5__fa4_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench5_m5e5_r2p5__fa6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench5_m5e5_r2p5__fa6_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench5_m5e5_r2p5__fa8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench5_m5e5_r2p5__fa8_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench5_m5e5_r2p5__none.param` | producer unknown (HPC/hand-made); refs: `make_zone_profiles.py`, `make_zone_resolution.py` |
+| 2026-07-14 `31265d07` | `runs/params/bench5/bench5_m5e5_r2p5__none_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench1_m5e4_r20__fa128.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench1_m5e4_r20__fa128_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench1_m5e4_r20__fa24.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench1_m5e4_r20__fa24_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench1_m5e4_r20__fa32.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench1_m5e4_r20__fa32_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench1_m5e4_r20__fa64.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench1_m5e4_r20__fa64_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench1_m5e4_r20__fm2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench1_m5e4_r20__fm2_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench1_m5e4_r20__fm3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench1_m5e4_r20__fm3_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench1_m5e4_r20__fm4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench1_m5e4_r20__fm4_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench1_m5e4_r20__fm8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench1_m5e4_r20__fm8_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench2_m1e5_r10__fa128.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench2_m1e5_r10__fa128_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench2_m1e5_r10__fa24.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench2_m1e5_r10__fa24_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench2_m1e5_r10__fa32.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench2_m1e5_r10__fa32_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench2_m1e5_r10__fa64.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench2_m1e5_r10__fa64_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench2_m1e5_r10__fm2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench2_m1e5_r10__fm2_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench2_m1e5_r10__fm3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench2_m1e5_r10__fm3_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench2_m1e5_r10__fm4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench2_m1e5_r10__fm4_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench2_m1e5_r10__fm8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench2_m1e5_r10__fm8_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench3_m1e5_r5__fa24.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench3_m1e5_r5__fa24_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench3_m1e5_r5__fa32.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench3_m1e5_r5__fa32_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench3_m1e5_r5__fm2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench3_m1e5_r5__fm2_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench3_m1e5_r5__fm3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench3_m1e5_r5__fm3_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench3_m1e5_r5__fm4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench3_m1e5_r5__fm4_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench3_m1e5_r5__fm8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench3_m1e5_r5__fm8_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench4_m1e5_r2p5__fm2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench4_m1e5_r2p5__fm2_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench4_m1e5_r2p5__fm3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench4_m1e5_r2p5__fm3_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench4_m1e5_r2p5__fm4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench4_m1e5_r2p5__fm4_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench4_m1e5_r2p5__fm8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench4_m1e5_r2p5__fm8_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench5_m5e5_r2p5__fm2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench5_m5e5_r2p5__fm2_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench5_m5e5_r2p5__fm3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench5_m5e5_r2p5__fm3_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench5_m5e5_r2p5__fm4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench5_m5e5_r2p5__fm4_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench5_m5e5_r2p5__fm8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `fcdc851f` | `runs/params/bench6/bench5_m5e5_r2p5__fm8_diag.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/cal_compact__ebpeak.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/cal_compact__k1.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/cal_compact__k2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/cal_compact__k4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/cal_dense__ek1.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/cal_dense__ek2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/cal_dense__ek4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/cal_diffuse__ebpeak.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/cal_diffuse__k1.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/cal_diffuse__k2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/cal_diffuse__k4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/cal_mid__ek1.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/cal_mid__ek2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/cal_mid__ek4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/diag_dense_hybr.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/diag_dense_legacy.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/dmdt_trace/dense_k6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/dmdt_trace/dense_k8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/f1edge_hidens__kappa2.param` | producer unknown (HPC/hand-made); refs: `make_kappa_backreaction.py` |
+| 2026-07-14 `31265d07` | `runs/params/f1edge_hidens__mult2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/f1edge_hidens__none.param` | producer unknown (HPC/hand-made); refs: `make_kappa_backreaction.py` |
+| 2026-07-14 `31265d07` | `runs/params/f1edge_lowdens__mult2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/f1edge_lowdens__mult3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/f1edge_lowdens__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/fail_repro__mult2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/fail_repro__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/fkauto_verify.param` | producer unknown (HPC/hand-made); refs: `make_fkappa_auto_verify.py` |
+| 2026-07-14 `31265d07` | `runs/params/simple_cluster__mult2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/simple_cluster__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/sweep_fkappa_nH.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5/be_sphere__mult2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5/be_sphere__mult4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5/be_sphere__mult8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5/be_sphere__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5/fail_repro__mult2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5/fail_repro__mult4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5/fail_repro__mult8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5/fail_repro__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5/large_diffuse_lowsfe__mult2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5/large_diffuse_lowsfe__mult4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5/large_diffuse_lowsfe__mult8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5/large_diffuse_lowsfe__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5/midrange_pl0__mult2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5/midrange_pl0__mult4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5/midrange_pl0__mult8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5/midrange_pl0__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5/pl2_steep__mult2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5/pl2_steep__mult4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5/pl2_steep__mult8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5/pl2_steep__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5/simple_cluster__mult2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5/simple_cluster__mult4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5/simple_cluster__mult8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5/simple_cluster__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5/small_1e6__mult2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5/small_1e6__mult4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5/small_1e6__mult8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5/small_1e6__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5/small_dense_highsfe__mult2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5/small_dense_highsfe__mult4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5/small_dense_highsfe__mult8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5/small_dense_highsfe__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5b/be_sphere__mult2p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5b/be_sphere__mult3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5b/be_sphere__mult3p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5b/be_sphere__mult4p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5b/be_sphere__mult5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5b/fail_repro__mult2p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5b/fail_repro__mult3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5b/fail_repro__mult3p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5b/fail_repro__mult4p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5b/fail_repro__mult5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5b/large_diffuse_lowsfe__mult2p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5b/large_diffuse_lowsfe__mult3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5b/large_diffuse_lowsfe__mult3p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5b/large_diffuse_lowsfe__mult4p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5b/large_diffuse_lowsfe__mult5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5b/large_diffuse_lowsfe_t8__mult2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5b/large_diffuse_lowsfe_t8__mult2p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5b/large_diffuse_lowsfe_t8__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5b/midrange_pl0__mult2p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5b/midrange_pl0__mult3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5b/midrange_pl0__mult3p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5b/midrange_pl0__mult4p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5b/midrange_pl0__mult5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5b/pl2_steep__mult2p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5b/pl2_steep__mult3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5b/pl2_steep__mult3p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5b/pl2_steep__mult4p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5b/pl2_steep__mult5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5b/simple_cluster__mult2p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5b/simple_cluster__mult3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5b/simple_cluster__mult3p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5b/simple_cluster__mult4p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5b/simple_cluster__mult5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5b/small_1e6__mult2p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5b/small_1e6__mult3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5b/small_1e6__mult3p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5b/small_1e6__mult4p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5b/small_1e6__mult5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5b/small_dense_highsfe__mult2p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5b/small_dense_highsfe__mult3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5b/small_dense_highsfe__mult3p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5b/small_dense_highsfe__mult4p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5b/small_dense_highsfe__mult5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/be_sphere__kappa12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/be_sphere__kappa16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/be_sphere__kappa2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/be_sphere__kappa4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/be_sphere__kappa6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/be_sphere__kappa8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/be_sphere__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/fail_repro__kappa12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/fail_repro__kappa16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/fail_repro__kappa2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/fail_repro__kappa4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/fail_repro__kappa6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/fail_repro__kappa8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/fail_repro__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/large_diffuse_lowsfe__kappa12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/large_diffuse_lowsfe__kappa16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/large_diffuse_lowsfe__kappa2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/large_diffuse_lowsfe__kappa4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/large_diffuse_lowsfe__kappa6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/large_diffuse_lowsfe__kappa8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/large_diffuse_lowsfe__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/midrange_pl0__kappa12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/midrange_pl0__kappa16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/midrange_pl0__kappa2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/midrange_pl0__kappa4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/midrange_pl0__kappa6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/midrange_pl0__kappa8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/midrange_pl0__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/pl2_steep__kappa12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/pl2_steep__kappa16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/pl2_steep__kappa2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/pl2_steep__kappa4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/pl2_steep__kappa6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/pl2_steep__kappa8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/pl2_steep__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/simple_cluster__kappa12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/simple_cluster__kappa16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/simple_cluster__kappa2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/simple_cluster__kappa4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/simple_cluster__kappa6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/simple_cluster__kappa8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/simple_cluster__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/small_1e6__kappa12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/small_1e6__kappa16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/small_1e6__kappa2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/small_1e6__kappa4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/small_1e6__kappa6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/small_1e6__kappa8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/small_1e6__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/small_dense_highsfe__kappa12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/small_dense_highsfe__kappa16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/small_dense_highsfe__kappa2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/small_dense_highsfe__kappa4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/small_dense_highsfe__kappa6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/small_dense_highsfe__kappa8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5k/small_dense_highsfe__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5n/normal_n1e3__kappa12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5n/normal_n1e3__kappa16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5n/normal_n1e3__kappa2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5n/normal_n1e3__kappa4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5n/normal_n1e3__kappa6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5n/normal_n1e3__kappa8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5n/normal_n1e3__mult2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5n/normal_n1e3__mult2p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5n/normal_n1e3__mult3.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5n/normal_n1e3__mult3p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5n/normal_n1e3__mult4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5n/normal_n1e3__mult4p5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5n/normal_n1e3__mult5.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5n/normal_n1e3__mult8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5n/normal_n1e3__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/be_sphere__fa12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/be_sphere__fa16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/be_sphere__fa2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/be_sphere__fa24.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/be_sphere__fa32.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/be_sphere__fa4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/be_sphere__fa6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/be_sphere__fa8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/be_sphere__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/fail_repro__fa12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/fail_repro__fa16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/fail_repro__fa2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/fail_repro__fa24.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/fail_repro__fa32.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/fail_repro__fa4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/fail_repro__fa6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/fail_repro__fa8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/fail_repro__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/large_diffuse_lowsfe__fa12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/large_diffuse_lowsfe__fa16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/large_diffuse_lowsfe__fa2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/large_diffuse_lowsfe__fa24.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/large_diffuse_lowsfe__fa32.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/large_diffuse_lowsfe__fa4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/large_diffuse_lowsfe__fa6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/large_diffuse_lowsfe__fa8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/large_diffuse_lowsfe__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/midrange_pl0__fa12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/midrange_pl0__fa16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/midrange_pl0__fa2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/midrange_pl0__fa24.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/midrange_pl0__fa32.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/midrange_pl0__fa4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/midrange_pl0__fa6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/midrange_pl0__fa8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/midrange_pl0__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/normal_n1e3__fa12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/normal_n1e3__fa16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/normal_n1e3__fa2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/normal_n1e3__fa24.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/normal_n1e3__fa32.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/normal_n1e3__fa4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/normal_n1e3__fa6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/normal_n1e3__fa8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/normal_n1e3__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/pl2_steep__fa12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/pl2_steep__fa16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/pl2_steep__fa2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/pl2_steep__fa24.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/pl2_steep__fa32.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/pl2_steep__fa4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/pl2_steep__fa6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/pl2_steep__fa8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/pl2_steep__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/simple_cluster__fa12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/simple_cluster__fa16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/simple_cluster__fa2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/simple_cluster__fa24.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/simple_cluster__fa32.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/simple_cluster__fa4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/simple_cluster__fa6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/simple_cluster__fa8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/simple_cluster__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/small_1e6__fa12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/small_1e6__fa16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/small_1e6__fa2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/small_1e6__fa24.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/small_1e6__fa32.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/small_1e6__fa4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/small_1e6__fa6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/small_1e6__fa8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/small_1e6__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/small_dense_highsfe__fa12.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/small_dense_highsfe__fa16.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/small_dense_highsfe__fa2.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/small_dense_highsfe__fa24.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/small_dense_highsfe__fa32.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/small_dense_highsfe__fa4.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/small_dense_highsfe__fa6.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/small_dense_highsfe__fa8.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/params/theta5s/small_dense_highsfe__none.param` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `075c73b5` | `runs/run_bench5.sbatch` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `075c73b5` | `runs/run_bench6.sbatch` | — (hand-made/HPC, unreferenced) |
+| 2026-07-14 `31265d07` | `runs/run_fkappa.sbatch` | producer unknown (HPC/hand-made); refs: `make_fkappa_nH_sweep.py` |
+| 2026-07-14 `31265d07` | `runs/run_theta5.sbatch` | producer unknown (HPC/hand-made); refs: `make_theta5_params.py` |
+| 2026-07-14 `31265d07` | `runs/run_theta5b.sbatch` | producer unknown (HPC/hand-made); refs: `make_theta5b_params.py` |
+| 2026-07-14 `31265d07` | `runs/run_theta5k.sbatch` | producer unknown (HPC/hand-made); refs: `make_theta5k_params.py` |
+| 2026-07-14 `31265d07` | `runs/run_theta5n.sbatch` | producer unknown (HPC/hand-made); refs: `make_theta5n_params.py` |
+| 2026-07-14 `31265d07` | `runs/run_theta5s.sbatch` | producer unknown (HPC/hand-made); refs: `checkpoint_theta5s.py`, `make_theta5s_params.py` |
+| 2026-07-14 `31265d07` | `story_elbadry_f1_closedform.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_story_figs.py`, `make_pdvtrigger_report.py` |
+| 2026-07-14 `31265d07` | `story_elbadry_f2_impose.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_story_figs.py` |
+| 2026-07-14 `31265d07` | `story_elbadry_f3_check.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_story_figs.py` |
+| 2026-07-14 `31265d07` | `story_elbadry_f4_fatemap.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_story_figs.py` |
+| 2026-07-14 `31265d07` | `story_elbadry_f5_reversal.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_story_figs.py`, `make_pdvtrigger_report.py` |
+| 2026-07-14 `31265d07` | `story_elbadry_f6_regime.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_story_figs.py`, `make_pdvtrigger_report.py` |
+| 2026-07-14 `31265d07` | `storyline_figs/fig_closure_heatmap.png` | producer unknown (HPC/hand-made); refs: `make_storyline_figs.py` |
+| 2026-07-14 `31265d07` | `storyline_figs/fig_doublecount.png` | producer unknown (HPC/hand-made); refs: `make_pdvtrigger_report.py`, `make_storyline_figs.py` |
+| 2026-07-14 `31265d07` | `storyline_figs/fig_fmix_convention.png` | producer unknown (HPC/hand-made); refs: `make_storyline_figs.py` |
+| 2026-07-14 `31265d07` | `storyline_figs/fig_regime_split.png` | producer unknown (HPC/hand-made); refs: `make_pdvtrigger_report.py`, `make_storyline_figs.py` |
+| 2026-07-14 `31265d07` | `theta5_arms.png` | producer unknown (HPC/hand-made); refs: `make_theta5_figures.py`, `make_pdvtrigger_report.py` |
+| 2026-07-14 `31265d07` | `theta5_collapse_law.png` | producer unknown (HPC/hand-made); refs: `make_theta5_figures.py`, `make_pdvtrigger_report.py` |
+| 2026-07-14 `31265d07` | `theta5_knob_choice.png` | producer unknown (HPC/hand-made); refs: `make_theta5_figures.py` |
+| 2026-07-14 `31265d07` | `theta5_metric_correction.png` | producer unknown (HPC/hand-made); refs: `make_theta5_figures.py`, `make_pdvtrigger_report.py` |
+| 2026-07-14 `31265d07` | `theta5_target_vs_emergent.png` | producer unknown (HPC/hand-made); refs: `make_theta5_figures.py` |
+| 2026-07-14 `31265d07` | `theta5b_fire_map.png` | producer unknown (HPC/hand-made); refs: `make_theta5b_analysis.py`, `make_pdvtrigger_report.py` |
+| 2026-07-14 `31265d07` | `theta5b_law_check.png` | producer unknown (HPC/hand-made); refs: `make_theta5b_analysis.py` |
+| 2026-07-14 `31265d07` | `theta5k_fire_map.png` | producer unknown (HPC/hand-made); refs: `make_theta5k_analysis.py`, `make_pdvtrigger_report.py` |
+| 2026-07-14 `31265d07` | `theta5k_theta_rise.png` | producer unknown (HPC/hand-made); refs: `make_theta5k_analysis.py` |
+| 2026-07-14 `31265d07` | `theta_vs_density.png` | producer unknown (HPC/hand-made); refs: `make_elbadry_overlay.py`, `make_fmix_spread_plot.py` |

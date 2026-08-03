@@ -23,6 +23,7 @@ REPRODUCE
     python docs/dev/transition/kappa-3way/make_report.py     # -> report.html
 """
 
+import base64
 import csv
 import datetime as dt
 import html
@@ -75,6 +76,16 @@ def _arm_counts():
     for name, label in (("bench5", "bench5r"), ("bench6", "bench6r")):
         out[label] = len(list((PDV / "runs" / "params" / name).glob("*.param")))
     return out
+
+
+def fig(name, alt, caption=""):
+    """Embed a committed PNG as a data URI — the page must stay self-contained and offline."""
+    p = PDV / name
+    if not p.exists():
+        return f'<p class="note">missing figure <code>{esc(name)}</code> — run make_bench7_analysis.py</p>'
+    b64 = base64.b64encode(p.read_bytes()).decode()
+    cap = f'<figcaption class="note">{caption}</figcaption>' if caption else ""
+    return f'<figure><img src="data:image/png;base64,{b64}" alt="{esc(alt)}">{cap}</figure>'
 
 
 def esc(x):
@@ -183,6 +194,70 @@ def panel_freshness(rows):
     )
 
 
+def panel_trigger(rows):
+    """The INSTANTANEOUS calibration — the criterion the trigger actually uses."""
+    tr = [r for r in rows if r.get("table") == "TRIGGER"]
+    if not tr:
+        return ""
+    per = {(r["knob"], r["bench"]): r for r in tr if "SPREAD" not in r.get("bench", "")}
+    spr = {r["knob"]: r for r in tr if r.get("bench") == "SPREAD(max/min)"}
+    TC = {"fmix": "2.745&times;", "fA": "&le;5.39&times;", "fkappa": "&ge;16&times;"}
+    benches = ["bench3_m1e5_r5", "bench2_m1e5_r10", "bench1_m5e4_r20"]
+    body = []
+    for knob in ("fmix", "fA", "fkappa"):
+        cells = []
+        for b in benches:
+            r = per.get((knob, b))
+            cells.append(esc(r["entry_dose"]) if r and r["entry_dose"]
+                         else '<span class="pill bad">never</span>')
+        s_ = spr.get(knob)
+        sv = (f"<b>{esc(s_['entry_dose'])}&times;</b>" if s_ and s_["entry_dose"]
+              else '<span class="pill bad">—</span>')
+        body.append([f"<b>{esc(knob)}</b>", *cells, sv, TC[knob]])
+    return table(["knob", "bench3 (n=5520)", "bench2 (n=690)", "bench1 (n=43)",
+                  "spread — TRIGGER metric", "spread — Θ_cum, for contrast"], body, "wide")
+
+
+def panel_scored(rows):
+    """P1-P5 with their MEASURED verdicts. The P1 rows in bench7_gate_g0.csv stay PENDING on
+    purpose -- they are the frozen pre-registration -- so the scoring is done here, against the
+    measured tables, and the two are shown side by side."""
+    if not rows:
+        return ""
+    det = [r for r in rows if r.get("table") == "DETERM"]
+    g6 = [r for r in rows if r.get("table") == "G6"]
+    exps = [r for r in rows if r.get("table") == "EXPONENT" and r.get("knob") == "fkappa"]
+    qs = ", ".join(f"{float(r['entry_dose']):.2f}" for r in exps)
+    fk = [r for r in rows if r.get("table") == "ENTRY" and r.get("knob") == "fkappa"
+          and r.get("bench") == "SPREAD(max/min)"]
+    spread = fk[0]["entry_dose"] if fk else "?"
+    body = [
+        ["<b>P1</b>", "f_&kappa; spread &asymp; 2.9&ndash;3.8&times; (central 3.4&times;), from "
+         "q &isin; [0.55, 0.70]",
+         f"<b>&ge;{esc(spread)}&times;</b>; measured q = {esc(qs)} &mdash; about <b>half</b> the "
+         "assumed exponent", pill("FALSIFIED", "bad")],
+        ["<b>P2</b>", "&Mdot; rises with f_&kappa;, ratio decays along the run as E_b drains",
+         "direction confirmed and extended far past &sect;24's horizon; ratio crosses <b>below 1</b> "
+         "near f_&kappa; &asymp; 7 (&sect;3)", pill("CONFIRMED*", "ok")],
+        ["<b>P3</b>", "no single f_&kappa; fires all 6 band configs; failures are CONDENSE/DRAIN",
+         "best <b>5/6 at f_&kappa; &isin; {8, 9, 12}</b>, reproducing &sect;12 exactly; firing "
+         "windows do not overlap", pill("CONFIRMED", "ok")],
+        ["<b>P4</b>", "the non-monotonic fates are deterministic",
+         f"<b>{sum(1 for r in det if r['measured_in_grid'] == 'IDENTICAL')}/{len(det)} pairs "
+         "bit-identical</b>, including the pair that truncated", pill("CONFIRMED", "ok")],
+        ["<b>P5</b>", "f_mix reaches the band in-grid by fm &le; 16 on bench1 and bench2",
+         "reached in-grid on <b>all three</b> benches; &sect;18's 2.96&times; estimate measures "
+         "<b>2.745&times;</b>", pill("CONFIRMED", "ok")],
+        ["<b>G6</b>", "K4's overlapping f_mix doses reproduce bench6r within 2%",
+         f"<b>{sum(1 for r in g6 if r['measured_in_grid'].startswith('PASS'))}/{len(g6)}</b> within "
+         "2% &mdash; the two campaigns are one measurement", pill("PASS", "ok")],
+    ]
+    return (table(["#", "pre-registered", "measured", "verdict"], body, "wide")
+            + '<p class="note">* P2 is confirmed <i>directionally</i>. The comparison matches boosted '
+              "and unboosted trajectories by nearest log-t within 0.05 dex, which is coarse where "
+              "sampling is sparse; a dedicated matched-<i>t</i> harness is the follow-up.</p>")
+
+
 def panel_threeway(rows):
     """The deliverable: band entry per knob per bench + the uniformity spread."""
     ent = [r for r in rows if r.get("table") == "ENTRY"]
@@ -288,24 +363,46 @@ def build():
         freshness=panel_freshness(fresh),
         g0_stamp=esc(_stamp_of(PDV / "data" / "bench7_gate_g0.csv") or "not built"),
         threeway=panel_threeway(ana),
+        scored=panel_scored(ana),
+        trigger=panel_trigger(ana),
+        fig_entry=fig(
+            "bench7_entry.png",
+            "Theta_cum vs dose for f_A, f_mix and f_kappa on the three "
+            "clean-blowout benches, with the L21b band shaded",
+            "Θ<sub>cum</sub> vs dose, L21b band shaded. <b>f_κ (triangles) is the flattest "
+            "curve on every panel</b> — that is the result. On bench2 and bench1 it never "
+            "reaches the band within the measured grid.",
+        ),
+        fig_mass=fig("bench7_massloading.png",
+                     "dMdt ratio vs dose for f_kappa and f_A, with f_mix flat at 1",
+                     "Mass loading vs dose. The shaded region is <b>suppression</b> — the wrong side "
+                     "for a wrinkled interface. f_A sits in it throughout; f_&kappa; enters it above "
+                     "f &asymp; 7; f_mix never responds."),
+        fig_firemap=fig(
+            "bench7_firemap.png",
+            "f_kappa fate versus dose for the six band configs",
+            "K2's 66 arms. <code>simple_cluster</code> fires only at 4–6 then condenses; "
+            "<code>pl2_steep</code> needs ≥8. The two firing windows never overlap.",
+        ),
         firemap=panel_firemap(ana),
         ran="yes" if ana else "no",
     )
 
 
-TEMPLATE = """<h1>kappa-3way — the three-way band-entry calibration</h1>
+TEMPLATE = """<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>kappa-3way — the three-way band-entry calibration</title>
+</head><body>
+<h1>kappa-3way — the three-way band-entry calibration</h1>
 <p class="sub">The source of truth for the f_&kappa; / f_A / f_mix decision, measured fresh.
 Built {now} from the committed artifacts &middot; code <code>{sha}</code>.</p>
 
 <style>
-  .k3 {{ --ink:#1a1a1a; --dim:#6b7280; --line:#e5e7eb; --bg:#fff;
-        --ok:#0f7b3f; --okbg:#e7f6ec; --bad:#b42318; --badbg:#fee4e2;
-        --warn:#9a6700; --warnbg:#fff4d6; --acc:#1f4fd8; --accbg:#eef2ff; }}
-  @media (prefers-color-scheme: dark) {{
-    .k3 {{ --ink:#e8e8ea; --dim:#9aa1ad; --line:#2b2f36; --bg:#14161a;
-          --okbg:#0f2a1b; --ok:#5fd39a; --badbg:#3a1614; --bad:#ff9a90;
-          --warnbg:#332a10; --warn:#f0c65a; --accbg:#161d33; --acc:#93aaff; }}
-  }}
+  :root {{ --ink:#1a1a1a; --dim:#6b7280; --line:#e5e7eb; --bg:#fff;
+          --ok:#0f7b3f; --okbg:#e7f6ec; --bad:#b42318; --badbg:#fee4e2;
+          --warn:#9a6700; --warnbg:#fff4d6; --acc:#1f4fd8; --accbg:#eef2ff; }}
   .k3 {{ color:var(--ink); background:var(--bg); line-height:1.6;
         font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; }}
   .k3 h2 {{ margin:2.2em 0 .6em; padding-bottom:.25em; border-bottom:2px solid var(--line);
@@ -339,16 +436,26 @@ Built {now} from the committed artifacts &middot; code <code>{sha}</code>.</p>
   .k3 .box.hold {{ border-color:var(--warn); background:var(--warnbg); }}
   .k3 .box p:first-child {{ margin-top:0; }} .k3 .box p:last-child {{ margin-bottom:0; }}
   .k3 .lede {{ font-size:1.05em; }}
+  .k3 figure {{ margin:1.4em 0; }}
+  .k3 figure img {{ max-width:100%; height:auto; display:block; border-radius:6px;
+                   background:#fff; padding:.4em; }}
+  .k3 figcaption {{ margin-top:.5em; }}
+  html {{ background:var(--bg); }}
+  body {{ background:var(--bg); color:var(--ink); margin:0 auto; max-width:1080px;
+         padding:1.5rem 1.2rem 4rem; }}
 </style>
 
 <div class="k3">
 
 <div class="box win">
 <p><b>{total}/{total} arms ran on 2026-07-30. The three-way table is MEASURED.</b> Headline:
-<b>f_&kappa; is the worst of the three knobs</b> &mdash; spread &ge;16&times; against f_mix's 2.75&times;
-and f_A's 6.0&times;, and it does not reach the L21b band at all on the two diffuse benches by
-f_&kappa;&nbsp;=&nbsp;32. Prediction <b>P1 is falsified</b> (predicted 3.4&times;). Full record:
-<a href="FINDINGS.md">FINDINGS.md</a>.</p>
+<b>f_&kappa; is the worst of the three knobs</b> on both metrics &mdash; it never even reaches the
+trigger θ = 0.95 on bench1. Prediction <b>P1 is falsified</b> (predicted 3.4&times;). ⚠️ But
+on the instantaneous trigger criterion (§3) f_A and f_mix first looked <b>tied</b>, and after
+excluding stale no-root rows (FINDINGS §12) <b>f_A is the best single knob on both axes</b> — the
+&sect;2 ranking between them is an artifact of the integrated metric plus solver staleness. Full
+record: <a href="FINDINGS.md">FINDINGS.md</a>. Next experiment:
+<a href="F_AREA_PLAN.md">F_AREA_PLAN.md</a>.</p>
 </div>
 
 <div class="box stop">
@@ -393,6 +500,8 @@ Read from <code>bench7_analysis.csv</code> at build time.</p>
 
 <div class="tw">{threeway}</div>
 
+{fig_entry}
+
 <p class="note"><b>The extrapolation-free statement</b>, which needs no model: at the top of the
 f_&kappa; grid (f_&kappa; = 32), &Theta;<sub>cum</sub> = <b>0.913</b> on bench3 (in band),
 <b>0.890</b> on bench2 (below, and <i>saturating</i> &mdash; 24&rarr;32 moves it 0.889&rarr;0.890 while
@@ -408,8 +517,9 @@ measured &ge;16&times;. It is <code>CLAUDE.md</code> rule 5 again: a per-call eq
 but not sufficient.</p>
 
 <p class="note">f_mix's exponent (0.46&ndash;0.56) is about <b>double</b> f_A's and f_&kappa;'s. That is
-<i>why</i> it is the most uniform knob &mdash; the uniformity ranking is a consequence of the exponent
-ranking, not an independent fact.</p>
+<i>why</i> it is the most uniform knob <i>on &Theta;<sub>cum</sub></i> &mdash; the uniformity ranking is
+a consequence of the exponent ranking, not an independent fact (and it does not survive the metric +
+staleness corrections of &sect;3).</p>
 
 <h3>The f_&kappa; fire map (K2, 66 arms) — P3 confirmed</h3>
 <p class="note">No single f_&kappa; fires all 6 band configs; best is <b>5/6 at f_&kappa; &isin;
@@ -419,7 +529,101 @@ ranking, not an independent fact.</p>
 
 <div class="tw">{firemap}</div>
 
-<h2>3. What happened — why the old numbers were not trusted</h2>
+{fig_firemap}
+
+<h2>3. Is Θ<sub>cum</sub> even the right metric? — no, and it changes the f_A verdict</h2>
+
+<p>TRINITY's trigger has <b>no memory</b>. <code>run_energy_implicit_phase.py:1250</code> fires on
+<code>(L_gain − L_loss)/L_gain ≤ 0.05</code>, i.e. <b>θ ≥ 0.95</b>, evaluated per step on the current
+state. A cloud fires the instant θ first crosses the threshold, so <b>θ<sub>max</sub> ≥ 0.95 is
+exactly "this cloud fires"</b>. Θ<sub>cum</sub> is a different object — the L<sub>mech</sub>-weighted
+<i>mean</i> of θ over the whole window.</p>
+
+<p class="note"><b>Θ<sub>cum</sub> is not a mistake — it is a mismatch.</b> Lancaster 2021b measures a
+<i>cumulative radiated fraction</i>, so reproducing L21b genuinely requires an integrated quantity,
+and §15h adopted it correctly for that. The error was carrying a Lancaster-comparison metric into a
+<i>knob-selection</i> decision. The workstream's own 📏 rule 3 already says θ is reported as
+θ<sub>max</sub>; the band-entry calibration drifted off it and nobody re-checked whether the ranking
+survived the swap.</p>
+
+<div class="tw">{trigger}</div>
+
+<div class="box stop">
+<p><b>On the criterion the code actually uses, f_A and f_mix first came out TIED</b> — 2.71&times; vs
+2.64&times;, a 3% difference. <b>f_A's 2&times; disadvantage in §2 is an artifact of the metric</b>,
+and "f_mix beats f_A" must not be quoted as a physical result. Note also that the absolute doses
+differ ~4&times; (f_mix 3–8, f_A 11–31) while the spreads match.</p>
+</div>
+
+<div class="box hold">
+<p><b>Then the stale-row exclusion broke the tie — toward f_A</b> (FINDINGS §12). On no-root β–δ
+segments the solver leaves L<sub>cool</sub> frozen while L<sub>mech</sub> keeps evolving, so θ can
+drift up on rows the solver never actually solved; 76/291 arms have their θ<sub>max</sub> set on such
+a row. Recomputing θ<sub>max</sub> over <b>solved rows only</b>: f_A's entries barely move
+(spread <b>2.71&times;</b>, unchanged) but f_mix's bench1 entry slides 7.93&nbsp;&rarr;&nbsp;11.11
+(fm=8's solved-row max is 0.927&nbsp;&lt;&nbsp;0.95), degrading its spread
+2.64&nbsp;&rarr;&nbsp;<b>3.70&times;</b>. <b>f_A is now the most uniform knob outright — and it
+agrees with §4's mechanism ranking</b> (f_A is in-solve; f_mix is a scalar on the answer).</p>
+</div>
+
+<p class="note"><b>f_κ loses on both metrics, and worse on this one</b> — it never reaches θ = 0.95 on
+bench1 at any dose ≤ 32. §2's closure of f_κ is strengthened, not weakened. This metric is also far
+less exposed to §1's truncation problem: θ<sub>max</sub> is a maximum over whatever ran, and the f_A
+and f_mix trigger tracks contain <b>zero</b> truncated arms. Full treatment:
+<a href="FINDINGS.md">FINDINGS §11–§12</a>; per-arm columns
+(<code>thetamax_row_stale</code>, <code>theta_max_solved</code>) in
+<code>pdv-trigger/data/bench_stale_segments.csv</code>.</p>
+
+<h2>4. The mechanism check — none of the three is the wrinkled-interface knob</h2>
+
+<p>The Θ<sub>cum</sub> calibration above scores only the <i>radiative bookkeeping</i>. The physical
+motivation for all three knobs is that turbulent mixing <b>wrinkles</b> the contact discontinuity, so
+its true area exceeds the 1-D spherical area. In the thin-layer limit that raises every interface
+flux <i>together</i> — conduction, radiation, <b>and the evaporative mass flux</b>. So an
+area-faithful knob has an unambiguous signature: <b>Ṁ must RISE with dose.</b></p>
+
+{fig_mass}
+
+<div class="tw"><table>
+<thead><tr><th>knob</th><th>where it acts</th><th>structure responds?</th><th>Ṁ(f)/Ṁ(1)</th><th>vs the wrinkle picture</th></tr></thead>
+<tbody>
+<tr><td><b>f_mix</b></td><td><code>L_leak + f·L_cool</code> on the <i>integrated output</i>, feeding the
+    energy equation</td><td><b>no</b> — structure-frozen, energetics-live</td><td>&equiv; 1</td>
+    <td>❌ no mass-loading response at all</td></tr>
+<tr><td><b>f_A</b></td><td><code>dudt = f·dudt</code> <i>inside the ODE</i>, interface band only</td>
+    <td>yes (radiative source)</td><td><b>0.988 &rarr; 0.855</b></td>
+    <td>❌ <b>wrong sign</b> — cooler interface evaporates less</td></tr>
+<tr><td><b>f_&kappa;</b></td><td><code>C_thermal</code> — the Spitzer conduction coefficient</td>
+    <td>yes (transport)</td><td><b>1.07 &rarr; 0.94 &rarr; 0.29</b></td>
+    <td>⚠️ right sign only below f_&kappa; &asymp; 7</td></tr>
+</tbody></table></div>
+
+<div class="box stop">
+<p><b>In the dose range where any of these would actually be calibrated, not one raises mass
+loading.</b> f_&kappa;'s ratio crosses 1 between f = 6 and 8; by f_&kappa; = 12 — bench3's own
+band-entry dose — evaporation is already suppressed 20%. The knob family whose whole motivation is
+extra interface area produces, at the operating point, an interface that evaporates <i>less</i>.</p>
+</div>
+
+<p><b>The mechanism ranking is the REVERSE of the calibration ranking.</b> f_&kappa; moves a real
+transport coefficient and is the only one ever correct on Ṁ; f_A is in-solve but trades the Ṁ-channel
+against the θ-channel; f_mix is a scalar on the integrated answer and <b>wins §2 precisely because it
+is unconstrained by the physics it represents</b>. Reporting either ranking alone is misleading —
+see <a href="FINDINGS.md">FINDINGS §10</a>.</p>
+
+<div class="box">
+<p><b>The experiment this implies is now fully designed: <a href="F_AREA_PLAN.md">F_AREA_PLAN.md</a>.</b>
+An <b>f_area</b> knob applying f_&kappa; and f_A <i>simultaneously with one shared constant</i> —
+which in the thin-layer limit is the <i>exact</i> 1-D representation of multiplying interface area
+by f (the layer's T-profile is invariant while every flux, Ṁ included, scales by exactly f).
+Pre-registered predictions: band entries &asymp; 3.6/5.0/7.3 with spread &asymp; 2.1&times;, and
+<b>Ṁ rising with dose</b> — the unique area signature no shipped knob shows. <b>0 of 174 arms set
+more than one knob</b>, so this is entirely unmeasured — single-knob was enforced by construction
+for clean attribution. Design: offline screen (A0, free) then one 514-arm <code>bench8</code>
+submission (fine 24-dose ladder + matched-dose single-knob margins + band configs).</p>
+</div>
+
+<h2>5. What happened — why the old numbers were not trusted</h2>
 
 <p>Three corrections inside five days, all in the parent workstream
 <code>docs/dev/transition/pdv-trigger/</code>. None of them was corrupt data. Every one passed the
@@ -460,7 +664,7 @@ true, not citable until re-measured. One date comparison, applied mechanically b
 <code>make_freshness_audit.py</code>, replacing a five-week register whose failure mode was silent.</p>
 </div>
 
-<h2>4. The campaign — {total} arms</h2>
+<h2>6. The campaign — {total} arms</h2>
 
 <p>All arms <code>stop_t = 5 Myr</code>, one process each, <b>single-knob by construction</b>, with the
 two-arm protocol: <b>production</b> (live <code>cooling_balance</code> &rarr; the fire map) and
@@ -489,10 +693,15 @@ old-vs-new is a file diff.</p>
     <code>F_MIX_K4</code>, changes it, and it is free only until <code>submit</code>.</li>
 </ul>
 
-<h2>5. Pre-registered predictions — scored</h2>
+<h2>7. Pre-registered predictions — scored</h2>
 
-<p>Frozen before any arm runs, in <code>pdv-trigger/data/bench7_gate_g0.csv</code>. A miss is
-<b>recorded as a miss</b>, never re-negotiated.</p>
+<p>Frozen in <code>pdv-trigger/data/bench7_gate_g0.csv</code> before any arm ran; scored below
+against the measured tables. <b>A miss is recorded as a miss</b>, never re-negotiated &mdash; and P1
+missed.</p>
+
+<div class="tw">{scored}</div>
+
+<h3>The frozen pre-registration, for the record</h3>
 
 <div class="tw"><table>
 <thead><tr><th>#</th><th>prediction</th><th>decided by</th></tr></thead>
@@ -512,7 +721,7 @@ old-vs-new is a file diff.</p>
 
 <div class="tw">{p1}</div>
 
-<h2>6. Gate G0 — the baseline check, which does double duty</h2>
+<h2>8. Gate G0 — the baseline check, which does double duty</h2>
 
 <p class="note">Artifact stamp: <code>{g0_stamp}</code></p>
 
@@ -529,11 +738,11 @@ downstream. Never silently adopt either value, and never merge a fresh and a pre
 into one fit.</p>
 </div>
 
-<h2>7. Freshness — what on disk is actually from today</h2>
+<h2>9. Freshness — what on disk is actually from today</h2>
 
 {freshness}
 
-<h2>8. What was run</h2>
+<h2>10. What was run</h2>
 
 <pre><code>git pull                                  # branch feature/pdv-trigger-5b
 cd docs/dev/transition/pdv-trigger/runs
@@ -566,31 +775,50 @@ python docs/dev/transition/kappa-3way/make_report.py                  # rebuild 
 else your analysis will need must be added <i>before</i> the first reduce.</p>
 </div>
 
-<h2>9. What the result means</h2>
+<h2>11. What the result means</h2>
 
-<p>The deliverable is the three-way table this program has been missing — per knob: band-entry dose on
-each bench, the spread, and whether it was <b>measured in-grid or extrapolated</b>. Per gate G5, both
-&Theta;<sub>cum</sub> variants and the frozen-no-root share are reported beside every band-setting
-number.</p>
+<p>The deliverable &mdash; the three-way table this program had been missing &mdash; is &sect;2.
+Per gate G5 both &Theta;<sub>cum</sub> variants and the frozen-no-root share sit beside every
+band-setting number in <code>bench7_analysis.csv</code>. The pre-registered decision tree had three
+branches; the measurement landed on the third.</p>
 
-<div class="box win">
-<p><b>f_&kappa; spread smallest, doses reachable</b> &rarr; f_&kappa; re-enters as a live candidate and
-the two-way comparison is corrected to three-way.</p>
-</div>
-<div class="box hold">
-<p><b>f_&kappa; spread smallest, doses unreachable</b> (entry beyond the condensation boundary) &rarr; a
-<b>real result, not a failure</b> — and precisely why G5 forbids publishing the uniformity number
-without the reachability number beside it.</p>
-</div>
 <div class="box stop">
-<p><b>f_&kappa; spread largest</b> &rarr; f_&kappa; closes as a calibration knob, this time on a
-<i>measured</i> basis rather than a falsified argument. The &sect;23 correction stands either way: it was
-about honesty, never about promoting f_&kappa;.</p>
-<p><b>Pre-registered terminal stop:</b> if no knob holds one constant across the band to the agreed
-factor, the single-constant program <b>stops</b> rather than being re-scoped into a fitted f(n).</p>
+<p><b>f_&kappa; has the largest spread &rarr; it closes as a single-constant calibration knob.</b>
+This time on a <i>measurement</i> &mdash; &ge;16&times;, and it does not reach the band at all on the
+two diffuse benches &mdash; rather than on the falsified El-Badry-sign argument that &sect;23 deleted.
+That correction stands either way: it was about honesty, never about promoting f_&kappa;.</p>
 </div>
 
-<h2>10. Where things live</h2>
+<div class="box hold">
+<p><b>But the mechanism axis reverses the order (&sect;3), and that is the finding that matters.</b>
+f_mix wins the calibration <i>because</i> it is a scalar on the integrated answer, unconstrained by
+the structure it is meant to represent. f_&kappa; loses the calibration while being the only knob ever
+correct on mass loading. <b>Neither ranking is publishable alone.</b></p>
+</div>
+
+<div class="box">
+<p><b>What actually follows.</b> The pre-registered TERMINAL stop &mdash; <i>if no knob holds one
+constant across the band to the agreed factor, the single-constant program stops rather than being
+re-scoped into a fitted f(n)</i> &mdash; is <b>live</b>: the best measured spread is f_A's
+2.71&times; (solved rows, &sect;3), from a knob whose mechanism sign is wrong on Ṁ. Before invoking
+it, the discriminator is the <b>f_area</b> experiment of &sect;4 — one shared constant across
+f_&kappa; and f_A, pre-registered in <a href="F_AREA_PLAN.md">F_AREA_PLAN.md</a> with falsifiable
+predictions and a TERMINAL clause of its own. It is the one test that could satisfy both axes at
+once, and it has never been run.</p>
+</div>
+
+<h3>Still soft, and stated as such</h3>
+<ul>
+<li><b>f_A's bench1 entry is a bound, not a point</b> &mdash; (64, 74.8], so spread &le; 5.39&times;.
+    The pre-registered 74.8 is its correct upper end, so nothing published on the f_A side was
+    <i>wrong</i>; it was unconverged and stated as if converged.</li>
+<li><b><code>pl2_steep</code>'s firing-window left edge is unmeasured</b> (f_&kappa; = 5, 6, 7 all
+    truncated). The non-overlap with <code>simple_cluster</code> holds regardless, so P3 stands.</li>
+<li><b>21/294 arms truncated</b>, 12 of them diagnostic arms. Every band-entry number carries its
+    bracket's truncated count in <code>bench7_analysis.csv</code>.</li>
+</ul>
+
+<h2>12. Where things live</h2>
 
 <div class="tw"><table>
 <thead><tr><th>what</th><th>where</th><th>why</th></tr></thead>
@@ -610,6 +838,7 @@ factor, the single-constant program <b>stops</b> rather than being re-scoped int
 <code>cooling_boost_mode='none'</code>, f_&kappa; = 1.0, f_A = 1.0.</p>
 
 </div>
+</body></html>
 """
 
 

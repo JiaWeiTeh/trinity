@@ -32,11 +32,13 @@ RDATA = HERE.parent / "runs" / "data"
 import sys  # noqa: E402
 
 sys.path.insert(0, str(HERE))
+sys.path.insert(0, str(HERE.parent))
+from _stamp import stamp  # noqa: E402
 from make_bench5_analysis import _fnum, _read_csv  # noqa: E402
 
 
 def decompose(rows):
-    """(n_rows, n_stale, stale_time_frac, Theta_stale, Theta_solved) for one trajectory."""
+    """(n_rows, n_stale, stale_time_frac, Theta_stale, Theta_solved, max_stale, max_solved)."""
     ts = [_fnum(r["t_now"]) for r in rows]
     th = [_fnum(r["theta"]) for r in rows]
     lm = [_fnum(r["Lmech"]) for r in rows]
@@ -60,11 +62,24 @@ def decompose(rows):
         (stale_t / span) if span else None,
         (num_s / den) if den else None,
         (num_f / den) if den else None,
+        # theta_max exposure (added 2026-07-30, kappa-3way FINDINGS 12): is the row that SETS
+        # theta_max itself a stale row, and what is the max over solved rows only? theta keeps
+        # moving on stale rows (Lcool frozen, Lmech evolves), so staleness could in principle
+        # inflate the trigger metric too -- this measures whether it actually does.
+        (th.index(max(v for v in th if v is not None)) in stale) if any(th) else None,
+        max((v for i, v in enumerate(th) if v is not None and i not in stale), default=None),
     )
 
 
 def main():
-    sources = [("bench5", RDATA / "bench5_traj_hpc"), ("bench6", RDATA / "bench6_traj")]
+    # ALL-FRESH (2026-07-30): prefer the re-run harvests; fall back to the 07-19 dirs if absent.
+    sources = [
+        ("bench5r" if (RDATA / "bench5r_traj").is_dir() else "bench5",
+         RDATA / ("bench5r_traj" if (RDATA / "bench5r_traj").is_dir() else "bench5_traj_hpc")),
+        ("bench6r" if (RDATA / "bench6r_traj").is_dir() else "bench6",
+         RDATA / ("bench6r_traj" if (RDATA / "bench6r_traj").is_dir() else "bench6_traj")),
+        ("bench7", RDATA / "bench7_traj"),
+    ]
     out_rows = []
     for campaign, d in sources:
         if not d.is_dir():
@@ -73,14 +88,23 @@ def main():
             rows = _read_csv(p)
             if len(rows) < 2:
                 continue
-            n, ns, tf, th_s, th_f = decompose(rows)
-            tag = p.stem.split("__", 1)[1].replace("_diag", "")
+            n, ns, tf, th_s, th_f, mx_stale, mx_solved = decompose(rows)
+            stem = p.stem
+            for pref in ("k1b_", "k1_", "k2_", "k3_", "k4_"):
+                if stem.startswith(pref):
+                    stem = stem[len(pref):]
+                    break
+            tag = stem.split("__", 1)[1].replace("_diag", "")
+            for rep in ("_a", "_b"):
+                if tag.endswith(rep):
+                    tag = tag[:-2]
             out_rows.append(
                 {
                     "campaign": campaign,
                     "run_name": p.stem,
-                    "bench": p.stem.split("__")[0],
-                    "knob": "fmix" if tag.startswith("fm") else "fA",
+                    "bench": stem.split("__")[0],
+                    "knob": ("fmix" if tag.startswith("fm") else
+                             "fkappa" if tag.startswith("fk") else "fA"),
                     "dose": 1 if tag == "none" else float(tag[2:]),
                     "arm": "diag" if p.stem.endswith("_diag") else "prod",
                     "n_rows": n,
@@ -90,11 +114,21 @@ def main():
                     "theta_cum_from_stale": f"{th_s:.4f}" if th_s is not None else "",
                     "theta_cum_from_solved": f"{th_f:.4f}" if th_f is not None else "",
                     "theta_cum_total": f"{th_s + th_f:.4f}" if None not in (th_s, th_f) else "",
+                    "thetamax_row_stale": "" if mx_stale is None else ("YES" if mx_stale else "no"),
+                    "theta_max_solved": f"{mx_solved:.4f}" if mx_solved is not None else "",
                 }
             )
 
     out = HERE / "bench_stale_segments.csv"
     with out.open("w", newline="") as fh:
+        fh.write(stamp(__file__) + "\n")
+        fh.write(
+            "# REGENERATED 2026-07-30 on the ALL-FRESH harvests (bench5r/bench6r/bench7) with two "
+            "new columns: thetamax_row_stale (is the row that sets theta_max itself stale?) and "
+            "theta_max_solved (max over solved rows only). Measured verdict: Theta_cum stale share "
+            "is 30-65% on band-setting arms, but theta_max is set on a SOLVED row in every arm -- "
+            "the trigger metric is empirically insensitive to staleness (kappa-3way FINDINGS 12).\n"
+        )
         fh.write(
             "# Stale (no-root) segment decomposition of Theta_cum, per bench5/bench6 arm "
             "(2026-07-28, FINDINGS 18). A row is STALE when the raw Lcool (=bubble_LTotal) repeats "

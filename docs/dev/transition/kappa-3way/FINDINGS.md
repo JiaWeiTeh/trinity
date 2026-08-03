@@ -32,9 +32,14 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-07-30):** 🔵 actionable — **294/294 arms ran; the three-way table is MEASURED.** The
-headline: **f_κ is the worst of the three knobs**, and P1 is falsified. One gate (G0) failed, and the
-failure is understood.
+**Status (2026-08-02):** 🔵 actionable — **294/294 arms ran; the three-way table is MEASURED.**
+**f_κ is the worst of the three on both metrics** (it never even reaches the trigger θ = 0.95 on
+bench1) and **P1 is falsified**. ⚠️ **`§2`'s ranking of f_mix over f_A is superseded twice:** `§11`
+(instantaneous criterion → f_A/f_mix **tied**, 2.71× vs 2.64×) and then `§12` (stale-row exclusion
+→ f_mix's solved-row spread degrades to **3.70×** while f_A holds **2.71×** — **f_A is the best
+single knob on both axes**). `§10` (mechanism), `§11` (metric) and `§12` (staleness) are the three
+sections that change what this campaign concludes; read them before quoting `§2` or `§11` alone.
+G0 failed on a truncation artifact (`§1`, bounded in `§1a`). Next experiment: `F_AREA_PLAN.md`.
 
 ---
 
@@ -72,8 +77,44 @@ crossing 74.8 → 83.2 and the spread 5.39 → 6.00.
 > **⚠️ The consequence is bigger than the gate.** f_A's bench1 band-entry dose — and therefore f_A's
 > **5.39× spread, the number the entire published head-to-head rests on** — is **not a converged
 > measurement**. It is a function of where the run happened to stop. Two runs of identical code on
-> identical params give 74.8 and 83.2. Neither is *the* answer; the honest statement is
-> **f_A spread ≈ 5.4–6.0×, wall-limited**.
+> identical params give 74.8 and 83.2.
+
+### §1a. …but the truncation bias has a SIGN, so the number can be bounded without re-running
+
+Added 2026-07-30 after the maintainer pointed out that `--time=1:30:00` was already the value in the
+committed sbatch — i.e. **both runs used the same cap**, and no re-run at that cap changes anything a
+deterministic code would do differently. That reframes the question from *"how do we complete this
+arm?"* to *"what can we prove without completing it?"* — and the answer turns out to be: enough.
+
+`bench1__fa128_diag` is cut off while **θ = 1.44**, far above its own running mean of Θ_cum = 0.959.
+Θ_cum is the L_mech-weighted mean of θ over the window, so extending the window can only **raise**
+it. **Every measured Θ_cum on a truncated arm is therefore a LOWER bound on the truth**, and the two
+runs order exactly as that predicts: the longer window (July, 212 steps) gave the higher value
+(1.024) and the shorter one (07-30, 182 steps) the lower (0.959).
+
+Band entry is log-interpolated between fa64 (Θ = 0.864, **complete**, below the band) and fa128, and
+falls monotonically as fa128's Θ_cum rises:
+
+| Θ_cum(fa128) | 0.959 (07-30) | 1.024 (07-19) | 1.20 | 1.44 (θ at cutoff) | → ∞ |
+|---|---|---|---|---|---|
+| entry | 83.18 | **74.79** | 68.93 | 66.83 | 64.02 |
+
+Since the true Θ_cum ≥ 1.024 and the crossing can never fall below fa64:
+
+> **f_A bench1 entry ∈ (64, 74.8] → f_A spread ∈ (4.61, 5.39×].**
+
+Three consequences. **(i)** The pre-registered G0 target of 74.8 is the correct **upper bound** — the
+July number was closer to the truth than today's, and G0 "failed" against a value that was never
+wrong, only unconverged. **(ii)** f_A's **Θ_cum** spread is at most 5.39×, so the *Θ_cum* ordering
+f_mix > f_A ≫ f_κ holds across the entire bound and does not depend on finishing the arm.
+**(iii)** The honest published form is a bound, not a point: **f_A Θ_cum spread ≤ 5.4×**.
+
+> ⚠️ **Superseded in part by `§11` (same day).** Consequence (ii) is a statement about **Θ_cum only**,
+> and Θ_cum turns out to be the wrong metric for ranking the knobs — TRINITY's trigger is
+> instantaneous and memoryless. On the trigger's own criterion **f_A and f_mix are tied**
+> (2.71× vs 2.64×). This whole subsection still stands as written *about Θ_cum*, and the f_κ part of
+> the ordering is unaffected; only "f_mix > f_A" does not survive the metric change. The bound
+> derivation itself is untouched.
 
 **What "truncated" precisely means, and what is still inferred.** `outcome` is copied from
 `metadata.json`'s `termination` block, which `trinity/_output/simulation_end.py` writes **only when
@@ -110,7 +151,7 @@ clean-blowout benches only.
 | knob | bench3 (n̄=5520) | bench2 (n̄=690) | bench1 (n̄=43) | **spread** | in-grid? |
 |---|---|---|---|---|---|
 | **f_mix** | 4.02 | 9.69 | 11.02 | **2.75×** | ✅ all measured |
-| **f_A** | 13.88 | 53.51 | 83.24 ⚠️ | **6.00×** ⚠️ | measured, bench1 wall-limited |
+| **f_A** | 13.88 | 53.51 | **(64, 74.8]** | **(4.61, 5.39×]** | bench1 bounded, not point-measured (§1a) |
 | **f_κ** | 10.43 | *169* | *143* | **≥16×** | ❌ **2/3 EXTRAPOLATED** |
 
 *Italic = extrapolated past the grid, not measured.*
@@ -128,7 +169,8 @@ bench2's flattening is *not* a window artifact: its integration window is still 
 range (t_end 0.563 → 0.606) and every arm completed to `stop_t = 5`. f_κ appears to **asymptote just
 below the band** on the intermediate-density cloud.
 
-**Ranking, on measured evidence: f_mix (2.75×) > f_A (6.0×) ≫ f_κ (≥16×).** f_κ is closed as a
+**Ranking, on measured evidence: f_mix (2.75×) > f_A (≤5.39×) ≫ f_κ (≥16×).** The f_A entry is a
+bound (§1a), and the ranking holds across the whole of it — no re-run can change the order. f_κ is closed as a
 single-constant calibration knob — this time on a *measurement*, not on the falsified El-Badry-sign
 argument that `§23` deleted. That correction stands regardless; it was always about honesty, never
 about promoting f_κ.
@@ -251,25 +293,306 @@ reason — the integrated exponent is half the fixed-state one — is itself a r
 f_A = 1.0. The `§23` Eq-47 correction stands. `§12`'s 5/6 and `§24`'s re-attribution are both
 independently reproduced.
 
-**Newly known to be soft.** f_A's bench1 entry and its spread are wall-limited (§1). Any future
-quote of "f_A spread = 5.39×" should be **5.4–6.0×, wall-limited**. Since the partition caps at
-1:30:00 and that is already what these arms ran under, this may be **permanent**: if
-`bench1__fa128_diag` cannot complete on this cluster, then f_A's bench1 entry is not a value but a
-**lower bound** (`≳75`, unconverged), and the same applies to `pl2_steep`'s firing-window left edge.
-Report bounds, not values.
+**Newly known to be soft.** f_A's bench1 entry is not a point measurement — it is the **bound
+(64, 74.8]**, giving **f_A spread ≤ 5.39×** (§1a). Quote the bound. The pre-registered 74.8 is its
+correct upper end, so nothing published on the f_A side was *wrong*; it was unconverged and stated
+as if converged. `pl2_steep`'s firing-window left edge is the one thing still genuinely unmeasured
+(f_κ = 5, 6, 7 all truncated) — but the non-overlap with `simple_cluster` holds regardless, so P3 is
+unaffected.
 
 ---
 
 ## §9. Next
 
-1. **The 21 truncated arms cannot be fixed by more walltime** — the partition caps at
-   `--time=1:30:00`, which is already what they ran under (maintainer, 2026-07-30). Two things are
-   still worth trying, in order: (a) **re-run just those 21 arms alone**, with no 294-arm array
-   competing for the node — if contention was the difference they may complete under the same cap;
-   (b) if they still truncate, they are a **permanent, recorded limitation of this partition**, and
-   the numbers that depend on them must be reported as bounds, not values (see §8's "newly known to
-   be soft").
+1. **Do NOT re-run the truncated arms to fix f_A — §1a already bounds it**, and the bound is tight
+   enough that the ranking cannot change. `--time=1:30:00` was already the committed value for both
+   runs, and P4 proves the code is deterministic, so a re-run at the same cap is only worth anything
+   if the arms were **wall-killed** *and* node contention (294 arms vs 21) was the binding
+   difference. **Read the exit codes first** —
+   `cat $WS/outputs/bench7/*/.exit_code | sort | uniq -c`. `124` ⇒ a contention-free retry is worth
+   one shot; anything else ⇒ deterministic, and re-running reproduces it exactly. Either way it is
+   now a *nice-to-have*, not a blocker.
 2. **Extend the f_κ grid past 32 on bench1/bench2**, or accept "does not reach the band by 32" as the
    final answer. Given bench2's saturation at 0.890, the second is defensible and much cheaper.
 3. **Settle Q3** (frozen-row Θ_cum convention) — it now visibly moves numbers.
 4. A **matched-`t` back-reaction harness** for P2, replacing the coarse log-t nearest-neighbour match.
+
+---
+
+## §10. [physics] Where each knob actually acts, and why NONE of them is the wrinkled-interface knob
+
+Raised by the maintainer 2026-07-30: *"which one is more physically true? what about the mass loading
+due to extra surface area from wrinkles (which is the whole motivation of adding the extra cooling)?"*
+That question turns out to discriminate the three knobs far more sharply than the Θ_cum calibration
+does, and it changes what the campaign's "winner" means. Figure: `bench7_massloading.png`.
+
+### §10a. What the code actually does — verified at the call sites, not from memory
+
+| knob | site | what it multiplies | does the bubble *structure* respond? |
+|---|---|---|---|
+| **f_mix** | `phase1b_energy_implicit/get_betadelta.py:360` | `L_loss = L_leak + f_mix·L_cool` — applied to the **integrated output** of the structure solve, feeding the β/δ residual and the energy equation | **No.** The structure ODE never sees it. T(r), ρ(r), Ṁ are identical to the unboosted run at the same state. |
+| **f_A** | `bubble_structure/bubble_luminosity.py:435` | `dudt = f_A·dudt` **inside the ODE**, and only where `T < _T_INTERFACE_BAND`; plus L2+L3 in the integrals (`:845`) | **Yes** — the radiative source term is perturbed, so T(r) reorganises. The in-code comment is explicit: *"Conduction, ICs and the dMdt seed untouched."* |
+| **f_κ** | `bubble_structure/bubble_luminosity.py:441` (also `:304`, `:398`) | `C_thermal` in `dTdrr` — the **Spitzer conduction coefficient** | **Yes**, and deepest: it changes how heat is *transported*, so the whole conduction zone restructures. |
+
+⚠️ **Correction to an earlier statement in this conversation.** It is **f_A**, not f_mix, that acts on
+`dudt`. And "f_mix is frozen by construction" was too strong: f_mix *is* frozen at the **structure**
+level, but it still enters the global energy equation, so E_b, P_b and R2 do respond. The precise
+statement is *structure-frozen, energetics-live*.
+
+### §10b. The wrinkling picture makes a prediction, and it is about Ṁ
+
+The physical motivation for all of this is that turbulent mixing **wrinkles** the contact
+discontinuity, so its true area exceeds the 1-D spherical area by some factor `f_area`. In the
+thin-layer limit every interface flux is proportional to that area **together**:
+
+- conductive flux through the interface ∝ A
+- **evaporative mass flux Ṁ ∝ A**  ← the channel nobody was checking
+- radiative loss from the interface layer ∝ A (layer volume at fixed thickness)
+
+So the signature of an area-faithful knob is unambiguous: **Ṁ must RISE with dose.** Measured:
+
+| knob | Ṁ(f)/Ṁ(1) | verdict vs the wrinkle picture |
+|---|---|---|
+| **f_mix** | ≡ 1 (structure untouched) | ❌ no mass-loading response at all |
+| **f_A** | **0.988 → 0.855** over f_A 2→32 (`theta5s_dmdt_suppression.csv`, 9 configs) | ❌ **wrong sign** — more interface cooling ⇒ cooler interface ⇒ *less* evaporation |
+| **f_κ** | **1.066 → 1.075 → 1.011 → 0.944 → 0.799 → 0.289** over f_κ 2→3→6→8→12→32 | ⚠️ **right sign only below f_κ ≈ 7** |
+
+**f_κ's sign flips inside the useful range.** At fixed state it follows Eq 47's `f^{2/7}` to within
+1.6% (`§24` Q1) — the correct area-like behaviour. But on a **full run** the back-reaction takes over:
+the boosted arm radiates more, drains E_b, pressure falls, and evaporation falls with it. The ratio
+crosses 1 between f_κ = 6 and 8, and by f_κ = 12 — which is *bench3's own band-entry dose* — mass
+loading is already **suppressed by 20%**.
+
+> **So in the dose range where any of these knobs would actually be calibrated, not one of them
+> raises mass loading.** The knob whose *whole motivation* is extra interface area produces, at the
+> operating point, an interface that evaporates *less*. That is a physics-level indictment that the
+> Θ_cum calibration cannot see, because Θ_cum only scores the radiative bookkeeping.
+
+### §10c. Which is "more physically true"
+
+Ranked by faithfulness to the mechanism rather than by calibration score — the reverse of `§2`:
+
+1. **f_κ** — the only one that moves a real transport coefficient, and the only one with the correct
+   Ṁ sign anywhere. Its failure is that it moves **only** the conduction channel, so the radiative
+   loss rises only indirectly; that is why its Θ_cum exponent is q ≈ 0.28 and why it saturates below
+   the band (`§2`, `§3`).
+2. **f_A** — in-solve and physically interpretable as an emissivity/efficiency boost in the interface
+   band, but it moves the θ-channel **at the cost of** the Ṁ-channel. Under the wrinkle picture those
+   two should move together; here they anti-correlate.
+3. **f_mix** — a scalar on the integrated answer. It cannot be wrong about the structure because it
+   never consults it. **It wins the calibration (`§2`: 2.745× spread, all in-grid) precisely because
+   it is unconstrained by the physics it is meant to represent.**
+
+**That inversion is the real result of this campaign.** The measurement ranking (`§2`) and the
+mechanism ranking (here) are *opposite*. Reporting either alone would be misleading.
+
+### §10d. The experiment this implies — an area-faithful knob, and it is nearly free
+
+`pdv-trigger/PLAN.md` item 9 already registered "the area-faithful successor" as the discriminating
+experiment. `§10b` now supplies the missing quantitative case *and* a concrete construction:
+
+> **f_area applies f_κ and f_A simultaneously with ONE shared constant.** f_κ carries the
+> conduction + evaporation channel; f_A carries the radiative channel. Together they are the closest
+> thing the current code can express to "multiply the interface area".
+
+Two falsifiable predictions, from the measured single-knob exponents:
+
+- **Ṁ:** f_κ contributes ≈ `f^{+0.28}` and f_A ≈ `f^{-0.05}` (from 0.988→0.855 over a 16× dose), so
+  the combination should keep **Ṁ rising** — net ≈ `f^{+0.23}` — instead of crossing below 1 near
+  f ≈ 7. **This is the test of whether the code can represent a wrinkled interface at all.**
+- **Θ_cum:** both channels push θ up, so the combined exponent should **exceed** either alone
+  (f_κ 0.28, f_A 0.25 ⇒ expect ≳ 0.4, possibly approaching f_mix's 0.46–0.56 — but from
+  *mechanism* rather than from a scalar on the output).
+
+**It is unmeasured, and deliberately so:** `0 of 174` bench7 arms set more than one knob — the
+campaign enforced single-knob by construction so every effect could be attributed. That was right for
+attribution and it is exactly why the combination is now the open question.
+
+**Cost: small.** A dual-knob ladder on the three clean benches — f_area ∈ {2,4,8,12,16,24}, prod+diag
+— is **36 arms**, ~12% of what this campaign just spent. It needs one change: `make_kappa_reopen_params.py`
+would have to emit an arm setting `cooling_boost_kappa` *and* `cooling_boost_fA`, and
+`test_bench7_params.py`'s single-knob assertion would need a documented exemption for that phase.
+
+### §10e. What this does NOT change
+
+Every number in `§1`–`§9` stands — this section re-reads them, it does not revise them. f_κ remains
+closed *as a single-constant calibration knob* (it does not reach the band; ≥16× spread). The point
+here is narrower and sharper: **it was closed on the calibration axis while being the least wrong on
+the mechanism axis**, and the knob that won the calibration is the one that models the mechanism
+least. Any recommendation that quotes `§2` without `§10` is quoting half the evidence.
+
+---
+
+## §11. [metric] Θ_cum is the wrong metric for the knob decision — and on the right one, f_A and f_mix are TIED
+
+Raised by the maintainer 2026-07-30: *"why are we looking at Θ_cum? Only the instantaneous
+L_loss/L_gain matters — the bubble goes into momentum the moment cooling beats gain, it doesn't care
+about the history."* That is correct about the code, and acting on it **changes §2's headline.**
+
+### §11a. The trigger has no memory — verified in source
+
+`phase1b_energy_implicit/run_energy_implicit_phase.py:1250` fires on
+
+```
+(L_gain − L_loss) / L_gain  ≤  phaseSwitch_LlossLgain   (default 0.05)   ⟺   θ ≥ 0.95
+```
+
+evaluated **per step**, on the current state. Nothing integrates. A cloud fires the instant θ first
+crosses 0.95, and `θ_max ≥ 0.95` is therefore *exactly* the statement "this cloud fires".
+
+Θ_cum, by contrast, is the L_mech-weighted **mean of θ over the whole blowout window**. It is a
+different object, and it can be high while θ never crosses the threshold (a long warm interval), or
+low while θ spikes over it briefly (a short sharp peak). **The two metrics can disagree, and here
+they do.**
+
+### §11b. Why Θ_cum was used anyway — it is not a mistake, it is a mismatch
+
+Θ_cum is the **right** metric for its actual purpose: Lancaster 2021b measures a *cumulative radiated
+fraction* over the breakout window, so reproducing L21b requires an integrated quantity. `§15h`
+adopted it for exactly that, correctly.
+
+The error was **carrying a Lancaster-comparison metric into a knob-selection decision.** Those answer
+different questions:
+
+| question | right metric |
+|---|---|
+| does TRINITY reproduce L21b's **energy budget**? | **Θ_cum** — integrated, matches the observable |
+| what dose makes a cloud **fire the trigger**? | **θ_max** — instantaneous, matches the code |
+
+The workstream's own `runs/README.md` 📏 **rule 3** already says *"θ is reported as `theta_max` over
+the whole run"*. The band-entry calibration drifted off that rule when it borrowed Θ_cum from the L21b
+comparison, and nobody re-checked whether the ranking survived the swap. It does not.
+
+### §11c. The instantaneous calibration — `table=TRIGGER` in `bench7_analysis.csv`
+
+Dose at which θ_max first reaches **0.95**, PROD arms (the ones running the live trigger):
+
+| knob | bench3 (n̄=5520) | bench2 (690) | bench1 (43) | **spread** | Θ_cum spread, for contrast |
+|---|---|---|---|---|---|
+| **f_mix** | 3.00 | 6.41 | 7.93 | **2.64×** | 2.745× |
+| **f_A** | 11.3 | 23.5 | 30.8 | **2.71×** | ≤5.39× |
+| **f_κ** | 6.53 | 13.8 | **never** | — | ≥16× |
+
+**f_A and f_mix are tied: 2.71× vs 2.64×, a 3% difference.**
+
+> **f_A's apparent 2× disadvantage in `§2` is an artifact of the metric.** On the criterion TRINITY
+> actually uses, the two knobs are indistinguishable as single constants. `§2`'s "f_mix > f_A" must
+> not be quoted as a physical result — it is a statement about Θ_cum, not about firing.
+
+Three further points, all favouring this metric for this decision:
+
+1. **f_κ's failure is robust and gets *worse*.** Under Θ_cum it "reached the band on bench3 and
+   saturated below it elsewhere"; under the trigger it **never fires bench1 at any dose ≤ 32**. The
+   `§2` conclusion that f_κ is closed stands — strengthened, not weakened.
+2. **The absolute doses differ by ~4× between the two knobs** (f_mix 3–8, f_A 11–31) even though the
+   spreads match. Uniformity therefore *cannot* choose between them; only the mechanism (`§10`) or an
+   independent constraint can.
+3. **It is far less exposed to the truncation problem of `§1`.** θ_max is a maximum over whatever
+   ran, so an arm cut short after its peak is unaffected; and the f_A and f_mix trigger tracks contain
+   **zero** truncated arms (only f_κ/bench3 has any). The metric that broke G0 is the integrated one.
+
+### §11d. What this revises, and what it does not
+
+**Revised.** `§2`'s ranking of f_mix over f_A. The correct statement is: **on the trigger criterion
+f_A ≈ f_mix (2.71× vs 2.64×); on the L21b energy-budget criterion f_mix is better (2.745× vs
+≤5.39×).** Both are true, of different questions, and the knob decision should rest on the first.
+
+**Unchanged.** Everything about f_κ (`§2`, `§3`, `§4`) — it loses on both metrics. `§10`'s mechanism
+analysis, which was never metric-dependent. P3/P4/P5/G6. `§1`'s truncation diagnosis.
+
+**Newly sharpened.** With f_A and f_mix tied on uniformity, the decision falls entirely to `§10`'s
+mechanism axis — where f_A acts in-solve and f_mix does not. **The two axes no longer conflict for
+f_A vs f_mix: uniformity says "tied", mechanism says "f_A".** The conflict that remains is only that
+neither has the right mass-loading sign, which is what the `f_area` experiment is for.
+
+### §11e. Follow-up
+
+- Report **both** metrics in any published table, labelled by the question each answers. Never one
+  alone — that is exactly how this drifted.
+- The pre-registered gates G4/G5 should be extended to require the trigger metric alongside Θ_cum;
+  they currently only constrain the integrated one.
+- `data/make_bench7_analysis.py` now emits `table=TRIGGER` alongside `table=ENTRY`, so both are
+  regenerated together and cannot drift apart again.
+
+---
+
+## §12. [metric] "Frozen" is three different things — one is harmless, one is bounded, and one just broke §11's tie
+
+Raised by the maintainer 2026-07-30: *"is the frozen thing doing us more harm than good?"* Answer:
+"frozen" names three distinct things in this record, and they deserve three different verdicts. The
+third one, measured fresh here, **changes a §11 conclusion**. Artifact:
+`data/bench_stale_segments.csv`, regenerated on the ALL-FRESH harvests with two new columns
+(`thetamax_row_stale`, `theta_max_solved`).
+
+### §12a. Frozen-state SCREENS (the methodology) — good as falsifiers, harmful as forecasters
+
+The record's receipt is P1: the fixed-state L_cool exponents (0.586/0.669, `§24` Q1) were carried
+into a full-run prediction and missed by ~5× in spread (3.4× predicted, ≥16× measured), because the
+integrated exponent is half the frozen one (`§3`). The same pattern is older: the 2026-06-25 frozen
+f_mix screen "bounds but does not forecast" (`runs/README.md` §9), and blowout-θ was retired for a
+2× under-read. **But the frozen screens' falsifications have all held** — P0's edge check, SC-0's
+three kills, the Eq-47 sign verification. Verdict: **keep frozen screens, scoped as falsifiers and
+sign-checks only; never quote a frozen number as a full-run calibration.** (CLAUDE.md rule 5, now
+with three independent confirmations.) The f_area plan's Phase A0 is scoped exactly this way — with
+one principled exception: the layer-invariance identity is *itself* a per-call statement, so a
+frozen state tests it in its own regime.
+
+### §12b. TRUNCATED arms (wall-clock) — harm bounded
+
+Covered in `§1`/`§1a`: the bias has a sign, the affected number became a bound, no conclusion
+depends on it. Closed.
+
+### §12c. Frozen NO-ROOT rows — real harm to Θ_cum, and one material bite on the trigger metric
+
+**What a stale row is.** On a no-root β–δ segment the solver leaves `bubble_props`/`bubble_Lloss`
+frozen at the last accepted values but keeps logging rows (`run_energy_implicit_phase.py:893/:929`).
+Offline signature: `Lcool` repeats **bit-identically**. Crucially, θ = L_loss/L_mech keeps *moving*
+on stale rows — L_mech evolves under the frozen numerator — so staleness is invisible to a
+duplicate-θ check and **can inflate θ_max when L_mech falls**.
+
+**Measured fresh (291 arms):**
+
+| quantity | fresh measurement |
+|---|---|
+| Θ_cum stale share, band-setting diag arms | **30–65%** (bench3 fa16 64.7%, bench2 fa64 61.6%, bench1 fa128 57.5%, k4 fm12 53.9%, k1 fk12 49.5%) |
+| Θ_cum stale share, all boosted diag arms | median 9.3%, max 100% |
+| Θ_cum stale share, baselines (dose 1) | median 0.0% — staleness is **dose-induced** |
+| arms whose θ_max row is itself stale | **76/291** — overwhelmingly dense benches, top-of-grid doses, and K2 band configs |
+
+**Does it change conclusions?** Recomputing every trigger band entry with **solved-only θ_max**:
+
+- 8 of 9 clean-bench entries move in the **4th decimal** — noise.
+- **One moves materially: bench1 f_mix 7.93 → 11.11.** Its fm8 bracket arm peaks on a stale row
+  (solved-max 0.927 < 0.95), so the crossing slides from the fm4–fm8 bracket to fm8–fm12.
+- **K2 fire map: 2/66 FIRED labels are stale-dependent** (`large_diffuse fk16`, `midrange fk4`
+  → NOFIRE on solved rows). Neither sits in the best-dose set {8, 9, 12}, so `§4`'s P3 (no
+  whole-band f_κ, best 5/6) is **unchanged**.
+
+> **⚠️ Supersedes `§11` in part: the f_A–f_mix "tie" does not survive stale exclusion.**
+>
+> | trigger-metric spread | stale rows counted (`§11`) | solved rows only |
+> |---|---|---|
+> | f_mix | 2.64× | **3.70×** (3.00 / 6.41 / 11.11) |
+> | f_A | 2.71× | **2.71×** (unchanged — every f_A bracket peaks on a solved row) |
+> | f_κ | never fires bench1 | never fires bench1 |
+>
+> Which convention is *right* depends on the question. The live trigger genuinely evaluates on
+> no-root segments (it reads the frozen `bubble_Lloss`), so counting stale rows answers "would the
+> code fire" — but that path is also exactly where the `§16` f_mix double-boost bug lives (`§21`
+> showed a rosette fm4 fire was bug-dependent), so the stale-row f_mix advantage is entangled with
+> a known defect. For **knob comparison**, the physics-only (solved) convention is the defensible
+> one — and under it, **f_A is the most uniform knob outright (2.71× vs 3.70×), which now agrees
+> with `§10`'s mechanism ranking.** The two axes no longer disagree about f_A vs f_mix at all.
+
+**This also effectively resolves open question Q3** (exclude stale rows vs carry an uncertainty
+band): for the *trigger* metric, exclusion is cheap, changes exactly one bracket, and is the
+physically defensible convention; for **Θ_cum** the stale share is so large (30–65%) that no
+convention rescues it as a knob-selection metric — which independently re-confirms `§11`'s
+demotion of Θ_cum to the L21b energy-budget comparison only, always with the stale share printed
+beside it.
+
+**Net verdict on "the frozen thing":** the screens are good when used as falsifiers (and the f_area
+A0 uses them that way); the truncation is bounded; the no-root staleness was doing quiet,
+measurable harm — to Θ_cum massively, and to exactly one trigger bracket, whose correction breaks
+the f_A/f_mix tie **in f_A's favour**. Follow-up: fold `theta_max_solved` into
+`make_bench7_analysis.py`'s TRIGGER table so both conventions regenerate from one builder.

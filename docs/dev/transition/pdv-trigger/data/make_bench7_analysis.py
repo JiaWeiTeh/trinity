@@ -282,6 +282,84 @@ def main():
             }
         )
 
+    # ---------------------------------------------------------------- TRIGGER (instantaneous)
+    # Theta_cum is an INTEGRATED, L_mech-weighted mean over the blowout window. It is the right
+    # metric for the L21b comparison, because Lancaster measures a cumulative radiated fraction.
+    # It is NOT what TRINITY's trigger uses: run_energy_implicit_phase.py:1250 fires on
+    # (Lgain - Lloss)/Lgain <= phaseSwitch_LlossLgain, i.e. theta >= 0.95, evaluated per step with
+    # no memory. So the dose that makes a cloud FIRE is set by max_t theta, not by the integral --
+    # and the standard protocol's own rule 3 already says theta is reported as theta_max.
+    # This table recomputes band entry on that instantaneous criterion, on the PROD arms (the ones
+    # running the live trigger). theta_max >= 0.95 is exactly "the trigger fires at some point".
+    TRIG = 0.95
+
+    def _tmax(r):
+        try:
+            v = float(r.get("theta_max"))
+            return v if math.isfinite(v) else None
+        except (TypeError, ValueError):
+            return None
+
+    def _trigger_track(bench, knob):
+        pts = {}
+        base = b5.get(f"{bench}__none")
+        if base and _tmax(base) is not None:
+            pts[1.0] = (_tmax(base), bool(base.get("outcome")))
+        srcs = {"fA": [(b5, "__fa"), (b6, "__fa")], "fmix": [(b6, "__fm"), (b7, "__fm")],
+                "fkappa": [(b7, "__fk")]}[knob]
+        for src, tag in srcs:
+            for n, r in src.items():
+                if n.endswith("_diag"):
+                    continue
+                stem = n[3:] if n[:3] in ("k1_", "k4_") else n
+                if not stem.startswith(bench + tag):
+                    continue
+                try:
+                    d = float(stem.split(tag)[1])
+                except ValueError:
+                    continue
+                v = _tmax(r)
+                if v is not None:
+                    pts[d] = (v, bool(r.get("outcome")))
+        return pts
+
+    trig_entries = {}
+    for bench in CLEAN:
+        for knob in ("fmix", "fA", "fkappa"):
+            pts = _trigger_track(bench, knob)
+            if len(pts) < 2:
+                continue
+            p = sorted((d, v) for d, (v, _) in pts.items())
+            e = None
+            for (d0, t0), (d1, t1) in zip(p, p[1:]):
+                if t0 < TRIG <= t1:
+                    f = (TRIG - t0) / (t1 - t0)
+                    e = math.exp(math.log(d0) + f * (math.log(d1) - math.log(d0)))
+                    break
+            if e is None and p and p[0][1] >= TRIG:
+                e = p[0][0]
+            trig_entries.setdefault(knob, {})[bench] = e
+            rows.append({
+                "table": "TRIGGER", "knob": knob, "bench": bench,
+                "n_bar_H": f"{NBAR[bench]:g}",
+                "entry_dose": f"{e:.4g}" if e else "",
+                "measured_in_grid": "yes" if e else f"NEVER reaches {TRIG} within the grid",
+                "grid_max": f"{max(p)[0]:g}", "n_doses": str(len(p)),
+                "truncated_arms": str(sum(1 for v, ok in pts.values() if not ok)),
+                "track": "  ".join(f"{d:g}:{v:.3f}" for d, v in p),
+            })
+    for knob in ("fmix", "fA", "fkappa"):
+        v = trig_entries.get(knob, {})
+        vals = [x for x in v.values() if x]
+        rows.append({
+            "table": "TRIGGER", "knob": knob, "bench": "SPREAD(max/min)",
+            "entry_dose": f"{max(vals) / min(vals):.3f}" if len(vals) == len(CLEAN) else "",
+            "measured_in_grid": "all benches fire" if len(vals) == len(CLEAN)
+            else "UNREACHED on " + ", ".join(b for b in CLEAN if not v.get(b)),
+            "n_doses": str(len(vals)),
+            "track": ", ".join(f"{b.split('_')[0]}:{v[b]:.3g}" for b in CLEAN if v.get(b)),
+        })
+
     # ---------------------------------------------------------------- FIREMAP
     def firemap(subjects, prefix):
         doses = sorted({parse7(n)[3] for n in b7 if n.startswith(prefix)})
@@ -517,7 +595,59 @@ def main():
     for r in trunc:
         print(f"      {r['run_name']:<44s} t={float(r['t_final']):.4f} n_impl={r['n_impl']}")
 
-    # plots
+    # ---------------------------------------------------------------- plot 2: the fire map
+    fm = [r for r in rows if r["table"] == "FIREMAP"]
+    if fm:
+        COL = {
+            "FIRED": "#1a9850",
+            "CONDENSE": "#4575b4",
+            "DRAIN": "#fdae61",
+            "NOFIRE": "#d9d9d9",
+            "TRUNC": "#d73027",
+            "-": "#ffffff",
+        }
+        doses = sorted({float(c.split(":")[0]) for r in fm for c in r["track"].split("  ")})
+        figf, axf = plt.subplots(figsize=(1.05 * len(doses) + 3.4, 0.52 * len(fm) + 1.9))
+        for y, r in enumerate(reversed(fm)):
+            cells = dict(c.split(":") for c in r["track"].split("  "))
+            for x, d in enumerate(doses):
+                v = cells.get(f"{d:g}", "-")
+                axf.add_patch(
+                    plt.Rectangle(
+                        (x, y), 1, 1, facecolor=COL.get(v, "#fff"), edgecolor="white", lw=1.5
+                    )
+                )
+                if v not in ("-",):
+                    axf.text(
+                        x + 0.5,
+                        y + 0.5,
+                        v[0],
+                        ha="center",
+                        va="center",
+                        fontsize=8,
+                        color="white" if v != "NOFIRE" else "#555",
+                        weight="bold",
+                    )
+        axf.set_xlim(0, len(doses))
+        axf.set_ylim(0, len(fm))
+        axf.set_xticks([i + 0.5 for i in range(len(doses))])
+        axf.set_xticklabels([f"{d:g}" for d in doses], fontsize=9)
+        axf.set_yticks([i + 0.5 for i in range(len(fm))])
+        axf.set_yticklabels([r["subject"] for r in reversed(fm)], fontsize=9)
+        axf.set_xlabel(r"$f_\kappa$", fontsize=11)
+        axf.set_title(
+            "f_kappa fire map — F=FIRED  C=CONDENSE  D=DRAIN  N=NOFIRE  T=truncated\n"
+            "no single dose fires all 6 band configs (best 5/6 at 8, 9, 12)",
+            fontsize=10,
+        )
+        for sp in axf.spines.values():
+            sp.set_visible(False)
+        axf.tick_params(length=0)
+        figf.tight_layout()
+        figf.savefig(PDV / "bench7_firemap.png", dpi=135)
+        print(f"wrote {PDV / 'bench7_firemap.png'}")
+
+    # ---------------------------------------------------------------- plot 1: the three-way tracks
     fig, axes = plt.subplots(1, 3, figsize=(15, 4.4))
     for ax, bench in zip(axes, CLEAN):
         for knob, style in (("fA", "o-"), ("fmix", "s-"), ("fkappa", "^-")):
