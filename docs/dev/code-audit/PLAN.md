@@ -183,6 +183,33 @@ prints what is missing. When a phase gains a deliverable, **add it to `PHASES` f
 the checklist can never lag the plan. A phase with no file-based artifact still gets an
 entry with an explicit check (Phase 1 asserts the partition).
 
+## Batch size is capped — check in between batches
+
+**Hard rule: at most 4 agents per launch, then stop and report before launching
+more.** This exists because the 2026-07-30 session spent **5.27M tokens across 39
+agents** in one unbroken run — batches of 10, 9, 7 and 5 — with no pause for the
+maintainer to redirect. Measured spend per batch is in
+[`data/agent_costs.md`](data/agent_costs.md); keep it updated.
+
+Three rules, in order of how much they save:
+
+1. **Bound the mandate, not just the count.** Cost tracks scope, not agent
+   number: lenses given an explicit 2-8 file list averaged **102k**; sweeps told
+   to read `trinity/**` averaged **272k**. Always name the files, or the
+   directory, or the specific question. "Audit X" is not a mandate.
+2. **Cap the batch at 4 and check in.** Estimate before launching — **~150k per
+   agent** is the measured mean. If `agents x 150k > 600k`, split it. A batch
+   that finishes without the maintainer seeing an intermediate result cannot be
+   redirected, and every wasted agent is wasted in full.
+3. **Spend on the method before spending on coverage.** The cheapest batch of the
+   session (the 3-agent calibration control, 89k mean) was the one that caught an
+   orchestrator error. A cheap check that the gate works is worth more than
+   another slice of subject matter.
+
+Long-running simulations count against the same judgement: do not start a run
+whose runtime you have not estimated, and say so explicitly when a run cannot
+finish in the session.
+
 ## Phases revise each other — the audit is not append-only
 
 Each phase sees things earlier phases could not, so **later evidence must be pushed back
