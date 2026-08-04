@@ -1,0 +1,10 @@
+# segment-1 exit state per run (row 1 of each per-run CSV) vs cumulative wind impulse
+# built by harness/build_segment1_table.py from the sibling CSVs; 2026-08-04
+run,SEG_DUR_Myr,vd_hack,t_exit_yr,R_exit_pc,v_exit_kms,p_exit,wind_impulse,p_over_wind
+m43_probe,3e-5,on,30.011,6.7220e-02,722.8,283.3,0.0009763,2.9e+05
+m43_seg1e-5,1e-5,on,10.011,3.2435e-02,2678.4,117.9,0.0003254,3.62e+05
+m43_seg3e-6,3e-6,on,3.011,1.0811e-02,3362.9,5.482,9.763e-05,5.61e+04
+m43_noapprox,3e-5,ablated,30.011,7.4561e-02,2428.6,1299,0.0009763,1.33e+06
+m43_logseg,eps=0.1 (log-spaced),ablated,0.013,4.6958e-05,3207.9,4.286e-07,3.738e-08,11.5
+gmc_control,3e-5,on,31.956,7.4492e-02,722.8,44.31,3.254,13.6
+gmc_noapprox,3e-5,ablated,31.956,8.2705e-02,2429.4,203.8,3.254,62.6

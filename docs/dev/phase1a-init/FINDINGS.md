@@ -51,10 +51,11 @@ momentum input at that scale by a factor ~3e5. The M43 trajectory afterwards is
 pure momentum-coasting on that artifact (p = m·v constant to 0.1% for the next
 ~3000 yr). At GMC scale the same artifact is real but forgiven within ~400 yr
 (the wind re-supplies it quickly) — which is why the published validation never
-saw it. A converged trajectory (the Weaver solution, which the code's own
-attractor matches) passes within ~35% of the M43 observation; a Spitzer D-type
-solution passes through it. TRINITY-as-discretised cannot currently model this
-object; TRINITY-as-formulated very nearly can.
+saw it. A converged run (log-spaced-segment prototype, no hack) reproduces the
+observed expansion velocity exactly (5.1 vs 5.0 km/s at the observed age) and
+overshoots the observed radius by 28% — within the wind-strength uncertainty of
+the effective-cluster substitution. TRINITY-as-discretised cannot currently
+model this object; TRINITY-as-formulated essentially can.
 
 ## Reference numbers (all reproduced)
 
@@ -115,7 +116,13 @@ timescale ~t, so segments must satisfy dt ≲ eps * t (log-spaced), not a fixed
 30 yr. TFINAL_ENERGY_PHASE = 3e-3 Myr is likewise absolute: at GMC scale it is
 0.15% of the run; at M43 scale it is 14% of the observed age, and the entire
 observed epoch (2.1e4 yr) is handled by phase 1b whose DT_SEGMENT_* floors
-(1e-4 Myr = 100 yr) are also absolute.
+(1e-4 Myr = 100 yr) are also absolute. TFINAL itself is a second-order knob:
+with TFINAL=3e-4 (handoff at 300 yr instead of 2900) the 1a portion is
+identical to baseline at matched t (`data/m43_tfinal3e-4.csv` — the artifact
+lives in segment 1, not at the handoff), but the 1b continuation from the
+artifact-loaded 300-yr state grinds at the DT floor with repeated
+"beta-delta: no physical solution" warnings — the poisoned state also
+stresses the 1b bubble solver.
 
 Evidence that the fixed segment is *the* controlling parameter: varying it (and
 nothing else) moves the segment-1 exit momentum across a factor >50
@@ -253,12 +260,14 @@ knobs (SEGMENT_DURATION, the -1e8 branch). Physics (survives): the IC values
 momentum-coasting behaviour once forces are negligible, and the budget closure
 from segment 2 on.
 
-The physical prediction TRINITY *would* make at M43 scale if converged: a
-Weaver-like wind bubble reaching ~0.1-0.2 pc at 5-8 km/s at the observed age
-(depending on wind strength within the Q7 range), transitioning to
-photoionized-pressure (Spitzer D-type) driving — which passes through the
-observed (0.153 pc, 5 km/s, 2.1e4 yr) point for the observed density. The M43
-comparison failing is a *discretisation* failure, not an equations failure.
+The physical prediction TRINITY *does* make at M43 scale when converged
+(measured, `data/m43_logseg.csv`): a Weaver-like wind bubble at R2 = 0.196 pc,
+v2 = 5.1 km/s at the observed age with the SB99 effective-cluster wind —
+velocity exactly observed, radius +28% (and R ∝ L_w^{1/5} puts the observed
+radius inside the Q7 wind range). The independent Spitzer D-type solution for
+the observed Q and density passes through the observed point too (0.154 pc,
+3.7 km/s at 2.1e4 yr for c_i=10 km/s). The M43 comparison failing is a
+*discretisation* failure, not an equations failure.
 
 ## What should change (minimal), and what it costs
 
@@ -277,18 +286,26 @@ object for the SEGMENT_DURATION constant):
 
 - **M43 probe** (`data/m43_logseg.csv`): tracks the adiabatic Weaver solution
   from the very first segment — R/R_Weaver = 1.25 max during the
-  free-streaming relaxation, 1.10 by 0.5 yr, 1.00 by 160 yr. v2 decays
-  smoothly 3656 → 27 km/s by 410 yr with no manufactured momentum
-  (p = 0.28 vs the baseline's 283 at the same age). The stiff v_w →
-  attractor relaxation integrates with **zero solve_ivp failures**.
+  free-streaming relaxation, 1.07 by 1.4 yr, 1.00 by 160 yr, 0.90 by 2.4e4 yr
+  (mild sub-adiabatic drift; cooling/PdV). v2 decays smoothly 3656 → 27 km/s
+  by 410 yr with no manufactured momentum (p = 0.28 vs the baseline's 283 at
+  the same age). The stiff v_w → attractor relaxation integrates with
+  **zero solve_ivp failures**. **At the observed age the converged model gives
+  R2 = 0.196 pc, v2 = 5.1 km/s** (t=2.1e4 yr; 0.174 pc / 5.6 km/s at the
+  1.7e4-yr lower bound) vs observed 0.153 (0.142-0.164) pc and 5.0 (4.5-6.6)
+  km/s — the velocity is dead-on and the radius is +28%, well inside the Q7
+  wind-strength uncertainty (R ∝ L_w^{1/5}: 28% ≡ a factor 3.4 in L_w). It
+  crosses 0.153 pc at 1.35e4 yr (vs the baseline's 620 yr).
 - **Cost:** 131 segments / 2m34s for phase 1a vs 97 segments / 1m33s stock
   (same container, contended) — runtime-neutral at the run level. At GMC scale
   log-spacing gives *fewer* segments than stock (ln(3e-3/2e-6)/ln(1.1) ≈ 77).
 - **Large-object equivalence:** `data/gmc_logseg.csv` vs `data/gmc_control.csv`
-  — the trajectories converge to the same Weaver attractor; differences are
-  confined to the first ~2.7e3 yr where the stock run carries its factor-2
-  overshoot (i.e. the change *improves* the transient and preserves the
-  asymptote). Gate for shipping (CLAUDE.md rule 5): this is NOT a "free win" —
+  at matched t: ΔR/R = -29% at 100 yr (the stock run's overshoot), -3.8% at
+  1e3 yr, -0.95% at 3e3 yr, -0.28% at 1e4 yr, **-0.04% at 8e4 yr** — the
+  trajectories converge to the same Weaver attractor; differences are confined
+  to the early transient where the stock run is the wrong one (its factor-2
+  overshoot). The change *improves* the transient and preserves the asymptote.
+  Gate for shipping (CLAUDE.md rule 5): this is NOT a "free win" —
   bit-identity is impossible (segment boundaries move) — so the gate is
   full-run trajectory equivalence at matched t on `param/simple_cluster.param`
   + the `docs/dev/performance/f1edge_{lowdens,hidens}` configs, with the
