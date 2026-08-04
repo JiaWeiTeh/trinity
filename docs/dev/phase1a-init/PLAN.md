@@ -87,6 +87,39 @@ segment 0, decaying transient, asymptote preserved. Full evidence:
 | GMC equivalence at matched t | −3.8% @1e3 yr, −0.95% @3e3 yr, −0.04% @8e4 yr vs stock | `data/gmc_logseg.csv` vs `data/gmc_control.csv` |
 | No manufactured momentum | p = 0.28 vs stock's 283 at 410 yr | `data/m43_logseg.csv` vs `data/m43_probe.csv` |
 
+### Is the override needed at all? (asked 2026-08-04 — answer: no)
+
+Worth stating plainly, because it is the whole point of the fix: **nothing here
+tunes `vd = -1e8` to a better value.** The three possible levels of
+approximation in the phase-1a RHS are:
+
+| Level | What `vd` is | Status |
+|---|---|---|
+| 1 | the constant `-1e8` for all of segment 0 | status quo — **deleted** by §3.3 |
+| 2 | the force budget, with driving terms frozen per segment | what the fix ships; measured (`data/*_noapprox.csv`, `data/*_logseg.csv`) |
+| 3 | the force budget with *nothing* frozen (bubble/shell/feedback recomputed inside the RHS) | not attempted — a bubble solve per solver step, likely 10²-10³x cost |
+
+Level 2 was never reachable from a `.param`: `read_param.py:217` validates user
+keys against `default.param`, and `EarlyPhaseApproximation` is absent from it
+(verified 2026-08-04), so the flag was `True` for every run ever made. The
+prototype had to monkeypatch it.
+
+Was the override load-bearing for stability? **No** — measured, not assumed.
+Deleting it alone (`data/*_noapprox.csv`) completes with no solver failures,
+and the log-spaced prototype ran M43 and GMC scale with **zero `solve_ivp`
+failures**. It was papering over the fixed 30-yr segment, not holding the
+integrator up. The one honest caveat: deleting it *without* fixing the segment
+schedule makes trajectories worse (2429 km/s snowplow — §6), which is the
+likely reason it was added in the first place.
+
+After the fix, level 2 with the stock fixed segment remains reachable as
+`SEGMENT_EPS = 0` — so "no approximation, stock segments" stays available as a
+config, and is exactly what gate G1b measures. Level 3 stays open as a possible
+follow-up: the log schedule is the cheap approximation to it, bounding the
+staleness of the frozen terms to a fixed fraction `eps` of the expansion time
+instead of an absolute 30 yr, and the eps convergence study (§3.4) measures how
+close to level 3 that gets.
+
 ## 3. Design decisions — SETTLED (Batch 0, 2026-08-04)
 
 Decided against current source; each line reference below was re-verified on
