@@ -361,6 +361,17 @@ object for the SEGMENT_DURATION constant):
   acceptance bar set by the GMC-attractor agreement above (sub-% beyond the
   first few kyr), plus full `pytest`.
 
+**Implementation is specified in `PLAN.md`; its §3 decisions were settled on
+2026-08-04** — schedule uncapped with `SEGMENT_EPS = 0` as the fixed-segment
+fallback, override *and* the `EarlyPhaseApproximation` flag deleted outright
+(no consumers outside `trinity/`, so one column leaves `dictionary.jsonl`),
+landing as two commits so the schedule plumbing can be proven byte-identical
+before the physics changes. One refinement to the "not a free win" line above:
+the *plumbing* half is provably free (byte-identical at `SEGMENT_EPS = 0`) and
+the *deletion* half re-derives the committed ablation baselines
+(`data/*_noapprox.csv`, 2429 km/s) — only the combined change needs the
+full-run gate.
+
 Not part of the minimal change, but required before TRINITY output at M43
 scale is *quantitatively* trustworthy (see Extra findings): the
 `n_IF_Str`/P_HII min-cap (P_HII == Pb identically) and phase 1b's absolute

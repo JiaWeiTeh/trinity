@@ -32,7 +32,7 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-04):** 🔵 ready to implement — handoff plan for the log-segment fix; evidence complete in `FINDINGS.md`, nothing implemented in `trinity/` yet.
+**Status (2026-08-04):** 🔵 ready to implement — §3 design decisions SETTLED (Batch 0); evidence complete in `FINDINGS.md`, nothing implemented in `trinity/` yet.
 
 ## 0. Mission (read this first)
 
@@ -75,10 +75,10 @@ segment 0, decaying transient, asymptote preserved. Full evidence:
 ## 2. The fix candidate (prototyped, measured — not yet production)
 
 **Log-spaced segments + no override:** `dt_seg = eps·(t_now − tSF)` with
-`eps = 0.1`, capped at the stock `SEGMENT_DURATION` (so late-time behaviour
-reverts to stock exactly), and the `vd = -1e8` branch removed. Prototype:
-`harness/patched_runner.py` (`TRIN_LOGSEG=0.1 TRIN_NO_EARLY_APPROX=1`).
-Measured results to reproduce:
+`eps = 0.1`, **uncapped** (see §3.1 — an earlier draft of this doc said
+"capped at `SEGMENT_DURATION`"; that was wrong and is corrected below), and the
+`vd = -1e8` branch removed. Prototype: `harness/patched_runner.py`
+(`TRIN_LOGSEG=0.1 TRIN_NO_EARLY_APPROX=1`). Measured results to reproduce:
 
 | Check | Result | Baseline file |
 |---|---|---|
@@ -87,21 +87,66 @@ Measured results to reproduce:
 | GMC equivalence at matched t | −3.8% @1e3 yr, −0.95% @3e3 yr, −0.04% @8e4 yr vs stock | `data/gmc_logseg.csv` vs `data/gmc_control.csv` |
 | No manufactured momentum | p = 0.28 vs stock's 283 at 410 yr | `data/m43_logseg.csv` vs `data/m43_probe.csv` |
 
-## 3. Design decisions you must make (recommendation first)
+## 3. Design decisions — SETTLED (Batch 0, 2026-08-04)
 
-1. **Where the schedule lives.** Recommend: a schedule function in the
-   phase-1a runner — `dt_seg = min(eps·(t_now − tSF), SEGMENT_DURATION)` —
-   with `eps` a new registry param (suggest `SEGMENT_EPS`, default 0.1),
-   exposed in `default.param`. Do NOT special-case by cloud mass; the schedule
-   is scale-free by construction.
-2. **First segment seeding.** `t_now − tSF = 0` at t0 gives dt=0. The
-   prototype seeds from t0 itself (dt₀ = eps·t0); re-derive and verify against
-   `get_y0`'s t0.
-3. **Fate of the override.** Recommend: delete the `vd = -1e8` branch
-   entirely (it exists to paper over the segment problem the schedule now
-   solves). Independently of that choice, **fix the flag leak**: clear
-   `EarlyPhaseApproximation` on every phase-1a exit path, and add it to
-   `default.param` if it survives at all.
+Decided against current source; each line reference below was re-verified on
+2026-08-04 (they all held). Batch 2 implements exactly this — no further
+design latitude.
+
+1. **Schedule form: `dt_seg = eps·(t_now − tSF)`, UNCAPPED.** `eps` is a new
+   registry param `SEGMENT_EPS` (default 0.1) exposed in `default.param`;
+   `SEGMENT_EPS = 0` falls back to the fixed `SEGMENT_DURATION`, and that is
+   the exact-revert path the G1 byte-identity gate uses.
+   **Correction to this doc's earlier draft**, which recommended
+   `min(eps·(t−tSF), SEGMENT_DURATION)`: the cap is *wrong*. Every validated
+   baseline was produced uncapped — `data/m43_logseg.csv` and
+   `data/gmc_logseg.csv` both hold `dt/t = 0.100` to the last snapshot — and a
+   cap at `SEGMENT_DURATION = 3e-5` Myr binds from t > 3e-4 Myr (300 yr)
+   onward, which would revert essentially the whole trajectory to stock 30-yr
+   segments and would NOT reproduce the 0.196 pc / −0.04% results this plan
+   gates against. The cap is also unnecessary: phase 1a ends at
+   `TFINAL_ENERGY_PHASE = 3e-3` Myr (`run_energy_phase.py:54`), so uncapped
+   eps=0.1 peaks at `dt = 3e-4` Myr — bounded at 10x stock by construction.
+   Do NOT special-case by cloud mass; the schedule is scale-free.
+2. **Segment-0 seeding: nothing special needed.** `t0 = tSF +
+   free-streaming duration` (`phase0_init/get_InitPhaseParam.py:63-64`), so
+   the *age* `t_now − tSF` is strictly positive at loop entry — measured
+   1.15e-8 Myr (M43) and 1.96e-6 Myr (GMC control). `tSF` defaults to 0
+   (`registry.py:425`), so the age-based form is identical to the prototype's
+   `eps·t_now` on every committed baseline; age-based is kept because it is
+   the correct form if `tSF` is ever non-zero. Guard the degenerate case in
+   the same expression that handles `SEGMENT_EPS = 0` — one branch, not two:
+
+   ```python
+   dt_seg = SEGMENT_EPS * (t_now - tSF)
+   if dt_seg <= 0:          # SEGMENT_EPS=0 (stock schedule) or degenerate age
+       dt_seg = SEGMENT_DURATION
+   t_segment_end = min(t_now + dt_seg, TFINAL_ENERGY_PHASE)
+   ```
+
+   The solver-retry path (`run_energy_phase.py:312`, currently
+   `t_now + SEGMENT_DURATION / 10`) must use `dt_seg / 10` for consistency.
+3. **Override and flag: both deleted.** Remove the `vd = -1e8` branch
+   (`energy_phase_ODEs.py:269-270`) *and* the now-orphaned
+   `EarlyPhaseApproximation` flag it exists for — the snapshot field
+   (`:100`), its assignment (`:159`), the clear site
+   (`run_energy_phase.py:342-344`), the `ParamSpec` (`registry.py:423`), and
+   the two reader entries (`_output/trinity_reader.py:155` label and `:990`
+   'State' display group). Rationale: deleting the flag is what removes the
+   leak pathway permanently — patching exit paths leaves a live flag and the
+   same class of bug. **Consumer check (2026-08-04): there are none outside
+   `trinity/`** — `paper/`, `tools/`, and `test/` never reference it, so the
+   only consequence is one fewer column in new `dictionary.jsonl` output.
+   Update the category comment at `_input/param_spec.py:56`, which names the
+   flag as an example of `runtime_control`.
+   *Leak precision, for the Batch 1 test:* the clear at `:342-343` is
+   `loop_count == 0`-guarded and sits after the event check, so **four in-loop
+   exits skip it** (`:183` bubble collapse, `:287` cooling_balance, `:330`
+   simulation-ending event `return`, `:331` event `break`) — `:379` (Eb<=0)
+   is after the clear and does not. The fifth path is the loop never being
+   entered at all (`while` false at entry, `:138`), which also leaves the flag
+   `True`. Assert on *behaviour*, not on the flag, so the test survives its
+   deletion.
 4. **eps convergence.** Run eps ∈ {0.3, 0.1, 0.03} on the M43 probe + GMC
    control; accept when halving eps moves R2 at the observed age by <1%.
    (eps=0.1 gave ~162 snapshots to 2.4e4 yr at M43 — cost is negligible.)
@@ -116,11 +161,25 @@ matched simulation t** (runs truncate at different t).
 
 - **G0 — baselines are already captured.** Committed CSVs above + `git show
   HEAD` values. Re-extract with `harness/extract_csv.py` only for new runs.
-- **G1 — revert-equivalence (bit-identical; this sub-claim IS a free win).**
-  With the cap making the schedule degenerate (eps large or `SEGMENT_EPS`
-  disabled) and the override retained, a `param/simple_cluster.param` run must
-  produce a **byte-identical `dictionary.jsonl`** vs stock HEAD. If it
-  doesn't, the plumbing changed behaviour — stop and find out why.
+- **G1 — revert-equivalence, in two sub-gates.** The two halves of the change
+  (schedule plumbing, override deletion) must be isolated from each other, so
+  **Batch 2 lands as two commits** and G1 straddles them:
+  - **G1a (plumbing — bit-identical; this sub-claim IS a free win).** After
+    commit 2a (schedule plumbing only, `vd=-1e8` and the flag still present),
+    a `param/simple_cluster.param` run with `SEGMENT_EPS = 0` must produce a
+    **byte-identical `dictionary.jsonl`** vs stock HEAD. Nothing about the
+    schedule can change behaviour when it is switched off; if this fails, the
+    plumbing is wrong — stop.
+  - **G1b (deletion is faithful — free measurement).** After commit 2b
+    (override + flag deleted), a run with `SEGMENT_EPS = 0` is *by
+    construction* the already-measured "hack ablated" configuration, so it
+    must reproduce the committed ablation baselines: segment-1 exit
+    **2429.4 km/s** on the GMC control (`data/gmc_noapprox.csv`) and
+    **2428.6 km/s** on the M43 probe (`data/m43_noapprox.csv`), per
+    `data/segment1_exit.csv`. This needs no new baseline and proves the
+    deletion changed exactly what it should. Note the raw byte-diff vs HEAD
+    is meaningless here — the `EarlyPhaseApproximation` column is gone and
+    the trajectory legitimately differs.
 - **G2 — full-run equivalence on the stiff edges (the real gate).** Configs:
   `param/simple_cluster.param`,
   `docs/dev/performance/f1edge_lowdens*.param`,
@@ -160,8 +219,15 @@ matched simulation t** (runs truncate at different t).
 - **Sweep runner / SLURM emission** (`run.py --emit-jobs`) must be untouched
   by the new param (schema default only).
 - **numpy pin:** stay `<2` (CLAUDE.md) — the bubble integrator's monotonic
-  guard is sensitive to FP output changes; G1's byte-identity gate will catch
+  guard is sensitive to FP output changes; G1a's byte-identity gate will catch
   accidental sensitivity.
+- **Coarser late-1a segments:** uncapped eps=0.1 makes the *last* 1a segments
+  up to 10x longer than stock (3e-4 vs 3e-5 Myr), and 1a freezes driving terms
+  per segment — so this coarsens the very end of 1a for published configs too.
+  The committed GMC equivalence (−0.04% at 8e4 yr) says it is harmless there;
+  G2 must confirm it on both `f1edge` configs, and the eps convergence study
+  (§3.4) is the direct test — if eps=0.03 disagrees with eps=0.1, the coarse
+  tail is why.
 - Full-cloud M43 physics (rCloud plausibility at mCloud=300) was validated
   for the probe param; if you build new configs, keep `rCloud_max` checks
   passing.
