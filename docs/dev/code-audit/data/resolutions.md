@@ -819,3 +819,86 @@ as new candidates, not as survivors of it.
   **This independently corroborates Phase-3 sweep ② SIGN-02**, which measured
   `Pb_ODE/Pb_solver = 0.343` over the same window by a different route. Note the
   sign: it is the *debit* the ramp suppresses, the opposite of a leak.
+
+**S6-R-02 panel closed 3/3 (unanimous).** The literature lens added two things.
+It pinned the claim to primary sources — Rahner+17 §2.1.2 eq. (6)-(7) and
+TRINITY's own methods paper (Teh et al. 2026, arXiv:2605.27517) eq. (4)/(25) —
+confirming `P_ram = F_ram/(4πR²)` with `ṗ = Ṁv`, exactly what `:308` composes to.
+And it found the **likely origin of the claim**: `get_bubbleParams.py:409`
+contains a literal `Lmech_total / v_mech_total`, which reads like the alleged
+`ṗ = L/v` but is `ṗ/2` — the inner-shock balance `R₁² = ṗ(R₂³−R₁³)/(2E_b)` has
+its 2 cancelled analytically. The line is correct; it just looks wrong out of
+context. `pdot_W` is read straight from SB99 as a dyne column
+(`sps_columns.py:172`), never reconstructed from `L/v`.
+
+Incidentally corroborates **sweep ② SIGN-01** for the third time: `:409`
+hardcodes γ=5/3 while `bubble_E2P` accepts γ as a parameter.
+
+---
+
+## Cluster D (`S8-R-01` / `SF-001`) — `odeint` uninitialised memory → **REFUTED as stated** (2 of 3; mechanism real, consequence absent)
+
+**The claim (S1).** *"`scipy.integrate.odeint` is called in `shell_structure.py`
+(:165-171, :324-329) with `full_output` ignored and no failure check. A failed
+solve returns uninitialised memory, read as physics — specifically as a
+photon-depleted ionisation front."*
+
+This is a **compound** claim, and the two halves have opposite verdicts. Splitting
+it is the finding.
+
+**Half 1 — the API mechanism: CONFIRMED, and demonstrated harder than the finder
+did.** On scipy 1.17.1, `odeint` with `full_output=0` emits `ODEintWarning` and
+never raises, returning an `np.empty`-backed array with unwritten rows. A
+heap-poison experiment (fill and free same-shaped buffers with sentinel
+`-1.2345678901234e-77`, then force a failure) returned **2697 of 3000 elements
+equal to the sentinel** — and one experiment's rows reappeared verbatim inside a
+later unrelated solve's array. Genuinely uninitialised heap: not zeros, not the
+last state, not the initial condition. The project installs no filter that
+escalates or silences it (`pyproject.toml` carries only
+`ignore::DeprecationWarning`). Both call sites are unguarded as described, and no
+`ShellProperties` field is finiteness-checked downstream.
+
+**Half 2 — the consequence: REFUTED.** `shell_structure.py:181-188` truncates at
+the **first** row satisfying `(mass >= mShell_end) | (phi <= 1e-9)`. Across **416
+induced LSODA failures** driving the production RHS with production parameters,
+the stop row was **always strictly greater** than the chosen index — **0/416**
+reads of unwritten memory. This is structural, not luck: `get_shellODE.py:19-31`
+records that the `+nShell**2` pole exhausting the step budget sits *just past* the
+ionisation front, i.e. inside the tail the code already discards, and `phi` is
+monotone decreasing so the crossing that sets `idx` always precedes the pole.
+End-to-end, `shell_structure_pure()` returns **bit-identical** `n_IF`, `R_IF`,
+`n_IF_Str`, `f_absIon`, `P_HII` whether or not the solve reported "Excess work".
+
+Reached independently by the blast-radius lens, which added that the claim's
+*named* consequence is doubly dead: `:251` caps `n_IF_Str = min(n_IF_Str,
+shell_n0)`, which (as the S4-R-01 refutation also established) makes
+`P_HII <= Pb` identically, so a maximally corrupted `P_HII` changes nothing in
+phases 1/1b.
+
+**Reachability.** 416 failures at `mxstep=500` — scipy's default, which
+`shell_structure.py:28-35` records as the *pre-fix* state — versus **0 failures in
+~1000 realistic solves at the shipped `mxstep=50000`**, across four param files
+and degenerate corners.
+
+**Verdict: REFUTED as stated. S1 removed.** The API hazard is real but held off by
+a numeric margin rather than a guard, so `full_output=1` + an `istate` check is
+**defence in depth (S4)**, not a live correctness bug.
+
+### Two real defects the refutation surfaced
+
+- **`shell_structure.py:191-192` runs `any()` over the whole array**, unwritten
+  rows included. 27 of 88 failed solves flipped `is_allMassSwept` **True→False**
+  (propagating to `has_neutral`). Note the direction is *opposite* to the claim —
+  it loses a mass-swept flag, it never fabricates photon depletion. **S2**,
+  gated behind the same unreachable failure.
+- **Loud, unrelated:** at small `Qi`, `max_shellRadius` rounds to `rShell_start`,
+  giving `sliceSize == 0` and `np.arange(..., 0.0)` raising `ValueError`.
+
+### Concessions recorded, because they bound the refutation
+
+The values *do* reach `dictionary.jsonl` (all registered, none
+`exclude_from_snapshot`); there is **no** retry or rollback, so a shell solve is
+frozen into the snapshot and committed; and the failure is not fully silent
+(`ODEintWarning` reaches stderr). One path was judged speculative rather than
+refuted: a failure row coinciding with a *mass-terminated* `idx`, where
+`phi[idx]` escapes the `<=1e-9` bound. That is the named flip condition.
