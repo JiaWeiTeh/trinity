@@ -90,7 +90,6 @@ def _snapshot(**overrides):
         TShell_ion=1e4,
         tSF=0.0,
         current_phase="energy",
-        EarlyPhaseApproximation=True,
         rCloud=0.617,
         P_HII=1.858e9,
         coverFraction=1.0,

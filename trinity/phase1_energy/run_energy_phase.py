@@ -348,11 +348,6 @@ def run_energy(params):
 
         logger.debug(f'solve_ivp: {len(solution.t)} steps, final t={t_new:.6e}')
 
-        # Handle early phase approximation switch
-        if loop_count == 0 and params['EarlyPhaseApproximation'].value:
-            params['EarlyPhaseApproximation'].value = False
-            logger.info('Switching to no approximation')
-
         t_now = t_new
         R2 = R2_new
         v2 = v2_new

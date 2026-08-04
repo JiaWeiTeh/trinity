@@ -421,7 +421,6 @@ SPECS: tuple[ParamSpec, ...] = (
     ParamSpec(name='EndSimulationDirectly', default=False, info='Flag to immediately end simulation', category='runtime_control', unit='N/A'),
     ParamSpec(name='SimulationEndReason', default='', info='Reason for simulation completion', category='runtime_control', unit='N/A'),
     ParamSpec(name='SimulationEndCode', default=None, info='Exit code (SimulationEndCode enum) for simulation completion', category='runtime_control', unit='N/A'),
-    ParamSpec(name='EarlyPhaseApproximation', default=True, info='Using approximations for early phase?', category='runtime_control', unit='N/A'),
     ParamSpec(name='_snapshots_after_rCloud', default=0, info='Snapshots saved with R2 > rCloud (used by stop_at_rCloud_nSnap)', category='runtime_control', unit='N/A', exclude_from_snapshot=True),
     ParamSpec(name='tSF', default=0, info='Time of star formation', category='derived_init', unit='Myr', run_const=True),
     ParamSpec(name='t_now', default=0, info='Current simulation time', category='runtime_time', unit='Myr'),

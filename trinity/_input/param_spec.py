@@ -53,7 +53,7 @@ Category = Literal[
     "runtime_force",        # F_grav, F_ram(_wind/_SN), F_ion_in, F_HII, F_rad, F_ISM
     "runtime_shell",        # shell_*, c_sound, n_IF/n_IF_ODE/n_IF_Str (densities at IF)
     "runtime_feedback",     # Qi, Lbol, Ln, Li, Lmech_*, pdot_*, v_mech_total, pdotdot_total
-    "runtime_control",      # phase/end flags, EarlyPhaseApproximation, isCollapse/Dissolved, ...
+    "runtime_control",      # phase/end flags, isCollapse/Dissolved, ...
     "runtime_residuals",    # residual_* (diagnostics not in the reader table)
     "runtime_cloud_profile",# initial_cloud_r/n/m_arr (set in phase0, constant thereafter)
     "runtime_loaded",       # sps_data, sps_f, sps_column_map, cStruc_*, densBE_f_*
