@@ -1131,3 +1131,106 @@ phase 1a at `R2 ≈ 0.30` pc against `rCloud = 1.69` pc, a factor 5.7 short, and
 **S1 → S2.** Fix is three lines: assign the event state to the locals before the
 `break`. One corner left open: steep `densPL_alpha = -2` profiles, where an early
 crossing could reach ~9-17% rather than the sub-2% band. **Phase-6 item.**
+
+---
+
+## Cluster C (`MN-001`/`DD-005`) — `vd = -1e8` → **CONFIRMED S1** (2 of 3; the audit's largest measured trajectory error)
+
+Panel closed 2 CONFIRMED / 1 REFUTED-on-framing. The reachability lens set out to
+refute this as "brief and self-correcting". **It is brief. It is not
+self-correcting** — and it supplied the measurement, in separate processes at
+matched `t`, that the CLAUDE.md rule-5 standard demands.
+
+**Duration is genuinely tiny:** exactly **1 of 97** phase-1a segments =
+`3.00e-5` Myr = **30 years** = 1.03 % of phase 1a, 2e-6 of `stop_t`.
+
+**The displacement it leaves is not.** Two phase-1a runs, override on vs forced
+off, separate processes, matched `t`, 97 segments each:
+
+| t (Myr) | ΔR2 | Δv2 | ΔEb |
+|---|---|---|---|
+| 3.03e-5 (segment 0 end) | −10.1 % | −70.2 % | +36.7 % |
+| 3.00e-4 (peak) | **−30.2 %** | −30.1 % | +2.4 % |
+| 2.910e-3 (phase 1a exit) | **−19.3 %** | +12.4 % | **−16.5 %** |
+
+Nothing in phase 1a erases it. Neither run has reached the `t^(3/5)` attractor at
+exit (`dlnR/dlnt` = 0.454 vs 0.326), and a reduced-Weaver surrogate shows the
+offset decaying on a **~0.1 Myr** timescale — about **30x longer than all of
+phase 1a**.
+
+**It is universal.** With `vd` constant the R2/v2 subsystem decouples, and the
+closed form matches the integrator to 6 figures:
+`v2_end = v0 − 1e8·SEGMENT_DURATION = 3739.240660 − 3000 = 739.240660` pc/Myr.
+Because `v0 = 2L_w/ṗ_w` is mass-scale invariant (verified over f_mass
+0.001-10), **every run on the bundled SB99 table leaves segment 0 at that same
+velocity**, regardless of cloud mass, SFE or density.
+
+**It is recorded and consumed structurally.** `save_snapshot()` runs before the
+ODE, so snapshot #0 is clean and **all 97 subsequent phase-1a snapshots carry the
+displacement**. Worse, `run_energy_implicit_phase.py:662` converts the 1a exit
+state into the similarity exponent `cool_alpha = t·v2/R2`: **0.455694 (on) vs
+0.326859 (off) — 39.4 % apart.**
+
+**The stated mechanism was wrong, and the truth is worse.** The mechanism lens
+refuted "set by the integrator's step size": the interval is
+`SEGMENT_DURATION = 3e-5` Myr, a module constant, and a constant RHS is
+integrated *exactly* by RK45 — varying rtol/atol/max_step over a **4000x** change
+in step count (7 → 30002 steps) moved `v2_end` by **2e-12** relative. So the
+error is perfectly reproducible, and **no convergence study will ever surface
+it**. The override is also **129-175x too weak**, not too strong, against a true
+`t0` RHS of ~-1.3e10 pc/Myr²; the harm is holding it constant while the physical
+term decays.
+
+**Leakage half confirmed separately.** The flag defaults `True`
+(`registry.py:423`) and is **absent from `default.param`, so no user can disable
+it**; it is cleared at one site (`run_energy_phase.py:342-343`) guarded by
+`loop_count == 0` and placed *after* the event check. A documented,
+validator-free config (`cooling_boost_mode theta_target` +
+`cooling_boost_theta 0.96`) makes the segment-0 `cooling_balance` break fire
+algebraically, leaking `dv/dt = -1e8` into phases 1b/1c.
+
+**And the diagnostics hide it:** `compute_derived_quantities` has no such branch,
+so **the force budget written to every snapshot is the physical one while the
+trajectory taken is not.** They disagree by construction and nothing marks it.
+
+Mitigations recorded honestly: the reset does fire on the ordinary path; the
+displacement moves the solution *toward* the Weaver similarity radius (+11 % vs
++38 %); phase 1a survives segment 0 only because `1e8 × 3e-5 = 3000 < v0 + 500`,
+a **29 % margin** against the armed `velocity_runaway` event. The constant has no
+comment, no units, no reference and no test, and entered under
+`bf50e44 "plotting scripts for runtime"`.
+
+---
+
+## SF-002 — panel split: mechanism CONFIRMED, reachability REFUTED → **S2**
+
+The reachability lens ran **600 production `fsolve` calls** across two configs and
+phases 1a+1b: **0 non-converged**. The seed is continuation, not cold start
+(`bubble_luminosity.py:242-247`; only one cold start per run at t≈3e-7 Myr), the
+basin of attraction is **~500x** on all five real states tested, first `ier≠1` at
+700-1000x, giving a **~230x margin**. It also killed both plausible channels:
+a cold-seeded sweep of the whole phase-1b (β,δ) box converged 50/50 with the root
+moving only 1.55x, and dropping `Eb` by **eight decades** in one step still gave
+`ier=1` every time because `Pb` saturates against the ram-pressure floor.
+
+Two factual corrections to the claim: a non-converged `fsolve` returns MINPACK's
+**last iterate, not the seed** (measured: seed 3.860e3 → returns 9.010e3), and it
+is **not silent** — `RuntimeWarning` reaches stderr, once per location.
+
+The mechanism lens's contribution stands and is not reached by this refutation:
+a **constant** residual *does* return the seed bit-for-bit, and a penalty plateau
+beside a steep region returns `ier=1 "converged"` with `fvec=[1000.]` and **no
+warning** — so an `ier`-only guard would pass it. `get_betadelta.py:374-386`
+documents that exact mode ("fsolve stranded on the penalty plateau returning
+garbage") and its guard (`finite and > 0`) would not catch a garbage 9009.6.
+Neither lens could reach that state.
+
+**S1 → S2.** Fix is two lines (`full_output=True` + a **residual re-check**, not
+an `ier` check). Blast radius if ever reached, measured: `dMdt` 2333x wrong,
+`bubble_LTotal` 1013x low, `Tavg` 23x high — returned *normally*.
+
+**Cluster D closed 3/3 REFUTED.** The reachability lens added the causal test:
+forcing `mxstep` down to 500 and 100 makes **98/98** solves fail with "Excess
+work" and **0/98** change any consumed quantity; worst real utilisation anywhere
+is **4649/50000 = 9.3 %** across 3024 scanned states and four decades in mass and
+density.
