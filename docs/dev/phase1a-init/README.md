@@ -32,7 +32,7 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-04):** 🔵 actionable — investigation complete; fix proposed in FINDINGS.md, not implemented.
+**Status (2026-08-04):** 🔵 actionable — investigation complete; handoff plan for the fix in PLAN.md, not implemented.
 
 Why a TRINITY run at M43 scale (0.15 pc, 2.1e4 yr compact H II region;
 `mCloud=300`, `sfe=0.01`, `nCore=8.7e3`) crosses the observed radius ~30x too
@@ -40,6 +40,8 @@ early at ~12x the observed velocity — and what that means for the phase-1a
 initialisation (`get_y0`, `SEGMENT_DURATION`, the `vd=-1e8` branch).
 
 - `FINDINGS.md` — verdicts per question, numerics-vs-physics split, proposed fix.
+- `PLAN.md` — implementation & verification handoff plan (gates, design
+  decisions, test matrix) for the agent landing the fix.
 - `harness/` — patched runner + param files + CSV extractor + figure script
   (`harness/README.md` has the exact commands).
 - `data/` — committed per-run CSVs (`data/README.md` is the manifest).

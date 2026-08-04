@@ -269,6 +269,55 @@ the observed Q and density passes through the observed point too (0.154 pc,
 3.7 km/s at 2.1e4 yr for c_i=10 km/s). The M43 comparison failing is a
 *discretisation* failure, not an equations failure.
 
+## Independent corroboration — code-audit "Cluster C" (2026-08-04)
+
+The `bugfix/code-audit` branch reached the same defect independently
+(its Cluster C, `MN-001`/`DD-005`, CONFIRMED S1 in that branch's
+`docs/dev/code-audit/data/resolutions.md` — "the audit's largest measured
+trajectory error"). Cross-checks, and facts adopted from it (audit line refs
+are theirs, not re-verified here):
+
+- **Exact mechanism for the 722.8 km/s invariant** (supersedes the
+  phenomenological reading above): with `vd` frozen the R2/v2 subsystem
+  decouples and a constant RHS integrates exactly, so
+  `v_exit = v0 − 1e8·SEGMENT_DURATION = 3739.2407 − 3000 pc/Myr =`
+  **722.82 km/s**, and `v0 = 2L_w/ṗ_w` is mass-scale invariant. Matches
+  `data/segment1_exit.csv` (722.8) and the E3/E4 sweeps to 5 figures; the
+  audit verified the v0 invariance over f_mass 0.001-10. Corollary of the
+  closed form: v_exit is *linear in SEGMENT_DURATION* (why the E1 seg sweep
+  moves it) and *independent of solver tolerance* (audit: 4000x step-count
+  change moves it 2e-12; my `m43_tol1e-8` ≡ baseline).
+- **Displacement A/B reproduced:** their on-vs-off ΔR2 at segment-0 end,
+  −10.1%, matches −9.9% from `gmc_control.csv` vs `gmc_noapprox.csv`. Later-t
+  magnitudes are config-dependent (theirs on `simple_cluster`: −30.2% peak,
+  −19.3% at 1a exit; mine: −21.5% peak, −3.3% at 2.91e-3 Myr, +1.6% by
+  8e-3 Myr) — quote neither pair as universal.
+- **The hack partially cancels the frozen-driving error.** Audit noted the
+  displacement moves the trajectory *toward* Weaver; the converged reference
+  proves it: at 3e-4 Myr, logseg R2 = 0.1437 pc vs hack-on 0.1631 vs hack-off
+  0.2079. Consistent with E2 (ablating the hack alone is worse). Removing the
+  override without fixing the segment schedule is NOT a fix.
+- **Leakage half (adopted, not re-verified):** `EarlyPhaseApproximation`
+  defaults `True` (`registry.py:423`), is absent from `default.param` (not
+  user-disableable), and is cleared at one site
+  (`run_energy_phase.py:342-343`), `loop_count == 0`-guarded and placed
+  *after* the event check — several segment-0 exits skip the clear, and a
+  documented validator-free config (`cooling_boost_mode theta_target` +
+  `cooling_boost_theta 0.96`) leaks `vd=-1e8` into 1b/1c, which then writes
+  `VELOCITY_RUNAWAY` as the stopping fate. Any fix must clear the flag on
+  *all* exit paths.
+- **Diagnostics mask the override:** `compute_derived_quantities` has no
+  `vd=-1e8` branch, so snapshot force budgets are the physical ones while the
+  trajectory is not — which is exactly why the Q5/Q6 budget audit above looks
+  clean (it audits the RHS, not the applied override). Nothing in the output
+  marks the disagreement.
+- **Propagation channel:** the 1a exit state becomes 1b's similarity exponent
+  `cool_alpha = t·v2/R2` (`run_energy_implicit_phase.py:662`): 0.4557 (hack
+  on) vs 0.3269 (off) — 39.4% apart at the handoff.
+- **Provenance:** the constant entered under commit `bf50e44` ("plotting
+  scripts for runtime") with no comment, units, reference, or test. Phase 2
+  is *not* a consumer (own `MomentumODESnapshot`); consumers are 1a/1b/1c.
+
 ## What should change (minimal), and what it costs
 
 **Proposal (prototyped, not implemented in production):** make phase-1a
