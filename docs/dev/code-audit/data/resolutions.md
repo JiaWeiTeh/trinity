@@ -902,3 +902,232 @@ frozen into the snapshot and committed; and the failure is not fully silent
 (`ODEintWarning` reaches stderr). One path was judged speculative rather than
 refuted: a failure row coinciding with a *mass-terminated* `idx`, where
 `phi[idx]` escapes the `<=1e-9` bound. That is the named flip condition.
+
+---
+
+## S4-R-01 — **CORRECTION: my earlier REFUTED verdict was wrong.** Mechanism confirmed, diagnosis re-attributed, severity S1 → S2
+
+I recorded S4-R-01 as REFUTED above on a 2-of-3 majority, before the third lens
+finished. **The third lens confirmed it with measurements the other two did not
+have, and it is right.** Recording the reversal prominently because a
+majority-vote gate that ignores the one lens holding data is not a gate.
+
+**Why all three lenses were right about different things.** The dimensional and
+literature lenses proved `P_HII <= params['Pb']` identically, via the
+`n_IF_Str = min(n_IF_Str, shell_n0)` cap. The numerical lens *measured* exactly
+that — `P_HII == params['Pb']` **bit-for-bit**, cap binding at **194/194**
+snapshots. No contradiction. But the `max()` at `energy_phase_ODEs.py:258`
+compares `P_HII` against **`press_bubble`, the ODE's ramped pressure**, not
+against the `params['Pb']` the cap was taken from. Those two differ:
+
+- **The early-phase R1 ramp** (`get_bubbleParams.py:371-374`) — the RHS uses
+  `R1_tmp <= R1` for `t <= tSF+1e-3` Myr while `bubble_luminosity` sets
+  `params['Pb']` from the full `R1`. Measured `P_HII/press_bubble` up to **2.91**.
+- **Frozen-snapshot lag** post-ramp: exact tie at segment start, up to **1.0076**
+  inside an RK45 step.
+
+So `max()` selects `P_HII` at **100% of accepted integrator states in phase 1a** —
+the reachability refutation I accepted was simply false, and it was false because
+the refuting lenses compared against the wrong pressure.
+
+**Measured magnitude** (`param/simple_cluster.param`, full-stage integration):
+unpaid PdV work = **2.09%** of paid work, **0.80%** of injected wind energy,
+**1.08%** of the driving impulse — ~2x10⁴ times the solver's `rtol=1e-6`. A
+matched-`t` A/B in **separate processes** (`P_HII` forced to 0 vs stock) moves
+`R2` by **0.25%**, `v2` by up to **0.81%**, `Eb` by **0.18%** over 2.9e-3 Myr.
+Reproduced on `cloud_example_homogeneous.param` (14x mass, 100x lower density).
+
+**Corrected verdict.** The claim's *mechanism* — work done on the shell with no
+energy debit — is **CONFIRMED and reachable today**. The claim's *diagnosis* is
+**wrong**: this is not a missing term in the energy equation. The `Eb` RHS is the
+canonical Weaver/WARPFIELD/Lancaster form (the literature lens established that,
+and it stands). The defect is that **the ODE and the cap use two different values
+of the same bubble pressure**, so the `max()` — designed as a no-op — is turned
+live by the R1 ramp. **Root cause is sweep ② SIGN-02**, now independently
+measured by three routes.
+
+**Severity S1 → S2**, on the measured ~1% trajectory effect: real, above solver
+tolerance, but not the order-unity error an S1 implies. **Fix direction: make the
+ODE and the cap agree on `Pb`** — do *not* add a `P_HII` debit to `Ed`, which
+would be wrong whenever `P_HII` is genuinely radiation-sourced.
+
+---
+
+## S12b-R-01 — run-name collision → **CONFIRMED 3/3**, with a scope correction
+
+Sent through the panel as a **calibration control**: a defect I had already
+reproduced live at the terminal. If the gate refuted it, the gate was broken.
+It did not — **all three lenses confirmed**, which is what licenses trusting the
+refutations elsewhere in this file.
+
+**Worse than claimed, twice.** (1) The manifest *actively misreports*:
+`runs[0].params.densPL_alpha == -1.0` while the file task 1 executes says `-1.5`,
+so `failure_breakdown` attributes failures to a config that never ran. (2)
+Sweeping `densPL_alpha` **without** `dens_profile` in the sweep file — accepted
+at runtime, since the `CompanionRule` at `registry.py:704-712` only fires on an
+explicit user `dens_profile` — drops the `_PL` suffix entirely and collapses
+**all** alphas onto one name. An N-value sweep silently degenerates to one run,
+reported as N successes.
+
+**Scope correction — the fix must target the right place.** The claim named four
+lossy encoders; only two collide at realistic step sizes:
+
+| encoder | realistic collision? |
+|---|---|
+| `densPL_alpha` `int(alpha)` (resolution 1.0) | **yes** — docs' own worked example is `-1.5`; `[-1,-1.5,-2]` → 3 combos, 2 names |
+| `densBE_Omega` `int(round(Ω))` | **yes** — docs flag Ω≈14.04 as the instability threshold, default 14.1; `[13.5,14.04,14.1,14.5]` → 1 name |
+| `mCloud`/`nCore` `.2g` mantissa | no — needs ~40 points/decade; 10/20/30 all injective |
+| `sfe` `int(round(sfe*100))` | no — injective for every integer-percent sweep |
+
+Sharpened diagnosis: α and Ω collide **because** they sit in
+`_NAMED_RUN_NAME_KEYS` (`sweep_parser.py:590`), which *suppresses* the generic
+disambiguating suffix. Removing those two keys yields `densPLAlpha-1p5` /
+`densBEOmega14p04` — injective. **The defect is created by the curated
+special-case, not by a missing feature.** A fix aimed at the mass formatter would
+target the wrong place.
+
+**No committed sweep collides.** The realism lens expanded all nine tracked
+`param/` configs (10,582 combinations, zero collisions, including the 10,560-run
+Paper II production grid). It flagged that it was barred from `docs/dev/`;
+the orchestrator ran that check — **1318 further combinations across the tracked
+`docs/dev/` `.param` files, also zero collisions.** So the defect is real,
+reachable and silent, but nothing in the repository triggers it today. That is
+the honest severity bound: it threatens *future* sweeps over α or Ω.
+
+---
+
+## SF-002 — `fsolve` convergence unchecked → **CONFIRMED**, and the obvious fix does not close it
+
+`bubble_luminosity.py:260-267` calls `scipy.optimize.fsolve` and immediately
+subscripts `[0]`. No `full_output`, so `ier`/`fvec`/`mesg` are not merely
+unchecked — they are **unavailable**. It is the only `fsolve` in `trinity/` and
+no wrapper checks it.
+
+**The claim's "returns the seed" is over-general but true where it matters.**
+Empirically (scipy 1.17.1, verbatim production kwargs): smooth non-convergence
+returns the *last iterate* — the milder defect. But a **constant** residual
+returns the seed **bit-for-bit** (`ier=5`, `nfev=15`), because the
+finite-difference Jacobian is exactly zero and `hybrd` accepts no step. That is
+not contrived: `_get_velocity_residuals` returns literal constants at four sites
+— `_SOLVER_FAIL_RESIDUAL=1e3` (`:334/359/361/363`), `-1e3` (`:378`), `1e2`
+(`:382`) — and all three reproduce seed-return.
+
+**Worse than claimed, and it defeats the natural fix.** A penalty plateau
+adjacent to a steep region — exactly the discontinuity between `:382`'s `1e2` and
+`:384`'s smooth residual — returns `ier=1, "The solution converged"` with
+`fvec=[1000.]` at the seed, **and no warning**. So an `ier`-only guard would pass
+it. **The correct guard is a residual re-check**, not a status check.
+
+Downstream guards are partial: the `1e3` branch is largely self-limiting (the
+final solve usually also fails → `BubbleSolverError`, caught at
+`run_energy_phase.py:171`), but the `1e2` non-monotonic branch has **no guard** —
+`solve_ivp` succeeded, `T>0`, and `_is_monotonic_or_tolerable` deliberately
+forgives shallow wiggles. `updateDict` then writes the seed back to
+`params['bubble_dMdt']`, making it the next step's warm start.
+
+The `RuntimeWarning` is real and unfiltered but effectively invisible: Python's
+default action prints once per source line, so a multi-thousand-step run emits it
+at most once from `:261`.
+
+**Open:** reachability of a same-constant seed+probe pair in a real regime is
+inferred from the code's design comments, not measured. **Phase-6 item.**
+
+---
+
+## ST-001 — phase-1a stale locals → **CONFIRMED**, with a scope correction that makes it worse
+
+The locals are never advanced on the event path: an exhaustive grep for
+assignments to `t_now/R2/v2/Eb` in `run_energy_phase.py` returns only the
+pre-loop seed (`:82-86`) and `:346-349`, which sit **after** the event-exit
+`break` at `:331`. `apply_event_result` (`phase_events.py:611-617`) writes only
+into `params`; it cannot rebind caller locals.
+
+**Scope correction.** The claim says the snapshot is built from stale locals
+"rather than from the event state". It is actually a **mix** — and that is worse.
+`t_now/R2/v2/Eb` *do* carry the event state via `apply_event_result`, but
+`:391/393/395/398` pass the **locals** positionally into
+`get_current_sps_feedback`, `solve_R1`, `bubble_E2P`, `get_mass_profile`, writing
+`params['R1']`, `params['Pb']`, `params['shell_mass']` before `save_snapshot()` at
+`:402`. So `shell_structure_pure` reads the **event** `R2` against the
+**pre-event** `Pb`, `shell_mass`, `Qi`, `bubble_mass`. **The phase-boundary shell
+is solved on a state that never existed on the trajectory.**
+
+Magnitude: a *partial* segment, bounded by `SEGMENT_DURATION = 3e-5` Myr (~30 yr).
+Reachability: only `cloud_boundary` reaches the block (the two
+simulation-ending events `return` at `:330` first) — and since that event is
+terminal with `direction=1`, **every** exit at `R2 >= rCloud` goes through it.
+Under `stop_at_rCloud_nSnap == 0` this is the **final row of the run**.
+
+**No later step fixes it — the reverse.** Phase 1b's *correct* first snapshot at
+the same `(t, R2)` is suppressed by the duplicate guard
+(`dictionary.py:726-728`), acknowledged in-code at
+`run_energy_implicit_phase.py:1019-1022`. The reconciliation block's own comment
+says its purpose is to avoid exactly this; it blocks the correct row anyway
+because it recomputes from the locals instead of the state it just wrote.
+
+---
+
+## Cluster C (`MN-001`/`DD-005`) — `vd = -1e8` → **split 1 REFUTED / 1 CONFIRMED** (third lens pending)
+
+**The stated mechanism is refuted; something worse replaces it.** `vd = -1e8`
+(`energy_phase_ODEs.py:270`) is a *derivative*, dv/dt in pc/Myr² (= -0.31 cm/s²).
+It is **not** step-size dependent: the interval is `SEGMENT_DURATION = 3e-5` Myr,
+a module constant, and a constant RHS is integrated exactly by RK45 — varying
+rtol/atol/max_step over a **4000x** change in step count (7 → 30002) moved
+`v2_end` by 2e-12 relative. The exit velocity is exactly `v0 − 3000.0` pc/Myr.
+**That is worse than the claim:** perfectly reproducible, so no convergence study
+will ever surface it.
+
+And `-1e8` is **too weak, not too strong**: the true RHS at `t0` is
+**-1.75e10** pc/Myr² (+1.46e10 pressure, −3.31e10 ram-loading, +1.06e9 radiation,
+−8.4e7 gravity), so the override is **175x** too weak there. Delivered vs Weaver
+similarity at segment end: `v2` 739 vs 381 pc/Myr (1.9x), `R2` 0.0684 vs 0.0190 pc
+(3.6x, ~47x swept mass).
+
+**The leakage half is CONFIRMED.** Set at `registry.py:423` `default=True` for
+every run — and absent from `default.param`, so **a user cannot turn it off**.
+Cleared at exactly one site (`run_energy_phase.py:342-343`), guarded by
+`loop_count == 0` and placed *after* the event check. Five iteration-0 exits skip
+the clear; two continue the run into 1b/1c. The reachable one (`:287`, the
+`cooling_balance` hand-off) can be made to fire on segment 0 **deterministically
+by config**: `cooling_boost_mode theta_target` + `cooling_boost_theta 0.96` makes
+`(Lgain−Lloss)/Lgain <= 0.04 < 0.05` algebraically, independent of the bubble
+solve. Both keys are documented, user-settable and validator-free.
+
+Blast radius: `v2` at 1a exit is ~wind terminal velocity (3739 pc/Myr); under
+`-1e8` pc/Myr² it crosses the `-500` `velocity_runaway` threshold in ~4e-5 Myr,
+inside 1b's first segment → **`VELOCITY_RUNAWAY` written as the run's stopping
+fate**. Leaked rows carry `EarlyPhaseApproximation: true` in `dictionary.jsonl`.
+
+**Correction to the claim:** phase 2 is *not* a consumer — it has its own
+`MomentumODESnapshot` and computes `vd` physically. Three consumers, not four:
+1a, 1b, 1c.
+
+**The nastiest detail:** the diagnostic twin `compute_derived_quantities` has no
+such branch, so **the force budget written to the snapshot is the physical one
+while the trajectory taken is not.** They disagree by construction and nothing
+marks it. The constant has no comment, no units, no reference, no test, and
+entered under `bf50e44 "plotting scripts for runtime"`.
+
+**ST-001 panel closed: mechanism CONFIRMED, S1 consequence REFUTED → S2.**
+The blast-radius lens reproduced the mechanism exactly and then killed the
+severity. Phase 1b reads its state from `params` (the correct event values,
+`run_energy_implicit_phase.py:693-696`) and recomputes `R1`/`Pb` (`:936`),
+`shell_mass` (`:962`), shell structure (`:975`) and forces (`:995`) *before*
+integrating, so **the trajectory is unaffected**. The stale `shell_mass` is
+neutralised by the monotone ratchet at `:964`, and the one stale-`Pb` consumer
+that precedes the recompute — `bubble_Leak` at `:813-819` — returns **exactly
+0.0** at the default `coverFraction=1.0`. The params-reading
+`cool_beta_to_Ebdot` that would consume stale `Pb`/`R1` has **no callers**.
+
+What survives is exactly one wrong **output row**, and that part stands: the
+duplicate guard discards 1b's self-consistent save at the same `(t, R2)`.
+Measured worst case `Pb` +0.8-1.5%, `R1` −0.4-0.7%, `shell_mass` −1.8-3.2%; the
+stale-`t` feedback component is dead (SPS quantities move ~1e-7 over a 3e-5 Myr
+segment). And it is **unreachable on the baseline** — `simple_cluster` ends
+phase 1a at `R2 ≈ 0.30` pc against `rCloud = 1.69` pc, a factor 5.7 short, and a
+48-point plausible grid produced zero cloud-boundary crossings.
+
+**S1 → S2.** Fix is three lines: assign the event state to the locals before the
+`break`. One corner left open: steep `densPL_alpha = -2` profiles, where an early
+crossing could reach ~9-17% rather than the sub-2% band. **Phase-6 item.**
