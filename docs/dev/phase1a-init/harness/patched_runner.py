@@ -10,6 +10,9 @@ Env vars (all optional; values in Myr unless noted):
   TRIN_RTOL, TRIN_ATOL  run_energy_phase.RTOL / ATOL
   TRIN_NO_EARLY_APPROX  "1" -> params['EarlyPhaseApproximation'] = False
   TRIN_1B_DT_INIT/MIN/MAX  phase 1b DT_SEGMENT_* (MIN also rescales ODE_MAX_STEP)
+  TRIN_LOGSEG           eps -> phase-1a segments become log-spaced: dt = eps*t_now
+                        (prototype of adaptive segmenting; replaces SEGMENT_DURATION
+                        via an object whose __radd__ hooks `t_now + SEGMENT_DURATION`)
 """
 import os
 import sys
@@ -48,6 +51,23 @@ def main():
     if os.environ.get('TRIN_NO_EARLY_APPROX') == '1':
         params['EarlyPhaseApproximation'].value = False
         patches.append("EarlyPhaseApproximation=False")
+
+    logseg = os.environ.get('TRIN_LOGSEG')
+    if logseg is not None:
+        class LogSeg:
+            """Stands in for the SEGMENT_DURATION constant: `t_now + SEGMENT_DURATION`
+            resolves via __radd__ to t_now*(1+eps), giving log-spaced segments."""
+            def __init__(self, eps):
+                self.eps = eps
+
+            def __radd__(self, t_now):
+                return t_now + max(self.eps * t_now, 1e-12)
+
+            def __truediv__(self, k):  # retry path: SEGMENT_DURATION / 10
+                return LogSeg(self.eps / k)
+
+        p1a.SEGMENT_DURATION = LogSeg(float(logseg))
+        patches.append(f"SEGMENT_DURATION=LogSeg(eps={float(logseg)})")
 
     logger = setup_logging(
         log_level=params['log_level'].value if 'log_level' in params else 'INFO',

@@ -128,6 +128,13 @@ trajectory by at most 1.1e-5 relative in v2 over the whole run
 (`data/m43_tol1e-8.csv` vs baseline at identical snapshot times) — the
 sensitivity is to the segment structure, not the ODE solver.
 
+The cleanest single statement of the failure: the time at which the model
+crosses the observed radius (0.153 pc) is a pure function of the numerical
+segment length — 620 yr (SEG=3e-5, at 61 km/s), 1480 yr (SEG=1e-5), 11154 yr
+(SEG=3e-6, at 6.2 km/s) — marching toward the physical answer (the adiabatic
+Weaver crossing is ~1.2e4 yr at 7.6 km/s; observed 2.1e4 yr at 5.0 km/s) as
+the discretisation refines.
+
 **Falsifier:** a run with fixed 30-yr segments whose early trajectory matched a
 run with 3-yr segments would refute this; the committed CSVs show the opposite.
 
@@ -158,13 +165,28 @@ branch therefore *shields* segment 1 from the frozen-pressure catastrophe while
 substituting its own smaller one. Removing it alone changes the probe's final
 state at 1e5 yr from 0.603 pc to 0.931 pc (+54%) and is NOT a fix.
 
-Fragility note: any SEGMENT_DURATION > v0/1e8 = 3.7e-5 Myr drives v2 *negative*
-during segment 1 [verify with data/m43_seg1e-4.csv].
+Scale sweeps (E3/E4) make the system-independence exact: across mCloud =
+3e2..3e6 at fixed sfe (`data/mass_*.csv`) the segment-1 exit state is
+(722.8 km/s, 0.067 pc) every time — only t0 and r0 carry the M* dependence
+(both ∝ sqrt(M*), as the IC says they should) — and across the nCore range
+(`data/ncore_*.csv`) the exit state is again identical while the artifact
+momentum scales exactly as the ambient density (p = 283 * n/8.7e3: measured
+120.6 at n=3.7e3 vs predicted 120.4). The branch injects hack kinematics, not
+physics, at every point in the parameter space; it is only *fatal* where the
+wind cannot quickly resupply p_artifact ∝ rho.
+
+Fragility, measured: any SEGMENT_DURATION > v0/1e8 = 3.7e-5 Myr drives v2
+*negative* during segment 1. With SEG=1e-4 the probe dies at t=42 yr via the
+`velocity_runaway` terminal event (code 50) after writing one snapshot
+(`data/m43_seg1e-4.csv`) — the branch and the segment length are a
+fine-tuned pair, not independent knobs.
 
 **Falsifier for the "tuned for GMC" reading:** the branch mattering at GMC
-scale would refute it — `data/gmc_noapprox.csv` vs `data/gmc_control.csv` shows
-the GMC trajectory with and without the branch converging to the same attractor
-within ~3% by 2700 yr.
+scale would refute it — `data/gmc_noapprox.csv` vs `data/gmc_control.csv` at
+matched t: ΔR/R = 36% at 100 yr, 10% at 1e3 yr, 1.0% at 1e4 yr, 0.09% at
+1e5 yr, 0.02% at 3e5 yr. The branch is irrelevant to published GMC-scale
+results beyond ~1e4 yr; at M43 scale it changes the whole run — and neither
+variant is right there.
 
 ### Q5 — budgets close everywhere except segment 1, where they are violated by 4-5 dex
 
@@ -292,11 +314,12 @@ DT floors.
 2. **The SPS cubic-interpolation worry is a non-issue.** Feedback interpolants
    are flat to <1% over 0-0.1 Myr despite the duplicated t=0 row (checked for
    fLmech_W, fpdot_W, fQi, fLbol at M43 mass scaling).
-3. **Phase 1b's absolute floors bind at M43 scale.** DT_SEGMENT_MIN = 100 yr
-   and ODE_MAX_STEP = 20 yr are ~0.5% of a GMC run but O(1)% of the M43
-   object's age per step; the 1b handoff at 3e-3 Myr means most of the M43
-   observed epoch is integrated by 1b at its floor resolution. [quantify with
-   data/m43_1bdt.csv]
+3. **Phase 1b's absolute floors are adequate at M43 scale — once 1a hands over
+   a sane state.** DT_SEGMENT_MIN = 100 yr and the 3e-3 Myr handoff are
+   absolute, and most of the M43 observed epoch is integrated by 1b; but the
+   log-spaced prototype run (`data/m43_logseg.csv`), which enters 1b on the
+   Weaver attractor, stays on it through 1b (R/R_Weaver = 0.95 at 5.7e3 yr) —
+   so 1b's resolution is not the binding problem; 1a's segment-1 artifact is.
 
 ## Reproduction
 

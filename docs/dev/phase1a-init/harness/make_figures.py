@@ -57,19 +57,20 @@ def spitzer_R(t):
 
 def fig_convergence():
     runs = [
-        ('m43_probe.csv', 'baseline (SEG=3e-5, hack on)', 'C0'),
-        ('m43_seg1e-5.csv', 'SEG=1e-5, hack on', 'C1'),
-        ('m43_seg3e-6.csv', 'SEG=3e-6, hack on', 'C2'),
-        ('m43_noapprox.csv', 'SEG=3e-5, hack ablated', 'C3'),
-        ('m43_tol1e-8.csv', 'rtol 1e-8/atol 1e-11', 'C4'),
+        ('m43_probe.csv', 'baseline (SEG=3e-5, hack on)', 'C0', '-', 1.8),
+        ('m43_tol1e-8.csv', 'rtol/atol 100x tighter (= baseline)', 'y', ':', 1.2),
+        ('m43_seg1e-5.csv', 'SEG=1e-5, hack on', 'C1', '-', 1.4),
+        ('m43_seg3e-6.csv', 'SEG=3e-6, hack on', 'C2', '-', 1.4),
+        ('m43_noapprox.csv', 'SEG=3e-5, hack ablated', 'C3', '-', 1.4),
+        ('m43_logseg.csv', 'log-spaced dt=0.1t, no hack', 'C5', '-', 1.8),
     ]
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 4.6))
-    for name, label, c in runs:
+    for name, label, c, ls, lw in runs:
         if not os.path.exists(os.path.join(DATA, name)):
             continue
         d = load(name)
-        ax1.loglog(d['t_now'] * 1e6, d['R2'], color=c, label=label, lw=1.4)
-        ax2.loglog(d['t_now'] * 1e6, d['v2_kms'], color=c, lw=1.4)
+        ax1.loglog(d['t_now'] * 1e6, d['R2'], color=c, ls=ls, label=label, lw=lw)
+        ax2.loglog(d['t_now'] * 1e6, d['v2_kms'], color=c, ls=ls, lw=lw)
     t = np.logspace(-2, 5, 300) * 1e-6
     ax1.loglog(t * 1e6, weaver_R(t), 'k--', lw=1, label='Weaver adiabatic')
     ax1.loglog(t * 1e6, spitzer_R(t), 'k:', lw=1.2, label='Spitzer D-type')

@@ -22,8 +22,7 @@ at commit bb94c78, numpy 1.26.4 / scipy 1.17.1, single core.
 | `m43_noapprox.csv` | `vd = -1e8` branch ablated |
 | `gmc_noapprox.csv` | same ablation on the GMC control |
 | `m43_logseg.csv` / `gmc_logseg.csv` | log-spaced segments dt=0.1*t, no hack (fix prototype) |
-| `m43_tfinal3e-4.csv` / `m43_tfinal1e-2.csv` | TFINAL_ENERGY_PHASE 0.1x / 3.3x |
-| `m43_1bdt.csv` | phase-1b DT_SEGMENT_INIT/MIN/MAX 5x smaller |
+| `m43_tfinal3e-4.csv` | TFINAL_ENERGY_PHASE 0.1x (earlier 1a->1b handoff) |
 | `mass_3e3.csv` ... `mass_3e6.csv` | mCloud sweep at sfe=0.01, nCore=8.7e3, stop_t=0.004 |
 | `ncore_3.7e3.csv` / `ncore_2.6e4.csv` | nCore sweep at mCloud=300, stop_t=0.004 |
 | `segment1_exit.csv` | derived table: segment-1 exit state per run + analytic prediction |

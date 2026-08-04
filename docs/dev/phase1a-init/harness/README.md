@@ -39,8 +39,6 @@ vars to override phase-1a/1b module constants before starting the simulation
 | `m43_logseg` | `TRIN_LOGSEG=0.1 TRIN_NO_EARLY_APPROX=1 ...` (log-spaced-segment prototype) |
 | `gmc_logseg` | `TRIN_LOGSEG=0.1 TRIN_NO_EARLY_APPROX=1 ... gmc_control.param` |
 | `m43_tfinal3e-4` | `TRIN_TFINAL=3e-4 TRIN_DT_EXIT=1e-5 ...` |
-| `m43_tfinal1e-2` | `TRIN_TFINAL=1e-2 ...` |
-| `m43_1bdt` | `TRIN_1B_DT_INIT=1e-4 TRIN_1B_DT_MIN=2e-5 TRIN_1B_DT_MAX=1e-3 ...` |
 | `mass_3e3..3e6` | stock constants, `probe.param` with `mCloud` swapped and `stop_t 0.004` |
 | `ncore_3.7e3, 2.6e4` | stock constants, `probe.param` with `nCore` swapped and `stop_t 0.004` |
 
