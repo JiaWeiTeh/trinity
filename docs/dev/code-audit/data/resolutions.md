@@ -751,3 +751,71 @@ were still running when this was recorded; the algebra is not vote-dependent.
 nothing). The identity holds but is unguarded — a one-line regression test would
 retire this claim permanently and protect the cancellation from a future edit
 that "simplifies" `2π` to `4π`. Flagged for the maintainer, not applied.
+
+---
+
+## S4-R-01 — `P_drive = max(Pb, P_HII)` vs the `Eb` debit → **REFUTED** (2 of 3 lenses; a second S1 removed)
+
+**The claim (S1).** *"The shell is accelerated by `P_drive = max(P_b, P_HII)`
+while the bubble energy equation debits PdV work only at `P_b`, so when
+`P_HII > P_b` the shell gains momentum nothing pays for energetically."*
+
+The claim's **description of the code is accurate** (`energy_phase_ODEs.py:258`
+drives at the `max`, `:280` debits at `press_bubble` only). Its **accounting
+conclusion is wrong**, on three independent grounds:
+
+1. **`P_HII` is a different reservoir, and the literature closes it that way.**
+   Krumholz & Matzner 2009 Eq. 1 drives the shell with `ρ_II c_II²` fixed solely
+   by ionisation balance against `S` (their Eq. 2) — no energy equation
+   constrains it. Lancaster et al. 2025 (arXiv:2505.22730 — the paper TRINITY
+   itself cites for `n_IF_Str`) gives the photoionised region **no energy
+   equation at all**, closing it by `(4π/3)(R_i³−R_w³)α_B n²_H,i = Q_0` (Eq. 30),
+   while the wind bubble's Eq. 39 is `dE_w/dt = (1−θ)L_w − P_hot dV_w/dt` —
+   debit at the hot pressure over the hot volume only. **That is structurally
+   identical to TRINITY's `Ed` line**, and to WARPFIELD 2.0 Eq. 5. The `Eb` RHS
+   the claim attacks is the canonical form and is missing no term.
+2. **Reductio from the code itself.** `F_rad` (`:266`) does undebited work on the
+   shell by *exactly* the same logic — radiation pressure from `Lbol`, with no
+   corresponding term in `Ed`. Under the claim's reasoning `F_rad` is an
+   identical "leak". Photons pay in both cases.
+3. **The antecedent is forbidden by construction.** `shell_structure.py:124-126`
+   defines `shell_n0` as the density in pressure equilibrium with `P_b`, and
+   `:251` caps `n_IF_Str = min(n_IF_Str, shell_n0)`. Substituting, every μ and
+   `k_B T` factor cancels identically: `P_HII ≤ P_b`, unit-system independent.
+   Verified bit-exact (`P_HII/P_b − 1 == 0.0`). So `max(P_b, P_HII) ≡ P_b` — the
+   construct is a designed no-op — and it is `max()`, not `+`, so nothing is
+   double-counted either way.
+
+Both skeptics also noted the direction of the error the claim implies: `max`
+sits **below** the correct coupled force everywhere (Lancaster et al. 2025
+§3.5/Fig. 4 bound the *sum* at only ~35% above truth at worst), so the construct
+under-counts. The remedy the claim implies — debiting at `P_drive` — would be
+wrong whenever `P_HII` is genuinely below the cap and radiation-sourced.
+
+**Verdict: REFUTED. Second S1 removed by the gate.**
+
+### Three better-founded findings the refutation surfaced
+
+These are *not* the claim; they were found while refuting it and are recorded
+as new candidates, not as survivors of it.
+
+- **`max(P_b, P_HII)` has no published provenance (S3).** Rahner 2017 §2.1.2
+  explicitly *excludes* HII thermal pressure from shell dynamics and Rahner 2019
+  Eq. 4 drives with `P_b` alone; Lancaster et al. 2025 §5.1 independently
+  confirms WARPFIELD's PIR thermal pressure "is not included in the momentum
+  evolution equation". TRINITY deviates from its direct ancestor here, with no
+  citation on the line.
+- **Three different closures for one physics across phase boundaries (S2).**
+  `max(Pb, P_HII)` in phases 1/1b (`energy_phase_ODEs.py:258`,
+  `run_energy_implicit_phase.py:532`), `max(Pb, P_HII + P_ram)` in 1c
+  (`run_transition_phase.py:331`), and a **sum** in phase 2
+  (`run_momentum_phase.py:265,445`). That is a discontinuity in the *model*, not
+  merely in the code.
+- **The `max` can select `P_HII` in production — via a bug, not physics (S2).**
+  `get_bubbleParams.py:365-376` applies the early-phase R1 switch-on ramp to
+  `press_bubble` in the ODE, while the cap is taken against the *un-ramped*
+  `bubble_luminosity.py:228-233` value. At the phase-0 handoff the ramped
+  pressure is 34-66% below the un-ramped one for the first ~third of phase 1a.
+  **This independently corroborates Phase-3 sweep ② SIGN-02**, which measured
+  `Pb_ODE/Pb_solver = 0.343` over the same window by a different route. Note the
+  sign: it is the *debit* the ramp suppresses, the opposite of a leak.
