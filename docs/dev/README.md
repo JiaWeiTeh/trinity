@@ -71,6 +71,7 @@ docs/dev/
 │   ├── pt4/               hypothesis audits H1–H5 + R1 shadow (concluded, feeds pdv-trigger)
 │   └── harness/ + PROVENANCE_PROTOCOL.md    shared run-stamping tooling
 ├── rosette-cf/            Rosette Cf scan, in-container (🔵 plan + harness + param committed; runs pending)
+├── phase1a-init/          early-phase (1a) init at sub-GMC scale — M43 probe (🔵 — FINDINGS.md)
 ├── cooling/               cooling-table refactor (🟡 partial)
 ├── performance/           hot-path cost & conditioning (📘 reference + 🟡 open items)
 ├── shell-solver/          shell ODE migration + float64 overflow fix (🟡 mixed)

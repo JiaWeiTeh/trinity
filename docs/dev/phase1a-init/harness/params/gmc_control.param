@@ -1,0 +1,19 @@
+mCloud                  1e6
+sfe                     0.01        # -> Mstar = 1e4 Msun
+nCore                   1e3
+include_PHII            True
+dens_profile            densPL
+densPL_alpha            0
+rCore                   0.1
+nISM                    1
+PISM                    1e4
+ZCloud                  1
+coverFraction           1.0
+stop_t                  2
+stop_r                  None
+stop_at_rCloud_nSnap    None
+coll_r                  1
+allowShellDissolution   True
+stop_t_diss             1
+log_level               INFO
+path2output             outputs/gmc_control/
