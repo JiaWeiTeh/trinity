@@ -704,3 +704,50 @@ configs)? Deliberately **not** settled unilaterally here: it re-rates findings
 across two phases and belongs at the Phase-5 gate, applied to both at once.
 Whichever way it goes, `gamma_adia` and `mu_*` must end up with the same
 severity, and `FINDINGS.md` must not ship with them split.
+
+---
+
+## S6-R-02 — the `pdot` factor of 2 → **REFUTED** (Phase-5 gate; an S1 removed)
+
+**The claim.** The S6 reconciler rated **S1**: *"The momentum injection rate behind
+`pRam` must be `pdot = 2*Lmech_total/v_mech_total`, not `Lmech_total/v_mech_total`.
+A missing factor of 2."*
+
+**The claim's premise is right and its assertion about the code is wrong.**
+For a free wind `L = ½ Mdot v²` and `pdot = Mdot v`, so `pdot = 2L/v` — the
+finder's physics is correct. But TRINITY already implements it; the 2 is simply
+not written out front.
+
+- `trinity/bubble_structure/get_bubbleParams.py:308` — the sole implementation,
+  used by every phase: `return Lmech / (2 * np.pi * r**2 * v_mech)`.
+  Ram pressure is `P = pdot/(4πr²)`, so substituting `pdot = 2L/v` gives
+  `P = (2L/v)/(4πr²) = L/(2πr²v)`. **The 2 cancels one of the 4, leaving `2π`.**
+  Had the code used the alleged `pdot = L/v`, the denominator would read `4*np.pi`.
+- `trinity/sps/update_feedback.py:181` — the decisive fact the finding missed:
+  `v_mech_total` is not a tabulated terminal velocity, it is *defined* as
+  `v_mech_total = 2. * Lmech_total / pdot_total`. Substituting into `:308`:
+  `4πr²·pRam ≡ pdot_total` — an **algebraic identity**, exact for any inputs.
+  There is no factor-of-2 latitude in the expression to lose.
+
+**Numeric check** (skeptic, real SB99 data through the production path):
+`4πR²·pRam / pdot_total` = **1.00000000** at every time 0.1-5.0 Myr and both
+radii. `L/v` — the quantity the claim says the code uses — is exactly **0.5x**
+`pdot_total`.
+
+**Verdict: REFUTED. S1 removed.** Worth stating the counterfactual plainly:
+applying the proposed fix would have multiplied the ram pressure by 2, injecting
+a real factor-2 over-drive into the momentum phase. **This finding, "corrected",
+would have broken working code.** That is the specific harm the verification gate
+exists to prevent, and the first time in this audit it has actually caught one.
+
+Method note: the skeptic received the claim only — no finder reasoning — was
+instructed to refute, and reached the refutation on the algebra while explicitly
+treating the confirming code comments as untrusted. The orchestrator then
+re-verified both lines at source independently. Two of the three panel lenses
+were still running when this was recorded; the algebra is not vote-dependent.
+
+**New S4 raised by the refutation.** No test asserts the invariant
+`4πr²·pRam(r, L, v_mech_total) == pdot_total` (`grep -rn pRam test/` returns
+nothing). The identity holds but is unguarded — a one-line regression test would
+retire this claim permanently and protect the cancellation from a future edit
+that "simplifies" `2π` to `4π`. Flagged for the maintainer, not applied.
