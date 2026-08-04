@@ -77,3 +77,25 @@ traceback on that config.
 ⚠️ These logs are **stdout/stderr only**. The per-run `dictionary.jsonl` lives under the
 gitignored `outputs/` tree and does **not** survive the container. Anything Phase 6 concludes from
 it must be reduced to a committed CSV or figure here before the session ends.
+
+## Phase-6 partial: `phase6_short.log` (2026-07-30)
+
+`python run.py docs/dev/code-audit/harness/phase6_short.param` — `simple_cluster`
+physics (mCloud 1e5, sfe 0.3) truncated to `stop_t = 0.5` Myr. **Completed**:
+169 snapshots, `t` 3.4e-7 → 0.5 Myr, 98 energy + 71 implicit.
+
+**This is the first committed run artifact that captures the logger stream.** The
+earlier `*.stdout` baselines are 28-line startup captures with zero logger output,
+because `log_console` defaults to `False` and `log_file` writes into the ephemeral
+output dir — which is why the Phase-3 sweep-⑦ W-3 probe could not be answered from
+them.
+
+**Result: 0 WARNINGs.** Over 0.5 Myr on the baseline config, none of
+`Bubble properties calculation failed` (sweep ⑦ TBL-03), `_simplify` sub-threshold
+R², or `ODEintWarning` fired.
+
+**What it does NOT settle.** `stop_t = 0.5` Myr cannot reach the cooling-cube age
+limit at 10 Myr, so **TBL-01 remains open** — that needs a run past 10 Myr. A full
+`simple_cluster` run (`stop_t = 15`) was launched alongside and had consumed ~56
+min CPU while still inside phase 1b at `t ≈ 0.1` Myr; it was not going to finish in
+the session. Size that before relaunching.
