@@ -1,0 +1,13 @@
+id,current_severity,note,resolution
+S9-R-01,CLEARED,"ndens is n_H and chi_e is n_e/n_H; CIE branch computes n_e n_H Lambda correctly. Lens A's n_tot inference was wrong.",resolutions.md#s9-r-01
+S9-R-02,S3,"Cube is volumetric (erg cm^-3 s^-1) as the code assumes; measured slope 2.014 over 14 decades. Only read_cloudy's docstring is wrong.",resolutions.md#s9-r-02
+S11-R-06,S3,"cooling_balance is an inline ratio test, not an ODE event; the factory is unpacked and never used again.",resolutions.md#disposition-table
+S11-R-07,S4,"Lgain guarded: transition test requires Lgain>0 and diagnostics divide by max(Lgain,1e-300).",resolutions.md#disposition-table
+S11-R-09,S4,"All four apply_event_result sites pass the event root time, not the last step.",resolutions.md#disposition-table
+S11-R-10,S4,"EndSimulationDirectly defaults to False not None; sweeps are ProcessPoolExecutor-isolated so cross-run flag leakage is unreachable via that path.",resolutions.md#disposition-table
+S11-R-11,S3,"stop_at_rCloud_nSnap appears only as a conflict validator in main.py; the >=1 semantics have no consumer.",resolutions.md#disposition-table
+S11-R-21,WITHDRAWN,"__format__ and __truediv__ both present in dictionary.py; no defect.",resolutions.md#disposition-table
+S13b-R-01,S3,"shell_n_arr is already n_H (registry.py:366; chi_e_shell factor; mu_convert mass column), so the pure pc^-3->cm^-3 shift is correct and no composition factor should be added. Residual: dlaw docstring names the column two ways.",resolutions.md#s13b-r-01
+S13b-R-02,CLEARED,"ZCloud declared unit='Zsun' and the template consumes it as CLOUDY's linear solar-relative scale; _validate_ZCloud raises unless Z==1. Separate new S2 raised for the --z-override validator bypass.",resolutions.md#s13b-r-02
+S12a-R-01,S1,"UPHELD and confidence raised medium->high: mu_* are user-settable (default.param:205-217) and overwritten in place (read_param.py:316-319) with no warning.",resolutions.md#s12a-r-01
+NUM-02,S1,"CONFIRMED at source: phase_events.py:392 returns first event by list index, never reads terminal; velocity_sign is index 0 and non-terminal; runner breaks regardless.",resolutions.md#num-02
