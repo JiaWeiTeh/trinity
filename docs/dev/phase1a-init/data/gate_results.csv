@@ -58,3 +58,8 @@ E8b,gmc_control ramp-ablated vs active,dR2_at_1e4yr_pct,<0.1 (eps-convergence no
 E8b,gmc_control ramp-ablated vs active,dR2_at_3e4yr_pct,<0.1 (eps-convergence noise),PLAN.md §8 E8b bar,-0.079,7.90e-04,WITHIN-NOISE
 E8b,gmc_control ramp-ablated vs active,dR2_at_8e4yr_pct,<0.1 (eps-convergence noise),PLAN.md §8 E8b bar,-0.017,1.70e-04,WITHIN-NOISE
 E8b,m43+gmc baselines,max_R1_over_R2_cubed_in_ramp_window,NA,ramp leverage = (R1/R2)^3,0.673,NA,INFO
+E8b,m43_probe ramp-ablated vs active,dR2_at_1e1yr_pct,<0.1 (eps-convergence noise),PLAN.md §8 E8b bar,-1.433,1.43e-02,EXCEEDS-NOISE
+E8b,m43_probe ramp-ablated vs active,dR2_at_1e3yr_pct,<0.1 (eps-convergence noise),PLAN.md §8 E8b bar,-0.108,1.08e-03,EXCEEDS-NOISE
+E8b,m43_probe ramp-ablated vs active,dR2_at_3e3yr_pct,<0.1 (eps-convergence noise),PLAN.md §8 E8b bar,-0.041,4.10e-04,WITHIN-NOISE
+E8b,m43_probe ramp-ablated vs active,dR2_at_observed_age_2.1e4yr_pct,<0.1 (eps-convergence noise),PLAN.md §8 E8b bar,-0.0059,5.90e-05,WITHIN-NOISE-VERDICT
+E8b,m43_probe ramp-ablated vs active,dv2_at_observed_age_2.1e4yr_pct,<0.1 (eps-convergence noise),PLAN.md §8 E8b bar,0.0056,5.60e-05,WITHIN-NOISE-VERDICT
