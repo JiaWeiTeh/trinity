@@ -185,13 +185,13 @@ HTML = """<title>Phase-1a early-time fix — decision dossier</title>
 <div class="wrap">
 
 <header class="masthead">
-  <p class="eyebrow">TRINITY · docs/dev/phase1a-init · decision required</p>
+  <p class="eyebrow">TRINITY · docs/dev/phase1a-init · decided, ready to land</p>
   <h1>The phase-1a early-time fix, and what it costs</h1>
   <p class="lede">A hardcoded constant made every TRINITY run leave its first
   integration segment at exactly the same velocity, regardless of cloud mass,
   star-formation efficiency or density. The fix is implemented and gated. It
-  also changes published-regime results in the first few thousand years — which
-  is the part only you can sign off.</p>
+  also changes published-regime results in the first few thousand years — the
+  part that needed a maintainer's sign-off, which it now has.</p>
   <div class="meta">
     <span>branch <b>hotfix/early-approximations</b></span>
     <span>fix: 0df441f + a944727</span>
@@ -210,12 +210,12 @@ HTML = """<title>Phase-1a early-time fix — decision dossier</title>
   than quietly moved. It has now been answered, with the numbers for both the
   old and the new bar in hand.</p>
 
-  <p><b>Adopted bar:</b> <code>|ΔR₂| &lt; 10%</code> at 1 Myr — or at the end of
+  <p><b>Adopted bar:</b> <code>|ΔR₂| &lt; 5%</code> at 1 Myr — or at the end of
   the run if it terminates earlier — <b>and the stopping fate unchanged</b>. The
   fate clause is load-bearing: a loose radius threshold alone could pass a run
   that collapses when it should not, by comparing at its own truncated endpoint.
   All four configs pass; the worst is <code>f1edge_hidens</code> at +0.44%,
-  23× inside. The three goldens pinned to the stock phase-1a exit state have
+  11× inside. The three goldens pinned to the stock phase-1a exit state have
   been re-baselined against the new trajectory.</p>
 
   <p>Two things only became visible once both long configs were run to their
@@ -239,8 +239,11 @@ HTML = """<title>Phase-1a early-time fix — decision dossier</title>
   <p class="conseq">Recorded for the record: the GMC control passes the
   <em>original</em> bar too, at −0.949%, and is the only config that does — that
   bar was met by exactly the one scale <code>vd = -1e8</code> was tuned for.
-  The 10% threshold was adopted as proposed, with the tighter one the
-  measurements would also have supported explicitly on the table.</p>
+  The threshold was adopted at 10% and tightened to 5% the same day, after the
+  measurements and without re-running any of them: at 10% the bar sat ~23× above
+  the worst config, loose enough to let a future regression through. The
+  <em>form</em> of the bar — judged at 1 Myr / end of run, with the fate clause —
+  was never in question.</p>
 </section>
 
 <hr class="sec">

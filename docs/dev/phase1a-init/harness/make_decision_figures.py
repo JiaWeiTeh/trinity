@@ -149,8 +149,10 @@ def fig_decision():
              ("f1edge_lowdens  (nCore=1e2)", "g2_lowdens_stock", "g2_lowdens_fixed", OBS),
              ("f1edge_hidens  (nCore=1e6)", "g2_longhidens_stock", "g2_longhidens_fixed", STOCK)]
     fig, ax = plt.subplots(figsize=(7.4, 4.3))
+    ax.axhspan(-5, 5, color=MUTED, alpha=0.10, zorder=0)
     ax.axhspan(-1, 1, color=MUTED, alpha=0.13, zorder=0)
-    ax.text(2.2e6, -3.1, "pre-registered bar\n|ΔR₂| < 1%", color=MUTED, fontsize=8.5,
+    ax.text(2.2e6, -6.0, "adopted bar |ΔR₂| < 5%\nat 1 Myr / end of run\n"
+                         "(inner band: pre-registered 1%)", color=MUTED, fontsize=8.5,
             ha="right", va="top")
     ax.axhline(0, color=MUTED, lw=0.8)
     for label, s_stem, f_stem, col in pairs:

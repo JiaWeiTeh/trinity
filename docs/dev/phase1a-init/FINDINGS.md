@@ -32,7 +32,7 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-05):** 🟡 partial — artifact diagnosed and quantified; the fix is implemented and gated on this branch (`0df441f` + `a944727`), and adoption now waits on one maintainer decision, recorded in `PLAN.md` §4: the pre-registered G2 bar compares against stock at the instant phase 1a hands off, which this document's own finding says is the wrong reference.
+**Status (2026-08-05):** 🔵 actionable — artifact diagnosed and quantified; the fix is implemented, gated and **ready to land** on this branch (`0df441f` + `a944727`). The maintainer decision this doc was waiting on is made: the pre-registered G2 bar compared against stock at the instant phase 1a hands off — which this document's own finding says is the wrong reference — so it was re-sited to `|ΔR2| < 5%` at 1 Myr / end of run plus fate unchanged (`PLAN.md` §4), and every config passes it.
 
 Investigation of why a TRINITY run at M43 scale (`mCloud=300`, `sfe=0.01`,
 `nCore=8.7e3 cm^-3`; a 0.15 pc / 2.1e4 yr H II region) crosses the observed radius
@@ -389,9 +389,12 @@ phase 1a hands off — is a maintainer decision, recorded rather than
 self-approved.
 
 **Resolved 2026-08-05 — the bar was re-sited, by maintainer sign-off.** The
-adopted G2 bar (PLAN §4) is `|ΔR2| < 10%` at 1 Myr **or the end of the run if
+adopted G2 bar (PLAN §4) is `|ΔR2| < 5%` at 1 Myr **or the end of the run if
 it terminates earlier**, *and* the stopping fate unchanged. All four configs
-pass; the worst is `f1edge_hidens` at +0.44%, 23x inside. Two facts that only
+pass; the worst is `f1edge_hidens` at +0.44%, 11x inside. (The threshold was
+adopted at 10% and tightened to 5% the same day, after the measurements and
+without re-running any of them: at 10% the bar sat ~23x above the worst config,
+loose enough to let a future regression through.) Two facts that only
 appeared once both long configs were run to their **true** natural end —
 earlier fixed-arm GMC runs had been SIGTERM-truncated at 8.2e4 yr and
 misreported as ending there:

@@ -32,7 +32,7 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-05):** 🔵 IMPLEMENTED + GATED, READY TO LAND — §3 settled, fix shipped (0df441f + a944727), **every gate G1–G7 passes**. The G2 bar was re-sited by maintainer sign-off (§4: `|ΔR2| < 10%` at 1 Myr or end of run, *and* fate unchanged) and all four configs pass it, worst +0.44%; both long configs are measured to their true natural end and the arms **converge** (GMC −0.001% at 2 Myr). The fix is also **16% faster** end-to-end. The three goldens on the stock phase-1a exit state are re-baselined (0ffa994): default suite **987 passed / 0 failed**, `pre-commit` passes, `mypy` shows no new errors vs the stock worktree. Remaining before merge: mark magic-number audit finding #4 (`vd = -1e8`) fixed in `docs/dev/magic-numbers/AUDIT.md` — deliberately deferred to landing, per §8 E8a. §§8-9 record adjacent follow-ups.
+**Status (2026-08-05):** 🔵 IMPLEMENTED + GATED, READY TO LAND — §3 settled, fix shipped (0df441f + a944727), **every gate G1–G7 passes**. The G2 bar was re-sited by maintainer sign-off (§4: `|ΔR2| < 5%` at 1 Myr or end of run, *and* fate unchanged) and all four configs pass it, worst +0.44% (11x inside); both long configs are measured to their true natural end and the arms **converge** (GMC −0.001% at 2 Myr). The fix is also **16% faster** end-to-end. The three goldens on the stock phase-1a exit state are re-baselined (0ffa994): default suite **987 passed / 0 failed**, `pre-commit` passes, `mypy` shows no new errors vs the stock worktree. Remaining before merge: mark magic-number audit finding #4 (`vd = -1e8`) fixed in `docs/dev/magic-numbers/AUDIT.md` — deliberately deferred to landing, per §8 E8a. §§8-9 record adjacent follow-ups.
 
 ## 0. Mission (read this first)
 
@@ -228,8 +228,16 @@ matched simulation t** (runs truncate at different t).
   > stock-comparison half of the bar above.** The original `t >= 3e3 yr, 1%`
   > form is kept in place rather than deleted, so the record shows what was
   > pre-registered, what replaced it, and that the replacement was chosen with
-  > the measured numbers for both bars already in hand. Adopted as written:
-  > the 10% threshold, not the tighter one the measurements would also have
+  > the measured numbers for both bars already in hand.
+  >
+  > **Threshold revised 10% → 5% (maintainer, same day, after adoption.)** The
+  > form of the bar — judge at 1 Myr / end of run, plus the fate clause — was
+  > never in question; only how much slack it leaves a *future* change. At 10%
+  > the bar sat ~23x above the worst measured config, loose enough that a real
+  > regression could pass it unnoticed; 5% keeps every config passing with an
+  > 11x margin and makes the bar useful as a standing gate rather than a
+  > one-time verdict. Note this tightening does **not** re-open the decision:
+  > it was made after the measurements, and no measured value moves.
   >
   > The `t ≥ 3e3 yr, 1%` form asks the wrong question. It treats the stock
   > trajectory as ground truth, when the finding of this workstream is that
@@ -241,7 +249,7 @@ matched simulation t** (runs truncate at different t).
   > The bar's real job is narrower: **confirm the change did not break the
   > long-term evolution.** So:
   >
-  > **|ΔR2| < 10% at 1 Myr — or at the end of the run if it terminates
+  > **|ΔR2| < 5% at 1 Myr — or at the end of the run if it terminates
   > earlier — AND the stopping fate unchanged.**
   >
   > The fate clause is load-bearing: a loose radius threshold alone could hide
@@ -271,8 +279,10 @@ matched simulation t** (runs truncate at different t).
   > | `f1edge_lowdens` | n/a | +0.26% @0.020 Myr | unchanged |
   > | `f1edge_hidens` | n/a | +0.44% @0.037 Myr | SHELL_COLLAPSED, unchanged |
   >
-  > So the proposed bar passes by 23x on the worst config and by ~5000x on the
-  > GMC control. The long baselines also say something the truncated ones could
+  > So the adopted 5% bar passes by 11x on the worst config (`f1edge_hidens`,
+  > +0.44%), 64x on `simple_cluster` and ~5000x on the GMC control — every
+  > config clears it on the numbers already measured, with none re-run.
+  > The long baselines also say something the truncated ones could
   > not: the two trajectories do not merely stay within a tolerance, they
   > **converge** — GMC ΔR2 runs −28.8% @100 yr → −0.95% @3e3 → −0.28% @1e4 →
   > −0.037% @8e4 → −0.002% @1 Myr, and Δv2 is +0.014% at 2 Myr. The
