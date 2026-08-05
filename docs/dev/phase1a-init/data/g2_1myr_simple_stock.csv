@@ -1,4 +1,4 @@
-# GATE G2 (PLAN.md §4 PROPOSED bar): STOCK (99fa204 worktree) param/simple_cluster.param with stop_t=1.0, log_console False; ends t=1.0 Myr STOPPING_TIME. Command: python /home/user/trinity-stock/run.py <mCloud 1e5, sfe 0.3, stop_t 1.0>; 2026-08-05
+# GATE G2 (PLAN.md §4 ADOPTED bar: |dR2| < 5% at 1 Myr / end of run + fate unchanged; these runs predate the adoption, when it was still PROPOSED at 10%): STOCK (99fa204 worktree) param/simple_cluster.param with stop_t=1.0, log_console False; ends t=1.0 Myr STOPPING_TIME. Command: python /home/user/trinity-stock/run.py <mCloud 1e5, sfe 0.3, stop_t 1.0>; 2026-08-05
 # columns in TRINITY AU (Msun, pc, Myr) except v2_kms; p_shell = shell_mass*v2
 t_now,R2,v2,shell_mass,Eb,Pb,P_HII,P_drive,F_grav,F_rad,F_ram_wind,Lmech_total,current_phase,v2_kms,p_shell
 3.3881921135656647e-07,0.0012669265714745415,3739.2406599437295,2.9488816502712267e-05,93.70688505918945,21357657011.433865,21357657011.433865,21357657011.433865,2479.383124540426,168246.38925750027,325441.3505122244,608451767.153307,energy,3656.199603367699,0.11026578168056136
