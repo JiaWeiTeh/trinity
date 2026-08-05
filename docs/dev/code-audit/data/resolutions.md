@@ -1234,3 +1234,53 @@ forcing `mxstep` down to 500 and 100 makes **98/98** solves fail with "Excess
 work" and **0/98** change any consumed quantity; worst real utilisation anywhere
 is **4649/50000 = 9.3 %** across 3024 scanned states and four decades in mass and
 density.
+
+---
+
+## Cluster C (`MN-001`/`DD-005`) — **BEING FIXED** in `hotfix/early-approximations` (noted 2026-07-30)
+
+Maintainer reports the `vd` override is under repair on that branch. Verified
+against `origin/hotfix/early-approximations`: the fix is **complete and covers
+both halves** of the finding.
+
+| Half of the finding | Fix |
+|---|---|
+| the `vd = -1e8` constant | branch deleted from `get_ODE_Edot_pure` (`energy_phase_ODEs.py`) |
+| the `EarlyPhaseApproximation` flag leak | field removed from `ODESnapshot` and `create_ODE_snapshot`; `ParamSpec` deleted from `registry.py`; the `loop_count == 0` clear site removed from `run_energy_phase.py` |
+
+`git grep EarlyPhaseApproximation origin/hotfix/early-approximations -- trinity/`
+returns **zero**. The leakage half is moot because the flag no longer exists — no
+dangling reference to a deleted param.
+
+The branch goes further than this audit's finding: `SEGMENT_DURATION` is replaced
+by an age-proportional schedule (`dt_segment = phase1a_segFrac * (t_now - tSF)`,
+fixed 3e-5 Myr retained only as the `segFrac = 0` fallback), on the reasoning that
+per-segment freezing should carry the same *relative* staleness at every object
+scale. Its own `10e7407` also records that **ablating the R1 ramp makes the
+stiffest config intractable** — directly relevant to S4-R-01 below.
+
+### Three consequences this audit should carry forward
+
+1. **S4-R-01's fix direction is harder than I wrote.** I recommended "make the ODE
+   and the cap agree on `Pb`", i.e. address the R1 ramp. The hotfix's E8b result
+   says ablating that ramp makes the stiffest config intractable. The ramp is
+   load-bearing for solver stability, so the fix must reconcile the *cap* with the
+   ramped pressure rather than remove the ramp. **Revised recommendation.**
+2. **ST-001's magnitude bound no longer holds.** I recorded its staleness window as
+   "a partial segment, bounded by `SEGMENT_DURATION = 3e-5` Myr (~30 yr)". Under an
+   age-proportional schedule the segment grows with `t`, so the stale-locals window
+   at a late cloud-boundary crossing is **much larger than 30 yr**. ST-001 must be
+   re-measured against the hotfix, not against the numbers in this file.
+3. **Every captured golden predating the fix is invalidated.** Cluster C shifts
+   `R2` by ~20% at phase-1a exit on *every* run, so any test asserting a recorded
+   trajectory value will now fail — correctly. Phase 4 counted **~105 captured
+   goldens**, including `test_run_smoke._FINAL_GOLDENS` (stamped "Captured
+   2026-07-10"), which is the suite's **only** end-to-end gate. Those need
+   regenerating against the fixed code, and the regeneration is not a rubber stamp:
+   it is the moment to check the new values against the Weaver similarity solution
+   rather than re-blessing whatever the code emits.
+
+**Phase 6 should be run after this merges, not before.** A dynamic-verification
+baseline captured on current `bugfix/code-audit` is invalidated by the fix on
+arrival. The already-committed `data/runs/phase6_short.log` is still useful as a
+*pre-fix* reference point, and is labelled as such.
