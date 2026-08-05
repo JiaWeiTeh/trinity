@@ -45,3 +45,10 @@ G2matchedt,f1edge_hidens stock-vs-fixed,dR2_at_3.6e4yr_pct,<1.0,PLAN.md §4 G2 b
 G2matchedt,f1edge_hidens stock-vs-fixed,stopping_fate_code,4 SHELL_COLLAPSED,stock arm,4 SHELL_COLLAPSED,0.00e+00,PASS
 G2matchedt,f1edge_hidens stock-vs-fixed,collapse_time_yr,36987,stock arm,47434,2.82e-01,INFO
 G2matchedt,f1edge_hidens stock-vs-fixed,phase_at_collapse,momentum,stock arm,transition,NA,INFO
+G3,gmc_control uniform-density production,mean_dlnR_dlnt_t_under_100yr,0.600,Weaver+77 energy-driven 3/5 law,0.5903,1.62e-02,PASS
+G3,gmc_control uniform-density production,mean_dlnR_dlnt_1-10kyr,0.600,Weaver+77 energy-driven 3/5 law,0.5869,2.18e-02,PASS
+G3,gmc_control uniform-density production,mean_dlnR_dlnt_10-100kyr,0.600,Weaver+77 energy-driven 3/5 law,0.5825,2.92e-02,PASS
+G3,gmc_control uniform-density stock,mean_dlnR_dlnt_t_under_100yr,0.600,Weaver+77 energy-driven 3/5 law,0.4571,2.38e-01,INFO-stock-off-attractor
+G3,gmc_control uniform-density stock,mean_dlnR_dlnt_0.1-1kyr,0.600,Weaver+77 energy-driven 3/5 law,0.4868,1.89e-01,INFO-stock-off-attractor
+G3,gmc_control uniform-density stock,mean_dlnR_dlnt_10-100kyr,0.600,Weaver+77 energy-driven 3/5 law,0.5810,3.17e-02,INFO
+G3,gmc_control fixed-vs-stock,late_time_slope_agreement_10-100kyr,0.5810,stock arm,0.5825,2.58e-03,PASS
