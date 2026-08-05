@@ -251,6 +251,65 @@ def fig_e8b():
     save(fig, "decision_e8b.png")
 
 
+# ------------------------------------------------------------ what it costs
+def _perf():
+    """The perf,* rows of the gate ledger, keyed by quantity -> (stock, fixed).
+
+    Read from the committed ledger rather than hardcoded, so the figure cannot
+    drift from the evidence it plots.
+    """
+    out = {}
+    with open(os.path.join(DATA, "gate_results.csv")) as fh:
+        for row in csv.reader(l for l in fh if not l.startswith("#")):
+            if row and row[0] == "perf":
+                out[row[2]] = (float(row[3]), float(row[5]))
+    return out
+
+
+def fig_cost():
+    """Wall clock, and the handoff state that explains where the saving comes from."""
+    p = _perf()
+    s1a, f1a = p["phase1a_wall_clock_s"]
+    s1b, f1b = p["phase1b_wall_clock_s"]
+    s_ratio, f_ratio = p["handoff_v2_ODE_over_v2_alpha"]
+
+    fig, (ax, bx) = plt.subplots(1, 2, figsize=(7.4, 3.5), layout="constrained",
+                                 gridspec_kw={"width_ratios": [1.3, 1]})
+
+    # -- left: stacked wall clock, phase 1a + phase 1b
+    ax.bar(["stock", "fixed"], [s1a / 60, f1a / 60], color=STOCK, width=0.5,
+           label="phase 1a  (what the fix changes)")
+    ax.bar(["stock", "fixed"], [s1b / 60, f1b / 60], bottom=[s1a / 60, f1a / 60],
+           color=FIXED, width=0.5, label="phase 1b  (untouched)")
+    for x, (a, b) in enumerate(((s1a, s1b), (f1a, f1b))):
+        ax.text(x, (a + b) / 60 + 0.35, f"{(a + b) / 60:.1f} min", ha="center",
+                fontsize=9.5, color=INK)
+    ax.set_ylim(0, 22)
+    ax.set_ylabel("wall clock  [min]")
+    ax.grid(axis="x", visible=False)
+    ax.legend(loc="upper center", fontsize=8)
+    ax.set_title(f"{100 * (1 - (f1a + f1b) / (s1a + s1b)):.0f}% faster",
+                 loc="left", fontsize=10.5, color=INK, pad=8)
+
+    # -- right: why. 1b's first job is to reach the alpha-consistent state.
+    # Bars measured from 1.0 — the physically meaningful floor (a self-consistent
+    # handoff), so bar length IS the departure rather than an axis-truncation artifact.
+    bx.bar(["stock", "fixed"], [s_ratio - 1, f_ratio - 1], bottom=1.0,
+           color=[STOCK, FIXED], width=0.5)
+    for x, v in enumerate((s_ratio, f_ratio)):
+        bx.text(x, v + 0.012, f"{v:.4f}", ha="center", fontsize=9.5, color=INK)
+    bx.set_ylim(1.0, 1.40)
+    bx.grid(axis="x", visible=False)
+    bx.set_ylabel("v₂(ODE) / v₂(α)  at the 1a→1b handoff\n(1.00 = self-consistent)")
+    bx.set_title("why: the handoff state", loc="left", fontsize=10.5, color=INK, pad=8)
+
+    fig.suptitle("The saving is in phase 1b, which the change never touches — "
+                 "1b starts by iterating\ntowards the α-consistent state, and the fix "
+                 "hands it one that is nearly there already",
+                 x=0.008, ha="left", fontsize=9.5, color=MUTED)
+    save(fig, "decision_cost.png")
+
+
 if __name__ == "__main__":
     os.makedirs(FIGS, exist_ok=True)
     fig_fingerprint()
@@ -259,3 +318,4 @@ if __name__ == "__main__":
     fig_slope()
     fig_eps()
     fig_e8b()
+    fig_cost()

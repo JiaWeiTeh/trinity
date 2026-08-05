@@ -392,6 +392,28 @@ time, in separate processes:</p>
 
 <hr class="sec">
 
+<h2>What it costs to run: nothing — it is cheaper</h2>
+<p>“What it costs” was framed above as a question about trajectories. There is a
+second reading, and it was worth measuring rather than assuming, because a
+schedule that refines the early segments could plausibly have been slower. Each
+arm was run <em>alone</em> on the container so the numbers are not contended,
+and the times are each run’s own reported elapsed total, not an external timer.</p>
+
+<figure>
+  <img src="{cost}" alt="Left: stacked wall-clock bars for stock and fixed, split by phase 1a and 1b. Right: the ratio of ODE to alpha velocity at the phase handoff, for both arms.">
+  <figcaption><b>16% faster, and the saving is not where the change is.</b>
+  Phase 1a — the only phase this change touches — barely moves (2m26s → 2m18s,
+  97 → 96 segments). Phase 1b, which is untouched, accounts for nearly all of
+  it (12m11s → 10m00s). The right panel is the mechanism: phase 1b opens by
+  iterating towards the α-consistent state, and the fix hands it a state already
+  within 5% of it where stock hands over 32% away. A better phase-1a exit state
+  is cheaper to continue from. Bars there are measured from 1.00 — a
+  self-consistent handoff — so their length is the departure itself, not an
+  axis-truncation effect.</figcaption>
+</figure>
+
+<hr class="sec">
+
 <h2>A related constant, checked and cleared — with a warning</h2>
 <p>The same audit that flags <code>vd = -1e8</code> also flags
 <code>dt_switchon = 1e-3</code> Myr, which ramps the inner bubble radius over an
@@ -440,10 +462,17 @@ The reasoning and the open follow-ups are in <code>PLAN.md</code> §§4, 8–9.<
   <code>test_betadelta_hybr_stress</code>. All three pinned the stock phase-1a
   exit state; re-baselined 2026-08-05, each site keeping the superseded values
   and the reason they move. Default suite: 987 passed, 0 failed.</p>
-  <p>One thing still deliberately undone: magic-number audit finding #4
-  (<code>vd = -1e8</code>) is not yet marked fixed in
-  <code>docs/dev/magic-numbers/AUDIT.md</code>, which should happen when this
-  branch lands, not before.</p>
+  <p>Nothing left deliberately undone. Magic-number audit finding #4
+  (<code>vd = -1e8</code>) is marked fixed in
+  <code>docs/dev/magic-numbers/AUDIT.md</code> — closed <em>in</em> this branch
+  rather than after it lands, so the entry becomes true at exactly the moment
+  the deletion merges. The same pass corrected that audit's finding #2
+  (<code>dt_switchon</code>), whose recommendation — <em>“if inert,
+  delete”</em> — E8b showed to be the wrong fix: the ramp is inert by that test
+  and deleting it still stalls <code>f1edge_hidens</code> outright.</p>
+  <p>Out of scope by decision, both recorded in <code>PLAN.md</code>: a
+  scale-relative successor to the <code>dt_switchon</code> ramp (§8 E8b), and
+  the multi-config scheme screen the repo still lacks (§9).</p>
 </footer>
 
 </div>
@@ -459,6 +488,7 @@ def main():
         slope=img("decision_slope.png"),
         eps=img("decision_eps.png"),
         e8b=img("decision_e8b.png"),
+        cost=img("decision_cost.png"),
     )
     with open(out, "w") as fh:
         fh.write(html)
