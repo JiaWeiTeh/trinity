@@ -39,3 +39,9 @@ G2matchedt,f1edge_lowdens stock-vs-fixed,dR2_at_2e4yr_pct,<1.0,PLAN.md §4 G2 ba
 G2matchedt,f1edge_hidens stock-vs-fixed,dR2_at_3e3yr_pct,<1.0,PLAN.md §4 G2 bar,-22.75,2.28e-01,FAIL-vs-bar
 G2matchedt,f1edge_hidens stock-vs-fixed,dR2_at_1e4yr_pct,<1.0,PLAN.md §4 G2 bar,-8.01,8.01e-02,FAIL-vs-bar
 G2matchedt,f1edge_hidens stock-vs-fixed,dR2_at_2e4yr_pct,<1.0,PLAN.md §4 G2 bar,-3.63,3.63e-02,FAIL-vs-bar
+G1a,simple_cluster 2a@segFrac=0 vs stock,dictionary.jsonl byte-identity,byte-identical,stock 99fa204 (git worktree),byte-identical 124 rows,0.00e+00,PASS
+G2matchedt,f1edge_hidens stock-vs-fixed,dR2_at_3e4yr_pct,<1.0,PLAN.md §4 G2 bar,-1.96,1.96e-02,FAIL-vs-bar
+G2matchedt,f1edge_hidens stock-vs-fixed,dR2_at_3.6e4yr_pct,<1.0,PLAN.md §4 G2 bar,-0.21,2.10e-03,PASS
+G2matchedt,f1edge_hidens stock-vs-fixed,stopping_fate_code,4 SHELL_COLLAPSED,stock arm,4 SHELL_COLLAPSED,0.00e+00,PASS
+G2matchedt,f1edge_hidens stock-vs-fixed,collapse_time_yr,36987,stock arm,47434,2.82e-01,INFO
+G2matchedt,f1edge_hidens stock-vs-fixed,phase_at_collapse,momentum,stock arm,transition,NA,INFO
