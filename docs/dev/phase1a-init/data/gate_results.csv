@@ -31,3 +31,8 @@ G2,f1edge_hidens stock-vs-fixed,dR2_at_3e3yr_pct,<1.0,PLAN.md §4 G2 bar,-22.50,
 G2,f1edge_hidens stock-vs-fixed,dR2_at_1e4yr_pct,<1.0,PLAN.md §4 G2 bar,-9.47,9.47e-02,FAIL-vs-bar
 G2,f1edge_hidens stock-vs-fixed,dR2_at_2e4yr_pct,<1.0,PLAN.md §4 G2 bar,-3.63,3.63e-02,FAIL-vs-bar
 G2,f1edge_hidens stock-vs-fixed,phases_and_stopping_fate,energy+implicit,stock arm,energy+implicit,0.00e+00,PASS
+epsconv,m43_probe eps 0.3->0.1,dR2_at_observed_age_pct,<1.0,PLAN.md §3.4 bar,-0.311,3.11e-03,PASS
+epsconv,m43_probe eps 0.3->0.1,dv2_at_observed_age_pct,<1.0,PLAN.md §3.4 bar,0.254,2.54e-03,PASS
+epsconv,m43_probe eps 0.1->0.03,dR2_at_observed_age_pct,<1.0,PLAN.md §3.4 bar,-0.107,1.07e-03,PASS
+epsconv,m43_probe eps 0.1->0.03,dv2_at_observed_age_pct,<1.0,PLAN.md §3.4 bar,0.170,1.70e-03,PASS
+epsconv,m43_probe,R2_at_observed_age_pc_eps0.03_converged,0.195705,self (eps=0.03 reference),0.195915,1.07e-03,INFO
