@@ -315,6 +315,12 @@ matched simulation t** (runs truncate at different t).
   - A third, `test_betadelta_hybr_stress.py::_GOLDEN`, carries the same
     (beta, delta) pair and is `-m stress` (deselected by default) — it needs
     the same re-baseline and will not show up in a default run.
+    Re-baselined and **verified green** (`test_hybr_implicit_converges_and_matches_golden`,
+    1 passed in 5m33s). Note for whoever runs this next: a first attempt at the
+    whole stress file was killed at ~40 min with no summary line, and a
+    `pgrep -f "pytest -q -m stress"` liveness check reported it as still running
+    because the pattern matched its own shell wrapper. Wait on the **PID**, and
+    treat a log with no summary line as a kill, not a pass.
   Earlier drafts of this Status line said "two golden tests"; it is three, two
   of them in the default suite.
 - **G7 — persist.** Extract per-gate CSVs into `data/`, regenerate figures,
