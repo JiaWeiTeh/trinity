@@ -23,6 +23,15 @@ and `--last` adds the latest time the two arms share:
 
     python docs/dev/phase1a-init/harness/matched_t.py data/g2_longsimple_stock.csv data/g2_longsimple_fixed.csv --last
 
+Decision dossier — the six `decision_*.png` figures plus the write-up, as one
+self-contained HTML page (images inlined as base64, ~550 kB). Deliberately
+**not committed**: it is fully reproducible from the committed figures and this
+script, so committing it would just duplicate the PNGs. Give it an output path
+outside the repo:
+
+    python docs/dev/phase1a-init/harness/make_decision_figures.py     # figures first
+    python docs/dev/phase1a-init/harness/build_dossier.py /tmp/decision_dossier.html
+
 ## Runs
 
 Stock-constant baselines (plain entry point):

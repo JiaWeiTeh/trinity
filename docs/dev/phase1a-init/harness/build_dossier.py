@@ -201,41 +201,46 @@ HTML = """<title>Phase-1a early-time fix — decision dossier</title>
 </header>
 
 <section class="decision">
-  <p class="eyebrow">What I need from you</p>
-  <h2>One decision, three ways to go</h2>
-  <p>Every gate that asks <em>“is the new scheme internally correct?”</em> passes.
-  The single open question is the early-phase shift on configs that already have
-  published results. The bar was written before the code was touched — so I have
-  recorded it as failed rather than quietly moving it.</p>
+  <p class="eyebrow">Decision taken — 2026-08-05</p>
+  <h2>The bar was re-sited, and the shift accepted</h2>
+  <p>This page was written to put one question to the maintainer: every gate
+  asking <em>“is the new scheme internally correct?”</em> passed, but the
+  pre-registered bar — <code>|ΔR₂| &lt; 1%</code> for t ≥ 3×10³ yr against stock
+  — was missed on three of four configs, and it was recorded as failed rather
+  than quietly moved. It has now been answered, with the numbers for both the
+  old and the new bar in hand.</p>
 
-  <div class="options">
-    <div class="option">
-      <span class="key">A</span>
-      <p><b>Accept the shift.</b> Re-baseline the two golden tests against the
-      new trajectory, citing this evidence.</p>
-      <p class="conseq">Defensible: stock is demonstrably wrong in that window —
-      it sits off the Weaver similarity solution until ~10 kyr. Cost: any number
-      published from the first ~30 kyr of a run moves by a few percent, and the
-      old goldens stop being reproducible.</p>
-    </div>
-    <div class="option">
-      <span class="key">B</span>
-      <p><b>Re-site the bar, then accept.</b> Keep the 1% threshold but measure
-      it at ~5×10⁴ yr instead of 3×10³ yr.</p>
-      <p class="conseq">The original bar measured at the instant phase 1a hands
-      off — where an early-phase change is guaranteed to be largest. At 5×10⁴ yr
-      two of three configs pass and the third has collapsed. Requires you to
-      agree the original siting was the mistake, not the result.</p>
-    </div>
-    <div class="option">
-      <span class="key">C</span>
-      <p><b>Hold.</b> Keep the fix behind its parameter — ship
-      <code>phase1a_segFrac = 0</code> as the default.</p>
-      <p class="conseq">Byte-identical to today’s code (measured), so nothing
-      published changes. The M43-scale defect stays live and the parameter waits
-      for a separate decision. Costs nothing now; keeps a known-wrong default.</p>
-    </div>
-  </div>
+  <p><b>Adopted bar:</b> <code>|ΔR₂| &lt; 10%</code> at 1 Myr — or at the end of
+  the run if it terminates earlier — <b>and the stopping fate unchanged</b>. The
+  fate clause is load-bearing: a loose radius threshold alone could pass a run
+  that collapses when it should not, by comparing at its own truncated endpoint.
+  All four configs pass; the worst is <code>f1edge_hidens</code> at +0.44%,
+  23× inside. The three goldens pinned to the stock phase-1a exit state have
+  been re-baselined against the new trajectory.</p>
+
+  <p>Two things only became visible once both long configs were run to their
+  <em>true</em> natural end — earlier fixed-arm GMC runs had been killed by an
+  external SIGTERM at 8.2×10⁴ yr and misread as ending there:</p>
+
+  <ul>
+    <li><b>The trajectories converge, they do not merely stay in tolerance.</b>
+    GMC control ΔR₂: −28.8% @100 yr → −0.95% @3×10³ → −0.28% @10⁴ → −0.037%
+    @8×10⁴ → −0.002% @1 Myr → <b>−0.001% @2 Myr</b>, with Δv₂ +0.014% at 2 Myr.
+    <code>simple_cluster</code> reaches −0.078% at 1 Myr. The disagreement is
+    confined to the early transient — the part stock gets wrong.</li>
+    <li><b>The fix is 16% faster</b> — 14m37s → 12m18s on
+    <code>simple_cluster</code> to <code>stop_t=0.1</code>, each arm alone on
+    the container. Almost all of it is in phase 1b, which the change does not
+    touch: stock enters 1b at <code>v2_ODE/v2_alpha = 1.3167</code>, the fix at
+    <code>1.0546</code>, and a 1a exit state already close to α-consistent is
+    cheaper for 1b to continue from.</li>
+  </ul>
+
+  <p class="conseq">Recorded for the record: the GMC control passes the
+  <em>original</em> bar too, at −0.949%, and is the only config that does — that
+  bar was met by exactly the one scale <code>vd = -1e8</code> was tuned for.
+  The 10% threshold was adopted as proposed, with the tighter one the
+  measurements would also have supported explicitly on the table.</p>
 </section>
 
 <hr class="sec">
@@ -426,13 +431,16 @@ trajectory CSV carries the exact config and command in its provenance header.
 The reasoning and the open follow-ups are in <code>PLAN.md</code> §§4, 8–9.</p>
 
 <footer>
-  <p>Two things deliberately left undone, pending option A, B or C:
-  the two golden tests are still failing and un-rebaselined, because
-  re-capturing them against an unvalidated trajectory is the exact failure mode
-  this workstream exists to correct; and magic-number audit finding #4
+  <p>The goldens are done: <b>three</b>, not the two this page originally said —
+  <code>test_run_smoke</code> and <code>test_phase_boundary</code> in the default
+  suite, plus the <code>-m stress</code>
+  <code>test_betadelta_hybr_stress</code>. All three pinned the stock phase-1a
+  exit state; re-baselined 2026-08-05, each site keeping the superseded values
+  and the reason they move. Default suite: 987 passed, 0 failed.</p>
+  <p>One thing still deliberately undone: magic-number audit finding #4
   (<code>vd = -1e8</code>) is not yet marked fixed in
   <code>docs/dev/magic-numbers/AUDIT.md</code>, which should happen when this
-  branch lands.</p>
+  branch lands, not before.</p>
 </footer>
 
 </div>
