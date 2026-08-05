@@ -26,3 +26,8 @@ G2,f1edge_lowdens stock-vs-fixed,dR2_at_5e3yr_pct,<1.0,PLAN.md §4 G2 bar,1.02,1
 G2,f1edge_lowdens stock-vs-fixed,dR2_at_1e4yr_pct,<1.0,PLAN.md §4 G2 bar,0.52,5.20e-03,PASS
 G2,f1edge_lowdens stock-vs-fixed,dR2_at_2e4yr_pct,<1.0,PLAN.md §4 G2 bar,0.26,2.60e-03,PASS
 G2,f1edge_lowdens stock-vs-fixed,phases_and_stopping_fate,energy+implicit,stock arm,energy+implicit,0.00e+00,PASS
+G2,f1edge_hidens stock-vs-fixed,dR2_at_1e3yr_pct,<1.0,PLAN.md §4 G2 bar,-40.29,4.03e-01,FAIL-vs-bar
+G2,f1edge_hidens stock-vs-fixed,dR2_at_3e3yr_pct,<1.0,PLAN.md §4 G2 bar,-22.50,2.25e-01,FAIL-vs-bar
+G2,f1edge_hidens stock-vs-fixed,dR2_at_1e4yr_pct,<1.0,PLAN.md §4 G2 bar,-9.47,9.47e-02,FAIL-vs-bar
+G2,f1edge_hidens stock-vs-fixed,dR2_at_2e4yr_pct,<1.0,PLAN.md §4 G2 bar,-3.63,3.63e-02,FAIL-vs-bar
+G2,f1edge_hidens stock-vs-fixed,phases_and_stopping_fate,energy+implicit,stock arm,energy+implicit,0.00e+00,PASS
