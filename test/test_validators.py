@@ -18,6 +18,7 @@ from trinity._input.registry import (
     COMPANION_RULES,
     REGISTRY,
     _validate_dens_profile,
+    _validate_phase1a_segFrac,
     _validate_stop_at_rCloud_nSnap,
     _validate_ZCloud,
     validate_all,
@@ -155,6 +156,61 @@ def test_nSnap_bool_rejected() -> None:
 def test_nSnap_string_rejected() -> None:
     with pytest.raises(ParameterFileError, match="non-negative integer"):
         _validate_stop_at_rCloud_nSnap("foo", _params_with_nSnap("foo"))
+
+
+# ---------------------------------------------------------------------------
+# phase1a_segFrac — the phase-1a segment schedule (docs/dev/phase1a-init/)
+#
+# dt_segment = phase1a_segFrac*(t_now - tSF), driving terms frozen across the
+# segment. run_energy_phase.py falls back to the fixed 30-yr SEGMENT_DURATION
+# whenever that product is <= 0, which is the documented meaning of 0 — but it
+# also swallows every negative value, so without a validator a typo'd -0.1
+# silently runs stock segments and the run looks fine. That silent revert is
+# what these pin.
+# ---------------------------------------------------------------------------
+def test_phase1a_segFrac_spec_has_validator() -> None:
+    assert REGISTRY["phase1a_segFrac"].validator is _validate_phase1a_segFrac
+
+
+@pytest.mark.parametrize("value", [0.0, 0.03, 0.1, 0.3, 1.0])
+def test_phase1a_segFrac_accepts_in_range(value: float) -> None:
+    """0 is the documented fixed-segment fallback; 0.03-0.3 is the measured
+    convergence range (docs/dev/phase1a-init/data/gate_results.csv); 1.0 is the
+    boundary where a segment spans the bubble's whole present age."""
+    _validate_phase1a_segFrac(value, {})
+
+
+def test_phase1a_segFrac_rejects_negative() -> None:
+    """The trap: negative -> dt_segment < 0 -> the <= 0 fallback -> stock
+    30-yr segments, with no error and no warning."""
+    with pytest.raises(ParameterFileError, match=r"0 <= phase1a_segFrac <= 1"):
+        _validate_phase1a_segFrac(-0.1, {})
+
+
+def test_phase1a_segFrac_rejects_above_one() -> None:
+    """Above 1 a single frozen segment covers more than the bubble's entire
+    age — the defect class this parameter exists to prevent."""
+    with pytest.raises(ParameterFileError, match=r"0 <= phase1a_segFrac <= 1"):
+        _validate_phase1a_segFrac(1.5, {})
+
+
+@pytest.mark.parametrize("value", [True, "0.1", None])
+def test_phase1a_segFrac_rejects_non_numeric(value) -> None:
+    with pytest.raises(ParameterFileError, match="Must be a number"):
+        _validate_phase1a_segFrac(value, {})
+
+
+def test_read_param_rejects_negative_phase1a_segFrac(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """End-to-end at the .param trust boundary, not just the validator."""
+    monkeypatch.chdir(tmp_path)
+    path = _write_param(
+        tmp_path, "seg.param", "mCloud 1e5\nsfe 0.3\nphase1a_segFrac -0.1\n"
+    )
+
+    with pytest.raises(ParameterFileError, match=r"0 <= phase1a_segFrac <= 1"):
+        read_param(path)
 
 
 # ---------------------------------------------------------------------------
