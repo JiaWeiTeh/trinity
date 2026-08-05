@@ -63,3 +63,6 @@ E8b,m43_probe ramp-ablated vs active,dR2_at_1e3yr_pct,<0.1 (eps-convergence nois
 E8b,m43_probe ramp-ablated vs active,dR2_at_3e3yr_pct,<0.1 (eps-convergence noise),PLAN.md §8 E8b bar,-0.041,4.10e-04,WITHIN-NOISE
 E8b,m43_probe ramp-ablated vs active,dR2_at_observed_age_2.1e4yr_pct,<0.1 (eps-convergence noise),PLAN.md §8 E8b bar,-0.0059,5.90e-05,WITHIN-NOISE-VERDICT
 E8b,m43_probe ramp-ablated vs active,dv2_at_observed_age_2.1e4yr_pct,<0.1 (eps-convergence noise),PLAN.md §8 E8b bar,0.0056,5.60e-05,WITHIN-NOISE-VERDICT
+E8b,f1edge_hidens ramp-ablated,run_completes,yes (ramp-active: 127 rows to 2e4 yr in minutes),data/g2_hidens_fixed.csv,NO - 4 rows to 0.26 yr in 90 min wall (timeout),NA,STALL
+E8b,f1edge_hidens ramp-ablated,t_reached_yr,20000,data/g2_hidens_fixed.csv,0.26,1.00e+00,STALL
+E8b,f1edge_hidens ramp-ablated vs active,dR2_at_row3_pct,NA,identical t0 and rows 1-2,-0.035,3.50e-04,INFO
