@@ -17,6 +17,12 @@ Figures (read only the committed CSVs):
 
     python docs/dev/phase1a-init/harness/make_figures.py
 
+Compare two finished arms at **matched simulation time** — the only valid A/B
+form (CLAUDE.md rule 5); both arms are interpolated onto the requested times,
+and `--last` adds the latest time the two arms share:
+
+    python docs/dev/phase1a-init/harness/matched_t.py data/g2_longsimple_stock.csv data/g2_longsimple_fixed.csv --last
+
 ## Runs
 
 Stock-constant baselines (plain entry point):
