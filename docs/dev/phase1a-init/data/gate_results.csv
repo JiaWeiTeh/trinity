@@ -1,0 +1,11 @@
+# Gate results for the phase-1a segment-schedule fix (PLAN.md §4).
+# Production code = a944727 (2a schedule plumbing + 2b override/flag deletion).
+# Stock = 99fa204 (pre-fix). All comparisons in SEPARATE PROCESSES at MATCHED t.
+# Appended as gates complete; 2026-08-04.
+gate,config,quantity,reference,reference_source,measured,rel_diff,verdict
+G1b,m43_probe segFrac=0,t_now_seg1_exit_yr,30.011487,data/m43_noapprox.csv,30.011487,0.00e+00,PASS
+G1b,m43_probe segFrac=0,R2_seg1_exit_pc,0.0745608,data/m43_noapprox.csv,0.0745608,0.00e+00,PASS
+G1b,m43_probe segFrac=0,v2_seg1_exit_kms,2428.629839,data/m43_noapprox.csv,2428.629839,9.36e-16,PASS
+G1b,gmc_control segFrac=0,t_now_seg1_exit_yr,31.956174,data/gmc_noapprox.csv,31.956174,0.00e+00,PASS
+G1b,gmc_control segFrac=0,R2_seg1_exit_pc,0.0827051,data/gmc_noapprox.csv,0.0827051,0.00e+00,PASS
+G1b,gmc_control segFrac=0,v2_seg1_exit_kms,2429.400748,data/gmc_noapprox.csv,2429.400748,0.00e+00,PASS
