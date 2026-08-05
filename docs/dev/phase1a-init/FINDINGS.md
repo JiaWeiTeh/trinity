@@ -361,6 +361,24 @@ object for the SEGMENT_DURATION constant):
   acceptance bar set by the GMC-attractor agreement above (sub-% beyond the
   first few kyr), plus full `pytest`.
 
+**The gate has now been run (2026-08-04) — full results in `data/gate_results.csv`.**
+Headline: the schedule reproduces the converged reference *exactly* where one
+exists (production vs prototype at M43 and GMC scale: worst rel diff 2.3e-8 in
+R2, 1.3e-7 in v2, at identical t), `phase1a_segFrac = 0` reproduces stock
+**byte-identically** (G1a) and the committed ablation baselines to 1e-15 (G1b),
+and eps convergence passes (0.1 -> 0.03 moves R2 at the observed age by 0.11%).
+But the **pre-registered "sub-% beyond the first few kyr" bar is NOT met at
+t = 3e3 yr on any config** — measured at matched t: simple_cluster −10.4%,
+f1edge_lowdens +1.7%, f1edge_hidens −22.8%, ordering by core density exactly as
+the mechanism predicts. All three decay monotonically (lowdens is sub-1% by 1e4
+yr, simple_cluster by ~3.5e4 yr, hidens only in the last 3% before it
+collapses). Stopping fates are unchanged everywhere, though hidens collapses
+28% later than stock and from `transition` rather than `momentum`. **So this
+change is not free for the published regime**, and whether to accept the
+early-phase shift — or re-site a bar that was written to measure at the instant
+phase 1a hands off — is a maintainer decision, recorded rather than
+self-approved.
+
 **Implementation is specified in `PLAN.md`; its §3 decisions were settled on
 2026-08-04** — schedule uncapped with `SEGMENT_EPS = 0` as the fixed-segment
 fallback, override *and* the `EarlyPhaseApproximation` flag deleted outright
