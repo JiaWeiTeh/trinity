@@ -66,3 +66,15 @@ E8b,m43_probe ramp-ablated vs active,dv2_at_observed_age_2.1e4yr_pct,<0.1 (eps-c
 E8b,f1edge_hidens ramp-ablated,run_completes,yes (ramp-active: 127 rows to 2e4 yr in minutes),data/g2_hidens_fixed.csv,NO - 4 rows to 0.26 yr in 90 min wall (timeout),NA,STALL
 E8b,f1edge_hidens ramp-ablated,t_reached_yr,20000,data/g2_hidens_fixed.csv,0.26,1.00e+00,STALL
 E8b,f1edge_hidens ramp-ablated vs active,dR2_at_row3_pct,NA,identical t0 and rows 1-2,-0.035,3.50e-04,INFO
+# Wall-clock cost of the fix, measured 2026-08-05 on param/simple_cluster.param
+# (mCloud 1e5, sfe 0.3) with stop_t=0.1, log_console False. Both arms run ALONE on
+# the 4-core container (no other job), stock = /home/user/trinity-stock worktree at
+# 99fa204, fixed = a944727. reference = stock, measured = fixed. Raw logs are the
+# runs' own "Total elapsed time" line, not an external timer.
+perf,simple_cluster stop_t=0.1 fixed-vs-stock,total_wall_clock_s,877.48,stock arm uncontended,738.30,-1.59e-01,FASTER
+perf,simple_cluster stop_t=0.1 fixed-vs-stock,phase1a_wall_clock_s,146.49,stock arm uncontended,138.00,-5.80e-02,FASTER
+perf,simple_cluster stop_t=0.1 fixed-vs-stock,phase1b_wall_clock_s,730.99,stock arm uncontended,600.30,-1.79e-01,FASTER
+perf,simple_cluster stop_t=0.1 fixed-vs-stock,phase1a_segment_count,97,stock arm uncontended,96,-1.03e-02,INFO
+perf,simple_cluster stop_t=0.1 fixed-vs-stock,handoff_v2_ODE_over_v2_alpha,1.3167,stock arm uncontended,1.0546,-1.99e-01,INFO-handoff-more-self-consistent
+G2matchedt,simple_cluster stock-vs-fixed (independent stop_t=0.1 pair),dR2_at_1e5yr_pct,<10 (PLAN §4 PROPOSED bar),proposed bar,-0.36,3.60e-03,PASS-vs-proposed
+G2matchedt,simple_cluster stock-vs-fixed (independent stop_t=0.1 pair),dv2_at_1e5yr_pct,NA,stock arm 11.0772 km/s,-0.53,5.30e-03,INFO

@@ -348,6 +348,15 @@ object for the SEGMENT_DURATION constant):
 - **Cost:** 131 segments / 2m34s for phase 1a vs 97 segments / 1m33s stock
   (same container, contended) — runtime-neutral at the run level. At GMC scale
   log-spacing gives *fewer* segments than stock (ln(3e-3/2e-6)/ln(1.1) ≈ 77).
+  **Superseded 2026-08-05 by an uncontended production measurement** (rows
+  `perf,*` in `data/gate_results.csv`): on `param/simple_cluster.param` to
+  `stop_t=0.1`, each arm run alone on the container, the fix is **faster** —
+  12m18s vs 14m37s total (−16%), 2m18s/96 segments vs 2m26s/97 segments in
+  phase 1a (−6%), 10m00s vs 12m11s in phase 1b (−18%). The 1b saving is the
+  larger one and is not a segment-count effect: the fix hands off to 1b with
+  `v2_ODE/v2_alpha = 1.055` where stock hands off at `1.317`, i.e. much closer
+  to the self-consistent state 1b then has to iterate towards. A better exit
+  state is cheaper to continue from.
 - **Large-object equivalence:** `data/gmc_logseg.csv` vs `data/gmc_control.csv`
   at matched t: ΔR/R = -29% at 100 yr (the stock run's overshoot), -3.8% at
   1e3 yr, -0.95% at 3e3 yr, -0.28% at 1e4 yr, **-0.04% at 8e4 yr** — the
