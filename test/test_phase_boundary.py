@@ -22,9 +22,13 @@ _PARAM = (
 )
 
 # Matches test_betadelta_hybr_stress._GOLDEN[:2] for the shortened stop_t=0.004 run.
+# Re-baselined 2026-08-05 with the phase-1a segment schedule (was
+# (0.759260, -0.035387) twice, at t=0.00341/0.00381).  cool_alpha = t*v2/R2 is
+# carried into phase 1b FROM the phase-1a exit state, so a better 1a exit moves
+# this pair: see docs/dev/phase1a-init/PLAN.md §8, last block.
 _GOLDEN = [
-    (0.759260, -0.035387),  # t=0.00341 Myr
-    (0.759260, -0.035387),  # t=0.00381 Myr
+    (0.888197, -0.046294),  # t=0.00350 Myr
+    (0.888197, -0.046294),  # t=0.00390 Myr
 ]
 _TOL = 2e-3
 
