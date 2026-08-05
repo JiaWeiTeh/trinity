@@ -78,3 +78,21 @@ perf,simple_cluster stop_t=0.1 fixed-vs-stock,phase1a_segment_count,97,stock arm
 perf,simple_cluster stop_t=0.1 fixed-vs-stock,handoff_v2_ODE_over_v2_alpha,1.3167,stock arm uncontended,1.0546,-1.99e-01,INFO-handoff-more-self-consistent
 G2matchedt,simple_cluster stock-vs-fixed (independent stop_t=0.1 pair),dR2_at_1e5yr_pct,<10 (PLAN §4 PROPOSED bar),proposed bar,-0.36,3.60e-03,PASS-vs-proposed
 G2matchedt,simple_cluster stock-vs-fixed (independent stop_t=0.1 pair),dv2_at_1e5yr_pct,NA,stock arm 11.0772 km/s,-0.53,5.30e-03,INFO
+# LONG-BASELINE ARMS, 2026-08-05. Both configs now run to their true natural end
+# on BOTH arms, in separate processes, matched t by interpolation
+# (harness/matched_t.py). These supersede the truncated GMC fixed-arm evidence:
+# data/gmc_logseg.csv and data/g2_gmc_prod.csv were SIGTERM'd at 82375.7 yr, NOT
+# ended by physics (both logs carry "Received SIGTERM" and no "Simulation ended"
+# line) -- the GMC control in fact runs to stop_t=2 Myr on both arms.
+G2long,simple_cluster stop_t=1 stock-vs-fixed,dR2_at_1e5yr_pct,<10 (PLAN §4 PROPOSED bar),proposed bar,-0.374,3.74e-03,PASS-vs-proposed
+G2long,simple_cluster stop_t=1 stock-vs-fixed,dR2_at_5e5yr_pct,<10 (PLAN §4 PROPOSED bar),proposed bar,-0.206,2.06e-03,PASS-vs-proposed
+G2long,simple_cluster stop_t=1 stock-vs-fixed,dR2_at_1e6yr_pct,<10 (PLAN §4 PROPOSED bar),proposed bar,-0.078,7.80e-04,PASS-vs-proposed
+G2long,simple_cluster stop_t=1 stock-vs-fixed,stopping_fate,1 STOPPING_TIME at t=1.0 Myr,stock arm,1 STOPPING_TIME at t=1.0 Myr,0.00e+00,PASS
+G2long,simple_cluster stop_t=1 stock-vs-fixed,phase_sequence,energy->implicit,stock arm,energy->implicit,0.00e+00,PASS
+G2long,gmc_control stop_t=2 stock-vs-fixed,dR2_at_3e3yr_pct,<1.0 (PLAN §4 ORIGINAL bar),original bar,-0.949,9.49e-03,PASS
+G2long,gmc_control stop_t=2 stock-vs-fixed,dR2_at_1e4yr_pct,<1.0 (PLAN §4 ORIGINAL bar),original bar,-0.276,2.76e-03,PASS
+G2long,gmc_control stop_t=2 stock-vs-fixed,dR2_at_1e6yr_pct,<10 (PLAN §4 PROPOSED bar),proposed bar,-0.002,2.00e-05,PASS-vs-proposed
+G2long,gmc_control stop_t=2 stock-vs-fixed,dR2_at_2e6yr_pct,<10 (PLAN §4 PROPOSED bar),proposed bar,-0.001,1.00e-05,PASS-vs-proposed
+G2long,gmc_control stop_t=2 stock-vs-fixed,dv2_at_2e6yr_pct,NA,stock arm 7.12842 pc/Myr,0.014,1.40e-04,INFO
+G2long,gmc_control stop_t=2 stock-vs-fixed,stopping_fate,1 STOPPING_TIME at t=2.0 Myr,stock arm,1 STOPPING_TIME at t=2.0 Myr,0.00e+00,PASS
+G2long,gmc_control stop_t=2 fixed arm,natural_end_t_Myr,2.0,stock arm gmc_control.csv,2.0,0.00e+00,CORRECTS-EARLIER-TRUNCATION-CLAIM

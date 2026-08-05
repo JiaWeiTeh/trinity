@@ -32,7 +32,7 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-04):** 🔵 IMPLEMENTED + GATED — §3 settled, fix shipped (0df441f + a944727), gates G1a/G1b/G2-vs-reference/G3/eps all PASS; the pre-registered G2 stock-vs-fixed bar is MISSED at t=3e3 yr on all configs (see `data/gate_results.csv`) and two golden tests await a maintainer decision. §§8-9 record adjacent follow-ups.
+**Status (2026-08-05):** 🔵 IMPLEMENTED + GATED — §3 settled, fix shipped (0df441f + a944727), gates G1a/G1b/G2-vs-reference/G3/eps all PASS, and the fix is also **16% faster** end-to-end (`perf,*` rows in `data/gate_results.csv`). The pre-registered G2 stock-vs-fixed bar is MISSED at t=3e3 yr on every config except the GMC control; the PROPOSED replacement bar in §4 PASSES on all four, with both long configs now measured to their true natural end. Awaiting one maintainer decision (which bar), which in turn unblocks re-baselining **three** goldens pinned to the stock phase-1a exit state: `test_run_smoke` and `test_phase_boundary` (default suite — the only two failures in an otherwise green 973-test run) and `test_betadelta_hybr_stress` (`-m stress`). §§8-9 record adjacent follow-ups.
 
 ## 0. Mission (read this first)
 
@@ -242,16 +242,43 @@ matched simulation t** (runs truncate at different t).
   > The fate clause is load-bearing: a loose radius threshold alone could hide
   > a run that collapses when it should not, by comparing at its own truncated
   > endpoint. Note also that "1 Myr" is unreachable for some configs *by
-  > physics*, not by budget — `f1edge_hidens` collapses at 0.037-0.047 Myr and
-  > the GMC control ends naturally at 0.082 Myr — which is why the bar has to
-  > be written as "or end of run".
+  > physics*, not by budget — `f1edge_hidens` collapses at 0.037-0.047 Myr —
+  > which is why the bar has to be written as "or end of run".
   >
-  > Measured against the runs already committed, at the latest time each pair
-  > of arms shares: `simple_cluster` **-0.41%** @0.150 Myr, `f1edge_lowdens`
-  > **+0.26%** @0.020 Myr, `f1edge_hidens` **+0.44%** @0.037 Myr — 23-38x
-  > inside the proposed threshold, with fates unchanged on all three. Runs
-  > extending `simple_cluster` and the GMC control toward 1 Myr are what would
-  > complete this evidence.
+  > **CORRECTION (2026-08-05).** An earlier version of this paragraph also
+  > listed the GMC control as ending naturally at 0.082 Myr. It does not.
+  > Both fixed-arm GMC runs behind that claim (`data/gmc_logseg.csv`,
+  > `data/g2_gmc_prod.csv`) were killed by an external SIGTERM — their
+  > `trinity.log`s end with `Received SIGTERM, flushing pending snapshots...`
+  > and carry no `Simulation ended` line — and the identical endpoint that was
+  > read as corroboration is just the fixed 9-snapshot pending flush. Run
+  > properly, the fixed arm reaches `stop_t = 2` Myr exactly as stock does
+  > (`data/g2_gmc_fixed_full.csv`, 24m41s).
+  >
+  > **Measured, both configs now at their true natural end** (rows `G2long,*`
+  > in `data/gate_results.csv`; separate processes, matched t via
+  > `harness/matched_t.py`):
+  >
+  > | config | ΔR2 @1 Myr | at end of run | fate |
+  > |---|---|---|---|
+  > | `simple_cluster` (`stop_t=1`) | **−0.078%** | −0.078% @1 Myr | STOPPING_TIME, unchanged; phases energy→implicit on both |
+  > | GMC control (`stop_t=2`) | **−0.002%** | −0.001% @2 Myr | STOPPING_TIME, unchanged |
+  > | `f1edge_lowdens` | n/a | +0.26% @0.020 Myr | unchanged |
+  > | `f1edge_hidens` | n/a | +0.44% @0.037 Myr | SHELL_COLLAPSED, unchanged |
+  >
+  > So the proposed bar passes by 23x on the worst config and by ~5000x on the
+  > GMC control. The long baselines also say something the truncated ones could
+  > not: the two trajectories do not merely stay within a tolerance, they
+  > **converge** — GMC ΔR2 runs −28.8% @100 yr → −0.95% @3e3 → −0.28% @1e4 →
+  > −0.037% @8e4 → −0.002% @1 Myr, and Δv2 is +0.014% at 2 Myr. The
+  > disagreement is confined to the early transient, which is the part this
+  > workstream argues stock gets wrong.
+  >
+  > Note for whoever rules on this: the GMC control **passes the ORIGINAL bar
+  > too** (−0.949% at 3e3 yr, just inside 1%). The original bar's failures are
+  > `simple_cluster` (−10.4%), `f1edge_lowdens` (+1.7%) and `f1edge_hidens`
+  > (−22.8%) — i.e. it is satisfied only by the one config whose scale the
+  > `vd = -1e8` constant was tuned for.
 - **G3 — asymptotics.** Energy-phase slope `dlnR/dlnt → 3/5` on the
   uniform-density control (harness overlay in `harness/make_figures.py`).
 - **G4 — leakage regression.** New failing-first pytest: the
@@ -264,6 +291,21 @@ matched simulation t** (runs truncate at different t).
   plausible params per CLAUDE.md, not round numbers.
 - **G6 — suite + style.** Full `pytest` green; `pre-commit run --all-files`;
   `mypy trinity` no new errors.
+  **Measured 2026-08-05: 2 failed, 973 passed, 10 deselected.** Both failures
+  are goldens capturing the *stock* phase-1a exit state, which this change
+  moves by design — they are the re-baseline decision, not regressions:
+  - `test_run_smoke.py::test_quickstart_completes_cleanly` — `_FINAL_GOLDENS`
+    R2 = 0.2857315 (captured 2026-07-10); the fix gives 0.2595598. That triple
+    (R2, v2, Eb) *is* the 1a exit state — `stop_t = 1e-4` Myr is below
+    `TFINAL_ENERGY_PHASE`, so the run stops at the end of phase 1a.
+  - `test_phase_boundary.py::test_default_run_crosses_energy_to_implicit_boundary`
+    — `_GOLDEN` (cool_beta, cool_delta) = (0.759260, −0.035387), and
+    `cool_alpha = t·v2/R2` is set *from* the 1a exit state (§8, last block).
+  - A third, `test_betadelta_hybr_stress.py::_GOLDEN`, carries the same
+    (beta, delta) pair and is `-m stress` (deselected by default) — it needs
+    the same re-baseline and will not show up in a default run.
+  Earlier drafts of this Status line said "two golden tests"; it is three, two
+  of them in the default suite.
 - **G7 — persist.** Extract per-gate CSVs into `data/`, regenerate figures,
   update `data/README.md` with exact config + command per artifact, update
   FINDINGS §"What should change" status and this doc's Status line.
