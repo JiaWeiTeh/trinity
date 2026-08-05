@@ -332,15 +332,40 @@ inflated bubble luminosity ~8x.
   `R1` long after the bubble has physically established itself; at GMC scale
   1e-3 Myr is a genuinely early time. That is exactly the pathology this
   workstream just fixed one instance of.
-  **Experiment (E8b):** ablate the ramp (use `R1` directly) and re-run the M43
-  probe + GMC control + `f1edge_hidens`, comparing at matched t against
-  `data/g2_*.csv`. **Bar:** if ablation moves M43's radius at the observed age
-  by more than the eps-convergence noise (~0.1%), the ramp is a second
-  discretisation artifact and needs its own workstream — a scale-relative
-  switch-on, by analogy with `phase1a_segFrac`. **Do NOT bundle it into this
-  branch**: the two effects overlap in time and would become unattributable.
-  Note the ordering constraint — E8b must be measured on top of the phase-1a
-  fix, not against stock, or it inherits the artifact we just removed.
+  **Experiment (E8b): RUN 2026-08-05. Result: the ramp is not a second
+  discretisation artifact, and it is NOT removable.** Ablated via
+  `harness/e8b_runner.py` (forwards `t=None`, so the ramp branch is skipped and
+  nothing else changes), on top of the phase-1a fix, at matched t. Full numbers
+  in `data/gate_results.csv`; trajectories in `data/e8b_*.csv`.
+
+  | config | ablation effect | verdict |
+  |---|---|---|
+  | M43 probe | −1.43% @10 yr → **−0.0059% @2.1e4 yr** | inside the 0.1% bar → not an artifact |
+  | GMC control | −4.71% @100 yr → −0.017% @8e4 yr | decays away |
+  | `f1edge_hidens` | **run STALLS** — 4 rows to 0.26 yr in 90 min wall, vs 127 rows to 2e4 yr in minutes with the ramp | ramp is load-bearing |
+
+  Two conclusions, and the second is the important one:
+  1. The original bar is **passed**: at M43's observed age the ramp is worth
+     0.006%, ~17x inside the bar and an order of magnitude below the
+     `eps` 0.1→0.03 convergence step the shipped schedule itself carries. The
+     effect is also *weaker* in the compact regime, not stronger — the opposite
+     scaling to `SEGMENT_DURATION` — because M43's `t0` is ~170x earlier, so by
+     the time the 1e-3 Myr window closes `(R1/R2)³` has fallen to 4e-3.
+  2. **The ramp cannot simply be deleted.** At `nCore=1e6` ablation raises `Pb`
+     (the suppressed `R1` was inflating the shell volume), the bubble-structure
+     ODE stiffens, and the solve stops converging three segments in. So unlike
+     `vd = -1e8` — which papered over a *discretisation* error and was measured
+     safe to delete — this constant papers over genuine *stiffness*, and
+     removing it is fatal on the stiffest edge.
+
+  **Revised recommendation:** do NOT pursue this as "delete the ramp". Any
+  successor must keep the numerical protection while making the switch-on
+  scale-relative rather than an absolute 1e-3 Myr, and must carry a stiffness
+  gate on `f1edge_hidens` (run completes at all) *before* any trajectory bar.
+  The constant stays open as magic-number audit finding #2; this measurement
+  bounds its consequence and rules out the easy fix, it does not calibrate it.
+  **Still do NOT bundle into this branch**, and keep the ordering constraint:
+  measure on top of the phase-1a fix, never against stock.
 
 **Explicitly NOT a lead:** `_T_INIT_BOUNDARY = 3e4` (`bubble_luminosity.py:52`),
 despite `dR2 ∝ T_init^(5/2)` making it look leveraged. It is de-flagged as
