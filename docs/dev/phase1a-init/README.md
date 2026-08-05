@@ -32,7 +32,7 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-04):** 🔵 actionable — investigation complete; handoff plan for the fix in PLAN.md, not implemented.
+**Status (2026-08-05):** 🟡 partial — investigation complete and the fix implemented + gated on this branch; one maintainer decision outstanding (the G2 stock-comparison bar, `PLAN.md` §4) before it can land.
 
 Why a TRINITY run at M43 scale (0.15 pc, 2.1e4 yr compact H II region;
 `mCloud=300`, `sfe=0.01`, `nCore=8.7e3`) crosses the observed radius ~30x too

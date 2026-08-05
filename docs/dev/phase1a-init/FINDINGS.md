@@ -32,7 +32,7 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-04):** 🔵 actionable — early-phase artifact diagnosed and quantified; minimal fix proposed, not yet implemented.
+**Status (2026-08-05):** 🟡 partial — artifact diagnosed and quantified; the fix is implemented and gated on this branch (`0df441f` + `a944727`), and adoption now waits on one maintainer decision, recorded in `PLAN.md` §4: the pre-registered G2 bar compares against stock at the instant phase 1a hands off, which this document's own finding says is the wrong reference.
 
 Investigation of why a TRINITY run at M43 scale (`mCloud=300`, `sfe=0.01`,
 `nCore=8.7e3 cm^-3`; a 0.15 pc / 2.1e4 yr H II region) crosses the observed radius
@@ -389,12 +389,12 @@ phase 1a hands off — is a maintainer decision, recorded rather than
 self-approved.
 
 **Implementation is specified in `PLAN.md`; its §3 decisions were settled on
-2026-08-04** — schedule uncapped with `SEGMENT_EPS = 0` as the fixed-segment
+2026-08-04** — schedule uncapped with `phase1a_segFrac = 0` as the fixed-segment
 fallback, override *and* the `EarlyPhaseApproximation` flag deleted outright
 (no consumers outside `trinity/`, so one column leaves `dictionary.jsonl`),
 landing as two commits so the schedule plumbing can be proven byte-identical
 before the physics changes. One refinement to the "not a free win" line above:
-the *plumbing* half is provably free (byte-identical at `SEGMENT_EPS = 0`) and
+the *plumbing* half is provably free (byte-identical at `phase1a_segFrac = 0`) and
 the *deletion* half re-derives the committed ablation baselines
 (`data/*_noapprox.csv`, 2429 km/s) — only the combined change needs the
 full-run gate.

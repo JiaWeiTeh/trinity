@@ -113,7 +113,7 @@ schedule makes trajectories worse (2429 km/s snowplow — §6), which is the
 likely reason it was added in the first place.
 
 After the fix, level 2 with the stock fixed segment remains reachable as
-`SEGMENT_EPS = 0` — so "no approximation, stock segments" stays available as a
+`phase1a_segFrac = 0` — so "no approximation, stock segments" stays available as a
 config, and is exactly what gate G1b measures. Level 3 stays open as a possible
 follow-up: the log schedule is the cheap approximation to it, bounding the
 staleness of the frozen terms to a fixed fraction `eps` of the expansion time
@@ -127,8 +127,8 @@ Decided against current source; each line reference below was re-verified on
 design latitude.
 
 1. **Schedule form: `dt_seg = eps·(t_now − tSF)`, UNCAPPED.** `eps` is a new
-   registry param `SEGMENT_EPS` (default 0.1) exposed in `default.param`;
-   `SEGMENT_EPS = 0` falls back to the fixed `SEGMENT_DURATION`, and that is
+   registry param `phase1a_segFrac` (default 0.1) exposed in `default.param`;
+   `phase1a_segFrac = 0` falls back to the fixed `SEGMENT_DURATION`, and that is
    the exact-revert path the G1 byte-identity gate uses.
    **Correction to this doc's earlier draft**, which recommended
    `min(eps·(t−tSF), SEGMENT_DURATION)`: the cap is *wrong*. Every validated
@@ -148,11 +148,11 @@ design latitude.
    (`registry.py:425`), so the age-based form is identical to the prototype's
    `eps·t_now` on every committed baseline; age-based is kept because it is
    the correct form if `tSF` is ever non-zero. Guard the degenerate case in
-   the same expression that handles `SEGMENT_EPS = 0` — one branch, not two:
+   the same expression that handles `phase1a_segFrac = 0` — one branch, not two:
 
    ```python
-   dt_seg = SEGMENT_EPS * (t_now - tSF)
-   if dt_seg <= 0:          # SEGMENT_EPS=0 (stock schedule) or degenerate age
+   dt_seg = phase1a_segFrac * (t_now - tSF)
+   if dt_seg <= 0:          # phase1a_segFrac=0 (stock schedule) or degenerate age
        dt_seg = SEGMENT_DURATION
    t_segment_end = min(t_now + dt_seg, TFINAL_ENERGY_PHASE)
    ```
@@ -199,12 +199,12 @@ matched simulation t** (runs truncate at different t).
   **Batch 2 lands as two commits** and G1 straddles them:
   - **G1a (plumbing — bit-identical; this sub-claim IS a free win).** After
     commit 2a (schedule plumbing only, `vd=-1e8` and the flag still present),
-    a `param/simple_cluster.param` run with `SEGMENT_EPS = 0` must produce a
+    a `param/simple_cluster.param` run with `phase1a_segFrac = 0` must produce a
     **byte-identical `dictionary.jsonl`** vs stock HEAD. Nothing about the
     schedule can change behaviour when it is switched off; if this fails, the
     plumbing is wrong — stop.
   - **G1b (deletion is faithful — free measurement).** After commit 2b
-    (override + flag deleted), a run with `SEGMENT_EPS = 0` is *by
+    (override + flag deleted), a run with `phase1a_segFrac = 0` is *by
     construction* the already-measured "hack ablated" configuration, so it
     must reproduce the committed ablation baselines: segment-1 exit
     **2429.4 km/s** on the GMC control (`data/gmc_noapprox.csv`) and
