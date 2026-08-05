@@ -223,6 +223,35 @@ matched simulation t** (runs truncate at different t).
   transient is *supposed* to change — that is the fix); M43 probe within 1%
   of `data/m43_logseg.csv` throughout; all runs reach their stock stopping
   fate (no new `VELOCITY_RUNAWAY`/collapse flips); zero solver failures.
+
+  > **PROPOSED REPLACEMENT for the stock-comparison half of this bar
+  > (maintainer, 2026-08-05 — NOT yet adopted, recorded for sign-off).**
+  > The `t ≥ 3e3 yr, 1%` form asks the wrong question. It treats the stock
+  > trajectory as ground truth, when the finding of this workstream is that
+  > stock's early phase is an *artifact* — its similarity slope is 0.31 where
+  > theory says 0.6, and its segment-1 velocity is a constant independent of
+  > the cloud. Demanding 1% agreement with a wrong reference, at the very
+  > instant phase 1a hands off, is close to demanding the fix do nothing.
+  >
+  > The bar's real job is narrower: **confirm the change did not break the
+  > long-term evolution.** So:
+  >
+  > **|ΔR2| < 10% at 1 Myr — or at the end of the run if it terminates
+  > earlier — AND the stopping fate unchanged.**
+  >
+  > The fate clause is load-bearing: a loose radius threshold alone could hide
+  > a run that collapses when it should not, by comparing at its own truncated
+  > endpoint. Note also that "1 Myr" is unreachable for some configs *by
+  > physics*, not by budget — `f1edge_hidens` collapses at 0.037-0.047 Myr and
+  > the GMC control ends naturally at 0.082 Myr — which is why the bar has to
+  > be written as "or end of run".
+  >
+  > Measured against the runs already committed, at the latest time each pair
+  > of arms shares: `simple_cluster` **-0.41%** @0.150 Myr, `f1edge_lowdens`
+  > **+0.26%** @0.020 Myr, `f1edge_hidens` **+0.44%** @0.037 Myr — 23-38x
+  > inside the proposed threshold, with fates unchanged on all three. Runs
+  > extending `simple_cluster` and the GMC control toward 1 Myr are what would
+  > complete this evidence.
 - **G3 — asymptotics.** Energy-phase slope `dlnR/dlnt → 3/5` on the
   uniform-density control (harness overlay in `harness/make_figures.py`).
 - **G4 — leakage regression.** New failing-first pytest: the
