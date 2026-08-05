@@ -316,7 +316,10 @@ matched simulation t** (runs truncate at different t).
     (beta, delta) pair and is `-m stress` (deselected by default) — it needs
     the same re-baseline and will not show up in a default run.
     Re-baselined and **verified green** (`test_hybr_implicit_converges_and_matches_golden`,
-    1 passed in 5m33s). Note for whoever runs this next: a first attempt at the
+    1 passed in 5m33s). Its companion `test_hybr_endtoend_no_crashes` also
+    passes at `TRINITY_STRESS_N=2` (1 passed in 10m26s) — so the whole stress
+    file is green, run as two separate invocations rather than one.
+    Note for whoever runs this next: a first attempt at the
     whole stress file was killed at ~40 min with no summary line, and a
     `pgrep -f "pytest -q -m stress"` liveness check reported it as still running
     because the pattern matched its own shell wrapper. Wait on the **PID**, and
