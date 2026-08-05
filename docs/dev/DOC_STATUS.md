@@ -56,7 +56,7 @@ deleted by the maintainer (`9459234a`, 2026-07-06).
 | `cooling/` | 🟡 PARTIAL — two side items shipped; loader refactor PR-1–4 pending | `refactor-audit.md` | 2026-06-22 |
 | `performance/` | 📘 reference (perf history A→D + F1) · 🟡 HOTPATH §F1-cousin/§F5 open | `BUBBLE_LUMINOSITY_PERFORMANCE.md` | 2026-06-22 |
 | `shell-solver/` | 🟡 MIXED — overflow fix ✅ shipped; MIGRATION doc is a 🟠 correction (mxstep diagnosis retracted) | `OVERFLOW_FIX_PLAN.md` | 2026-07-06 |
-| `magic-numbers/` | 🟡 PARTIAL — audit done; #1 fixed & gated, #2–#5 open | `AUDIT.md` | 2026-06-22 |
+| `magic-numbers/` | 🟡 PARTIAL — audit done; #1 and #4 fixed & gated (#4 = `vd=-1e8`, deleted by `phase1a-init` on `hotfix/early-approximations`); #2 measured and found load-bearing — not removable as its recommendation assumed; #3, #5 open | `AUDIT.md` | 2026-08-05 |
 | `failed-large-clouds/` | ✅ SHIPPED (2026-06-19) — 1b fate routing superseded 2026-07-01 (now → momentum) | `PLAN.md` | 2026-07-06 |
 | `misc/` | 🟡 MIXED — backward-compat ~95% open · tinit rec #3 open · leak D/F/G open · TERMINATION_EVENTS 📘 | per-doc Status lines | 2026-06-22 |
 | `cluster/` | 📘 operational guide (on-cluster plotting) | `PLOTTING_WORKFLOW.md` | 2026-06-19 |
@@ -74,7 +74,8 @@ lane C; keep the two lists reconciled.)
   now owned by the active `transition/pdv-trigger/` program (`PLAN.md`); historical context in
   `archive/betadelta/HYBR_PLAN.md` Phase 5.
 - **Backward-compat cleanup** ~95% un-executed → `misc/backward-compat-audit.md`.
-- **Magic numbers #2–#5** → `magic-numbers/AUDIT.md`.
+- **Magic numbers #2, #3, #5** → `magic-numbers/AUDIT.md` (#4 fixed 2026-08-05; #2 now carries
+  measured bounds and a ruled-out fix, so its successor starts from evidence, not from scratch).
 - **HOTPATH §F1-cousin + §F5** → `performance/HOTPATH_PLAN.md`.
 - **Leaking luminosities Phase D/F/G + findings #7/#8** → `misc/LEAKING_LUMINOSITIES_SKELETON.md`.
 - **Cooling loader refactor PR-1–4** → `cooling/refactor-audit.md`.

@@ -32,7 +32,7 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-05):** 🔵 IMPLEMENTED + GATED, READY TO LAND — §3 settled, fix shipped (0df441f + a944727), **every gate G1–G7 passes**. The G2 bar was re-sited by maintainer sign-off (§4: `|ΔR2| < 5%` at 1 Myr or end of run, *and* fate unchanged) and all four configs pass it, worst +0.44% (11x inside); both long configs are measured to their true natural end and the arms **converge** (GMC −0.001% at 2 Myr). The fix is also **16% faster** end-to-end. The three goldens on the stock phase-1a exit state are re-baselined (0ffa994): default suite **987 passed / 0 failed**, `pre-commit` passes, `mypy` shows no new errors vs the stock worktree. Remaining before merge: mark magic-number audit finding #4 (`vd = -1e8`) fixed in `docs/dev/magic-numbers/AUDIT.md` — deliberately deferred to landing, per §8 E8a. §§8-9 record adjacent follow-ups.
+**Status (2026-08-05):** 🔵 IMPLEMENTED + GATED, READY TO LAND — §3 settled, fix shipped (0df441f + a944727), **every gate G1–G7 passes**. The G2 bar was re-sited by maintainer sign-off (§4: `|ΔR2| < 5%` at 1 Myr or end of run, *and* fate unchanged) and all four configs pass it, worst +0.44% (11x inside); both long configs are measured to their true natural end and the arms **converge** (GMC −0.001% at 2 Myr). The fix is also **16% faster** end-to-end. The three goldens on the stock phase-1a exit state are re-baselined (0ffa994): default suite **987 passed / 0 failed**, `pre-commit` passes, `mypy` shows no new errors vs the stock worktree. Magic-number audit finding #4 (`vd = -1e8`) is marked fixed in `docs/dev/magic-numbers/AUDIT.md` (§8 E8a), and #2's recommendation there corrected with the E8b result; nothing outstanding before merge. §§8-9 record adjacent follow-ups.
 
 ## 0. Mission (read this first)
 
@@ -418,10 +418,22 @@ inflated bubble luminosity ~8x.
 
 **Two things the cross-check turned up that DO matter:**
 
-- **E8a — this workstream closes magic-number #4.** `magic-numbers/AUDIT.md`
-  lists `vd = -1e8` (`energy_phase_ODEs.py:270`) as open finding **#4** of #2–#5.
-  Commit `a944727` deletes it. That audit should be updated to mark #4 fixed,
-  citing `data/gate_results.csv` — do this when the branch lands, not before.
+- **E8a — this workstream closes magic-number #4. DONE 2026-08-05.**
+  `magic-numbers/AUDIT.md` listed `vd = -1e8` (`energy_phase_ODEs.py:270`) as
+  open finding **#4** of #2–#5; commit `a944727` deletes it, and the audit row
+  is now marked fixed, citing `data/gate_results.csv`.
+  An earlier version of this bullet said to do it "when the branch lands, not
+  before" — written while the fix might still have been abandoned. Once the bar
+  was signed off, *in* the branch became the right place: the audit entry
+  becomes true at exactly the moment the deletion merges, instead of depending
+  on a separate commit someone has to remember to make. Recorded there beyond
+  "fixed": the audit's own question (*what does `-1e8` represent?*) has no
+  answer — the value is an artifact, so it was deleted rather than documented —
+  and its **MED, bounded to the 1st segment** severity was under-called, since
+  at sub-GMC scale that one segment sets a trajectory that coasts for ~3000 yr.
+  The same pass corrected #2's row and recommendation with the E8b result
+  below, because that recommendation ("if inert, delete") would have led its
+  next reader straight into the stall E8b measured.
 - **E8b — magic-number #2 is the same defect class as ours, inside our window.**
   `get_bubbleParams.py:368`: `dt_switchon = 1e-3` Myr, an **absolute** early-time
   constant that linearly ramps the inner radius, `R1_tmp = (t - tSF)/1e-3 · R1`,
