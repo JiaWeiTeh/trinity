@@ -32,7 +32,7 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-04):** 🔵 ready to implement — §3 design decisions SETTLED (Batch 0); evidence complete in `FINDINGS.md`, nothing implemented in `trinity/` yet.
+**Status (2026-08-04):** 🔵 IMPLEMENTED + GATED — §3 settled, fix shipped (0df441f + a944727), gates G1a/G1b/G2-vs-reference/G3/eps all PASS; the pre-registered G2 stock-vs-fixed bar is MISSED at t=3e3 yr on all configs (see `data/gate_results.csv`) and two golden tests await a maintainer decision. §§8-9 record adjacent follow-ups.
 
 ## 0. Mission (read this first)
 
@@ -287,3 +287,119 @@ table). `harness/`: `patched_runner.py` (env-var switches), `extract_csv.py`,
 convergence, momentum-budget, mass-sweep, Weaver/Spitzer overlays.
 Independent corroboration and the leakage details: FINDINGS
 §"Independent corroboration — code-audit Cluster C".
+
+## 8. Adjacent numerics in the dMdt chain — checked 2026-08-04
+
+Raised as "there is an artificially imposed dR with a comment like *might change
+if the mass is large*". **The memory is exact, the number is real, and it is
+already gone from trinity.** Recording the check, and what the cross-check
+turned up, because two of the findings matter more than the original question.
+
+**What it was.** WARPFIELD floored the bubble-structure integration offset:
+
+```python
+dR2min = 1.0e-7                       # "this number might have to be higher... TO DO"
+if Mclus > 1.0e7:
+    dR2min = 1.0e-14*Mclus + 1.0e-7
+```
+
+`dR2` is the thickness of the thin conduction layer just inside `R2` where the
+backward Weaver temperature ODE is anchored (`r2Prime = R2 - dR2`). Since
+`dR2 ∝ 1/dMdt`, a bigger cluster ⇒ thinner layer, and WARPFIELD clamped it.
+
+**Status: removed, pinned, and owned elsewhere. No action.**
+`bubble_luminosity.py:402` uses the exact analytic value with no floor and no
+mass branch. `test/test_dR2min_magic_number.py` pins the pure `1/dMdt` scaling
+(a floor would flatten it), the conditioning of `R2 - dR2`, and cross-solver
+agreement on the unfloored layer. The whole `docs/dev/magic-numbers/`
+workstream is *named* for this sweep, and records that the floor would have
+inflated bubble luminosity ~8x.
+
+**Two things the cross-check turned up that DO matter:**
+
+- **E8a — this workstream closes magic-number #4.** `magic-numbers/AUDIT.md`
+  lists `vd = -1e8` (`energy_phase_ODEs.py:270`) as open finding **#4** of #2–#5.
+  Commit `a944727` deletes it. That audit should be updated to mark #4 fixed,
+  citing `data/gate_results.csv` — do this when the branch lands, not before.
+- **E8b — magic-number #2 is the same defect class as ours, inside our window.**
+  `get_bubbleParams.py:368`: `dt_switchon = 1e-3` Myr, an **absolute** early-time
+  constant that linearly ramps the inner radius, `R1_tmp = (t - tSF)/1e-3 · R1`,
+  into `bubble_E2P` for all `t <= tSF + 1e-3`. Phase 1a runs to
+  `TFINAL_ENERGY_PHASE = 3e-3` Myr, so **this ramp shapes the bubble pressure
+  across the first third of phase 1a**, and like `SEGMENT_DURATION` it is an
+  absolute time compared against physics whose timescale is not. At M43 scale
+  (relaxation complete by ~160 yr = 1.6e-4 Myr) the ramp is still suppressing
+  `R1` long after the bubble has physically established itself; at GMC scale
+  1e-3 Myr is a genuinely early time. That is exactly the pathology this
+  workstream just fixed one instance of.
+  **Experiment (E8b):** ablate the ramp (use `R1` directly) and re-run the M43
+  probe + GMC control + `f1edge_hidens`, comparing at matched t against
+  `data/g2_*.csv`. **Bar:** if ablation moves M43's radius at the observed age
+  by more than the eps-convergence noise (~0.1%), the ramp is a second
+  discretisation artifact and needs its own workstream — a scale-relative
+  switch-on, by analogy with `phase1a_segFrac`. **Do NOT bundle it into this
+  branch**: the two effects overlap in time and would become unattributable.
+  Note the ordering constraint — E8b must be measured on top of the phase-1a
+  fix, not against stock, or it inherits the artifact we just removed.
+
+**Explicitly NOT a lead:** `_T_INIT_BOUNDARY = 3e4` (`bubble_luminosity.py:52`),
+despite `dR2 ∝ T_init^(5/2)` making it look leveraged. It is de-flagged as
+justified by the same audit ("documented conduction/ionization boundary … its
+penalty is a known no-op, ≈0.999994") and separately studied in
+`misc/tinit-sensitivity.md`, which concluded 3e4 is conservative. Its only open
+tail is recommendation #3 (drop the linear L3 patch), already owned by `misc/`.
+I raised this as a candidate before checking the siblings; the check retired it.
+
+**One real coupling between this fix and the dMdt chain**, worth knowing but not
+an action: `cool_alpha = t·v2/R2` is set from the phase-1a exit state
+(`run_energy_implicit_phase.py:662`, `:798`) and consumed *inside* the bubble
+solve — the ODE initial condition (`bubble_luminosity.py:405`) and the ODE
+itself (`:439`). This fix moves that exponent ~39% at the handoff, so it does
+perturb `dMdt` and hence `dR2`. That is the most likely mechanism behind the
+phase-boundary golden moving (`cool_beta` 0.759 → 0.888), and it is a
+*consequence* of a better 1a exit state, not a new defect.
+
+## 9. Missing infrastructure — there is no multi-config scheme screen
+
+Raised as "is there a test that checks whether a new scheme idea works on normal
+runs, like the pdv-trigger configs?". **Checked: no, and this is a real gap.**
+
+- Every end-to-end test in the suite runs the **same single config**
+  (`mCloud=1e5, sfe=0.3`): `test_run_smoke.py`, `test_phase_boundary.py`,
+  `test_betadelta_hybr_stress.py`, `test_bubble_solver_stress.py`. The only
+  outlier is `test_energy_collapse_snapshot.py` (a 5e9 heavy cloud, for the
+  collapse handoff specifically).
+- The genuinely multi-config coverage — `cal_compact`, `cal_dense`,
+  `cal_diffuse`, `cal_mid`, `f1edge_hidens`, `f1edge_lowdens` in
+  `docs/dev/transition/pdv-trigger/runs/params/` — exists only as `.param` files
+  driven by **HPC sbatch campaigns**. `test/test_bench7_params.py` validates the
+  *contents of the param files*, not that a run over them behaves.
+- Consequence, felt directly in this workstream: Batch 4 had to hand-roll the
+  stock-vs-fixed sweep (worktree + config matrix + matched-t interpolation +
+  ledger). Every future scheme change will hand-roll it again, differently, and
+  the first attempt will probably repeat the nearest-snapshot-instead-of-
+  matched-t error corrected in commit 8457f6e.
+
+**Proposal — `docs/dev/screen/` (a shared harness, NOT part of this fix).**
+One runnable that takes two git refs and a config list, runs both arms in
+separate processes, interpolates both to a common time grid, and emits a
+ledger CSV plus a pass/fail table against a stated bar. The pieces already
+exist in this workstream and only need lifting out of it:
+`harness/extract_csv.py` (snapshot → CSV), the matched-t interpolation from
+`harness/g3_slopes.py`, and `data/gate_results.csv`'s ledger schema.
+
+Suggested screen set (spans the axes that actually broke things here — density
+over four decades, and both feedback extremes): `simple_cluster`,
+`f1edge_lowdens`, `f1edge_hidens`, `cal_compact`, `cal_diffuse`, plus the M43
+probe as the sub-GMC scale that no existing config covers.
+
+A **fast tier** belongs in `pytest` (one short-`stop_t` run per config,
+asserting only structural invariants — phases visited, stopping fate, no solver
+failures, finite state), with the expensive matched-t trajectory comparison
+staying opt-in (`-m stress`) or manual. Sizing note from this batch: a
+`stop_t=0.02` arm is ~5 min per config on a 4-core container, so a 6-config
+two-arm screen is ~1 hour — too slow for the default suite, fine as a gate you
+run before landing a scheme change.
+
+This is scoped as a follow-up ticket. It should not gate the phase-1a fix, and
+the phase-1a fix should not quietly grow into building it.
