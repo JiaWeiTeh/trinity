@@ -144,27 +144,33 @@ def fig_m43():
 # ------------------------------------------------------------- the decision
 def fig_decision():
     """dR2/R2 (fixed vs stock) at matched t, the number the decision rests on."""
-    pairs = [("simple_cluster  (nCore=1e3)", "g2_longsimple_stock", "g2_longsimple_fixed", FIXED),
+    pairs = [("simple_cluster  (nCore=1e3)", "g2_1myr_simple_stock", "g2_1myr_simple_fixed", FIXED),
+             ("GMC control  (nCore=1e3, uniform)", "gmc_control", "g2_gmc_fixed_full", INK),
              ("f1edge_lowdens  (nCore=1e2)", "g2_lowdens_stock", "g2_lowdens_fixed", OBS),
              ("f1edge_hidens  (nCore=1e6)", "g2_longhidens_stock", "g2_longhidens_fixed", STOCK)]
     fig, ax = plt.subplots(figsize=(7.4, 4.3))
     ax.axhspan(-1, 1, color=MUTED, alpha=0.13, zorder=0)
-    ax.text(1.25e5, -3.1, "pre-registered bar\n|ΔR₂| < 1%", color=MUTED, fontsize=8.5,
+    ax.text(2.2e6, -3.1, "pre-registered bar\n|ΔR₂| < 1%", color=MUTED, fontsize=8.5,
             ha="right", va="top")
     ax.axhline(0, color=MUTED, lw=0.8)
     for label, s_stem, f_stem, col in pairs:
         ts, rs = series(s_stem)
         tf, rf = series(f_stem)
-        grid = [t for t in (3e3, 5e3, 8e3, 1e4, 1.5e4, 2e4, 3e4, 5e4, 8e4, 1.2e5)
-                if t <= min(ts[-1], tf[-1])]
+        # ends at the latest time BOTH arms cover — the "or the end of the run"
+        # clause of the adopted bar (PLAN.md §4)
+        first, last = max(ts[0], tf[0]), min(ts[-1], tf[-1])
+        grid = [t for t in (1e2, 3e2, 1e3, 3e3, 5e3, 8e3, 1e4, 1.5e4, 2e4, 3e4, 5e4, 8e4,
+                            1.2e5, 3e5, 5e5, 1e6, 2e6) if first <= t <= last]
+        if grid and grid[-1] < last:
+            grid.append(last)
         d = [(t, 100 * (interp(tf, rf, t) - interp(ts, rs, t)) / interp(ts, rs, t)) for t in grid]
         ax.plot([p[0] for p in d], [p[1] for p in d], "o-", color=col, lw=1.7, ms=4.5, label=label)
     ax.set_xscale("log")
     ax.set_xlabel("time since star formation  [yr]")
     ax.set_ylabel("ΔR₂ / R₂   fixed vs stock  [%]")
-    ax.set_ylim(-26, 6)
+    ax.set_ylim(-32, 6)
     ax.legend(loc="lower right", fontsize=8)
-    ax.set_title("What the change costs on existing configs — and how fast it decays",
+    ax.set_title("The early transient changes — and then the trajectories reconverge",
                  loc="left", fontsize=10.5, color=INK, pad=8)
     save(fig, "decision_shift.png")
 

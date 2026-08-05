@@ -388,6 +388,29 @@ early-phase shift — or re-site a bar that was written to measure at the instan
 phase 1a hands off — is a maintainer decision, recorded rather than
 self-approved.
 
+**Resolved 2026-08-05 — the bar was re-sited, by maintainer sign-off.** The
+adopted G2 bar (PLAN §4) is `|ΔR2| < 10%` at 1 Myr **or the end of the run if
+it terminates earlier**, *and* the stopping fate unchanged. All four configs
+pass; the worst is `f1edge_hidens` at +0.44%, 23x inside. Two facts that only
+appeared once both long configs were run to their **true** natural end —
+earlier fixed-arm GMC runs had been SIGTERM-truncated at 8.2e4 yr and
+misreported as ending there:
+
+- The trajectories do not merely stay inside a tolerance, they **converge**.
+  GMC control ΔR2: −28.8% @100 yr → −0.95% @3e3 → −0.28% @1e4 → −0.037% @8e4 →
+  −0.002% @1 Myr → **−0.001% @2 Myr**, with Δv2 +0.014% at 2 Myr.
+  `simple_cluster` reaches −0.078% at 1 Myr. The disagreement is confined to
+  the early transient, which is the part this document argues stock gets wrong.
+- The change is **16% faster** end-to-end (14m37s → 12m18s on
+  `simple_cluster` to `stop_t=0.1`, each arm alone on the container), almost
+  all of it in phase 1b, which the change does not touch. Stock enters 1b with
+  `v2_ODE/v2_alpha = 1.3167`, the fix with `1.0546` — a 1a exit state that is
+  already close to α-consistent is cheaper for 1b to continue from.
+
+Note for the record: the GMC control passes the *original* 1%-at-3e3-yr bar
+(−0.949%) and is the only config that does — i.e. that bar was met by exactly
+the one scale the `vd = -1e8` constant was tuned for.
+
 **Implementation is specified in `PLAN.md`; its §3 decisions were settled on
 2026-08-04** — schedule uncapped with `phase1a_segFrac = 0` as the fixed-segment
 fallback, override *and* the `EarlyPhaseApproximation` flag deleted outright
