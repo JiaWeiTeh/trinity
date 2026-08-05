@@ -296,9 +296,15 @@ matched simulation t** (runs truncate at different t).
   plausible params per CLAUDE.md, not round numbers.
 - **G6 — suite + style.** Full `pytest` green; `pre-commit run --all-files`;
   `mypy trinity` no new errors.
-  **Measured 2026-08-05: 2 failed, 973 passed, 10 deselected.** Both failures
-  are goldens capturing the *stock* phase-1a exit state, which this change
-  moves by design — they are the re-baseline decision, not regressions:
+  **Measured 2026-08-05.** Before the re-baseline: 2 failed, 973 passed, 10
+  deselected. After (`0ffa994`): **987 passed, 0 failed, 10 deselected** — the
+  +12 are the `phase1a_segFrac` validator cases (`17d2ed1`), the +2 are these
+  goldens. `pre-commit run --all-files` passes. `mypy trinity` reports 150
+  errors in 23 files on **both** this branch and the 99fa204 stock worktree —
+  identical count, so no new errors; the 150 are pre-existing and out of scope.
+  Both failures were goldens capturing the *stock* phase-1a exit state, which
+  this change moves by design — they were the re-baseline decision, not
+  regressions:
   - `test_run_smoke.py::test_quickstart_completes_cleanly` — `_FINAL_GOLDENS`
     R2 = 0.2857315 (captured 2026-07-10); the fix gives 0.2595598. That triple
     (R2, v2, Eb) *is* the 1a exit state — `stop_t = 1e-4` Myr is below
