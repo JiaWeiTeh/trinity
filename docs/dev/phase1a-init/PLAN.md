@@ -224,8 +224,13 @@ matched simulation t** (runs truncate at different t).
   of `data/m43_logseg.csv` throughout; all runs reach their stock stopping
   fate (no new `VELOCITY_RUNAWAY`/collapse flips); zero solver failures.
 
-  > **PROPOSED REPLACEMENT for the stock-comparison half of this bar
-  > (maintainer, 2026-08-05 — NOT yet adopted, recorded for sign-off).**
+  > **ADOPTED 2026-08-05 (maintainer sign-off) — this replaces the
+  > stock-comparison half of the bar above.** The original `t >= 3e3 yr, 1%`
+  > form is kept in place rather than deleted, so the record shows what was
+  > pre-registered, what replaced it, and that the replacement was chosen with
+  > the measured numbers for both bars already in hand. Adopted as written:
+  > the 10% threshold, not the tighter one the measurements would also have
+  >
   > The `t ≥ 3e3 yr, 1%` form asks the wrong question. It treats the stock
   > trajectory as ground truth, when the finding of this workstream is that
   > stock's early phase is an *artifact* — its similarity slope is 0.31 where
