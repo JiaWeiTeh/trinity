@@ -1,0 +1,8 @@
+phase,quantity,measured,ideal_weaver,delta,rms_dex,n,t_lo,t_hi
+energy,R2,0.5629,0.6,-0.0371,0.00179,49,3.287e-05,0.003
+energy,v2,-0.429,-0.4,-0.029,0.00137,49,3.287e-05,0.003
+energy,dln(1-f)/dlnt,-0.0564,,,,49,,radiative-loss correction
+energy,R2_pred_with_loss,0.5887,0.6,-0.0258,,49,,residual after correction
+energy,Lmech_total,0.0,0.0,0.0,,49,,constant => not the cause
+implicit,R2,1.0939,0.6,0.4939,0.08966,37,0.03936,0.5
+implicit,v2,0.7268,-0.4,1.1268,0.1085,37,0.03936,0.5

@@ -1,0 +1,10 @@
+# Phase-6 determinism replica B — dynamic-verification config: simple_cluster truncated.
+# Same physical setup as param/simple_cluster.param (mCloud 1e5 Msun, sfe 0.3,
+# everything else schema default), with stop_t cut to 0.5 Myr so the run reaches
+# the phase 1a -> 1b handoff in minutes instead of hours.
+# Used for: determinism / global-state probe (two separate processes, byte-compare),
+# the invariant scan, and the R ~ t^(3/5) asymptotic fit.
+# NOT sufficient for the table-bounds sensor (TBL-01 needs t > 10 Myr).
+mCloud    1e5
+sfe    0.3
+stop_t    0.5

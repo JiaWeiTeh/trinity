@@ -1,0 +1,10 @@
+# Phase-6 table-bounds probe: simple_cluster physics run past the cooling-cube
+# age limit. The non-CIE cooling cube's age grid ends at 1e7 yr (sweep 7, TBL-01),
+# while stop_t defaults to 15 Myr, so a default-length run requests ages the table
+# does not cover and get_filename clamps silently.
+# This config exists to answer whether that clamp is reached in practice.
+# Cheap-ish because phase1a_segFrac=0.1 makes segments geometric: the segment
+# count is set by the log-range, not by stop_t.
+mCloud    1e5
+sfe    0.3
+stop_t    15

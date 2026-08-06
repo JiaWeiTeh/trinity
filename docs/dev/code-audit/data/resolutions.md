@@ -1284,3 +1284,32 @@ stiffest config intractable** — directly relevant to S4-R-01 below.
 baseline captured on current `bugfix/code-audit` is invalidated by the fix on
 arrival. The already-committed `data/runs/phase6_short.log` is still useful as a
 *pre-fix* reference point, and is labelled as such.
+
+---
+
+## `S8-R-02` — `n_IF_Str` is `shell_n0` → **DYNAMICALLY CONFIRMED** (Phase 6, P6-01)
+
+The S8 reconciler rated this S1 from static reading; it was one of the ten S1
+candidates that never reached the skeptic panel. Phase 6 settled it without one.
+
+`harness/check_invariants.py` reports distinct keys carrying bit-identical series.
+Over 150 snapshots spanning `t = 3.4e-7 … 0.121` Myr and both the energy and
+implicit phases, **`n_IF_Str == shell_n0` at every snapshot** — not approximately,
+bit-for-bit.
+
+So the quantity documented as the *sole source* of `P_HII` is numerically
+indistinguishable from `shell_n0`, which is itself back-solved from the bubble
+pressure. This is the same cap (`shell_structure.py:251`,
+`n_IF_Str = min(n_IF_Str, shell_n0)`) that the S4-R-01 and Cluster D refutations
+both leaned on — those refutations established the cap *binds*; this establishes it
+binds **always**, on every snapshot of a default run.
+
+**Consequence worth stating plainly:** `P_HII` carries no independent information in
+this regime. It is a re-expression of `Pb`. Any analysis treating it as a separate
+physical channel — including the `max(Pb, P_HII)` closure — is operating on a
+tautology whenever the cap binds.
+
+Recorded as a method note too: this is the first finding the audit confirmed
+**dynamically rather than by argument**, and it cost one run plus an existing
+harness. Several of the nine remaining untested S1 candidates may be settleable the
+same way, far more cheaply than by skeptic panel.

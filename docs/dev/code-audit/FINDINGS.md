@@ -232,7 +232,7 @@ these to shrink. Do not act on them without verification.
 | `S11-R-03` | no solver-failure channel in the slice — **note: the "`sol.status` never read" half is already refuted**; every phase runner checks it. The exit-code propagation half stands | `main.py:211` |
 | `S5b-R-01` | a `solve_ivp` failure ends the phase with only a free-text reason, no `SimulationEndCode` | `run_energy_implicit_phase.py` |
 | `S6-R-01` | transition phase keeps evaluating `R1`/`Pb` past the energy→momentum boundary | `run_transition_phase.py` |
-| `S8-R-02` | `n_IF_Str`, documented as the sole source of `P_HII`, is identically `shell_n0`, itself back-solved from it | `shell_structure.py:251` |
+| ~~`S8-R-02`~~ | **promoted out of this table — dynamically confirmed by Phase 6**, see below | `shell_structure.py:251` |
 | `DD-003` | momentum ODE freezes shell mass and `dM/dt` per segment; the other phases recompute | `run_momentum_phase.py` |
 | `DD-004` | phase 1a reconciles after an `Eb ≤ 0` collapse; phase 1b deliberately skips it | `run_energy_phase.py` |
 | `SF-003` | `get_residual_pure` swallows every exception into a fixed `(100, 100)` plateau | `get_betadelta.py:437` |
@@ -241,6 +241,29 @@ these to shrink. Do not act on them without verification.
 
 `S11-R-02` is the one I would test first: `isCollapse` is consumed by
 `paper/_lib/plot_markers.py`, so a mis-classification reaches published figures.
+
+### 4. `n_IF_Str` carries no independent information — *dynamic (Phase 6)*
+
+`trinity/shell_structure/shell_structure.py:251`
+
+Promoted out of the table above. The Phase-6 invariant scan finds `n_IF_Str` and
+`shell_n0` **bit-identical at every one of 150 snapshots**, across both the energy
+and implicit phases — not approximately, bit-for-bit. The cap
+`n_IF_Str = min(n_IF_Str, shell_n0)` therefore binds *always* on a default run, and
+`shell_n0` is itself back-solved from the bubble pressure.
+
+So `P_HII`, documented as sourced solely by `n_IF_Str`, is a re-expression of `Pb`
+whenever the cap binds — which is always, here. Any treatment of it as an
+independent physical channel, **including the `max(Pb, P_HII)` closure**, is
+operating on a tautology in this regime.
+
+**Repro:** `python docs/dev/code-audit/harness/check_invariants.py outputs/<run>/dictionary.jsonl`
+— see the "distinct keys with bit-identical series" section.
+
+**Method note:** this is the first finding the audit confirmed *dynamically* rather
+than by argument, and it cost one run plus an existing harness. Several of the nine
+remaining untested candidates may be settleable the same way, far more cheaply than
+by skeptic panel.
 
 ---
 
