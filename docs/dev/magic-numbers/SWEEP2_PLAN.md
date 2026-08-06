@@ -32,12 +32,11 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-06):** 🟡 partial — bars were registered before any `trinity/` edit (`ba35d77`);
-**#2 is closed as document-and-pin** (§4 results reproduced + mechanism corrected to the phase-1a
-RK45 segment integrator; §5 decision applied; `58acfb6`), **#3's fix is committed** (`db05694`,
-B1/B2/B4 green) **with the B3 screen verdict pending** — do not mark #3 fixed in AUDIT.md until
-`data/pdotdot_screen_results.csv` shows every config passing. #5 recorded (§6). Owned by
-`docs/dev/magic-numbers/AUDIT.md` findings **#2, #3, #5**.
+**Status (2026-08-06):** ✅ shipped — bars were registered before any `trinity/` edit (`ba35d77`)
+and every gate passed. **#2 closed as document-and-pin** (§4 reproduction + mechanism corrected to
+the phase-1a RK45 segment integrator; §5 decision applied; `58acfb6`); **#3 fixed & gated**
+(`db05694`; §3 results — B3 worst |ΔR2| 1.77e-8 across all 5 configs, fates unchanged);
+**#5 recorded** (§6). Owned by `docs/dev/magic-numbers/AUDIT.md` findings **#2, #3, #5**.
 
 ## 0. Scope and ordering discipline
 
@@ -136,6 +135,24 @@ outright instead of re-tuning it, and removes the edge-window crash as a side ef
 
 **Decision rule:** all four pass → land. B3 fate flip or radius fail → do **not** land the swap;
 record the numbers and fall back to document-and-pin (the FD stays, its noise documented).
+
+**RESULTS (2026-08-06) — all four bars PASS; landed as `db05694`:**
+
+- **B1:** new `pdotdot_total` *is* the exact derivative (pinned ≤1e-9 rel across 200 times +
+  both edges); all 12 other `SPSFeedback` fields **bit-identical** (hex-exact) between the stock
+  tree and the fix across 60 log-spaced times.
+- **B2:** both tests written first and confirmed failing on HEAD (`ValueError` at the edge;
+  FD noise ≫ 1e-9), green after.
+- **B3:** all 5 configs PASS (`data/pdotdot_screen_results.csv`): worst `|ΔR2|` rel diff
+  **1.77e-8** (`f1edge_hidens` @2e4 yr) — five decades inside even the 0.05% expectation tier —
+  every stopping fate `1 stopping_time` unchanged, `f1edge_hidens` completes. Run as five
+  per-config screen invocations after container restarts twice killed the monolithic run; the
+  first screen use in anger also surfaced and fixed a vacuous fate check in the harness
+  (`eb959c4`, see `docs/dev/screen/README.md`). Arms verified genuinely different: the
+  before-arm's FD `pdotdot` is frozen across adjacent snapshots (roundoff quantisation) while
+  the after-arm varies smoothly.
+- **B4:** full default suite 1009 passed / 0 failed; `pre-commit run --all-files` passes;
+  `mypy trinity` 137 errors on both this tree and the `731ac50` baseline worktree — no new.
 
 ## 4. Finding #2 — reproduction protocol (the two load-bearing E8b claims)
 
