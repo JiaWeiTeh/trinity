@@ -172,6 +172,69 @@ with `stop_t`. A 15 Myr run is far cheaper than linear extrapolation suggests.
 
 ---
 
+## 5. Budget closure — **PASS on the decompositions; two real failures found**
+
+`harness/phase6_budget.py` over three runs (536 snapshots total). No new run needed —
+every quantity was already in `dictionary.jsonl`. This was the cheapest probe of the six
+and returned the most.
+
+**Closes exactly, 0 violations across all 536 snapshots:**
+
+| identity | result |
+|---|---|
+| `bubble_LTotal == L1 + L2 + L3` | exact (rel 0.000e+00) |
+| `Lmech_total == Lmech_W + Lmech_SN` | exact |
+| `pdot_total == pdot_W + pdot_SN` | exact |
+
+**No dropped or double-counted term in the luminosity or momentum-source budget.** That
+is the defect class this probe exists for, and it is clear.
+
+### P6-06 — `F_ram` and `P_ram` are mutually inconsistent in the output — **100 % of rows**
+
+`F_ram == P_ram · 4πR2²` fails at **every snapshot of every run** (171/171, 126/126,
+239/239). `P_ram` is recorded as **exactly zero** throughout the energy and implicit
+phases while `F_ram` is non-zero and grows from 0.45× to 17× `pdot_total`. This is not
+staleness — it is systematic.
+
+A consumer reading the published force budget would take `F_ram` as the ram-pressure
+force and get a number bearing no relation to the `P_ram` printed beside it.
+**Dynamically corroborates sweep ② SIGN-04** ("`F_ram` means two different things by
+phase"). By contrast `F_ram_wind == pdot_total` holds — so the momentum *source* is
+recorded correctly; it is the `F_ram` column that is untrustworthy.
+
+### P6-07 — ST-001 confirmed dynamically, on exactly the predicted row
+
+`F_HII == P_HII · 4πR2²` fails at **exactly one row in each of the three runs, and it is
+always the last energy-phase row** — the phase-boundary reconciliation snapshot:
+
+| run | energy ends at | rel error there | violations elsewhere |
+|---|---:|---:|---:|
+| `phase6_detA` | row 96 of 171 | **3.82e-02** | 0 |
+| `f1edge_lowdens` | row 93 of 239 | **1.14e-02** | 0 |
+| `f1edge_hidens` | row 97 of 126 | **6.37e-03** | 0 |
+
+ST-001's static analysis predicted that this row is built from a *mix* of event-state
+`R2` and pre-event `Pb`/`shell_mass`/`Qi` — a state that never existed on the
+trajectory. An identity that has nothing to do with that argument fails on precisely
+that row, in every run, and nowhere else. **0.6-3.8 % inconsistency in the published
+force budget on the phase-boundary row.**
+
+Note what this does *not* say: the trajectory is unaffected (phase 1b recomputes from
+`params`), so the S2 rating stands on blast radius. What it settles is that the wrong
+**output row** is real, reproducible, and quantified — previously "unreachable on the
+baseline" was the reason for doubting it, and it turns out to be reachable in every run.
+
+### P6-08 — the final row of a run is also inconsistent
+
+The worst `F_ram_wind == pdot_total` violation in each run is at the **final row**:
+row 237/239 in `f1edge_lowdens` at **1.02e-01 (10 %)**, row 125/126 in `f1edge_hidens`
+at 1.66e-05. Elsewhere the identity holds to ~1e-9.
+
+This is the **S5b** family — "the final row mixes two times". Worth recording carefully:
+S5b proposed testing it via `F_ion_in != press_HII_in · 4πR2²`, and **that test passes
+everywhere** (0/171 violations, including the final row, at rel 0.0). The claim family is
+real; the repro S5b proposed does not demonstrate it. A different identity does.
+
 ## Findings this phase produced
 
 | # | result | bears on |

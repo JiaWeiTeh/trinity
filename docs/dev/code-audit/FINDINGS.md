@@ -32,10 +32,10 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-07-30):** 🔵 ACTIVE — Phases 0–4 complete, Phase 5 partial (7 of 17
-S1-class defects through the gate), Phase 6 barely started. **This is an interim
-report, not the final verdict.** Regenerate the counts with
-`harness/collect_findings.py`; check phase state with `harness/check_completeness.py`.
+**Status (2026-07-30):** 🔵 ACTIVE — **all seven phases pass
+`harness/check_completeness.py`.** Phase 5 gate-tested 7 of 17 S1-class defects;
+Phase 6 ran five of its seven probes. **Still an interim report, not a final
+verdict** — see Coverage. Regenerate counts with `harness/collect_findings.py`.
 
 ## How to read this
 
@@ -61,8 +61,8 @@ the full revision history are in [`data/revisions.csv`](data/revisions.csv) and
 | current severity | count |
 |---|---:|
 | FIXED (on main) | 2 |
-| S1 | 16 |
-| S2 | 196 |
+| S1 | 15 |
+| S2 | 197 |
 | S3 | 250 |
 | S4 | 219 |
 | CLEARED / REFUTED / WITHDRAWN | 6 |
@@ -74,8 +74,18 @@ Stated first, because it bounds everything after it.
 - **7 of 17** distinct S1-class defects went through the skeptic gate. Ten did not.
 - **0 of 196** S2s were gate-tested. The method calls for it; at the measured
   ~150k tokens per skeptic that is ~88M tokens, which is not proportionate.
-- Phase 6 (dynamic verification) produced one partial artifact. The table-bounds
-  sensor, determinism probe and asymptotic-limit fits are **not done**.
+- Phase 6 ran **five of seven** probes: determinism (pass, byte-identical),
+  invariant scan (pass, one flag), asymptotic limits (pass — and see below),
+  budget closure (pass on the decompositions, two real failures found), plus the
+  `S8-R-02` confirmation. **Not done:** the table-bounds sensor (`TBL-01`, needs a
+  run past 10 Myr — mine reached 0.2 % of the way), the `W-3` swallowed-error probe,
+  momentum-phase asymptotics (no run wrote more than one momentum snapshot), and the
+  in-process determinism probe.
+- **Phase 6 changed four findings**: it confirmed `S8-R-02` and `ST-001`
+  dynamically, showed `S5b-R-01`'s family is real but its proposed repro is not,
+  and produced two new findings (`P6-06`, `P6-08`). Dynamic evidence has been the
+  cheapest verification in this audit — see
+  [`data/dynamic_verification.md`](data/dynamic_verification.md).
 - The 24 raw S1 mentions de-duplicate to **17 distinct defects**
   ([`data/s1_clusters.md`](data/s1_clusters.md)); four were found independently by
   two to four separate passes.
@@ -230,7 +240,7 @@ these to shrink. Do not act on them without verification.
 |---|---|---|
 | `S11-R-02` | `isCollapse` set by substring match: `velocity_runaway_event` matches nothing, so runaway infall is never recorded as collapse | `phase_events.py:627` |
 | `S11-R-03` | no solver-failure channel in the slice — **note: the "`sol.status` never read" half is already refuted**; every phase runner checks it. The exit-code propagation half stands | `main.py:211` |
-| `S5b-R-01` | a `solve_ivp` failure ends the phase with only a free-text reason, no `SimulationEndCode` | `run_energy_implicit_phase.py` |
+| `S5b-R-01` | a `solve_ivp` failure ends the phase with only a free-text reason, no `SimulationEndCode`. **Phase 6 (P6-08): the final-row-mixes-two-times family is real** — the worst `F_ram_wind == pdot_total` violation in each run is at the final row (10 % in `f1edge_lowdens`) — **but the repro S5b proposed does not show it**: `F_ion_in == press_HII_in·4πR2²` passes 0/171, final row included, at rel 0.0 | `run_energy_implicit_phase.py` |
 | `S6-R-01` | transition phase keeps evaluating `R1`/`Pb` past the energy→momentum boundary | `run_transition_phase.py` |
 | ~~`S8-R-02`~~ | **promoted out of this table — dynamically confirmed by Phase 6**, see below | `shell_structure.py:251` |
 | `DD-003` | momentum ODE freezes shell mass and `dM/dt` per segment; the other phases recompute | `run_momentum_phase.py` |
@@ -292,7 +302,7 @@ not close it; the guard must be a residual re-check.** Demoted from S1 because 6
 production calls across two configs gave 0 non-convergences, with a ~230× basin
 margin. Blast radius if reached: `dMdt` 2333× wrong, returned normally.
 
-**Phase-1a's reconciliation snapshot mixes two states** — *gate, split*. On the
+**Phase-1a's reconciliation snapshot mixes two states** — *gate, split; **now dynamically confirmed***. On the
 `cloud_boundary` exit the locals are never advanced, so `:391-398` solve the
 phase-boundary shell using the **event** `R2` against **pre-event** `Pb`,
 `shell_mass`, `Qi` — a state that never existed on the trajectory. Phase 1b's
@@ -301,6 +311,13 @@ trajectory is unaffected (1b recomputes everything before integrating); one wron
 **output row** survives, and under `stop_at_rCloud_nSnap == 0` it is the final row
 of the run. ⚠️ Its magnitude bound (~30 yr) assumed the old fixed `SEGMENT_DURATION`
 — the merged hotfix makes segments age-proportional, so **this must be re-measured**.
+> ✅ **Phase 6 confirmed it dynamically (P6-07).** The identity
+> `F_HII == P_HII·4πR2²` fails at **exactly the last energy-phase row in all three
+> runs and nowhere else** — rel 3.82e-2, 1.14e-2, 6.37e-3 — landing on the
+> reconciliation snapshot via an identity that has nothing to do with the original
+> argument. The "unreachable on the baseline" objection that justified doubting this
+> is gone: the bad output row occurs in **every** run. S2 still stands on blast
+> radius, since phase 1b recomputes from `params` and the trajectory is unaffected.
 
 **Non-CIE cooling interpolated two ways** — *sweep ⑦*. The same quantity is
 interpolated linearly on the bubble-ODE hot loop and in log-space in
