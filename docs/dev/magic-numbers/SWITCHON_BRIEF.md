@@ -199,14 +199,65 @@ the constant protects. Do not let that phrasing back into the plan.
    and a test that pins it, change nothing" — that is a *result*, not a failure, and it should be
    on the table from the start.
 
-## 8. Suggested first move
+## 8. Neighbouring constants — already checked, do not re-investigate
+
+The bubble-pressure / `dMdt` chain is full of bare numbers and it is easy to lose a day
+re-deriving ones that are already settled. Each of these was checked during the `phase1a-init`
+work; line references re-verified against source 2026-08-05.
+
+- **`dR2` — the conduction-layer thickness. CLOSED, no action.** This is the one most likely to
+  catch your eye, because it is a hand-sized number sitting right next to the physics you are
+  changing. `dR2` is the thickness of the thin conduction layer just inside `R2` where the backward
+  Weaver temperature ODE is anchored (`r2_prime = R2 - dR2`), at
+  `bubble_luminosity.py:402`:
+
+  ```python
+  dR2 = T_init**(5/2) / (constant * dMdt / (4 * np.pi * R2**2))
+  ```
+
+  **WARPFIELD floored it** — `dR2min = 1.0e-7`, with a `if Mclus > 1.0e7: dR2min = 1.0e-14*Mclus +
+  1.0e-7` branch and a comment saying *"this number might have to be higher… TO DO"*. Since
+  `dR2 ∝ 1/dMdt`, a bigger cluster means a thinner layer, and WARPFIELD clamped it. **Trinity uses
+  the exact analytic value with no floor and no mass branch**, and
+  `test/test_dR2min_magic_number.py` pins the pure `1/dMdt` scaling (a floor would flatten it),
+  the conditioning of `R2 - dR2`, and cross-solver agreement on the unfloored layer. The floor
+  would have inflated bubble luminosity ~8×. The whole `docs/dev/magic-numbers/` sweep is *named*
+  for this story. Nothing to do here — but know it exists, because `dR2` responds to anything that
+  moves `dMdt`, and `dt_switchon` moves `Pb`, which moves `dMdt`.
+- **`_T_INIT_BOUNDARY = 3e4`** (`bubble_luminosity.py:52`) — **de-flagged, do not re-raise.** It
+  looks leveraged, because `dR2 ∝ T_init^(5/2)` puts it at the 5/2 power of the layer thickness.
+  It is a documented conduction/ionization boundary whose penalty is a known no-op (≈0.999994),
+  and it is separately studied in `docs/dev/misc/tinit-sensitivity.md`, which concluded 3e4 is
+  conservative. Its only open tail is that doc's recommendation #3 (drop the linear L3 patch),
+  already owned there. I raised this as a candidate before checking the siblings; the check
+  retired it. Do not repeat that.
+- **`dMdt_factor = 1.646`** (`bubble_luminosity.py:299`, in `_get_init_dMdt`) — not a magic number.
+  It is the Weaver+77 Eq. 33 similarity coefficient, and it only seeds an initial guess for the
+  `dMdt` root-find.
+- **Audit #3, `dt = 1e-9` Myr** (`sps/update_feedback.py:184`) — genuinely open, but a different
+  mechanism (a central-difference step on the SPS spline, ~10⁶× below the table grid, so it can
+  sample spline noise across a knot). Unrelated to the early-`t` bubble pressure. Leave it to its
+  own work.
+- **Audit #5, `0.05` / `0.9`** — transition-phase gating thresholds, owned by the transition
+  workstream, and `AUDIT.md` says explicitly not to re-open the trigger choice from here.
+
+### The one coupling that does matter
+
+`cool_alpha = t·v2/R2` is set from the phase-1a exit state
+(`run_energy_implicit_phase.py:662`, `:798`) and consumed **inside** the bubble solve — both the
+ODE initial condition (`bubble_luminosity.py:405`) and the ODE itself (`:439`). So the phase-1a
+exit state, the bubble solve, and `dt_switchon`'s effect on `Pb` all reach each other. This is not
+a defect; it is the reason a change here can show up somewhere that looks unrelated, and the
+reason to attribute effects by measurement rather than by reading the call graph.
+
+## 9. Suggested first move
 
 Do not start by writing a candidate. Start with Q7.3: instrument the stalling `f1edge_hidens`
 ablation and find out what diverges — `Pb`, the ODE residual, the monotonic guard, the beta-delta
 solve. That single measurement determines whether the successor is a better clock or a different
 mechanism entirely, and everything else is speculation until it is answered.
 
-## 9. Evidence index
+## 10. Evidence index
 
 | what | where |
 |---|---|
@@ -217,4 +268,6 @@ mechanism entirely, and everything else is speculation until it is answered.
 | the audit row that owns this | `docs/dev/magic-numbers/AUDIT.md` finding #2 |
 | the sibling fix (model for diagnosis, counter-example for remedy) | `docs/dev/phase1a-init/FINDINGS.md`, `PLAN.md` |
 | matched-t comparison tool | `docs/dev/phase1a-init/harness/matched_t.py` |
-| multi-config screen | `docs/dev/screen/` |
+| multi-config screen (2 refs x N configs, matched t, ledger + pass/fail) | `docs/dev/screen/` — built for exactly this kind of change; use it rather than hand-rolling a sweep |
+| the `dR2` / `dR2min` story | `test/test_dR2min_magic_number.py`, `docs/dev/performance/BUBBLE_CONDUCTION_STIFFNESS.md` |
+| `_T_INIT_BOUNDARY` study | `docs/dev/misc/tinit-sensitivity.md` |
