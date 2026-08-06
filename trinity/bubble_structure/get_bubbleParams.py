@@ -364,7 +364,21 @@ def get_effective_bubble_pressure(current_phase, Eb, R2, R1, gamma,
         return P_eff
     else:
         # Energy/implicit phases: thermal pressure from hot bubble.
-        # Include the early-phase R1 ramp-up if timing info provided
+        # Include the early-phase R1 ramp-up if timing info provided.
+        #
+        # LOAD-BEARING — do not delete as "inert" (magic-number audit #2).
+        # For the first 1e-3 Myr after star formation, R1 is ramped linearly
+        # into bubble_E2P, holding the early driving pressure down. Its cost on
+        # healthy configs is <=0.006-0.017% in R2 beyond the early window, but
+        # ablated at nCore=1e6 (f1edge_hidens) the full pressure drains Eb
+        # within ~4 phase-1a segments and the segment integrator (RK45,
+        # run_energy_phase.py) stalls in micro-steps — measured independently
+        # twice: docs/dev/phase1a-init/data/e8b_hidens_noramp_STALLED.csv and
+        # docs/dev/magic-numbers/data/switchon_stall_probe.csv (+_stacks.txt).
+        # The absolute 1e-3 Myr window is uncalibrated (not scale-relative); a
+        # successor must keep the protection and clear the stiffness gate of
+        # docs/dev/magic-numbers/SWEEP2_PLAN.md §5. Pinned by
+        # test/test_dt_switchon_ramp.py.
         dt_switchon = 1e-3
         tmin = dt_switchon
 

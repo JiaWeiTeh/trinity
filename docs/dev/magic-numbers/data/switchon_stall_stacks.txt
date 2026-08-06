@@ -1,0 +1,149 @@
+# R3 grinding-stack samples: 4x SIGUSR1 dumps of the ramp-ablated f1edge_hidens run, taken 44-min into
+# segment 5's integration (walls 2614/2638/2641/2644 s). Outer frames identical in all four: phase 1a's
+# solve_ivp (method='RK45', run_energy_phase.py:309) -> rk_step -> get_ODE_Edot_pure; inner frames rotate
+# through the RHS's ordinary work (SPS interp, mass_profile) — the RHS is healthy, the step count is not.
+# Captured by harness/switchon_probe_runner.py (kill -USR1 <pid>). 2026-08-06
+
+===== SIGUSR1 wall=2614s =====
+  File "/home/user/trinity/docs/dev/magic-numbers/harness/switchon_probe_runner.py", line 130, in <module>
+    main()
+  File "/home/user/trinity/docs/dev/magic-numbers/harness/switchon_probe_runner.py", line 126, in main
+    trinity_main.start_expansion(params)
+  File "/home/user/trinity/trinity/main.py", line 180, in start_expansion
+    run_expansion(params)
+  File "/home/user/trinity/trinity/main.py", line 251, in run_expansion
+    run_energy_phase.run_energy(params)
+  File "/home/user/trinity/trinity/phase1_energy/run_energy_phase.py", line 309, in run_energy
+    solution = scipy.integrate.solve_ivp(
+  File "/usr/local/lib/python3.11/dist-packages/scipy/integrate/_ivp/ivp.py", line 657, in solve_ivp
+    message = solver.step()
+  File "/usr/local/lib/python3.11/dist-packages/scipy/integrate/_ivp/base.py", line 201, in step
+    success, message = self._step_impl()
+  File "/usr/local/lib/python3.11/dist-packages/scipy/integrate/_ivp/rk.py", line 144, in _step_impl
+    y_new, f_new = rk_step(self.fun, t, y, self.f, h, self.A,
+  File "/usr/local/lib/python3.11/dist-packages/scipy/integrate/_ivp/rk.py", line 64, in rk_step
+    K[s] = fun(t + c * h, y + dy)
+  File "/usr/local/lib/python3.11/dist-packages/scipy/integrate/_ivp/base.py", line 158, in fun
+    return self.fun_single(t, y)
+  File "/usr/local/lib/python3.11/dist-packages/scipy/integrate/_ivp/base.py", line 24, in fun_wrapped
+    return np.asarray(fun(t, y), dtype=dtype)
+  File "/home/user/trinity/trinity/phase1_energy/run_energy_phase.py", line 307, in ode_func
+    return energy_phase_ODEs.get_ODE_Edot_pure(t, y, snapshot, params)
+  File "/home/user/trinity/trinity/phase1_energy/energy_phase_ODEs.py", line 193, in get_ODE_Edot_pure
+    feedback = get_current_sps_feedback(t, params_for_feedback)
+  File "/home/user/trinity/trinity/sps/update_feedback.py", line 167, in get_current_sps_feedback
+    Lbol = sps_f['fLbol'](t)[()]                # Bolometric luminosity
+  File "/usr/local/lib/python3.11/dist-packages/scipy/interpolate/_polyint.py", line 85, in __call__
+    x, x_shape = self._prepare_x(x)
+  File "/usr/local/lib/python3.11/dist-packages/scipy/interpolate/_polyint.py", line 97, in _prepare_x
+    x = _asarray_validated(x, check_finite=False, as_inexact=True)
+  File "/usr/local/lib/python3.11/dist-packages/scipy/_lib/_util.py", line 459, in _asarray_validated
+    if issparse(a):
+  File "/usr/local/lib/python3.11/dist-packages/scipy/_lib/_sparse.py", line 10, in issparse
+    def issparse(x):
+
+===== SIGUSR1 wall=2638s =====
+  File "/home/user/trinity/docs/dev/magic-numbers/harness/switchon_probe_runner.py", line 130, in <module>
+    main()
+  File "/home/user/trinity/docs/dev/magic-numbers/harness/switchon_probe_runner.py", line 126, in main
+    trinity_main.start_expansion(params)
+  File "/home/user/trinity/trinity/main.py", line 180, in start_expansion
+    run_expansion(params)
+  File "/home/user/trinity/trinity/main.py", line 251, in run_expansion
+    run_energy_phase.run_energy(params)
+  File "/home/user/trinity/trinity/phase1_energy/run_energy_phase.py", line 309, in run_energy
+    solution = scipy.integrate.solve_ivp(
+  File "/usr/local/lib/python3.11/dist-packages/scipy/integrate/_ivp/ivp.py", line 657, in solve_ivp
+    message = solver.step()
+  File "/usr/local/lib/python3.11/dist-packages/scipy/integrate/_ivp/base.py", line 201, in step
+    success, message = self._step_impl()
+  File "/usr/local/lib/python3.11/dist-packages/scipy/integrate/_ivp/rk.py", line 144, in _step_impl
+    y_new, f_new = rk_step(self.fun, t, y, self.f, h, self.A,
+  File "/usr/local/lib/python3.11/dist-packages/scipy/integrate/_ivp/rk.py", line 64, in rk_step
+    K[s] = fun(t + c * h, y + dy)
+  File "/usr/local/lib/python3.11/dist-packages/scipy/integrate/_ivp/base.py", line 158, in fun
+    return self.fun_single(t, y)
+  File "/usr/local/lib/python3.11/dist-packages/scipy/integrate/_ivp/base.py", line 24, in fun_wrapped
+    return np.asarray(fun(t, y), dtype=dtype)
+  File "/home/user/trinity/trinity/phase1_energy/run_energy_phase.py", line 307, in ode_func
+    return energy_phase_ODEs.get_ODE_Edot_pure(t, y, snapshot, params)
+  File "/home/user/trinity/trinity/phase1_energy/energy_phase_ODEs.py", line 206, in get_ODE_Edot_pure
+    mShell_new, mShell_dot = mass_profile.get_mass_profile(
+  File "/home/user/trinity/trinity/cloud_properties/mass_profile.py", line 226, in get_mass_profile
+    logger.debug(f"dM/dt range: [{dMdt_arr.min():.3e}, {dMdt_arr.max():.3e}]")
+  File "/usr/local/lib/python3.11/dist-packages/numpy/core/_methods.py", line 43, in _amin
+    def _amin(a, axis=None, out=None, keepdims=False,
+
+===== SIGUSR1 wall=2641s =====
+  File "/home/user/trinity/docs/dev/magic-numbers/harness/switchon_probe_runner.py", line 130, in <module>
+    main()
+  File "/home/user/trinity/docs/dev/magic-numbers/harness/switchon_probe_runner.py", line 126, in main
+    trinity_main.start_expansion(params)
+  File "/home/user/trinity/trinity/main.py", line 180, in start_expansion
+    run_expansion(params)
+  File "/home/user/trinity/trinity/main.py", line 251, in run_expansion
+    run_energy_phase.run_energy(params)
+  File "/home/user/trinity/trinity/phase1_energy/run_energy_phase.py", line 309, in run_energy
+    solution = scipy.integrate.solve_ivp(
+  File "/usr/local/lib/python3.11/dist-packages/scipy/integrate/_ivp/ivp.py", line 657, in solve_ivp
+    message = solver.step()
+  File "/usr/local/lib/python3.11/dist-packages/scipy/integrate/_ivp/base.py", line 201, in step
+    success, message = self._step_impl()
+  File "/usr/local/lib/python3.11/dist-packages/scipy/integrate/_ivp/rk.py", line 144, in _step_impl
+    y_new, f_new = rk_step(self.fun, t, y, self.f, h, self.A,
+  File "/usr/local/lib/python3.11/dist-packages/scipy/integrate/_ivp/rk.py", line 64, in rk_step
+    K[s] = fun(t + c * h, y + dy)
+  File "/usr/local/lib/python3.11/dist-packages/scipy/integrate/_ivp/base.py", line 158, in fun
+    return self.fun_single(t, y)
+  File "/usr/local/lib/python3.11/dist-packages/scipy/integrate/_ivp/base.py", line 24, in fun_wrapped
+    return np.asarray(fun(t, y), dtype=dtype)
+  File "/home/user/trinity/trinity/phase1_energy/run_energy_phase.py", line 307, in ode_func
+    return energy_phase_ODEs.get_ODE_Edot_pure(t, y, snapshot, params)
+  File "/home/user/trinity/trinity/phase1_energy/energy_phase_ODEs.py", line 193, in get_ODE_Edot_pure
+    feedback = get_current_sps_feedback(t, params_for_feedback)
+  File "/home/user/trinity/trinity/sps/update_feedback.py", line 169, in get_current_sps_feedback
+    Lmech_W = sps_f['fLmech_W'](t)[()]          # Wind mechanical luminosity
+  File "/usr/local/lib/python3.11/dist-packages/scipy/interpolate/_polyint.py", line 85, in __call__
+    x, x_shape = self._prepare_x(x)
+  File "/usr/local/lib/python3.11/dist-packages/scipy/interpolate/_polyint.py", line 97, in _prepare_x
+    x = _asarray_validated(x, check_finite=False, as_inexact=True)
+  File "/usr/local/lib/python3.11/dist-packages/scipy/_lib/_util.py", line 470, in _asarray_validated
+    if a.dtype is np.dtype('O'):
+
+===== SIGUSR1 wall=2644s =====
+  File "/home/user/trinity/docs/dev/magic-numbers/harness/switchon_probe_runner.py", line 130, in <module>
+    main()
+  File "/home/user/trinity/docs/dev/magic-numbers/harness/switchon_probe_runner.py", line 126, in main
+    trinity_main.start_expansion(params)
+  File "/home/user/trinity/trinity/main.py", line 180, in start_expansion
+    run_expansion(params)
+  File "/home/user/trinity/trinity/main.py", line 251, in run_expansion
+    run_energy_phase.run_energy(params)
+  File "/home/user/trinity/trinity/phase1_energy/run_energy_phase.py", line 309, in run_energy
+    solution = scipy.integrate.solve_ivp(
+  File "/usr/local/lib/python3.11/dist-packages/scipy/integrate/_ivp/ivp.py", line 657, in solve_ivp
+    message = solver.step()
+  File "/usr/local/lib/python3.11/dist-packages/scipy/integrate/_ivp/base.py", line 201, in step
+    success, message = self._step_impl()
+  File "/usr/local/lib/python3.11/dist-packages/scipy/integrate/_ivp/rk.py", line 144, in _step_impl
+    y_new, f_new = rk_step(self.fun, t, y, self.f, h, self.A,
+  File "/usr/local/lib/python3.11/dist-packages/scipy/integrate/_ivp/rk.py", line 64, in rk_step
+    K[s] = fun(t + c * h, y + dy)
+  File "/usr/local/lib/python3.11/dist-packages/scipy/integrate/_ivp/base.py", line 158, in fun
+    return self.fun_single(t, y)
+  File "/usr/local/lib/python3.11/dist-packages/scipy/integrate/_ivp/base.py", line 24, in fun_wrapped
+    return np.asarray(fun(t, y), dtype=dtype)
+  File "/home/user/trinity/trinity/phase1_energy/run_energy_phase.py", line 307, in ode_func
+    return energy_phase_ODEs.get_ODE_Edot_pure(t, y, snapshot, params)
+  File "/home/user/trinity/trinity/phase1_energy/energy_phase_ODEs.py", line 193, in get_ODE_Edot_pure
+    feedback = get_current_sps_feedback(t, params_for_feedback)
+  File "/home/user/trinity/trinity/sps/update_feedback.py", line 170, in get_current_sps_feedback
+    Lmech_SN = sps_f['fLmech_SN'](t)[()]        # SN mechanical luminosity
+  File "/usr/local/lib/python3.11/dist-packages/scipy/interpolate/_polyint.py", line 85, in __call__
+    x, x_shape = self._prepare_x(x)
+  File "/usr/local/lib/python3.11/dist-packages/scipy/interpolate/_polyint.py", line 97, in _prepare_x
+    x = _asarray_validated(x, check_finite=False, as_inexact=True)
+  File "/usr/local/lib/python3.11/dist-packages/scipy/_lib/_util.py", line 473, in _asarray_validated
+    if not np.issubdtype(a.dtype, np.inexact):
+  File "/usr/local/lib/python3.11/dist-packages/numpy/core/numerictypes.py", line 357, in issubdtype
+    @set_module('numpy')
