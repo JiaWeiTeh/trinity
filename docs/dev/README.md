@@ -72,10 +72,11 @@ docs/dev/
 │   └── harness/ + PROVENANCE_PROTOCOL.md    shared run-stamping tooling
 ├── rosette-cf/            Rosette Cf scan, in-container (🔵 plan + harness + param committed; runs pending)
 ├── phase1a-init/          early-phase (1a) init at sub-GMC scale — M43 probe (🔵 — FINDINGS.md)
+├── screen/                multi-config scheme screen: 2 refs x N configs, matched-t ledger (🔵 — README.md)
 ├── cooling/               cooling-table refactor (🟡 partial)
 ├── performance/           hot-path cost & conditioning (📘 reference + 🟡 open items)
 ├── shell-solver/          shell ODE migration + float64 overflow fix (🟡 mixed)
-├── magic-numbers/         hardcoded-constant audit (🟡 #1 fixed, #2–#5 open)
+├── magic-numbers/         hardcoded-constant audit (🟡 #1, #4 fixed; #2 measured; #3, #5 open)
 ├── failed-large-clouds/   1b collapse of large clouds (✅ shipped; 1b routing superseded 2026-07-01)
 ├── misc/                  standalone audits / notes (🟡 mixed)
 ├── cluster/               on-cluster plotting workflow guide (📘 operational)
@@ -110,8 +111,13 @@ The top-level `scratch/` (repo root) is separate, git-ignored, local-only.
 - **`shell-solver/`** — [`OVERFLOW_FIX_PLAN.md`](shell-solver/OVERFLOW_FIX_PLAN.md) (🟢 the real
   fix, implemented) and [`MIGRATION_PLAN.md`](shell-solver/MIGRATION_PLAN.md) (🟠 correction:
   its `mxstep` diagnosis was retracted — read OVERFLOW first).
-- **`magic-numbers/`** — [`AUDIT.md`](magic-numbers/AUDIT.md) (triaged findings; #2–#5 open) and
-  [`TCLAMP_PLAN.md`](magic-numbers/TCLAMP_PLAN.md) (✅ #1 fixed & gated).
+- **`magic-numbers/`** — [`AUDIT.md`](magic-numbers/AUDIT.md) (triaged findings; #1 and #4 fixed,
+  #2 measured and found load-bearing, #3/#5 open), [`TCLAMP_PLAN.md`](magic-numbers/TCLAMP_PLAN.md)
+  (✅ #1 fixed & gated) and [`SWITCHON_BRIEF.md`](magic-numbers/SWITCHON_BRIEF.md) (🔵 brief for
+  a scale-relative successor to #2's `dt_switchon`).
+- **`screen/`** — [`README.md`](screen/README.md): the multi-config scheme screen. Two git refs,
+  N configs, both arms in separate processes, compared at matched `t`, ledger + pass/fail out.
+  Run it before landing a scheme change; the suite's end-to-end tests all use one config.
 - **`failed-large-clouds/`** — [`PLAN.md`](failed-large-clouds/PLAN.md): the 1b
   collapse investigation (✅ fix shipped 2026-06-19; the "permanent fate" framing was superseded
   2026-07-01 — 1b collapses now route to momentum). Data manifest: `data/PROVENANCE.md`.
