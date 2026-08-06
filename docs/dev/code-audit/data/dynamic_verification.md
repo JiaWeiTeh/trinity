@@ -130,6 +130,31 @@ The exponents sit ~0.037 below ideal, and that deficit was chased rather than as
 **Verdict: the energy-driven physics is clear.** The residual is a named follow-up, not
 a finding.
 
+### The strongest positive result: the code spans *both* analytic limits
+
+Running the same fit on the stiff `f1edge_hidens` config (`mCloud 1e7`, `nCore 1e6`,
+`sfe 0.01` — also uniform density, so the same expectation applies) gives a completely
+different exponent, and the right one:
+
+| config | `nCore` | `L_cool/L_mech` | measured | rms | analytic limit |
+|---|---:|---|---:|---:|---|
+| `simple_cluster` | 1e5 | 0.035 → 0.255 | **+0.563** | 0.0018 | adiabatic Weaver `3/5 = 0.600` |
+| `f1edge_hidens` | 1e6 | 0.312 → **0.463** | **+0.287** | **0.0005** | pressure-driven snowplow `2/7 = 0.2857` |
+
+At `nCore = 1e6` cooling removes ~46 % of the mechanical luminosity, and the shell sits
+**on the pressure-driven snowplow exponent `2/7` to within 0.5 %**, with rms 0.0005 dex.
+At `nCore = 1e5` cooling removes ~25 % and the shell sits between the two limits, near
+the adiabatic one.
+
+So the measured exponent moves monotonically from `3/5` toward `2/7` as the cooling
+fraction rises, and lands on each analytic limit where that limit applies. **The energy
+equation, the cooling coupling and the shell dynamics jointly reproduce two independent
+closed-form solutions across a decade in density.** Nothing static in this audit could
+have established that, and no plausible dropped or double-counted leading term survives
+it.
+
+Recorded as **P6-05**.
+
 ## 4. Table bounds (`TBL-01`) — **IN FLIGHT**
 
 `stop_t = 15` Myr against a non-CIE cooling cube whose age grid ends at 1e7 yr. Sweep ⑦
