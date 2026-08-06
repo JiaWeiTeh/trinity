@@ -72,6 +72,7 @@ docs/dev/
 │   └── harness/ + PROVENANCE_PROTOCOL.md    shared run-stamping tooling
 ├── rosette-cf/            Rosette Cf scan, in-container (🔵 plan + harness + param committed; runs pending)
 ├── phase1a-init/          early-phase (1a) init at sub-GMC scale — M43 probe (🔵 — FINDINGS.md)
+├── phase1a-stiffness/     is 1a's RK45 segment integrator a latent defect? (🔵 pre-registered — PLAN.md)
 ├── screen/                multi-config scheme screen: 2 refs x N configs, matched-t ledger (🔵 — README.md)
 ├── cooling/               cooling-table refactor (🟡 partial)
 ├── performance/           hot-path cost & conditioning (📘 reference + 🟡 open items)
@@ -111,10 +112,16 @@ The top-level `scratch/` (repo root) is separate, git-ignored, local-only.
 - **`shell-solver/`** — [`OVERFLOW_FIX_PLAN.md`](shell-solver/OVERFLOW_FIX_PLAN.md) (🟢 the real
   fix, implemented) and [`MIGRATION_PLAN.md`](shell-solver/MIGRATION_PLAN.md) (🟠 correction:
   its `mxstep` diagnosis was retracted — read OVERFLOW first).
-- **`magic-numbers/`** — [`AUDIT.md`](magic-numbers/AUDIT.md) (triaged findings; #1 and #4 fixed,
-  #2 measured and found load-bearing, #3/#5 open), [`TCLAMP_PLAN.md`](magic-numbers/TCLAMP_PLAN.md)
-  (✅ #1 fixed & gated) and [`SWITCHON_BRIEF.md`](magic-numbers/SWITCHON_BRIEF.md) (🔵 brief for
-  a scale-relative successor to #2's `dt_switchon`).
+- **`magic-numbers/`** — [`AUDIT.md`](magic-numbers/AUDIT.md) (✅ audit closed 2026-08-06: #1/#3/#4
+  fixed & gated, #2 documented-and-pinned, #5's tail owned by the transition workstream),
+  [`SWEEP2_PLAN.md`](magic-numbers/SWEEP2_PLAN.md) (round 2 — pre-registered bars + results for
+  #2/#3/#5), [`TCLAMP_PLAN.md`](magic-numbers/TCLAMP_PLAN.md) (✅ #1 fixed & gated) and
+  [`SWITCHON_BRIEF.md`](magic-numbers/SWITCHON_BRIEF.md) (✅ #2 resolved as document-and-pin).
+- **`phase1a-stiffness/`** — [`PLAN.md`](phase1a-stiffness/PLAN.md): phase 1a integrates on
+  `RK45` with no step bounds while 1b/1c/2 use LSODA with both; with #2's ramp ablated, an `Eb`
+  collapse inside a segment grinds the solver for >44 min and the between-segment collapse guard
+  never gets to fire. 🔵 **pre-registered only** — bars, decision rule and batches written before
+  any edit, with "change nothing" a registered outcome. Batch 1 is reconnaissance.
 - **`screen/`** — [`README.md`](screen/README.md): the multi-config scheme screen. Two git refs,
   N configs, both arms in separate processes, compared at matched `t`, ledger + pass/fail out.
   Run it before landing a scheme change; the suite's end-to-end tests all use one config.

@@ -235,7 +235,9 @@ C3 fails: R3 found no small state-based trigger — the ramp protects against an
 failure mode (RK45 grinding as `Eb` collapses), so the honest successor is phase-1a stiffness
 handling (a stiff/switching segment integrator, or a terminal in-segment `Eb`-floor event so the
 segment ends cleanly instead of grinding), which is integrator work for its own workstream, not a
-re-shaping of this constant. A merely scale-relative switch-off would deliver the full pressure
+re-shaping of this constant. **That workstream now exists and is pre-registered:
+`docs/dev/phase1a-stiffness/PLAN.md` (2026-08-06) — re-opening #2 is its Batch 6, gated on phase 1a
+first surviving an `Eb` collapse on its own.** A merely scale-relative switch-off would deliver the full pressure
 earlier at the stiff edge — the direction the stall lives in — to buy ≤0.006-0.017% accuracy on
 healthy configs. Shipped: the in-source rationale block at the constant
 (`get_bubbleParams.py`, commit `58acfb6`), the pinning tests (`test/test_dt_switchon_ramp.py`:

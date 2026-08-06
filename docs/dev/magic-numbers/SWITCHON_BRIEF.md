@@ -38,7 +38,9 @@ reproduced on HEAD, the stall mechanism instrumented and **corrected** (it is th
 decision rule in `docs/dev/magic-numbers/SWEEP2_PLAN.md` §5 landed on: keep the constant, document
 it in-source, pin it with `test/test_dt_switchon_ramp.py`. A successor remains possible but is
 phase-1a integrator work (stiff/switching segment solver or a terminal in-segment `Eb`-floor
-event), not a re-shaping of this constant. Owned by `AUDIT.md` finding **#2**.
+event), not a re-shaping of this constant — **pre-registered as
+`docs/dev/phase1a-stiffness/PLAN.md`, where re-opening this constant is Batch 6.** Owned by
+`AUDIT.md` finding **#2**.
 
 ## 0. What you are being asked to do
 
