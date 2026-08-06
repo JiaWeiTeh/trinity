@@ -32,11 +32,19 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-05):** 🔵 actionable — the constant is measured and bounded, the obvious fix is
-*ruled out by measurement*, and no successor is designed yet. This is a brief for that design work,
-not a plan. Owned by `AUDIT.md` finding **#2**.
+**Status (2026-08-06):** ✅ resolved as **document-and-pin** — both load-bearing measurements
+reproduced on HEAD, the stall mechanism instrumented and **corrected** (it is the phase-1a RK45
+*segment integrator* that stalls, not the bubble-structure solve — see §4), and the pre-registered
+decision rule in `docs/dev/magic-numbers/SWEEP2_PLAN.md` §5 landed on: keep the constant, document
+it in-source, pin it with `test/test_dt_switchon_ramp.py`. A successor remains possible but is
+phase-1a integrator work (stiff/switching segment solver or a terminal in-segment `Eb`-floor
+event), not a re-shaping of this constant. Owned by `AUDIT.md` finding **#2**.
 
 ## 0. What you are being asked to do
+
+> **SUPERSEDED 2026-08-06** — this design work was run and the pre-registered decision landed on
+> **document-and-pin, no successor** (see the Status line and `SWEEP2_PLAN.md` §5). The sections
+> below stand as the record; §4's mechanism is corrected in place.
 
 Design and gate a **scale-relative replacement** for an absolute-time constant in the bubble
 pressure path. You are *not* being asked to delete it — that was tried and measured, and it is
@@ -74,10 +82,17 @@ Everywhere else `R1` goes in unmodified.
 `R2`, so suppressing `R1` **inflates the volume and lowers `Pb`** — the ramp's leverage on the
 answer scales as `(R1/R2)³`.
 
-**Call sites** (only two, both in phase 1a's RHS):
-`trinity/phase1_energy/energy_phase_ODEs.py:224` and `:356`. Phases 1b/1c/2 reach
-`get_effective_bubble_pressure` through other branches, or pass `t=None`, so the ramp is a
-phase-1a-window effect. Verify this before relying on it — it is the kind of claim that rots.
+**Call sites** (only two, both in phase 1a): `trinity/phase1_energy/energy_phase_ODEs.py:224`
+(the RHS) and `:356` (`compute_derived_quantities`), both forwarding `t`/`tSF`.
+**CORRECTED 2026-08-06** (re-verified @ `731ac50`): an earlier version of this paragraph said
+phases 1b/1c/2 "reach `get_effective_bubble_pressure` through other branches, or pass `t=None`" —
+they do not reach it at all; they compute pressure via `bubble_E2P`/`pRam` directly
+(`get_betadelta.py:329`, `bubble_luminosity.py:228`, momentum's own snapshot path). The
+conclusion stands — the ramp is a phase-1a-window effect — but by absence of callers, not by
+branch selection. Corollary worth knowing: if phase 1a exits early via `cooling_balance`
+(`run_energy_phase.py:286-297`) before `tSF + 1e-3`, the 1b handoff drops the ramp mid-window,
+a Pb discontinuity at the boundary (recorded for the transition workstream, not worked here).
+Verify all of this before relying on it — it is the kind of claim that rots.
 
 ## 2. Why it is on the suspect list
 
@@ -118,8 +133,13 @@ Two results, and the second is the important one:
    1e-3 Myr window closes `(R1/R2)³` has already fallen to 4e-3. **So it is not a second
    discretisation artifact.** Whatever it is costing in accuracy, it is not costing much.
 2. **It cannot simply be deleted.** At `nCore=1e6` ablation raises `Pb` (the suppressed `R1` was
-   inflating the shell volume), the bubble-structure ODE stiffens, and the solve stops converging
-   three segments in.
+   inflating the shell volume), ~~the bubble-structure ODE stiffens, and the solve stops
+   converging three segments in~~ — **mechanism corrected 2026-08-06 (R3, instrumented):** the
+   bubble-structure solve stays healthy (every `get_bubbleproperties_pure` call returns in
+   ~1.3 s); the raised `Pb` drains `Eb` 180 → 29 au across segments 1-4 and then **phase 1a's
+   segment integrator (`solve_ivp`, hard-coded `method='RK45'`, `run_energy_phase.py:309`)
+   stalls in micro-steps** on the stiffened energy ODE in segment 5. Evidence:
+   `docs/dev/magic-numbers/data/switchon_stall_probe.csv` + `switchon_stall_stacks.txt`.
 
 Raw numbers: `docs/dev/phase1a-init/data/gate_results.csv`, rows tagged `E8b`. Trajectories:
 `docs/dev/phase1a-init/data/e8b_{m43,gmc}_noramp.csv` and
@@ -131,8 +151,12 @@ Write-up: `docs/dev/phase1a-init/PLAN.md` §8.
 **`vd = -1e8` papered over a discretisation error; `dt_switchon` papers over genuine stiffness.**
 They look alike from the outside — both absolute early-time constants with no derivation — and
 they need opposite remedies. #4 was safe to delete once the segment schedule was fixed. #2 is not
-safe to delete at all, at any schedule, because what it is protecting against is the bubble
-structure ODE becoming unsolvable when `Pb` is high early.
+safe to delete at all, at any schedule, because what it is protecting against is ~~the bubble
+structure ODE becoming unsolvable when `Pb` is high early~~ **(corrected 2026-08-06, R3):**
+the early-`Pb`-driven collapse of `Eb`, which stiffens the phase-1a *segment energy ODE* until
+its hard-coded RK45 integrator stalls in micro-steps — the bubble-structure solve itself stays
+healthy throughout. Same conclusion, different protected component: the honest successor is
+phase-1a stiffness handling, not a better clock on this ramp.
 
 So the shape of the successor is:
 
@@ -188,9 +212,13 @@ the constant protects. Do not let that phrasing back into the plan.
 2. **Is a ramp the right shape?** Linear-in-time from zero is arbitrary. If the real function is
    "keep `Pb` below what the ODE can integrate", a ramp is a proxy for a stiffness limiter and
    should perhaps be written as one.
-3. **What actually stiffens at `nCore=1e6`?** E8b established *that* it stalls, not *why*. The
-   answer decides whether a scale-relative switch-off is sufficient or whether the protection has
-   to be state-based. This is probably the first experiment.
+3. **What actually stiffens at `nCore=1e6`?** E8b established *that* it stalls, not *why*.
+   **ANSWERED 2026-08-06 (R3, `SWEEP2_PLAN.md` §4):** the phase-1a segment energy ODE, as `Eb`
+   collapses under the unramped pressure; the segment `solve_ivp` (hard-coded RK45) stalls in
+   micro-steps while the bubble-structure solve stays fast. The answer ruled *both* §7.1 shapes
+   out for now: neither a better clock nor a small state guard fixes an integrator failure mode —
+   the successor is phase-1a stiffness handling (stiff/switching segment solver, or a terminal
+   in-segment `Eb`-floor event), its own workstream.
 4. **Does the phase-1a segment schedule change the answer?** The fix landed
    `phase1a_segFrac = 0.1`, so segments now scale with the bubble age. It is plausible — not
    measured — that a scale-relative schedule makes a scale-relative switch-off easier to satisfy.
@@ -268,6 +296,9 @@ mechanism entirely, and everything else is speculation until it is answered.
 | the audit row that owns this | `docs/dev/magic-numbers/AUDIT.md` finding #2 |
 | the sibling fix (model for diagnosis, counter-example for remedy) | `docs/dev/phase1a-init/FINDINGS.md`, `PLAN.md` |
 | matched-t comparison tool | `docs/dev/phase1a-init/harness/matched_t.py` |
+| 2026-08-06 reproduction of both E8b claims (to the digit / bit-for-bit) | `docs/dev/magic-numbers/data/switchon_repro_ledger.csv` + `switchon_repro_*.csv` |
+| the stall mechanism (R3): RK45 segment integrator, not the bubble solve | `docs/dev/magic-numbers/data/switchon_stall_probe.csv`, `switchon_stall_stacks.txt`; harness `docs/dev/magic-numbers/harness/switchon_probe_runner.py` |
+| the in-source pin | `trinity/bubble_structure/get_bubbleParams.py` comment at the constant; `test/test_dt_switchon_ramp.py` |
 | multi-config screen (2 refs x N configs, matched t, ledger + pass/fail) | `docs/dev/screen/` — built for exactly this kind of change; use it rather than hand-rolling a sweep |
 | the `dR2` / `dR2min` story | `test/test_dR2min_magic_number.py`, `docs/dev/performance/BUBBLE_CONDUCTION_STIFFNESS.md` |
 | `_T_INIT_BOUNDARY` study | `docs/dev/misc/tinit-sensitivity.md` |

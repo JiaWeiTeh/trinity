@@ -37,7 +37,12 @@ override, **deleted** on branch `hotfix/early-approximations` and gated by the `
 workstream (`docs/dev/phase1a-init/PLAN.md`; evidence `docs/dev/phase1a-init/data/gate_results.csv`).
 **#2 measured but NOT fixed** — the `dt_switchon` ramp is load-bearing and its recommendation below
 is now known to be the wrong fix; see its row. **#3 and #5 still open** (each remaining fix is
-a physics-touching change needing its own gate). Motivated by the
+a physics-touching change needing its own gate).
+**Update (2026-08-06, round 2 — `SWEEP2_PLAN.md`):** **#2 CLOSED** as document-and-pin (reproduced,
+mechanism corrected to the phase-1a RK45 segment integrator, constant kept + pinned); **#3 fix
+implemented** (exact spline derivative replaces the FD; screen verdict recorded in its row);
+**#5 re-verified** — the `0.05` now has a single source of truth (`phaseSwitch_LlossLgain`), the
+residual tail stays with the transition workstream. Motivated by the
 `dR2min` story (`docs/dev/performance/BUBBLE_CONDUCTION_STIFFNESS.md`): WARPFIELD's hand-tuned
 `dR2min = 1e-7` pc floor would inflate bubble luminosity ~8×, and the companion `r2 += 1e-10`
 "guard" in `bubble_E2P` is a unit-mismatched **dud** (1e-10 cm added to `r2 ≈ 3e18` cm). This sweep
@@ -62,10 +67,10 @@ flag does not hold, so the next visit need not re-litigate them.
 | # | location | constant | the smell | sev | hot path | verified |
 |---|---|---|---|---|---|---|
 | 1 | `cooling/net_coolingcurve.py:122` | `if T < 1e4: T = 1e4` | **Admitted band-aid.** The comment (`:114-120`) says *"the temperature seem to run at some very low value (~1e3.91) … Not sure why though, as the temperature should be around 1e7, not 1e4."* So a physical `T` is clamped **up** on the cooling lookup to dodge a sub-table dip nobody understands. Changes Λ(T) wherever the bubble/shell dips below 1e4 K. Classic `dR2min` pattern: a floor masking an undiagnosed behaviour. | **HIGH** | YES (cooling Λ in the ODE RHS) | ✅ lead-read |
-| 2 | `bubble_structure/get_bubbleParams.py:368` (was `:367`) | `dt_switchon = 1e-3` Myr | Uncalibrated inherited "switch-on": for `t ≤ tSF + 1e-3` it ramps `R1_tmp = (t−tSF)/1e-3 · R1` into `bubble_E2P`, shaping the effective bubble pressure for the first ~1000 yr. No physics reference, no sensitivity note. Flagged independently by agents A **and** D. **MEASURED 2026-08-05 (`phase1a-init` E8b) — still open, and rec 2 below is the wrong fix.** Ablated *on top of* the phase-1a fix, at matched t: worth −0.0059% at M43's observed age and −0.017% at 8e4 yr on the GMC control, so it decays away and is **not** a second discretisation artifact. But it is **not removable**: at `nCore=1e6` ablation raises `Pb`, the bubble-structure ODE stiffens, and `f1edge_hidens` stalls at 4 rows in 90 min wall vs 127 rows in minutes with the ramp. Unlike #4, this constant papers over genuine **stiffness**, not a discretisation error. A successor must keep the numerical protection while making the switch-on scale-relative rather than an absolute 1e-3 Myr, and must carry a stiffness gate (`f1edge_hidens` completes at all) *before* any trajectory bar. Numbers: `docs/dev/phase1a-init/data/gate_results.csv` (`E8b,*` rows); write-up `.../PLAN.md` §8. | MED | YES (early-`t` bubble pressure) | ✅ measured, not fixed |
+| 2 | `bubble_structure/get_bubbleParams.py:368` (was `:367`; now carries its rationale block in-source) | `dt_switchon = 1e-3` Myr | Uncalibrated inherited "switch-on": for `t ≤ tSF + 1e-3` it ramps `R1_tmp = (t−tSF)/1e-3 · R1` into `bubble_E2P`, shaping the effective bubble pressure for the first ~1000 yr. Flagged independently by agents A **and** D. **MEASURED 2026-08-05 (E8b); REPRODUCED + CLOSED as document-and-pin 2026-08-06 (`SWEEP2_PLAN.md` §4-5).** Worth −0.0059% at M43's observed age, −0.017% @8e4 yr on the GMC control — decays away, not a second discretisation artifact. **Not removable**, and the reproduction corrected the mechanism: ablated at `nCore=1e6` the full pressure drains `Eb` 180→29 au in 4 segments, then ~~the bubble-structure ODE stiffens / the solve stops converging~~ **phase 1a's segment integrator (`solve_ivp`, hard-coded RK45, `run_energy_phase.py:309`) stalls in micro-steps** — the bubble solve itself stays at ~1.3 s/call (`data/switchon_stall_probe.csv`, `switchon_stall_stacks.txt`). Per the pre-registered decision rule: constant kept, documented in-source, pinned by `test/test_dt_switchon_ramp.py` (deletion guard incl. the `t=None` ablation contract). Re-open only alongside phase-1a integrator stiffness work (stiff/switching segment solver or terminal in-segment `Eb`-floor event). Reproduction: `data/switchon_repro_ledger.csv`. | MED | YES (early-`t` bubble pressure) | ✅ reproduced, documented & pinned — intentionally not changed |
 | 3 | `sps/update_feedback.py:184` | `dt = 1e-9` Myr | Hardcoded central-difference step for `pdotdot_total = d(pdot)/dt` on the SPS spline, evaluated **every** `get_current_sps_feedback` call. `1e-9` Myr (~9 hr) is ~10⁶× below the table grid; uncalibrated, can sample spline noise across a knot. | MED | YES (per ODE eval) | ✅ lead-read |
 | 4 | ~~`phase1_energy/energy_phase_ODEs.py:270`~~ — **GONE** (verified absent from `trinity/` 2026-08-05) | `vd = -1e8` | ✅ **FIXED 2026-08-05** — deleted with the `EarlyPhaseApproximation` flag it existed to serve (`a944727`, branch `hotfix/early-approximations`). **The audit's question had no answer:** a constant RHS integrates exactly, so the override gave the closed form `v_exit = v0 − 1e8·SEGMENT_DURATION = 722.82 km/s` for *every* run on the bundled SB99 tables regardless of mass, SFE or density — it represents nothing physical, so it was deleted rather than documented. **Severity was under-called here.** "Bounded to the 1st segment" is true and not reassuring: at sub-GMC scale that one segment sets a trajectory that momentum-coasts for ~3000 yr, making a 0.15 pc H II region cross its observed radius **22× early**. It was also less bounded than this row claimed — the flag's clear site was `loop_count==0`-guarded and sat *after* the event check, so four in-loop exits leaked it into phases 1b/1c. Fixed jointly with the fixed 30-yr segment schedule it was compensating for (new param `phase1a_segFrac`); deleting it *alone* measures worse. Diagnosis `docs/dev/phase1a-init/FINDINGS.md`; gates `.../data/gate_results.csv`. | ~~MED~~ → **HIGH at sub-GMC scale** | YES (1st segment RHS) | ✅ fixed & gated |
-| 5 | `phase1b_energy_implicit/run_energy_implicit_phase.py:1093` **+** `phase_general/phase_events.py` (`cooling_balance`); and `phase1c_transition/run_transition_phase.py:747` (`0.9`) | `0.05`, `0.9` | Physics-gating thresholds for the energy→transition / transition-exit handoffs. The `0.05` cooling-balance margin is **duplicated** in two files (no single source of truth). **Owned by the transition workstream** (entry point now archived: `docs/dev/archive/transition/TRIGGER_PLAN.md`) — record here, resolve there; do **not** re-open the F0–F5 trigger choice in this audit. | MED | YES (per-segment gate) | `[agent]` |
+| 5 | **Re-verified 2026-08-06 @ `731ac50` — the row below had drifted.** The `0.05` now has a single source of truth: registry param `phaseSwitch_LlossLgain` (default 0.05, `registry.py:407`), honored by both **live** check sites (`run_energy_phase.py:290-291`, `run_energy_implicit_phase.py:1249-1254`), each with a hardcoded `0.05` fallback. The `phase_events.py` copies (`make_cooling_balance_event`, `:319` default + `:497` hardcoded call) feed a factory that `build_implicit_phase_events` returns and `run_energy_implicit_phase.py:752` unpacks but **never invokes** — vestigial (flag, don't delete; would silently ignore the param if ever armed). The `0.9` is now the named local `RAM_DOMINANCE_THRESHOLD` (`run_transition_phase.py:749`). | `0.05`, `0.9` | Physics-gating thresholds for the energy→transition / transition-exit handoffs. Residual smell: two hardcoded fallbacks + a never-armed factory that would bypass the param. **Owned by the transition workstream** (entry point now archived: `docs/dev/archive/transition/TRIGGER_PLAN.md`) — record here, resolve there; do **not** re-open the F0–F5 trigger choice in this audit. | MED | YES (per-segment gate) | ✅ lead-read 2026-08-06 (`SWEEP2_PLAN.md` §1) |
 
 ## Already known — cross-referenced, not new
 - `get_bubbleParams.py:224` `r2 += 1e-10` (cm) — the original unit-mismatch **dud**; A & D both reconfirm it is inert and the *real* guard is the `1e-13·r2³` volume floor at `:235`. Documented in `docs/dev/failed-large-clouds/PLAN.md §2`.
@@ -98,11 +103,18 @@ in separate processes at matched `t`, smallest diff, re-verify (gate + `pytest` 
    ramp vs without on a healthy config); if inert, delete; if active, justify or parameterise.~~
    **DONE 2026-08-05 (E8b) — and the "if inert, delete" branch is ruled out.** Characterised on three
    configs. By the letter of this recommendation the ramp *is* inert — −0.006% at M43's observed age
-   on a healthy config — and deleting it is nonetheless **fatal** at `nCore=1e6`, where the bubble
-   solve stops converging three segments in. The recommendation assumed inert-on-a-healthy-config
-   implies safe-to-delete; it does not, because a healthy config never exercises what the constant
-   protects. Successor: make the switch-on scale-relative, keep the protection, and gate on
-   `f1edge_hidens` completing at all. Measure on top of the phase-1a fix, never against stock.
+   on a healthy config — and deleting it is nonetheless **fatal** at `nCore=1e6`, where ~~the bubble
+   solve stops converging three segments in~~ (mechanism corrected below). The recommendation assumed
+   inert-on-a-healthy-config implies safe-to-delete; it does not, because a healthy config never
+   exercises what the constant protects. ~~Successor: make the switch-on scale-relative, keep the
+   protection, and gate on `f1edge_hidens` completing at all.~~
+   **CLOSED 2026-08-06 (`SWEEP2_PLAN.md` §4-5): reproduced (to the digit / bit-for-bit), mechanism
+   instrumented — it is phase 1a's hard-coded-RK45 *segment integrator* that stalls as `Eb`
+   collapses, not the bubble solve — and the pre-registered decision rule landed on
+   document-and-pin, no successor.** A scale-relative switch-off would deliver the full pressure
+   *earlier* at the stiff edge to buy ≤0.017% on healthy configs; the honest follow-up is phase-1a
+   integrator stiffness handling, its own workstream. In-source rationale + `test/test_dt_switchon_ramp.py`
+   now guard against the "inert, delete" reading this row used to recommend.
 3. **#3 `dt=1e-9` pdotdot step** — cheap to test: compare `pdotdot` from the analytic spline derivative vs the
    FD across configs; replace the FD with the spline's own derivative if available.
 4. ~~**#4 `vd=-1e8`** — trace what the first-segment override represents; document or derive it.~~
@@ -113,5 +125,8 @@ in separate processes at matched `t`, smallest diff, re-verify (gate + `pytest` 
    Neither "is it on the hot path" nor "is it bounded in time" caught it — what caught it was running
    a config four decades of mass away from the ones already trusted.
 5. **#5 transition `0.05`/`0.9`** — hand to the transition workstream (entry point now archived:
-   `docs/dev/archive/transition/TRIGGER_PLAN.md`); at minimum de-duplicate the
-   `0.05` to one source of truth.
+   `docs/dev/archive/transition/TRIGGER_PLAN.md`). ~~At minimum de-duplicate the `0.05` to one
+   source of truth~~ — **done upstream by 2026-08-06**: `phaseSwitch_LlossLgain` exists and both
+   live sites honor it (see the row). What remains for the transition workstream is the tail:
+   two hardcoded fallbacks and the never-armed `phase_events.py:497` factory that would bypass
+   the param if ever wired up.

@@ -465,20 +465,32 @@ inflated bubble luminosity ~8x.
      scaling to `SEGMENT_DURATION` — because M43's `t0` is ~170x earlier, so by
      the time the 1e-3 Myr window closes `(R1/R2)³` has fallen to 4e-3.
   2. **The ramp cannot simply be deleted.** At `nCore=1e6` ablation raises `Pb`
-     (the suppressed `R1` was inflating the shell volume), the bubble-structure
-     ODE stiffens, and the solve stops converging three segments in. So unlike
+     (the suppressed `R1` was inflating the shell volume), ~~the bubble-structure
+     ODE stiffens, and the solve stops converging three segments in~~ —
+     **mechanism corrected 2026-08-06** by the magic-numbers round-2
+     reproduction (`docs/dev/magic-numbers/SWEEP2_PLAN.md` §4 R3, instrumented):
+     the bubble-structure solve stays healthy (~1.3 s/call); the raised `Pb`
+     drains `Eb` 180 → 29 au across segments 1-4 and **phase 1a's own segment
+     integrator (`solve_ivp`, hard-coded RK45, `run_energy_phase.py:309`)
+     stalls in micro-steps** on the stiffened energy ODE. So unlike
      `vd = -1e8` — which papered over a *discretisation* error and was measured
      safe to delete — this constant papers over genuine *stiffness*, and
      removing it is fatal on the stiffest edge.
 
-  **Revised recommendation:** do NOT pursue this as "delete the ramp". Any
+  **Revised recommendation:** do NOT pursue this as "delete the ramp". ~~Any
   successor must keep the numerical protection while making the switch-on
-  scale-relative rather than an absolute 1e-3 Myr, and must carry a stiffness
+  scale-relative rather than an absolute 1e-3 Myr~~, and must carry a stiffness
   gate on `f1edge_hidens` (run completes at all) *before* any trajectory bar.
-  The constant stays open as magic-number audit finding #2; this measurement
-  bounds its consequence and rules out the easy fix, it does not calibrate it.
-  **Still do NOT bundle into this branch**, and keep the ordering constraint:
-  measure on top of the phase-1a fix, never against stock.
+  ~~The constant stays open as magic-number audit finding #2.~~
+  **CLOSED 2026-08-06** by the magic-numbers round 2
+  (`docs/dev/magic-numbers/SWEEP2_PLAN.md` §5): both E8b claims reproduced on
+  HEAD (M43 numbers to the digit; the hidens stall bit-for-bit), and with the
+  mechanism now known to be the segment *integrator*, the pre-registered
+  decision rule landed on **document-and-pin** — constant kept, rationale
+  in-source at `get_bubbleParams.py`, pinned by `test/test_dt_switchon_ramp.py`.
+  A scale-relative switch-off is no longer the recommended successor shape
+  (it delivers full pressure *earlier* at the stiff edge); the honest follow-up
+  is phase-1a segment-integrator stiffness handling, its own workstream.
 
 **Explicitly NOT a lead:** `_T_INIT_BOUNDARY = 3e4` (`bubble_luminosity.py:52`),
 despite `dR2 ∝ T_init^(5/2)` making it look leveraged. It is de-flagged as

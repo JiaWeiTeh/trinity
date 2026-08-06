@@ -32,9 +32,12 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-06):** 🔵 actionable — plan registered before any `trinity/` edit. §2 source
-re-verification and the §3 finding-#3 per-call measurement are done; the §4 E8b reproduction and
-§5/§6 gates are the work. Owned by `docs/dev/magic-numbers/AUDIT.md` findings **#2, #3, #5**.
+**Status (2026-08-06):** 🟡 partial — bars were registered before any `trinity/` edit (`ba35d77`);
+**#2 is closed as document-and-pin** (§4 results reproduced + mechanism corrected to the phase-1a
+RK45 segment integrator; §5 decision applied; `58acfb6`), **#3's fix is committed** (`db05694`,
+B1/B2/B4 green) **with the B3 screen verdict pending** — do not mark #3 fixed in AUDIT.md until
+`data/pdotdot_screen_results.csv` shows every config passing. #5 recorded (§6). Owned by
+`docs/dev/magic-numbers/AUDIT.md` findings **#2, #3, #5**.
 
 ## 0. Scope and ordering discipline
 
@@ -161,6 +164,29 @@ If R1 or R2 fails to reproduce, stop: update the brief/audit with the discrepanc
 the measured truth (the docs are then wrong, per their own banner), and say so in the final
 report.
 
+**RESULTS (2026-08-06, `data/switchon_repro_ledger.csv`):**
+
+- **R1 REPRODUCED, to the digit:** −1.433% @10 yr → −0.108% @1e3 → −0.041% @3e3 →
+  **−0.006% @2.1e4 yr** (record: −1.43 → −0.108 → −0.041 → −0.0059), and dv2 +0.006% @2.1e4 yr
+  (record +0.0056). Trajectories: `data/switchon_repro_m43_{active,ablated}.csv`.
+- **R2 REPRODUCED, bit-for-bit:** ramp-active arm completes 2e4 yr in 5m37s with 127 rows
+  (`data/switchon_repro_hidens_active.csv`); the ablated arm produced 4 rows to **0.26 yr** at a
+  20-min wall cap — and those 4 rows are **numerically identical to the committed
+  `e8b_hidens_noramp_STALLED.csv`** (t, R2, Eb, Pb to every digit). Ratio of t reached,
+  1.3e-5 — five decades inside the <1% bar.
+- **R3 ANSWERED — and it corrects the recorded mechanism.** The stall is **NOT** the
+  bubble-structure solve: every `get_bubbleproperties_pure` call in the ablated run returned in
+  1.1-1.3 s (`data/switchon_stall_probe.csv`). What actually happens: with the ramp ablated the
+  full early pressure drives PdV/cooling losses that drain `Eb` 180 → 121 → 71 → 29 au across
+  segments 1-4, and in segment 5 **phase 1a's segment integrator — `solve_ivp` with hard-coded
+  `method='RK45'` at `run_energy_phase.py:309` — stalls taking micro-steps** on the stiffened
+  energy ODE. Four grinding-stack samples taken 44 min into that one segment are identical in
+  every outer frame (`data/switchon_stall_stacks.txt`); the RHS itself is healthy — the step
+  *count* is what diverges. The E8b wording "the bubble-structure ODE stiffens, and the solve
+  stops converging" (PLAN.md §8, SWITCHON_BRIEF §3/§4, AUDIT #2 row) is corrected in place,
+  dated. The load-bearing conclusion **stands**: the ramp is genuine numerical protection —
+  it protects the phase-1a segment integrator, not the bubble solve.
+
 ## 5. Finding #2 — PRE-REGISTERED decision rule
 
 Registered before R1-R3 results were known:
@@ -187,6 +213,20 @@ Registered before R1-R3 results were known:
   (verified by ablation in-test), and the full suite stays green; no behavioural diff (the change
   is comments + tests only — a `git diff` over `trinity/` touching nothing but comments, plus B4).
 
+**DECISION (2026-08-06, applying the rule above to the R1-R3 results): document-and-pin.**
+C3 fails: R3 found no small state-based trigger — the ramp protects against an *integrator*
+failure mode (RK45 grinding as `Eb` collapses), so the honest successor is phase-1a stiffness
+handling (a stiff/switching segment integrator, or a terminal in-segment `Eb`-floor event so the
+segment ends cleanly instead of grinding), which is integrator work for its own workstream, not a
+re-shaping of this constant. A merely scale-relative switch-off would deliver the full pressure
+earlier at the stiff edge — the direction the stall lives in — to buy ≤0.006-0.017% accuracy on
+healthy configs. Shipped: the in-source rationale block at the constant
+(`get_bubbleParams.py`, commit `58acfb6`), the pinning tests (`test/test_dt_switchon_ramp.py`:
+ramp shape, window continuity, `t=None` ablation contract, and a deletion guard), the
+reproduction + stall evidence in `data/`, and the sibling-doc corrections. The audit row stays
+at "measured, documented & pinned — intentionally not changed"; re-open it only alongside
+phase-1a integrator work.
+
 ## 6. Finding #5 — disposition (record only)
 
 §1 third bullet is the record: param exists and is honored at both live sites; hardcoded `0.05`s
@@ -203,5 +243,6 @@ trigger choice is **not** re-opened, per the audit's own instruction.
 | #3 screen ledger (B3) | `data/pdotdot_screen_results.csv` (from `docs/dev/screen/screen.py`) |
 | #2 reproduction trajectories (R1/R2) | `data/switchon_repro_{m43_active,m43_ablated}.csv`, `data/switchon_repro_hidens_*.csv` |
 | #2 matched-t ledger | `data/switchon_repro_ledger.csv` |
-| #2 stall instrumentation (R3) | `harness/switchon_probe_runner.py` → `data/switchon_stall_probe.csv` |
+| #2 stall instrumentation (R3) | `harness/switchon_probe_runner.py` → `data/switchon_stall_probe.csv` + `data/switchon_stall_stacks.txt` |
+| #2 in-source rationale + pins | `trinity/bubble_structure/get_bubbleParams.py` (comment at the constant), `test/test_dt_switchon_ramp.py` |
 | E8b originals being reproduced | `docs/dev/phase1a-init/data/` (`e8b_*.csv`, `gate_results.csv` rows `E8b,*`) |
