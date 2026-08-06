@@ -314,6 +314,8 @@ def get_interpolation(sps, ftype='cubic'):
         - 'fpdot_W' : Wind momentum rate interpolator
         - 'fpdot_SN' : SN momentum rate interpolator
         - 'fpdot_total' : Total momentum rate interpolator
+        - 'fpdotdot_total' : Exact derivative of the total momentum rate
+          interpolant (d(pdot_total)/dt) [Msun*pc/Myr**3]
 
     Notes
     -----
@@ -353,6 +355,16 @@ def get_interpolation(sps, ftype='cubic'):
     fpdot_SN = scipy.interpolate.interp1d(t_Myr, pdot_SN, kind=ftype)
     fpdot_total = scipy.interpolate.interp1d(t_Myr, pdot_total, kind=ftype)
 
+    # Exact derivative of the pdot_total interpolant, for pdotdot_total.
+    # make_interp_spline(k=3) is the same not-a-knot cubic interp1d builds for
+    # kind='cubic' (bit-identical: docs/dev/magic-numbers/data/pdotdot_percall.csv),
+    # so this must stay k=3 as long as ftype stays 'cubic'. A finite difference
+    # here is roundoff-dominated at any step far below the table grid and
+    # evaluates outside the table within one step of the edges (audit #3,
+    # docs/dev/magic-numbers/SWEEP2_PLAN.md).
+    fpdotdot_total = scipy.interpolate.make_interp_spline(
+        t_Myr, pdot_total, k=3).derivative()
+
     # Dictionary of all interpolators with consistent key naming
     sps_f = {
         'fQi': fQi,
@@ -364,7 +376,8 @@ def get_interpolation(sps, ftype='cubic'):
         'fLmech_total': fLmech_total,
         'fpdot_W': fpdot_W,              # Consistent: variable is pdot_W, key is fpdot_W
         'fpdot_SN': fpdot_SN,
-        'fpdot_total': fpdot_total
+        'fpdot_total': fpdot_total,
+        'fpdotdot_total': fpdotdot_total
     }
 
     return sps_f
