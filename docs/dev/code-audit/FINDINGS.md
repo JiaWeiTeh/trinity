@@ -102,13 +102,22 @@ was universal — every run on the bundled SB99 table left segment 0 at the iden
 velocity regardless of mass, SFE or density — and **invisible to convergence
 testing**: `v2_end` moved 2e-12 across a 4000× change in step count.
 
-> ⚠️ **Consequence still outstanding: ~105 captured goldens are now wrong.**
-> Phase 4 counted ~105 test expectations captured from prior runs of this code,
-> including `test_run_smoke._FINAL_GOLDENS` ("Captured 2026-07-10") — the suite's
-> **only** end-to-end gate. A ~20 % trajectory shift invalidates them. Regenerating
-> them by re-recording whatever the fixed code emits would lock in the next defect
-> exactly as these locked in this one. Check the new values against the Weaver
-> similarity solution instead.
+> ✅ **Goldens: already re-baselined by the same hotfix** (`0ffa994`, "re-baseline
+> the three goldens on the phase-1a exit state"). `test_run_smoke._FINAL_GOLDENS`
+> moved `R2` 0.28573 → 0.25956, `v2` 44.739 → 49.226, `Eb` 778236 → 662534.
+>
+> **That shift independently corroborates this audit's measurement.** The
+> separate-process A/B here predicted `R2` down, `v2` up, `Eb` down at phase-1a
+> exit (−19.3 % / +12.4 % / −16.5 %); the maintainer's re-baseline moved the same
+> three quantities in the same three directions (−9.2 % / +10.0 % / −14.9 %). The
+> magnitudes differ because the smoke test stops at `1e-4` Myr rather than at
+> phase-1a exit. Two independent routes, same signs.
+>
+> The standing caution is unchanged for the *rest* of the suite: Phase 4 counted
+> **~105 captured goldens**, and re-recording whatever the fixed code emits would
+> lock in the next defect exactly as these locked in this one. Where a golden has
+> an analytic check available — the Weaver similarity solution, an asymptotic
+> exponent — use it instead of the code's own output.
 
 ---
 
