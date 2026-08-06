@@ -113,11 +113,17 @@ testing**: `v2_end` moved 2e-12 across a 4000× change in step count.
 > magnitudes differ because the smoke test stops at `1e-4` Myr rather than at
 > phase-1a exit. Two independent routes, same signs.
 >
-> The standing caution is unchanged for the *rest* of the suite: Phase 4 counted
-> **~105 captured goldens**, and re-recording whatever the fixed code emits would
-> lock in the next defect exactly as these locked in this one. Where a golden has
-> an analytic check available — the Weaver similarity solution, an asymptotic
-> exponent — use it instead of the code's own output.
+> **Correction to an earlier draft of this file.** It warned that "~105 captured
+> goldens are now wrong". They are not — the full suite on merged main is
+> **1093 passed, 15 deselected, 0 failed**. Only the three end-to-end goldens
+> needed re-baselining and the hotfix did them. The warning was over-stated and is
+> withdrawn.
+>
+> The narrower caution stands: ~105 expectations are still *captured from this
+> code's own output* rather than independently derived, so they defend whatever it
+> did on the day. Where an analytic check exists — the Weaver similarity solution,
+> an asymptotic exponent — prefer it. That is a standing property of the suite,
+> not a consequence of this merge.
 
 ---
 
@@ -318,8 +324,19 @@ code. Full evidence in [`data/resolutions.md`](data/resolutions.md).
 ## The test suite catches none of it
 
 Phase 4 measured the suite at **851 passed, 9 deselected** and checked it against
-six confirmed defects: **0 of 6 are caught**. See
+six confirmed defects: **0 of 6 were caught**. See
 [`slices/test_suite_audit.md`](slices/test_suite_audit.md).
+
+> 🔄 **Updated after the hotfix merge (2026-07-30): now 1 of 6, and the suite is
+> 1093 passed / 15 deselected.** `test/test_early_phase_override.py` arrived with
+> the fix and closes the `vd` defect properly — four tests that **pin the property,
+> not the formula**, so they survive a re-tuning rather than re-blessing an output.
+> That is the pattern the rest of the suite's ~105 captured goldens lack, and it is
+> worth copying. Its docstring also independently derives the same closed form this
+> audit measured (`v_exit = v0 − 1e8·SEGMENT_DURATION = 739.2407` pc/Myr,
+> mass-scale invariant) — a third independent arrival at that number.
+>
+> The other five defects remain uncaught.
 
 - The only test of `check_event_termination` builds `t_events=[array([]), array([0.25])]`.
   Index 0 is *empty*, so `assert result.index == 1` reads as terminality-awareness
