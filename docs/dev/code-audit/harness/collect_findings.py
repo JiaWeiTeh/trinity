@@ -115,7 +115,24 @@ def main():
         rev = revised.get(row["id"])
         row["current_severity"] = rev["current_severity"] if rev else row["severity"]
         row["revision"] = rev["note"][:200] if rev else ""
-    unmatched = sorted(set(revised) - {r["id"] for r in rows})
+    # A revision id with no slice-report finding is not an error: Phase 6 raised
+    # findings (P6-nn) that exist only in the register, because they came from
+    # running the code rather than reading it. Carry them as first-class rows so
+    # the counts include them.
+    standalone = sorted(set(revised) - {r["id"] for r in rows})
+    for fid in standalone:
+        rev = revised[fid]
+        rows.append(
+            {k: "" for k in FIELDS}
+            | {
+                "id": fid,
+                "severity": rev["current_severity"],
+                "current_severity": rev["current_severity"],
+                "claim": rev["note"][:400],
+                "revision": rev["note"][:200],
+                "source": rev.get("resolution", "revisions.csv"),
+            }
+        )
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     with OUT.open("w", newline="", encoding="utf-8") as fh:
@@ -129,8 +146,8 @@ def main():
     print("as first rated:", {k: born[k] for k in sorted(born)})
     print("after revision:", {k: now[k] for k in sorted(now)})
     print(f"-> {OUT.relative_to(ROOT.parents[2])}")
-    if unmatched:
-        print(f"\nWARNING - revisions.csv ids matching no finding: {unmatched}")
+    if standalone:
+        print(f"register-only findings carried in (Phase 6 etc.): {standalone}")
     if problems:
         print(f"\nPROBLEM - no findings parsed from {len(problems)} source(s):")
         for name in problems:

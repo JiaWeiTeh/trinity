@@ -202,27 +202,47 @@ force and get a number bearing no relation to the `P_ram` printed beside it.
 phase"). By contrast `F_ram_wind == pdot_total` holds — so the momentum *source* is
 recorded correctly; it is the `F_ram` column that is untrustworthy.
 
-### P6-07 — ST-001 confirmed dynamically, on exactly the predicted row
+### P6-07 — the phase-1a reconciliation snapshot breaks `F_HII`'s declared invariant
 
-`F_HII == P_HII · 4πR2²` fails at **exactly one row in each of the three runs, and it is
-always the last energy-phase row** — the phase-boundary reconciliation snapshot:
+> ⚠️ **Correction.** An earlier version of this entry claimed P6-07 "dynamically
+> confirms ST-001". **That was wrong and is withdrawn.** ST-001 fires on the
+> event-`break` path, where the loop exits before the locals update at
+> `run_energy_phase.py:345`. All three runs here exit phase 1a on the *time*
+> condition, where the locals **are** updated. The mismatch is real, but its cause
+> is a different defect — traced below. ST-001 remains **not** dynamically
+> confirmed; it needs a run that exits via `cloud_boundary`, and none of these do.
 
-| run | energy ends at | rel error there | violations elsewhere |
+`F_HII == P_HII · 4πR2²` fails at **exactly the last energy-phase row in all three
+runs, and nowhere else**:
+
+| run | energy ends | rel error there | violations elsewhere |
 |---|---:|---:|---:|
 | `phase6_detA` | row 96 of 171 | **3.82e-02** | 0 |
 | `f1edge_lowdens` | row 93 of 239 | **1.14e-02** | 0 |
 | `f1edge_hidens` | row 97 of 126 | **6.37e-03** | 0 |
 
-ST-001's static analysis predicted that this row is built from a *mix* of event-state
-`R2` and pre-event `Pb`/`shell_mass`/`Qi` — a state that never existed on the
-trajectory. An identity that has nothing to do with that argument fails on precisely
-that row, in every run, and nowhere else. **0.6-3.8 % inconsistency in the published
-force budget on the phase-boundary row.**
+**Mechanism, confirmed at source.** `run_energy_phase.py:228-229` computes
+`F_HII = 4πR2²·P_HII` *inside the segment loop*. The phase-boundary reconciliation
+block (`:394-407`) then recomputes SPS feedback, `R1`, `Pb`, `shell_mass` and the
+whole shell structure — including a fresh `P_HII` — and calls `save_snapshot()`
+**without re-deriving `F_HII`**. `shell_structure_pure` does not produce any `F_*`
+key (`grep F_HII trinity/shell_structure/` is empty), so nothing else can refresh it.
 
-Note what this does *not* say: the trajectory is unaffected (phase 1b recomputes from
-`params`), so the S2 rating stands on blast radius. What it settles is that the wrong
-**output row** is real, reproducible, and quantified — previously "unreachable on the
-baseline" was the reason for doubting it, and it turns out to be reachable in every run.
+The final energy-phase snapshot therefore pairs a **freshly recomputed `P_HII`** with
+an **`F_HII` from the previous segment**.
+
+**It breaks a contract the code itself declares.** `registry.py:509` defines `F_HII`
+as *"Outward HII pressure force (= P_HII * 4piR2^2)"*. That identity holds at every
+other snapshot of every run and fails at this one.
+
+**Reach is wider than ST-001's**, which is why the mix-up mattered: the
+reconciliation block is **unconditional** — it runs after the loop on *every*
+phase-1a exit path, not only the event-`break` one. So this occurs in **every run**,
+whereas ST-001 needs a `cloud_boundary` exit.
+
+**Severity S2**, on the same reasoning as ST-001: the trajectory is unaffected
+(phase 1b recomputes from `params` before integrating); what is wrong is one
+published output row, by 0.6-3.8 %, in the force column an analysis would read.
 
 ### P6-08 — the final row of a run is also inconsistent
 
@@ -234,6 +254,35 @@ This is the **S5b** family — "the final row mixes two times". Worth recording 
 S5b proposed testing it via `F_ion_in != press_HII_in · 4πR2²`, and **that test passes
 everywhere** (0/171 violations, including the final row, at rel 0.0). The claim family is
 real; the repro S5b proposed does not demonstrate it. A different identity does.
+
+## 6. `ST-001` re-measured against the age-proportional schedule — **bound grew 10x, rating survives**
+
+The merged hotfix replaced the fixed `SEGMENT_DURATION` with
+`dt = phase1a_segFrac * (t - tSF)` (`phase1a_segFrac = 0.1`). `ST-001`'s S2 rating
+rested partly on its staleness window being "one partial segment, ~30 yr", a number
+that assumed the old constant. Re-measured on the post-hotfix run:
+
+| | old schedule | new schedule |
+|---|---|---|
+| window | fixed **3e-5 Myr = 30 yr**, everywhere | `0.1·(t − tSF)`, **grows with t** |
+| measured last phase-1a segment | 3e-5 (both pre-fix `f1edge` runs) | **1.01e-4 Myr = 101 yr** (`phase6_detA`) |
+| growth across phase 1a | none — constant | **2976x** (3.39e-8 → 1.01e-4 Myr) |
+| worst case | 30 yr | **300 yr** |
+
+The worst case is bounded, and that is the point: `ST-001` is a *phase-1a* defect, and
+phase 1a is itself capped at `TFINAL_ENERGY_PHASE = 3e-3` Myr
+(`run_energy_phase.py:54`). So the window cannot exceed `0.1 × 3e-3 = 3e-4` Myr =
+**300 yr — 10x the old bound, not unbounded**.
+
+**Verdict: the S2 rating survives.** The magnitude claim in the original finding is
+stale by an order of magnitude and has been corrected, but the reasoning that demoted
+it — the trajectory is unaffected because phase 1b recomputes from `params`, and only
+one output row is wrong — is untouched by the schedule change.
+
+Worth flagging for anyone who revisits the segment schedule: the 2976x growth across
+a single phase means *any* per-segment freezing defect now has a strongly
+time-dependent magnitude. A defect measured early in phase 1a will understate itself
+near the phase end by up to three orders of magnitude.
 
 ## Findings this phase produced
 
