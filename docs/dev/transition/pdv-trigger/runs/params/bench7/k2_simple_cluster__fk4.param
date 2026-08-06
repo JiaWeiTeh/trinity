@@ -1,0 +1,8 @@
+model_name             k2_simple_cluster__fk4
+mCloud                 1e5
+sfe                    0.3
+stop_t                 5
+cooling_boost_kappa    4
+log_console            False
+log_file               True
+path2output            outputs/bench7/k2_simple_cluster__fk4

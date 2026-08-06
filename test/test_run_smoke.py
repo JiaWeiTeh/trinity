@@ -21,11 +21,18 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 _FINAL_GOLDENS = {
-    # Captured 2026-07-10 on Python 3.9.6, numpy 1.26.4, scipy 1.13.1,
-    # astropy 6.0.1, pandas 2.3.3, matplotlib 3.9.4, pytest 8.4.2.
-    "R2": 0.2857315185200479,
-    "v2": 44.73918438203256,
-    "Eb": 778236.3470566473,
+    # Re-baselined 2026-08-05 for the phase-1a segment schedule
+    # (docs/dev/phase1a-init/, phase1a_segFrac=0.1 + the vd=-1e8 override
+    # deleted).  stop_t=1e-4 Myr is below TFINAL_ENERGY_PHASE=3e-3, and phase
+    # 1a integrates in whole segments, so this triple IS the phase-1a exit
+    # state at t=3e-3 Myr -- exactly what that change moves, by design.  The
+    # previous values (R2 0.2857315185200479, v2 44.73918438203256,
+    # Eb 778236.3470566473, captured 2026-07-10 on Python 3.9.6, numpy 1.26.4,
+    # scipy 1.13.1) are the pre-fix exit state; the equivalence evidence that
+    # the trajectories reconverge afterwards is data/gate_results.csv there.
+    "R2": 0.25955975558205835,
+    "v2": 49.226111525136076,
+    "Eb": 662533.9662741426,
 }
 
 

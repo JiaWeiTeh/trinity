@@ -47,15 +47,18 @@ deleted by the maintainer (`9459234a`, 2026-07-06).
 |---|---|---|:---:|
 | `roadmap/` | 🔵 ACTIVE — repo-wide execution queue + solver audit (F1 ✅ fixed; B/C lanes open) + REORG hand-off spec | `README.md` | 2026-07-06 |
 | `test-suite/` | 🔵 ACTIVE — test-suite remediation plan (2026-07-06 four-slice audit @ `70f07532`) | `PLAN.md` | 2026-07-06 |
-| `transition/pdv-trigger/` | 🔵 ACTIVE — PdV/f_κ mechanism + θ calibration | `INDEX.md` | 2026-07-06 |
+| `transition/kappa-3way/` | 🔵 ACTIVE — the three-way f_κ/f_A/f_mix band-entry calibration, measured fresh (cutoff 2026-07-29); 294 arms designed + gated, **not run** | `report.html` | 2026-07-29 |
+| `transition/pdv-trigger/` | ⚠️ DEMOTED 2026-07-29 — "could be true, verify before use". History, physics reasoning, literature imprints and HPC tooling stay live; measured values are VERIFY until re-run | `INDEX.md` | 2026-07-29 |
 | `transition/cleanroom/` | ✅ concluded — "transition is geometric, not thermal" (live evidence for pdv-trigger) | `FINDINGS.md` | 2026-07-06 |
 | `transition/pt4/` | ✅ concluded audits (H1–H5 + R1 shadow) — feed pdv-trigger | `README.md` | 2026-07-06 |
 | `code-audit/` | 🔵 ACTIVE — full correctness audit of `trinity/` on `bugfix/code-audit` (blind-lens triangulation; Phase 0 done) | `README.md` | 2026-07-29 |
 | `rosette-cf/` | ✅ COMPLETE — 72/72 Cf-scan arms ran in-container (exit 0); 72 gzipped raw dicts committed under `data/` for offline reduction; fallback match PROVISIONAL (§11) | `README.md` | 2026-07-14 |
+| `phase1a-init/` | 🔵 ACTIONABLE — M43-scale early-phase artifact fixed and gated on branch `hotfix/early-approximations` (age-scaled phase-1a segments via `phase1a_segFrac` + `vd=-1e8` override deleted); all gates PASS against the G2 bar adopted 2026-08-05 (`|ΔR2| < 5%` at 1 Myr or end of run + fate unchanged), arms converge to −0.001% at 2 Myr, and the fix runs 16% faster; three goldens on the stock 1a exit state re-baselined | `PLAN.md`, `data/gate_results.csv` | 2026-08-05 |
+| `screen/` | 🔵 ACTIVE — multi-config scheme screen (2 refs x N configs, separate processes, matched-t ledger + pass/fail); harness written and smoke-tested, no screen run in anger yet | `README.md` | 2026-08-05 |
 | `cooling/` | 🟡 PARTIAL — two side items shipped; loader refactor PR-1–4 pending | `refactor-audit.md` | 2026-06-22 |
 | `performance/` | 📘 reference (perf history A→D + F1) · 🟡 HOTPATH §F1-cousin/§F5 open | `BUBBLE_LUMINOSITY_PERFORMANCE.md` | 2026-06-22 |
 | `shell-solver/` | 🟡 MIXED — overflow fix ✅ shipped; MIGRATION doc is a 🟠 correction (mxstep diagnosis retracted) | `OVERFLOW_FIX_PLAN.md` | 2026-07-06 |
-| `magic-numbers/` | 🟡 PARTIAL — audit done; #1 fixed & gated, #2–#5 open | `AUDIT.md` | 2026-06-22 |
+| `magic-numbers/` | 🟡 PARTIAL — audit done; #1 and #4 fixed & gated (#4 = `vd=-1e8`, deleted by `phase1a-init` on `hotfix/early-approximations`); #2 measured and found load-bearing — not removable as its recommendation assumed; #3, #5 open | `AUDIT.md` | 2026-08-05 |
 | `failed-large-clouds/` | ✅ SHIPPED (2026-06-19) — 1b fate routing superseded 2026-07-01 (now → momentum) | `PLAN.md` | 2026-07-06 |
 | `misc/` | 🟡 MIXED — backward-compat ~95% open · tinit rec #3 open · leak D/F/G open · TERMINATION_EVENTS 📘 | per-doc Status lines | 2026-06-22 |
 | `cluster/` | 📘 operational guide (on-cluster plotting) | `PLOTTING_WORKFLOW.md` | 2026-06-19 |
@@ -73,7 +76,8 @@ lane C; keep the two lists reconciled.)
   now owned by the active `transition/pdv-trigger/` program (`PLAN.md`); historical context in
   `archive/betadelta/HYBR_PLAN.md` Phase 5.
 - **Backward-compat cleanup** ~95% un-executed → `misc/backward-compat-audit.md`.
-- **Magic numbers #2–#5** → `magic-numbers/AUDIT.md`.
+- **Magic numbers #2, #3, #5** → `magic-numbers/AUDIT.md` (#4 fixed 2026-08-05; #2 now carries
+  measured bounds and a ruled-out fix, so its successor starts from evidence, not from scratch).
 - **HOTPATH §F1-cousin + §F5** → `performance/HOTPATH_PLAN.md`.
 - **Leaking luminosities Phase D/F/G + findings #7/#8** → `misc/LEAKING_LUMINOSITIES_SKELETON.md`.
 - **Cooling loader refactor PR-1–4** → `cooling/refactor-audit.md`.

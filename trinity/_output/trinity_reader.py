@@ -152,7 +152,6 @@ PARAM_DOCS = {
     # Termination flags
     'EndSimulationDirectly': 'Flag to end simulation immediately',
     'SimulationEndReason': 'Reason for simulation termination',
-    'EarlyPhaseApproximation': 'Using early phase approximation',
     'isCollapse': 'Shell has collapsed',
     'isDissolved': 'Cloud has dissolved',
 
@@ -987,7 +986,7 @@ class TrinityOutput:
             'Model': ['model_name', 'mCloud', 'rCloud'],
             'Time': ['t_now', 't_next', 'tSF', 't_previousCoolingUpdate'],
             'State': ['current_phase', 'EndSimulationDirectly', 'SimulationEndReason',
-                     'EarlyPhaseApproximation', 'isCollapse', 'isDissolved'],
+                     'isCollapse', 'isDissolved'],
             'Dynamics': ['R2', 'v2', 'Eb', 'T0', 'R1', 'Pb', 'c_sound'],
             'Cooling': ['cool_alpha', 'cool_beta', 'cool_delta'],
             'Feedback': ['Lmech_W', 'Lmech_SN', 'Lmech_total', 'Lbol', 'Li', 'Ln', 'Qi',

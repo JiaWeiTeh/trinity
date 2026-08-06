@@ -35,6 +35,8 @@ PDV = HERE.parent
 RDATA = PDV / "runs" / "data"
 
 sys.path.insert(0, str(HERE))
+sys.path.insert(0, str(PDV))
+from _stamp import stamp  # noqa: E402
 from make_bench5_analysis import _fnum, _read_csv, theta_cum_prefire  # noqa: E402
 
 L21B_BAND = (0.90, 0.99)
@@ -104,16 +106,21 @@ def band_entry_extrapolated(doses_tcum):
 
 
 def main():
-    b5 = _load(
-        RDATA
-        / (
-            "bench5_summary_hpc.csv"
-            if (RDATA / "bench5_summary_hpc.csv").exists()
-            else "bench5_summary.csv"
-        ),
-        RDATA / ("bench5_traj_hpc" if (RDATA / "bench5_traj_hpc").is_dir() else "bench5_traj"),
-    )
-    b6 = _load(RDATA / "bench6_summary.csv", RDATA / "bench6_traj")
+    # Source precedence (ALL-FRESH ruling 2026-07-29): the 07-29 re-run first, then the 07-19 Helix
+    # harvest, then the 07-12 in-container one. Echoed on stdout and into the CSV header so a reader
+    # never has to guess which generation of data a number came from.
+    def _pick(*cands):
+        return next(((RDATA / a, RDATA / b) for a, b in cands if (RDATA / a).exists()),
+                    (RDATA / cands[-1][0], RDATA / cands[-1][1]))
+
+    p5, t5 = _pick(("bench5r_summary.csv", "bench5r_traj"),
+                   ("bench5_summary_hpc.csv", "bench5_traj_hpc"),
+                   ("bench5_summary.csv", "bench5_traj"))
+    p6, t6 = _pick(("bench6r_summary.csv", "bench6r_traj"), ("bench6_summary.csv", "bench6_traj"))
+    sources = f"bench5={p5.name}, bench6={p6.name}"
+    print(f">> SOURCES READ: {sources}\n")
+    b5 = _load(p5, t5)
+    b6 = _load(p6, t6)
     if not b6:
         print(
             "NOTE: no bench6 data yet (runs/data/bench6_summary.csv missing) — run the bench6 "
@@ -146,6 +153,8 @@ def main():
         )
     out = HERE / "bench6_analysis.csv"
     with out.open("w", newline="") as fh:
+        fh.write(stamp(__file__) + "\n")
+        fh.write(f"# SOURCES READ: {sources}\n")
         fh.write(
             "# bench6 head-to-head analysis (f_A vs f_mix) — combined bench5+bench6 arms; "
             "theta_cum = Theta over the blowout window (diag arms; clean L21b metric only "
