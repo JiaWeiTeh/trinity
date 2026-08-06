@@ -284,6 +284,52 @@ a single phase means *any* per-segment freezing defect now has a strongly
 time-dependent magnitude. A defect measured early in phase 1a will understate itself
 near the phase end by up to three orders of magnitude.
 
+## 7. In-process determinism — **PASS**, and the id-reuse hazard is not demonstrable
+
+CLAUDE.md states trinity leaks module-level global state in-process, which is why every
+baseline here is launched as its own process. That is a documented hazard nothing had
+measured. `harness/phase6_inprocess.py` runs the same config **twice inside one
+interpreter** and diffs the outputs.
+
+```
+run A: 171 snapshots
+run B: 171 snapshots
+RESULT: identical — no in-process state leak on this path
+```
+
+**The probe is valid, and I checked that before trusting it.** `dictionary.py:857` opens
+the output in **append** mode when the file exists, which would have made this test
+meaningless — run B would simply have appended to A's rows. It does not, because
+`:809-812` deletes the existing `dictionary.jsonl` when `flush_count == 0`, and
+`flush_count` is per-`DescribedDict`, so each `read_param` starts a genuinely fresh
+file. Both copies are byte-identical at 3 864 080 bytes.
+
+**Scope, stated because it bounds the claim.** This runs the *same* config twice. The
+sharper documented hazard is a **different** config second, where a module-level cache
+keyed on the first config's data could serve stale values. That case is still untested.
+
+### `ST-003`'s address-reuse claim — not demonstrable
+
+Sweep ⑧ rated `_CIE_TCUTOFF_CACHE` (`net_coolingcurve.py:27`) **S2**: keyed by
+`id(logT_CIE)`, "unbounded, never invalidated, and vulnerable to address reuse across
+runs". The three sub-claims separate cleanly under test:
+
+| sub-claim | verdict |
+|---|---|
+| keyed by `id()` | **true** — `_cie_tcutoff` uses `key = id(logT_CIE)` verbatim |
+| never invalidated / unbounded | **true, trivially** — nothing anywhere clears the dict |
+| vulnerable to address reuse | **not demonstrable** — 200 000 rebuild-and-realloc cycles with matched dtype and shape produced **zero** id collisions |
+
+So the hazard is real in principle and I could not make it fire. The code's own comment
+claims immunity for a *different* reason — "logT_CIE is built once at startup and never
+replaced, so its id is stable for the whole run" — which holds within one run but is
+exactly what an in-process second run would break. Since §7 above shows a second
+in-process run reproduces bit-identically, that path is clear too.
+
+**Recommend `ST-003` S2 → S4**: an `id()`-keyed unbounded cache is a real hygiene defect
+worth fixing (cache on the object, as the sibling `_noncie_cutoffs` already does), but
+the correctness hazard it was rated for is not reachable by any route tested here.
+
 ## Findings this phase produced
 
 | # | result | bears on |
