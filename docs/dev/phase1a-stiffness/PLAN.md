@@ -32,10 +32,13 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-06):** 🔵 actionable — **pre-registered, nothing implemented, no `trinity/`
-line touched.** §1 is source-verified against `adfc23f`; §3 bars and §5 decision rule are
-registered *before* any edit. **Batch 1 is reconnaissance, and "change nothing" is a
-pre-registered outcome** (§5) — this plan does not assume the integrator must change. Spun out of
+**Status (2026-08-06):** 🔵 actionable — **Batch 1 done, still no `trinity/` line touched.** §1 is
+source-verified against `adfc23f`; §3 bars and §5 decision rule were registered *before* any edit
+and are unchanged. **D1 (§2) is answered: production is ≥4.3e4× away from the stall in wall time
+and the whole phase-1a segment integrator costs 0.2-0.6 s per run — so the solver swap (C1) is
+ruled out by the pre-registered rule**, leaving C2 (in-band `Eb`-floor event) as the only live
+candidate and C0 (change nothing) as the fallback. Next: **Batch 2** (stiffness vs singularity),
+which is what confirms C2 is even the right shape. Spun out of
 `docs/dev/magic-numbers/SWEEP2_PLAN.md` §4 R3, which measured the stall and named this as the
 honest follow-up.
 
@@ -103,6 +106,52 @@ The answer changes the acceptable remedy, which is why it comes first:
 | Production configs stall or near-miss | a real fix, up to and including the solver swap (C1) |
 | Production is far from the cliff, but the failure is one line from being clean | the in-band guard only (C2) — cheap, provably inert on healthy configs |
 | Production is far from the cliff and nothing is cheap | **change nothing**; document the asymmetry + the unreachable retry (C0) |
+
+### D1 — ANSWERED 2026-08-06 (Batch 1 run; `data/seg_stepcount.csv`, `..._summary.csv`)
+
+Five production configs (ramp active) + the ablated `f1edge_hidens` positive control, `stop_t =
+0.003` Myr (which covers all of phase 1a, `TFINAL_ENERGY_PHASE = 3e-3`), instrumented with
+`harness/seg_stepcount_runner.py`. 443 recorded `solve_ivp` calls.
+
+| run | 1a segments | median steps/seg | max steps | max nfev | max wall | total 1a solver wall |
+|---|---|---|---|---|---|---|
+| `simple_cluster` | 96 | 1 | 2 | 20 | 0.010 s | 0.43 s |
+| `f1edge_lowdens` | 32 | 1 | **4** | 44 | **0.021 s** | 0.20 s |
+| `f1edge_hidens` | 101 | 1 | 2 | 20 | 0.011 s | 0.45 s |
+| compact probe | 131 | 1 | 2 | 20 | 0.012 s | 0.59 s |
+| `gmc_control` | 77 | 1 | 2 | 20 | 0.014 s | 0.39 s |
+| **`hidens_ablated`** (control) | 4 | 2 | 2 | 20 | 0.013 s | **1 call STALLED** |
+
+**Production is nowhere near the cliff: worst case 4 accepted steps and 0.021 s in a single
+segment, against a control call that ran >900 s before the wall cap killed it (exit 124) — a
+lower bound of ~4.3e4× in wall, and unbounded in steps.** Two further facts the numbers make
+plain:
+
+1. **The whole phase-1a segment integrator costs 0.2-0.6 s per run.** RK45 clears a typical
+   segment in *one accepted step*, while the segment's bubble solve costs ~1.3 s. So there is no
+   performance case for a stiff solver here — C1 could only ever buy robustness, never speed, and
+   it would move every published trajectory to do it.
+2. **The failure is binary, not gradual — there is no near-miss gradient to measure.** The
+   control's first three calls are indistinguishable from production (2 steps, 0.013 s); the
+   fourth never returns. So "distance from the cliff" cannot be read off a step count, and a
+   margin-based argument for safety would be false comfort. What decides reachability is whether
+   a config drives `Eb → 0` *inside* a segment — and §1.3 notes phase 1a already carries a
+   between-segment `Eb ≤ 0` handler, i.e. the code anticipates that collapse; the stall is what
+   happens when it lands mid-segment instead of on a boundary. None of the five configs does
+   this with the ramp active, which is why none of them stalls.
+
+**Cross-check with the parent workstream:** the stalling call's entry state is `Eb = 29.2417 au`
+at `t = 2.6037e-7` Myr — the same state at which `docs/dev/magic-numbers/data/switchon_stall_probe.csv`
+recorded its last completed bubble solve (`Eb` drained 180 → 121 → 71 → 29 across four segments).
+Two independent instrumentations, taken a day apart by different harnesses, agree on where the
+run dies; this one adds *which call* dies, which the earlier probe could not see.
+
+**Verdict: row 2 of the table above.** C1 (LSODA swap) is ruled out by §5.3 — Batch 1 does not
+show production configs reaching the stall, and consistency alone is explicitly not a gate. C2
+(in-band `Eb`-floor terminal event) stays eligible and is now the only candidate worth building,
+with C0 the fallback if it cannot clear P1-free byte-identity. Batch 2 still has to run first:
+if the cause is a singularity at `Eb → 0` rather than stiffness, that confirms C2 *and* would
+have made C1 useless anyway (§5's trap).
 
 ## 3. PRE-REGISTERED BARS (registered 2026-08-06, before any `trinity/` edit)
 
@@ -187,7 +236,7 @@ committing artifacts + writing its result back into this doc (🔄/💾). Costs 
 | # | name | entry | deliverable | exit / decision | cost |
 |---|---|---|---|---|---|
 | **0** | Pre-registration | — | this doc + workstream registration | committed before any `trinity/` edit | done (this commit) |
-| **1** | **Reconnaissance — does it bite in production?** | Batch 0 | `harness/seg_stepcount_runner.py` (wraps the 1a segment solve, records `nfev`, step count, wall, `Eb`, `dt_seg` per segment — no production edit) → `data/seg_stepcount.csv` for the 5 screen configs (ramp active) + the ablated `f1edge_hidens` as **positive control** | **D1:** production max/median step-count ratio vs the positive control. Feeds the §2 table and gates which candidates are in play | ~45-60 min |
+| **1** | ✅ **DONE 2026-08-06 — Reconnaissance: does it bite in production?** | Batch 0 | `harness/seg_stepcount_runner.py` → `data/seg_stepcount.csv` (443 calls) + `data/seg_stepcount_summary.csv`, over the 5 screen configs (ramp active) + the ablated `f1edge_hidens` **positive control** | **D1 answered (§2):** production worst = 4 steps / 0.021 s per segment vs a control call that never returned in 900 s (≥4.3e4× wall). **C1 ruled out; C2 the only live candidate, C0 the fallback** | ran ~55 min |
 | **2** | **Mechanism — stiffness or singularity?** | D1 | from the positive control: step-size history, rejected-step fraction, `Eb(t)` approach to 0, and a local stiffness proxy (\|λ\|·h from a finite-difference Jacobian of the 3-state RHS) → `data/stall_anatomy.csv` + one paragraph | **D2:** names the cause. Resolves the §5 trap; picks the candidate set | ~30 min |
 | **3** | **Candidate bake-off on the positive control** | D2 | each surviving candidate implemented on a scratch branch/worktree, run against the ablated `f1edge_hidens`; ledger `data/candidate_gate.csv` | **P0** per candidate; candidates that fail P0 are dropped here, before any expensive full-run work | ~20 min/candidate |
 | **4** | **Equivalence on production configs** | ≥1 candidate passed P0 | `docs/dev/screen/screen.py` over all 5 configs + (for an inert candidate) the byte-identity check on `simple_cluster` | **P1 / P1-free / P2**. A fate flip or radius breach ends the candidate | ~40 min/candidate |
@@ -226,7 +275,8 @@ E8b write-up, mechanism corrected in place 2026-08-06).
 |---|---|
 | the stall, instrumented (input evidence) | `docs/dev/magic-numbers/data/switchon_stall_probe.csv`, `switchon_stall_stacks.txt` |
 | ramp-active baseline for `f1edge_hidens` (P0 reference, 5m37s / 127 rows) | `docs/dev/magic-numbers/data/switchon_repro_hidens_active.csv` |
-| Batch 1 per-segment step counts | `data/seg_stepcount.csv` (harness: `harness/seg_stepcount_runner.py`) |
+| Batch 1 per-segment step counts (443 calls, 6 runs) | `data/seg_stepcount.csv` (harness: `harness/seg_stepcount_runner.py`) |
+| Batch 1 aggregates (the §2 D1 table, regenerated by `--reduce`) | `data/seg_stepcount_summary.csv` |
 | Batch 2 stall anatomy | `data/stall_anatomy.csv` |
 | Batch 3 candidate gate (P0) | `data/candidate_gate.csv` |
 | Batch 4 equivalence screen (P1/P2) | `data/equivalence_screen.csv` |

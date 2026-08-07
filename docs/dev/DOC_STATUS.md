@@ -53,7 +53,7 @@ deleted by the maintainer (`9459234a`, 2026-07-06).
 | `transition/pt4/` | ✅ concluded audits (H1–H5 + R1 shadow) — feed pdv-trigger | `README.md` | 2026-07-06 |
 | `rosette-cf/` | ✅ COMPLETE — 72/72 Cf-scan arms ran in-container (exit 0); 72 gzipped raw dicts committed under `data/` for offline reduction; fallback match PROVISIONAL (§11) | `README.md` | 2026-07-14 |
 | `phase1a-init/` | 🔵 ACTIONABLE — sub-GMC-scale early-phase artifact fixed and gated on branch `hotfix/early-approximations` (age-scaled phase-1a segments via `phase1a_segFrac` + `vd=-1e8` override deleted); all gates PASS against the G2 bar adopted 2026-08-05 (`|ΔR2| < 5%` at 1 Myr or end of run + fate unchanged), arms converge to −0.001% at 2 Myr, and the fix runs 16% faster; three goldens on the stock 1a exit state re-baselined | `PLAN.md`, `data/gate_results.csv` | 2026-08-05 |
-| `phase1a-stiffness/` | 🔵 ACTIONABLE — pre-registered only, no `trinity/` line touched: is 1a's `RK45`-without-step-bounds segment integrator a latent defect (1b/1c/2 all use LSODA with bounds), given that an in-segment `Eb` collapse grinds >44 min while the collapse guard sits between segments? Bars, stiffness-vs-singularity trap and 6 batches registered; "change nothing" is a registered outcome; Batch 1 (reconnaissance) not run | `PLAN.md` | 2026-08-06 |
+| `phase1a-stiffness/` | 🔵 ACTIONABLE — **Batch 1 done, no `trinity/` line touched.** Is 1a's `RK45`-without-step-bounds segment integrator a latent defect (1b/1c/2 all use LSODA with bounds), given that an in-segment `Eb` collapse grinds while the collapse guard sits between segments? Measured: production is ≥4.3e4× from the stall (worst segment 4 steps / 0.021 s; whole 1a integrator 0.2-0.6 s/run) → **LSODA swap ruled out by the pre-registered rule**; in-band `Eb`-floor event is the only live candidate, "change nothing" still registered. Next: Batch 2 (stiffness vs singularity) | `PLAN.md`, `data/seg_stepcount.csv` | 2026-08-06 |
 | `screen/` | 🔵 ACTIVE — multi-config scheme screen (2 refs x N configs, separate processes, matched-t ledger + pass/fail); first run in anger 2026-08-06 (finding-#3 gate) — found and fixed a vacuous fate check (end record lives in `metadata.json[termination]`, not the jsonl tail) | `README.md` | 2026-08-06 |
 | `cooling/` | 🟡 PARTIAL — two side items shipped; loader refactor PR-1–4 pending | `refactor-audit.md` | 2026-06-22 |
 | `performance/` | 📘 reference (perf history A→D + F1) · 🟡 HOTPATH §F1-cousin/§F5 open | `BUBBLE_LUMINOSITY_PERFORMANCE.md` | 2026-06-22 |
@@ -79,9 +79,9 @@ lane C; keep the two lists reconciled.)
 - **Magic numbers — audit closed 2026-08-06** → `magic-numbers/AUDIT.md`. Remaining tails live
   elsewhere: #5's fallback/vestigial-factory cleanup with the transition workstream, and #2's
   only re-open path is now its own workstream (next bullet).
-- **Phase-1a segment-integrator stiffness** → `phase1a-stiffness/PLAN.md` (🔵 pre-registered,
-  Batch 1 pending). Also the sole re-open path for magic-number #2 (`dt_switchon`), as its
-  Batch 6.
+- **Phase-1a segment-integrator stiffness** → `phase1a-stiffness/PLAN.md` (🔵 Batch 1 done —
+  production measured far from the stall, solver swap ruled out; Batch 2 next). Also the sole
+  re-open path for magic-number #2 (`dt_switchon`), as its Batch 6.
 - **HOTPATH §F1-cousin + §F5** → `performance/HOTPATH_PLAN.md`.
 - **Leaking luminosities Phase D/F/G + findings #7/#8** → `misc/LEAKING_LUMINOSITIES_SKELETON.md`.
 - **Cooling loader refactor PR-1–4** → `cooling/refactor-audit.md`.

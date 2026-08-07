@@ -43,6 +43,7 @@ import time
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.normpath(os.path.join(HERE, "..", "..", "..", ".."))
 LEDGER = os.path.join(HERE, "..", "data", "seg_stepcount.csv")
+SUMMARY = os.path.join(HERE, "..", "data", "seg_stepcount_summary.csv")
 
 # Only these callers are segment integrators; bubble_luminosity also calls
 # solve_ivp (once per bubble solve) and would swamp the record.
@@ -181,6 +182,43 @@ def reduce(dirs):
         w.writeheader()
         w.writerows(rows)
     print(f"{out}: {len(rows)} rows from {len(dirs)} run(s)")
+    _summarise(rows)
+
+
+def _summarise(rows):
+    """Per-run/per-phase aggregates — the table the write-up quotes, regenerated
+    from the ledger rather than hand-copied."""
+    import statistics as stat
+
+    out, seen = [], []
+    for r in rows:
+        key = (r["run"], r["phase"])
+        if key not in seen:
+            seen.append(key)
+    for run, phase in seen:
+        grp = [r for r in rows if r["run"] == run and r["phase"] == phase]
+        ok = [r for r in grp if r["steps"] != "STALLED"]
+        stalled = len(grp) - len(ok)
+        steps = [int(r["steps"]) for r in ok]
+        wall = [float(r["wall_s"]) for r in ok]
+        out.append({
+            "run": run, "phase": phase, "calls": len(grp),
+            "stalled_calls": stalled,
+            "median_steps": f"{stat.median(steps):.0f}" if steps else "",
+            "max_steps": max(steps) if steps else "",
+            "max_nfev": max(int(r["nfev"]) for r in ok) if ok else "",
+            "max_wall_s": f"{max(wall):.3f}" if wall else "",
+            "total_wall_s": f"{sum(wall):.2f}" if wall else "",
+        })
+    path = os.path.normpath(SUMMARY)
+    with open(path, "w", newline="") as fh:
+        fh.write("# phase1a-stiffness Batch 1 summary, aggregated from seg_stepcount.csv by\n"
+                 "# seg_stepcount_runner.py --reduce. One row per run+phase.\n"
+                 "# stalled_calls counts solve_ivp calls that never returned (wall-capped run).\n")
+        w = csv.DictWriter(fh, fieldnames=list(out[0].keys()))
+        w.writeheader()
+        w.writerows(out)
+    print(f"{path}: {len(out)} rows")
 
 
 def main():

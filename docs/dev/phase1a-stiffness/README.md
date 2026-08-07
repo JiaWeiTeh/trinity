@@ -32,9 +32,13 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-06):** 🔵 actionable — pre-registered only. `PLAN.md` holds the bars and the
-batch structure; **no `trinity/` line has been touched, and "change nothing" is a pre-registered
-outcome.** Batch 1 (reconnaissance) has not been run.
+**Status (2026-08-06):** 🔵 actionable — **Batch 1 (reconnaissance) is done; no `trinity/` line has
+been touched, and "change nothing" remains a pre-registered outcome.** Measured: production is
+≥4.3e4× away from the stall in wall time (worst segment 4 steps / 0.021 s; the whole phase-1a
+segment integrator costs 0.2-0.6 s per run) while the ablated control never returns from one
+call. That rules out the LSODA swap by the pre-registered rule and leaves the in-band `Eb`-floor
+event as the only live candidate. Next: Batch 2 (stiffness vs singularity). `PLAN.md` §2 holds
+the numbers.
 
 ## The question
 
@@ -55,7 +59,7 @@ workstream measures before proposing anything.
 2. `PLAN.md` §2 — the load-bearing unknown: does this bite with the ramp *active*?
 3. `PLAN.md` §3 §5 — the pre-registered bars and the decision rule, including the
    stiffness-vs-singularity trap that decides which remedy is even correct.
-4. `PLAN.md` §6 — the batches. Batch 1 is reconnaissance and is the entry point.
+4. `PLAN.md` §6 — the batches. Batch 1 is done (its D1 answer is in §2); **Batch 2** is next.
 
 ## Why it exists
 
