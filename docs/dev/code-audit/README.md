@@ -32,9 +32,10 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-07-30):** 🔵 ACTIVE — audit in progress on `bugfix/code-audit`. Phases 0–2
-complete (ground truth, slice partition, blind-lens triangulation over all 17 slices);
-Phase 3 partial; Phases 4–7 not started; findings not yet consolidated.
+**Status (2026-07-30):** 🔵 ACTIVE — **all seven phases pass the completeness checker.**
+Findings-only: no source has been fixed by this audit (`git diff origin/main HEAD --
+trinity/ test/ run.py param/` is empty). 690 findings, 15 S1 after revision. Four
+Phase-6 probes and ten S1-rated candidates remain open — see [`HANDOFF.md`](HANDOFF.md).
 
 **Ask the checker, not this line:** `python docs/dev/code-audit/harness/check_completeness.py`
 prints per-phase completion and exits non-zero while anything is missing. It is the only
@@ -52,8 +53,8 @@ specifically around the defect classes that introduces — see `PLAN.md` §"Why 
 |---|---|
 | [`HANDOFF.md`](HANDOFF.md) | **Start here in a new session** — state, ground rules, next steps, traps |
 | [`PLAN.md`](PLAN.md) | Method, slice partition, severity rubric, gates, batch cap, revision protocol |
-| [`FINDINGS.md`](FINDINGS.md) | Verified findings, ranked S1→S4 — *written at Phase 7* |
-| [`UNVERIFIED.md`](UNVERIFIED.md) | Candidates that failed the verification gate, labelled — *written at Phase 7* |
+| [`FINDINGS.md`](FINDINGS.md) | The deliverable — verified findings ranked S1→S4, each with repro + fix outline |
+| [`UNVERIFIED.md`](UNVERIFIED.md) | Removed, demoted, or never-tested candidates. **Do not act on these** |
 | [`reference/PHYSICS_SPEC.md`](reference/PHYSICS_SPEC.md) | What the code is *supposed* to compute — built without reading the implementation |
 | [`reference/STRUCTURE_MAP.md`](reference/STRUCTURE_MAP.md) | Call graph, state-key write/read table, solver inventory — descriptive, no judgment |
 | `slices/*.md` | Raw per-agent reports (provenance for every finding) |
