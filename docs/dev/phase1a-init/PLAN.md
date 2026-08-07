@@ -51,7 +51,7 @@ tests, and the gate artifacts committed back into this workstream.
 1. **Absolute segment duration vs scale-dependent physics.** Phase 1a
    integrates in fixed segments of `SEGMENT_DURATION = 3e-5` Myr (30 yr) with
    driving terms frozen per segment. The free-streaming → Weaver relaxation
-   time scales with object size; at M43 scale (`mCloud=300`, `sfe=0.01`,
+   time scales with object size; at sub-GMC scale (`mCloud=300`, `sfe=0.01`,
    `nCore=8.7e3`) the entire relaxation fits inside segment 1, so the frozen
    state integrates a snowplow on unphysical values for 30 yr.
 2. **The `vd = -1e8` override** (`energy_phase_ODEs.py`, segment 0 only,
@@ -67,7 +67,7 @@ tests, and the gate artifacts committed back into this workstream.
    `VELOCITY_RUNAWAY` (see FINDINGS §"Independent corroboration", adopted from
    the `bugfix/code-audit` branch's Cluster C).
 
-Consequences at M43 scale: observed radius crossed at 620 yr instead of
+Consequences at sub-GMC scale: observed radius crossed at 620 yr instead of
 1.35e4 yr (~22x), v ~12x observed at crossing. At GMC scale: −10% R2 after
 segment 0, decaying transient, asymptote preserved. Full evidence:
 `FINDINGS.md` §Verdicts, §Numerics-vs-physics.
@@ -82,8 +82,8 @@ segment 0, decaying transient, asymptote preserved. Full evidence:
 
 | Check | Result | Baseline file |
 |---|---|---|
-| M43 at observed age (2.1e4 yr) | R2 = 0.196 pc, v2 = 5.1 km/s (obs: 0.153±0.011 pc, 5.0 km/s) | `data/m43_logseg.csv` |
-| M43 free-streaming → Weaver | attractor ratio 1.07 by 1.4 yr, 1.00 by 160 yr; **zero solve_ivp failures** | same |
+| compact probe at observed age (2.1e4 yr) | R2 = 0.196 pc, v2 = 5.1 km/s (obs: 0.153±0.011 pc, 5.0 km/s) | `data/m43_logseg.csv` |
+| compact-probe free-streaming → Weaver | attractor ratio 1.07 by 1.4 yr, 1.00 by 160 yr; **zero solve_ivp failures** | same |
 | GMC equivalence at matched t | −3.8% @1e3 yr, −0.95% @3e3 yr, −0.04% @8e4 yr vs stock | `data/gmc_logseg.csv` vs `data/gmc_control.csv` |
 | No manufactured momentum | p = 0.28 vs stock's 283 at 410 yr | `data/m43_logseg.csv` vs `data/m43_probe.csv` |
 
@@ -106,7 +106,7 @@ prototype had to monkeypatch it.
 
 Was the override load-bearing for stability? **No** — measured, not assumed.
 Deleting it alone (`data/*_noapprox.csv`) completes with no solver failures,
-and the log-spaced prototype ran M43 and GMC scale with **zero `solve_ivp`
+and the log-spaced prototype ran compact-probe and GMC scale with **zero `solve_ivp`
 failures**. It was papering over the fixed 30-yr segment, not holding the
 integrator up. The one honest caveat: deleting it *without* fixing the segment
 schedule makes trajectories worse (2429 km/s snowplow — §6), which is the
@@ -144,7 +144,7 @@ design latitude.
 2. **Segment-0 seeding: nothing special needed.** `t0 = tSF +
    free-streaming duration` (`phase0_init/get_InitPhaseParam.py:63-64`), so
    the *age* `t_now − tSF` is strictly positive at loop entry — measured
-   1.15e-8 Myr (M43) and 1.96e-6 Myr (GMC control). `tSF` defaults to 0
+   1.15e-8 Myr (compact probe) and 1.96e-6 Myr (GMC control). `tSF` defaults to 0
    (`registry.py:425`), so the age-based form is identical to the prototype's
    `eps·t_now` on every committed baseline; age-based is kept because it is
    the correct form if `tSF` is ever non-zero. Guard the degenerate case in
@@ -180,9 +180,9 @@ design latitude.
    entered at all (`while` false at entry, `:138`), which also leaves the flag
    `True`. Assert on *behaviour*, not on the flag, so the test survives its
    deletion.
-4. **eps convergence.** Run eps ∈ {0.3, 0.1, 0.03} on the M43 probe + GMC
+4. **eps convergence.** Run eps ∈ {0.3, 0.1, 0.03} on the compact probe + GMC
    control; accept when halving eps moves R2 at the observed age by <1%.
-   (eps=0.1 gave ~162 snapshots to 2.4e4 yr at M43 — cost is negligible.)
+   (eps=0.1 gave ~162 snapshots to 2.4e4 yr at the compact probe — cost is negligible.)
 5. **Do not touch** TFINAL, the 1b DT floors, rtol/atol, or the `-1e8`
    constant's value — all measured second-order or irrelevant (E1).
 
@@ -208,7 +208,7 @@ matched simulation t** (runs truncate at different t).
     construction* the already-measured "hack ablated" configuration, so it
     must reproduce the committed ablation baselines: segment-1 exit
     **2429.4 km/s** on the GMC control (`data/gmc_noapprox.csv`) and
-    **2428.6 km/s** on the M43 probe (`data/m43_noapprox.csv`), per
+    **2428.6 km/s** on the compact probe (`data/m43_noapprox.csv`), per
     `data/segment1_exit.csv`. This needs no new baseline and proves the
     deletion changed exactly what it should. Note the raw byte-diff vs HEAD
     is meaningless here — the `EarlyPhaseApproximation` column is gone and
@@ -216,11 +216,11 @@ matched simulation t** (runs truncate at different t).
 - **G2 — full-run equivalence on the stiff edges (the real gate).** Configs:
   `param/simple_cluster.param`,
   `docs/dev/performance/f1edge_lowdens*.param`,
-  `docs/dev/performance/f1edge_hidens*.param`, the M43 probe
+  `docs/dev/performance/f1edge_hidens*.param`, the compact probe
   (`harness/params/probe.param`), and the GMC control
   (`harness/params/gmc_control.param`). Bars, at matched t in separate
   processes: GMC-scale configs |ΔR2| < 1% for t ≥ 3e3 yr vs stock (the early
-  transient is *supposed* to change — that is the fix); M43 probe within 1%
+  transient is *supposed* to change — that is the fix); compact probe within 1%
   of `data/m43_logseg.csv` throughout; all runs reach their stock stopping
   fate (no new `VELOCITY_RUNAWAY`/collapse flips); zero solver failures.
 
@@ -362,7 +362,7 @@ matched simulation t** (runs truncate at different t).
   G2 must confirm it on both `f1edge` configs, and the eps convergence study
   (§3.4) is the direct test — if eps=0.03 disagrees with eps=0.1, the coarse
   tail is why.
-- Full-cloud M43 physics (rCloud plausibility at mCloud=300) was validated
+- Full-cloud compact-probe physics (rCloud plausibility at mCloud=300) was validated
   for the probe param; if you build new configs, keep `rCloud_max` checks
   passing.
 
@@ -440,7 +440,7 @@ inflated bubble luminosity ~8x.
   into `bubble_E2P` for all `t <= tSF + 1e-3`. Phase 1a runs to
   `TFINAL_ENERGY_PHASE = 3e-3` Myr, so **this ramp shapes the bubble pressure
   across the first third of phase 1a**, and like `SEGMENT_DURATION` it is an
-  absolute time compared against physics whose timescale is not. At M43 scale
+  absolute time compared against physics whose timescale is not. At sub-GMC scale
   (relaxation complete by ~160 yr = 1.6e-4 Myr) the ramp is still suppressing
   `R1` long after the bubble has physically established itself; at GMC scale
   1e-3 Myr is a genuinely early time. That is exactly the pathology this
@@ -453,16 +453,16 @@ inflated bubble luminosity ~8x.
 
   | config | ablation effect | verdict |
   |---|---|---|
-  | M43 probe | −1.43% @10 yr → **−0.0059% @2.1e4 yr** | inside the 0.1% bar → not an artifact |
+  | compact probe | −1.43% @10 yr → **−0.0059% @2.1e4 yr** | inside the 0.1% bar → not an artifact |
   | GMC control | −4.71% @100 yr → −0.017% @8e4 yr | decays away |
   | `f1edge_hidens` | **run STALLS** — 4 rows to 0.26 yr in 90 min wall, vs 127 rows to 2e4 yr in minutes with the ramp | ramp is load-bearing |
 
   Two conclusions, and the second is the important one:
-  1. The original bar is **passed**: at M43's observed age the ramp is worth
+  1. The original bar is **passed**: at the compact probe's observed age the ramp is worth
      0.006%, ~17x inside the bar and an order of magnitude below the
      `eps` 0.1→0.03 convergence step the shipped schedule itself carries. The
      effect is also *weaker* in the compact regime, not stronger — the opposite
-     scaling to `SEGMENT_DURATION` — because M43's `t0` is ~170x earlier, so by
+     scaling to `SEGMENT_DURATION` — because the compact probe's `t0` is ~170x earlier, so by
      the time the 1e-3 Myr window closes `(R1/R2)³` has fallen to 4e-3.
   2. **The ramp cannot simply be deleted.** At `nCore=1e6` ablation raises `Pb`
      (the suppressed `R1` was inflating the shell volume), ~~the bubble-structure
@@ -484,7 +484,7 @@ inflated bubble luminosity ~8x.
   ~~The constant stays open as magic-number audit finding #2.~~
   **CLOSED 2026-08-06** by the magic-numbers round 2
   (`docs/dev/magic-numbers/SWEEP2_PLAN.md` §5): both E8b claims reproduced on
-  HEAD (M43 numbers to the digit; the hidens stall bit-for-bit), and with the
+  HEAD (compact-probe numbers to the digit; the hidens stall bit-for-bit), and with the
   mechanism now known to be the segment *integrator*, the pre-registered
   decision rule landed on **document-and-pin** — constant kept, rationale
   in-source at `get_bubbleParams.py`, pinned by `test/test_dt_switchon_ramp.py`.
@@ -540,7 +540,7 @@ exist in this workstream and only need lifting out of it:
 
 Suggested screen set (spans the axes that actually broke things here — density
 over four decades, and both feedback extremes): `simple_cluster`,
-`f1edge_lowdens`, `f1edge_hidens`, `cal_compact`, `cal_diffuse`, plus the M43
+`f1edge_lowdens`, `f1edge_hidens`, `cal_compact`, `cal_diffuse`, plus the compact probe
 probe as the sub-GMC scale that no existing config covers.
 
 A **fast tier** belongs in `pytest` (one short-`stop_t` run per config,

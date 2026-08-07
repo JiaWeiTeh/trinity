@@ -71,7 +71,7 @@ docs/dev/
 │   ├── pt4/               hypothesis audits H1–H5 + R1 shadow (concluded, feeds pdv-trigger)
 │   └── harness/ + PROVENANCE_PROTOCOL.md    shared run-stamping tooling
 ├── rosette-cf/            Rosette Cf scan, in-container (🔵 plan + harness + param committed; runs pending)
-├── phase1a-init/          early-phase (1a) init at sub-GMC scale — M43 probe (🔵 — FINDINGS.md)
+├── phase1a-init/          early-phase (1a) init at sub-GMC scale — compact probe (🔵 — FINDINGS.md)
 ├── phase1a-stiffness/     is 1a's RK45 segment integrator a latent defect? (🔵 pre-registered — PLAN.md)
 ├── screen/                multi-config scheme screen: 2 refs x N configs, matched-t ledger (🔵 — README.md)
 ├── cooling/               cooling-table refactor (🟡 partial)

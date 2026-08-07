@@ -11,7 +11,7 @@ tables:
            = 722.82 km/s        (v0 = 2*Lmech/pdot is mass-scale invariant)
 
 Measured across mCloud 3e3-3e6 and two core densities, that exit velocity never
-moved: docs/dev/phase1a-init/data/segment1_exit.csv. At M43 scale (a 0.15 pc
+moved: docs/dev/phase1a-init/data/segment1_exit.csv. At sub-GMC scale (a 0.15 pc
 compact HII region) the resulting 80%-in-30-years deceleration dominates the
 whole early trajectory and the observed radius is crossed ~22x too early.
 
@@ -60,7 +60,7 @@ STATE_B = (4.2953e-5, 3739.2407, 7.9425e2)  # 2.5x Eb
 
 
 def _snapshot(**overrides):
-    """A physically plausible early-phase snapshot (M43-scale compact HII region).
+    """A physically plausible early-phase snapshot (sub-GMC-scale compact HII region).
 
     Values are taken from a real segment-0 state of
     docs/dev/phase1a-init/harness/params/probe.param, not round numbers.
@@ -202,7 +202,7 @@ def test_segment0_exit_is_not_the_frozen_closed_form(tmp_path):
     """
     param = tmp_path / "m43.param"
     param.write_text(
-        # M43-scale compact HII region; mirrors harness/params/probe.param
+        # sub-GMC-scale compact HII region; mirrors harness/params/probe.param
         "mCloud                  300\n"
         "sfe                     0.01\n"
         "nCore                   8.7e3\n"

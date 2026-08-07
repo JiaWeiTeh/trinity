@@ -162,7 +162,7 @@ against stock" rule is satisfied by construction), ablation via the committed
 untouched), separate processes, matched `t` by interpolation
 (`docs/dev/phase1a-init/harness/matched_t.py`).
 
-- **R1 (M43 decay-to-nothing):** M43 probe (`harness/params/probe.param`, `stop_t=0.03`), both
+- **R1 (compact-probe decay-to-nothing):** compact probe (`harness/params/probe.param`, `stop_t=0.03`), both
   arms. *Reproduction bar:* ablation effect on R2 at the observed age 2.1e4 yr within a factor 3
   of the recorded **−0.0059%** (i.e. in [−0.018%, −0.002%]); same sign, decaying magnitude vs the
   earlier grid times.
@@ -212,7 +212,7 @@ Registered before R1-R3 results were known:
   - **C1 (stiffness gate, checked first):** candidate `f1edge_hidens` completes `stop_t=0.02` with
     unchanged fate, wall time ≤ 3× the ramp-active arm.
   - **C2 (do-no-harm):** on every §3-B3 config, candidate `|ΔR2|` vs HEAD ≤ **0.1%** (the
-    phase-1a eps-convergence noise floor) at every matched grid time ≥ 3e3 yr *and* at the M43
+    phase-1a eps-convergence noise floor) at every matched grid time ≥ 3e3 yr *and* at the compact probe
     observed age.
   - **C3 (worth it):** R3 identifies a state-based trigger that is *small* (a guard on a measured
     quantity, not a second clock), and the candidate is measurably better than the ramp somewhere

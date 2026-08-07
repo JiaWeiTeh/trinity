@@ -103,12 +103,12 @@ therefore shapes the driving pressure across **the first third of phase 1a**.
 
 The smell is exactly the one that made #4 a defect: **an absolute time compared against physics
 whose timescale is not absolute.** The bubble's expansion timescale is `R/Ṙ = (5/3)t`, seeded at
-`t0 = dt_phase0`, which spans 0.0115 yr at M43 scale to 1.96 yr at GMC scale — a factor ~170 —
+`t0 = dt_phase0`, which spans 0.0115 yr at sub-GMC scale to 1.96 yr at GMC scale — a factor ~170 —
 because it scales as `sqrt(M*/ρ)/v_w^{3/2}`. A fixed 1000-yr window is a different fraction of
 the physics at every object scale, so:
 
 - at **GMC scale** 1e-3 Myr is a genuinely early time — the ramp does something plausible;
-- at **M43 scale** (relaxation complete by ~160 yr = 1.6e-4 Myr) the ramp is still suppressing
+- at **sub-GMC scale** (relaxation complete by ~160 yr = 1.6e-4 Myr) the ramp is still suppressing
   `R1` long after the bubble has physically established itself.
 
 There is also no physics reference and no sensitivity note anywhere for the value `1e-3`. It was
@@ -122,16 +122,16 @@ Ablated by forwarding `t=None` so the ramp branch is skipped and *nothing else* 
 
 | config | ablation effect on R2 | verdict |
 |---|---|---|
-| M43 probe (`mCloud=300, sfe=0.01, nCore=8.7e3`) | −1.43% @10 yr → −0.108% @1e3 yr → **−0.0059% @2.1e4 yr** | decays to nothing |
+| compact probe (`mCloud=300, sfe=0.01, nCore=8.7e3`) | −1.43% @10 yr → −0.108% @1e3 yr → **−0.0059% @2.1e4 yr** | decays to nothing |
 | GMC control (`mCloud=1e6, sfe=0.01, nCore=1e3`) | −4.71% @100 yr → −1.79% @1e3 yr → −0.079% @3e4 yr → **−0.017% @8e4 yr** | decays to nothing |
 | `f1edge_hidens` (`mCloud=1e7, sfe=0.01, nCore=1e6`) | **run STALLS** — 4 rows to 0.26 yr in 90 min wall, vs 127 rows to 2e4 yr in minutes with the ramp | ramp is load-bearing |
 
 Two results, and the second is the important one:
 
-1. **Its trajectory consequence is bounded and small.** At M43's observed age the ramp is worth
+1. **Its trajectory consequence is bounded and small.** At the compact probe's observed age the ramp is worth
    0.006% in R2 — an order of magnitude below the `phase1a_segFrac` 0.1→0.03 convergence step the
    shipped schedule itself carries. Note the effect is *weaker* in the compact regime, the
-   opposite scaling to `SEGMENT_DURATION`, because M43's `t0` is ~170× earlier so by the time the
+   opposite scaling to `SEGMENT_DURATION`, because the compact probe's `t0` is ~170× earlier so by the time the
    1e-3 Myr window closes `(R1/R2)³` has already fallen to 4e-3. **So it is not a second
    discretisation artifact.** Whatever it is costing in accuracy, it is not costing much.
 2. **It cannot simply be deleted.** At `nCore=1e6` ablation raises `Pb` (the suppressed `R1` was
@@ -168,7 +168,7 @@ So the shape of the successor is:
 And the ordering constraint that follows:
 
 > A **stiffness gate comes first**. `f1edge_hidens` must *complete at all* before any trajectory
-> bar is even meaningful. A candidate that improves M43 accuracy and stalls the stiff edge is not
+> bar is even meaningful. A candidate that improves compact-probe accuracy and stalls the stiff edge is not
 > a candidate.
 
 **AUDIT.md's own recommendation #2 is wrong and has been struck through** (2026-08-05). It said
@@ -199,7 +199,7 @@ the constant protects. Do not let that phrasing back into the plan.
 | config | where | why it matters here |
 |---|---|---|
 | `f1edge_hidens` | `docs/dev/performance/f1edge_hidens*.param` | `nCore=1e6`; the stiffness gate. Ablation stalls here — this is the config that decides the design |
-| M43 probe | `docs/dev/phase1a-init/harness/params/probe.param` | sub-GMC scale, where an absolute 1e-3 Myr is most wrong relative to the physics |
+| compact probe | `docs/dev/phase1a-init/harness/params/probe.param` | sub-GMC scale, where an absolute 1e-3 Myr is most wrong relative to the physics |
 | GMC control | `docs/dev/phase1a-init/harness/params/gmc_control.param` | the published regime; must not move |
 | `simple_cluster` | `param/simple_cluster.param` | the default everything else is tested at |
 | `f1edge_lowdens` | `docs/dev/performance/f1edge_lowdens*.param` | the other feedback extreme |
@@ -224,7 +224,7 @@ the constant protects. Do not let that phrasing back into the plan.
 4. **Does the phase-1a segment schedule change the answer?** The fix landed
    `phase1a_segFrac = 0.1`, so segments now scale with the bubble age. It is plausible — not
    measured — that a scale-relative schedule makes a scale-relative switch-off easier to satisfy.
-5. **Is the effect large enough to be worth the risk at all?** 0.006% at M43's observed age is
+5. **Is the effect large enough to be worth the risk at all?** 0.006% at the compact probe's observed age is
    small. A legitimate outcome of this work is "document the constant, add the stiffness rationale
    and a test that pins it, change nothing" — that is a *result*, not a failure, and it should be
    on the table from the start.
