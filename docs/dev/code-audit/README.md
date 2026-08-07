@@ -50,7 +50,8 @@ specifically around the defect classes that introduces — see `PLAN.md` §"Why 
 
 | File | What it is |
 |---|---|
-| [`PLAN.md`](PLAN.md) | Method, slice partition, severity rubric, gates, cross-contamination controls |
+| [`HANDOFF.md`](HANDOFF.md) | **Start here in a new session** — state, ground rules, next steps, traps |
+| [`PLAN.md`](PLAN.md) | Method, slice partition, severity rubric, gates, batch cap, revision protocol |
 | [`FINDINGS.md`](FINDINGS.md) | Verified findings, ranked S1→S4 — *written at Phase 7* |
 | [`UNVERIFIED.md`](UNVERIFIED.md) | Candidates that failed the verification gate, labelled — *written at Phase 7* |
 | [`reference/PHYSICS_SPEC.md`](reference/PHYSICS_SPEC.md) | What the code is *supposed* to compute — built without reading the implementation |
