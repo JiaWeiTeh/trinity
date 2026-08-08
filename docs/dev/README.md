@@ -118,6 +118,9 @@ The top-level `scratch/` (repo root) is separate, git-ignored, local-only.
 - **`screen/`** — [`README.md`](screen/README.md): the multi-config scheme screen. Two git refs,
   N configs, both arms in separate processes, compared at matched `t`, ledger + pass/fail out.
   Run it before landing a scheme change; the suite's end-to-end tests all use one config.
+- **`weak-winds/`** — [`PLAN.md`](weak-winds/PLAN.md): the `FB_thermCoeffWind` sensitivity
+  study (how much do winds matter? — the runnable bracket of a collaborator's "switch winds
+  off" ask). Harness + tests shipped; 15-run sweep designed, not yet executed.
 - **`failed-large-clouds/`** — [`PLAN.md`](failed-large-clouds/PLAN.md): the 1b
   collapse investigation (✅ fix shipped 2026-06-19; the "permanent fate" framing was superseded
   2026-07-01 — 1b collapses now route to momentum). Data manifest: `data/PROVENANCE.md`.

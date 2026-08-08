@@ -1,0 +1,20 @@
+# Weak-winds SMOKE test: baseline cloud, control (1.0) vs 10x-weaker wind
+# thermalization (0.1). Short stop_t — this only probes solver survival and
+# early divergence in the energy phase, it is NOT the science study
+# (see weak_winds_sweep.param for that).
+#
+# Run from repo root:
+#   python run.py docs/dev/weak-winds/harness/weak_winds_smoke.param --workers 2 --yes
+#
+# Scaling reminder (read_sps.py wind corrections):
+#   Lmech_W ∝ coeff, pdot_W ∝ sqrt(coeff), Mdot_W invariant, SN channel untouched.
+
+mCloud    1e5
+sfe    0.3
+
+FB_thermCoeffWind    [1.0, 0.1]
+
+# Smoke horizon: free-streaming + early energy phase only (no SNe before ~3 Myr).
+stop_t    1.5
+
+path2output    outputs/weak_winds_smoke

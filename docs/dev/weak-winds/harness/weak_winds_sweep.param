@@ -1,0 +1,31 @@
+# Weak-winds sensitivity study — MAIN sweep (15 runs, hours each; HPC-sized).
+#
+# Hybrid sweep: 3 explicit cloud regimes (tuple mode) x 5-step wind
+# thermalization ladder (Cartesian) = 15 runs. The three clouds are the
+# documented stiffest solver edges (root CLAUDE.md §Planning protocol):
+#   baseline  : 1e5 Msun, sfe 0.30, nCore 1e5  (param/simple_cluster.param)
+#   lowdens   : 1e7 Msun, sfe 0.50, nCore 1e2  (f1edge_lowdens — strong feedback, diffuse)
+#   hidens    : 1e7 Msun, sfe 0.01, nCore 1e6  (f1edge_hidens — weak feedback, dense)
+#
+# FB_thermCoeffWind = 1.0 is the CONTROL and must reproduce the untouched
+# baseline for each cloud (equivalence check before quoting any trend).
+# Scaling (read_sps.py wind corrections, FB_mColdWindFrac=0):
+#   Lmech_W ∝ coeff, pdot_W ∝ sqrt(coeff), v_wind ∝ sqrt(coeff),
+#   Mdot_W invariant, SN and radiation channels untouched.
+# At coeff=0.01 the wind is still supersonic (v_w ~ 2000 -> 200 km/s), so a
+# shocked bubble still forms — this stays inside the code's physical picture.
+#
+# Run ladder-first, not all-at-once (see ../PLAN.md §Execution order):
+#   python run.py docs/dev/weak-winds/harness/weak_winds_sweep.param --dry-run
+#   python run.py docs/dev/weak-winds/harness/weak_winds_sweep.param --workers 4
+# or on HPC:
+#   python run.py docs/dev/weak-winds/harness/weak_winds_sweep.param --emit-jobs jobs/weak_winds
+
+tuple(mCloud, sfe, nCore)    [1e5, 0.30, 1e5] [1e7, 0.50, 1e2] [1e7, 0.01, 1e6]
+
+FB_thermCoeffWind    [1.0, 0.3, 0.1, 0.03, 0.01]
+
+# Let every run go the distance so fates (dissolve/collapse/rCloud) are comparable.
+stop_t    15
+
+path2output    outputs/weak_winds_study

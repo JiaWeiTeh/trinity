@@ -34,6 +34,7 @@ EXEMPT = {
     "transition/pdv-trigger/MANIFEST.md",
     "transition/pdv-trigger/SESSION_HANDOFF_2026-07-01.md",
     "transition/pt4/r1shadow/runs/README.md",
+    "weak-winds/harness/README.md",
 }
 
 # ponytail: banners must sit near the top; 6 kB of head is plenty and avoids
