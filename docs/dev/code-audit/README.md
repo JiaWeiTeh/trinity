@@ -33,7 +33,7 @@
 > update one in isolation.
 
 **Status (2026-08-08):** 🔵 ACTIVE — **all seven phases pass the completeness checker.**
-690 findings, 13 S1 after revision (3 S1s fixed on this branch). **The four
+690 findings, 12 S1 after revision (4 S1s fixed on this branch). **The four
 open Phase-6 probes are closed** (`data/dynamic_verification.md` §4, §8, §9, §10);
 **eight** S1-rated candidates remain untested — see [`HANDOFF.md`](HANDOFF.md).
 

@@ -34,8 +34,9 @@
 
 **Status (2026-08-08):** 🔵 ACTIVE — **all seven phases pass
 `harness/check_completeness.py`.** Phase 5 gate-tested 7 of 17 S1-class defects;
-Phase 6 ran **all seven** probes. **Three S1s are now fixed on this branch**
-(`NUM-02`, `S11-R-02`, `S12b-R-01`), so S1 stands at **13**. **Still an interim
+Phase 6 ran **all seven** probes. **Four S1s are now fixed on this branch**
+(`NUM-02`, `S11-R-02`, `S12b-R-01`, `S12a-R-01`), so S1 stands at **12**.
+`SIGN-01` (`gamma_adia`) is **partially** fixed and deliberately stays **S1**. **Still an interim
 report, not a final verdict** — see Coverage. Regenerate counts with
 `harness/collect_findings.py`.
 
@@ -62,8 +63,8 @@ the full revision history are in [`data/revisions.csv`](data/revisions.csv) and
 
 | current severity | count |
 |---|---:|
-| FIXED — 2 on `main`, 3 on this branch | 5 |
-| S1 | 13 |
+| FIXED — 2 on `main`, 4 on this branch | 6 |
+| S1 | 12 |
 | S2 | 196 |
 | S3 | 250 |
 | S4 | 220 |

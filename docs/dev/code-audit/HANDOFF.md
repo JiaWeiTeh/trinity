@@ -86,8 +86,8 @@ Regenerate counts: `python docs/dev/code-audit/harness/collect_findings.py`
 
 ## Current numbers
 
-690 findings from 26/26 sources. After revision: **13 S1**, 196 S2, 250 S3, 220 S4,
-plus **5 FIXED** (2 on `main`, 3 on this branch), 2 CLEARED, 3 REFUTED, 1 WITHDRAWN.
+690 findings from 26/26 sources. After revision: **12 S1**, 196 S2, 250 S3, 220 S4,
+plus **6 FIXED** (2 on `main`, 4 on this branch), 2 CLEARED, 3 REFUTED, 1 WITHDRAWN.
 
 *(2026-08-08, in order: S1 15 → 16 and S2 197 → 196 when `SIGN-01` (`gamma_adia`) was
 re-rated S2 → S1; then S1 16 → 13 and FIXED 2 → 5 when `NUM-02`, `S11-R-02` and
@@ -178,19 +178,35 @@ goldens lack. Full suite green: **1093 passed, 15 deselected**.
    on, `git diff origin/main HEAD -- trinity/ test/ run.py param/` is *expected* to
    be non-empty. Do not "restore" it.
 
-5. **Still unfixed, deliberately** — `mu_*` (`S12a-R-01`) and `gamma_adia`
-   (`SIGN-01`), both S1. The evidence was delivered to the maintainer for
-   verification and no code was written. Cheapest close for both is **input
-   validation**, not reimplementation: refuse a user-set `mu_*` (currently
-   overwritten at `read_param.py:316-319`, guard structurally blind) and refuse
-   `gamma_adia != 5/3` (honoured by `bubble_E2P`/`get_leak_luminosity`, absent from
-   `solve_R1`, so the two disagree by 67 % at γ=1.4). That converts two silent
-   wrong-answer paths into loud failures without touching physics.
+5. **`mu_*` FIXED; `gamma_adia` PARTIALLY fixed and still S1** (commit `425b9f1`,
+   gate byte-identical — `data/gate_mu_gamma_fix.md`).
+   - `S12a-R-01` — `read_param` now **refuses** a user-set `mu_*`, pointing at
+     `x_He`/`Z_He`. Refusing rather than honouring, because the four are not
+     independent. Identical by construction; no arithmetic added.
+   - `SIGN-01` — `solve_R1` takes γ as a **required** argument and folds
+     `3(γ−1)/2` into the effective velocity **once per solve**, so `get_r1`'s
+     body — inside every `brentq` iteration — is untouched and costs nothing.
+     Byte-identical at the default (0 of 200 000 states differ).
 
-   ⚠️ **Unverified sub-claim:** sweep ②'s phrasing "the Rahner-A12 pair and the whole
-   Weaver structure chain hardcode it" goes beyond what has been checked. The **R1
-   half is verified** (`get_bubbleParams.py:408`, `solve_R1` takes no γ); the wider
-   claim is not.
+   ⚠️ **`gamma_adia` is NOT done, and stays S1.** Step 0 *confirmed* sweep ②'s
+   previously-unverified "Rahner A12 pair" claim: the literal `2*np.pi` in
+   `cool_beta_to_Ebdot` and `Ebdot_to_cool_beta` **is** `(4π/3)/(γ−1)` frozen at
+   5/3 — it must be 10.47198 at γ=1.4, a **1.66667×** mismatch, the same 5/3
+   factor as the original R1 disagreement. Two inconsistent sites reduced to one,
+   not zero, so **γ≠5/3 remains untrustworthy**. `get_soundspeed` was checked and
+   correctly honours γ.
+
+   *A severity correction, recorded per ground rule 4:* `SIGN-01` was briefly
+   marked S2 on the grounds that the reachable half was fixed. That was not a
+   rubric argument and is **withdrawn** — the remaining hardcode has exactly the
+   property that made it S1 (a documented `default.param` key that silently drives
+   wrong physics when set).
+
+6. **Efficiency, measured but deliberately not taken.** `np.sqrt` on a Python
+   scalar costs **676.8 ns** of `get_r1`'s **931.6 ns** — 73 % of the function, and
+   **39×** the entire γ change — against **46.1 ns** for `math.sqrt`. Not a
+   drop-in: `np.sqrt(-x)` returns NaN where `math.sqrt(-x)` raises, and
+   `solve_R1`'s docstring documents relying on that NaN path. Needs its own gate.
 
 ## Traps a fresh session will otherwise fall into
 
