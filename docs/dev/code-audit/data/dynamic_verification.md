@@ -155,20 +155,48 @@ it.
 
 Recorded as **P6-05**.
 
-## 4. Table bounds (`TBL-01`) — **IN FLIGHT**
+## 4. Table bounds (`TBL-01`) — **MECHANISM SETTLED** (2026-08-08); frequency still open
 
 `stop_t = 15` Myr against a non-CIE cooling cube whose age grid ends at 1e7 yr. Sweep ⑦
 showed `get_filename` clamps silently past that.
 
-**Result: inconclusive — the run reached only `t = 0.0288` Myr of 15 before the container
-restarted.** That is 0.2 % of the way to the 10 Myr limit the probe needs. `TBL-01` stays
-open, and the honest note is that my affordability estimate below was not borne out in
-practice: the geometric segment schedule bounds the *segment count*, but each segment in
-the implicit phase carries a full bubble-structure solve, so wall-clock did not follow.
+**The earlier attempt was inconclusive** — the run reached only `t = 0.0288` Myr of 15
+before the container restarted, 0.2 % of the way to the 10 Myr the probe was framed
+around. The affordability estimate below was not borne out: `phase1a_segFrac = 0.1`
+makes segments geometric so the *segment count* scales with the log range, but each
+implicit-phase segment carries a full bubble-structure solve, so wall-clock did not
+follow.
 
-Affordability note for whoever picks this up: `phase1a_segFrac = 0.1` makes segments
-**geometric** (`dt = 0.1·(t − tSF)`), so segment count scales with the *log* range, not
-with `stop_t`. A 15 Myr run is far cheaper than linear extrapolation suggests.
+**Reframed and settled without the long run.** The probe was framed as needing
+`t > 10` Myr, but only the *frequency* needs a run — the *mechanism* is a pure function
+of the shipped table set. `harness/phase6_tbl01_w3.py` reads the bundled grid and calls
+`get_filename` directly (`data/phase6_tbl01_w3.csv`):
+
+```
+age grid [yr]: 1.00e+06  2.00e+06  3.00e+06  4.00e+06  5.00e+06  1.00e+07
+grid max     : 1.000e+07 yr = 10 Myr        default stop_t: 15 Myr  (registry.py:378)
+
+  age=5.000e+06 yr ->          opiate_cooling_rot_Z1.00_age5.00e+06.dat
+  age=9.900e+06 yr ->          interp['_age5.00e+06', '_age1.00e+07']
+  age=1.000e+07 yr ->          opiate_cooling_rot_Z1.00_age1.00e+07.dat
+  age=1.010e+07 yr -> CLAMPED  opiate_cooling_rot_Z1.00_age1.00e+07.dat
+  age=1.500e+07 yr -> CLAMPED  opiate_cooling_rot_Z1.00_age1.00e+07.dat
+  age=5.000e+07 yr -> CLAMPED  opiate_cooling_rot_Z1.00_age1.00e+07.dat
+```
+
+**CONFIRMED.** `read_cloudy.py:325-329` is `elif age >= max(age_list):` → return the
+last-grid file. No warning, no exception, no record anywhere in the run. On a
+default-length run the clamp covers **t = 10…15 Myr — the last 33 % — with the non-CIE
+cooling frozen at the 10 Myr table**, while the SPS feedback it is paired with keeps
+evolving (the SPS table runs to 99.91 Myr).
+
+Note also the grid is **sparse at the top**: 1, 2, 3, 4, 5, then a jump straight to
+10 Myr. Everything in 5–10 Myr is a two-point interpolation across a 5 Myr gap.
+
+⚠️ **Still open — frequency, not mechanism.** No run in this audit has survived past
+10 Myr, so how often real runs enter the clamped window is **unmeasured**. The
+mechanism above is config-independent and needs no further run; the frequency needs
+one that survives to 10 Myr.
 
 ---
 
@@ -339,12 +367,41 @@ the correctness hazard it was rated for is not reachable by any route tested her
 | **P6-03** | `Lmech_W == Lmech_total` and `pdot_W == pdot_total` bit-identical | Expected, not a defect: no SN contribution before ~3 Myr. Recorded so a future run past 3 Myr can check they *separate*, which is a free correctness test of the SN channel. |
 | **P6-04** | Expansion exponent residual −0.026 after the radiative-loss correction | Open. Candidates: gravity, finite shell mass, radiation pressure. Small; chase only if a cheap decomposition exists. |
 
+## 8. `W-3` — what survives a swallowed bubble-properties failure — **SETTLED** (2026-08-08)
+
+Sweep ⑦ framed `W-3`/`TBL-03` as "grep the WARNING stream for swallowed bounds errors",
+which needs a run that actually emits `"Bubble properties calculation failed"`. **None
+does** — grepping every log this audit has produced, including the complete 155-snapshot
+`probe_iscollapse_maxr` run, returns zero occurrences, and zero WARNING records of any
+kind.
+
+That is a frequency result, not a mechanism result, so the mechanism was tested directly
+(`harness/phase6_tbl01_w3.py`) by making `get_bubbleproperties_pure` raise:
+
+```
+  returned            : (100.0, 100.0, None)
+  exception propagated: no
+  log records emitted : ['WARNING']
+    WARNING: Bubble properties calculation failed: _Boom: simulated cooling-table bounds error
+```
+
+**CONFIRMED, and it bears directly on `SF-003`** (one of the untested S1 candidates —
+same code site). `get_betadelta.py:437-439` and `:538-548` are bare `except Exception`
+handlers that convert *any* failure into the constant `(100.0, 100.0)` residual plateau.
+The **only** trace is a `WARNING` line in `trinity.log`: nothing reaches
+`dictionary.jsonl`, `metadata.json`, `SimulationEndReason`, `SimulationEndCode`, or the
+process exit code. A run whose bubble solve failed on every call is externally
+indistinguishable from a clean one for any consumer that does not read the log text.
+
+**Interaction with `TBL-01` worth stating:** the two silent paths are *different*. An
+out-of-range cooling **age** never reaches this handler at all, because §4 shows
+`get_filename` clamps rather than raising — so that failure mode produces silently wrong
+physics with **not even a warning**.
+
 ## Not done
 
-- `TBL-01` past 10 Myr (in flight).
-- `TBL-03` W-3 probe — needs a run that actually emits
-  `"Bubble properties calculation failed"`; none of these runs did.
+- `TBL-01` **frequency** past 10 Myr — mechanism settled in §4, but no run has survived
+  that long.
 - Budget closure (do the force terms sum to the reported totals at every snapshot?).
-- Momentum-phase asymptotics — no run here reached phase 2.
 - **Re-measuring `ST-001`** against the new age-proportional segments, which invalidated
-  its ~30 yr magnitude bound.
+  its ~30 yr magnitude bound. *(Done — see §6.)*

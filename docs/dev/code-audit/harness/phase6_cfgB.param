@@ -1,0 +1,9 @@
+# Phase-6 different-config in-process probe — config B, the SUBJECT.
+# Same physics as harness/phase6_short.param (mCloud 1e5, sfe 0.3, schema-default
+# nCore) with stop_t cut to 0.01 Myr so the pair fits in minutes.
+# B is run twice: once alone in a fresh interpreter, and once immediately after
+# config A in a shared interpreter. Byte-identical outputs => no cross-config
+# contamination on this path.
+mCloud    1e5
+sfe    0.3
+stop_t    0.01

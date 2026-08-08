@@ -1410,12 +1410,29 @@ the recorded classification is wrong, latched, contradicts the invariant the cod
 documents, and is consumed by `paper/_lib/plot_markers.py`, `show_run.py`,
 `sweep_runner.py:560` and `tools/reduce_sweep.py`.
 
-**Honest limit — recorded, not glossed:** reachability was demonstrated at
-`stop_r = 3` pc (`harness/probe_iscollapse_maxr.param`), not at the shipped default
-`stop_r = 500` pc. Whether tracked configurations actually terminate via
-`large_radius` before `stop_t = 15` Myr is **unmeasured**. The unit-level probe
-establishes the mechanism unconditionally; the default-config reach does not follow
-from it.
+### Confirmed end-to-end, not only at unit level
+
+`harness/probe_iscollapse_maxr.param` (phase6_short physics, `stop_r` lowered to 3 pc
+so the event is reached in minutes) ran to completion — 155 snapshots,
+`data/iscollapse_fullrun_tail.csv`:
+
+| idx | t [Myr] | R2 [pc] | v2 [pc/Myr] | `isCollapse` | end reason |
+|---:|---:|---:|---:|---|---|
+| 151 | 0.14383 | 2.4463 | +17.209 | False | |
+| 152 | 0.15965 | 2.7365 | +19.632 | False | |
+| 153 | 0.17221 | 2.9944 | +21.515 | False | |
+| **154** | **0.17246** | **3.0000** | **+21.550** | **True** | `Large radius reached (event)`, code **2** |
+
+`R2` rises monotonically and `v2` **accelerates outward** through the termination.
+The run is recorded as `SimulationEndCode = 2` (`LARGE_RADIUS`, in the clean range)
+*and* `isCollapse = True`. Exactly one row carries the flag — the final one — which
+is precisely the row `find_collapse_time` would return as collapse onset.
+
+**Honest limit — recorded, not glossed:** the end-to-end run used `stop_r = 3` pc,
+not the shipped default `stop_r = 500` pc. Whether tracked configurations actually
+terminate via `large_radius` before `stop_t = 15` Myr is **unmeasured**. The
+mechanism is config-independent and now demonstrated in a real run; its *frequency*
+on default configs is not measured here.
 
 **Line reference drift:** the finding cites `phase_events.py:627`, which is still
 correct.

@@ -1,0 +1,9 @@
+probe,case,result,silent,note
+TBL-01,age=5.000e+06yr,opiate_cooling_rot_Z1.00_age5.00e+06.dat,-,
+TBL-01,age=9.900e+06yr,"interp['_age5.00e+06', '_age1.00e+07']",-,
+TBL-01,age=1.000e+07yr,opiate_cooling_rot_Z1.00_age1.00e+07.dat,-,
+TBL-01,age=1.010e+07yr,opiate_cooling_rot_Z1.00_age1.00e+07.dat,yes,"returns the last-grid file, no warning, no exception"
+TBL-01,age=1.500e+07yr,opiate_cooling_rot_Z1.00_age1.00e+07.dat,yes,"returns the last-grid file, no warning, no exception"
+TBL-01,age=5.000e+07yr,opiate_cooling_rot_Z1.00_age1.00e+07.dat,yes,"returns the last-grid file, no warning, no exception"
+TBL-01,default-run exposure,10-15 Myr,yes,last 33% of a stop_t=15 Myr run uses the 10 Myr cooling table
+W-3,get_bubbleproperties_pure raises,"(100.0, 100.0, None)",warning-only,"bare `except Exception` at get_betadelta.py:437-439; returns the constant (100.0, 100.0, None) plateau; log levels emitted: ['WARNING']; no exception propagates and no run-level channel records it"

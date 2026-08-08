@@ -316,13 +316,31 @@ a redundant correct detector (`if v2 < 0 and R2 < R2_prev`) that will normally h
 latched `True` before a runaway develops. **`run_energy_phase.py` has none** — so a
 runaway infall in phase 1a exits with `VELOCITY_RUNAWAY` and `isCollapse = False`.
 
-**Repro:** `python docs/dev/code-audit/harness/probe_iscollapse.py`
-→ [`data/iscollapse_truth_table.csv`](data/iscollapse_truth_table.csv)
+**Confirmed end-to-end in a real run**, not only at unit level
+(`harness/probe_iscollapse_maxr.param`, 155 snapshots,
+[`data/iscollapse_fullrun_tail.csv`](data/iscollapse_fullrun_tail.csv)):
 
-⚠️ **Stated limit:** the mechanism is established unconditionally at unit level, and
-end-to-end at `stop_r = 3` pc (`harness/probe_iscollapse_maxr.param`). Whether
-tracked configurations reach `large_radius` at the shipped `stop_r = 500` pc before
-`stop_t = 15` Myr is **unmeasured** — do not read the default-config reach into this.
+| idx | t [Myr] | R2 [pc] | v2 [pc/Myr] | `isCollapse` | end reason |
+|---:|---:|---:|---:|---|---|
+| 151 | 0.14383 | 2.4463 | +17.209 | False | |
+| 152 | 0.15965 | 2.7365 | +19.632 | False | |
+| 153 | 0.17221 | 2.9944 | +21.515 | False | |
+| **154** | **0.17246** | **3.0000** | **+21.550** | **True** | `Large radius reached (event)`, code **2** |
+
+`R2` rises monotonically and `v2` **accelerates outward** right through the
+termination — the shell is expanding, hard, at the moment it is recorded as having
+collapsed. Exactly one row carries the flag, the final one, so
+`find_collapse_time` reports collapse onset at t = 0.1725 Myr for a run that never
+contracted.
+
+**Repro:** `python docs/dev/code-audit/harness/probe_iscollapse.py`
+→ [`data/iscollapse_truth_table.csv`](data/iscollapse_truth_table.csv);
+`python run.py docs/dev/code-audit/harness/probe_iscollapse_maxr.param`
+
+⚠️ **Stated limit:** the end-to-end run used `stop_r = 3` pc to reach the event in
+minutes. Whether tracked configurations reach `large_radius` at the shipped
+`stop_r = 500` pc before `stop_t = 15` Myr is **unmeasured** — the mechanism is
+config-independent, the *frequency* is not measured here.
 
 ### 6. `gamma_adia` is honoured in two places and hardcoded `5/3` elsewhere — *source*
 

@@ -25,7 +25,7 @@ from types import SimpleNamespace
 
 import numpy as np
 
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[3]))
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[4]))
 
 from trinity.phase_general import phase_events as events  # noqa: E402
 
@@ -126,7 +126,7 @@ def main():
         writer = csv.DictWriter(fh, fieldnames=list(rows[0]))
         writer.writeheader()
         writer.writerows(rows)
-    print(f"\nwrote {OUT.relative_to(pathlib.Path(__file__).resolve().parents[3])}")
+    print(f"\nwrote {OUT.relative_to(pathlib.Path(__file__).resolve().parents[4])}")
 
     bad = [r for r in rows if r["verdict"] != "OK"]
     print(f"{len(bad)} of {len(rows)} simulation-ending events misclassified")

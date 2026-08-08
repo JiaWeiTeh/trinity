@@ -1,0 +1,24 @@
+# Phase-6 momentum-phase probe: reach phase 2 cheaply.
+#
+# The open Phase-6 item "momentum-phase asymptotics" was blocked because no run in
+# the dynamic-verification set reached phase 2 — the default
+# `transition_trigger = cooling_balance` keeps simple_cluster in the implicit phase
+# for the whole affordable window.
+#
+# `transition_trigger blowout` is a documented, schema-registered alternative
+# (registry.py:408): it drives the energy->momentum transition on R2 > rCloud
+# instead. The phase6_short run logs
+#   "R1 shadow: BLOWOUT (R2>rCloud) would fire at t=9.083857e-02 Myr, R2=1.729 pc"
+# so this config reaches the transition at t ~ 0.09 Myr rather than never, which
+# buys enough momentum-phase snapshots to fit R(t).
+#
+# Physics is otherwise identical to harness/phase6_short.param
+# (mCloud 1e5 Msun, sfe 0.3, homogeneous, rCloud = 1.6900 pc).
+#
+# NOTE: this changes WHICH criterion ends the energy phase, so it is not a
+# trajectory-equivalent replica of phase6_short — it is a config chosen to make
+# phase 2 reachable, and any exponent measured here describes THIS run.
+mCloud    1e5
+sfe    0.3
+stop_t    0.5
+transition_trigger    blowout

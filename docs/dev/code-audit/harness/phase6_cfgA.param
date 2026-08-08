@@ -1,0 +1,11 @@
+# Phase-6 different-config in-process probe — config A, the CONTAMINANT.
+# Run FIRST inside the shared interpreter, purely to populate whatever
+# module-level state trinity leaks, then discarded. Deliberately unlike config B:
+# 10x the cloud mass, 1/3 the SFE and 1/10 the core density, so the SPS f_mass
+# scaling and the density/temperature region queried in the cooling cube both
+# differ from B's.
+# stop_t is tiny because only the caches A leaves behind matter, not A's physics.
+mCloud    1e6
+sfe    0.1
+nCore    1e4
+stop_t    0.01
