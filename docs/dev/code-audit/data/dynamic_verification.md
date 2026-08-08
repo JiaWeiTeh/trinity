@@ -398,10 +398,49 @@ out-of-range cooling **age** never reaches this handler at all, because §4 show
 `get_filename` clamps rather than raising — so that failure mode produces silently wrong
 physics with **not even a warning**.
 
+## 9. Momentum-phase asymptotics — **DONE** (2026-08-08), and it tests §3's explanation
+
+Full write-up: [`phase6_momentum_asymptotics.md`](phase6_momentum_asymptotics.md).
+
+The item was blocked because no run reached phase 2. `phase6_asymptotics.py` already
+carried `"momentum": {"R2": 1/2, "v2": -1/2}`, so **no harness change was needed** —
+only a config that gets there. `transition_trigger blowout` (`registry.py:408`, a
+documented alternative to the default `cooling_balance`) ends the energy phase at
+`R2 > rCloud`, reaching phase 2 at `t ≈ 0.09` Myr:
+**195 snapshots — energy 97, implicit 50, transition 30, momentum 18.**
+
+| phase | qty | measured | expected | rms [dex] |
+|---|---|---:|---:|---:|
+| energy | R2 | +0.563 | +0.600 | 0.0018 |
+| implicit | R2 | +0.546 | +0.600 | **0.0015** |
+| transition | R2 | +0.555 | — | 0.0000 |
+| **momentum** | **R2** | **+0.542** | **+0.500** | **0.0024** |
+| momentum | v2 | −0.217 | −0.500 | 0.0193 |
+
+**`R2` in the momentum phase is on the attractor** — rms 0.0024 dex over a 0.60-dex
+window, the same order as the energy phase's 0.0018. The momentum-driven snowplow
+limit `R ~ t^(1/2)` **is recovered**, which is the counterpart to §3's result that the
+code spans both energy-driven limits. **`v2` is not** (rms 0.0193, 8×): by §3's own
+rule the −0.217 must not be quoted, and it is inconsistent with the `R2` fit
+(`R ~ t^0.542` implies `v ~ t^−0.458`). Recorded, not explained.
+
+**It also converts §3's explanation into a tested one.** §3 measured the implicit
+phase at `R2 +1.094, rms 0.0897` and *explained* it as "the shell leaves the cloud, so
+the swept-mass law changes". Here the implicit phase **ends at the cloud boundary** and
+comes back at **+0.546, rms 0.0015** — clean, near-Weaver. Same code, same physics,
+implicit phase confined to the cloud ⇒ self-similarity restored. That discriminates the
+explanation instead of asserting it.
+
+⚠️ **Open observation, not a finding:** the transition phase fits with **rms 0.0000**
+on both quantities over 15 points. An exactly log-linear trajectory to four decimals is
+not what numerical integration usually yields; it may mean that phase emits
+analytically-generated or duplicated rows. **Not investigated.**
+
 ## Not done
 
 - `TBL-01` **frequency** past 10 Myr — mechanism settled in §4, but no run has survived
   that long.
 - Budget closure (do the force terms sum to the reported totals at every snapshot?).
+- The transition-phase `rms 0.0000` observation in §9.
 - **Re-measuring `ST-001`** against the new age-proportional segments, which invalidated
   its ~30 yr magnitude bound. *(Done — see §6.)*
