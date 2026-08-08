@@ -32,28 +32,30 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-06):** 🟡 partial — **Batches 1-5 done; C2 is implemented, gated and pushed, with
-one bar clause open.** Cleared: P0, P1, P1-free (byte-identical `dictionary.jsonl` on **all five**
-configs), P2 (worst 1.007×), P4 (behavioural test, verified failing-first), full suite 1057/0,
-`pre-commit`. **Open: P3's mypy clause fails as written** — 144 vs a 137 baseline, all +7 of one
-`attr-defined` class the file already carries 49 of (§2 D5). Recorded for a maintainer ruling
-rather than reinterpreted; three options and a recommendation are in D5. Batch 6 (re-open
-magic-number #2 now that collapse terminates in-band) is unblocked but not started.
-§1 is source-verified against `adfc23f`; §3 bars and §5 decision rule were registered *before* any
-edit and are unchanged. **D1: production is ≥4.3e4× away from the stall** (whole phase-1a
-integrator costs 0.2-0.6 s/run), so the solver swap C1 is ruled out on economics. **D2: the stall
-is stiffness, not a singularity** — `Eb` pinned at 1.6e-6 au on a slow manifold, dominant
-λ ≈ −1e13, ~7 days to finish one segment — and, newly, **`Eb` never reaches 0, so the existing
-`Eb ≤ 0` guard is mis-thresholded as well as out-of-band.** **D3/Batch 3: C2 built** — a
-per-segment event at `ENERGY_COLLAPSE_FRAC = 1e-3` of the segment's starting `Eb`, a threshold
-bounded on both sides by measurement — and **P0 passes**: the stalling control now ends in 22 s
-with the pre-existing `ENERGY_COLLAPSED` fate. **D4/Batch 4: the equivalence screen is clean** —
-`dictionary.jsonl` **byte-identical on all five configs** (the bar asked only for
-`simple_cluster`), fates unchanged, worst cost 1.007×. C0 is therefore no longer the likely
-outcome: inertness is proven, not argued. Next: **Batch 5** (P4 behavioural test, P3 gates, land).
-Spun out of
-`docs/dev/magic-numbers/SWEEP2_PLAN.md` §4 R3, which measured the stall and named this as the
-honest follow-up.
+**Status (2026-08-06):** 🟡 partial — **all six batches done; the fix is landed on the branch and
+one bar clause is open.** §1 is source-verified against `adfc23f`; the §3 bars and §5 decision rule
+were registered *before* any edit and are unchanged.
+
+- **D1:** production is ≥4.3e4× away from the stall (the whole phase-1a integrator costs
+  0.2-0.6 s/run) ⇒ the LSODA swap C1 is ruled out on economics.
+- **D2:** the stall is **stiffness**, not a singularity — `Eb` pinned at 1.6e-6 au on a slow
+  manifold, dominant λ ≈ −1e13, ~7 days per segment — and **`Eb` never reaches 0**, so the existing
+  `Eb ≤ 0` guard is mis-thresholded as well as out-of-band.
+- **D3/D4:** C2 built (a per-segment event at `ENERGY_COLLAPSE_FRAC = 1e-3` of the segment's
+  starting `Eb`, bounded on both sides by measurement); P0 passes (22 s instead of a hang) and the
+  equivalence screen is **byte-identical on all five configs**, worst cost 1.007×.
+- **D5:** P4 passes (behavioural test, verified failing-first); suite 1057/0 and `pre-commit`
+  green. **Open: P3's mypy clause fails as written** — 144 vs a 137 baseline, all +7 of one
+  `attr-defined` class the file already carries 49 of. Recorded for a maintainer ruling rather
+  than reinterpreted; three options and a recommendation are in D5.
+- **D6:** the motivating question is answered — **`dt_switchon` is NOT removable.** Even with a
+  collapsing segment now stopping cleanly, ablation flips the stopping fate on **3 of 5** configs,
+  including `simple_cluster`, the default published one. Magic-number #2 stays document-and-pinned,
+  and the record that called the ramp "nearly inert" is corrected: that figure came from the only
+  two configs that survive ablation.
+
+Spun out of `docs/dev/magic-numbers/SWEEP2_PLAN.md` §4 R3, which measured the stall and named this
+as the honest follow-up.
 
 ## 0. What this is, and what it is not
 
@@ -330,6 +332,53 @@ Batch 4 (`data/equivalence_screen.csv`, the "after" arms — same code, ramp on)
   fails on that config immediately. Batch 6 is therefore mostly a check on the *other four*: the
   open question is whether the ramp matters anywhere except the stiff edge.
 
+### D6 — Batch 6 result: `dt_switchon` is NOT removable, and it is load-bearing far more widely
+### than the record said (2026-08-06; `data/dt_switchon_removability.csv`)
+
+**B6-A fails on 3 of 5 configs.** With the ramp ablated (guard in place, `stop_t = 0.02`):
+
+| config | ramp active | ramp ablated | |
+|---|---|---|---|
+| `simple_cluster` | STOPPING_TIME, 125 snaps | **ENERGY_COLLAPSED at t = 5.5e-7 Myr**, 6 snaps | **FLIP** |
+| `f1edge_lowdens` | STOPPING_TIME, 61 snaps | **ENERGY_COLLAPSED at t = 2.2e-4 Myr**, 6 snaps | **FLIP** |
+| `f1edge_hidens` | STOPPING_TIME, 127 snaps | **ENERGY_COLLAPSED at t = 2.6e-7 Myr**, 4 snaps | **FLIP** |
+| `gmc_control` | STOPPING_TIME, 107 snaps | STOPPING_TIME, 107 snaps | survives |
+| compact probe | STOPPING_TIME, 161 snaps | STOPPING_TIME, 161 snaps | survives |
+
+Per the rule registered before the batch: one flip ends the question. **`dt_switchon` stays;
+magic-number #2 remains closed as document-and-pin.** The Batch 3-5 guard improved the *failure
+mode* — a clean stop instead of a hang — without making the constant removable, which is exactly
+the outcome the rule anticipated as legitimate.
+
+**The mechanism, and a correction the record needs.** Ablating the ramp flips the sign of the
+early energy budget on **every** config: with the ramp `Eb` grows segment over segment
+(`simple_cluster`: 93.7 → 96.9 → 102.7 → 110.9 → 121.2 → 133.6 au), ablated it drains
+(93.7 → 64.8 → 42.0 → 24.3 → 10.8 → 0.98). Two configs dip and recover; three drain to death. So
+the ramp is not a stiff-edge curiosity — **it is load-bearing on the default published config**.
+
+The earlier record said otherwise, and it is worth naming why: `magic-numbers/SWEEP2_PLAN.md` §4
+and `SWITCHON_BRIEF.md` §3 quantified ablation as "−0.006% at the compact probe's observed age,
+−0.017% on `gmc_control` → decays to nothing", with `f1edge_hidens` as the lone stiff-edge
+exception. Those two configs are **precisely the two that recover** — the only two of the five for
+which "the ramp is nearly inert" is true. `simple_cluster` and `f1edge_lowdens` were never
+ablated. The conclusion was not wrong about the configs it measured; it generalised from a sample
+that happens to exclude every config where the constant matters. Corrected in those docs, dated.
+
+**Control — the collapses are genuine, not my guard truncating viable runs.** Ablated
+`simple_cluster` re-run on the **pre-guard** tree (`85b347a`) **stalls in segment 6** — `enter`
+with no `exit`, killed at 12m46s with zero snapshots flushed — the same segment at which the
+guarded run terminates. So the guard converts a hang into a correctly-named stop. This control was
+run because the alternative reading (my threshold firing on a recoverable dip) would have made the
+whole batch's verdict an artifact of the Batch 3 change.
+
+**The threshold gains its best validation here, from a direction Batch 3 could not supply.** The
+two surviving ablated runs are genuine dip-and-recover cases: `gmc_control` falls to 3.8% of its
+starting `Eb` (deepest per-segment ratio 0.530) and recovers to 1.59e6; the compact probe falls to
+6.0% (ratio 0.598) and recovers. The guard stayed silent through both, with **530× and 598× of
+margin** above the 1e-3 floor. Batch 3 could only bound the threshold with healthy runs (which
+never dip) and the stalling control; these are the first measured cases of a run that dips hard
+and lives.
+
 ## 3. PRE-REGISTERED BARS (registered 2026-08-06, before any `trinity/` edit)
 
 Per `docs/dev/phase1a-init/PLAN.md` §4 precedent, these stay on this page verbatim even if later
@@ -430,7 +479,7 @@ committing artifacts + writing its result back into this doc (🔄/💾). Costs 
 | **3** | ✅ **DONE 2026-08-06 — Candidate bake-off on the positive control** | D2 | C2 implemented (`make_energy_collapse_event` + per-segment wiring in `run_energy_phase.py`) and run against the ablated `f1edge_hidens`; ledger `data/candidate_gate.csv`; unit tests `test/test_energy_collapse_event.py` | **P0 PASS** — the run that used to grind (~7 days/segment) now completes in **22 s** with fate `ENERGY_COLLAPSED`, 46× inside the 1011 s ceiling and 15× faster than the ramp-active arm. Only C2 was built; C1 was already out | ran 5 min |
 | **4** | ✅ **DONE 2026-08-06 — Equivalence on production configs** | C2 passed P0 | `docs/dev/screen/screen.py` over all 5 configs (before `85b347a` vs WORKTREE) → `data/equivalence_screen.csv` | **P1 PASS · P1-free PASS on all five configs, not just `simple_cluster` · P2 PASS** (worst 1.007× vs the 1.5× ceiling). §5.2 fires: **land C2 alone** | ran 35 min |
 | **5** | 🟡 **DONE 2026-08-06 except one clause — Land** | Batch 4 verdict | C2's smallest diff (16 lines in `run_energy_phase.py` + one event factory) + P4 behavioural test `test/test_phase1a_collapse_terminates.py`, verified failing-first; then P3 | **P4 PASS · suite 1057/0 · pre-commit PASS · mypy 144 vs 137 baseline = FAILED AS WRITTEN** (+7, all one pre-existing idiom class — §2 D5). Awaiting a ruling on that clause | ran 25 min |
-| **6** | **(conditional) Revisit magic-number #2** | a candidate landed AND P0 holds *without* the ramp | re-run the §4 R1/R2 protocol from `magic-numbers/SWEEP2_PLAN.md` with the new protection in place: can `dt_switchon` now be deleted or made scale-relative? | its own pre-registered bars, its own commit — do **not** fold into Batch 5 | ~1 h |
+| **6** | ✅ **DONE 2026-08-06 — Revisit magic-number #2** | C2 landed, P0 held | ablation re-run on all 5 configs + a pre-guard control → `data/dt_switchon_removability.csv` | **B6-A FAILS 3/5 (fate flips incl. `simple_cluster`) ⇒ `dt_switchon` NOT removable; #2 stays document-and-pin.** Also corrects the record: the ramp is load-bearing on the default config, not just the stiff edge | ran 40 min |
 
 **Batch 6 is the prize and is deliberately last.** If phase 1a can survive an `Eb` collapse
 cleanly, the ramp's stated justification weakens and #2 can be re-opened *with evidence*. Nothing
@@ -468,5 +517,6 @@ E8b write-up, mechanism corrected in place 2026-08-06).
 | Batch 1 aggregates (the §2 D1 table, regenerated by `--reduce`) | `data/seg_stepcount_summary.csv` |
 | Batch 2 stall anatomy (938 samples, Jacobian eigenvalues) | `data/stall_anatomy.csv` (harness: `harness/stall_anatomy_runner.py`) |
 | Batch 3 candidate gate (P0) + threshold derivation | `data/candidate_gate.csv`; tests `test/test_energy_collapse_event.py` |
+| Batch 6 removability test for magic-number #2 (+ pre-guard control, guard margins) | `data/dt_switchon_removability.csv` |
 | Batch 4 equivalence screen (P1 / P1-free byte-identity / P2) | `data/equivalence_screen.csv` |
 | multi-config screen harness | `docs/dev/screen/screen.py` |

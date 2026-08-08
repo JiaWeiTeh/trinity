@@ -126,9 +126,19 @@ Ablated by forwarding `t=None` so the ramp branch is skipped and *nothing else* 
 | GMC control (`mCloud=1e6, sfe=0.01, nCore=1e3`) | −4.71% @100 yr → −1.79% @1e3 yr → −0.079% @3e4 yr → **−0.017% @8e4 yr** | decays to nothing |
 | `f1edge_hidens` (`mCloud=1e7, sfe=0.01, nCore=1e6`) | **run STALLS** — 4 rows to 0.26 yr in 90 min wall, vs 127 rows to 2e4 yr in minutes with the ramp | ramp is load-bearing |
 
+> **SCOPE CORRECTION (2026-08-06).** Result 1 below is measured on the compact probe and
+> `gmc_control` only. Ablating all five screen configs
+> (`docs/dev/phase1a-stiffness/data/dt_switchon_removability.csv`) shows those are **the only two
+> of five that survive ablation**: `simple_cluster` — the default published config — and
+> `f1edge_lowdens` both collapse to `ENERGY_COLLAPSED`, as `f1edge_hidens` does. So "bounded and
+> small" describes the two recovering configs, not the ramp in general; on the majority of the
+> config span the ramp is the difference between a bubble that grows and one that dies. Result 2
+> stands and is strengthened.
+
 Two results, and the second is the important one:
 
-1. **Its trajectory consequence is bounded and small.** At the compact probe's observed age the ramp is worth
+1. **Its trajectory consequence is bounded and small** *(on the two configs that survive ablation
+   — see the correction above).* At the compact probe's observed age the ramp is worth
    0.006% in R2 — an order of magnitude below the `phase1a_segFrac` 0.1→0.03 convergence step the
    shipped schedule itself carries. Note the effect is *weaker* in the compact regime, the
    opposite scaling to `SEGMENT_DURATION`, because the compact probe's `t0` is ~170× earlier so by the time the

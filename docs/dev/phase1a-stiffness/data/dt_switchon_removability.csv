@@ -1,0 +1,20 @@
+# phase1a-stiffness Batch 6 (PLAN.md par.6 + its pre-registered bars): can dt_switchon
+# (magic-number #2) be removed now that a collapsing segment ends cleanly instead of grinding?
+# Ablation = forward t=None (the docs/dev/magic-numbers SWEEP2_PLAN par.4 R1/R2 protocol), on top of
+# the landed energy-collapse guard. Ramp-active reference = the Batch 4 "after" arms
+# (data/equivalence_screen.csv) -- same code, ramp on. stop_t=0.02 Myr, separate processes.
+# Command: python docs/dev/phase1a-stiffness/harness/seg_stepcount_runner.py --config <name> \
+#            --stop-t 0.02 --ablate-ramp --workdir <dir>                          (2026-08-06)
+# VERDICT: B6-A FAILS on 3 of 5 configs -> dt_switchon is NOT removable. Magic-number #2 stays
+# closed as document-and-pin. See PLAN.md par.2 D6.
+gate,config,quantity,ramp_active_reference,ablated_measured,verdict
+B6-A,simple_cluster,stopping_fate,1 stopping_time (t=0.02 Myr; 125 snaps),51 energy_collapsed (t=5.457e-07 Myr; 6 snaps),FAIL - FATE FLIP on the default published config
+B6-A,f1edge_lowdens,stopping_fate,1 stopping_time (t=0.02 Myr; 61 snaps),51 energy_collapsed (t=2.228e-04 Myr; 6 snaps),FAIL - FATE FLIP
+B6-A,f1edge_hidens,stopping_fate,1 stopping_time (t=0.02 Myr; 127 snaps),51 energy_collapsed (t=2.604e-07 Myr; 4 snaps),FAIL - FATE FLIP
+B6-A,gmc_control,stopping_fate,1 stopping_time (t=0.02 Myr; 107 snaps),1 stopping_time (t=0.02 Myr; 107 snaps),PASS - survives ablation
+B6-A,m43_probe,stopping_fate,1 stopping_time (t=0.02 Myr; 161 snaps),1 stopping_time (t=0.02 Myr; 161 snaps),PASS - survives ablation
+mechanism,simple_cluster,Eb_over_first_6_segments_au,93.7 -> 96.9 -> 102.7 -> 110.9 -> 121.2 -> 133.6 (GROWS),93.7 -> 64.8 -> 42.0 -> 24.3 -> 10.8 -> 0.98 (DRAINS),the ramp reverses the early energy budget
+mechanism,all five configs,early_Eb_direction_when_ablated,grows every segment,drains every segment,ablation flips the sign of dEb/dt early on EVERY config; only two recover
+control,simple_cluster ablated WITHOUT the guard (85b347a),run_completes,-,NO - stalled in segment 6 (enter with no exit); killed at 12m46s with 0 snapshots flushed,the three collapses are genuine; the guard converted a hang into a clean stop rather than truncating a viable run
+guard-margin,gmc_control ablated,deepest_per_segment_Eb_ratio,-,0.5302 (Eb dips to 3.8% of start then recovers to 1.59e6),guard silent - 530x above the 1e-3 floor
+guard-margin,m43_probe ablated,deepest_per_segment_Eb_ratio,-,0.5982 (Eb dips to 6.0% of start then recovers),guard silent - 598x above the 1e-3 floor

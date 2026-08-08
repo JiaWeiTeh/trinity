@@ -183,6 +183,17 @@ report.
 
 **RESULTS (2026-08-06, `data/switchon_repro_ledger.csv`):**
 
+> **SCOPE CORRECTION (2026-08-06, from `docs/dev/phase1a-stiffness/PLAN.md` §2 D6).** R1/R2 below
+> ablate the ramp on three configs — the compact probe, `gmc_control` and `f1edge_hidens` — and the
+> §5 write-up generalises from them ("worth 0.006%… decays to nothing", with the stiff edge as the
+> lone exception). Ablating all **five** screen configs shows that generalisation is drawn from an
+> unrepresentative sample: **`simple_cluster` (the default published config) and `f1edge_lowdens`
+> also collapse without the ramp** (fate flips to `ENERGY_COLLAPSED` at t = 5.5e-7 and 2.2e-4 Myr).
+> The compact probe and `gmc_control` are the only two of five that recover — i.e. exactly the two
+> measured here. The numbers below are correct for the configs they were taken on; the conclusion
+> "the ramp is nearly inert" is not general, and the ramp is load-bearing far more widely than this
+> section implies. Evidence: `docs/dev/phase1a-stiffness/data/dt_switchon_removability.csv`.
+
 - **R1 REPRODUCED, to the digit:** −1.433% @10 yr → −0.108% @1e3 → −0.041% @3e3 →
   **−0.006% @2.1e4 yr** (record: −1.43 → −0.108 → −0.041 → −0.0059), and dv2 +0.006% @2.1e4 yr
   (record +0.0056). Trajectories: `data/switchon_repro_m43_{active,ablated}.csv`.
