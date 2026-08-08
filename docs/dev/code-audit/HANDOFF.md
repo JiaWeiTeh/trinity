@@ -81,8 +81,11 @@ Regenerate counts: `python docs/dev/code-audit/harness/collect_findings.py`
 
 ## Current numbers
 
-690 findings from 26/26 sources. After revision: **15 S1**, 197 S2, 250 S3, 220 S4,
+690 findings from 26/26 sources. After revision: **16 S1**, 196 S2, 250 S3, 220 S4,
 plus 2 FIXED, 2 CLEARED, 3 REFUTED, 1 WITHDRAWN.
+
+*(2026-08-08: S1 15 → 16 and S2 197 → 196 — `SIGN-01` (`gamma_adia`) re-rated S2 → S1
+when the rubric-boundary question below was settled.)*
 
 **Verification removed or demoted more S1s than it confirmed** — that is the headline
 about the *method*, and it is why `UNVERIFIED.md` exists as a separate file.
@@ -96,12 +99,13 @@ about the *method*, and it is why `UNVERIFIED.md` exists as a separate file.
 | `S12b-R-01` | `generate_run_name` not injective + no duplicate guard ⇒ a sweep config is never run while the report claims success | gate 3/3; reproduced |
 | `S8-R-02` | `n_IF_Str == shell_n0` **bit-identical at every snapshot** ⇒ `P_HII` is a re-expression of `Pb` | Phase 6 dynamic |
 
-### The 10 S1-rated candidates never tested
+### The 8 S1-rated candidates never tested
 
-`S11-R-02` (isCollapse substring — **reaches published figures** via
-`paper/_lib/plot_markers.py`), `S11-R-03`, `S6-R-01`, `DD-003`, `DD-004`, `SF-003`,
-`SF-004`, `SF-005`. Prior from the 7 that *were* tested: **2 removed outright, 3
-demoted**. Expect similar.
+`S11-R-03`, `S5b-R-01`, `S6-R-01`, `DD-003`, `DD-004`, `SF-003`, `SF-004`, `SF-005`.
+Prior from the 7 that *were* panelled: **2 removed outright, 3 demoted** — but the two
+settled *dynamically* (`S8-R-02`, `S11-R-02`) were both **confirmed**, and `S11-R-02`
+came out **larger** than claimed. The shrink prior applies to skeptic panels, not to
+run-based checks.
 
 ## What was fixed (by the maintainer, not the audit)
 
@@ -112,21 +116,27 @@ goldens lack. Full suite green: **1093 passed, 15 deselected**.
 
 ## Recommended next steps, in order
 
-1. **Test `S11-R-02` (isCollapse).** Highest value of the untested ten: `isCollapse`
-   is set by substring match, `'velocity_runaway_event'` matches nothing, and the
-   flag is consumed by `paper/_lib/plot_markers.py` — so a mis-classification reaches
-   published figures. Try **dynamically first**: force a runaway-infall termination
-   and read the flag. Phase 6 showed dynamic checks are the cheapest verification
-   available (one run + an existing harness settled `S8-R-02`).
-2. **Settle the `gamma_adia` vs `mu_*` severity question.** `gamma_adia` is
-   user-settable (`default.param:251`) and hardcoded `5/3` through the Weaver chain —
-   structurally identical to the `mu_*` finding rated **S1**, but sweep ② rated it
-   **S2**. A rubric-boundary question, not a facts question. **They must ship rated
-   alike.**
-3. **Finish the 4 open Phase-6 probes** — `TBL-01` (needs `t > 10` Myr; my attempt
+1. ~~**Test `S11-R-02` (isCollapse).**~~ **DONE 2026-08-08 — confirmed and widened.**
+   See `FINDINGS.md` §5 and `resolutions.md#s11-r-02`. The claimed false negative is
+   real but largely masked in phases 1b/1c/2 by a redundant `v2<0 and R2<R2_prev`
+   detector (`run_energy_phase.py` has none, so phase 1a is unmasked). A **second**
+   misclassification the claim never mentioned is *not* masked: `large_radius_event`
+   contains the substring `radius`, so a shell **expanding** through `stop_r` — a
+   clean `LARGE_RADIUS` success — is latched `isCollapse = True`, and nothing ever
+   resets the flag. Repro: `harness/probe_iscollapse.py`.
+   **Still open:** reachability at the shipped `stop_r = 500` pc (proven only at 3 pc).
+2. ~~**Settle the `gamma_adia` vs `mu_*` severity question.**~~ **DONE 2026-08-08 —
+   both S1.** `SIGN-01` re-rated S2 → S1; `S12a-R-01` unchanged. Reasoning in
+   `resolutions.md`. Short form: neither is guard-masked or cancelling, both are
+   documented `default.param` keys, so the rubric's "unreachable in current configs"
+   escape does not apply to either — and the asymmetry runs *opposite* to the original
+   ratings, since `mu_*` is silently **ignored** (self-consistent run) while
+   `gamma_adia` is silently **half-honoured** (internally inconsistent run, 67 %
+   pressure imbalance at γ=1.4).
+3. **Finish the 4 open Phase-6 probes** — `TBL-01` (needs `t > 10` Myr; the attempt
    reached 0.2 %), the `W-3` swallowed-error probe, momentum-phase asymptotics (no run
    yet wrote more than one momentum snapshot), and the *different-config* in-process
-   case.
+   case. **Not started as of 2026-08-08.**
 4. **Then, and only on maintainer approval, open the fixing stage** — separate branch,
    by severity, each fix through the CLAUDE.md rule-5 ladder. Start with the event
    dispatch: it is the only verified S1 that changes a recorded physical *fate*.

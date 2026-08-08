@@ -121,7 +121,7 @@ Both present in `dictionary.py`.
 
 ---
 
-## C. Never tested — 10 S1-class candidates
+## C. Never tested — 8 S1-class candidates
 
 Listed in `FINDINGS.md` §"raised but never gate-tested". They carry an S1 rating from a
 reconciler or sweep and **nothing has tried to kill them**.
@@ -129,8 +129,15 @@ reconciler or sweep and **nothing has tried to kill them**.
 The prior from section A is the reason to hold them loosely: **of the 7 defects that were
 panelled, 2 were removed outright and 3 were demoted.** Expect a similar fraction here.
 
-Highest value to test first: **`S11-R-02`** (`isCollapse` substring matching) — it is
-consumed by `paper/_lib/plot_markers.py`, so a mis-classification reaches published figures.
+**Two have since been tested and both were promoted out**, so the prior is not
+one-directional:
+
+- `S8-R-02` — dynamically confirmed by Phase 6 (`n_IF_Str == shell_n0` bit-identical).
+- `S11-R-02` — dynamically confirmed **and widened**: the claimed false negative is real
+  but largely masked in phases 1b/1c/2 by a redundant detector, while a *second*
+  misclassification the claim never mentioned — `large_radius_event` latching
+  `isCollapse=True` on an **expanding** shell — is unmasked. See `FINDINGS.md` §5.
+  It is the first untested candidate to **grow** under verification rather than shrink.
 
 ---
 

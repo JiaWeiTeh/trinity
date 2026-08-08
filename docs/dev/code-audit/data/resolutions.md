@@ -1313,3 +1313,188 @@ Recorded as a method note too: this is the first finding the audit confirmed
 **dynamically rather than by argument**, and it cost one run plus an existing
 harness. Several of the nine remaining untested S1 candidates may be settleable the
 same way, far more cheaply than by skeptic panel.
+
+---
+
+## `S11-R-02` — `isCollapse` substring matching → **UPHELD and WIDENED** (S1 held)
+
+**The claim (born S1, never gate-tested).** *"`isCollapse` is set by substring match;
+`velocity_runaway_event` matches nothing, so runaway infall is never recorded as
+collapse."* — `phase_events.py:627`.
+
+**Verdict: the claim is correct, and it is only half the defect.** The same substring
+test also fires on an event that is not a collapse at all.
+
+### The mechanism, at source
+
+`apply_event_result` (`phase_events.py:626-629`) classifies the run's fate with a
+substring test on `reason_code`:
+
+```python
+if 'radius' in result.reason_code.lower() or 'collapse' in result.reason_code.lower():
+    params['isCollapse'].value = True
+```
+
+The `reason_code` strings it is matched against are set by the event factories, and
+none of them contains the word "collapse":
+
+| factory | `reason_code` | `end_code` | matches? |
+|---|---|---|---|
+| `make_min_radius_event` | `small_radius_event` | `SHELL_COLLAPSED` (4) | ✅ via `radius` |
+| `make_max_radius_event` | `large_radius_event` | `LARGE_RADIUS` (2) | ✅ via `radius` |
+| `make_velocity_runaway_event` | `velocity_runaway_event` | `VELOCITY_RUNAWAY` (50) | ❌ |
+
+So the test keys on the substring `radius` — a *geometric* word that carries no
+direction — and the one event that is unambiguously about direction is missed.
+
+### Dynamically verified — `harness/probe_iscollapse.py`
+
+Driving every simulation-ending factory through the real
+`check_event_termination` → `apply_event_result` path
+(`data/iscollapse_truth_table.csv`):
+
+| event | `reason_code` | v2 at event | got | want | verdict |
+|---|---|---:|---|---|---|
+| `min_radius` | `small_radius_event` | −2.0 | True | True | OK |
+| `max_radius` | `large_radius_event` | **+12.0** | **True** | **False** | **FALSE POSITIVE** |
+| `velocity_runaway(collapse)` | `velocity_runaway_event` | **−500.0** | **False** | **True** | **FALSE NEGATIVE** |
+| `velocity_runaway(expansion)` | `velocity_runaway_event` | +500.0 | False | False | OK |
+
+**2 of 4 simulation-ending events are misclassified.**
+
+### The false positive is the more serious half, and it is new
+
+`make_max_radius_event` has `direction = +1`: it fires when `R2` crosses `stop_r`
+**from below**, i.e. on a shell that is *expanding outward*. `stop_r` defaults to
+**500 pc** (`registry.py:377`) and has its own end code, `LARGE_RADIUS = (2, ...)`,
+which sits in the clean range `0 <= ec <= 9` — this is a **successful** termination,
+the designed outcome for a bubble that expands out of the cloud. Every such run is
+recorded as having collapsed.
+
+Three properties make it stick:
+
+1. **`isCollapse` is a latch.** All four assignment sites in `trinity/` set `True`;
+   **nothing ever sets it back to `False`.**
+2. **It contradicts the invariant the code documents for itself.**
+   `show_run.py:68-70` states plainly: *"`isCollapse` alone only means the shell was
+   contracting (`v2 < 0` and `R2` falling) at exit."* The `large_radius_event` branch
+   sets it with `v2 > 0` and `R2` rising — the exact negation.
+3. **It reaches published figures.** `paper/_lib/plot_markers.find_collapse_time`
+   takes the **first** `True` in the series and draws a collapse-onset marker there,
+   so an expanding run gets a spurious collapse marker at its final time.
+
+### The originally-claimed half is real but largely masked
+
+Phases 1b, 1c and 2 each carry a **redundant and correct** detector in their segment
+loop (`run_energy_implicit_phase.py:1302-1303`, `run_transition_phase.py:772-773`,
+`run_momentum_phase.py:825-826`):
+
+```python
+# Collapse detection: velocity negative AND radius decreasing
+if v2 < 0 and R2 < R2_prev:
+    params['isCollapse'].value = True
+```
+
+A shell reaching `v2 <= -500` pc/Myr has been contracting for prior segments, so this
+will normally have latched `True` before the runaway event fires. **`run_energy_phase.py`
+(phase 1a/1) has no such detector** — `grep isCollapse` over it returns nothing, and
+`build_energy_phase_events` still installs `make_velocity_runaway_event(direction="collapse")`.
+A runaway infall during the explicit energy phase is therefore recorded with
+`SimulationEndCode = VELOCITY_RUNAWAY` and `isCollapse = False`.
+
+### Severity: **S1 upheld**, on the false-positive half
+
+Precedent in this audit: `NUM-02` is held at S1 as the finding that "changes a
+recorded physical *fate*", and this is the same class. The trajectory is unaffected;
+the recorded classification is wrong, latched, contradicts the invariant the code
+documents, and is consumed by `paper/_lib/plot_markers.py`, `show_run.py`,
+`sweep_runner.py:560` and `tools/reduce_sweep.py`.
+
+**Honest limit — recorded, not glossed:** reachability was demonstrated at
+`stop_r = 3` pc (`harness/probe_iscollapse_maxr.param`), not at the shipped default
+`stop_r = 500` pc. Whether tracked configurations actually terminate via
+`large_radius` before `stop_t = 15` Myr is **unmeasured**. The unit-level probe
+establishes the mechanism unconditionally; the default-config reach does not follow
+from it.
+
+**Line reference drift:** the finding cites `phase_events.py:627`, which is still
+correct.
+
+---
+
+## Severity inconsistency `SIGN-01` (`gamma_adia`) vs `S12a-R-01` (`mu_*`) → **RESOLVED: both S1**
+
+Deferred by the Phase-3 entry above to "the Phase-5 gate, applied to both at once".
+Settled here. This is a rubric-boundary call, so the reasoning is recorded in full.
+
+### Both premises re-verified against current source first
+
+| claim | status |
+|---|---|
+| `mu_*` user-settable, overwritten in place | ✅ `read_param.py:317-320` unconditionally assigns `params['mu_convert'\|'mu_atom'\|'mu_ion'\|'mu_mol'].value` from `x_He`/`Z_He` |
+| the anti-stomp guard cannot fire | ✅ `read_param.py:482-485` tests `params[k] is not v_before` — **object identity**. The `mu_*` writes mutate `.value` on the *existing* `DescribedItem`, so identity is preserved and the guard is structurally blind to them |
+| `gamma_adia` user-settable | ✅ `default.param:251` (`gamma_adia    5/3`) |
+| `bubble_E2P` honours γ | ✅ `get_bubbleParams.py:239` — `Pb = (gamma - 1) * Eb / shell_volume / (4*np.pi/3)` |
+| `get_r1` hardcodes 5/3 | ✅ `get_bubbleParams.py:408` — `sqrt(Lmech/v_mech/Eb * (r2**3 - r1**3)) - r1`, **no γ symbol at all** |
+| 67 % imbalance at γ=1.4 | ✅ reproduced exactly (below) |
+
+**Line-reference drift corrected:** the Phase-3 entry cites `registry.py:376` for
+`gamma_adia`; it is now **`registry.py:401`**.
+
+### Why `get_r1` is a hardcode and not merely γ-free
+
+Balancing wind ram pressure at `R1` against `Pb`:
+
+    2·Lmech/(4π v R1²) = (γ−1)·Eb / ((4π/3)(R2³−R1³))
+    ⇒ R1² = 2·Lmech·(R2³−R1³) / (3(γ−1)·v·Eb)
+
+At γ = 5/3, `3(γ−1) = 2` exactly, and the code's
+`R1² = Lmech·(R2³−R1³)/(v·Eb)` falls out. The adiabatic index has been **cancelled
+away analytically at 5/3** — which is why grepping for `5/3` in the Weaver chain
+finds nothing. At γ = 1.4, `3(γ−1) = 1.2` and the identity fails.
+
+    Pb(1.4)/Pb(5/3)  = 0.4/0.6667 = 0.6000     (bubble_E2P honours γ)
+    imbalance vs the R1 the code chose = 1/0.6 = 1.6667  → 67 %
+
+The **67 %** figure in `FINDINGS.md` is exact, not approximate.
+
+### The ruling
+
+The rubric reads:
+
+- **S1 — results-wrong.** Changes physical output on configurations the code is run on today.
+- **S2 — latent.** Wrong, but masked by a guard, unreachable in current configs, or cancelling.
+
+Neither defect is masked by a guard (the `mu_*` guard is provably blind), and neither
+cancels. So the question reduces to **"unreachable in current configs"**.
+
+**They are reachable.** Both are documented, schema-registered keys in
+`default.param` — and `.param` files are *the* supported configuration interface
+(`CLAUDE.md`: "Configuration is `.param` files that override only the keys they set").
+The tracked `param/` files are described in the same document as **worked examples**,
+not as the set of configurations the code is run on. A rubric that reads "current
+configs" as "the committed examples" would rate every user-facing knob S2 by
+construction, which drains the category of meaning.
+
+**Both are therefore S1.**
+
+### The asymmetry, which runs opposite to the original ratings
+
+Sweep ② rated `gamma_adia` **below** `mu_*`. The mechanisms say the reverse:
+
+- **`mu_*` is silently *ignored*.** The user's value is overwritten before it reaches
+  any physics. The run stays internally self-consistent; it just is not the run the
+  user asked for.
+- **`gamma_adia` is silently *half-honoured*.** `bubble_E2P` and `get_leak_luminosity`
+  use the user's γ while the `R1`/Weaver chain keeps 5/3. The run is **internally
+  inconsistent** — a 67 % pressure discontinuity at the contact surface — and
+  self-inconsistency is strictly worse than being ignored, because no single
+  substitution recovers what the output means.
+
+So there is no defensible ordering in which `gamma_adia` sits below `mu_*`. Rating
+both **S1** is the only assignment consistent with the rubric *and* with the relative
+severity of the two mechanisms.
+
+**Recorded as a downgrade-symmetric note:** this resolution *raises* `SIGN-01`
+S2 → S1. Nothing here downgrades `S12a-R-01`; its S1 stands on the re-verified
+identity-guard blindness above.

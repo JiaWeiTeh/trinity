@@ -1,0 +1,20 @@
+# S11-R-02 dynamic probe: force a `large_radius_event` termination on an
+# EXPANDING shell and read back `isCollapse`.
+#
+# Same physical setup as harness/phase6_short.param (mCloud 1e5 Msun, sfe 0.3,
+# homogeneous densPL_alpha=0 -> rCloud = 1.6900 pc, coll_r = 1.0 pc), with the
+# single change that `stop_r` is lowered from the schema default 500 pc to 3 pc.
+#
+# Why 3 pc: `max_radius` is only built into the 1b / 1c / 2 event lists, never
+# phase 1a/1 (`build_energy_phase_events` = cloud_boundary, min_radius,
+# velocity_runaway). The shell must therefore leave the cloud at rCloud = 1.69 pc
+# and cross stop_r afterwards. 3 pc sits above rCloud, so the event gets a real
+# upward crossing (direction=+1) in phase 1b instead of starting already past it.
+#
+# Expected physical fate: the shell is EXPANDING outward through 3 pc.
+# SimulationEndCode = LARGE_RADIUS (2) -- a clean, successful termination.
+# `isCollapse` must therefore be False.
+mCloud    1e5
+sfe    0.3
+stop_t    0.5
+stop_r    3.0

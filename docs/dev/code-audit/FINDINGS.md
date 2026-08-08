@@ -61,10 +61,10 @@ the full revision history are in [`data/revisions.csv`](data/revisions.csv) and
 | current severity | count |
 |---|---:|
 | FIXED (on main) | 2 |
-| S1 | 15 |
-| S2 | 197 |
+| S1 | 16 |
+| S2 | 196 |
 | S3 | 250 |
-| S4 | 219 |
+| S4 | 220 |
 | CLEARED / REFUTED / WITHDRAWN | 6 |
 
 ## Coverage — what this report does *not* cover
@@ -238,7 +238,7 @@ these to shrink. Do not act on them without verification.
 
 | id | claim | file |
 |---|---|---|
-| `S11-R-02` | `isCollapse` set by substring match: `velocity_runaway_event` matches nothing, so runaway infall is never recorded as collapse | `phase_events.py:627` |
+| ~~`S11-R-02`~~ | **promoted out of this table — dynamically confirmed and widened**, see below | `phase_events.py:627` |
 | `S11-R-03` | no solver-failure channel in the slice — **note: the "`sol.status` never read" half is already refuted**; every phase runner checks it. The exit-code propagation half stands | `main.py:211` |
 | `S5b-R-01` | a `solve_ivp` failure ends the phase with only a free-text reason, no `SimulationEndCode`. **Phase 6 (P6-08): the final-row-mixes-two-times family is real** — the worst `F_ram_wind == pdot_total` violation in each run is at the final row (10 % in `f1edge_lowdens`) — **but the repro S5b proposed does not show it**: `F_ion_in == press_HII_in·4πR2²` passes 0/171, final row included, at rel 0.0 | `run_energy_implicit_phase.py` |
 | `S6-R-01` | transition phase keeps evaluating `R1`/`Pb` past the energy→momentum boundary | `run_transition_phase.py` |
@@ -249,8 +249,9 @@ these to shrink. Do not act on them without verification.
 | `SF-004` | a failed `solve_ivp` in 1b/1c/2 sets only a local string; `main.py` drops it | `main.py` |
 | `SF-005` | momentum RHS clamps `R2`/`mShell` to `1e-10`, fabricating outward acceleration during collapse | `run_momentum_phase.py` |
 
-`S11-R-02` is the one I would test first: `isCollapse` is consumed by
-`paper/_lib/plot_markers.py`, so a mis-classification reaches published figures.
+Eight remain untested. `S11-R-02` was the recommended first test and has now been
+run — it is **confirmed and larger than claimed** (below), which is the first
+untested-S1 candidate to *grow* under verification rather than shrink.
 
 ### 4. `n_IF_Str` carries no independent information — *dynamic (Phase 6)*
 
@@ -274,6 +275,81 @@ operating on a tautology in this regime.
 than by argument, and it cost one run plus an existing harness. Several of the nine
 remaining untested candidates may be settleable the same way, far more cheaply than
 by skeptic panel.
+
+### 5. `isCollapse` misclassifies 2 of 4 terminating events — *dynamic*
+
+`trinity/phase_general/phase_events.py:626-629`
+
+Promoted out of the table above. A run's collapse/no-collapse fate is decided by a
+**substring test on `reason_code`**:
+
+```python
+if 'radius' in result.reason_code.lower() or 'collapse' in result.reason_code.lower():
+    params['isCollapse'].value = True
+```
+
+The test keys on `radius` — a geometric word carrying no direction — and **no
+`reason_code` in the codebase contains the string `collapse`**. Driving every
+simulation-ending factory through the real `check_event_termination` →
+`apply_event_result` path gives:
+
+| event | `reason_code` | v2 at event | got | want | verdict |
+|---|---|---:|---|---|---|
+| `min_radius` | `small_radius_event` | −2.0 | True | True | OK |
+| `max_radius` | `large_radius_event` | **+12.0** | **True** | **False** | **FALSE POSITIVE** |
+| `velocity_runaway(collapse)` | `velocity_runaway_event` | **−500.0** | **False** | **True** | **FALSE NEGATIVE** |
+| `velocity_runaway(expansion)` | `velocity_runaway_event` | +500.0 | False | False | OK |
+
+**The false positive was not in the original claim and is the more serious half.**
+`make_max_radius_event` has `direction = +1` — it fires on a shell *expanding
+outward* through `stop_r` (default **500 pc**), whose end code `LARGE_RADIUS = 2`
+sits in the clean range `0 <= ec <= 9`, i.e. a **successful** termination. That run
+is recorded as having collapsed. `isCollapse` is a **latch** — all four assignment
+sites in `trinity/` write `True` and nothing ever writes `False` — and the branch
+directly contradicts the invariant `show_run.py:68-70` documents for the flag
+(*"only means the shell was contracting (`v2 < 0` and `R2` falling) at exit"*).
+It reaches published figures: `paper/_lib/plot_markers.find_collapse_time` takes the
+**first** `True` and draws a collapse-onset marker there.
+
+**The originally-claimed half is real but largely masked.** Phases 1b/1c/2 each carry
+a redundant correct detector (`if v2 < 0 and R2 < R2_prev`) that will normally have
+latched `True` before a runaway develops. **`run_energy_phase.py` has none** — so a
+runaway infall in phase 1a exits with `VELOCITY_RUNAWAY` and `isCollapse = False`.
+
+**Repro:** `python docs/dev/code-audit/harness/probe_iscollapse.py`
+→ [`data/iscollapse_truth_table.csv`](data/iscollapse_truth_table.csv)
+
+⚠️ **Stated limit:** the mechanism is established unconditionally at unit level, and
+end-to-end at `stop_r = 3` pc (`harness/probe_iscollapse_maxr.param`). Whether
+tracked configurations reach `large_radius` at the shipped `stop_r = 500` pc before
+`stop_t = 15` Myr is **unmeasured** — do not read the default-config reach into this.
+
+### 6. `gamma_adia` is honoured in two places and hardcoded `5/3` elsewhere — *source*
+
+`trinity/bubble_structure/get_bubbleParams.py:408` (and the Weaver structure chain)
+
+Re-rated **S2 → S1** at the Phase-5 gate, together with `mu_*` (§2), as the plan
+required them to be settled once and applied to both. `bubble_E2P` (`:239`) honours
+the user's γ — `Pb = (gamma - 1)·Eb / V` — while `get_r1` contains **no γ symbol at
+all**, because balancing wind ram pressure against `Pb` gives
+
+    R1² = 2·Lmech·(R2³ − R1³) / (3(γ−1)·v·Eb)
+
+and at γ = 5/3 the factor `3(γ−1) = 2` cancels exactly, leaving the code's
+`R1² = Lmech(R2³−R1³)/(v·Eb)`. The index has been **cancelled away analytically at
+5/3**, which is why grepping the Weaver chain for `5/3` finds nothing. At γ = 1.4,
+`3(γ−1) = 1.2` and the two halves disagree by `1/0.6 = 1.667` — the **67 %** pressure
+imbalance at the contact discontinuity, reproduced exactly.
+
+**Why S1, and why it cannot rate below `mu_*`:** the rubric's S2 escape hatches are
+"masked by a guard, unreachable in current configs, or cancelling". `gamma_adia` is
+none of these — it is a documented, schema-registered `default.param` key
+(`:251`, `registry.py:401`), and `.param` files are the supported configuration
+interface. Moreover the two defects are asymmetric in the direction *opposite* to
+their original ratings: `mu_*` is silently **ignored** (the run stays
+self-consistent), whereas `gamma_adia` is silently **half-honoured** (the run is
+internally inconsistent). Self-inconsistency is strictly worse, because no single
+substitution recovers what the output means.
 
 ---
 
@@ -329,13 +405,9 @@ propagates it (`0 × NaN = NaN`), so 22.9 % of cells return NaN including querie
 landing on a valid node beside a hole. `grep isnan trinity/cooling/` finds nothing.
 
 **`gamma_adia` is honoured in two places and hardcoded `5/3` everywhere else** —
-*sweep ②*. `bubble_E2P` and `get_leak_luminosity` accept it; `get_r1`, the
-Rahner-A12 pair and the whole Weaver structure chain hardcode it. At γ=1.4 that is a
-**67 %** pressure imbalance at the contact discontinuity. `gamma_adia` is
-user-settable (`default.param:251`).
-⚠️ **Severity is unresolved and must be settled before this ships as S2.** It has
-exactly the shape that justified rating `mu_*` as S1 — schema-accepted, no warning,
-different value drives the physics. The two must end up rated alike.
+*sweep ②*. ⬆️ **Re-rated S2 → S1; moved to the S1 tier — see §6 below.** The severity
+question this entry carried is settled
+([`resolutions.md`](data/resolutions.md#severity-inconsistency-sign-01-gamma_adia-vs-s12a-r-01-mu_-resolved-both-s1)).
 
 **`--z-override` bypasses the metallicity validator** — *orchestrator*.
 `_validate_ZCloud` raises unless `Z == 1`, but `trinity_to_cloudy.py:140`'s
