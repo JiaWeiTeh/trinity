@@ -51,6 +51,7 @@ Regenerate the three inputs (separate processes — trinity leaks module globals
       python run.py docs/dev/transition/pdv-trigger/runs/params/bench5/${b}__none_diag.param
     done
 """
+
 import csv
 import json
 import math
@@ -58,6 +59,7 @@ import sys
 from pathlib import Path
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
@@ -87,7 +89,9 @@ C_LO, C_HI = 1.8, 12.0
 
 
 def _fin(v):
-    return v if isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v) else None
+    return (
+        v if isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v) else None
+    )
 
 
 def new_traj(run_dir):
@@ -122,9 +126,11 @@ def old_traj(arm):
     """The committed 1056c6d trajectory. Carries no v2/V_w, so Eq-10 is new-run only."""
     p = OLD_TRAJ / f"{arm}__none_diag.csv"
     lines = [ln for ln in p.open() if not ln.startswith("#")]
-    return [(float(r["t_now"]), float(r["theta"]), float(r["Lmech"]), None)
-            for r in csv.DictReader(lines)
-            if r["t_now"] and r["theta"] and r["Lmech"] and float(r["Lmech"])]
+    return [
+        (float(r["t_now"]), float(r["theta"]), float(r["Lmech"]), None)
+        for r in csv.DictReader(lines)
+        if r["t_now"] and r["theta"] and r["Lmech"] and float(r["Lmech"])
+    ]
 
 
 def _clip(rows, tmax):
@@ -167,7 +173,9 @@ def main():
     rows_out = []
     figdata = {}
     print("=== THETA0 — CODE BASELINE re-check at the merge ===")
-    print(f"{'arm':20s} {'window':>8s} {'committed':>10s} {'re-run':>10s} {'abs diff':>10s} {'verdict':>8s}")
+    print(
+        f"{'arm':20s} {'window':>8s} {'committed':>10s} {'re-run':>10s} {'abs diff':>10s} {'verdict':>8s}"
+    )
     n_pass = n_fail = 0
     for arm, ref in REF.items():
         d = REPO / "outputs" / "bench5" / f"{arm}__none_diag"
@@ -186,22 +194,34 @@ def main():
             diff = abs(got - want)
             ok = diff < BAR
             n_pass, n_fail = (n_pass + ok, n_fail + (not ok))
-            print(f"{arm:20s} {window:>8s} {want:10.6f} {got:10.6f} {diff:10.2e} {'PASS' if ok else 'FAIL':>8s}")
-            rows_out.append({
-                "table": "THETA0", "arm": arm, "window": window,
-                "theta_committed": f"{want:.9g}", "theta_rerun": f"{got:.9g}",
-                "abs_diff": f"{diff:.6g}", "bar": BAR,
-                "t_end_committed": f"{te_o:.6g}", "t_end_rerun": f"{te_n:.6g}",
-                "n_rows_committed": len(old), "n_rows_rerun": len(new),
-                "verdict": "PASS" if ok else "FAIL",
-            })
+            print(
+                f"{arm:20s} {window:>8s} {want:10.6f} {got:10.6f} {diff:10.2e} {'PASS' if ok else 'FAIL':>8s}"
+            )
+            rows_out.append(
+                {
+                    "table": "THETA0",
+                    "arm": arm,
+                    "window": window,
+                    "theta_committed": f"{want:.9g}",
+                    "theta_rerun": f"{got:.9g}",
+                    "abs_diff": f"{diff:.6g}",
+                    "bar": BAR,
+                    "t_end_committed": f"{te_o:.6g}",
+                    "t_end_rerun": f"{te_n:.6g}",
+                    "n_rows_committed": len(old),
+                    "n_rows_rerun": len(new),
+                    "verdict": "PASS" if ok else "FAIL",
+                }
+            )
         figdata[arm] = (new, old)
 
     print(f"\nTHETA0: {n_pass} PASS / {n_fail} FAIL   (bar = {BAR} absolute, G0's own)")
 
     print("\n=== EQ10 — Lancaster Eq-10 screen (f_area Option 3) ===")
     print(f"Lancaster prefactor bracket from order-unity constants: C in [{C_LO}, {C_HI}]")
-    print(f"{'arm':20s} {'C med':>9s} {'C min':>9s} {'C max':>9s} {'drift':>7s} {'Th_pred(hi C)':>14s} {'Th_meas':>9s} {'verdict':>8s}")
+    print(
+        f"{'arm':20s} {'C med':>9s} {'C min':>9s} {'C max':>9s} {'drift':>7s} {'Th_pred(hi C)':>14s} {'Th_meas':>9s} {'verdict':>8s}"
+    )
     for arm in REF:
         new = figdata[arm][0]
         pts = [(t, th, rv) for t, th, _, rv in new if rv and 0 < th < 1]
@@ -216,27 +236,46 @@ def main():
         t_l, th_l, rv_l = pts[-1]
         th_pred = 1 - C_HI * rv_l
         ok = C_LO <= med <= C_HI
-        print(f"{arm:20s} {med:9.2f} {Cs[0]:9.2f} {Cs[-1]:9.2f} {drift:7.1f}x {th_pred:14.4f} {th_l:9.4f} "
-              f"{'PASS' if ok else 'FAIL':>8s}")
-        rows_out.append({
-            "table": "EQ10", "arm": arm, "window": "implicit",
-            "C_median": f"{med:.6g}", "C_min": f"{Cs[0]:.6g}", "C_max": f"{Cs[-1]:.6g}",
-            "C_drift": f"{drift:.4g}", "C_lo_lancaster": C_LO, "C_hi_lancaster": C_HI,
-            "t_last": f"{t_l:.6g}", "Rdot_over_Vw_last": f"{rv_l:.6g}",
-            "theta_pred_at_C_hi": f"{th_pred:.6g}", "theta_measured_last": f"{th_l:.6g}",
-            "verdict": "PASS" if ok else "FAIL",
-        })
+        print(
+            f"{arm:20s} {med:9.2f} {Cs[0]:9.2f} {Cs[-1]:9.2f} {drift:7.1f}x {th_pred:14.4f} {th_l:9.4f} "
+            f"{'PASS' if ok else 'FAIL':>8s}"
+        )
+        rows_out.append(
+            {
+                "table": "EQ10",
+                "arm": arm,
+                "window": "implicit",
+                "C_median": f"{med:.6g}",
+                "C_min": f"{Cs[0]:.6g}",
+                "C_max": f"{Cs[-1]:.6g}",
+                "C_drift": f"{drift:.4g}",
+                "C_lo_lancaster": C_LO,
+                "C_hi_lancaster": C_HI,
+                "t_last": f"{t_l:.6g}",
+                "Rdot_over_Vw_last": f"{rv_l:.6g}",
+                "theta_pred_at_C_hi": f"{th_pred:.6g}",
+                "theta_measured_last": f"{th_l:.6g}",
+                "verdict": "PASS" if ok else "FAIL",
+            }
+        )
 
-    cols = sorted({k for r in rows_out for k in r},
-                  key=lambda k: (k != "table", k != "arm", k != "window", k))
+    cols = sorted(
+        {k for r in rows_out for k in r}, key=lambda k: (k != "table", k != "arm", k != "window", k)
+    )
     with OUT_CSV.open("w", newline="") as fh:
         fh.write(stamp(__file__) + "\n")
-        fh.write("# Theta0 re-baseline after the 2026-08-08 main merge (kappa-3way PROVENANCE 4a,"
-                 " FINDINGS 14) + the Lancaster Eq-10 screen (F_AREA_PLAN 5a item 3, FINDINGS 15c).\n")
-        fh.write("# table=THETA0: window=native scores the re-run against the COMMITTED value;"
-                 " window=matched scores the two trajectories on a common window (endpoint interpolated).\n")
-        fh.write("# table=EQ10: C = (1-Theta)/(Rdot/Vw), the inverted Eq-10 prefactor. Lancaster's is"
-                 " order-unity; PASS means TRINITY's implied C lands inside his bracket.\n")
+        fh.write(
+            "# Theta0 re-baseline after the 2026-08-08 main merge (kappa-3way PROVENANCE 4a,"
+            " FINDINGS 14) + the Lancaster Eq-10 screen (F_AREA_PLAN 5a item 3, FINDINGS 15c).\n"
+        )
+        fh.write(
+            "# table=THETA0: window=native scores the re-run against the COMMITTED value;"
+            " window=matched scores the two trajectories on a common window (endpoint interpolated).\n"
+        )
+        fh.write(
+            "# table=EQ10: C = (1-Theta)/(Rdot/Vw), the inverted Eq-10 prefactor. Lancaster's is"
+            " order-unity; PASS means TRINITY's implied C lands inside his bracket.\n"
+        )
         w = csv.DictWriter(fh, fieldnames=cols)
         w.writeheader()
         w.writerows(rows_out)
@@ -246,22 +285,43 @@ def main():
     for j, arm in enumerate(REF):
         new, old = figdata[arm]
         ax = axes[0][j]
-        ax.plot([r[0] for r in old], [r[1] for r in old], lw=2.4, alpha=.55, label="committed (1056c6d)")
-        ax.plot([r[0] for r in new], [r[1] for r in new], lw=1.3, ls="--", label="re-run (merge 3c090b7)")
+        ax.plot(
+            [r[0] for r in old],
+            [r[1] for r in old],
+            lw=2.4,
+            alpha=0.55,
+            label="committed (1056c6d)",
+        )
+        ax.plot(
+            [r[0] for r in new],
+            [r[1] for r in new],
+            lw=1.3,
+            ls="--",
+            label="re-run (merge 3c090b7)",
+        )
         ax.set_title(f"{arm}\nθ(t), implicit phase", fontsize=9)
-        ax.set_xlabel("t [Myr]"); ax.set_ylabel(r"$\theta$"); ax.set_xscale("log")
-        ax.legend(fontsize=7); ax.grid(alpha=.3)
+        ax.set_xlabel("t [Myr]")
+        ax.set_ylabel(r"$\theta$")
+        ax.set_xscale("log")
+        ax.legend(fontsize=7)
+        ax.grid(alpha=0.3)
         ax = axes[1][j]
         pts = [(t, th, rv) for t, th, _, rv in new if rv and 0 < th < 1]
         if pts:
             ax.plot([p[0] for p in pts], [(1 - p[1]) / p[2] for p in pts], lw=1.6, color="crimson")
-            ax.axhspan(C_LO, C_HI, color="tab:green", alpha=.22,
-                       label=f"Lancaster C ∈ [{C_LO}, {C_HI}]")
+            ax.axhspan(
+                C_LO, C_HI, color="tab:green", alpha=0.22, label=f"Lancaster C ∈ [{C_LO}, {C_HI}]"
+            )
             ax.set_yscale("log")
         ax.set_title("Eq-10 implied prefactor  C = (1−Θ)/(Ṙ/V_w)", fontsize=9)
-        ax.set_xlabel("t [Myr]"); ax.set_ylabel("C"); ax.set_xscale("log")
-        ax.legend(fontsize=7); ax.grid(alpha=.3)
-    fig.suptitle("Θ₀ re-baseline at the main merge (top) · Lancaster Eq-10 screen (bottom)", fontsize=11)
+        ax.set_xlabel("t [Myr]")
+        ax.set_ylabel("C")
+        ax.set_xscale("log")
+        ax.legend(fontsize=7)
+        ax.grid(alpha=0.3)
+    fig.suptitle(
+        "Θ₀ re-baseline at the main merge (top) · Lancaster Eq-10 screen (bottom)", fontsize=11
+    )
     fig.tight_layout()
     fig.savefig(OUT_PNG, dpi=135)
     print(f"wrote {OUT_PNG}")
