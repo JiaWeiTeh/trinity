@@ -32,10 +32,12 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-07-30):** 🔵 ACTIVE — **all seven phases pass
+**Status (2026-08-08):** 🔵 ACTIVE — **all seven phases pass
 `harness/check_completeness.py`.** Phase 5 gate-tested 7 of 17 S1-class defects;
-Phase 6 ran five of its seven probes. **Still an interim report, not a final
-verdict** — see Coverage. Regenerate counts with `harness/collect_findings.py`.
+Phase 6 ran **all seven** probes. **Three S1s are now fixed on this branch**
+(`NUM-02`, `S11-R-02`, `S12b-R-01`), so S1 stands at **13**. **Still an interim
+report, not a final verdict** — see Coverage. Regenerate counts with
+`harness/collect_findings.py`.
 
 ## How to read this
 
@@ -60,8 +62,8 @@ the full revision history are in [`data/revisions.csv`](data/revisions.csv) and
 
 | current severity | count |
 |---|---:|
-| FIXED (on main) | 2 |
-| S1 | 16 |
+| FIXED — 2 on `main`, 3 on this branch | 5 |
+| S1 | 13 |
 | S2 | 196 |
 | S3 | 250 |
 | S4 | 220 |
@@ -142,7 +144,10 @@ testing**: `v2_end` moved 2e-12 across a 4000× change in step count.
 
 ## S1 — confirmed
 
-### 1. A terminal event loses to a monitoring event — *source*
+> ✅ **Three of these are now fixed on this branch** (commit `62c1810`, 2026-08-08): `NUM-02` (§1), `S12b-R-01` (§3) and `S11-R-02` (§5). The equivalence gate passed with **0 physics columns differing** across 464 snapshots over three configs and all four phases — the only changed value anywhere is one `isCollapse` flag on an expanding shell, which is the point of the fix. See [`data/gate_event_dispatch_fix.md`](data/gate_event_dispatch_fix.md).
+> `S12a-R-01` (§2, `mu_*`) and `gamma_adia` (§6) are **deliberately unfixed** pending maintainer verification of the evidence.
+
+### 1. A terminal event loses to a monitoring event — *source* · ✅ **FIXED**
 
 `trinity/phase_general/phase_events.py:392`
 
@@ -192,7 +197,7 @@ inputs. Any of the three closes it.
 **Mitigation, stated because it is real:** each key's `INFO:` line does say
 "Derived at load from x_He". Documented — but still silently discarded.
 
-### 3. Sweeps silently drop requested configurations — *gate, 3/3*
+### 3. Sweeps silently drop requested configurations — *gate, 3/3* · ✅ **FIXED**
 
 `trinity/_input/sweep_parser.py:742` · `trinity/_input/sweep_jobs.py:175-188`
 
@@ -279,7 +284,7 @@ than by argument, and it cost one run plus an existing harness. Several of the n
 remaining untested candidates may be settleable the same way, far more cheaply than
 by skeptic panel.
 
-### 5. `isCollapse` misclassifies 2 of 4 terminating events — *dynamic*
+### 5. `isCollapse` misclassifies 2 of 4 terminating events — *dynamic* · ✅ **FIXED**
 
 `trinity/phase_general/phase_events.py:626-629`
 

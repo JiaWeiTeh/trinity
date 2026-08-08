@@ -32,9 +32,10 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-07-30):** 🔵 ACTIVE — all seven phases pass `check_completeness.py`.
-Findings only; **no source has been fixed by the audit**. Written to hand off to a
-fresh session.
+**Status (2026-08-08):** 🔵 ACTIVE — all seven phases pass `check_completeness.py`,
+and all four remaining Phase-6 probes are closed. **The fixing stage is open on this
+branch** (maintainer instruction, 2026-08-08): `NUM-02`, `S11-R-02` and `S12b-R-01`
+are fixed in commit `62c1810`, gate PASS. Everything else remains findings-only.
 
 ## Background in one paragraph
 
@@ -51,9 +52,13 @@ verification against real runs. Full method in `PLAN.md`.
 
 ## Ground rules that must carry over
 
-1. **This workstream is findings-only.** Finders are read-only; fixes are staged
-   separately, by severity, on maintainer approval. Verified as of this handoff:
-   `git diff origin/main HEAD -- trinity/ test/ run.py param/` is **empty**.
+1. **Finders are read-only; fixes are deliberate and gated.** This held strictly
+   through commit `b05725b` — `git diff origin/main HEAD -- trinity/ test/ run.py
+   param/` was **empty**, verified at every commit. ⚠️ **It no longer holds, by
+   instruction:** from `62c1810` the fixing stage shares this branch, so that diff is
+   *expected* to be non-empty. **Do not "restore" it.** `PLAN.md` still prefers a
+   separate branch; the maintainer chose otherwise. Every fix must still clear the
+   CLAUDE.md rule-5 ladder with a gate defined *before* editing.
 2. **Max 4 agents per launch, then stop and report** (`PLAN.md` §"Batch size is
    capped"). This session spent **5.27M tokens over 39 agents** in one unbroken run
    before that rule existed. Cost tracks *scope*, not agent count: lenses with an
@@ -81,22 +86,23 @@ Regenerate counts: `python docs/dev/code-audit/harness/collect_findings.py`
 
 ## Current numbers
 
-690 findings from 26/26 sources. After revision: **16 S1**, 196 S2, 250 S3, 220 S4,
-plus 2 FIXED, 2 CLEARED, 3 REFUTED, 1 WITHDRAWN.
+690 findings from 26/26 sources. After revision: **13 S1**, 196 S2, 250 S3, 220 S4,
+plus **5 FIXED** (2 on `main`, 3 on this branch), 2 CLEARED, 3 REFUTED, 1 WITHDRAWN.
 
-*(2026-08-08: S1 15 → 16 and S2 197 → 196 — `SIGN-01` (`gamma_adia`) re-rated S2 → S1
-when the rubric-boundary question below was settled.)*
+*(2026-08-08, in order: S1 15 → 16 and S2 197 → 196 when `SIGN-01` (`gamma_adia`) was
+re-rated S2 → S1; then S1 16 → 13 and FIXED 2 → 5 when `NUM-02`, `S11-R-02` and
+`S12b-R-01` were fixed.)*
 
 **Verification removed or demoted more S1s than it confirmed** — that is the headline
 about the *method*, and it is why `UNVERIFIED.md` exists as a separate file.
 
-### The 5 verified S1-class findings
+### The 5 verified S1-class findings — ✅ 2 of them now fixed
 
 | id | finding | evidence |
 |---|---|---|
-| `NUM-02` / `S11-R-01` / `DD-001` / `ST-002` | `check_event_termination` (`phase_events.py:392`) returns the first event **by list index**, never reads `event.terminal`. `velocity_sign` is index 0 and documented non-terminal; indices 1-3 are all simulation-ending | source-verified; found independently by **4** passes |
+| ✅ `NUM-02` / `S11-R-01` / `DD-001` / `ST-002` | `check_event_termination` returned the first event **by list index**, never reading `event.terminal`. `velocity_sign` is index 0 and non-terminal; indices 1-3 all end the run | source-verified; found by **4** passes. **FIXED `62c1810`**, gate PASS |
 | `S12a-R-01` | user-set `mu_convert`/`mu_atom`/`mu_ion`/`mu_mol` silently overwritten (`read_param.py:316-319`); anti-stomp guard compares object identity so it cannot fire | source-verified |
-| `S12b-R-01` | `generate_run_name` not injective + no duplicate guard ⇒ a sweep config is never run while the report claims success | gate 3/3; reproduced |
+| ✅ `S12b-R-01` | `generate_run_name` not injective + no duplicate guard ⇒ a sweep config is never run while the report claims success | gate 3/3; reproduced. **FIXED `62c1810`** — expansion now raises |
 | `S8-R-02` | `n_IF_Str == shell_n0` **bit-identical at every snapshot** ⇒ `P_HII` is a re-expression of `Pb` | Phase 6 dynamic |
 
 ### The 8 S1-rated candidates never tested
@@ -152,9 +158,39 @@ goldens lack. Full suite green: **1093 passed, 15 deselected**.
    **New open items these produced:** `TBL-01` frequency; a longer different-config
    pair straddling two cooling-table ages; and the transition phase fitting at
    `rms 0.0000` (§9) — recorded as an observation, not a finding.
-4. **Then, and only on maintainer approval, open the fixing stage** — separate branch,
-   by severity, each fix through the CLAUDE.md rule-5 ladder. Start with the event
-   dispatch: it is the only verified S1 that changes a recorded physical *fate*.
+4. ~~**Then, and only on maintainer approval, open the fixing stage.**~~ **OPENED
+   2026-08-08 on maintainer instruction — on *this* branch, not a separate one.**
+   Three fixes have landed (commit `62c1810`); see `data/gate_event_dispatch_fix.md`.
+
+   | finding | fix | gate |
+   |---|---|---|
+   | `NUM-02` | `check_event_termination` ranks run-ending events above monitoring ones, earliest root within a rank | **PASS** |
+   | `S11-R-02` | `isCollapse` keyed on `v2 < 0` at exit, not a `reason_code` substring | **PASS** |
+   | `S12b-R-01` | sweep expansion raises on a duplicate run name instead of dropping a cell | tests |
+
+   **Equivalence gate result:** **0 physics columns differ** across 464 snapshots,
+   three configs, all four phases, separate processes, row counts unchanged
+   (155/195/114). The *only* changed value anywhere is `maxr` row 154,
+   `isCollapse` True → False at `v2 = +21.55` pc/Myr — an expanding shell, correct
+   to clear. 7 new regression tests, failing before and passing after.
+
+   ⚠️ **The findings-only invariant therefore ends at `b05725b`.** From `62c1810`
+   on, `git diff origin/main HEAD -- trinity/ test/ run.py param/` is *expected* to
+   be non-empty. Do not "restore" it.
+
+5. **Still unfixed, deliberately** — `mu_*` (`S12a-R-01`) and `gamma_adia`
+   (`SIGN-01`), both S1. The evidence was delivered to the maintainer for
+   verification and no code was written. Cheapest close for both is **input
+   validation**, not reimplementation: refuse a user-set `mu_*` (currently
+   overwritten at `read_param.py:316-319`, guard structurally blind) and refuse
+   `gamma_adia != 5/3` (honoured by `bubble_E2P`/`get_leak_luminosity`, absent from
+   `solve_R1`, so the two disagree by 67 % at γ=1.4). That converts two silent
+   wrong-answer paths into loud failures without touching physics.
+
+   ⚠️ **Unverified sub-claim:** sweep ②'s phrasing "the Rahner-A12 pair and the whole
+   Weaver structure chain hardcode it" goes beyond what has been checked. The **R1
+   half is verified** (`get_bubbleParams.py:408`, `solve_R1` takes no γ); the wider
+   claim is not.
 
 ## Traps a fresh session will otherwise fall into
 
