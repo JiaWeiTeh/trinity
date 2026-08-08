@@ -71,10 +71,13 @@ remaining four batches will cost before you commit a cluster allocation to them.
 
 ## Batch 0 — H0 plumbing gate (do this first)
 
-Cost: tens of minutes per arm, not seconds — the baseline cloud spends most of it
-in the phase-1b implicit integrator. (Partial measurement, 4-core container,
-2026-08-08: the explicit arm reached t = 0.12 Myr of its 0.5 Myr horizon in
-10 min.) The two arms are independent; run them concurrently if you have cores.
+Cost: **~15 min per arm** (measured 2026-08-08, 4-core container: 15.2 and
+14.6 min, both reaching the 0.5 Myr horizon) — the baseline cloud spends most of
+it in the phase-1b implicit integrator. The two arms are independent; run them
+concurrently if you have the cores.
+
+**Result on this tree (2026-08-08): PASS, `max |dR2/R2| = 0.000e+00`** over the
+full 0.5 Myr — the knob at its default is exactly inert. See `FINDINGS.md` §H0.
 
 Proves that naming the knob at its schema default changes nothing. If this fails,
 every later trend is measuring plumbing, not physics.

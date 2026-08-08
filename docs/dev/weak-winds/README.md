@@ -32,8 +32,9 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-08):** 🔵 actionable — harness + tests shipped and green; 15-run science sweep
-designed, not yet executed.
+**Status (2026-08-08):** 🔵 actionable — harness + tests shipped and green; batch 0 (H0
+plumbing gate) run and passing exactly; the five science batches are designed and gated
+but not yet executed.
 
 The `FB_thermCoeffWind` sensitivity study: step the wind-thermalization knob down a
 log ladder (1.0 → 0.01) across three cloud regimes and measure what winds actually

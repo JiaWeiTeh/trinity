@@ -106,6 +106,9 @@ Free-streaming initial conditions shift but stay finite (derivation in
   (hysteresis — the interesting outcome).
 - **H0 (control):** c = 1.0 must reproduce the untouched baseline for each cloud
   — the equivalence gate before quoting any trend (rule 5, root CLAUDE.md).
+  *(Confirmed 2026-08-08 on the baseline cloud: `max |dR2/R2| = 0.000e+00` over
+  0.5 Myr — see `FINDINGS.md` §H0. Still unchecked on the two 1e7 clouds, which
+  batch 1 covers.)*
 
 ## 4. Study design
 

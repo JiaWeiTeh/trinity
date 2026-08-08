@@ -32,8 +32,9 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-08):** 🟡 partial — smoke pair complete with a strong signal; the 15-run
-sweep (PLAN §4) has not run, so nothing here generalizes beyond the baseline cloud yet.
+**Status (2026-08-08):** 🟡 partial — batch 0 (H0 plumbing gate) PASSES exactly, and the
+smoke pair shows a strong signal on the baseline cloud; batches 1–5 (PLAN §4, RUNBOOK)
+have not run, so nothing here generalizes beyond that one cloud yet.
 
 ## Smoke pair (2026-08-08, in-container)
 
@@ -80,13 +81,37 @@ Matched-t states (from `data/smoke_pair.csv`):
 4. **Scope guard:** one cloud, one rung, `stop_t 1.5`. Do not quote beyond
    "in the dense baseline cloud, winds at 1/10 thermalization flip the fate."
 
-### H0 caveat (control ≠ separately-verified baseline)
+## H0 plumbing gate — PASS (2026-08-08, batch 0)
 
-The control sets `FB_thermCoeffWind 1.0` explicitly — the schema default — so it
-*should* be bit-equivalent to an untouched `param/simple_cluster.param` run with
-`stop_t 1.5`; that comparison was **not** run. Before quoting sweep trends, run
-the untouched baseline once and check the control against it at matched t
-(tolerance per PLAN §4 comparison protocol, not byte equality).
+Setting `FB_thermCoeffWind` to its schema default is **exactly inert**, so the
+smoke pair's control arm is a valid reference and the divergence above is
+physics, not plumbing.
+
+Config: `harness/batches/batch0_h0_{plumbing,untouched}.param` — baseline cloud,
+`stop_t 0.5`, one arm naming the knob at `1.0` and one never mentioning it.
+Command and gate: `RUNBOOK.md` §Batch 0.
+
+| | explicit `1.0` | untouched |
+|---|---|---|
+| snapshots | 171 | 171 |
+| final state at t = 0.5 | R2 = 17.594194 pc, v2 = 64.2909 | R2 = 17.594194 pc, v2 = 64.2909 |
+| wall (4-core container) | 15.2 min | 14.6 min |
+
+`check_batch.py --compare` over 200 matched-t samples: **`max |dR2/R2| = 0.000e+00`**
+against a 1e-9 tolerance — not merely within tolerance but identical. Note this
+window (t = 0 … 0.5 Myr) fully contains the smoke pair's divergence and the weak
+arm's collapse at 0.28 Myr, so the comparison in the previous section rests on a
+verified reference.
+
+Two provenance notes, for exactness: (1) `metadata.json` records
+`FB_thermCoeffWind = 1.0` for *both* arms, because it stores the resolved value
+including the schema default — which is why the harness reads the knob from
+metadata rather than from the run-folder name; (2) the explicit arm was executed
+from a pre-rename copy of its param file whose only difference was `path2output`
+(it landed in `outputs/weak_winds_study/h0_explicit` rather than
+`outputs/weak_winds_h0/explicit`). Physics and gate result are unaffected; a
+fresh run of the committed file writes to the documented path, as the untouched
+arm — which did use the committed file — demonstrates.
 
 ## Numerical findings (loader-level, pre-existing)
 
