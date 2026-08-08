@@ -42,10 +42,12 @@ to (64, 74.8] without re-running), and the code is deterministic (P4, 5/5 bit-id
 re-run only pays if the arms were wall-killed AND array contention was the binding difference —
 read `.exit_code` first. Successor experiment: `F_AREA_PLAN.md` — **its Phase A0 ran 2026-08-03 and
 GA0 failed, so bench8 was never submitted** (`FINDINGS §13`).
-⚠️ **2026-08-08:** merging `main` (`3c090b7`) moved `trinity/` under all 294 arms, so the campaign's
-full-run numbers are **VERIFY** until `FINDINGS §14`'s Θ₀ re-baseline lands — the campaign is
-complete but its results are provisionally un-quotable (`PROVENANCE.md §1` CODE BASELINE clause).
-`FINDINGS §15` separately re-aims `§10b`'s indictment and strikes f_area Option 2.
+⚠️ **2026-08-08:** merging `main` (`3c090b7`) moved `trinity/` under all 294 arms (`PROVENANCE.md §1`
+CODE BASELINE clause). The Θ₀ re-baseline it demanded **came back 5 PASS / 1 FAIL** — θ(t) overlays
+on all three arms and bench1's native failure is its implicit window closing 3.4% early, worth 1.3%
+on its Θ₀ (`FINDINGS §14`). Full-run numbers are quotable again with that amendment. Separately,
+`FINDINGS §15` re-aims `§10b`'s indictment and strikes f_area Option 2, and `FINDINGS §16` screens
+Option 3 via Lancaster Eq 10 — **0/3 FAIL**, exhausting all three f_area options.
 
 ---
 
@@ -360,7 +362,8 @@ prediction, which `FINDINGS §1`–`§12` had already superseded. They are measu
 | The three-way table | ✅ **measured** (`FINDINGS §2`, `§11c`, `§12c`): f_κ worst on both metrics; f_A the best single knob on solved rows |
 | Successor: f_area (`F_AREA_PLAN.md`) | ⛔ **Phase A0 ran 2026-08-03, GA0 FAILED** — bench8 (514 arms) not submitted, no params emitted (`FINDINGS §13`) |
 | f_area Option 2 (f on the evaporative flux) | ⛔ **DEAD 2026-08-08** — no derivable value (§3.3) *and* no warrant for an area law on the conduction channel (`FINDINGS §15c`) |
-| f_area Option 3 (Θ → 1 saturated-flux cap) | 🔵 **the one live thread** — free to screen, no `trinity/` change (`F_AREA_PLAN §5a`, open question 4′) |
-| Θ₀ re-baseline after the `main` merge | 🟡 **running 2026-08-08** — full-run numbers are VERIFY until it lands (`FINDINGS §14`) |
+| f_area Option 3 (Θ → 1 saturated-flux cap) | ⛔ **SCREENED AND FAILED 0/3, 2026-08-08** — via Lancaster Eq 10, a sharper ℓ-free instrument than the cap; implied prefactor 5–50× outside the order-unity bracket and drifting 3–6× (`FINDINGS §16`) |
+| Θ₀ re-baseline after the `main` merge | ✅ **MEASURED 2026-08-08** — 5 PASS / 1 FAIL; bench1's native failure is a 3.4% window-length effect worth 1.3% on its Θ₀ (`FINDINGS §14`) |
+| The Eq-10 result itself | 🔵 **the live decision** — Eq 10 at TRINITY's own Ṙ_b/V_w predicts Θ = 0.93/0.95/0.97, inside the L21b band, vs TRINITY's 0.29/0.44/0.58. Kills the area program, or replaces the band with a derived pointwise target (`F_AREA_PLAN` open question 4″) |
 
 **Production is untouched.** Default remains `cooling_boost_mode='none'`, f_κ = 1.0, f_A = 1.0.

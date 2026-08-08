@@ -47,7 +47,12 @@ ignore thermal conduction"*) while TRINITY's Ṁ is the **conductive-evaporation
 different mass channels, only the second of which TRINITY contains. **Option 2 is ⛔ dead** (no
 derivable value *and* no warrant for putting an area law on the conduction channel); **Option 3, the
 Θ → 1 saturated-flux cap, is promoted** to the one live thread because it sidesteps §3.3 instead of
-depending on it. Open question 4 is superseded by 4′.
+depending on it — **and was then screened the same day and FAILED 0/3**, via Lancaster **Eq 10**, a
+closed-form ℓ-free Θ prediction found in the repo's own reference notes. TRINITY's implied prefactor
+is 5–50× outside the order-unity bracket and drifts 3–6× where Eq 10 predicts a constant; read the
+other way, Eq 10 at TRINITY's own Ṙ_b/V_w lands **inside** the L21b band while TRINITY resolves 3–5×
+less (`FINDINGS §16`). **All three §5a options are now screened out or exhausted**; open question 4
+→ 4′ → **4″**, which is the choice between the two readings of that result.
 
 *(2026-08-02 revision, superseded by the A0 result above but kept as the pre-registration record:
 the maintainer's HPC can hold <1000 arms in one array, so the original 48-arm coarse grid was
@@ -391,7 +396,9 @@ order a next visit should weigh it:
    would have to carry f explicitly at the Eq-33 seed / Eq-44 front pair
    (`bubble_luminosity.py:304`/`:398`) rather than inheriting it through conduction.
 3. **The Θ → 1 saturated-flux limit** (Lancaster Eq 12 ≤ Eq 15), already named in §8 as the
-   remaining 1-D-portable idea. **Promoted 2026-08-08 to the one live thread.**
+   remaining 1-D-portable idea. **Promoted 2026-08-08 to the one live thread — then SCREENED the
+   same day, via a sharper instrument, and it FAILED 0/3.** See the Eq-10 note below and
+   `FINDINGS §16`.
 
 > ⚠️ **Revised 2026-08-08 — this paragraph previously read "Option 2 is the only one that keeps the
 > area program alive inside TRINITY."** That is now withdrawn. `FINDINGS §15` establishes that
@@ -411,6 +418,28 @@ order a next visit should weigh it:
 > no free constant, which is exactly the "new physical idea… not another fit" that `FINDINGS §15k`
 > and SC-0 require. It screens the way A0 did — closed form, at the committed captured states,
 > offline, zero `trinity/` changes.
+
+> **SCREENED 2026-08-08 — Option 3 fails too, and the screen used a better equation than this plan
+> named.** Looking for the saturated-flux cap turned up **Lancaster Eq 10** sitting in
+> `pdv-trigger/LANCASTER_REFERENCE.md:203-204,339`:
+> `1 − Θ = (½(1+f_turb)·α_p/α_R + S)·(Ṙ_b/V_w)` — a **closed-form Θ prediction with no ℓ, no fractal
+> area and no fitted constant**, whose prefactor is order-unity by construction (α_p ~ 1.2–4,
+> S ≈ α_p ⇒ C ∈ [1.8, 12]). That is strictly better than the cap: it needs no inequality direction
+> and no truncation scale at all. Inverting it on TRINITY's own trajectory
+> (`data/make_merge_rebaseline.py`, `table=EQ10`) gives implied **C = 59 / 75 / 93** (bench1/2/3
+> medians), **5–50× outside the bracket on every row, and drifting 3.3–5.6× across the window** where
+> Eq 10 predicts a constant. **0 PASS / 3 FAIL.**
+>
+> Read the other way — the part worth keeping — at TRINITY's own Ṙ_b/V_w, Eq 10 predicts
+> **Θ = 0.93 / 0.95 / 0.97, inside the L21b band [0.90, 0.99]**, against TRINITY's resolved
+> 0.29 / 0.44 / 0.58. Lancaster's theory already lands in the band on TRINITY's own trajectory; the
+> resolved 1-D structure misses it by 3–5× in Θ. `FINDINGS §16c` sets out the two live readings —
+> Option 3 dies with Option 2, *or* Eq 10 becomes a derived pointwise calibration target that no
+> scalar dose can reach (the drift forbids it) — and the screen deliberately does not choose.
+>
+> ⚠️ `§3.3`'s description of the cap as "`v_equiv` may not exceed `v_hot`" **contradicts**
+> `LANCASTER_REFERENCE.md:341`, which records the inequality the other way round. Unresolved, flagged
+> in `FINDINGS §16d`; the Eq-10 screen does not depend on it.
 
 **Nothing below §5a has been acted on.**
 
@@ -657,10 +686,17 @@ submission — are moot and struck. What replaces them is a single decision.)*
    ⛔ dead (`§5a`, `FINDINGS §15c`: no derivable value *and* no published warrant for putting an
    area law on the conduction channel). The question is now narrower:
 
-   **4′. Does Option 3 — the Θ → 1 saturated-flux cap — get screened?** It is the only surviving
-   construction, it needs **no `trinity/` change and no maintainer nod to *screen*** (closed form at
-   the committed captured states, offline, A0-style), and unlike Option 2 it sidesteps §3.3 rather
-   than depending on it. A ship would still be SC-1 and still need a nod; the screen is free. The
+   ~~**4′. Does Option 3 — the Θ → 1 saturated-flux cap — get screened?**~~ **Answered the same day:
+   it was screened, via Lancaster Eq 10, and FAILED 0/3** (`§5a`, `FINDINGS §16`). So the open
+   question moves again, and this one is genuinely the maintainer's:
+
+   **4″. Which reading of the Eq-10 result do we act on?** Either **(a)** Eq 10 does not describe
+   TRINITY, all three f_area options are exhausted, and the campaign is written up as the negative
+   methods result — *the 1-D Weaver framework cannot carry a fractal interface, because its mass
+   loading is an eigenvalue rather than a flux*; or **(b)** Eq 10 becomes the **calibration target**
+   in place of the [0.90, 0.99] band — a derived, pointwise, ℓ-free Θ(t) curve — in which case the
+   measured 3–6× drift says no *scalar* dose can reach it and the successor has to be state-coupled
+   (`FA_STATE_COUPLED.md`'s territory, not this campaign's). **Nothing is started on either.** The
    default, absent a nod, remains option 1: stop with the existing knobs.
 
 ---

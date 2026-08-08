@@ -32,12 +32,13 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-08):** 🟡 partial — the rule gained a second clause and the workstream is mid-check
-against it. §7's "if a fresh number contradicts a VERIFY number" clause **fired** once already (G0 failed
-2/11; reconciliation in `FINDINGS.md` §1). Now the **CODE BASELINE** clause (`§1`, new) has fired too: the
-2026-08-08 merge of `main` moved `trinity/` under all 294 arms, so every full-run number here is VERIFY
-until the Θ₀ re-baseline lands (`§4a`, `FINDINGS §14`). The per-call f_area A0 screen is exempt and
-re-verified at the merge.
+**Status (2026-08-08):** 🔵 in force — the rule gained a second clause, it fired, and the workstream
+cleared it. §7's "if a fresh number contradicts a VERIFY number" clause **fired** once already (G0 failed
+2/11; reconciliation in `FINDINGS.md` §1). The new **CODE BASELINE** clause (`§1`) then fired on the
+2026-08-08 `main` merge, which moved `trinity/` under all 294 arms — and the Θ₀ re-baseline it demanded
+**came back 5 PASS / 1 FAIL** (`§4a`, `FINDINGS §14`), the one failure a 3.4% window-length effect worth
+1.3% on bench1's Θ₀. Full-run numbers are quotable again with that single amendment; the per-call f_area
+A0 screen is exempt and was re-verified at the merge.
 
 ---
 
@@ -150,10 +151,18 @@ is the first ~0.06% of a 5 Myr integration, and Θ_cum is L_mech-weighted across
 expectation is not a measurement**, and `§7` is explicit that a fresh-vs-old disagreement is handled by
 re-deriving, not by arguing. Hence the re-baseline below.
 
-🟡 **PENDING — the Θ₀ re-baseline.** The three `__none_diag` arms are being re-run at merge `3c090b7` and
-compared against the committed Θ₀ (0.461806 / 0.340860 / 0.220551, reproduced exactly from
-`runs/data/bench5r_traj/*__none_diag.csv`). Result and verdict land in `FINDINGS §14`; until then every
-full-run number in this workstream is **VERIFY** under the CODE BASELINE clause.
+✅ **MEASURED 2026-08-08 — the Θ₀ re-baseline: 5 PASS / 1 FAIL, and VERIFY lifts as a bound.** The three
+`__none_diag` arms were re-run at `3c090b7` and scored at G0's own bar (abs 5e-4): bench3 5.4e-06 ✅ ·
+bench2 6.5e-05 ✅ · **bench1 2.8e-03 ❌ native**, 3.0e-04 ✅ on a matched window. bench1's failure is its
+implicit window closing 3.4% early, not a change in θ(t) — the `§1a` mechanism arriving from a code
+change instead of a wall clock. Full table and figure in `FINDINGS §14`; artifacts
+`data/merge_rebaseline.csv` + `merge_rebaseline.png` from `data/make_merge_rebaseline.py`.
+
+**What that means for quotability.** The campaign's full-run numbers are quotable again, with one
+amendment: **bench1's Θ₀ moves 1.3% under the merged code** (0.220551 → 0.217703), propagating to
+roughly 2% on its band-entry dose at q ≈ 0.6. Cite it as *moving*, not as reproduced. Every other
+full-run quantity checked reproduces inside the bar, and no conclusion in `FINDINGS §1`–`§13` turns on
+a 1.3% shift.
 
 ⚠️ **One loose thread, not yet chased.** `phase1a-init` states fates are unchanged everywhere *and* that
 `f1edge_hidens` "collapses 28% later than stock and from `transition` rather than `momentum`". Those two

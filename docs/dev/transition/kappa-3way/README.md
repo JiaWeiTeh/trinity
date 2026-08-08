@@ -32,10 +32,12 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-08):** 🟡 partial — **294/294 arms ran and the three-way table is MEASURED**, but
-the full-run numbers are back under `VERIFY` pending `FINDINGS §14`'s Θ₀ re-baseline after the
-`main` merge; `FINDINGS §15` re-aims `§10b`'s indictment and strikes f_area Option 2. Prior status
-(2026-08-02, still accurate on the measurements themselves):
+**Status (2026-08-08):** 🔵 actionable — **294/294 arms ran, the three-way table is MEASURED, and it
+survived the `main` merge** (`FINDINGS §14`: 5 PASS / 1 FAIL, the failure a window artifact worth
+1.3% on bench1's Θ₀). `FINDINGS §15` re-aims `§10b`'s indictment and strikes f_area Option 2;
+`FINDINGS §16` screens Option 3 via Lancaster Eq 10 and it **fails 0/3** — so all three f_area
+options are exhausted and the live decision is which reading of that result to act on
+(`F_AREA_PLAN` open question 4″). Prior status (2026-08-02, still accurate on the measurements):
 (`FINDINGS.md`, `report.html`). Headline: **f_κ is the worst of the three knobs** on both metrics and **P1 is falsified**. ⚠️ But
 `FINDINGS §11`: Θ_cum is the wrong metric for the knob decision — on the trigger's own instantaneous
 criterion f_A and f_mix looked tied, and `§12` (stale-row exclusion) breaks the tie: **f_A is the
@@ -53,8 +55,16 @@ against: Lancaster's area law multiplies the **turbulent-mixing** flux (his `§4
 outright) whereas TRINITY's Ṁ is the **conductive-evaporation** Weaver eigenvalue, so the two are
 different mass channels and TRINITY carries only one of them. The measurements are untouched; the
 conclusion becomes *TRINITY cannot represent a fractal interface* rather than *the knobs are badly
-calibrated*. Of `F_AREA_PLAN §5a`'s three survivors, **Option 2 is ⛔ dead** and **Option 3 (the
-Θ → 1 saturated-flux cap) is the one live thread** — free to screen, no `trinity/` change.
+calibrated*. Of `F_AREA_PLAN §5a`'s three survivors, **Option 2 is ⛔ dead**, and **Option 3 was
+screened the same day and ⛔ failed 0/3** (`FINDINGS §16`) — not via the saturated-flux cap the plan
+named, but via **Lancaster Eq 10**, a closed-form Θ prediction with no ℓ, no fractal area and no
+fitted constant, which was already sitting in `pdv-trigger/LANCASTER_REFERENCE.md`.
+
+The Eq-10 number is the one to carry forward: at TRINITY's *own* Ṙ_b/V_w, Eq 10 predicts
+**Θ = 0.93 / 0.95 / 0.97 — inside the L21b band** the whole program is trying to reach — while
+TRINITY's resolved structure delivers **0.29 / 0.44 / 0.58**. Lancaster's theory already lands in the
+band on TRINITY's own trajectory. Whether that kills the area program or replaces the band with a
+derived pointwise target is `F_AREA_PLAN` open question **4″**, and it is a maintainer call.
 
 ---
 

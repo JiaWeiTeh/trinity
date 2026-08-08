@@ -32,8 +32,9 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-08):** 🟡 partial — **294/294 arms ran and the three-way table is MEASURED, but the
-full-run numbers are back under VERIFY** pending `§14`'s re-baseline.
+**Status (2026-08-08):** 🔵 actionable — **294/294 arms ran, the three-way table is MEASURED, and it
+SURVIVED the `main` merge** (`§14`: Θ₀ re-baseline 5 PASS / 1 FAIL, the one failure a window-length
+artifact worth 1.3% on bench1 alone).
 **f_κ is the worst of the three on both metrics** (it never even reaches the trigger θ = 0.95 on
 bench1) and **P1 is falsified**. ⚠️ **`§2`'s ranking of f_mix over f_A is superseded twice:** `§11`
 (instantaneous criterion → f_A/f_mix **tied**, 2.71× vs 2.64×) and then `§12` (stale-row exclusion
@@ -46,14 +47,18 @@ G0 failed on a truncation artifact (`§1`, bounded in `§1a`).
 combined knob reproduces f_κ alone on Ṁ (f^{2/7}, not the f^{1} area multiplication requires), so
 the 514-arm bench8 campaign was **not submitted** and `§10d`'s two predictions are answered — in the
 negative — for ~40 s of container time.
-**2026-08-08 — two new sections, and one of them puts the full-run numbers back in doubt.** `§14`:
-merging `main` (`3c090b7`) moved `trinity/` under all 294 arms, so every full-run number here is
-**VERIFY** under `PROVENANCE.md §1`'s new CODE BASELINE clause until the Θ₀ re-baseline lands
-(🟡 running; `§13` is exempt and re-verified at the merge). `§15`: `§10b`'s mass-loading indictment
-names the **wrong channel** — Lancaster's area law multiplies turbulent entrainment, which TRINITY
-does not represent at all, while TRINITY's Ṁ is the conductive-evaporation eigenvalue. Every `§10b`
-number stands; what they convict changes, **Option 2 is dead on a second and independent ground**,
-and Option 3 (the saturated-flux limit) is promoted to the one live thread.
+**2026-08-08 — three new sections.** `§14`: merging `main` (`3c090b7`) moved `trinity/` under all 294
+arms — `PROVENANCE.md §1` gained a **CODE BASELINE** clause for it, and the Θ₀ re-baseline
+**MEASURED 5 PASS / 1 FAIL**: θ(t) overlays on all three arms, and bench1's native failure is its
+implicit window closing 3.4% early (matched-window PASS at 3.0e-4). Quote bench1's Θ₀ as moving
+1.3%; nothing in `§1`–`§13` changes. `§15`: `§10b`'s mass-loading indictment names the **wrong
+channel** — Lancaster's area law multiplies turbulent entrainment, which TRINITY does not represent
+at all, while TRINITY's Ṁ is the conductive-evaporation eigenvalue — so **Option 2 is dead on a
+second and independent ground**. `§16`: screening Option 3 found a sharper instrument than the
+saturated-flux cap — Lancaster **Eq 10**, a closed-form ℓ-free Θ prediction — and it **fails 0/3**:
+TRINITY's implied prefactor is 5–50× outside the order-unity bracket *and* drifts 3–6× across the
+window. Read the other way, Eq 10 at TRINITY's own Ṙ_b/V_w predicts **Θ = 0.93/0.95/0.97, inside the
+L21b band**, against TRINITY's resolved 0.29/0.44/0.58.
 
 ---
 
@@ -702,11 +707,37 @@ campaign's benches are GMC-scale at `stop_t = 5 Myr`, so the disturbed window is
 the integration and Θ_cum is L_mech-weighted across all of it. The expectation is therefore that the
 three-way table survives intact.
 
-🟡 **PENDING — but an expectation is not a measurement, and `PROVENANCE §7` forbids settling this by
-argument.** The three `__none_diag` Θ₀ arms are being re-run at `3c090b7`. Reference values
-0.461806 / 0.340860 / 0.220551 (bench3 / bench2 / bench1), reproduced exactly from the committed
-`runs/data/bench5r_traj/*__none_diag.csv` before any re-run, so the comparison harness is validated
-independently of the outcome. Verdict lands here.
+**MEASURED 2026-08-08 — 5 PASS / 1 FAIL, and the one failure is a window artifact.** The three
+`__none_diag` Θ₀ arms were re-run at `3c090b7`, in separate processes, and scored at G0's own bar
+(abs 5e-4). Builder `data/make_merge_rebaseline.py`, artifacts `data/merge_rebaseline.csv` +
+`merge_rebaseline.png`. The harness was validated *before* the re-runs by reproducing all three
+committed Θ₀ exactly from `runs/data/bench5r_traj/*__none_diag.csv`, so the comparison is
+independent of the outcome.
+
+| arm | window | committed | re-run | abs diff | verdict |
+|---|---|---|---|---|---|
+| bench3_m1e5_r5 | native | 0.461806 | 0.461811 | 5.4e-06 | ✅ PASS |
+| bench2_m1e5_r10 | native | 0.340860 | 0.340795 | 6.5e-05 | ✅ PASS |
+| **bench1_m5e4_r20** | **native** | **0.220551** | **0.217703** | **2.8e-03** | ❌ **FAIL** |
+| bench1_m5e4_r20 | matched | 0.217998 | 0.217703 | 3.0e-04 | ✅ PASS |
+
+**bench1's failure is window length, not physics.** Its implicit phase now closes at t = 0.596 Myr
+instead of 0.617 — 3.4% shorter — and Θ_cum is a running L_mech-weighted mean, so a window cut at
+the high-θ end reads low. This is the identical mechanism `§1a` characterised for the truncated
+arms, arriving here from a code change rather than a wall clock. On a **matched** window the two
+trajectories agree to 3.0e-4, inside the bar, and θ(t) overlays visually on all three arms
+(`merge_rebaseline.png`, top row).
+
+> **So the trajectories survive the merge — but the number the campaign *quotes* for bench1 moves
+> 1.3%.** Band entry goes as `(0.90/Θ₀)^{1/q}`, so at q ≈ 0.6 that propagates to roughly a 2% shift
+> in bench1's entry dose. Small, bounded, and now measured rather than assumed. `§2`'s ranking is
+> nowhere near that sensitive, so **no conclusion in `§1`–`§13` changes** — but the VERIFY tier
+> lifts as a *bound*, not a clean reproduction: quote bench1's Θ₀ as moving under the merge.
+
+⚠️ **A method note that cost a wrong verdict in the first pass.** The matched-window comparison must
+**interpolate** its endpoint. A bare `t <= tmax` cut drops one endpoint row whenever the two windows
+differ by less than a step, which manufactured a spurious 6.8e-3 FAIL on bench2; interpolating
+returns 8.6e-5 PASS. The committed builder interpolates.
 
 **`§13` (f_area A0) is exempt and already re-verified.** It is a per-call screen importing only
 `bubble_structure/bubble_luminosity.py`, which the merge does not touch. Re-run post-merge it
@@ -794,3 +825,84 @@ number in `§1`–`§14` moves. ⚠️ The Lancaster/El-Badry claims here were v
 on 2026-08-08 but are **not** reflected in `pdv-trigger/LANCASTER_REFERENCE.md`, which predates them
 and does not discuss the mass-channel distinction at all; that doc is in the demoted parent
 workstream and was left unedited rather than updated in passing.
+
+---
+
+## §16. [falsified] Lancaster Eq 10 does not describe TRINITY — the ℓ-free prediction lands in the band, TRINITY resolves 3–5× less
+
+`§15c` promoted f_area Option 3 on the argument that it **sidesteps `§3.3`** — the truncation-scale
+problem that killed every earlier derivation. Screening it turned up a sharper instrument than the
+saturated-flux cap that `F_AREA_PLAN §5a` item 3 names, and it was sitting in the repo's own
+reference notes the whole time.
+
+### §16a. Eq 10 is a closed-form Θ prediction with no ℓ in it
+
+`pdv-trigger/LANCASTER_REFERENCE.md:203-204, 339` records Lancaster+2021a Eq 10, verified from the
+paper excerpt:
+
+```
+1 − Θ = ( ½(1+f_turb)·α_p/α_R + S ) · (Ṙ_b/V_w)          (Eq 10),   S ≈ α_p within 6% (Eq 6)
+```
+
+**No `ℓ`. No fractal area. No fitted constant.** Every quantity in the prefactor is an order-unity
+constant Lancaster measures — α_p ~ 1.2–4 (`F_KAPPA_FUNCTIONAL_FORM.md:139`), α_R ~ 1, S ≈ α_p,
+f_turb the turbulent energy fraction — which brackets **C ∈ [1.8, 12]** across the corners. That
+makes the prefactor a *measurable*: invert Eq 10 on TRINITY's own trajectory and ask whether the
+implied C is order-unity. TRINITY carries both inputs directly (`v2` = Ṙ_b, `v_mech_total` = V_w =
+2L_mech/ṗ, Lancaster's own Eq-1 definition).
+
+### §16b. Measured: 0 PASS / 3 FAIL, by one to two orders of magnitude
+
+Builder `data/make_merge_rebaseline.py` (`table=EQ10`), on the three arms re-run at the merge:
+
+| arm | C median | C range | drift across window | Θ pred at C = 12 | Θ measured | verdict |
+|---|---|---|---|---|---|---|
+| bench1_m5e4_r20 | **59.3** | 22.3 – 125.2 | 5.6× | 0.932 | 0.288 | ❌ FAIL |
+| bench2_m1e5_r10 | **74.8** | 32.0 – 136.8 | 4.3× | 0.950 | 0.436 | ❌ FAIL |
+| bench3_m1e5_r5 | **92.8** | 45.9 – 150.4 | 3.3× | 0.965 | 0.579 | ❌ FAIL |
+
+Two failures, and the second is the more damaging. **(i)** The implied C sits 5–50× above
+Lancaster's bracket on every arm and every row — not one point lands inside. **(ii)** It **drifts
+3.3–5.6× across the window**, where Eq 10 with fixed constants predicts a constant. So the
+*functional form* misses, not merely the normalisation; no choice of α_p, α_R or f_turb rescues it.
+
+**Read the other way round, which is the result worth keeping.** At TRINITY's *own* Ṙ_b/V_w, Eq 10
+evaluated at the generous end of Lancaster's bracket predicts **Θ = 0.93 / 0.95 / 0.97** — inside
+the L21b calibration band [0.90, 0.99] the whole program is trying to reach — while TRINITY's
+resolved structure delivers **0.29 / 0.44 / 0.58**. Lancaster's theory, applied to TRINITY's own
+trajectory with no free parameter and no truncation scale, *already lands in the band*. TRINITY
+misses it by a factor of 3–5 in Θ, ~2 in (1−Θ).
+
+### §16c. What this does to Option 3 — two live readings, and the screen does not choose
+
+1. **Eq 10 does not describe TRINITY ⇒ Option 3 dies with Option 2.** The prefactor is wrong by
+   1–2 orders *and* has the wrong time dependence. On this reading `F_AREA_PLAN §5a` collapses to
+   option 1: stop with the existing knobs, and write the campaign up as the negative result that
+   the 1-D Weaver framework cannot carry a fractal interface.
+2. **Eq 10 is the calibration *target*, and the band-entry program has been fitting around it.**
+   The whole three-way campaign asks "what dose brings Θ_cum into [0.90, 0.99]?" — a band. Eq 10
+   supplies a **pointwise Θ(t) curve, derived, with no free constant**. That is a strictly stronger
+   target and it is the first one in this program that does not need ℓ. ⚠️ But `§16b`'s drift is the
+   obstacle: a *scalar* dose cannot convert TRINITY's θ(t) into Eq 10's, because the discrepancy is
+   3–6× larger at the end of the window than the start. Any knob that could is state-coupled by
+   construction — which is `FA_STATE_COUPLED.md`'s territory, not this campaign's.
+
+**The screen does not decide between them, and is not asked to.** It establishes the measurement
+both readings need. ⚠️ Scope, per `§12a`: this is a per-row read of three baseline (f = 1) arms. It
+measures no dose, no band entry and no spread, and it says nothing about how a *boosted* run would
+track Eq 10.
+
+⚠️ **Mapping caveats, stated rather than buried.** Lancaster's `R_b` is the hot-gas bubble radius
+and TRINITY's `R2` is the contact/shell radius; Lancaster's Θ = `L_int/Ė_in` and TRINITY's
+θ = `bubble_Lloss/Lmech_total` (`LANCASTER_REFERENCE.md §7b` treats these as the comparable pair,
+which is inherited here, not re-derived). Both mappings are order-unity-faithful, not exact, so read
+the 5–50× gap as robust and the exact factor as indicative.
+
+### §16d. An unresolved contradiction between two repo docs, flagged not fixed
+
+`F_AREA_PLAN §3.3` describes the saturation cap as *"Eq 12's `v_equiv` may not exceed Eq 15's
+`v_hot`"*. `LANCASTER_REFERENCE.md:341` records the same equation as *"Eq 15 (`v_hot(R_b) ≈
+V_w/(6α_p−2)`, which cannot exceed Eq 12's `v_equiv`)"* — **the opposite direction**. The saturated-
+flux construction only works one way round (`v_equiv ≤ v_hot` is a flux limit; the reverse is a
+lower bound and produces no saturation). Both docs are secondary; resolving it needs Lancaster
+2021a Eq 15 itself. Not resolved here, and the Eq-10 screen above does not depend on it.
