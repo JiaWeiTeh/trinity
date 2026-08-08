@@ -301,6 +301,35 @@ P3 (full suite / pre-commit / mypy), then the status flip.
   module properly. Not applied unilaterally — the bar stays marked FAILED-AS-WRITTEN until ruled
   on.
 
+### Batch 6 — PRE-REGISTERED BARS (registered 2026-08-06, before Batch 6 was run)
+
+Batch 6 asks the question this workstream was spun out to unblock: **now that a collapsing
+segment ends cleanly instead of grinding, can `dt_switchon` (magic-number #2) be deleted or made
+scale-relative?** Method: re-run `magic-numbers/SWEEP2_PLAN.md` §4's R1/R2 ablation (forward
+`t=None`, changing nothing else) on top of the landed guard, all five configs, `stop_t = 0.02`,
+separate processes, matched `t`; compare against the ramp-active arms already measured in
+Batch 4 (`data/equivalence_screen.csv`, the "after" arms — same code, ramp on).
+
+- **B6-A (fate preservation — checked first, and decisive).** With the ramp ablated, **every**
+  config must keep the stopping fate it has with the ramp active. Rationale for making this the
+  primary bar: if a fate flips, the ramp is doing *physics* — holding early `Pb` low enough that
+  the bubble never collapses — not merely papering over a numerical failure, and the guard landed
+  in Batches 3-5 cannot substitute for it. One flip ends the question.
+- **B6-B (trajectory).** For configs that keep their fate: `|ΔR2| ≤ 0.5%` at every matched grid
+  time and at end of run, ablated vs ramp-active.
+- **Decision rule, registered now:**
+  - all five keep fate **and** clear B6-B ⇒ the ramp becomes a genuine removal candidate, to be
+    gated in full (its own workstream, not folded in here);
+  - **any** fate flip or B6-B breach ⇒ **`dt_switchon` stays**, magic-number #2 remains closed as
+    document-and-pin, and the Batch 5 guard is recorded as having improved the *failure mode*
+    (clean stop instead of a hang) without making the constant removable. That is a legitimate
+    result, not a failure of this batch.
+- **Anticipated, and stated up front so it cannot be claimed as a discovery afterwards:** the
+  Batch 3 P0 run already showed the ablated `f1edge_hidens` ending as `ENERGY_COLLAPSED` at
+  t = 2.6e-7 Myr, where the ramp-active arm runs to `stop_t = 0.02` Myr. If that reproduces, B6-A
+  fails on that config immediately. Batch 6 is therefore mostly a check on the *other four*: the
+  open question is whether the ramp matters anywhere except the stiff edge.
+
 ## 3. PRE-REGISTERED BARS (registered 2026-08-06, before any `trinity/` edit)
 
 Per `docs/dev/phase1a-init/PLAN.md` §4 precedent, these stay on this page verbatim even if later
