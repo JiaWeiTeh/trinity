@@ -334,7 +334,8 @@ file. Both copies are byte-identical at 3 864 080 bytes.
 
 **Scope, stated because it bounds the claim.** This runs the *same* config twice. The
 sharper documented hazard is a **different** config second, where a module-level cache
-keyed on the first config's data could serve stale values. That case is still untested.
+keyed on the first config's data could serve stale values. ~~That case is still
+untested.~~ **Tested 2026-08-08 — see §10. It passes.**
 
 ### `ST-003`'s address-reuse claim — not demonstrable
 
@@ -436,10 +437,46 @@ on both quantities over 15 points. An exactly log-linear trajectory to four deci
 not what numerical integration usually yields; it may mean that phase emits
 analytically-generated or duplicated rows. **Not investigated.**
 
+## 10. In-process contamination across DIFFERENT configs — **PASS** (2026-08-08)
+
+Full report: [`phase6_diffcfg.md`](phase6_diffcfg.md). Closes the case §7 named and
+left open.
+
+`harness/phase6_inprocess_diffcfg.py` compares config **B** against itself under two
+histories, each in its own subprocess so the baseline is genuinely uncontaminated:
+
+```
+solo : fresh interpreter, run B            -> 114 snapshots
+pair : fresh interpreter, run A then B     -> 114 snapshots
+byte-identical: True
+RESULT: identical - no cross-config contamination on this path
+```
+
+Config A (contaminant): mCloud 1e6, sfe 0.1, nCore 1e4. Config B (subject): mCloud
+1e5, sfe 0.3, schema-default nCore — 10× the density difference, 3× the SFE, 10× the
+mass.
+
+**This is a negative result and is recorded as such.** The documented hazard —
+CLAUDE.md's "trinity leaks module-level global state in-process", which is why every
+baseline in this audit is its own process — **did not reproduce** even with a
+physically very different config run first. Taken with §7 (same config, byte-identical)
+and `ST-003`'s 200 000 rebuild-and-realloc cycles producing zero `id()` collisions,
+three independent attempts to make in-process state leakage bite have now all failed.
+The separate-process discipline remains correct as *policy*; it is not, on the evidence
+here, load-bearing for correctness on these paths.
+
+⚠️ **Scope, stated because it bounds the claim.** Both configs are short
+(`stop_t = 0.01` Myr) and therefore early, so **both resolve to the same non-CIE
+cooling-table age**. The probe covers contamination through cached **values**, not
+through cached **table selection**. A longer pair straddling different table ages would
+be strictly stronger and has not been run.
+
 ## Not done
 
 - `TBL-01` **frequency** past 10 Myr — mechanism settled in §4, but no run has survived
   that long.
+- A **longer** different-config in-process pair, straddling two cooling-table ages (§10
+  scope).
 - Budget closure (do the force terms sum to the reported totals at every snapshot?).
 - The transition-phase `rms 0.0000` observation in §9.
 - **Re-measuring `ST-001`** against the new age-proportional segments, which invalidated

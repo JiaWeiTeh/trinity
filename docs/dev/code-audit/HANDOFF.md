@@ -133,10 +133,25 @@ goldens lack. Full suite green: **1093 passed, 15 deselected**.
    ratings, since `mu_*` is silently **ignored** (self-consistent run) while
    `gamma_adia` is silently **half-honoured** (internally inconsistent run, 67 %
    pressure imbalance at γ=1.4).
-3. **Finish the 4 open Phase-6 probes** — `TBL-01` (needs `t > 10` Myr; the attempt
-   reached 0.2 %), the `W-3` swallowed-error probe, momentum-phase asymptotics (no run
-   yet wrote more than one momentum snapshot), and the *different-config* in-process
-   case. **Not started as of 2026-08-08.**
+3. ~~**Finish the 4 open Phase-6 probes.**~~ **DONE 2026-08-08 — all four closed.**
+   Details in `data/dynamic_verification.md` §4, §8, §9, §10.
+   - **`TBL-01`** — CONFIRMED (mechanism). It did *not* need the 10 Myr run: only the
+     *frequency* does. The bundled age grid is 1,2,3,4,5,10 Myr; past 1e7 yr
+     `get_filename` returns the last-grid file with no warning, so a default
+     `stop_t = 15` Myr run spends its **last 33 %** on cooling frozen at 10 Myr.
+     *Frequency still open* — no run here has survived to 10 Myr.
+   - **`W-3`** — CONFIRMED, and it bears on **`SF-003`** (same code site). Zero
+     occurrences across every log, so the mechanism was forced: any exception becomes
+     the constant `(100.0, 100.0)` plateau, and a `WARNING` line is the only trace.
+   - **Momentum asymptotics** — DONE. `R2 = +0.542` vs ideal `+0.500` at **rms 0.0024
+     dex**: the `t^(1/2)` limit is recovered. `v2` (rms 0.0193) is *not* quotable.
+     Bonus: it **tests** §3's implicit-phase explanation and confirms it.
+   - **Different-config in-process** — **PASS**, byte-identical. A *negative* result:
+     the documented in-process leak did not reproduce.
+
+   **New open items these produced:** `TBL-01` frequency; a longer different-config
+   pair straddling two cooling-table ages; and the transition phase fitting at
+   `rms 0.0000` (§9) — recorded as an observation, not a finding.
 4. **Then, and only on maintainer approval, open the fixing stage** — separate branch,
    by severity, each fix through the CLAUDE.md rule-5 ladder. Start with the event
    dispatch: it is the only verified S1 that changes a recorded physical *fate*.

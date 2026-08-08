@@ -77,10 +77,13 @@ Stated first, because it bounds everything after it.
 - Phase 6 ran **five of seven** probes: determinism (pass, byte-identical),
   invariant scan (pass, one flag), asymptotic limits (pass — and see below),
   budget closure (pass on the decompositions, two real failures found), plus the
-  `S8-R-02` confirmation. **Not done:** the table-bounds sensor (`TBL-01`, needs a
-  run past 10 Myr — mine reached 0.2 % of the way), the `W-3` swallowed-error probe,
-  momentum-phase asymptotics (no run wrote more than one momentum snapshot), and the
-  in-process determinism probe.
+  `S8-R-02` confirmation. **The four probes left open were closed 2026-08-08**
+  (`data/dynamic_verification.md` §4, §8, §9, §10): `TBL-01` and `W-3` both
+  **CONFIRMED** at mechanism level without the runs they were framed around,
+  momentum-phase asymptotics **recovered the `t^(1/2)` limit** (rms 0.0024 dex), and
+  the different-config in-process case **PASSED** byte-identically. **Still not
+  done:** `TBL-01`'s *frequency* past 10 Myr, a longer different-config pair
+  straddling two cooling-table ages, and budget closure.
 - **Phase 6 changed four findings**: it confirmed `S8-R-02` and `ST-001`
   dynamically, showed `S5b-R-01`'s family is real but its proposed repro is not,
   and produced two new findings (`P6-06`, `P6-08`). Dynamic evidence has been the
@@ -483,14 +486,19 @@ six confirmed defects: **0 of 6 were caught**. See
 
 ## What is not done
 
-1. **Ten S1-class candidates unverified** (table above). Highest value: `S11-R-02`.
-2. **Phase 6 dynamic verification** — table-bounds sensor (needs `t > 10` Myr),
-   determinism probe, asymptotic-limit fits, budget closure. Sweep ⑦ left a named
-   7-probe worklist.
-3. **`UNVERIFIED.md`** — the demoted-candidate register the plan calls for is not
-   written; the material is currently spread across `resolutions.md`.
-4. **The `gamma_adia` vs `mu_*` severity question** — must be settled once, applied
-   to both.
-5. **Re-measure `ST-001`** against the merged age-proportional segment schedule.
+1. **Eight S1-class candidates unverified** (table above). `S11-R-02` and `S8-R-02`
+   were the two tested and both were **confirmed** — `S11-R-02` widened.
+   Next highest value: `SF-003`, on which the `W-3` probe (§8) already bears.
+2. **Phase 6 dynamic verification** — ~~table-bounds sensor, determinism probe,
+   asymptotic-limit fits~~ **all closed 2026-08-08** (§4, §8, §9, §10). Remaining:
+   **budget closure**, `TBL-01`'s *frequency* past 10 Myr, and a longer
+   different-config in-process pair straddling two cooling-table ages.
+3. ~~**`UNVERIFIED.md`**~~ — written.
+4. ~~**The `gamma_adia` vs `mu_*` severity question**~~ — settled 2026-08-08:
+   **both S1** (`SIGN-01` re-rated S2 → S1).
+5. ~~**Re-measure `ST-001`**~~ — done (§6); the S2 demotion survives.
 6. **Regenerate the ~105 captured goldens** against the merged hotfix — checking
    them against physics, not re-recording the code's output.
+7. **The transition phase fits at `rms 0.0000`** (§9) — an exactly log-linear
+   trajectory over 15 points. Recorded as an observation, **not** a finding; nobody
+   has looked at why.

@@ -144,6 +144,14 @@ def main():
         "Config A (contaminant): `harness/phase6_cfgA.param` — mCloud 1e6, sfe 0.1, nCore 1e4\n"
         "Config B (subject): `harness/phase6_cfgB.param` — mCloud 1e5, sfe 0.3, schema-default nCore\n\n"
         "```\n" + "\n".join(lines) + "\n```\n\n"
+        "## Scope — what a PASS here does and does not cover\n\n"
+        "The two configs differ in cloud mass, core density and SFE, so they drive\n"
+        "different SPS `f_mass` scaling and query different density/temperature regions\n"
+        "of the cooling cube. But **both are short (`stop_t = 0.01` Myr) and therefore\n"
+        "early**, so both resolve to the *same* non-CIE cooling-table age. This probe\n"
+        "therefore covers contamination through cached **values**, not through cached\n"
+        "**table selection**. A longer pair straddling different table ages would be a\n"
+        "strictly stronger test and has not been run.\n\n"
         "Repro: `python docs/dev/code-audit/harness/phase6_inprocess_diffcfg.py`\n"
     )
     print(f"\nwrote {OUT.relative_to(ROOT)}")
