@@ -106,6 +106,40 @@ def pill(text, kind):
 # ---------------------------------------------------------------- data panels
 
 
+def panel_rebaseline(rows):
+    """THETA0 + EQ10 from data/merge_rebaseline.csv — the post-merge re-baseline and the
+    Lancaster Eq-10 screen of f_area Option 3 (FINDINGS §14, §16)."""
+    t0 = [r for r in rows if r.get("table") == "THETA0"]
+    eq = [r for r in rows if r.get("table") == "EQ10"]
+    if not t0 and not eq:
+        return '<p class="note">missing <code>data/merge_rebaseline.csv</code> — run make_merge_rebaseline.py</p>'
+    out = []
+    if t0:
+        body = [(esc(r["arm"]), esc(r["window"]),
+                 f'{float(r["theta_committed"]):.6f}', f'{float(r["theta_rerun"]):.6f}',
+                 f'{float(r["abs_diff"]):.2e}',
+                 pill(r["verdict"], "ok" if r["verdict"] == "PASS" else "bad")) for r in t0]
+        n_f = sum(1 for r in t0 if r["verdict"] == "FAIL")
+        out.append(f"<p><b>&Theta;<sub>0</sub> re-baseline at the merge — "
+                   f"{len(t0) - n_f} PASS / {n_f} FAIL</b> (bar = 5e-4 absolute, G0's own).</p>")
+        out.append(table(["arm", "window", "committed", "re-run", "abs diff", "verdict"], body))
+    if eq:
+        body = [(esc(r["arm"]), f'{float(r["C_median"]):.1f}',
+                 f'{float(r["C_min"]):.1f} &ndash; {float(r["C_max"]):.1f}',
+                 f'{float(r["C_drift"]):.1f}&times;',
+                 f'[{r["C_lo_lancaster"]}, {r["C_hi_lancaster"]}]',
+                 f'{float(r["theta_pred_at_C_hi"]):.3f}',
+                 f'{float(r["theta_measured_last"]):.3f}',
+                 pill(r["verdict"], "ok" if r["verdict"] == "PASS" else "bad")) for r in eq]
+        n_f = sum(1 for r in eq if r["verdict"] == "FAIL")
+        out.append(f"<p><b>Lancaster Eq-10 screen (f_area Option 3) — "
+                   f"{len(eq) - n_f} PASS / {n_f} FAIL.</b> C is the inverted prefactor "
+                   f"(1&minus;&Theta;)/(Ṙ<sub>b</sub>/V<sub>w</sub>); Lancaster's is order-unity.</p>")
+        out.append(table(["arm", "C median", "C range", "drift", "Lancaster C",
+                          "&Theta; pred @ C=12", "&Theta; measured", "verdict"], body))
+    return "\n".join(out)
+
+
 def panel_gate_g0(rows):
     g0 = [r for r in rows if r.get("table") == "G0"]
     if not g0:
@@ -343,6 +377,7 @@ def build():
     gate = _read(PDV / "data" / "bench7_gate_g0.csv")
     ana = _read(PDV / "data" / "bench7_analysis.csv")
     fresh = _read(PDV / "data" / "freshness_audit.csv")
+    reb = _read(PDV / "data" / "merge_rebaseline.csv")
     counts = _arm_counts()
     now = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     sha = subprocess.run(
@@ -361,6 +396,14 @@ def build():
         g0=panel_gate_g0(gate),
         p1=panel_p1(gate),
         freshness=panel_freshness(fresh),
+        rebaseline=panel_rebaseline(reb),
+        reb_stamp=esc(_stamp_of(PDV / "data" / "merge_rebaseline.csv") or "not built"),
+        fig_rebaseline=fig(
+            "merge_rebaseline.png",
+            "theta(t) committed vs re-run on three arms, and the implied Eq-10 prefactor",
+            "Top: θ(t) at the campaign's code state vs re-run at the merge — they overlay. "
+            "Bottom: the inverted Lancaster Eq-10 prefactor against his order-unity bracket (green).",
+        ),
         g0_stamp=esc(_stamp_of(PDV / "data" / "bench7_gate_g0.csv") or "not built"),
         threeway=panel_threeway(ana),
         scored=panel_scored(ana),
@@ -639,6 +682,46 @@ evaporative flux is set <i>locally</i>; TRINITY's is set by a <i>global</i> boun
 <b>The pre-registered PA1–PA6 are NOT SCORED</b> &mdash; they are full-run predictions and no arm
 ran. Details: <a href="F_AREA_PLAN.md">F_AREA_PLAN §5a</a>, <a href="FINDINGS.md">FINDINGS §13</a>.</p>
 </div>
+
+<h2>4b. The <code>main</code> merge, and the last f_area option</h2>
+
+<p class="note">From <code>data/merge_rebaseline.csv</code> &middot; stamped {reb_stamp}. Builder
+<code>data/make_merge_rebaseline.py</code>; three arms re-run in separate processes.</p>
+
+<p>Merging <code>main</code> on 2026-08-08 landed the <code>phase1a-init</code> fix &mdash; the
+<code>vd = -1e8</code> override deleted, phase-1a segments age-scaled &mdash; which moves full-run
+trajectories. Every arm in this campaign was measured <i>before</i> both. No date-based rule catches
+that, so <a href="PROVENANCE.md">PROVENANCE §1</a> gained a <b>CODE BASELINE</b> clause and the
+&Theta;<sub>0</sub> arms were re-run to settle it.</p>
+
+{rebaseline}
+
+<div class="box">
+<p><b>&Theta;<sub>0</sub>: the campaign survives, with one amendment.</b> &theta;(t) overlays on all
+three arms. bench1's native FAIL is its implicit window closing <b>3.4% early</b> (0.617 &rarr; 0.596
+Myr) &mdash; &Theta;<sub>cum</sub> is a running L<sub>mech</sub>-weighted mean, so a window cut at the
+high-&theta; end reads low, the same mechanism <a href="FINDINGS.md">§1a</a> found in the truncated
+arms. On a matched window it passes at 3.0e-4. <b>Quote bench1's &Theta;<sub>0</sub> as moving 1.3%</b>
+(&asymp;2% on its band entry at q &asymp; 0.6); nothing in §1–§13 turns on that.</p>
+</div>
+
+<div class="box stop">
+<p><b>&#9940; Eq 10: f_area Option 3 fails 0/3, and the inverted reading is the result worth keeping.</b>
+Screening the last surviving option turned up a sharper instrument than the saturated-flux cap the plan
+named &mdash; <b>Lancaster Eq 10</b>,
+1&minus;&Theta; = (&frac12;(1+f<sub>turb</sub>)&alpha;<sub>p</sub>/&alpha;<sub>R</sub> + S)&middot;(Ṙ<sub>b</sub>/V<sub>w</sub>),
+a closed-form &Theta; prediction with <b>no &ell;, no fractal area and no fitted constant</b>. Its
+prefactor is order-unity by construction, so inverting it on TRINITY's own trajectory makes C a
+measurement &mdash; and C comes out <b>5&ndash;50&times; too large on every row, drifting 3&ndash;6&times;</b>
+where Eq 10 predicts a constant. Read the other way: <b>at TRINITY's own Ṙ<sub>b</sub>/V<sub>w</sub>,
+Eq 10 predicts &Theta; = 0.93/0.95/0.97 &mdash; inside the {band} band &mdash; against TRINITY's
+resolved 0.29/0.44/0.58.</b> Lancaster's theory already lands in the band on TRINITY's own trajectory;
+the resolved 1-D structure misses by 3&ndash;5&times;. Both readings &mdash; the area program is
+exhausted, or Eq 10 replaces the band as a derived pointwise target no scalar dose can reach &mdash;
+are live in <a href="FINDINGS.md">FINDINGS §16c</a>.</p>
+</div>
+
+{fig_rebaseline}
 
 <h2>5. What happened — why the old numbers were not trusted</h2>
 
