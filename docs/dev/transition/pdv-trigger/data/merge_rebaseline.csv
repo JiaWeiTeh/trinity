@@ -1,0 +1,14 @@
+# generated 2026-08-08T16:44:52Z | builder make_merge_rebaseline.py | code bec0ffb+dirty
+# Theta0 re-baseline after the 2026-08-08 main merge (kappa-3way PROVENANCE 4a, FINDINGS 14) + the Lancaster Eq-10 screen (F_AREA_PLAN 5a item 3, FINDINGS 15c).
+# table=THETA0: window=native scores the re-run against the COMMITTED value; window=matched scores the two trajectories on a common window (endpoint interpolated).
+# table=EQ10: C = (1-Theta)/(Rdot/Vw), the inverted Eq-10 prefactor. Lancaster's is order-unity; PASS means TRINITY's implied C lands inside his bracket.
+table,arm,window,C_drift,C_hi_lancaster,C_lo_lancaster,C_max,C_median,C_min,Rdot_over_Vw_last,abs_diff,bar,n_rows_committed,n_rows_rerun,t_end_committed,t_end_rerun,t_last,theta_committed,theta_measured_last,theta_pred_at_C_hi,theta_rerun,verdict
+THETA0,bench1_m5e4_r20,native,,,,,,,,0.00284831,0.0005,84,83,0.616673,0.596018,,0.220551,,,0.217702686,FAIL
+THETA0,bench1_m5e4_r20,matched,,,,,,,,0.000295681,0.0005,84,83,0.616673,0.596018,,0.217998367,,,0.217702686,PASS
+THETA0,bench2_m1e5_r10,native,,,,,,,,6.53837e-05,0.0005,76,76,0.397411,0.397494,,0.34086,,,0.340794616,PASS
+THETA0,bench2_m1e5_r10,matched,,,,,,,,8.64037e-05,0.0005,76,76,0.397411,0.397494,,0.340860404,,,0.340774,PASS
+THETA0,bench3_m1e5_r5,native,,,,,,,,5.39591e-06,0.0005,68,68,0.270679,0.270768,,0.461806,,,0.461811396,PASS
+THETA0,bench3_m1e5_r5,matched,,,,,,,,3.4759e-05,0.0005,68,68,0.270679,0.270768,,0.461806286,,,0.461771527,PASS
+EQ10,bench1_m5e4_r20,implicit,5.62,12.0,1.8,125.206,59.2877,22.2771,0.0056909,,,,,,,0.596018,,0.287467,0.931709,,FAIL
+EQ10,bench2_m1e5_r10,implicit,4.281,12.0,1.8,136.784,74.8138,31.9533,0.0041474,,,,,,,0.397494,,0.436179,0.950231,,FAIL
+EQ10,bench3_m1e5_r5,implicit,3.276,12.0,1.8,150.388,92.7643,45.9106,0.00290945,,,,,,,0.270768,,0.579242,0.965087,,FAIL
