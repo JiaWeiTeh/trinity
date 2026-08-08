@@ -32,7 +32,8 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-02):** 🔵 actionable — **294/294 arms ran; the three-way table is MEASURED.**
+**Status (2026-08-08):** 🟡 partial — **294/294 arms ran and the three-way table is MEASURED, but the
+full-run numbers are back under VERIFY** pending `§14`'s re-baseline.
 **f_κ is the worst of the three on both metrics** (it never even reaches the trigger θ = 0.95 on
 bench1) and **P1 is falsified**. ⚠️ **`§2`'s ranking of f_mix over f_A is superseded twice:** `§11`
 (instantaneous criterion → f_A/f_mix **tied**, 2.71× vs 2.64×) and then `§12` (stale-row exclusion
@@ -45,6 +46,14 @@ G0 failed on a truncation artifact (`§1`, bounded in `§1a`).
 combined knob reproduces f_κ alone on Ṁ (f^{2/7}, not the f^{1} area multiplication requires), so
 the 514-arm bench8 campaign was **not submitted** and `§10d`'s two predictions are answered — in the
 negative — for ~40 s of container time.
+**2026-08-08 — two new sections, and one of them puts the full-run numbers back in doubt.** `§14`:
+merging `main` (`3c090b7`) moved `trinity/` under all 294 arms, so every full-run number here is
+**VERIFY** under `PROVENANCE.md §1`'s new CODE BASELINE clause until the Θ₀ re-baseline lands
+(🟡 running; `§13` is exempt and re-verified at the merge). `§15`: `§10b`'s mass-loading indictment
+names the **wrong channel** — Lancaster's area law multiplies turbulent entrainment, which TRINITY
+does not represent at all, while TRINITY's Ṁ is the conductive-evaporation eigenvalue. Every `§10b`
+number stands; what they convict changes, **Option 2 is dead on a second and independent ground**,
+and Option 3 (the saturated-flux limit) is promoted to the one live thread.
 
 ---
 
@@ -671,3 +680,117 @@ the existing knobs, or carry the area factor explicitly on the evaporative flux 
 (`bubble_luminosity.py:304`/`:398`) — a `trinity/` change, so SC-1 wiring, needing a maintainer nod
 and a derived value (`F_AREA_PLAN §3.3`) before it is even a candidate. **Nothing has been started
 on it.**
+
+---
+
+## §14. [provenance] The 2026-08-08 `main` merge moved the code under all 294 arms
+
+`main` was merged into this workstream's branch (`feature/threeway-pt2`, merge `3c090b7`, 46
+commits), landing the `phase1a-init` fix. Two changes alter full-run trajectories: the
+`vd = -1e8` early-phase override is **deleted** (`phase1_energy/energy_phase_ODEs.py`) and phase-1a
+segments now scale with bubble age (`run_energy_phase.py`, new `phase1a_segFrac`, default `0.1`).
+Every full-run number in `§1`–`§12` was measured at `1056c6d`, before both.
+
+**No date-based rule catches this** — the arms are stamped 2026-07-30 and stay post-cutoff forever.
+`PROVENANCE.md §1` therefore gained a **CODE BASELINE** clause, and `§4a` there records the event.
+
+**The expectation, from the sibling workstream's own measurements** (⚠️ `docs/dev/phase1a-init/`,
+not re-verified here): the shift is large early — at `t = 3e3 yr`, `simple_cluster` −10.4%,
+`f1edge_hidens` −22.8%, GMC control −0.95% — and then converges, GMC ΔR2 reaching −0.002% at 1 Myr
+and −0.001% at 2 Myr, with every config inside the adopted `|ΔR2| < 5%` bar (worst +0.44%). This
+campaign's benches are GMC-scale at `stop_t = 5 Myr`, so the disturbed window is the first ~0.06% of
+the integration and Θ_cum is L_mech-weighted across all of it. The expectation is therefore that the
+three-way table survives intact.
+
+🟡 **PENDING — but an expectation is not a measurement, and `PROVENANCE §7` forbids settling this by
+argument.** The three `__none_diag` Θ₀ arms are being re-run at `3c090b7`. Reference values
+0.461806 / 0.340860 / 0.220551 (bench3 / bench2 / bench1), reproduced exactly from the committed
+`runs/data/bench5r_traj/*__none_diag.csv` before any re-run, so the comparison harness is validated
+independently of the outcome. Verdict lands here.
+
+**`§13` (f_area A0) is exempt and already re-verified.** It is a per-call screen importing only
+`bubble_structure/bubble_luminosity.py`, which the merge does not touch. Re-run post-merge it
+returns the identical scorecard — A0.1 5/3, A0.2 0/8, A0.3 0/8, A0.4 2/0, A0.5 0/8, **GA0 FAILED** —
+with 37 numeric fields drifting ≤9.2e-16 (~4 ULP) and no verdict moved.
+
+---
+
+## §15. [physics] `§10b`'s mass-loading indictment names the wrong channel — TRINITY has no entrainment at all
+
+`§10b` is the section that condemned all three knobs, and `§13` closed its last loophole. Both
+measurements stand. What is wrong is the **premise they are scored against**, and correcting it
+changes which f_area option is worth pursuing.
+
+### §15a. The premise imports Lancaster's area law onto channels Lancaster does not model
+
+`§10b` argues that "in the thin-layer limit every interface flux is proportional to that area
+**together**" — conductive, evaporative, radiative — and concludes that "the signature of an
+area-faithful knob is unambiguous: **Ṁ must RISE with dose**."
+
+Geometrically that is fine. But the area law being invoked is Lancaster's, and (verified against the
+papers 2026-08-08):
+
+- **Lancaster+2021a `§4.4` states plainly: *"we ignore thermal conduction."*** The fractal area
+  `A_b(R_b; ℓ) = 4π α_A R_b² (R_b/ℓ)^d` multiplies the **turbulent-mixing enthalpy flux** (Eq 12's
+  `v_equiv`), and the calibration target Θ = `L_int/Ė_in` is an **energy** ratio throughout.
+- **El-Badry+2019 is the other lineage.** It models conduction — and states its cooling contribution
+  is not significant. It is where TRINITY's evaporation physics comes from (Eq 47, `§23`).
+
+So the two papers this workstream calibrates against each omit the other's mechanism, and **no
+published treatment joins them**. That absence is what `F_AREA_PLAN §2.2`'s equal-dose identity was
+quietly standing on, and it is why `§13`'s screen found nothing to stand on.
+
+### §15b. The honest form of the indictment
+
+TRINITY's Ṁ is the **Weaver conductive-evaporation eigenvalue** — `§13` measured exactly that
+(`v(R1) = 0` over the whole `R1 → r₂′` domain, tracking `f^{2/7}`). Lancaster's wrinkled interface
+loads mass by **turbulent entrainment**. These are different channels, and only one of them is in
+the code. So:
+
+> **`§10b` as written:** *no shipped knob raises mass loading at the operating doses.*
+> **Corrected:** *TRINITY represents only the conductive-evaporation mass channel; the entrainment
+> channel whose area Lancaster's law describes is absent. No knob can be an area knob, because the
+> object the area belongs to is not represented.*
+
+That is an indictment of the **framework's representational scope**, not of the knobs' calibration
+quality — and it is the same conclusion `§13` reached from measurement, arrived at independently
+from the literature. Every number in `§10b` stands; only what they convict changes.
+
+### §15c. It softens `§10c`'s ranking of f_mix, and hardens the case against Option 2
+
+**f_mix.** `§10c` ranks it last — "a scalar on the integrated answer… it wins the calibration
+precisely because it is unconstrained by the physics it is meant to represent." Under the corrected
+reading that is too harsh. Lancaster's area factor multiplies the interface **cooling** rate, and
+his Θ is `L_int/Ė_in`; `f_mix` multiplies `L_cool`. Its *action* is the closest of the three to
+Lancaster's *action*. What it misses is the mass entrainment carries — so the precise statement is
+**f_mix buys Lancaster's energy consequence of extra area without the mass consequence**, which is a
+nameable, bounded limitation rather than a disqualification. ⚠️ It still loses on the axis that
+decided the campaign: `§12` measured its solved-row spread degrading to 3.70× against f_A's 2.71×.
+This subsection re-reads `§10c`; it does not reorder `§2`, `§11` or `§12`.
+
+**Option 2 is dead.** `F_AREA_PLAN §5a` item 2 — carry `f` explicitly on the evaporative flux at
+`bubble_luminosity.py:304`/`:398` — is the option the plan calls "the only one that keeps the area
+program alive". It now fails on **two independent grounds**:
+
+1. **No derivable value** (`F_AREA_PLAN §3.3`, pre-existing): Lancaster's own truncation closure
+   gives `ℓ_cool ~ 10⁻¹⁵ pc` and `f ~ 10⁹–10²⁴`.
+2. **No warrant for the channel** (new, here): the paper supplying the area law explicitly excludes
+   conduction. Putting the area factor on the evaporative flux would make Ṁ rise with dose —
+   mechanically passing `§10b`'s test — while crediting the area excess to a mechanism the source
+   theory does not contain. **Passing a test by construction is not evidence**, and SC-0 exists to
+   refuse exactly that.
+
+**Option 3 survives and should be promoted.** The Θ → 1 saturated-flux limit (Lancaster Eq 12's
+`v_equiv` capped by Eq 15's `v_hot`) is the one live thread, and its appeal is precisely that it
+**sidesteps `§3.3`**: if Θ saturates near 1 regardless of `ℓ`, the truncation scale that killed the
+derivation stops mattering. It predicts a **ceiling, not a dose** — a derived quantity with no free
+constant, which is what `§15k`/SC-0 ask for. It screens the way `§13` did: a closed-form comparison
+at the committed captured states, offline, zero `trinity/` changes.
+
+### §15d. Scope
+
+This section measures nothing. It is a re-reading of `§10`/`§13` against a literature check, and no
+number in `§1`–`§14` moves. ⚠️ The Lancaster/El-Badry claims here were verified against the papers
+on 2026-08-08 but are **not** reflected in `pdv-trigger/LANCASTER_REFERENCE.md`, which predates them
+and does not discuss the mass-channel distinction at all; that doc is in the demoted parent
+workstream and was left unedited rather than updated in passing.

@@ -32,9 +32,12 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-07-30):** 🔵 in force — the fresh artifacts now exist (294 arms, stamped 2026-07-30).
-§7's "if a fresh number contradicts a VERIFY number" clause **fired**: G0 failed 2/11, and the
-reconciliation is `FINDINGS.md` §1.
+**Status (2026-08-08):** 🟡 partial — the rule gained a second clause and the workstream is mid-check
+against it. §7's "if a fresh number contradicts a VERIFY number" clause **fired** once already (G0 failed
+2/11; reconciliation in `FINDINGS.md` §1). Now the **CODE BASELINE** clause (`§1`, new) has fired too: the
+2026-08-08 merge of `main` moved `trinity/` under all 294 arms, so every full-run number here is VERIFY
+until the Θ₀ re-baseline lands (`§4a`, `FINDINGS §14`). The per-call f_area A0 screen is exempt and
+re-verified at the merge.
 
 ---
 
@@ -43,9 +46,24 @@ reconciliation is `FINDINGS.md` §1.
 > **CUTOFF = 2026-07-29.** A number is quotable in this workstream only if it comes from an artifact
 > whose own first-line provenance stamp reads `# generated <ISO8601> …` with a date **on or after the
 > cutoff**. Anything earlier is **VERIFY**: possibly true, not citable until re-measured.
+>
+> **CODE BASELINE = `1056c6d`** (added 2026-08-08). A number produced by a **full run** is quotable
+> only if `git diff <the artifact's stamped sha> HEAD -- trinity/` is **empty**, or the difference has
+> been measured and recorded as survivable. Non-empty and unmeasured ⇒ **VERIFY**, exactly as a
+> pre-cutoff date would be.
 
-That is the whole rule. It replaces a five-week register of per-artifact grades with one date comparison,
-which is the point — a rule nobody can apply is not a rule.
+Two comparisons, both mechanical, both one command — which is still the point: a rule nobody can apply is
+not a rule. Together they replace a five-week register of per-artifact grades.
+
+**Why the second clause exists.** A date answers *when was this measured*; it cannot answer *against which
+code*. Those come apart the moment `main` moves: a merge changes the numerics underneath artifacts that
+are already stamped fresh, and they go on reading fresh forever. That is not hypothetical — it happened on
+2026-08-08 and is recorded in `§4a`. The stamp has carried `code <sha>` since the cutoff (`§5`), so the
+information was already on every file; the rule simply was not using it.
+
+⚠️ The clause is scoped to **full-run** numbers on purpose. A per-call/frozen-state artifact depends only
+on the module it calls into, so the relevant diff is that module's, not all of `trinity/` — the f_area A0
+screen is the worked example (`§4a`).
 
 `python docs/dev/transition/pdv-trigger/data/make_freshness_audit.py` applies it mechanically to every
 committed CSV under the parent tree and writes `freshness_audit.csv`. Run it before believing anything.
@@ -104,6 +122,52 @@ Inheritance is where a "fresh start" quietly leaks old numbers, so it is enumera
 | **theta5k f_κ fire map** (2026-07-03) | ⚠️ **VERIFY → re-measured by K2** | K2's grid was widened to `{1,…,16}` precisely so this stops being an input. |
 | **`§24` K0 Q1/Q1b/Q2** (Eq-47 match, back-reaction, squeeze) | ⚠️ VERIFY | Offline re-reads of pre-cutoff CSVs. Regenerates byte-identically, which shows *stability*, not freshness. Q1b is re-measured on full runs in §5.4 of `PLAN.md`. |
 | **P1's predicted f_κ entry doses** | 🟡 PENDING | Frozen in `bench7_gate_g0.csv`, `verdict=PENDING`. Derived from a VERIFY Θ₀, so it will be recomputed from the fresh Θ₀ and **both** recorded. |
+
+## 4a. The 2026-08-08 merge — the event the CODE BASELINE clause exists for
+
+`main` was merged into this workstream's branch (`feature/threeway-pt2`, merge `3c090b7`, 46 commits).
+It landed the `phase1a-init` fix, which **changes full-run trajectories**:
+
+| what changed | where | effect |
+|---|---|---|
+| `vd = -1e8` early-phase override **deleted** | `phase1_energy/energy_phase_ODEs.py` | the first phase-1a ODE call no longer forces the velocity derivative |
+| phase-1a segments now scale with bubble age | `phase1_energy/run_energy_phase.py`, `phase1a_segFrac` (default `0.1`) | driving terms refresh on an age-relative schedule instead of a fixed 30 yr |
+
+**Every full-run number in this workstream was measured at `1056c6d`, before both.** No date-based rule
+notices this: the 294 arms are stamped 2026-07-30, comfortably post-cutoff, and stay that way.
+
+**How big is it?** Measured by the `phase1a-init` workstream, not by us
+(`docs/dev/phase1a-init/FINDINGS.md`, ⚠️ a sibling workstream's numbers — verify before leaning hard):
+
+- At `t = 3e3 yr` the shift is **large** and scales with compactness: `simple_cluster` −10.4%,
+  `f1edge_lowdens` +1.7%, `f1edge_hidens` −22.8%, GMC control −0.95%.
+- It then **converges**: GMC ΔR2 −0.28% @1e4 yr → −0.037% @8e4 → −0.002% @1 Myr → **−0.001% @2 Myr**.
+- Adopted gate: `|ΔR2| < 5%` at 1 Myr or end of run, *and* fate unchanged. All four configs pass, worst
+  `f1edge_hidens` at +0.44%.
+
+So the *expectation* is that this workstream's GMC-scale benches survive untouched — the disturbed window
+is the first ~0.06% of a 5 Myr integration, and Θ_cum is L_mech-weighted across the whole of it. **An
+expectation is not a measurement**, and `§7` is explicit that a fresh-vs-old disagreement is handled by
+re-deriving, not by arguing. Hence the re-baseline below.
+
+🟡 **PENDING — the Θ₀ re-baseline.** The three `__none_diag` arms are being re-run at merge `3c090b7` and
+compared against the committed Θ₀ (0.461806 / 0.340860 / 0.220551, reproduced exactly from
+`runs/data/bench5r_traj/*__none_diag.csv`). Result and verdict land in `FINDINGS §14`; until then every
+full-run number in this workstream is **VERIFY** under the CODE BASELINE clause.
+
+⚠️ **One loose thread, not yet chased.** `phase1a-init` states fates are unchanged everywhere *and* that
+`f1edge_hidens` "collapses 28% later than stock and from `transition` rather than `momentum`". Those two
+clauses are in tension — the exit *route* changed on one config. `f1edge_hidens` is not a bench in this
+campaign, so it does not touch the three-way table, but it is the kind of thing K3 (fate determinism)
+would care about if it generalised. Flagged, dated 2026-08-08, not investigated.
+
+**The f_area A0 screen is exempt, and this is why the clause is scoped to full runs.** A0
+(`data/make_farea_screen.py`) is a per-call screen at two committed captured states; it imports
+`trinity.bubble_structure.bubble_luminosity` and nothing else that the merge touched. Re-run post-merge it
+reproduces the identical scorecard (A0.1 5/3, A0.2 0/8, A0.3 0/8, A0.4 2/0, A0.5 0/8 → **GA0 FAILED**),
+with 37 numeric fields drifting by **≤9.2e-16** (~4 ULP) and no verdict moved. `FINDINGS §13` stands
+unchanged at `3c090b7`. The regenerated CSV was **not** committed — a timestamp and 4 ULP are not a new
+measurement.
 
 ## 5. The stamping contract
 

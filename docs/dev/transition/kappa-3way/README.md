@@ -32,7 +32,10 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-02):** 🔵 actionable — **294/294 arms ran; the three-way table is MEASURED**
+**Status (2026-08-08):** 🟡 partial — **294/294 arms ran and the three-way table is MEASURED**, but
+the full-run numbers are back under `VERIFY` pending `FINDINGS §14`'s Θ₀ re-baseline after the
+`main` merge; `FINDINGS §15` re-aims `§10b`'s indictment and strikes f_area Option 2. Prior status
+(2026-08-02, still accurate on the measurements themselves):
 (`FINDINGS.md`, `report.html`). Headline: **f_κ is the worst of the three knobs** on both metrics and **P1 is falsified**. ⚠️ But
 `FINDINGS §11`: Θ_cum is the wrong metric for the knob decision — on the trigger's own instantaneous
 criterion f_A and f_mix looked tied, and `§12` (stale-row exclusion) breaks the tie: **f_A is the
@@ -44,6 +47,14 @@ combined-knob area construction, pre-registered, 514-arm bench8 design) — **it
 2026-08-03 and GA0 FAILED, so bench8 was never submitted**: the combined knob reproduces f_κ alone
 on Ṁ (f^{2/7}, not the f^{1} area multiplication needs), closing the last loophole in `§10b`'s
 "no shipped knob raises mass loading". See `FINDINGS §13` and `F_AREA_PLAN §5a`.
+
+**Where the area program stands (2026-08-08).** `FINDINGS §15` corrects the premise `§10b` was scored
+against: Lancaster's area law multiplies the **turbulent-mixing** flux (his `§4.4` ignores conduction
+outright) whereas TRINITY's Ṁ is the **conductive-evaporation** Weaver eigenvalue, so the two are
+different mass channels and TRINITY carries only one of them. The measurements are untouched; the
+conclusion becomes *TRINITY cannot represent a fractal interface* rather than *the knobs are badly
+calibrated*. Of `F_AREA_PLAN §5a`'s three survivors, **Option 2 is ⛔ dead** and **Option 3 (the
+Θ → 1 saturated-flux cap) is the one live thread** — free to screen, no `trinity/` change.
 
 ---
 
@@ -113,6 +124,16 @@ Run order and the exact commands: `PLAN.md` §4.
 
 ## The one honest caveat, stated up front
 
-**No arm has been run.** `report.html`, `PLAN.md` and `REPRODUCE.md` all mark predicted quantities
-`PENDING` and measured ones with their source file. If you find a number here presented as a result
-without a `# generated` stamp behind it, that is a bug in this workstream — fix it or flag it.
+⚠️ **Corrected 2026-08-08 — this section used to read "No arm has been run."** That was written
+before the campaign and was contradicted by this file's own Status line for six days. All 294 arms
+ran on 2026-07-30 and are reduced.
+
+The live caveat is different: **the full-run numbers are currently `VERIFY`, not `FRESH`.** Merging
+`main` on 2026-08-08 (`3c090b7`) moved `trinity/` under every arm — the `vd = -1e8` deletion and the
+age-scaled phase-1a segments both change trajectories. `PROVENANCE.md §1` gained a **CODE BASELINE**
+clause for exactly this, and the Θ₀ re-baseline that settles it is `FINDINGS §14`. The per-call
+f_area A0 screen (`FINDINGS §13`) is exempt and was re-verified at the merge.
+
+`report.html`, `PLAN.md` and `REPRODUCE.md` mark predicted quantities `PENDING` and measured ones
+with their source file. If you find a number here presented as a result without a `# generated`
+stamp behind it, that is a bug in this workstream — fix it or flag it.

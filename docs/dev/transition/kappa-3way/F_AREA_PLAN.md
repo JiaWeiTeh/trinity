@@ -41,6 +41,13 @@ the real solver, the Eq-44 front anchor **thickens as f^{5/7}** instead of stand
 refuted), and the layer cannot stay invariant. A0.1/A0.2 are pre-registered STOP conditions (§7).
 **§6's PA1–PA6 are NOT SCORED** — they are A1 reads and A1 did not run; they stay frozen as written.
 The measurement, the diagnosis and what survives are in **§5a**.
+**2026-08-08 — the three survivors in §5a are re-ranked, and one is struck.** `FINDINGS §15`
+establishes that Lancaster's area law multiplies the **turbulent-mixing** flux (his `§4.4`: *"we
+ignore thermal conduction"*) while TRINITY's Ṁ is the **conductive-evaporation** eigenvalue — two
+different mass channels, only the second of which TRINITY contains. **Option 2 is ⛔ dead** (no
+derivable value *and* no warrant for putting an area law on the conduction channel); **Option 3, the
+Θ → 1 saturated-flux cap, is promoted** to the one live thread because it sidesteps §3.3 instead of
+depending on it. Open question 4 is superseded by 4′.
 
 *(2026-08-02 revision, superseded by the A0 result above but kept as the pre-registration record:
 the maintainer's HPC can hold <1000 arms in one array, so the original 48-arm coarse grid was
@@ -378,18 +385,34 @@ order a next visit should weigh it:
 
 1. **Stop here with the existing knobs.** `FINDINGS §10b`'s indictment — *no shipped knob raises
    mass loading at the operating doses* — now has its last loophole closed, by measurement.
-2. **Put the area factor where Ṁ is actually set.** The evaporative flux would have to carry f
-   explicitly at the Eq-33 seed / Eq-44 front pair (`bubble_luminosity.py:304`/`:398`) rather than
-   inheriting it through conduction. That is a `trinity/` change, so it is an SC-1 wiring proposal
-   needing a maintainer nod **and** a derived value (§3.3) — and it needs its own derivation before
-   it is even a candidate. A0 says nothing about whether it would calibrate; it says only that the
-   zero-code route does not exist.
+   (⚠️ Re-aimed 2026-08-08 by `FINDINGS §15`: the correct indictment is of the framework's
+   representational scope, not of the knobs. See below.)
+2. ⛔ **DEAD (2026-08-08) — put the area factor where Ṁ is actually set.** The evaporative flux
+   would have to carry f explicitly at the Eq-33 seed / Eq-44 front pair
+   (`bubble_luminosity.py:304`/`:398`) rather than inheriting it through conduction.
 3. **The Θ → 1 saturated-flux limit** (Lancaster Eq 12 ≤ Eq 15), already named in §8 as the
-   remaining 1-D-portable idea.
+   remaining 1-D-portable idea. **Promoted 2026-08-08 to the one live thread.**
 
-Option 2 is the only one that keeps the area program alive inside TRINITY, and it is squarely the
-"new physical idea for the truncation scale / interface area, not another fit" that `FINDINGS §15k`
-and SC-0 require. **It is not started, and nothing below §5a has been acted on.**
+> ⚠️ **Revised 2026-08-08 — this paragraph previously read "Option 2 is the only one that keeps the
+> area program alive inside TRINITY."** That is now withdrawn. `FINDINGS §15` establishes that
+> Lancaster's area law multiplies the **turbulent-mixing enthalpy flux** — the paper's `§4.4` says
+> outright *"we ignore thermal conduction"* — while TRINITY's Ṁ is the **conductive-evaporation**
+> Weaver eigenvalue. They are different mass channels, and TRINITY contains only the second. So
+> Option 2 fails on **two independent grounds**: §3.3's undeliverable value (`ℓ_cool ~ 10⁻¹⁵ pc`
+> ⇒ `f ~ 10⁹–10²⁴`), **and** the absence of any published warrant for applying an area law to the
+> conduction channel. It would make Ṁ rise with dose — mechanically passing `FINDINGS §10b`'s test —
+> while crediting the area excess to a mechanism the source theory does not contain. Passing a test
+> by construction is not evidence, which is what SC-0 exists to refuse.
+>
+> **Option 3 inherits the slot**, and on its merits rather than by elimination: the saturated-flux
+> cap is the one construction that **sidesteps §3.3 entirely**. If `v_equiv` (Eq 12) is capped by
+> `v_hot` (Eq 15), Θ saturates near 1 *regardless of ℓ* — the truncation scale that killed every
+> earlier derivation stops mattering. It predicts a **ceiling, not a dose**: a derived quantity with
+> no free constant, which is exactly the "new physical idea… not another fit" that `FINDINGS §15k`
+> and SC-0 require. It screens the way A0 did — closed form, at the committed captured states,
+> offline, zero `trinity/` changes.
+
+**Nothing below §5a has been acted on.**
 
 ### Phase A1 — the HPC campaign: **bench8**, 514 arms, ONE submission
 
@@ -629,11 +652,16 @@ submission — are moot and struck. What replaces them is a single decision.)*
    is untouched.
 3. **The stale-row convention** (`§12` resolved it for analysis; blessing it as the standing rule
    retires open question Q3). Still open, unaffected by A0.
-4. **NEW — does the area program continue, and along which of §5a's three options?** Option 2
-   (carry f explicitly on the evaporative flux, `bubble_luminosity.py:304`/`:398`) is the only one
-   that keeps it alive inside TRINITY, and it is a `trinity/` change: SC-1 wiring, so it needs both
-   a maintainer nod and the truncation-scale physics (§3.3) to supply a value first. **Nothing has
-   been started on it.** The default, absent a nod, is option 1: stop with the existing knobs.
+4. ~~**NEW — does the area program continue, and along which of §5a's three options?** Option 2 …
+   is the only one that keeps it alive inside TRINITY.~~ **Superseded 2026-08-08** — Option 2 is
+   ⛔ dead (`§5a`, `FINDINGS §15c`: no derivable value *and* no published warrant for putting an
+   area law on the conduction channel). The question is now narrower:
+
+   **4′. Does Option 3 — the Θ → 1 saturated-flux cap — get screened?** It is the only surviving
+   construction, it needs **no `trinity/` change and no maintainer nod to *screen*** (closed form at
+   the committed captured states, offline, A0-style), and unlike Option 2 it sidesteps §3.3 rather
+   than depending on it. A ship would still be SC-1 and still need a nod; the screen is free. The
+   default, absent a nod, remains option 1: stop with the existing knobs.
 
 ---
 
