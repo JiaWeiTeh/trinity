@@ -32,15 +32,18 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-06):** 🔵 actionable — **Batches 1 and 2 done, still no `trinity/` line touched.**
+**Status (2026-08-06):** 🔵 actionable — **Batches 1-3 done. C2 is implemented and clears P0, but
+is NOT yet cleared for landing: P1/P1-free (Batch 4) has not run.**
 §1 is source-verified against `adfc23f`; §3 bars and §5 decision rule were registered *before* any
 edit and are unchanged. **D1: production is ≥4.3e4× away from the stall** (whole phase-1a
 integrator costs 0.2-0.6 s/run), so the solver swap C1 is ruled out on economics. **D2: the stall
 is stiffness, not a singularity** — `Eb` pinned at 1.6e-6 au on a slow manifold, dominant
 λ ≈ −1e13, ~7 days to finish one segment — and, newly, **`Eb` never reaches 0, so the existing
-`Eb ≤ 0` guard is mis-thresholded as well as out-of-band.** That makes **C2** (in-band, *positive*,
-scale-relative `Eb`-floor terminal event) the one live candidate, with C0 the fallback. Next:
-**Batch 3** — derive the threshold and gate it against P0. Spun out of
+`Eb ≤ 0` guard is mis-thresholded as well as out-of-band.** **D3/Batch 3: C2 built** — a
+per-segment event at `ENERGY_COLLAPSE_FRAC = 1e-3` of the segment's starting `Eb`, a threshold
+bounded on both sides by measurement — and **P0 passes**: the stalling control now ends in 22 s
+with the pre-existing `ENERGY_COLLAPSED` fate. Next: **Batch 4**, the equivalence screen; C0
+remains the fallback if C2 cannot prove inertness on healthy configs. Spun out of
 `docs/dev/magic-numbers/SWEEP2_PLAN.md` §4 R3, which measured the stall and named this as the
 honest follow-up.
 
@@ -197,6 +200,33 @@ the clearly right remedy:
   and is **not** a template to copy here;
 - C2 stays byte-identity-testable: on a healthy config the threshold is never approached.
 
+### D3 — Batch 3 result: the threshold, derived (2026-08-06; `data/candidate_gate.csv`)
+
+C2 is built and clears P0. The part worth recording is **how the threshold was fixed**, since
+"do not fix a magic number with a new one" (§7) is this workstream's own rule:
+
+| bound | measured | source |
+|---|---|---|
+| healthy segments never lose energy — worst per-segment ratio **1.0268** over 437 segments, 5 configs, 4 decades of mass/density | ⇒ any `frac < 1` is unreachable in a healthy run, so the event is inert there | `data/seg_stepcount.csv` |
+| the deepest per-segment drop that **still integrates** is **0.412** (the control clears segments at 0.67, 0.58, 0.41) | ⇒ `frac` must sit well *below* 0.41 or it would end runs that can continue | `data/seg_stepcount.csv` |
+| by **5.47e-8** of segment-start the solver is already dead | ⇒ `frac` must sit well *above* that to fire in time | `data/stall_anatomy.csv` |
+
+`ENERGY_COLLAPSE_FRAC = 1e-3` sits 2.6 decades below the survivable band and 4.2 decades above
+the dead zone — near the geometric middle of the measured window, with the margins themselves
+pinned by `test_threshold_keeps_its_measured_margins`. Being *relative to the segment's starting
+`Eb`* is what makes it scale-free, which matters because segment-start `Eb` spans 90 → 8.9e7 au
+across the screen set; an absolute floor could not have worked.
+
+Result on the positive control: the run that ground for >900 s (≈7 days extrapolated for one
+segment) now ends in **22 s** with `ENERGY_COLLAPSED` (code 51) — the fate phase 1a *already*
+uses for a dead bubble, so no new stopping outcome enters the model. It fires in segment 4,
+exactly the segment Batch 2 anatomised.
+
+**Not yet cleared:** P1/P1-free (Batch 4) — the inertness argument above is measured on segment
+*entry* values, and byte-identity on a healthy config is what actually proves it. `test_run_smoke`
+(the quickstart golden triple) already passes unchanged, which is a necessary but not sufficient
+sign.
+
 ## 3. PRE-REGISTERED BARS (registered 2026-08-06, before any `trinity/` edit)
 
 Per `docs/dev/phase1a-init/PLAN.md` §4 precedent, these stay on this page verbatim even if later
@@ -294,7 +324,7 @@ committing artifacts + writing its result back into this doc (🔄/💾). Costs 
 | **0** | Pre-registration | — | this doc + workstream registration | committed before any `trinity/` edit | done (this commit) |
 | **1** | ✅ **DONE 2026-08-06 — Reconnaissance: does it bite in production?** | Batch 0 | `harness/seg_stepcount_runner.py` → `data/seg_stepcount.csv` (443 calls) + `data/seg_stepcount_summary.csv`, over the 5 screen configs (ramp active) + the ablated `f1edge_hidens` **positive control** | **D1 answered (§2):** production worst = 4 steps / 0.021 s per segment vs a control call that never returned in 900 s (≥4.3e4× wall). **C1 ruled out; C2 the only live candidate, C0 the fallback** | ran ~55 min |
 | **2** | ✅ **DONE 2026-08-06 — Mechanism: stiffness or singularity?** | D1 | `harness/stall_anatomy_runner.py` → `data/stall_anatomy.csv` (938 samples / 469k RHS evals inside the stalling call, with Jacobian eigenvalues) | **D2 answered (§2):** **stiffness** — `Eb` pinned at 1.6e-6 au on a slow manifold, dominant λ ≈ −1e13, `t` advancing monotonically at ~7 days/segment. C1 still ruled out (Batch 1 economics); **C2 confirmed as the remedy, and its threshold must be positive and scale-relative** because `Eb` never reaches 0 | ran 4 min (cut short by a container restart; regime stationary) |
-| **3** | **Candidate bake-off on the positive control** | D2 | each surviving candidate implemented on a scratch branch/worktree, run against the ablated `f1edge_hidens`; ledger `data/candidate_gate.csv` | **P0** per candidate; candidates that fail P0 are dropped here, before any expensive full-run work | ~20 min/candidate |
+| **3** | ✅ **DONE 2026-08-06 — Candidate bake-off on the positive control** | D2 | C2 implemented (`make_energy_collapse_event` + per-segment wiring in `run_energy_phase.py`) and run against the ablated `f1edge_hidens`; ledger `data/candidate_gate.csv`; unit tests `test/test_energy_collapse_event.py` | **P0 PASS** — the run that used to grind (~7 days/segment) now completes in **22 s** with fate `ENERGY_COLLAPSED`, 46× inside the 1011 s ceiling and 15× faster than the ramp-active arm. Only C2 was built; C1 was already out | ran 5 min |
 | **4** | **Equivalence on production configs** | ≥1 candidate passed P0 | `docs/dev/screen/screen.py` over all 5 configs + (for an inert candidate) the byte-identity check on `simple_cluster` | **P1 / P1-free / P2**. A fate flip or radius breach ends the candidate | ~40 min/candidate |
 | **5** | **Land, or write the no-change result** | Batch 4 verdict | smallest diff + P4 failing-first test, or the C0 write-up; then **P3** | branch pushed with evidence; Status line + AUDIT/DOC_STATUS reconciled | ~30 min |
 | **6** | **(conditional) Revisit magic-number #2** | a candidate landed AND P0 holds *without* the ramp | re-run the §4 R1/R2 protocol from `magic-numbers/SWEEP2_PLAN.md` with the new protection in place: can `dt_switchon` now be deleted or made scale-relative? | its own pre-registered bars, its own commit — do **not** fold into Batch 5 | ~1 h |
@@ -334,6 +364,6 @@ E8b write-up, mechanism corrected in place 2026-08-06).
 | Batch 1 per-segment step counts (443 calls, 6 runs) | `data/seg_stepcount.csv` (harness: `harness/seg_stepcount_runner.py`) |
 | Batch 1 aggregates (the §2 D1 table, regenerated by `--reduce`) | `data/seg_stepcount_summary.csv` |
 | Batch 2 stall anatomy (938 samples, Jacobian eigenvalues) | `data/stall_anatomy.csv` (harness: `harness/stall_anatomy_runner.py`) |
-| Batch 3 candidate gate (P0) | `data/candidate_gate.csv` |
+| Batch 3 candidate gate (P0) + threshold derivation | `data/candidate_gate.csv`; tests `test/test_energy_collapse_event.py` |
 | Batch 4 equivalence screen (P1/P2) | `data/equivalence_screen.csv` |
 | multi-config screen harness | `docs/dev/screen/screen.py` |

@@ -1,0 +1,19 @@
+# phase1a-stiffness Batch 3 (PLAN.md par.6): candidate bake-off against the P0 stiffness gate.
+# P0 (pre-registered, PLAN par.3): the ramp-ablated f1edge_hidens run (stop_t=0.02 -- the exact
+# configuration that stalls today) must COMPLETE with its stopping fate recorded, in <= 3x the
+# ramp-active arm's wall time. Baseline: ramp-active arm 5m37s = 337 s -> ceiling 1011 s.
+# Candidate C2 = in-band, positive, scale-relative energy-collapse event
+#   (make_energy_collapse_event, ENERGY_COLLAPSE_FRAC = 1e-3 of the segment's starting Eb),
+#   built per segment in run_energy_phase.py and appended to the segment's event list.
+# Command: timeout 1500 python docs/dev/phase1a-stiffness/harness/seg_stepcount_runner.py \
+#            --config f1edge_hidens --stop-t 0.02 --ablate-ramp --workdir <dir>     (2026-08-06)
+gate,candidate,config,quantity,reference,reference_source,measured,verdict
+P0,C2 energy-collapse event,f1edge_hidens ramp-ablated,run_completes,yes,PLAN par.3 P0,yes,PASS
+P0,C2 energy-collapse event,f1edge_hidens ramp-ablated,wall_s,<=1011 (3x the 337 s ramp-active arm),PLAN par.3 P0,22,PASS (46x inside; 15x faster than the ramp-active arm)
+P0,C2 energy-collapse event,f1edge_hidens ramp-ablated,stopping_fate,recorded,PLAN par.3 P0,51 energy_collapsed,PASS
+P0,C2 energy-collapse event,f1edge_hidens ramp-ablated,fate_is_pre_existing_outcome,ENERGY_COLLAPSED (same code phase 1a already uses between segments),run_energy_phase.py Eb<=0 path,ENERGY_COLLAPSED (code 51),PASS - no new stopping outcome
+P0,baseline (no candidate),f1edge_hidens ramp-ablated,run_completes,-,docs/dev/magic-numbers/data/switchon_repro_ledger.csv,NO - stalls; 4 rows then >900 s in one segment (~7 days extrapolated),reference
+P0,C2 energy-collapse event,f1edge_hidens ramp-ablated,segment_event_fired_in,segment 4 (entry Eb 29.24 au),data/stall_anatomy.csv,segment 4,PASS - fires in the segment that used to stall
+threshold-derivation,C2 energy-collapse event,5 production configs,healthy_min_per_segment_Eb_ratio,>1 required for inertness,data/seg_stepcount.csv (437 segments),1.0268,frac=1e-3 unreachable in healthy runs
+threshold-derivation,C2 energy-collapse event,f1edge_hidens ramp-ablated,deepest_survivable_per_segment_drop,frac must sit below this,data/seg_stepcount.csv,0.4123,frac=1e-3 is 2.6 decades below
+threshold-derivation,C2 energy-collapse event,f1edge_hidens ramp-ablated,Eb_ratio_where_solver_is_dead,frac must sit above this,data/stall_anatomy.csv,5.472e-08,frac=1e-3 is 4.2 decades above

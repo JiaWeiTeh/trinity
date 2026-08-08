@@ -32,15 +32,19 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-06):** 🔵 actionable — **Batches 1 and 2 done; no `trinity/` line has been
-touched, and "change nothing" remains a pre-registered outcome.** Batch 1: production is ≥4.3e4×
+**Status (2026-08-06):** 🔵 actionable — **Batches 1-3 done. The C2 candidate is implemented and
+clears the P0 stiffness gate, but is NOT cleared for landing until Batch 4's equivalence screen
+runs; "change nothing" remains the registered fallback.** Batch 1: production is ≥4.3e4×
 away from the stall (worst segment 4 steps / 0.021 s; the whole phase-1a segment integrator costs
 0.2-0.6 s per run), which rules out the LSODA swap on economics. Batch 2: the stall is
 **stiffness**, not a singularity — `Eb` collapses 7 decades and pins at 1.6e-6 au on a slow
 manifold with dominant λ ≈ −1e13, so one segment would take ~7 days — and **`Eb` never reaches
 zero**, so phase 1a's existing `Eb ≤ 0` guard would miss this state even if the segment finished.
-The remedy is an in-band, *positive*, scale-relative energy-floor event. Next: Batch 3.
-`PLAN.md` §2 holds the numbers.
+The remedy is an in-band, *positive*, scale-relative energy-floor event. Batch 3 built it — a
+per-segment event at 1e-3 of the segment's starting `Eb`, a threshold bounded on both sides by
+measurement — and the stalling control now ends in **22 s** with the pre-existing
+`ENERGY_COLLAPSED` fate instead of grinding. Next: Batch 4 (equivalence screen). `PLAN.md` §2
+holds the numbers.
 
 ## The question
 
@@ -64,8 +68,8 @@ value.
 2. `PLAN.md` §2 — the load-bearing unknown: does this bite with the ramp *active*?
 3. `PLAN.md` §3 §5 — the pre-registered bars and the decision rule, including the
    stiffness-vs-singularity trap that decides which remedy is even correct.
-4. `PLAN.md` §6 — the batches. Batches 1-2 are done (their D1/D2 answers are in §2);
-   **Batch 3** (derive the floor, gate it against P0) is next.
+4. `PLAN.md` §6 — the batches. Batches 1-3 are done (their D1/D2/D3 answers are in §2);
+   **Batch 4** (the equivalence screen, which decides whether C2 lands) is next.
 
 ## Why it exists
 
