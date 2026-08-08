@@ -32,11 +32,13 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-06):** 🔵 actionable — **Batches 1-4 done. The C2 candidate clears every measured
-bar** — P0, and an equivalence screen in which `dictionary.jsonl` comes out **byte-identical on all
-five configs** (the bar required only `simple_cluster`), fates unchanged, worst cost 1.007×. The
-decision rule says land it; Batch 5 (behavioural test + suite/style gates) is what remains.
-Batch 1: production is ≥4.3e4×
+**Status (2026-08-06):** 🟡 partial — **Batches 1-5 done; the C2 fix is in and gated, with one bar
+clause open.** It clears P0, P1, P1-free (`dictionary.jsonl` **byte-identical on all five configs**,
+where the bar required only `simple_cluster`), P2 (worst 1.007×) and P4 (behavioural test, verified
+failing-first); suite 1057/0 and `pre-commit` pass. **P3's mypy clause fails as written** — 144 vs
+137 baseline, all +7 of an `attr-defined` idiom the same file already carries 49 of — and is
+recorded in `PLAN.md` §2 D5 for a maintainer ruling rather than reinterpreted. Batch 1: production
+is ≥4.3e4×
 away from the stall (worst segment 4 steps / 0.021 s; the whole phase-1a segment integrator costs
 0.2-0.6 s per run), which rules out the LSODA swap on economics. Batch 2: the stall is
 **stiffness**, not a singularity — `Eb` collapses 7 decades and pins at 1.6e-6 au on a slow
@@ -70,8 +72,9 @@ value.
 2. `PLAN.md` §2 — the load-bearing unknown: does this bite with the ramp *active*?
 3. `PLAN.md` §3 §5 — the pre-registered bars and the decision rule, including the
    stiffness-vs-singularity trap that decides which remedy is even correct.
-4. `PLAN.md` §6 — the batches. Batches 1-4 are done (their D1-D4 answers are in §2);
-   **Batch 5** (behavioural test, suite/style gates, land) is next.
+4. `PLAN.md` §6 — the batches. Batches 1-5 are done (D1-D5 in §2). **Open:** the mypy clause
+   ruling in D5, then **Batch 6** — re-open magic-number #2 (`dt_switchon`), now unblocked
+   because phase 1a can survive an `Eb` collapse on its own.
 
 ## Why it exists
 

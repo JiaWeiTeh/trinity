@@ -32,9 +32,13 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-06):** 🔵 actionable — **Batches 1-4 done. C2 is implemented and has cleared
-every measured bar (P0, P1, P1-free byte-identity on all five configs, P2); §5.2 says land it.**
-Batch 5 remains: P4's behavioural test and P3's suite/style pass.
+**Status (2026-08-06):** 🟡 partial — **Batches 1-5 done; C2 is implemented, gated and pushed, with
+one bar clause open.** Cleared: P0, P1, P1-free (byte-identical `dictionary.jsonl` on **all five**
+configs), P2 (worst 1.007×), P4 (behavioural test, verified failing-first), full suite 1057/0,
+`pre-commit`. **Open: P3's mypy clause fails as written** — 144 vs a 137 baseline, all +7 of one
+`attr-defined` class the file already carries 49 of (§2 D5). Recorded for a maintainer ruling
+rather than reinterpreted; three options and a recommendation are in D5. Batch 6 (re-open
+magic-number #2 now that collapse terminates in-band) is unblocked but not started.
 §1 is source-verified against `adfc23f`; §3 bars and §5 decision rule were registered *before* any
 edit and are unchanged. **D1: production is ≥4.3e4× away from the stall** (whole phase-1a
 integrator costs 0.2-0.6 s/run), so the solver swap C1 is ruled out on economics. **D2: the stall
@@ -259,6 +263,44 @@ collapse now terminating in-band, C1's remaining benefit is unmeasured and its c
 published trajectory) is unchanged. Remaining for Batch 5: P4's behavioural failing-first test and
 P3 (full suite / pre-commit / mypy), then the status flip.
 
+### D5 — Batch 5 result: P4 passes, P3 passes except one clause (2026-08-06)
+
+- **P4 PASS, verified failing-first *properly*.** `test/test_phase1a_collapse_terminates.py` runs
+  the collapse configuration end-to-end in a subprocess and asserts it **terminates** with the
+  pre-existing `energy_collapsed` fate — behaviour, not solver identity, as the bar required.
+  With the guard: passes in ~9 s. With the two production files reverted to `85b347a`: **times
+  out and fails** (the run never finishes). *Method note worth keeping:* the first attempt at this
+  check used `git stash` on files that were already committed, so it stashed nothing and the test
+  "passed" against the unchanged candidate — a vacuous check that looked like a real one. Redone
+  with `git checkout 85b347a -- <files>`. A failing-first check that cannot be seen to fail is
+  worth nothing.
+- **P3 partially met.** Full suite **1057 passed / 0 failed** (up from 1018: +38 unit tests on the
+  threshold's margins, +1 behavioural). `pre-commit run --all-files` passes.
+- **P3's mypy clause FAILS AS WRITTEN, and is recorded rather than reinterpreted.** The bar says
+  "no new errors vs a baseline worktree"; measured **144 vs 137**, i.e. **+7**. All seven are a
+  single class — `"Callable[[Any, Any], Any]" has no attribute "terminal" / "direction" / "name" /
+  "is_simulation_ending" / "reason_code" / "reason_message" / "end_code"` — produced by attaching
+  metadata to the event closure, which is exactly what **every** event factory in
+  `phase_events.py` does: the same file already carries **49** identical `attr-defined` errors
+  inside the 137 baseline. So this is the module's established idiom repeated once more, not a new
+  kind of type debt.
+
+  **Maintainer decision, not self-approved** (precedent: `docs/dev/phase1a-init/PLAN.md` §4, where
+  a bar was re-sited by sign-off with both versions left on the page). The options:
+  1. **Accept** — read the bar's intent as "no new *kind* of error" and record the +7 as idiom
+     conformance. Costs nothing, leaves `mypy trinity` at 144.
+  2. **Silence** — add `# type: ignore[attr-defined]` to the seven new lines. Makes the number
+     match, but the 49 sibling lines carry no such comment, so the new factory would be the only
+     annotated one in the file — conformance to a metric at the cost of consistency with the code
+     around it.
+  3. **Revert** the candidate over a cosmetic typing count — not proportionate to the defect it
+     fixes, and it would leave the stall in place.
+
+  Recommendation: **option 1**, because option 2 games the number without improving type safety
+  (the attributes are still dynamic) and would have to be undone the day someone types the whole
+  module properly. Not applied unilaterally — the bar stays marked FAILED-AS-WRITTEN until ruled
+  on.
+
 ## 3. PRE-REGISTERED BARS (registered 2026-08-06, before any `trinity/` edit)
 
 Per `docs/dev/phase1a-init/PLAN.md` §4 precedent, these stay on this page verbatim even if later
@@ -358,7 +400,7 @@ committing artifacts + writing its result back into this doc (🔄/💾). Costs 
 | **2** | ✅ **DONE 2026-08-06 — Mechanism: stiffness or singularity?** | D1 | `harness/stall_anatomy_runner.py` → `data/stall_anatomy.csv` (938 samples / 469k RHS evals inside the stalling call, with Jacobian eigenvalues) | **D2 answered (§2):** **stiffness** — `Eb` pinned at 1.6e-6 au on a slow manifold, dominant λ ≈ −1e13, `t` advancing monotonically at ~7 days/segment. C1 still ruled out (Batch 1 economics); **C2 confirmed as the remedy, and its threshold must be positive and scale-relative** because `Eb` never reaches 0 | ran 4 min (cut short by a container restart; regime stationary) |
 | **3** | ✅ **DONE 2026-08-06 — Candidate bake-off on the positive control** | D2 | C2 implemented (`make_energy_collapse_event` + per-segment wiring in `run_energy_phase.py`) and run against the ablated `f1edge_hidens`; ledger `data/candidate_gate.csv`; unit tests `test/test_energy_collapse_event.py` | **P0 PASS** — the run that used to grind (~7 days/segment) now completes in **22 s** with fate `ENERGY_COLLAPSED`, 46× inside the 1011 s ceiling and 15× faster than the ramp-active arm. Only C2 was built; C1 was already out | ran 5 min |
 | **4** | ✅ **DONE 2026-08-06 — Equivalence on production configs** | C2 passed P0 | `docs/dev/screen/screen.py` over all 5 configs (before `85b347a` vs WORKTREE) → `data/equivalence_screen.csv` | **P1 PASS · P1-free PASS on all five configs, not just `simple_cluster` · P2 PASS** (worst 1.007× vs the 1.5× ceiling). §5.2 fires: **land C2 alone** | ran 35 min |
-| **5** | **Land, or write the no-change result** | Batch 4 verdict | smallest diff + P4 failing-first test, or the C0 write-up; then **P3** | branch pushed with evidence; Status line + AUDIT/DOC_STATUS reconciled | ~30 min |
+| **5** | 🟡 **DONE 2026-08-06 except one clause — Land** | Batch 4 verdict | C2's smallest diff (16 lines in `run_energy_phase.py` + one event factory) + P4 behavioural test `test/test_phase1a_collapse_terminates.py`, verified failing-first; then P3 | **P4 PASS · suite 1057/0 · pre-commit PASS · mypy 144 vs 137 baseline = FAILED AS WRITTEN** (+7, all one pre-existing idiom class — §2 D5). Awaiting a ruling on that clause | ran 25 min |
 | **6** | **(conditional) Revisit magic-number #2** | a candidate landed AND P0 holds *without* the ramp | re-run the §4 R1/R2 protocol from `magic-numbers/SWEEP2_PLAN.md` with the new protection in place: can `dt_switchon` now be deleted or made scale-relative? | its own pre-registered bars, its own commit — do **not** fold into Batch 5 | ~1 h |
 
 **Batch 6 is the prize and is deliberately last.** If phase 1a can survive an `Eb` collapse
