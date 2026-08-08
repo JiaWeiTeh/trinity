@@ -32,13 +32,15 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-06):** 🔵 actionable — **Batch 1 (reconnaissance) is done; no `trinity/` line has
-been touched, and "change nothing" remains a pre-registered outcome.** Measured: production is
-≥4.3e4× away from the stall in wall time (worst segment 4 steps / 0.021 s; the whole phase-1a
-segment integrator costs 0.2-0.6 s per run) while the ablated control never returns from one
-call. That rules out the LSODA swap by the pre-registered rule and leaves the in-band `Eb`-floor
-event as the only live candidate. Next: Batch 2 (stiffness vs singularity). `PLAN.md` §2 holds
-the numbers.
+**Status (2026-08-06):** 🔵 actionable — **Batches 1 and 2 done; no `trinity/` line has been
+touched, and "change nothing" remains a pre-registered outcome.** Batch 1: production is ≥4.3e4×
+away from the stall (worst segment 4 steps / 0.021 s; the whole phase-1a segment integrator costs
+0.2-0.6 s per run), which rules out the LSODA swap on economics. Batch 2: the stall is
+**stiffness**, not a singularity — `Eb` collapses 7 decades and pins at 1.6e-6 au on a slow
+manifold with dominant λ ≈ −1e13, so one segment would take ~7 days — and **`Eb` never reaches
+zero**, so phase 1a's existing `Eb ≤ 0` guard would miss this state even if the segment finished.
+The remedy is an in-band, *positive*, scale-relative energy-floor event. Next: Batch 3.
+`PLAN.md` §2 holds the numbers.
 
 ## The question
 
@@ -51,7 +53,10 @@ never gets the chance. Measured: `docs/dev/magic-numbers/data/switchon_stall_pro
 `switchon_stall_stacks.txt`.
 
 So: latent defect, or a curiosity of a configuration production never runs? That is what this
-workstream measures before proposing anything.
+workstream measures before proposing anything. Measured answer so far: production is four decades
+clear of it, the grind is genuine stiffness on a collapsed-energy slow manifold, and the guard
+that should have caught it tests for `Eb ≤ 0` when `Eb` in fact stalls at a small *positive*
+value.
 
 ## Where to start
 
@@ -59,7 +64,8 @@ workstream measures before proposing anything.
 2. `PLAN.md` §2 — the load-bearing unknown: does this bite with the ramp *active*?
 3. `PLAN.md` §3 §5 — the pre-registered bars and the decision rule, including the
    stiffness-vs-singularity trap that decides which remedy is even correct.
-4. `PLAN.md` §6 — the batches. Batch 1 is done (its D1 answer is in §2); **Batch 2** is next.
+4. `PLAN.md` §6 — the batches. Batches 1-2 are done (their D1/D2 answers are in §2);
+   **Batch 3** (derive the floor, gate it against P0) is next.
 
 ## Why it exists
 

@@ -72,7 +72,7 @@ docs/dev/
 │   └── harness/ + PROVENANCE_PROTOCOL.md    shared run-stamping tooling
 ├── rosette-cf/            Rosette Cf scan, in-container (🔵 plan + harness + param committed; runs pending)
 ├── phase1a-init/          early-phase (1a) init at sub-GMC scale — compact probe (🔵 — FINDINGS.md)
-├── phase1a-stiffness/     is 1a's RK45 segment integrator a latent defect? (🔵 Batch 1 done — PLAN.md)
+├── phase1a-stiffness/     is 1a's RK45 segment integrator a latent defect? (🔵 Batches 1-2 done — PLAN.md)
 ├── screen/                multi-config scheme screen: 2 refs x N configs, matched-t ledger (🔵 — README.md)
 ├── cooling/               cooling-table refactor (🟡 partial)
 ├── performance/           hot-path cost & conditioning (📘 reference + 🟡 open items)
@@ -120,10 +120,12 @@ The top-level `scratch/` (repo root) is separate, git-ignored, local-only.
 - **`phase1a-stiffness/`** — [`PLAN.md`](phase1a-stiffness/PLAN.md): phase 1a integrates on
   `RK45` with no step bounds while 1b/1c/2 use LSODA with both; with #2's ramp ablated, an `Eb`
   collapse inside a segment grinds the solver and the between-segment collapse guard never gets
-  to fire. 🔵 **Batch 1 done, still no `trinity/` edit** — production measured ≥4.3e4× from the
-  stall (worst segment 4 steps / 0.021 s), so the LSODA swap is ruled out by the pre-registered
-  rule and the in-band `Eb`-floor event is the only live candidate; "change nothing" remains
-  registered. Batch 2 (stiffness vs singularity) is next.
+  to fire. 🔵 **Batches 1-2 done, still no `trinity/` edit** — production measured ≥4.3e4× from
+  the stall (worst segment 4 steps / 0.021 s), so the LSODA swap is ruled out on economics; the
+  grind is **stiffness** at collapsed `Eb` (pinned at 1.6e-6 au, λ ≈ −1e13, ~7 days/segment), and
+  `Eb` never reaches 0 so the existing `Eb ≤ 0` guard would miss it. The live candidate is an
+  in-band *positive*, scale-relative energy-floor event; "change nothing" remains registered.
+  Batch 3 derives the threshold.
 - **`screen/`** — [`README.md`](screen/README.md): the multi-config scheme screen. Two git refs,
   N configs, both arms in separate processes, compared at matched `t`, ledger + pass/fail out.
   Run it before landing a scheme change; the suite's end-to-end tests all use one config.

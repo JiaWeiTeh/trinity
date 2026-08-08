@@ -32,13 +32,15 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-06):** 🔵 actionable — **Batch 1 done, still no `trinity/` line touched.** §1 is
-source-verified against `adfc23f`; §3 bars and §5 decision rule were registered *before* any edit
-and are unchanged. **D1 (§2) is answered: production is ≥4.3e4× away from the stall in wall time
-and the whole phase-1a segment integrator costs 0.2-0.6 s per run — so the solver swap (C1) is
-ruled out by the pre-registered rule**, leaving C2 (in-band `Eb`-floor event) as the only live
-candidate and C0 (change nothing) as the fallback. Next: **Batch 2** (stiffness vs singularity),
-which is what confirms C2 is even the right shape. Spun out of
+**Status (2026-08-06):** 🔵 actionable — **Batches 1 and 2 done, still no `trinity/` line touched.**
+§1 is source-verified against `adfc23f`; §3 bars and §5 decision rule were registered *before* any
+edit and are unchanged. **D1: production is ≥4.3e4× away from the stall** (whole phase-1a
+integrator costs 0.2-0.6 s/run), so the solver swap C1 is ruled out on economics. **D2: the stall
+is stiffness, not a singularity** — `Eb` pinned at 1.6e-6 au on a slow manifold, dominant
+λ ≈ −1e13, ~7 days to finish one segment — and, newly, **`Eb` never reaches 0, so the existing
+`Eb ≤ 0` guard is mis-thresholded as well as out-of-band.** That makes **C2** (in-band, *positive*,
+scale-relative `Eb`-floor terminal event) the one live candidate, with C0 the fallback. Next:
+**Batch 3** — derive the threshold and gate it against P0. Spun out of
 `docs/dev/magic-numbers/SWEEP2_PLAN.md` §4 R3, which measured the stall and named this as the
 honest follow-up.
 
@@ -153,6 +155,48 @@ with C0 the fallback if it cannot clear P1-free byte-identity. Batch 2 still has
 if the cause is a singularity at `Eb → 0` rather than stiffness, that confirms C2 *and* would
 have made C1 useless anyway (§5's trap).
 
+### D2 — ANSWERED 2026-08-06 (Batch 2; `data/stall_anatomy.csv`, `harness/stall_anatomy_runner.py`)
+
+938 samples taken *inside* the stalling call (segment 4 of the ramp-ablated `f1edge_hidens`
+control), one per 500 RHS evaluations — 469,000 evaluations over 233 s — each carrying the state,
+the RHS vector, and the eigenvalues of a finite-difference Jacobian of the 3-state RHS.
+
+| quantity | measured | reads as |
+|---|---|---|
+| `t_now` | advances **monotonically**, +1.476e-12 Myr over 233 s | **not** a singularity: no asymptote to a finite `t*` |
+| remaining span | 3.85e-9 Myr at 6.3e-15 Myr/s | **~7 days to finish this one segment** |
+| `Eb` | pinned at **1.64e-6 au** (quartile medians 1.639/1.642/1.639/1.640; entered at 29.24) | collapsed 7 decades, then quasi-steady — bounded, never negative |
+| \|RHS\| | median 8.33e9, bounded | no blow-up |
+| dominant eigenvalue | negative in 660/938 samples, median **−1.03e13**; \|λ\| median 3.4e13 | fast **decaying** mode — the textbook stiffness signature |
+| step size | median h = 2.8e-17, i.e. h/span = 1.1e-9 | ~3000× below even the RK45 stability limit 2.8/\|λ\| ≈ 8e-14, so *accuracy* control is pinning it too |
+| cost split | 93% of wall inside the RHS, 2010 evals/s (~0.5 ms/eval, same as production) | millions of **cheap** evals, not a few expensive ones — the `solve_R1` root-find did not become the bottleneck |
+
+**D2 = stiffness, not a singularity.** `Eb` collapses onto a slow manifold where huge gain and
+loss terms nearly cancel (|dEb/dt| ≈ 8.3e9 while `Eb` holds at 1.6e-6), leaving a fast decaying
+mode of |λ| ≈ 3e13 that an explicit method must resolve step by step. So §5's trap resolves in
+favour of the stiff reading — LSODA/BDF *would* step over this.
+
+**That does not revive C1**, and the pre-registered rule is why: §5.3 requires genuine stiffness
+**and** Batch 1 showing production configs reaching it. Batch 1 showed the opposite (≥4.3e4× away,
+0.2-0.6 s total for the whole phase-1a integrator). Buying robustness for an unreachable state by
+moving every published trajectory remains a bad trade; the mechanism changes the *diagnosis*, not
+the *economics*.
+
+**New finding — the existing guard is mis-thresholded, not merely out-of-band.** §1.3 recorded
+that the `Eb ≤ 0` check sits between segments. Batch 2 adds the sharper problem: **`Eb` never goes
+≤ 0.** It stabilises at 1.6e-6 au and stays positive (sample minimum 3.8e-7). So even if the
+segment did complete, `run_energy_phase.py:373` would not fire and the run would carry on
+integrating a bubble whose energy has collapsed 7 decades. Consequences for C2, which this makes
+the clearly right remedy:
+
+- the floor must be a **positive threshold**, not zero;
+- it must be **derived, not guessed** (§7) and **scale-relative** — a healthy segment entry `Eb`
+  spans 90-235,000 au across the Batch 1 configs, so any absolute constant would be a new magic
+  number of exactly the kind this workstream's parent audit exists to remove. Phase 1c's
+  `energy_floor = 1e3` (`phase_events.py: build_transition_phase_events`) is an absolute value
+  and is **not** a template to copy here;
+- C2 stays byte-identity-testable: on a healthy config the threshold is never approached.
+
 ## 3. PRE-REGISTERED BARS (registered 2026-08-06, before any `trinity/` edit)
 
 Per `docs/dev/phase1a-init/PLAN.md` §4 precedent, these stay on this page verbatim even if later
@@ -194,6 +238,10 @@ re-sited; a re-site is recorded *next to* the original, never over it.
   byte-identity is achievable**, and it fixes the precise gap in §1.3. Risk: choosing a threshold
   — it must be a value the run only reaches when already collapsing, and it must be derived, not
   guessed (this workstream is a magic-number spin-off; do not fix a magic number with a new one).
+  **Sharpened by Batch 2 (§2 D2):** the threshold must be **positive** — `Eb` stalls at 1.6e-6 au
+  and never reaches 0, so the existing `Eb ≤ 0` test would miss this state even if the segment
+  completed — and **scale-relative**, since healthy segment-entry `Eb` spans 90-235,000 au across
+  the Batch 1 configs.
 - **C1 — LSODA + `min_step`/`max_step`, matching 1b/1c/2.** The principled fix if Batch 2 shows
   genuine stiffness. Highest risk: it changes every trajectory in phase 1a, including the
   published regime, so it must clear P1 on its own merits and cannot be justified by consistency
@@ -227,6 +275,14 @@ degenerate; *every* adaptive solver grinds into a singularity, LSODA included). 
 the latter, C1 is the wrong fix for the right symptom and would burn a full-run gate to learn it.
 Distinguishing them is Batch 2's entire job, and no candidate is chosen before it reports.
 
+> **RESOLVED 2026-08-06 — it is stiffness** (§2 D2: `t` advances monotonically, `Eb` and the RHS
+> stay bounded, dominant λ ≈ −1e13). So the trap did *not* fire in the direction feared: LSODA
+> would genuinely step over this. C1 is nonetheless still out, by rule 3's *other* conjunct —
+> Batch 1 measured production ≥4.3e4× away from the stall. Recording this explicitly because it
+> is the case the rule was written for: the mechanism now argues *for* the bigger change, and the
+> pre-registered economics still argue against it. The rule wins; that is what pre-registering is
+> for.
+
 ## 6. Batches — the runnable unit ("run batch 1")
 
 Each batch is independently runnable and restartable, states its own exit criteria, and ends by
@@ -237,7 +293,7 @@ committing artifacts + writing its result back into this doc (🔄/💾). Costs 
 |---|---|---|---|---|---|
 | **0** | Pre-registration | — | this doc + workstream registration | committed before any `trinity/` edit | done (this commit) |
 | **1** | ✅ **DONE 2026-08-06 — Reconnaissance: does it bite in production?** | Batch 0 | `harness/seg_stepcount_runner.py` → `data/seg_stepcount.csv` (443 calls) + `data/seg_stepcount_summary.csv`, over the 5 screen configs (ramp active) + the ablated `f1edge_hidens` **positive control** | **D1 answered (§2):** production worst = 4 steps / 0.021 s per segment vs a control call that never returned in 900 s (≥4.3e4× wall). **C1 ruled out; C2 the only live candidate, C0 the fallback** | ran ~55 min |
-| **2** | **Mechanism — stiffness or singularity?** | D1 | from the positive control: step-size history, rejected-step fraction, `Eb(t)` approach to 0, and a local stiffness proxy (\|λ\|·h from a finite-difference Jacobian of the 3-state RHS) → `data/stall_anatomy.csv` + one paragraph | **D2:** names the cause. Resolves the §5 trap; picks the candidate set | ~30 min |
+| **2** | ✅ **DONE 2026-08-06 — Mechanism: stiffness or singularity?** | D1 | `harness/stall_anatomy_runner.py` → `data/stall_anatomy.csv` (938 samples / 469k RHS evals inside the stalling call, with Jacobian eigenvalues) | **D2 answered (§2):** **stiffness** — `Eb` pinned at 1.6e-6 au on a slow manifold, dominant λ ≈ −1e13, `t` advancing monotonically at ~7 days/segment. C1 still ruled out (Batch 1 economics); **C2 confirmed as the remedy, and its threshold must be positive and scale-relative** because `Eb` never reaches 0 | ran 4 min (cut short by a container restart; regime stationary) |
 | **3** | **Candidate bake-off on the positive control** | D2 | each surviving candidate implemented on a scratch branch/worktree, run against the ablated `f1edge_hidens`; ledger `data/candidate_gate.csv` | **P0** per candidate; candidates that fail P0 are dropped here, before any expensive full-run work | ~20 min/candidate |
 | **4** | **Equivalence on production configs** | ≥1 candidate passed P0 | `docs/dev/screen/screen.py` over all 5 configs + (for an inert candidate) the byte-identity check on `simple_cluster` | **P1 / P1-free / P2**. A fate flip or radius breach ends the candidate | ~40 min/candidate |
 | **5** | **Land, or write the no-change result** | Batch 4 verdict | smallest diff + P4 failing-first test, or the C0 write-up; then **P3** | branch pushed with evidence; Status line + AUDIT/DOC_STATUS reconciled | ~30 min |
@@ -277,7 +333,7 @@ E8b write-up, mechanism corrected in place 2026-08-06).
 | ramp-active baseline for `f1edge_hidens` (P0 reference, 5m37s / 127 rows) | `docs/dev/magic-numbers/data/switchon_repro_hidens_active.csv` |
 | Batch 1 per-segment step counts (443 calls, 6 runs) | `data/seg_stepcount.csv` (harness: `harness/seg_stepcount_runner.py`) |
 | Batch 1 aggregates (the §2 D1 table, regenerated by `--reduce`) | `data/seg_stepcount_summary.csv` |
-| Batch 2 stall anatomy | `data/stall_anatomy.csv` |
+| Batch 2 stall anatomy (938 samples, Jacobian eigenvalues) | `data/stall_anatomy.csv` (harness: `harness/stall_anatomy_runner.py`) |
 | Batch 3 candidate gate (P0) | `data/candidate_gate.csv` |
 | Batch 4 equivalence screen (P1/P2) | `data/equivalence_screen.csv` |
 | multi-config screen harness | `docs/dev/screen/screen.py` |
