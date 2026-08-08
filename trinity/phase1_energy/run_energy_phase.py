@@ -52,7 +52,7 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 TFINAL_ENERGY_PHASE = 3e-3  # Myr - max duration (~3000 years)
-SEGMENT_DURATION = 3e-5  # Myr - duration of each integration segment (~30 years)
+SEGMENT_DURATION = 3e-5  # Myr - fixed-segment fallback, used when phase1a_segFrac = 0
 DT_EXIT_THRESHOLD = 1e-4  # Myr - exit when this close to tfinal
 COOLING_UPDATE_INTERVAL = 5e-2  # Myr - recalculate cooling every 50k years
 RTOL = 1e-6  # Relative tolerance for solve_ivp
@@ -85,6 +85,13 @@ def run_energy(params):
     Eb = params['Eb'].value
     T0 = params['T0'].value
     rCloud = params['rCloud'].value
+    # Segment schedule: segments are a fixed fraction of the bubble's age, so the
+    # per-segment freezing of the driving terms carries the same relative staleness
+    # at every object scale. A fixed duration cannot: 30 yr is a small step for a
+    # GMC and spans the whole free-streaming->Weaver relaxation of a compact HII
+    # region. See docs/dev/phase1a-init/FINDINGS.md.
+    segFrac = params['phase1a_segFrac'].value
+    tSF = params['tSF'].value
 
     # =============================================================================
     # Initial feedback and bubble parameters
@@ -138,7 +145,10 @@ def run_energy(params):
     while R2 < rCloud and (TFINAL_ENERGY_PHASE - t_now) > DT_EXIT_THRESHOLD and continueWeaver:
 
         # Define segment time span
-        t_segment_end = min(t_now + SEGMENT_DURATION, TFINAL_ENERGY_PHASE)
+        dt_segment = segFrac * (t_now - tSF)
+        if dt_segment <= 0:  # phase1a_segFrac=0 (fixed-segment fallback), or a degenerate age
+            dt_segment = SEGMENT_DURATION
+        t_segment_end = min(t_now + dt_segment, TFINAL_ENERGY_PHASE)
 
         logger.debug(f'Segment: t={t_now:.6e} to {t_segment_end:.6e} Myr')
 
@@ -309,7 +319,7 @@ def run_energy(params):
 
         if not solution.success:
             logger.warning(f'solve_ivp failed: {solution.message}')
-            t_segment_end = t_now + SEGMENT_DURATION / 10
+            t_segment_end = t_now + dt_segment / 10
             solution = scipy.integrate.solve_ivp(
                 ode_func,
                 t_span=(t_now, t_segment_end),
@@ -337,11 +347,6 @@ def run_energy(params):
         t_new = solution.t[-1]
 
         logger.debug(f'solve_ivp: {len(solution.t)} steps, final t={t_new:.6e}')
-
-        # Handle early phase approximation switch
-        if loop_count == 0 and params['EarlyPhaseApproximation'].value:
-            params['EarlyPhaseApproximation'].value = False
-            logger.info('Switching to no approximation')
 
         t_now = t_new
         R2 = R2_new

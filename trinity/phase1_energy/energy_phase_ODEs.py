@@ -97,7 +97,6 @@ class ODESnapshot:
 
     # Phase info
     current_phase: str
-    EarlyPhaseApproximation: bool
 
     # Cloud properties
     rCloud: float
@@ -156,7 +155,6 @@ def create_ODE_snapshot(params, shell_props) -> ODESnapshot:
         TShell_ion=params['TShell_ion'].value,
         tSF=params['tSF'].value,
         current_phase=params['current_phase'].value,
-        EarlyPhaseApproximation=params['EarlyPhaseApproximation'].value,
         rCloud=params['rCloud'].value,
         include_PHII=params['include_PHII'].value,
         P_HII=params['P_HII'].value,
@@ -264,10 +262,6 @@ def get_ODE_Edot_pure(t: float, y: list, snapshot: ODESnapshot, params_for_feedb
     rd = v2
     vd = (4.0 * np.pi * R2**2 * (P_drive - P_ext)
           - mShell_dot * v2 - F_grav + F_rad) / mShell
-
-    # Early phase approximation
-    if snapshot.EarlyPhaseApproximation:
-        vd = -1e8
 
     # Energy derivative
     L_bubble = snapshot.bubble_LTotal

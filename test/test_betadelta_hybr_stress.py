@@ -54,11 +54,17 @@ _PARAM = (
 
 # Golden accepted (beta, delta) at the first implicit-phase segments, recorded
 # on the pinned numpy<2 / scipy<2 stack. FILLED FROM A RECORDING RUN.
+# Re-baselined 2026-08-05 with the phase-1a segment schedule
+# (docs/dev/phase1a-init/); the pre-fix values were (0.759260, -0.035387) x2 at
+# t=0.00341/0.00381 and (0.757865, -0.122600) x2 at t=0.00412/0.00437.
+# cool_alpha = t*v2/R2 is set from the phase-1a exit state and consumed inside
+# the bubble solve, so this pair moves with that exit state -- the solver logic
+# itself is unchanged and is pinned separately by test_betadelta_hybr.py.
 _GOLDEN: list = [
-    (0.759260, -0.035387),  # t=0.00341 Myr
-    (0.759260, -0.035387),  # t=0.00381
-    (0.757865, -0.122600),  # t=0.00412
-    (0.757865, -0.122600),  # t=0.00437
+    (0.888197, -0.046294),  # t=0.00350 Myr
+    (0.888197, -0.046294),  # t=0.00390
+    (0.845829, -0.145668),  # t=0.00421
+    (0.845829, -0.145668),  # t=0.00446
 ]
 _TOL = 2e-3
 
