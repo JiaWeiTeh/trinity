@@ -72,7 +72,7 @@ docs/dev/
 │   └── harness/ + PROVENANCE_PROTOCOL.md    shared run-stamping tooling
 ├── rosette-cf/            Rosette Cf scan, in-container (🔵 plan + harness + param committed; runs pending)
 ├── phase1a-init/          early-phase (1a) init at sub-GMC scale — compact probe (🔵 — FINDINGS.md)
-├── phase1a-stiffness/     is 1a's RK45 segment integrator a latent defect? (🔵 Batches 1-3 done — PLAN.md)
+├── phase1a-stiffness/     is 1a's RK45 segment integrator a latent defect? (🔵 Batches 1-4 done — PLAN.md)
 ├── screen/                multi-config scheme screen: 2 refs x N configs, matched-t ledger (🔵 — README.md)
 ├── cooling/               cooling-table refactor (🟡 partial)
 ├── performance/           hot-path cost & conditioning (📘 reference + 🟡 open items)
@@ -126,8 +126,8 @@ The top-level `scratch/` (repo root) is separate, git-ignored, local-only.
   `Eb` never reaches 0 so the existing `Eb ≤ 0` guard would miss it. Batch 3 built the in-band
   *positive*, scale-relative energy-floor event (threshold bounded both sides by measurement) and
   it clears P0 — the stalling control now ends in 22 s with the pre-existing `ENERGY_COLLAPSED`
-  fate. Batch 4's equivalence screen decides whether it lands; "change nothing" remains
-  registered.
+  fate — and Batch 4's screen came back **byte-identical on all five configs**, so it lands at
+  Batch 5.
 - **`screen/`** — [`README.md`](screen/README.md): the multi-config scheme screen. Two git refs,
   N configs, both arms in separate processes, compared at matched `t`, ledger + pass/fail out.
   Run it before landing a scheme change; the suite's end-to-end tests all use one config.

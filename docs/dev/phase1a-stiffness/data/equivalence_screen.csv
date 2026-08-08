@@ -1,0 +1,38 @@
+# phase1a-stiffness Batch 4 (PLAN.md par.6): equivalence screen for candidate C2
+# (in-band energy-collapse event). before=85b347a (pre-candidate) after=WORKTREE (=d2e9475),
+# stop_t=0.02 Myr, separate processes, matched t; fate from metadata.json[termination].
+# Command, once per config: python docs/dev/screen/screen.py --before 85b347a --after WORKTREE \
+#            --configs <name> --stop-t 0.02 --workers 2                      (2026-08-06)
+# VERDICT: P1 PASS, P1-free PASS (byte-identical on ALL FIVE configs, not just simple_cluster
+# as the bar required), P2 PASS (worst cost ratio 1.007x vs the 1.5x ceiling).
+gate,config,quantity,reference,reference_source,measured,rel_diff,verdict
+screen,simple_cluster,dR2_at_3000yr_pct,<5.0,before arm,+0.000,0.00e+00,PASS
+screen,simple_cluster,dR2_at_1e+04yr_pct,<5.0,before arm,+0.000,0.00e+00,PASS
+screen,simple_cluster,dR2_at_2e+04yr_pct,<5.0,before arm,+0.000,0.00e+00,PASS
+screen,simple_cluster,stopping_fate,1 stopping_time,before arm,1 stopping_time,0.00e+00,PASS
+screen,f1edge_lowdens,dR2_at_3000yr_pct,<5.0,before arm,+0.000,0.00e+00,PASS
+screen,f1edge_lowdens,dR2_at_1e+04yr_pct,<5.0,before arm,+0.000,0.00e+00,PASS
+screen,f1edge_lowdens,dR2_at_2e+04yr_pct,<5.0,before arm,+0.000,0.00e+00,PASS
+screen,f1edge_lowdens,stopping_fate,1 stopping_time,before arm,1 stopping_time,0.00e+00,PASS
+screen,f1edge_hidens,dR2_at_3000yr_pct,<5.0,before arm,+0.000,0.00e+00,PASS
+screen,f1edge_hidens,dR2_at_1e+04yr_pct,<5.0,before arm,+0.000,0.00e+00,PASS
+screen,f1edge_hidens,dR2_at_2e+04yr_pct,<5.0,before arm,+0.000,0.00e+00,PASS
+screen,f1edge_hidens,stopping_fate,1 stopping_time,before arm,1 stopping_time,0.00e+00,PASS
+screen,m43_probe,dR2_at_3000yr_pct,<5.0,before arm,+0.000,0.00e+00,PASS
+screen,m43_probe,dR2_at_1e+04yr_pct,<5.0,before arm,+0.000,0.00e+00,PASS
+screen,m43_probe,dR2_at_2e+04yr_pct,<5.0,before arm,+0.000,0.00e+00,PASS
+screen,m43_probe,stopping_fate,1 stopping_time,before arm,1 stopping_time,0.00e+00,PASS
+screen,gmc_control,dR2_at_3000yr_pct,<5.0,before arm,+0.000,0.00e+00,PASS
+screen,gmc_control,dR2_at_1e+04yr_pct,<5.0,before arm,+0.000,0.00e+00,PASS
+screen,gmc_control,dR2_at_2e+04yr_pct,<5.0,before arm,+0.000,0.00e+00,PASS
+screen,gmc_control,stopping_fate,1 stopping_time,before arm,1 stopping_time,0.00e+00,PASS
+P1-free,simple_cluster,dictionary_jsonl_byte_identity,identical,before arm,identical (125 snapshots, 2663497 bytes),0.00e+00,PASS
+P2,simple_cluster,wall_ratio_after_over_before,<=1.5,PLAN par.3 P2,0.975 (0:07:24.952519 -> 0:07:13.720722),0.975,PASS
+P1-free,f1edge_lowdens,dictionary_jsonl_byte_identity,identical,before arm,identical (61 snapshots, 1183562 bytes),0.00e+00,PASS
+P2,f1edge_lowdens,wall_ratio_after_over_before,<=1.5,PLAN par.3 P2,0.969 (0:03:44.260769 -> 0:03:37.269950),0.969,PASS
+P1-free,f1edge_hidens,dictionary_jsonl_byte_identity,identical,before arm,identical (127 snapshots, 2521454 bytes),0.00e+00,PASS
+P2,f1edge_hidens,wall_ratio_after_over_before,<=1.5,PLAN par.3 P2,1.007 (0:09:40.466647 -> 0:09:44.765164),1.007,PASS
+P1-free,m43_probe,dictionary_jsonl_byte_identity,identical,before arm,identical (161 snapshots, 3868296 bytes),0.00e+00,PASS
+P2,m43_probe,wall_ratio_after_over_before,<=1.5,PLAN par.3 P2,0.932 (0:09:07.323991 -> 0:08:30.219833),0.932,PASS
+P1-free,gmc_control,dictionary_jsonl_byte_identity,identical,before arm,identical (107 snapshots, 2419163 bytes),0.00e+00,PASS
+P2,gmc_control,wall_ratio_after_over_before,<=1.5,PLAN par.3 P2,0.992 (0:05:30.982271 -> 0:05:28.316213),0.992,PASS

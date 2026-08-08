@@ -32,8 +32,9 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-06):** 🔵 actionable — **Batches 1-3 done. C2 is implemented and clears P0, but
-is NOT yet cleared for landing: P1/P1-free (Batch 4) has not run.**
+**Status (2026-08-06):** 🔵 actionable — **Batches 1-4 done. C2 is implemented and has cleared
+every measured bar (P0, P1, P1-free byte-identity on all five configs, P2); §5.2 says land it.**
+Batch 5 remains: P4's behavioural test and P3's suite/style pass.
 §1 is source-verified against `adfc23f`; §3 bars and §5 decision rule were registered *before* any
 edit and are unchanged. **D1: production is ≥4.3e4× away from the stall** (whole phase-1a
 integrator costs 0.2-0.6 s/run), so the solver swap C1 is ruled out on economics. **D2: the stall
@@ -42,8 +43,11 @@ is stiffness, not a singularity** — `Eb` pinned at 1.6e-6 au on a slow manifol
 `Eb ≤ 0` guard is mis-thresholded as well as out-of-band.** **D3/Batch 3: C2 built** — a
 per-segment event at `ENERGY_COLLAPSE_FRAC = 1e-3` of the segment's starting `Eb`, a threshold
 bounded on both sides by measurement — and **P0 passes**: the stalling control now ends in 22 s
-with the pre-existing `ENERGY_COLLAPSED` fate. Next: **Batch 4**, the equivalence screen; C0
-remains the fallback if C2 cannot prove inertness on healthy configs. Spun out of
+with the pre-existing `ENERGY_COLLAPSED` fate. **D4/Batch 4: the equivalence screen is clean** —
+`dictionary.jsonl` **byte-identical on all five configs** (the bar asked only for
+`simple_cluster`), fates unchanged, worst cost 1.007×. C0 is therefore no longer the likely
+outcome: inertness is proven, not argued. Next: **Batch 5** (P4 behavioural test, P3 gates, land).
+Spun out of
 `docs/dev/magic-numbers/SWEEP2_PLAN.md` §4 R3, which measured the stall and named this as the
 honest follow-up.
 
@@ -227,6 +231,34 @@ exactly the segment Batch 2 anatomised.
 (the quickstart golden triple) already passes unchanged, which is a necessary but not sufficient
 sign.
 
+### D4 — Batch 4 result: C2 clears every bar (2026-08-06; `data/equivalence_screen.csv`)
+
+`docs/dev/screen/screen.py`, `--before 85b347a` (pre-candidate) `--after WORKTREE`, `stop_t = 0.02`
+Myr, all five configs, separate processes, matched `t`, fate from `metadata.json[termination]`.
+
+| config | ΔR2 at every compared time | fate | `dictionary.jsonl` | wall ratio |
+|---|---|---|---|---|
+| `simple_cluster` | +0.000% | unchanged | **byte-identical** (125 snapshots, 2.66 MB) | 0.975 |
+| `f1edge_lowdens` | +0.000% | unchanged | **byte-identical** (61) | 0.969 |
+| `f1edge_hidens` | +0.000% | unchanged | **byte-identical** (127) | 1.007 |
+| compact probe | +0.000% | unchanged | **byte-identical** (161) | 0.932 |
+| `gmc_control` | +0.000% | unchanged | **byte-identical** (107) | 0.992 |
+
+- **P1-free: PASS, and stronger than the bar asked for.** It required byte-identity on
+  `simple_cluster`; the candidate delivers it on **all five** configs, including the stiff edge and
+  the sub-GMC scale. This is the proof the §2/D3 inertness argument needed — that argument rested
+  on segment-*entry* ratios, which cannot by themselves rule out a mid-segment crossing. Now it is
+  not an argument at all: the bytes are the same, so the event demonstrably never fires in a
+  healthy run.
+- **P1: PASS** trivially (a byte-identical run has ΔR2 ≡ 0 and an unchanged fate).
+- **P2: PASS**, worst ratio **1.007×** against a 1.5× ceiling; three of five configs are slightly
+  faster, which is run-to-run noise on a contended container, not a speedup to claim.
+
+**Decision rule §5.2 fires: land C2 alone**, and explicitly do not also swap the solver — with
+collapse now terminating in-band, C1's remaining benefit is unmeasured and its cost (moving every
+published trajectory) is unchanged. Remaining for Batch 5: P4's behavioural failing-first test and
+P3 (full suite / pre-commit / mypy), then the status flip.
+
 ## 3. PRE-REGISTERED BARS (registered 2026-08-06, before any `trinity/` edit)
 
 Per `docs/dev/phase1a-init/PLAN.md` §4 precedent, these stay on this page verbatim even if later
@@ -325,7 +357,7 @@ committing artifacts + writing its result back into this doc (🔄/💾). Costs 
 | **1** | ✅ **DONE 2026-08-06 — Reconnaissance: does it bite in production?** | Batch 0 | `harness/seg_stepcount_runner.py` → `data/seg_stepcount.csv` (443 calls) + `data/seg_stepcount_summary.csv`, over the 5 screen configs (ramp active) + the ablated `f1edge_hidens` **positive control** | **D1 answered (§2):** production worst = 4 steps / 0.021 s per segment vs a control call that never returned in 900 s (≥4.3e4× wall). **C1 ruled out; C2 the only live candidate, C0 the fallback** | ran ~55 min |
 | **2** | ✅ **DONE 2026-08-06 — Mechanism: stiffness or singularity?** | D1 | `harness/stall_anatomy_runner.py` → `data/stall_anatomy.csv` (938 samples / 469k RHS evals inside the stalling call, with Jacobian eigenvalues) | **D2 answered (§2):** **stiffness** — `Eb` pinned at 1.6e-6 au on a slow manifold, dominant λ ≈ −1e13, `t` advancing monotonically at ~7 days/segment. C1 still ruled out (Batch 1 economics); **C2 confirmed as the remedy, and its threshold must be positive and scale-relative** because `Eb` never reaches 0 | ran 4 min (cut short by a container restart; regime stationary) |
 | **3** | ✅ **DONE 2026-08-06 — Candidate bake-off on the positive control** | D2 | C2 implemented (`make_energy_collapse_event` + per-segment wiring in `run_energy_phase.py`) and run against the ablated `f1edge_hidens`; ledger `data/candidate_gate.csv`; unit tests `test/test_energy_collapse_event.py` | **P0 PASS** — the run that used to grind (~7 days/segment) now completes in **22 s** with fate `ENERGY_COLLAPSED`, 46× inside the 1011 s ceiling and 15× faster than the ramp-active arm. Only C2 was built; C1 was already out | ran 5 min |
-| **4** | **Equivalence on production configs** | ≥1 candidate passed P0 | `docs/dev/screen/screen.py` over all 5 configs + (for an inert candidate) the byte-identity check on `simple_cluster` | **P1 / P1-free / P2**. A fate flip or radius breach ends the candidate | ~40 min/candidate |
+| **4** | ✅ **DONE 2026-08-06 — Equivalence on production configs** | C2 passed P0 | `docs/dev/screen/screen.py` over all 5 configs (before `85b347a` vs WORKTREE) → `data/equivalence_screen.csv` | **P1 PASS · P1-free PASS on all five configs, not just `simple_cluster` · P2 PASS** (worst 1.007× vs the 1.5× ceiling). §5.2 fires: **land C2 alone** | ran 35 min |
 | **5** | **Land, or write the no-change result** | Batch 4 verdict | smallest diff + P4 failing-first test, or the C0 write-up; then **P3** | branch pushed with evidence; Status line + AUDIT/DOC_STATUS reconciled | ~30 min |
 | **6** | **(conditional) Revisit magic-number #2** | a candidate landed AND P0 holds *without* the ramp | re-run the §4 R1/R2 protocol from `magic-numbers/SWEEP2_PLAN.md` with the new protection in place: can `dt_switchon` now be deleted or made scale-relative? | its own pre-registered bars, its own commit — do **not** fold into Batch 5 | ~1 h |
 
@@ -365,5 +397,5 @@ E8b write-up, mechanism corrected in place 2026-08-06).
 | Batch 1 aggregates (the §2 D1 table, regenerated by `--reduce`) | `data/seg_stepcount_summary.csv` |
 | Batch 2 stall anatomy (938 samples, Jacobian eigenvalues) | `data/stall_anatomy.csv` (harness: `harness/stall_anatomy_runner.py`) |
 | Batch 3 candidate gate (P0) + threshold derivation | `data/candidate_gate.csv`; tests `test/test_energy_collapse_event.py` |
-| Batch 4 equivalence screen (P1/P2) | `data/equivalence_screen.csv` |
+| Batch 4 equivalence screen (P1 / P1-free byte-identity / P2) | `data/equivalence_screen.csv` |
 | multi-config screen harness | `docs/dev/screen/screen.py` |
