@@ -163,21 +163,26 @@ Grid = 3 cloud regimes × 5-rung ladder = **15 runs**
 
 ## 6. Execution order (ladder-first, not all-at-once)
 
-Weak-Lw pushes `bubble_structure`'s stiff integrator toward untested regimes;
-run so that a failure localizes the boundary instead of wasting the sweep:
+Weak-Lw pushes `bubble_structure`'s stiff integrator toward untested regimes; run
+so that a failure localizes the boundary instead of wasting the sweep. **The
+executable sequence — one batch per rung, each with its command and pass/fail
+gate — is `RUNBOOK.md`.** In outline:
 
-1. Per cloud, run c = 1.0 (control) and c = 0.3; check H0 + solver health.
-2. Descend one rung at a time (0.1 → 0.03 → 0.01) per cloud; a failed rung is
-   recorded (config + traceback + last good snapshot) and the descent for that
-   cloud stops there.
-3. Locally: `python run.py docs/dev/weak-winds/harness/weak_winds_sweep.param --workers 4`
-   (runs are independent; worker count is free). On HPC: `--emit-jobs jobs/weak_winds`
-   then `sbatch` (see run.py --help).
-4. Harvest per §4 into `data/` as committed CSVs (provenance header: commit,
+1. Batch 0: the H0 plumbing gate (knob at default is inert). Minutes.
+2. Batch 1: c = 1.0 control across all three clouds — also the cost calibration
+   for everything that follows.
+3. Batches 2–5: descend one rung at a time (0.3 → 0.1 → 0.03 → 0.01), checking
+   the gate between batches. A failed rung is recorded (config + traceback + last
+   good snapshot) and the descent stops **for that cloud only**.
+4. Batch 6: harvest into `data/` as committed CSVs (provenance header: commit,
    command, param hash — `docs/dev/transition/PROVENANCE_PROTOCOL.md`), figures
    into `figures/` (Agg backend, no usetex, dpi ≈ 130–140, reading only
    committed CSVs — model `docs/dev/performance/harness/make_f1_figures.py`).
    Write up against H1–H4 in `FINDINGS.md`.
+
+`harness/weak_winds_sweep.param` still describes the whole 15-run grid in one
+file; it is the design of record, but prefer the batches for actually running —
+an all-at-once sweep cannot gate between rungs.
 
 ## 7. Risks & known sharp edges
 

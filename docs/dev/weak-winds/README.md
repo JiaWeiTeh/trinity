@@ -43,8 +43,11 @@ collaborator's "can we switch winds off?" — a strict off switch is not runnabl
 the answer from the runnable side. See `PLAN.md` §1 for that analysis.
 
 - **`PLAN.md`** — background, the knob's exact scalings, hypotheses H0–H4, study
-  design, execution order, risks, implications. Start here.
+  design, risks, implications. Start here for *why*.
+- **`RUNBOOK.md`** — the executable sequence: batches 0–6, one command block and
+  one pass/fail gate each. Start here for *how to run it*.
 - **`FINDINGS.md`** — smoke results so far; sweep results land here.
-- **`harness/`** — param files + commands (`harness/README.md`).
+- **`harness/`** — param files, batch files, gate/harvest/figure scripts
+  (`harness/README.md`).
 - `test/test_weak_winds.py` (repo suite) — the loader scaling contract, feedback
   finiteness on the ladder, free-streaming IC scalings, end-to-end boot stress test.

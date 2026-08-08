@@ -17,17 +17,34 @@ Baseline cloud, control (1.0) vs weak (0.1), `stop_t 1.5` Myr:
 
 Output: `outputs/weak_winds_smoke/1e5_sfe030_n1e5_FBThermcoeffwind{1p0,0p1}/`.
 
-## Main sweep (15 runs, hours each — HPC-sized)
+## Main study — run it in batches
 
-    python run.py docs/dev/weak-winds/harness/weak_winds_sweep.param --dry-run   # inspect first
-    python run.py docs/dev/weak-winds/harness/weak_winds_sweep.param --workers 4
+`batches/` holds one param file per ladder rung (3 clouds each), plus the two
+short batch-0 plumbing arms. **`../RUNBOOK.md` is the sequence to follow** — it
+gives each batch's command, its pass/fail gate, and the descent rules. Example:
 
-or emit a SLURM job array:
+    python run.py docs/dev/weak-winds/harness/batches/batch1_c1p0.param --workers 3 --yes
+    python docs/dev/weak-winds/harness/check_batch.py outputs/weak_winds_study/c1p0
 
-    python run.py docs/dev/weak-winds/harness/weak_winds_sweep.param --emit-jobs jobs/weak_winds
+Each batch writes to its own `outputs/weak_winds_study/<batch>/` subdirectory: a
+fixed (non-swept) knob does not appear in the run-folder name, so batches sharing
+one directory would overwrite each other.
 
-Follow the rung-descent order in `../PLAN.md` §6 — do not fire all 15 blind.
-Output: `outputs/weak_winds_study/<cloud>_FBThermcoeffwind<rung>/dictionary.jsonl`.
+`weak_winds_sweep.param` describes the same 15 runs as a single sweep — the design
+of record, kept for reference — but running it all at once forfeits the gates:
+
+    python run.py docs/dev/weak-winds/harness/weak_winds_sweep.param --dry-run
+
+## Gate / harvest / figures
+
+    python docs/dev/weak-winds/harness/check_batch.py outputs/weak_winds_study/c0p3
+    python docs/dev/weak-winds/harness/check_batch.py --compare RUN_A RUN_B
+    python docs/dev/weak-winds/harness/harvest.py outputs/weak_winds_study \
+        --out ../data/ladder.csv
+
+`check_batch.py` exits non-zero when a run is missing, non-finite, or stopped for
+no recorded reason — that exit code is the gate. `harvest.py` recurses, so one
+call collects every batch that has run so far.
 
 ## Fast checks (seconds)
 

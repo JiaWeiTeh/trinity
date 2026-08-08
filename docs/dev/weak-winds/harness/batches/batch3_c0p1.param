@@ -1,0 +1,16 @@
+# BATCH 3 — FB_thermCoeffWind = 0.1 across all three cloud regimes (3 runs).
+# The rung where the baseline cloud flipped fate in the smoke pair.
+#
+#   python run.py docs/dev/weak-winds/harness/batches/batch3_c0p1.param --workers 3 --yes
+#   python docs/dev/weak-winds/harness/check_batch.py outputs/weak_winds_study/c0p1
+#
+# Each batch writes to its own subdirectory (run folder names do NOT encode a
+# fixed, non-swept knob, so batches sharing one directory would collide).
+# See ../../RUNBOOK.md for the gate and the descent rules.
+
+tuple(mCloud, sfe, nCore)    [1e5, 0.30, 1e5] [1e7, 0.50, 1e2] [1e7, 0.01, 1e6]
+
+FB_thermCoeffWind    0.1
+
+stop_t    15
+path2output    outputs/weak_winds_study/c0p1

@@ -1,0 +1,24 @@
+# BATCH 0 — H0 plumbing gate (cheap, minutes). Baseline cloud, short horizon.
+#
+# Proves that setting FB_thermCoeffWind to its schema default (1.0) is INERT:
+# this arm is the explicit 1.0, and its partner is an untouched run of
+# param/simple_cluster.param with the same stop_t. If these two disagree,
+# every trend in the study is measuring the plumbing, not the physics.
+#
+#   python run.py docs/dev/weak-winds/harness/batches/batch0_h0_plumbing.param --yes
+#   python run.py docs/dev/weak-winds/harness/batches/batch0_h0_untouched.param --yes
+#   python docs/dev/weak-winds/harness/check_batch.py --compare \
+#       outputs/weak_winds_h0/explicit outputs/weak_winds_h0/untouched
+#
+# GATE: max |dR2/R2| at matched t < 1e-9 (NOT byte equality — see PLAN.md §4).
+#
+# Output lives OUTSIDE outputs/weak_winds_study/ on purpose: these are short
+# stop_t=0.5 plumbing arms, and batch 6 harvests the study directory whole.
+
+mCloud    1e5
+sfe    0.3
+
+FB_thermCoeffWind    1.0
+
+stop_t    0.5
+path2output    outputs/weak_winds_h0/explicit

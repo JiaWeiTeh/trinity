@@ -1,0 +1,16 @@
+# BATCH 1 — FB_thermCoeffWind = 1.0 across all three cloud regimes (3 runs).
+# CONTROL rung — the reference every ratio is measured against.
+#
+#   python run.py docs/dev/weak-winds/harness/batches/batch1_c1p0.param --workers 3 --yes
+#   python docs/dev/weak-winds/harness/check_batch.py outputs/weak_winds_study/c1p0
+#
+# Each batch writes to its own subdirectory (run folder names do NOT encode a
+# fixed, non-swept knob, so batches sharing one directory would collide).
+# See ../../RUNBOOK.md for the gate and the descent rules.
+
+tuple(mCloud, sfe, nCore)    [1e5, 0.30, 1e5] [1e7, 0.50, 1e2] [1e7, 0.01, 1e6]
+
+FB_thermCoeffWind    1.0
+
+stop_t    15
+path2output    outputs/weak_winds_study/c1p0

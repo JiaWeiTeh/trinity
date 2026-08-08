@@ -1,4 +1,4 @@
-# weak-winds harvest | commit 731ac50 | 2026-08-08
+# weak-winds harvest | commit e96924f | 2026-08-08
 # command: python docs/dev/weak-winds/harness/harvest.py outputs/weak_winds_smoke --out docs/dev/weak-winds/data/smoke_pair.csv
 # source runs: 1e5_sfe030_n1e5_FBThermcoeffwind0p1, 1e5_sfe030_n1e5_FBThermcoeffwind1p0
 run,FB_thermCoeffWind,t_now,R2,v2,Eb,T0,current_phase,F_ram_wind,F_ram_SN,F_HII,F_rad,F_grav,P_HII,P_ram

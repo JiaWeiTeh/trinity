@@ -38,7 +38,18 @@ FIELDS = [
 ]
 
 
-def coeff_from_param(run_dir: Path) -> str:
+def coeff_from_run(run_dir: Path) -> str:
+    """Knob value actually used, preferring the run's own metadata record.
+
+    metadata.json carries the resolved value even when the run never named
+    the knob (schema default) or set it as a fixed base parameter, which the
+    run-folder name does not encode.
+    """
+    meta = run_dir / "metadata.json"
+    if meta.exists():
+        value = json.loads(meta.read_text()).get("FB_thermCoeffWind")
+        if value is not None:
+            return str(value)
     for param in run_dir.glob("*.param"):
         for line in param.read_text().splitlines():
             parts = line.split()
@@ -53,9 +64,11 @@ def main() -> int:
     ap.add_argument("--out", type=Path, required=True)
     args = ap.parse_args()
 
-    jsonls = sorted(args.sweep_dir.glob("*/dictionary.jsonl"))
+    # Recursive: a batched study nests one level deeper
+    # (weak_winds_study/<batch>/<run>/) than a single flat sweep.
+    jsonls = sorted(args.sweep_dir.rglob("dictionary.jsonl"))
     if not jsonls:
-        print(f"no */dictionary.jsonl under {args.sweep_dir}", file=sys.stderr)
+        print(f"no dictionary.jsonl under {args.sweep_dir}", file=sys.stderr)
         return 1
 
     commit = (
@@ -71,13 +84,16 @@ def main() -> int:
             f"# weak-winds harvest | commit {commit} | {datetime.date.today()}\n"
             f"# command: python docs/dev/weak-winds/harness/harvest.py "
             f"{args.sweep_dir} --out {args.out}\n"
-            f"# source runs: {', '.join(p.parent.name for p in jsonls)}\n"
+            f"# source runs: "
+            f"{', '.join(p.parent.relative_to(args.sweep_dir).as_posix() for p in jsonls)}\n"
         )
         writer = csv.DictWriter(fh, fieldnames=FIELDS, extrasaction="ignore")
         writer.writeheader()
         for jsonl in jsonls:
-            run = jsonl.parent.name
-            coeff = coeff_from_param(jsonl.parent)
+            # Relative path, so batch subdirectories stay distinguishable
+            # (run folder names repeat across batches).
+            run = jsonl.parent.relative_to(args.sweep_dir).as_posix()
+            coeff = coeff_from_run(jsonl.parent)
             for line in jsonl.read_text().splitlines():
                 if not line.strip():
                     continue

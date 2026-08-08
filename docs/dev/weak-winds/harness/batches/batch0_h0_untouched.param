@@ -1,0 +1,9 @@
+# BATCH 0 — H0 plumbing gate, UNTOUCHED arm (no FB_thermCoeffWind line at all).
+# Partner of batch0_h0_plumbing.param; identical in every other respect.
+# See that file for the command pair and the pass/fail gate.
+
+mCloud    1e5
+sfe    0.3
+
+stop_t    0.5
+path2output    outputs/weak_winds_h0/untouched
