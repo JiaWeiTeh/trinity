@@ -32,10 +32,11 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-07-30):** 🔵 ACTIVE — **all seven phases pass the completeness checker.**
+**Status (2026-08-08):** 🔵 ACTIVE — **all seven phases pass the completeness checker.**
 Findings-only: no source has been fixed by this audit (`git diff origin/main HEAD --
-trinity/ test/ run.py param/` is empty). 690 findings, 16 S1 after revision. Four
-Phase-6 probes and eight S1-rated candidates remain open — see [`HANDOFF.md`](HANDOFF.md).
+trinity/ test/ run.py param/` is empty). 690 findings, 16 S1 after revision. **The four
+open Phase-6 probes are closed** (`data/dynamic_verification.md` §4, §8, §9, §10);
+**eight** S1-rated candidates remain untested — see [`HANDOFF.md`](HANDOFF.md).
 
 **Ask the checker, not this line:** `python docs/dev/code-audit/harness/check_completeness.py`
 prints per-phase completion and exits non-zero while anything is missing. It is the only

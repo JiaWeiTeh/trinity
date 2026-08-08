@@ -94,6 +94,14 @@ them.
 `Bubble properties calculation failed` (sweep ⑦ TBL-03), `_simplify` sub-threshold
 R², or `ODEintWarning` fired.
 
+> ✅ **W-3 has since been settled another way** (2026-08-08,
+> `data/dynamic_verification.md` §8). The zero-WARNING result above is a *frequency*
+> result and still stands — it has since been reproduced across every log this audit
+> has produced, including a complete 155-snapshot run. The *mechanism* did not need a
+> run that emits the warning: forcing `get_bubbleproperties_pure` to raise shows the
+> failure is converted into the constant `(100.0, 100.0)` residual plateau with a
+> `WARNING` line as its only trace.
+
 **What it does NOT settle.** `stop_t = 0.5` Myr cannot reach the cooling-cube age
 limit at 10 Myr, so **TBL-01 remains open** — that needs a run past 10 Myr. A full
 `simple_cluster` run (`stop_t = 15`) was launched alongside and had consumed ~56
