@@ -388,21 +388,41 @@ def check_event_termination(sol, events: List[Callable]) -> EventResult:
             reason_message=""
         )
 
-    # Check each event
-    for i, (t_ev, y_ev) in enumerate(zip(sol.t_events, sol.y_events)):
-        if len(t_ev) > 0:
-            event = events[i]
-            return EventResult(
-                triggered=True,
-                name=getattr(event, 'name', f'event_{i}'),
-                index=i,
-                t=float(t_ev[0]),
-                y=y_ev[0].copy(),
-                is_simulation_ending=getattr(event, 'is_simulation_ending', True),
-                reason_code=getattr(event, 'reason_code', 'unknown_event'),
-                reason_message=getattr(event, 'reason_message', 'Event triggered'),
-                end_code=getattr(event, 'end_code', None),
-            )
+    # Collect every event that recorded a crossing.
+    #
+    # solve_ivp stops at a terminal event but keeps integrating past a
+    # non-terminal one, so a monitoring event's t_events entry stays populated
+    # for the rest of the segment. Returning the first entry *by list index*
+    # therefore let `velocity_sign` -- non-terminal, and index 0 of the
+    # implicit-phase list -- mask a run-ending event that fired later in the
+    # same segment, discarding its SimulationEndCode and EndSimulationDirectly.
+    triggered = [
+        (i, float(t_ev[0]), y_ev[0].copy())
+        for i, (t_ev, y_ev) in enumerate(zip(sol.t_events, sol.y_events))
+        if len(t_ev) > 0
+    ]
+
+    if triggered:
+        def _ends_run(i):
+            return getattr(events[i], 'is_simulation_ending', True)
+
+        # A run-ending event outranks a monitoring one; within a rank, the event
+        # that physically happened first is the one that ended the segment. Ties
+        # fall back to list order, so a single-event segment is unchanged.
+        ending = [c for c in triggered if _ends_run(c[0])]
+        i, t, y = min(ending or triggered, key=lambda c: c[1])
+        event = events[i]
+        return EventResult(
+            triggered=True,
+            name=getattr(event, 'name', f'event_{i}'),
+            index=i,
+            t=t,
+            y=y,
+            is_simulation_ending=getattr(event, 'is_simulation_ending', True),
+            reason_code=getattr(event, 'reason_code', 'unknown_event'),
+            reason_message=getattr(event, 'reason_message', 'Event triggered'),
+            end_code=getattr(event, 'end_code', None),
+        )
 
     return EventResult(
         triggered=False,
@@ -623,9 +643,25 @@ def apply_event_result(params, result: EventResult, t: float, y: np.ndarray,
             params['SimulationEndCode'].value = result.end_code.code
         params['EndSimulationDirectly'].value = True
 
-        # Mark collapse if it's a collapse-related event
-        if 'radius' in result.reason_code.lower() or 'collapse' in result.reason_code.lower():
-            if 'isCollapse' in params:
+        # Mark collapse only if the shell was actually CONTRACTING at exit.
+        #
+        # This is the invariant `_collapse_descriptor` documents in
+        # _output/show_run.py ("isCollapse alone only means the shell was
+        # contracting -- v2 < 0 and R2 falling -- at exit") and the one the
+        # phase 1b/1c/2 segment loops already implement as
+        # `if v2 < 0 and R2 < R2_prev`.
+        #
+        # The previous substring test on reason_code disagreed with it in both
+        # directions: 'large_radius_event' contains "radius", so a shell
+        # EXPANDING out through stop_r -- a clean LARGE_RADIUS termination --
+        # was recorded as collapsed, while 'velocity_runaway_event' contains
+        # neither "radius" nor "collapse", so runaway infall was not. The flag
+        # is latched (nothing ever clears it) and is read by
+        # paper/_lib/plot_markers.find_collapse_time, so a misclassification
+        # reaches published figures.
+        if 'isCollapse' in params and 'v2' in state_keys:
+            v2_index = state_keys.index('v2')
+            if v2_index < len(y) and float(y[v2_index]) < 0:
                 params['isCollapse'].value = True
 
     logger.info(f"Event '{result.name}' applied: {result.reason_message}")

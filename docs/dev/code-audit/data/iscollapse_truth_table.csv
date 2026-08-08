@@ -1,5 +1,5 @@
 event,reason_code,end_code,v2_at_event,isCollapse_actual,isCollapse_expected,verdict,why
 min_radius,small_radius_event,SHELL_COLLAPSED,-2.0,True,True,OK,R2 fell through the floor while contracting - a genuine collapse
-max_radius,large_radius_event,LARGE_RADIUS,12.0,True,False,FALSE POSITIVE,R2 crossed stop_r from BELOW with v2 > 0 - the shell is expanding
-velocity_runaway(collapse),velocity_runaway_event,VELOCITY_RUNAWAY,-500.0,False,True,FALSE NEGATIVE,"v2 <= -500 pc/Myr - runaway INFALL, the definition of collapse"
+max_radius,large_radius_event,LARGE_RADIUS,12.0,False,False,OK,R2 crossed stop_r from BELOW with v2 > 0 - the shell is expanding
+velocity_runaway(collapse),velocity_runaway_event,VELOCITY_RUNAWAY,-500.0,True,True,OK,"v2 <= -500 pc/Myr - runaway INFALL, the definition of collapse"
 velocity_runaway(expansion),velocity_runaway_event,VELOCITY_RUNAWAY,500.0,False,False,OK,v2 >= +500 pc/Myr - runaway expansion

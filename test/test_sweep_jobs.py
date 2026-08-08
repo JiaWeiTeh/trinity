@@ -18,6 +18,7 @@ import pytest
 from trinity._input.sweep_parser import (
     read_sweep_config,
     generate_combinations_from_config,
+    SweepConfig,
 )
 from trinity._input.sweep_jobs import emit_jobs, collect_report
 
@@ -180,3 +181,50 @@ def test_collect_report_breakdown_surfaces_failing_regime(tmp_path, capsys) -> N
     assert 'mCloud: ' in o                          # mCloud (the other swept axis) is broken out too
     # path2output is per-run (n distinct) -> must NOT be treated as a swept axis
     assert 'path2output:' not in o
+
+
+# =============================================================================
+# Regression: a sweep must never silently drop a configuration.
+#
+# `_NAMED_RUN_NAME_KEYS` excludes densPL_alpha / densBE_Omega from the generic
+# suffix loop because they have curated slots -- but those slots truncate
+# (`int(alpha)`, `int(round(omega))`). Two distinct sweep cells can therefore
+# land on the same run name, share one output directory, and silently overwrite
+# each other while the run report still claims success (code audit S12b-R-01).
+# =============================================================================
+
+def _config(sweep_params):
+    return SweepConfig(
+        base_params={"mCloud": 1e5, "sfe": 0.01, "nCore": 1e4, "dens_profile": "densPL"},
+        sweep_params=sweep_params,
+    )
+
+
+def test_colliding_densPL_alpha_sweep_is_rejected_not_silently_dropped():
+    """alpha -2.0 and -2.5 both format as `_PL-2` via int() truncation."""
+    config = _config({"densPL_alpha": [-2.0, -2.5]})
+
+    with pytest.raises(ValueError, match="same run name"):
+        list(generate_combinations_from_config(config))
+
+
+def test_colliding_densBE_Omega_sweep_is_rejected():
+    """Omega 14.1 and 14.4 both format as `_BE14` via int(round(...))."""
+    config = SweepConfig(
+        base_params={"mCloud": 1e5, "sfe": 0.01, "nCore": 1e4, "dens_profile": "densBE"},
+        sweep_params={"densBE_Omega": [14.1, 14.4]},
+    )
+
+    with pytest.raises(ValueError, match="same run name"):
+        list(generate_combinations_from_config(config))
+
+
+def test_distinct_alpha_sweep_still_expands_normally():
+    """The guard must not fire on a sweep whose names are already unique."""
+    config = _config({"densPL_alpha": [0.0, -1.0, -2.0]})
+
+    combos = list(generate_combinations_from_config(config))
+
+    names = [name for _, name in combos]
+    assert len(combos) == 3
+    assert len(set(names)) == 3, names

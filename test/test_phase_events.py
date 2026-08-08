@@ -167,3 +167,123 @@ def test_check_and_apply_event_result_classify_run_vs_phase_end():
     assert phase_params["R2"].value == pytest.approx(5.0)
     assert phase_params["EndSimulationDirectly"].value is False
     assert phase_params["SimulationEndReason"].value == ""
+
+
+# =============================================================================
+# Regression: a non-terminal monitoring event must not mask a terminal one,
+# and `isCollapse` must mean "the shell was contracting", not "the reason_code
+# happened to contain the substring 'radius'".
+#
+# Both defects live in phase_events.py and were found by the code audit
+# (NUM-02 / S11-R-01 / DD-001 / ST-002, and S11-R-02).
+# =============================================================================
+
+
+def _sol(t_events, y_events):
+    return SimpleNamespace(
+        t_events=[np.asarray(t, dtype=float) for t in t_events],
+        y_events=[np.asarray(y, dtype=float).reshape(-1, 2) for y in y_events],
+    )
+
+
+def test_nonterminal_event_does_not_mask_a_terminal_one():
+    """`velocity_sign` is non-terminal, so solve_ivp records it and keeps going.
+
+    It sits at index 0 of the implicit-phase event list, so a selection that
+    returns the first *by list index* hands back a monitoring event and loses the
+    run-ending one that fired later in the same segment -- along with its
+    SimulationEndCode and EndSimulationDirectly.
+    """
+    monitoring = events.make_velocity_sign_event()      # terminal=False, index 0
+    terminal = events.make_min_radius_event(1.0)        # terminal=True,  index 1
+
+    # Both fire in one segment: the sign change first, the collapse after.
+    sol = _sol(
+        t_events=[[0.10], [0.40]],
+        y_events=[[[5.0, 0.0]], [[1.0, -2.0]]],
+    )
+
+    result = events.check_event_termination(sol, [monitoring, terminal])
+
+    assert result.is_simulation_ending is True, (
+        "a non-terminal monitoring event masked the run-ending event"
+    )
+    assert result.name == "min_radius"
+    assert result.end_code is not None
+
+
+def test_lone_nonterminal_event_is_still_reported():
+    """With nothing terminal firing, the monitoring event is still the answer."""
+    monitoring = events.make_velocity_sign_event()
+    terminal = events.make_min_radius_event(1.0)
+
+    sol = _sol(t_events=[[0.10], []], y_events=[[[5.0, 0.0]], np.empty((0, 2))])
+
+    result = events.check_event_termination(sol, [monitoring, terminal])
+
+    assert result.triggered is True
+    assert result.name == "velocity_sign"
+    assert result.is_simulation_ending is False
+
+
+def test_earliest_terminal_event_wins_regardless_of_list_order():
+    """Two terminal events in one segment: the one that physically happened
+    first ends the run, not whichever sits earlier in the list."""
+    late = events.make_max_radius_event(50.0)      # index 0, fires at t=0.9
+    early = events.make_min_radius_event(1.0)      # index 1, fires at t=0.2
+
+    sol = _sol(
+        t_events=[[0.90], [0.20]],
+        y_events=[[[50.0, 4.0]], [[1.0, -2.0]]],
+    )
+
+    result = events.check_event_termination(sol, [late, early])
+
+    assert result.name == "min_radius"
+    assert result.t == pytest.approx(0.20)
+
+
+@pytest.mark.parametrize(
+    ("factory", "y", "expected", "why"),
+    [
+        (lambda: events.make_min_radius_event(1.0), [1.0, -2.0], True,
+         "contracting through the floor - a real collapse"),
+        (lambda: events.make_max_radius_event(50.0), [50.0, +12.0], False,
+         "EXPANDING out through stop_r - a clean LARGE_RADIUS success"),
+        (lambda: events.make_velocity_runaway_event(500.0, direction="collapse"),
+         [3.0, -500.0], True,
+         "runaway INFALL - the definition of collapse"),
+        (lambda: events.make_velocity_runaway_event(500.0, direction="expansion"),
+         [30.0, +500.0], False,
+         "runaway EXPANSION"),
+    ],
+)
+def test_iscollapse_tracks_the_sign_of_v2_not_the_reason_code_spelling(
+    factory, y, expected, why
+):
+    """`isCollapse` must mean v2 < 0 at exit.
+
+    show_run.py documents exactly this: "isCollapse alone only means the shell
+    was *contracting* (v2 < 0 and R2 falling) at exit", and the phase 1b/1c/2
+    segment loops implement it as `if v2 < 0 and R2 < R2_prev`. The substring
+    test on reason_code is the only place that departs from it, and it departs
+    in both directions: 'large_radius_event' contains "radius" (false positive
+    on an expanding shell) while 'velocity_runaway_event' contains neither
+    "radius" nor "collapse" (false negative on runaway infall).
+    """
+    event = factory()
+    sol = _sol(t_events=[[0.25]], y_events=[[y]])
+    result = events.check_event_termination(sol, [event])
+
+    params = {
+        "t_now": _param(),
+        "R2": _param(),
+        "v2": _param(),
+        "SimulationEndReason": _param(""),
+        "SimulationEndCode": _param(),
+        "EndSimulationDirectly": _param(False),
+        "isCollapse": _param(False),
+    }
+    events.apply_event_result(params, result, result.t, result.y)
+
+    assert params["isCollapse"].value is expected, f"v2={y[1]:+g}: {why}"

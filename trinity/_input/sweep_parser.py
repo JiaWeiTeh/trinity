@@ -485,7 +485,57 @@ def read_sweep_config(path2file: str) -> SweepConfig:
 # Combination Generation
 # =============================================================================
 
+def _reject_duplicate_run_names(
+    combinations: Iterator[Tuple[Dict[str, Any], str]],
+) -> Iterator[Tuple[Dict[str, Any], str]]:
+    """Fail loudly when two sweep cells generate the same run name.
+
+    A run name is the output directory, so two cells sharing one means the
+    second silently overwrites the first: the sweep reports success while a
+    requested configuration was never run, and nothing in the outputs records
+    that it is missing.
+
+    The curated slots in `generate_run_name` truncate -- `int(alpha)` maps
+    densPL_alpha -2.0 and -2.5 both onto `_PL-2`, `int(round(omega))` maps
+    densBE_Omega 14.1 and 14.4 both onto `_BE14` -- and because those keys are
+    in `_NAMED_RUN_NAME_KEYS` they are skipped by the generic-suffix loop that
+    would otherwise have disambiguated them.
+
+    Raising here rather than renaming keeps every existing run name stable.
+    """
+    seen: Dict[str, Dict[str, Any]] = {}
+    for params, name in combinations:
+        if name in seen:
+            previous = seen[name]
+            differing = sorted(
+                k for k in set(previous) | set(params)
+                if previous.get(k) != params.get(k)
+            )
+            raise ValueError(
+                f"Sweep produces two configurations with the same run name "
+                f"{name!r}, so one would silently overwrite the other and never "
+                f"be run. They differ in: "
+                f"{ {k: (previous.get(k), params.get(k)) for k in differing} }. "
+                f"Run names are built from a curated set of keys "
+                f"({sorted(_NAMED_RUN_NAME_KEYS)}) whose formatting rounds or "
+                f"truncates, so nearby values can collapse onto one name. Use "
+                f"values that remain distinct after formatting (e.g. integer "
+                f"densPL_alpha steps), or sweep a different parameter."
+            )
+        seen[name] = params
+        yield params, name
+
+
 def generate_combinations_from_config(config: SweepConfig) -> Iterator[Tuple[Dict[str, Any], str]]:
+    """Expand a sweep, refusing any expansion that would drop a configuration.
+
+    Thin wrapper over `_expand_combinations_from_config`; see
+    `_reject_duplicate_run_names` for why the guard exists.
+    """
+    yield from _reject_duplicate_run_names(_expand_combinations_from_config(config))
+
+
+def _expand_combinations_from_config(config: SweepConfig) -> Iterator[Tuple[Dict[str, Any], str]]:
     """
     Generate parameter combinations from a SweepConfig.
 
