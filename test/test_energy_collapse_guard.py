@@ -65,9 +65,9 @@ def test_solve_R1_returns_zero_for_nonphysical_R2():
     # crashing the run in phase 1a (the real Helix point). solve_R1 now returns
     # 0.0 (no positive radius -> no wind shock), keeping the RHS finite so the
     # integrator can reject the bad step; the Eb<=0 check then stops cleanly.
-    assert get_bubbleParams.solve_R1(-154.0, -4.4e31, 5e12, 3739.0) == 0.0
-    assert get_bubbleParams.solve_R1(0.0, 1e5, 1.0, 1.0) == 0.0
-    assert get_bubbleParams.solve_R1(np.nan, 1e5, 1.0, 1.0) == 0.0
+    assert get_bubbleParams.solve_R1(-154.0, -4.4e31, 5e12, 3739.0, 5 / 3) == 0.0
+    assert get_bubbleParams.solve_R1(0.0, 1e5, 1.0, 1.0, 5 / 3) == 0.0
+    assert get_bubbleParams.solve_R1(np.nan, 1e5, 1.0, 1.0, 5 / 3) == 0.0
     # Physical R2 + NaN Eb is pinned in
     # test_r1_bracket.py::test_failure_raises_instead_of_fabricating.
 

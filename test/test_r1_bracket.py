@@ -30,7 +30,7 @@ def test_small_root_old_bracket_raises_new_converges():
     with pytest.raises(ValueError):
         scipy.optimize.brentq(get_bubbleParams.get_r1, 1e-3 * R2, R2, args=args)
 
-    R1 = get_bubbleParams.solve_R1(R2, Eb, Lmech, v_mech)
+    R1 = get_bubbleParams.solve_R1(R2, Eb, Lmech, v_mech, 5 / 3)
     analytic = np.sqrt(Lmech / v_mech / Eb * R2**3)
     assert abs(R1 - analytic) / analytic < 0.01
 
@@ -40,8 +40,8 @@ def test_lmech_nonpositive_returns_zero_without_brentq(monkeypatch):
         raise AssertionError("brentq must not be called for Lmech_total <= 0")
 
     monkeypatch.setattr(scipy.optimize, "brentq", _no_brentq)
-    assert get_bubbleParams.solve_R1(R2, 1e5, 0.0, 2e3) == 0.0
-    assert get_bubbleParams.solve_R1(R2, 1e5, -1.0, 2e3) == 0.0
+    assert get_bubbleParams.solve_R1(R2, 1e5, 0.0, 2e3, 5 / 3) == 0.0
+    assert get_bubbleParams.solve_R1(R2, 1e5, -1.0, 2e3, 5 / 3) == 0.0
 
 
 def test_midrange_root_matches_old_bracket():
@@ -50,7 +50,7 @@ def test_midrange_root_matches_old_bracket():
     args = ([Lmech, Eb, v_mech, R2],)
 
     old = scipy.optimize.brentq(get_bubbleParams.get_r1, 1e-3 * R2, R2, args=args)
-    new = get_bubbleParams.solve_R1(R2, Eb, Lmech, v_mech)
+    new = get_bubbleParams.solve_R1(R2, Eb, Lmech, v_mech, 5 / 3)
     assert old == pytest.approx(1.0, rel=1e-9)
     assert new == pytest.approx(old, rel=1e-9)
 
@@ -58,7 +58,7 @@ def test_midrange_root_matches_old_bracket():
 def test_failure_raises_instead_of_fabricating():
     # NaN energy poisons the equation; the old code fabricated R1 = 0.01*R2
     with pytest.raises(ValueError):
-        get_bubbleParams.solve_R1(R2, np.nan, 1.0, 1.0)
+        get_bubbleParams.solve_R1(R2, np.nan, 1.0, 1.0, 5 / 3)
 
 
 def test_compute_R1_Pb_returns_true_small_root():
@@ -69,3 +69,57 @@ def test_compute_R1_Pb_returns_true_small_root():
     analytic = np.sqrt(Lmech / v_mech / Eb * R2**3)
     assert abs(R1 - analytic) / analytic < 0.01
     assert np.isfinite(Pb) and Pb > 0
+
+
+# =============================================================================
+# Regression: gamma_adia must reach the R1 solve.
+#
+# get_r1 balances wind ram pressure at R1 against bubble pressure:
+#     R1**2 = 2*Lmech*(R2**3 - R1**3) / (3*(gamma - 1) * v_mech * Eb)
+# At gamma = 5/3, 3*(gamma-1) is exactly 2 and cancels the leading 2, so the
+# index vanished from the expression -- analytically, which is why grepping the
+# Weaver chain for "5/3" found nothing. bubble_E2P meanwhile honoured whatever
+# the user set, so the two halves disagreed by 67 % at gamma = 1.4 (audit
+# SIGN-01).
+# =============================================================================
+
+
+def test_solve_R1_at_default_gamma_is_bit_identical_to_the_gamma_free_form():
+    """The fix must not move the default-gamma root by even one bit.
+
+    gamma_factor = 3*(gamma-1)/2 is exactly 1.0 at gamma=5/3, and IEEE-754
+    multiplication by 1.0 is exact, so get_r1 receives byte-identical arguments.
+    """
+    for R2, Eb, Lmech, v_mech in [
+        (5.0, 1e5, 1e4, 2e3),
+        (0.31, 6.6e5, 3.7e3, 3.7e3),
+        (17.6, 2.0e7, 9.1e4, 1.2e3),
+    ]:
+        reference = scipy.optimize.brentq(
+            get_bubbleParams.get_r1, 0.0, R2,
+            args=([Lmech, Eb, v_mech, R2]),
+        )
+        assert get_bubbleParams.solve_R1(R2, Eb, Lmech, v_mech, 5 / 3) == reference
+
+
+def test_solve_R1_actually_responds_to_gamma():
+    """A non-default gamma must move R1, and by the predicted amount.
+
+    R1 scales as 1/sqrt(3*(gamma-1)/2), so gamma=1.4 gives 1/sqrt(0.6) = 1.29099.
+    """
+    R2, Eb, Lmech, v_mech = 5.0, 1e5, 1e4, 2e3
+
+    R1_default = get_bubbleParams.solve_R1(R2, Eb, Lmech, v_mech, 5 / 3)
+    R1_soft = get_bubbleParams.solve_R1(R2, Eb, Lmech, v_mech, 1.4)
+
+    assert R1_soft > R1_default, "a softer equation of state must push R1 outward"
+    # R1**3 enters the bracket too, so the ratio is not exactly 1/sqrt(0.6);
+    # bracket it generously but tightly enough to catch a dropped factor.
+    ratio = R1_soft / R1_default
+    assert 1.20 < ratio < 1.35, ratio
+
+
+def test_solve_R1_requires_gamma_explicitly():
+    """No default: silently inheriting 5/3 is the defect being removed."""
+    with pytest.raises(TypeError):
+        get_bubbleParams.solve_R1(5.0, 1e5, 1e4, 2e3)

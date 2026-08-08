@@ -229,6 +229,29 @@ def read_param(path2file):
     # raw user dict so it fires only when the user actually typed the
     # trigger, not when it inherited the default.
     validate_companions(user_dict)
+
+    # The mu_* family is DERIVED, not settable. Step 6 below recomputes all four
+    # from x_He/Z_He and assigns straight onto the DescribedItem, so a user value
+    # was silently discarded: the run proceeded with the derived numbers while
+    # the user believed their composition had been applied. The anti-stomp guard
+    # further down cannot catch it, because it compares object *identity* and the
+    # assignment mutates .value in place.
+    #
+    # Refusing is the right fix rather than honouring: the four are not
+    # independent (all are functions of x_He and Z_He, as is chi_e), so accepting
+    # one while the others stayed derived would produce a physically inconsistent
+    # composition -- silently, which is the defect being removed.
+    _derived_mu = sorted(k for k in ('mu_convert', 'mu_atom', 'mu_ion', 'mu_mol')
+                         if k in user_dict)
+    if _derived_mu:
+        raise ParameterFileError(
+            f"{', '.join(_derived_mu)} cannot be set in {Path(path2file).name}: "
+            f"the mu_* family is derived at load time from x_He and Z_He, which "
+            f"are the single source of truth for the gas composition, so any "
+            f"value given here is overwritten before it reaches the physics. "
+            f"Set x_He (n_He/n_H) and Z_He (helium ionisation state) instead, or "
+            f"remove these keys to inherit the defaults."
+        )
     
     # Merge: user values override defaults
     merged_dict = {}

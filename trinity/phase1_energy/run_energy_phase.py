@@ -101,7 +101,8 @@ def run_energy(params):
     updateDict(params, feedback)
 
     # Calculate initial R1 and Pb
-    R1 = get_bubbleParams.solve_R1(R2, Eb, feedback.Lmech_total, feedback.v_mech_total)
+    R1 = get_bubbleParams.solve_R1(R2, Eb, feedback.Lmech_total, feedback.v_mech_total,
+                                   params['gamma_adia'].value)
 
     mShell = mass_profile.get_mass_profile(R2, params, return_mdot=False)
     Pb = get_bubbleParams.bubble_E2P(Eb, R2, R1, params['gamma_adia'].value)
@@ -396,7 +397,8 @@ def run_energy(params):
         feedback_final = get_current_sps_feedback(t_now, params)
         updateDict(params, feedback_final)
         R1_f = get_bubbleParams.solve_R1(R2, Eb, feedback_final.Lmech_total,
-                                         feedback_final.v_mech_total)
+                                         feedback_final.v_mech_total,
+                                         params['gamma_adia'].value)
         Pb_f = get_bubbleParams.bubble_E2P(Eb, R2, R1_f, params['gamma_adia'].value)
         params['R1'].value = R1_f
         params['Pb'].value = Pb_f

@@ -324,7 +324,7 @@ def compute_R1_Pb(
     Pb : float
         Bubble pressure [au] (code units)
     """
-    R1 = get_bubbleParams.solve_R1(R2, Eb, Lmech_total, v_mech_total)
+    R1 = get_bubbleParams.solve_R1(R2, Eb, Lmech_total, v_mech_total, gamma_adia)
 
     Pb = get_bubbleParams.bubble_E2P(Eb, R2, R1, gamma_adia)
 

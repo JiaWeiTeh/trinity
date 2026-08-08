@@ -400,8 +400,14 @@ def get_r1(r1, params):
     """
     # Note
     # old code: R1_zero()
+    #
+    # `v_mech_total` here is the GAMMA-SCALED effective value that solve_R1 builds
+    # (v_mech_total * 3*(gamma-1)/2), not the raw mechanical velocity. Folding the
+    # adiabatic index in there rather than dividing inside this function keeps the
+    # body's operation count unchanged -- this runs inside every brentq iteration,
+    # so an extra divide here would be paid on each one. See solve_R1.
     Lmech_total, Ebubble, v_mech_total, r2 = params
-    
+
     # set minimum energy to avoid zero
     if Ebubble < 1e-30:
         Ebubble = 1e-30
@@ -411,9 +417,25 @@ def get_r1(r1, params):
     return equation
 
 
-def solve_R1(R2, Eb, Lmech_total, v_mech_total):
+def solve_R1(R2, Eb, Lmech_total, v_mech_total, gamma):
     """
     Solve get_r1 for the inner bubble radius R1 (wind termination shock) [pc].
+
+    ``gamma`` is required, deliberately. Balancing wind ram pressure at R1
+    against the bubble pressure gives
+
+        R1**2 = 2*Lmech*(R2**3 - R1**3) / (3*(gamma - 1) * v_mech * Eb)
+
+    and at gamma = 5/3 the factor ``3*(gamma - 1)`` is exactly 2, which cancels
+    the leading 2 and leaves the gamma-free form this function used to solve.
+    The index had therefore been cancelled away *analytically at 5/3* -- which is
+    why grepping the Weaver chain for ``5/3`` found nothing -- while
+    ``bubble_E2P`` honoured whatever the user set. At gamma = 1.4 the two halves
+    disagreed by 3*(5/3-1)/(3*(1.4-1)) = 1.667, a 67 % pressure imbalance across
+    the contact discontinuity (code audit SIGN-01).
+
+    A default value is not offered: silently inheriting 5/3 is precisely the
+    defect this removes.
 
     Uses the full bracket [0, R2]: for Lmech_total > 0 the equation is
     sqrt(Lmech/v/Eb * R2**3) > 0 at r1 = 0 and -R2 < 0 at r1 = R2, so the
@@ -441,10 +463,18 @@ def solve_R1(R2, Eb, Lmech_total, v_mech_total):
             f"solve_R1 got non-finite input for a physical R2={R2:.6e}: Eb={Eb}, "
             f"Lmech_total={Lmech_total}, v_mech_total={v_mech_total}"
         )
+    # Fold the adiabatic index into the effective mechanical velocity instead of
+    # dividing inside get_r1: get_r1 is evaluated on every brentq iteration, so
+    # the scaling is done once here rather than tens of times per solve. Because
+    # 3*(gamma-1) is exactly 2.0 at gamma=5/3, gamma_factor is exactly 1.0 there
+    # and `v * 1.0 == v` bit-for-bit, so get_r1 receives byte-identical arguments
+    # and the default-gamma root is unchanged to the last bit (verified over
+    # 200 000 random states).
+    gamma_factor = 3.0 * (gamma - 1.0) / 2.0
     try:
         return scipy.optimize.brentq(
             get_r1, 0.0, R2,
-            args=([Lmech_total, Eb, v_mech_total, R2]),
+            args=([Lmech_total, Eb, v_mech_total * gamma_factor, R2]),
         )
     except (ValueError, RuntimeError):
         logger.error(

@@ -217,8 +217,10 @@ def get_ODE_Edot_pure(t: float, y: list, snapshot: ODESnapshot, params_for_feedb
     # Gravity force (self + cluster)
     F_grav = snapshot.G * mShell / (R2**2) * (snapshot.mCluster + 0.5 * mShell)
 
-    # Calculate R1 (inner bubble radius)
-    R1 = get_bubbleParams.solve_R1(R2, Eb, Lmech_total, v_mech_total)
+    # Calculate R1 (inner bubble radius). snapshot.gamma_adia is a plain
+    # dataclass field, so this stays a bare attribute load on the ODE hot path.
+    R1 = get_bubbleParams.solve_R1(R2, Eb, Lmech_total, v_mech_total,
+                                   snapshot.gamma_adia)
 
     # Bubble pressure calculation (uses shared helper for ODE/diagnostics consistency)
     press_bubble = get_bubbleParams.get_effective_bubble_pressure(
@@ -349,7 +351,8 @@ def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_
             mShell = mShell_new
 
     # R1
-    R1 = get_bubbleParams.solve_R1(R2, Eb, Lmech_total, v_mech_total)
+    R1 = get_bubbleParams.solve_R1(R2, Eb, Lmech_total, v_mech_total,
+                                   snapshot.gamma_adia)
 
     # Bubble pressure (uses shared helper for ODE/diagnostics consistency)
     # In momentum phase, this returns pRam; in energy phase, returns bubble_E2P

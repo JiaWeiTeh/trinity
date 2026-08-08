@@ -222,6 +222,7 @@ def get_bubbleproperties_pure(params) -> BubbleProperties:
     R1 = get_bubbleParams.solve_R1(
         params['R2'].value, params['Eb'].value,
         params['Lmech_total'].value, params['v_mech_total'].value,
+        params['gamma_adia'].value,
     )
 
     # Bubble pressure
