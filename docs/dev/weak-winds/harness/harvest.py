@@ -28,13 +28,22 @@ FIELDS = [
     "Eb",
     "T0",
     "current_phase",
+    # F_ram is the shell-facing force from the *bubble* pressure (Pb-Eb
+    # relation) — during the energy phase this is how the wind actually drives
+    # the shell, and it dwarfs the free-streaming F_ram_wind term. Omitting it
+    # makes the budget look P_HII-dominated and hides the wind's whole pathway.
+    "F_ram",
     "F_ram_wind",
     "F_ram_SN",
     "F_HII",
     "F_rad",
     "F_grav",
+    "F_ion_in",
     "P_HII",
     "P_ram",
+    # The ODE drives on P_drive = max(Pb, P_HII) (+P_ram in transition) — the
+    # terms compete, they do not add, so the resultant must be recorded too.
+    "P_drive",
 ]
 
 

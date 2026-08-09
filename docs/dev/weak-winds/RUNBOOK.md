@@ -60,12 +60,13 @@ Every batch runs the same three clouds (`PLAN.md` §4): `1e5_sfe030_n1e5` (basel
 
 ### Cost
 
-Honest state: **unmeasured at the study's `stop_t 15`.** The only datapoints are the
-smoke pair on the baseline cloud at `stop_t 1.5` — 19 min (control, reached the
-horizon) and 10 min (c = 0.1, collapsed at 0.28 Myr) on this container. The full
-15 Myr horizon and both 1e7 clouds are untested and will be substantially slower.
-**Treat batch 1 as the cost calibration**: its `wall` column tells you what the
-remaining four batches will cost before you commit a cluster allocation to them.
+**Measured 2026-08-09 by batch 1** (4-core container, `--workers 3`): **~67 min per
+rung** wall-clock — baseline 66.6 min (the long pole), lowdens 29.0 min, hidens
+14.2 min, all three in parallel. Five rungs ≈ 5.5 h sequential.
+
+The baseline run's pace is very non-uniform — slow through phase 1a, fast from
+~3–10 Myr as the shell grows, slow again after — so an early
+percent-complete reading badly misprojects the total. Trust the finished number.
 
 ---
 

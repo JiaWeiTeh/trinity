@@ -32,9 +32,10 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-08):** 🟡 partial — batch 0 (H0 plumbing gate) PASSES exactly, and the
-smoke pair shows a strong signal on the baseline cloud; batches 1–5 (PLAN §4, RUNBOOK)
-have not run, so nothing here generalizes beyond that one cloud yet.
+**Status (2026-08-09):** 🟡 partial — batches 0 and 1 PASS. The control rung exposed two
+design defects (a degenerate dense arm, a radius-capped diffuse arm) and one
+result that reframes the study: **P_HII is identically the bubble pressure while the
+Strömgren cap binds**. Batches 2–5 have not run; fix the cloud set before running them.
 
 ## Smoke pair (2026-08-08, in-container)
 
@@ -80,6 +81,90 @@ Matched-t states (from `data/smoke_pair.csv`):
    the main sweep, where `stop_t 15` and all three clouds apply (H3/H4 open).
 4. **Scope guard:** one cloud, one rung, `stop_t 1.5`. Do not quote beyond
    "in the dense baseline cloud, winds at 1/10 thermalization flip the fate."
+
+## Batch 1 — control rung c = 1.0 — PASS (2026-08-09)
+
+`harness/batches/batch1_c1p0.param`, 3/3 succeeded, gate PASS. Artifacts:
+`data/control_c1p0.csv`, `figures/control_c1p0_{R2,forces}.png`.
+
+| cloud | fate | t_end | R2_end | R2_max | wall |
+|---|---|---|---|---|---|
+| `1e5_sfe030_n1e5` baseline | stop_t reached | 15.000 | 438.8 pc | 438.8 | 66.6 m |
+| `1e7_sfe001_n1e6` hidens | **collapsed** (small radius) | 0.047 | 0.57 pc | 0.57 | 14.2 m |
+| `1e7_sfe050_n1e2` lowdens | **stop_r cap** (large radius) | 3.734 | 500.0 pc | 500.0 | 29.0 m |
+
+**Cost calibration (the reason this rung runs first):** ~67 min per rung wall-clock
+with `--workers 3` on a 4-core container; the baseline dominates and the two 1e7
+clouds self-terminate early. Five rungs ≈ 5.5 h sequential. Earlier projections in
+this workstream (~4 h, then ~2 h, for the baseline alone) were both too pessimistic —
+the run accelerates sharply mid-way as the shell grows, then slows again after
+~10 Myr. Quote the 66.6 min measurement, not the projections.
+
+### Two design defects this rung exposed
+
+1. **`1e7_sfe001_n1e6` is degenerate as a ladder arm.** It collapses at t = 0.047 Myr
+   *at full wind strength* — R2 never exceeds 0.57 pc, and it never leaves phase
+   1c. Every weaker rung can only collapse at least as fast, so all five rungs
+   return the same fate and the arm carries no information about `c`. Replace it
+   with a dense-but-viable cloud (higher `sfe`, or `nCore` nearer 1e4–1e5) that
+   forms a bubble at c = 1 so weakening the wind has something to change.
+2. **`1e7_sfe050_n1e2` terminates on `stop_r` = 500 pc at t = 3.73 Myr** — the
+   default radius cap, not physics, and it fires just as SNe switch on (~3.6 Myr).
+   **H4 (SN-era reconvergence) is untestable on this cloud as configured.** Either
+   raise `stop_r` for the study or restate the lowdens metric as "time to reach
+   500 pc".
+
+### P_HII is not an independent driver — it is the bubble pressure, relabelled
+
+The most consequential result of the control rung, and it reframes the whole study.
+
+Sampling the driving terms in the baseline run (`Pb = F_ram / 4πR2²` vs `P_HII`):
+
+| t [Myr] | Pb | P_HII | Pb/P_HII | phase |
+|---|---|---|---|---|
+| 0.0000 | 3.2004e+09 | 9.6029e+09 | 0.3333 | energy |
+| 0.0007 | 1.9482e+07 | 1.9919e+07 | 0.9781 | energy |
+| 0.0160 | 1.4781e+06 | 1.4781e+06 | **1.0000000000** | implicit |
+| 0.2952 | 1.4402e+04 | 1.4402e+04 | **1.0000000000** | implicit |
+| 15.000 | 5.4917e+00 | 5.4542e+00 | 1.0069 | implicit |
+
+Ten-digit identity is not a coincidence; it is algebra
+(`trinity/shell_structure/shell_structure.py` @ `054ce6b`):
+
+- `shell_n0 = (mu_ion_shell/mu_convert) / (k_B · TShell_ion) · Pb` — the shell's
+  inner density is set by **pressure balance with the bubble** (line ~124);
+- `n_IF_Str` is **capped at `shell_n0`** ("pressure equilibrium for thin skins",
+  line ~239);
+- `P_HII = (mu_convert/mu_ion_shell) · n_IF_Str · k_B · TShell_ion`.
+
+Substituting the cap gives **P_HII ≡ Pb identically**. So whenever the Strömgren
+density is cap-limited — which is the entire implicit phase here — the "HII
+pressure" channel is the bubble pressure wearing a different name, and the bubble
+is wind-powered. P_HII is genuinely independent only when the cap is slack: early
+phase 1a (ratio 0.33 → 0.98) and late times (1.0069).
+
+**Why this matters:** the original H2 assumed P_HII was an independent channel
+that would hold the shell up as winds weakened, making dense clouds
+wind-insensitive. That reasoning is mechanically wrong in the cap-limited regime —
+weaken the wind, and Pb falls, and P_HII falls *with it*. This is the mechanism
+behind the smoke pair's fate flip, and it predicts the ladder will be more
+wind-sensitive than H2 supposed, not less.
+
+**Caveat:** established on the baseline cloud's control run. It should be
+re-checked per cloud and per rung — a weaker wind may leave the cap slack, in
+which case P_HII decouples and does become an independent floor. That transition,
+if it happens, is itself a result worth reporting.
+
+### Harness correction made here
+
+`harvest.py` originally omitted `F_ram` — the shell-facing force from the *bubble*
+pressure, which is how the wind actually drives the shell during the energy phase.
+Without it, a force-budget read of the CSV attributes 87–99% of the driving to
+`F_HII` and 3–16% to the free-streaming `F_ram_wind`, which misses the wind's
+entire pathway (a first pass at this analysis made exactly that error). `F_ram`,
+`F_ion_in` and `P_drive` are now harvested, and the force figure leads with
+`F_ram`. Read that panel as *which term wins* — the ODE drives on
+`P_drive = max(Pb, P_HII)`, so the terms compete rather than sum.
 
 ## H0 plumbing gate — PASS (2026-08-08, batch 0)
 

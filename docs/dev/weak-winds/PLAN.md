@@ -96,7 +96,12 @@ Free-streaming initial conditions shift but stay finite (derivation in
   baseline cloud — at c = 0.1 the fate flips to recollapse at 0.28 Myr; see
   `FINDINGS.md`. The nCore = 1e5 baseline is denser than the H2 intuition
   assumed; H2 remains open only for genuinely diffuse regimes, e.g.
-  f1edge_lowdens.)*
+  f1edge_lowdens.)* *(Update 2026-08-09, batch 1: H2's **premise** is wrong in the
+  cap-limited regime — `P_HII ≡ Pb` identically while the Strömgren density is
+  capped at the shell inner density, so P_HII is not an independent channel that
+  can hold the shell up as winds weaken. See `FINDINGS.md` §"P_HII is not an
+  independent driver". H2 survives only where the cap is slack; testing **when it
+  goes slack** is now the sharper question.)*
 - **H3 (dense regime, f1edge_hidens):** weak feedback + dense gas is
   gravity-dominated; reducing c should pull the collapse time earlier
   approximately monotonically.

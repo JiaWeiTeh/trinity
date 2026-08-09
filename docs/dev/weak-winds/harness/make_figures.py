@@ -62,7 +62,11 @@ def main() -> int:
     print(f"wrote {out}")
 
     # --- driving forces per run ---
-    force_cols = ["F_ram_wind", "F_HII", "F_rad", "F_grav"]
+    # F_ram (bubble pressure) first: it is the wind's actual driving pathway in
+    # the energy phase. F_ram and F_HII compete via P_drive = max(Pb, P_HII)
+    # rather than summing — read the panel as "which term wins", not as a
+    # stacked budget.
+    force_cols = ["F_ram", "F_HII", "F_rad", "F_ram_wind", "F_grav"]
     fig, axes = plt.subplots(
         1, len(runs), figsize=(5.5 * len(runs), 4.2), squeeze=False, sharey=True
     )
