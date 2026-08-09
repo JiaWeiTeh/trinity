@@ -97,7 +97,13 @@ def check_batch(batch_dir: Path) -> int:
     print(header)
     print("-" * len(header))
 
-    failures = []
+    # sweep_report.json is written only when the sweep finishes, so its absence
+    # means "not confirmed complete" — either still running or launched as
+    # single runs. Without this distinction, checking a batch mid-flight reports
+    # a hard FAIL for runs that are merely still integrating.
+    complete = (batch_dir / "sweep_report.json").exists()
+
+    failures, unconfirmed = [], []
     for run_dir in run_dirs:
         rows = _rows(run_dir)
         last = rows[-1]
@@ -113,13 +119,13 @@ def check_batch(batch_dir: Path) -> int:
         if not finite:
             failures.append(f"{run_dir.name}: non-finite R2/v2 in trajectory")
         if not fate:
-            failures.append(
-                f"{run_dir.name}: stopped at t={last['t_now']:.4g} with no recorded "
+            (failures if complete else unconfirmed).append(
+                f"{run_dir.name}: at t={last['t_now']:.4g} with no recorded "
                 "reason and short of stop_t"
             )
 
     report = batch_dir / "sweep_report.json"
-    if report.exists():
+    if complete:
         data = json.loads(report.read_text())
         print(f"\nsweep_report: {data.get('succeeded')}/{data.get('total')} succeeded")
         for result in data.get("results", []):
@@ -138,6 +144,13 @@ def check_batch(batch_dir: Path) -> int:
         for failure in failures:
             print(f"  - {failure}")
         return 1
+    if unconfirmed:
+        print("\nGATE: INCOMPLETE — no sweep_report.json, so the batch is not")
+        print("confirmed finished. Still-integrating runs:")
+        for item in unconfirmed:
+            print(f"  - {item}")
+        print("Re-check once the sweep prints its report.")
+        return 3
     print("\nGATE: PASS — all runs completed with a recorded fate. Descend a rung.")
     return 0
 

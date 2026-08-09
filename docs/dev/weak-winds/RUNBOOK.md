@@ -142,6 +142,15 @@ python docs/dev/weak-winds/harness/check_batch.py outputs/weak_winds_study/c0p01
 
 **Gate per batch:** `check_batch.py` exits 0.
 
+`check_batch.py` reports three states, so a mid-flight check is not mistaken for
+a broken batch:
+
+| exit | state | meaning |
+|---|---|---|
+| 0 | PASS | every run finished with a recorded fate and finite trajectories |
+| 1 | FAIL | a run is missing, went non-finite, or stopped unexplained |
+| 3 | INCOMPLETE | no `sweep_report.json` yet — still running (or launched as single runs); re-check later |
+
 **Descent rules:**
 
 1. **A crashed run is data, not a discard.** Weak-Lw pushes the phase-1b stiff
