@@ -101,7 +101,20 @@ def check_batch(batch_dir: Path) -> int:
     # means "not confirmed complete" — either still running or launched as
     # single runs. Without this distinction, checking a batch mid-flight reports
     # a hard FAIL for runs that are merely still integrating.
-    complete = (batch_dir / "sweep_report.json").exists()
+    report_path = batch_dir / "sweep_report.json"
+    complete = report_path.exists()
+
+    # Re-running a batch that already completed leaves the OLD sweep_report.json
+    # in place while the runs restart, and TRINITY only clears a run's
+    # dictionary.jsonl on its first flush — so for the first minutes of a rerun
+    # the directory holds a stale report next to a mix of stale and fresh
+    # snapshots, and a naive check would report PASS on data from two different
+    # attempts. Any snapshot newer than the report means a rerun is under way.
+    stale_report = complete and any(
+        (d / "dictionary.jsonl").stat().st_mtime > report_path.stat().st_mtime for d in run_dirs
+    )
+    if stale_report:
+        complete = False
 
     failures, unconfirmed = [], []
     for run_dir in run_dirs:
@@ -144,6 +157,17 @@ def check_batch(batch_dir: Path) -> int:
         for failure in failures:
             print(f"  - {failure}")
         return 1
+    # A real defect (non-finite trajectory) outranks "still running": report it
+    # even mid-rerun. The converse is not true — a run with no output yet is
+    # only a failure once the batch is confirmed finished, which is why that
+    # check lives under `complete` above.
+    if stale_report:
+        print(
+            "\nGATE: INCOMPLETE — snapshots are newer than sweep_report.json, so "
+            "this batch is being re-run; the report describes the previous attempt."
+        )
+        print("Re-check once the new sweep prints its report.")
+        return 3
     if unconfirmed:
         print("\nGATE: INCOMPLETE — no sweep_report.json, so the batch is not")
         print("confirmed finished. Still-integrating runs:")
