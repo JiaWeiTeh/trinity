@@ -32,12 +32,18 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-06):** 🔵 actionable — **pre-registered, nothing implemented, no `trinity/` line
-touched.** Asks whether the *fixed 1e-3 Myr clock* in `dt_switchon` can be replaced by a
+**Status (2026-08-06):** 🔵 actionable — **Batch 1 done; nothing implemented, no `trinity/` line
+touched.** D1 (§3, end): the drain is **PdV work**, not cooling (0.1-0.8% of gain in both arms), and
+the seeded state satisfies Weaver's *energy* exactly while violating its *work partition* by
+**4.85×** — so the ramp is a relaxation device for an inconsistent initial condition, which
+promotes **S4** (consistent seed) over the clock-shaped candidates. Next: **Batch 2** (run S1
+anyway, cheaply, to convert an expectation into a measurement).
+
+The workstream asks whether the *fixed 1e-3 Myr clock* in `dt_switchon` can be replaced by a
 scale-free, physically-derived criterion. **This is not a re-run of "can the ramp be deleted" —
 that was measured and answered NO** (`docs/dev/phase1a-stiffness/PLAN.md` §2 D6). Removal and
 replacement are different questions; §1 says why the distinction matters. "Keep the constant and
-document it better" is a pre-registered outcome (§5).
+document it better" is a pre-registered outcome (§4).
 
 ## 0. Why this is being opened when #2 was closed
 
@@ -114,6 +120,66 @@ The *implementation* is not that physics:
   clears §4, this workstream still delivers: the Weaver-tracking evidence in §0.2 is a much
   stronger justification for the constant than anything on the page today.
 
+### D1 — Batch 1 result: the drain is **PdV work**, and the seed is off the Weaver partition
+### (2026-08-06; `data/drain_budget.csv`, harness `harness/drain_budget.py`)
+
+Decomposed `dEb/dt = (Lmech − L_cool) − 4πR2²·Pb·v2 − L_leak` per snapshot on `simple_cluster`,
+ramp-on vs ramp-off, from runs already held — **no new simulations**. Weaver+77 partitions the wind
+input as 5/11 retained as thermal `Eb`, so the work term should tend to `PdV/L_w → 6/11 = 0.545`.
+
+| | `t` (Myr) | 3.39e-7 (seed) | 3.73e-7 | 4.51e-7 | 5.46e-7 | 6.00e-7 |
+|---|---|---|---|---|---|---|
+| **ramp on** | `PdV/L_w` | 0.909 | 0.782 | 0.639 | 0.571 | **0.563** |
+| | ÷ (6/11) | 1.67 | 1.43 | 1.17 | 1.05 | **1.03** |
+| | `Eb/t` ÷ Weaver | 1.000 | 0.940 | 0.889 | 0.885 | 0.890 |
+| **ramp off** | `PdV/L_w` | 2.647 | 2.186 | 1.592 | 1.255 | — |
+| | ÷ (6/11) | 4.85 | 4.01 | 2.92 | 2.30 | — |
+| | `Eb/t` ÷ Weaver | 1.000 | 0.629 | 0.195 | **0.006** | — |
+| | `(R1/R2)³` | 0.657 | 0.761 | 0.914 | **0.997** | — |
+
+**Cooling is not the mechanism.** `L_cool/L_w` is **0.1-0.8%** in *both* arms. The candidate risk
+this batch existed to catch — that geometric successors would be tuned to mask a cooling problem —
+**is cleared**: the drain is PdV work, the term the ramp acts on, so S1/S2 address the right
+physics.
+
+**With the ramp, the solution relaxes onto the Weaver partition** (`PdV/L_w` 0.909 → 0.563, i.e.
+1.67× → 1.03× of 6/11) and `Eb/t` holds within ~12% of the analytic value. **Without it, the excess
+work compounds**: `Eb/t` collapses to 0.006 of Weaver while `(R1/R2)³ → 0.997`, i.e. `R1 → R2` — the
+shocked-wind volume is crushed toward zero, which is the degenerate case `bubble_E2P` has an
+explicit floor for.
+
+**The finding that matters for the design: the seeded state is itself inconsistent.** At the seed
+both arms are identical, `Eb/t` is exactly 1.000 × Weaver **by construction** (`E0` is seeded from
+Eq. 20) — yet `PdV/L_w = 2.647`, **4.85× the partition that same solution implies**. So phase 0
+hands phase 1a a state that satisfies Weaver's *energy* and violates Weaver's *work rate*.
+
+Arithmetic that narrows the cause: `PdV ∝ 1/(R2³ − R1³)`, so even **complete** suppression
+(`R1 = 0`, the strongest the ramp can ever be) only reaches `PdV/L_w = 0.909 = 1.67 × 6/11`.
+**Geometry alone cannot make the seed consistent** — a residual ~1.7× remains, and it is the right
+size to be `v0`: the seed hands over the free-streaming wind speed, measured at **1.89× the Weaver
+shell velocity** at `t0` (`docs/dev/phase1a-init/FINDINGS.md` Q2), and `PdV ∝ v2`.
+
+**Consequences for the candidates** (§3), which Batch 2 onward must respect:
+
+- **S4 is promoted to the leading candidate.** The ramp is a relaxation device for an inconsistent
+  seed, not a model of the termination shock forming. The root-cause fix is a seed whose `E0`,
+  `r0`, `R1` *and* `v0` come from one solution.
+- **S1 is now expected to fail for a reason we can state**, not just suspect: the ramp is still
+  ~99.94% suppressing at the point where the solution reaches the partition (t ≈ 6e-7 Myr, ramp
+  fraction 6e-4). Closing it at `k·dt_phase0` releases `R1` abruptly while the state still needs
+  the suppression, and `PdV/L_w` jumps straight back toward 2.6. Batch 2 should still run it —
+  cheaply — because that converts the expectation into a measurement.
+- **S2 gains a concrete trigger variable:** hand over when `PdV/L_w` reaches 6/11, which is
+  dimensionless, computed from state the RHS already has, and satisfies N3 by construction.
+
+**Method note.** The first run of this decomposition was **wrong** and said so loudly: it predicted
+`dEb/dt = −1.0e9` where the run's own snapshots show **+9.4e7**. Cause: the snapshot's `Pb` is the
+**unramped** pressure from the bubble-structure solve, ~3× the value the energy equation actually
+used inside the ramp window — diagnostics do not show the pressure that drove the trajectory, the
+same masking class `phase1a-init` found for the old `vd` override. The harness now reconstructs the
+ramped `Pb` from the shell-volume ratio, and the budget reproduces the observed `dEb/dt` to ~4%.
+Validating a decomposition against the trajectory it claims to explain is what caught it.
+
 ## 4. PRE-REGISTERED BARS (registered before any measurement or edit)
 
 - **N0 — fate preservation (checked first, decisive).** All five screen configs keep the stopping
@@ -144,7 +210,7 @@ The *implementation* is not that physics:
 | # | name | deliverable | exit | cost |
 |---|---|---|---|---|
 | **0** | Pre-registration | this doc | committed before any measurement | done |
-| **1** | **Diagnose the drain** — decompose `dEb/dt` into wind gain, cooling loss and `PdV` work per segment, ramp-on vs ramp-off on `simple_cluster`; track `R1/R2` and `(R1/R2)³` in both arms against the Weaver self-similar value | `data/drain_budget.csv` + one paragraph | **names what removes the energy without the ramp** (cooling? PdV? both?) — this decides which of S1-S4 is even addressing the cause | ~30 min |
+| **1** | ✅ **DONE 2026-08-06 — Diagnose the drain** | `harness/drain_budget.py` → `data/drain_budget.csv` (131 rows, no new sims) | **D1 (§3, end): the drain is PdV work, cooling is 0.1-0.8% in both arms.** Geometric candidates address the right term. And the seed violates the Weaver work partition by 4.85× while satisfying its energy exactly ⇒ **S4 promoted, S1 expected to fail for a stateable reason, S2 gains a dimensionless trigger** | ran 10 min |
 | **2** | **S1, the physical clock** — `tmin = k·dt_phase0`, all five configs | `data/s1_physical_clock.csv` | N0/N1; converts SWEEP2 §5's argument into a measurement either way | ~40 min |
 | **3** | **S2, the state-based trigger** (only if Batch 1 says geometry, not cooling) | `data/s2_state_trigger.csv` | N0/N1 | ~40 min |
 | **4** | **S4, the consistent IC** (only if Batch 1 points at the seed) | `data/s4_consistent_ic.csv` | N0/N1, plus an explicit check that phase 0's published behaviour is unchanged | ~1 h |
