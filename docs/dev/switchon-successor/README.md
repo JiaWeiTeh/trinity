@@ -32,8 +32,14 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-06):** 🔵 actionable — pre-registered only; no `trinity/` line touched, Batch 1
-not run. "Keep the constant and justify it better" is a registered outcome.
+**Status (2026-08-06):** 🔵 actionable — **Batches 1-3 done; no `trinity/` line touched.** The drain
+is **PdV work**, not cooling, and the seed violates Weaver's work partition by 4.85× while
+satisfying its energy exactly (D1). Two candidates are dead: the physical clock **S1** (fails the
+fate bar on 3 of 5, and not in order of window length — the whole "better clock" family is retired,
+D2) and the sustainability cap **S2** (first to clear fates on all five, but pins `dEb/dt≈0` so it
+lands twice as far from the physics reference as the constant it would replace, D3). Remaining:
+**S4** (fix the seed — the root cause) and **S0** (keep the constant, justified by D1-D3). See
+`PLAN.md` for the numbers.
 
 ## The question — and the one it is NOT
 
@@ -57,8 +63,11 @@ Two measurements changed the stakes:
    edge — so its form is load-bearing for published results.
 2. There is now a **physics yardstick**: Weaver+77 Eq. 20 (`Eb = (5/11)L_w t`, the relation
    TRINITY seeds `E0` from) predicts `Eb/t = (5/11)L_w`. With the ramp, `Eb/t` holds within ~12% of
-   that; without it, it falls 154× below. A successor can therefore be judged on being *right*,
-   not merely on being equivalent — which is bar **N1** in the plan.
+   that; without it, it falls 154× below. A successor can therefore be judged comparatively rather
+   than merely on equivalence — which is bar **N1** in the plan. **Read that bar with `PLAN.md`
+   §0.3:** Weaver is wind-only and TRINITY is not (radiation supplies 32-60% of the early drive),
+   so N1 asks "no further from the reference than the shipped ramp", never "must match Weaver" —
+   and importing Weaver's dimensionless partition as a *target* is ruled out.
 
 ## Where to start
 

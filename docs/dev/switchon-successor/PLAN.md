@@ -32,15 +32,21 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-06):** 🔵 actionable — **Batches 1-2 done; nothing implemented, no `trinity/`
+**Status (2026-08-06):** 🔵 actionable — **Batches 1-3 done; nothing implemented, no `trinity/`
 line touched.** **D1:** the drain is **PdV work**, not cooling (0.1-0.8% of gain in both arms), and
 the seed satisfies Weaver's *energy* exactly while violating its *work partition* by **4.85×** —
 the ramp is a relaxation device for an inconsistent initial condition. **D2:** the physical-clock
 candidate S1 **fails N0 on 3 of 5 configs**, and the failures are *not* ordered by how much the
 window shrinks (87,055× survives, 7× dies), so **no value of `k` rescues it and the entire
-"better clock" family is retired** — window length is not the controlling variable. Remaining:
-**S2** (state-based release, now front-runner), **S4** (consistent seed, root cause), and **S0**
-(keep the constant, justify it with D1/D2). Next: **Batch 3**.
+"better clock" family is retired** — window length is not the controlling variable. **D3:** S2 (a sustainability cap with no free constant) is the **first candidate to clear the fate
+bar on all five configs** — and it self-selects a release at ≈3× each run's own `dt_phase0`,
+which retro-explains why S1's 1× behaved like no ramp. But it **fails N1 on all five**: capping at
+"no net energy loss" pins `dEb/dt≈0`, so `Eb` plateaus and `Eb/t` decays by construction, landing
+about twice as far from the physics reference as the shipped ramp. **S2 is out, and the limiter
+family with it** — a correct criterion needs a target *growth rate*, which needs a reference
+solution TRINITY does not have (Weaver is wind-only; §0.3). Remaining: **S4** (consistent seed —
+the root cause, and now the only candidate that removes the need for any criterion) and **S0**
+(keep the constant, justified by D1-D3). Next: **Batch 4 (S4)**.
 
 The workstream asks whether the *fixed 1e-3 Myr clock* in `dt_switchon` can be replaced by a
 scale-free, physically-derived criterion. **This is not a re-run of "can the ramp be deleted" —
@@ -260,6 +266,63 @@ config can tolerate the full `Pb` at the moment the ramp lets go.
   constant with the D1/D2 evidence written into the source — which would now be a far better
   justification than the "no derivation" the constant carries today.
 
+### D3 — Batch 3 result: S2 clears the fates and fails the physics
+### (2026-08-06; `data/s2_state_trigger.csv`, harness `harness/s2_state_trigger.py`)
+
+S2 caps the pressure at what the wind can sustain and latches open permanently once the cap stops
+binding — `Pb_sustain = (Lmech − L_cool − L_leak) / (4πR2²·v2)`, no free constant.
+
+**N0: PASS on all five — the first candidate to clear the fate bar.** Every config keeps
+`stopping_time`, including the three that die under both full ablation and S1.
+
+**An emergent number worth recording.** The latch releases at, in units of each run's own
+`dt_phase0`: **3.14×, 3.80×, 3.14×, 2.85×, 2.85×** — across configs whose `dt_phase0` spans four
+decades (1.15e-8 to 1.38e-4 Myr). The criterion was never told about `dt_phase0`; it self-selects
+a release at ≈3× it. That retro-explains D2 precisely: S1 forced release at 1×, roughly three
+times too early, which is why it behaved like no ramp at all.
+
+**N1: FAILS on all five, and the reason is structural, not tuning.** Mean `|1 − Weaver ratio|`
+over the early snapshots: HEAD **0.084-0.123**, S2 **0.212-0.228** — about twice as far from the
+reference. The signed values say why (`simple_cluster`): HEAD runs 1.000 → 0.885, S2 runs
+1.000 → **0.658**, i.e. S2 falls further *below*. That is inherent to the criterion as posed:
+capping at `Pb_sustain` sets `PdV = net gain` exactly, so `dEb/dt ≈ 0` while the cap binds — `Eb`
+**plateaus** while `t` keeps running, and `Eb/t` decays as 1/t by construction. The shipped ramp
+suppresses less and lets `Eb` keep growing.
+
+**N2: passes at end of run everywhere; fails as literally written on 2 of 5.** `|ΔR2|` vs HEAD:
+
+| config | 1e-5 | 1e-4 | 1e-3 | 3e-3 | 1e-2 | **2e-2 (end)** |
+|---|---|---|---|---|---|---|
+| `simple_cluster` | −3.520 | −1.912 | −0.669 | −0.281 | −0.085 | **−0.041** |
+| `f1edge_hidens` | −2.844 | −1.591 | −0.540 | −0.220 | −0.062 | **−0.026** |
+| `f1edge_lowdens` | — | — | **−2.780** | **−2.649** | −0.947 | **−0.464** |
+| `gmc_control` | −2.242 | **−4.281** | −1.750 | −0.744 | −0.215 | **−0.115** |
+| compact probe | −1.408 | −0.416 | −0.107 | −0.041 | −0.012 | **−0.006** |
+
+Every deviation is negative and **monotonically converging**; all five are inside 0.5% at
+end-of-run. The breaches are at intermediate times, inside the window S2 deliberately changes.
+**This is the same shape of question `phase1a-init` §4 faced** — a bar written "at every compared
+time" against a change whose whole purpose is to alter the early window — and it was re-sited
+there by maintainer sign-off, with both versions left on the page. **Not re-sited here, and not
+self-approved:** N2 stands as written, so it is recorded as failing on `f1edge_lowdens` and
+`gmc_control`.
+
+**Verdict: S2 does not land.** N1 fails outright on every config, and that is not a bar-siting
+technicality — the candidate is measurably further from the physics reference than the constant it
+would replace. Under §4's rule (all of N0-N4, *and* simpler to explain), S2 is out.
+
+**What it teaches, which is the useful part.** The criterion needs a *target growth rate*, not a
+*non-negativity floor*: "do not lose energy" pins `Eb` flat, whereas the solution should be
+gaining. But specifying the right growth requires a reference solution TRINITY does not have —
+Weaver's is wind-only, and §0.3 measured radiation at 32-60% of the drive, so importing 5/11 as a
+target would be exactly the wind-only borrowing that section rules out. That is a real dead end
+for the whole *limiter* family, and it points the remaining work at:
+
+- **S4 (consistent seed)** — the root cause. If the seed did not violate the work partition by
+  4.85× (D1), nothing would need rescuing and no criterion would be needed at all.
+- **S0 (keep and justify)** — now with D1-D3 as the justification, which is far stronger than the
+  nothing the constant carries today.
+
 ## 4. PRE-REGISTERED BARS (registered before any measurement or edit)
 
 - **N0 — fate preservation (checked first, decisive).** All five screen configs keep the stopping
@@ -293,7 +356,7 @@ config can tolerate the full `Pb` at the moment the ramp lets go.
 | **0** | Pre-registration | this doc | committed before any measurement | done |
 | **1** | ✅ **DONE 2026-08-06 — Diagnose the drain** | `harness/drain_budget.py` → `data/drain_budget.csv` (131 rows, no new sims) | **D1 (§3, end): the drain is PdV work, cooling is 0.1-0.8% in both arms.** Geometric candidates address the right term. And the seed violates the Weaver work partition by 4.85× while satisfying its energy exactly ⇒ **S4 promoted, S1 expected to fail for a stateable reason, S2 gains a dimensionless trigger** | ran 10 min |
 | **2** | ✅ **DONE 2026-08-06 — S1, the physical clock** (`tmin = k·dt_phase0`, k=1, all five configs) | `harness/s1_physical_clock.py` → `data/s1_physical_clock.csv` | **D2: N0 FAILS 3/5 ⇒ S1 out — and the failures are not ordered by window shortening (87,055× survives, 7× dies), so no `k` rescues it and the whole "better clock" family is retired** | ran 25 min |
-| **3** | **S2, the state-based trigger** (only if Batch 1 says geometry, not cooling) | `data/s2_state_trigger.csv` | N0/N1 | ~40 min |
+| **3** | ✅ **DONE 2026-08-06 — S2, the state-based trigger** (sustainability cap + one-way latch, no free constant) | `harness/s2_state_trigger.py` → `data/s2_state_trigger.csv` | **D3: N0 PASSES 5/5 (a first) but N1 FAILS 5/5** — the cap pins `dEb/dt≈0` so `Eb` plateaus and `Eb/t` decays by construction; N2 passes at end-of-run everywhere, fails as written at intermediate times on 2/5. **S2 out**; the limiter family with it | ran 35 min |
 | **4** | **S4, the consistent IC** (only if Batch 1 points at the seed) | `data/s4_consistent_ic.csv` | N0/N1, plus an explicit check that phase 0's published behaviour is unchanged | ~1 h |
 | **5** | **Gate & land, or write S0** | screen ledger + failing-first test, or the S0 write-up | N2/N4; docs reconciled | ~40 min |
 
