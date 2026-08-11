@@ -73,7 +73,57 @@ def seed_of(param_path, workdir):
                 Lmech_total=Lmech_total, v_mech_total=v_mech_total, R1=R1, x=x)
 
 
+def identity_check(run_dir, out, n=6):
+    """Validate PdV/Lmech = 2(v2/v_wind)/(R1/R2)^2 along a whole ramp-OFF run.
+
+    The seed is one point; this checks the identity is exact everywhere, which
+    is what licenses reasoning about later times from it. Needs a ramp-off run
+    directory (ephemeral), so the CSV it writes is the durable record.
+    """
+    import json
+    with open(os.path.join(run_dir, "dictionary.jsonl")) as fh:
+        rows = [json.loads(ln) for ln in fh if ln.strip()][:n]
+    sys.path.insert(0, REPO)
+    from trinity.bubble_structure import get_bubbleParams
+
+    out_rows = []
+    for i, r in enumerate(rows):
+        x = get_bubbleParams.solve_R1(
+            r["R2"], r["Eb"], r["Lmech_total"], r["v_mech_total"]) / r["R2"]
+        vr = r["v2"] / r["v_mech_total"]
+        pred = 2.0 * vr / x ** 2
+        Pb = get_bubbleParams.bubble_E2P(r["Eb"], r["R2"], x * r["R2"], 5.0 / 3.0)
+        meas = 4.0 * 3.141592653589793 * r["R2"] ** 2 * Pb * r["v2"] / r["Lmech_total"]
+        out_rows.append(dict(snapshot=i, t_now_Myr=f"{r['t_now']:.6e}",
+                             R1_over_R2=f"{x:.6f}", v2_over_vwind=f"{vr:.6f}",
+                             predicted_2v_over_x2=f"{pred:.6f}",
+                             measured_PdV_over_Lmech=f"{meas:.6f}",
+                             rel_err=f"{abs(pred - meas) / meas:.2e}"))
+        print(f"  snap {i}: x={x:.6f} v2/vw={vr:.6f} pred={pred:.6f} "
+              f"meas={meas:.6f} rel_err={abs(pred - meas) / meas:.1e}")
+    with open(os.path.normpath(out), "w", newline="") as fh:
+        fh.write(
+            "# switchon-successor Batch 4a: the handover identity, checked along a whole run.\n"
+            "#   PdV/Lmech = 2 (v2/v_wind) / (R1/R2)^2, with R1 at ram-pressure balance.\n"
+            "# Source: the ramp-OFF simple_cluster arm of Batch 1 (the run dir is ephemeral --\n"
+            "# this CSV is the durable record). Reproduce on any ramp-off run dir with\n"
+            "#   python docs/dev/switchon-successor/harness/s4_seed_anatomy.py \\\n"
+            "#          --identity-run <dir with dictionary.jsonl>                  (2026-08-06)\n"
+            "# The identity is algebra on trinity's own equations, so it is exact to roundoff at\n"
+            "# every snapshot, not only at the seed -- which is what licenses using it to reason\n"
+            "# about later times. Read alongside: v2/v_wind falls but (R1/R2) climbs to ~1 as Eb\n"
+            "# drains, so PdV/Lmech stays above 1 and the drain does not self-arrest.\n")
+        w = csv.DictWriter(fh, fieldnames=list(out_rows[0]))
+        w.writeheader()
+        w.writerows(out_rows)
+    print(f"wrote {os.path.normpath(out)}")
+
+
 def main():
+    if "--identity-run" in sys.argv:
+        run_dir = sys.argv[sys.argv.index("--identity-run") + 1]
+        return identity_check(run_dir, os.path.join(HERE, "..", "data",
+                                                    "s4_identity_check.csv"))
     screen = load_screen()
     rows = []
     for name, param in screen.CONFIGS.items():

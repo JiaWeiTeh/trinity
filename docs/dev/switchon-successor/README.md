@@ -37,9 +37,11 @@ is **PdV work**, not cooling, and the seed violates Weaver's work partition by 4
 satisfying its energy exactly (D1). Two candidates are dead: the physical clock **S1** (fails the
 fate bar on 3 of 5, and not in order of window length — the whole "better clock" family is retired,
 D2) and the sustainability cap **S2** (first to clear fates on all five, but pins `dEb/dt≈0` so it
-lands twice as far from the physics reference as the constant it would replace, D3). Remaining:
-**S4** (fix the seed — the root cause) and **S0** (keep the constant, justified by D1-D3). See
-`PLAN.md` for the numbers.
+lands twice as far from the physics reference as the constant it would replace, D3). **Batch 4 (S4)
+is running**; its pre-registration is committed and already shows the handover's work rate is
+algebraic in the *velocity*, with `E0` absent — so a consistent seed can only mean a slower
+handover velocity, not a different seed energy. After it, only **S0** (keep the constant, justified
+by D1-D4) remains. See `PLAN.md` for the numbers; do not cite a partial D4.
 
 ## The question — and the one it is NOT
 

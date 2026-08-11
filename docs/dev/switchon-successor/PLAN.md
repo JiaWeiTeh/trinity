@@ -44,9 +44,12 @@ which retro-explains why S1's 1× behaved like no ramp. But it **fails N1 on all
 "no net energy loss" pins `dEb/dt≈0`, so `Eb` plateaus and `Eb/t` decays by construction, landing
 about twice as far from the physics reference as the shipped ramp. **S2 is out, and the limiter
 family with it** — a correct criterion needs a target *growth rate*, which needs a reference
-solution TRINITY does not have (Weaver is wind-only; §0.3). Remaining: **S4** (consistent seed —
-the root cause, and now the only candidate that removes the need for any criterion) and **S0**
-(keep the constant, justified by D1-D3). Next: **Batch 4 (S4)**.
+solution TRINITY does not have (Weaver is wind-only; §0.3). **Batch 4 (S4) is RUNNING** — its
+pre-registration (§3, end) is committed and its algebra is already decisive: the handover work rate
+is `PdV/Lmech = 2(v2/v_wind)/(R1/R2)²`, **`E0` is not in it**, so "reseed the energy consistently"
+cannot work and the only lever is the handover velocity. Remaining after it: **S0** (keep the
+constant, justified by D1-D4). ⚠️ **Results below the pre-registration are incomplete until this
+line says Batch 4 is done — do not cite a partial D4.**
 
 The workstream asks whether the *fixed 1e-3 Myr clock* in `dt_switchon` can be replaced by a
 scale-free, physically-derived criterion. **This is not a re-run of "can the ramp be deleted" —
