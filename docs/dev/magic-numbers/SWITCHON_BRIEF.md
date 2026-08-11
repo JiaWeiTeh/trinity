@@ -39,8 +39,13 @@ decision rule in `docs/dev/magic-numbers/SWEEP2_PLAN.md` §5 landed on: keep the
 it in-source, pin it with `test/test_dt_switchon_ramp.py`. A successor remains possible but is
 phase-1a integrator work (stiff/switching segment solver or a terminal in-segment `Eb`-floor
 event), not a re-shaping of this constant — **pre-registered as
-`docs/dev/phase1a-stiffness/PLAN.md`, where re-opening this constant is Batch 6.** Owned by
-`AUDIT.md` finding **#2**.
+`docs/dev/phase1a-stiffness/PLAN.md`, where re-opening this constant is Batch 6.**
+**UPDATE 2026-08-06:** that work ran and confirmed the ramp is **not deletable** (fate flips on
+3 of 5 configs). The constant's *form*, however, is now under test in
+`docs/dev/switchon-successor/PLAN.md`, against a physics bar this brief did not have: with the
+ramp the early solution tracks Weaver Eq. 20 (`Eb/t ≈ (5/11)L_w`), without it it falls 154× below.
+This brief stays closed for the deletion question; the successor plan owns the form question.
+Owned by `AUDIT.md` finding **#2**.
 
 ## 0. What you are being asked to do
 

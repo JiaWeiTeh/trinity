@@ -250,7 +250,18 @@ re-shaping of this constant. **That workstream now exists and is pre-registered:
 `docs/dev/phase1a-stiffness/PLAN.md` (2026-08-06) — re-opening #2 is its Batch 6, gated on phase 1a
 first surviving an `Eb` collapse on its own.** A merely scale-relative switch-off would deliver the full pressure
 earlier at the stiff edge — the direction the stall lives in — to buy ≤0.006-0.017% accuracy on
-healthy configs. Shipped: the in-source rationale block at the constant
+healthy configs.
+
+> **RE-OPENED FOR REPLACEMENT (2026-08-06) — `docs/dev/switchon-successor/PLAN.md`.** Two flags on
+> the sentence immediately above. It is an **argument, not a measurement**: no scale-relative
+> switch-off was ever run. And the "≤0.006-0.017%" it weighs against was measured on the only two
+> configs that survive ablation (see the scope correction in §4) — the real stake is that ablation
+> flips the stopping fate on **3 of 5** configs, `simple_cluster` included. The **deletion**
+> verdict is unchanged and is not being re-litigated; what is under test is the constant's *form*,
+> against a physics bar that did not exist when this was written (Weaver Eq. 20,
+> `Eb/t = (5/11)L_w`: the ramp holds within ~12% of it, ablation falls 154× below).
+
+Shipped: the in-source rationale block at the constant
 (`get_bubbleParams.py`, commit `58acfb6`), the pinning tests (`test/test_dt_switchon_ramp.py`:
 ramp shape, window continuity, `t=None` ablation contract, and a deletion guard), the
 reproduction + stall evidence in `data/`, and the sibling-doc corrections. The audit row stays

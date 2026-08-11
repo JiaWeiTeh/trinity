@@ -346,7 +346,10 @@ Batch 4 (`data/equivalence_screen.csv`, the "after" arms — same code, ramp on)
 | compact probe | STOPPING_TIME, 161 snaps | STOPPING_TIME, 161 snaps | survives |
 
 Per the rule registered before the batch: one flip ends the question. **`dt_switchon` stays;
-magic-number #2 remains closed as document-and-pin.** The Batch 3-5 guard improved the *failure
+magic-number #2 remains closed as document-and-pin.** (Scope: this settles **deletion**. The
+constant's *form* — a fixed 1e-3 Myr clock where the physics has a computed timescale — is a
+different question, opened separately as `docs/dev/switchon-successor/PLAN.md`; nothing there
+re-litigates the verdict below.) The Batch 3-5 guard improved the *failure
 mode* — a clean stop instead of a hang — without making the constant removable, which is exactly
 the outcome the rule anticipated as legitimate.
 
