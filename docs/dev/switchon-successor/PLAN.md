@@ -323,6 +323,74 @@ for the whole *limiter* family, and it points the remaining work at:
 - **S0 (keep and justify)** — now with D1-D3 as the justification, which is far stronger than the
   nothing the constant carries today.
 
+### Batch 4 pre-registration — S4's algebra, and the two variants it leaves
+### (written and committed 2026-08-06 *before* any S4 run; `data/s4_seed_anatomy.csv`)
+
+**The handover work rate is algebraic, and `Eb` is not in it.** `solve_R1` places `R1` where the
+free wind's ram pressure balances the bubble pressure, i.e. `Pb = Lmech/(2π v_wind R1²)`. Substitute
+that into the phase-1a energy equation's work term and everything else cancels:
+
+> **`PdV / Lmech = 4π R2² Pb v2 / Lmech = 2 (v2/v_wind) / (R1/R2)²`**
+
+`Eb` appears nowhere. It re-enters only through the balance root itself — a bigger `Eb` pushes
+`R1/R2` *down*, which makes `PdV/Lmech` *worse*. Since `R1/R2 ≤ 1` by construction, that gives a
+floor no seed energy can get under:
+
+> **`PdV / Lmech ≥ 2 (v2 / v_wind)`, for any `E0` whatsoever.**
+
+**Verified, not asserted.** Against Batch 1's committed `data/drain_budget.csv` at the seed
+snapshot, the identity reproduces the measured `PdV/Lmech = 2.647425` to all six recorded digits
+(`2/x²` with the run's own `x = 0.869167`), and the ramped arm reproduces `0.909091 = 10/11` to the
+same precision. Evaluated fresh across all five configs with no simulation
+(`harness/s4_seed_anatomy.py`), the seed is **the same to six digits everywhere**:
+
+| | all five configs |
+|---|---|
+| `R1/R2` at the seed | **0.869167** |
+| `v0 / v_wind` | **1.000000** |
+| `PdV/Lmech`, unramped | **2.647425** |
+| `PdV/Lmech`, with the ramp (`R1 → 0`) | **0.909091** = 10/11 |
+| floor `2 v0/v_wind` — the best any `E0` can do | **2.000000** |
+| `v2/v_wind` that would give `PdV = Lmech` | **0.377726** |
+
+Four decades of density and mass, one number. **The seed's inconsistency is a property of the
+seeding scheme, not of any config** — which is why every config needs the ramp and why they all
+need the same one.
+
+**This kills the obvious reading of S4 before it is written.** "Reseed the energy consistently"
+cannot work: `E0` is absent from the bound, and moving it in the helpful-looking direction makes
+things worse. The only lever at the handover is **`v2/v_wind`**, which the seed fixes at exactly
+**1** because `v0` is the free-streaming wind terminal speed — and `PdV ≥ 2 Lmech` follows.
+
+**Two variants, both ramp-OFF, both changing only the returned `v0`.** `r0`, `E0`, `T0` and
+`dt_phase0` are untouched, so **phase 0's own published behaviour is unchanged** (that is how the
+Batch-4 exit clause is read here: `dt_phase0`, whose `M_swept/M_ejected = 1.000` derivation is
+verified in `phase1a-init/FINDINGS.md` Q1, must come out bit-identical; only the handover state
+moves). Keeping `r0 = v_wind·dt_phase0` is deliberate — that radius *is* what `dt_phase0`'s
+derivation assumes the wind front reached.
+
+| variant | `v0` | `PdV/Lmech` at the seed | N3 | pre-registered prediction |
+|---|---|---|---|---|
+| **S4a** similarity velocity | `(3/5)·v_wind` | **1.588** | dimensionless, but 3/5 is Weaver's *wind-only* exponent (§0.3) | **N0 FAILS** — still above 1, so `Eb` still drains; expect the same 3 of 5 that die under ablation |
+| **S4b** sustainable velocity | `(x²/2)·v_wind = 0.3777·v_wind` | **1.000** by construction | dimensionless **and** derived from TRINITY's own identity, `x` read from the run's own `solve_R1` | **uncertain, and that is the point** |
+
+**S4a is run even though it is predicted to fail**, for the same reason D2 ran S1: it tests the
+identity itself. If a run with `PdV/Lmech = 1.588` survives, the frame above is wrong and
+everything built on it has to come down.
+
+**Why S4b's prediction is honestly uncertain.** It starts the handover exactly marginal. Two
+effects then compete and the sign is not obvious on paper: as `Eb` dips, `x` rises, which *lowers*
+`PdV/Lmech`; but the same balance pressure is pushing on a shell that is now moving at 0.38 `v_wind`,
+so `v2` will accelerate back up, which *raises* it. If `v2` relaxes to `v_wind` within a few steps,
+S4b buys nothing and the whole S4 family is dead. **S4b is also the most favourable seed velocity
+that is still derived rather than chosen** — anything slower is a tuned number and fails N3 — so a
+failure here closes S4, not just this variant.
+
+**A distinction from S2 worth stating in advance.** S2 also used a sustainability criterion, and
+failed N1 because it held `dEb/dt ≈ 0` *continuously*, flattening `Eb`. S4b applies the same
+equality **once, at the seed**, then lets the physics run free. So S2's specific N1 failure mode
+does not automatically carry over — N1 has to be measured, not inferred.
+
 ## 4. PRE-REGISTERED BARS (registered before any measurement or edit)
 
 - **N0 — fate preservation (checked first, decisive).** All five screen configs keep the stopping

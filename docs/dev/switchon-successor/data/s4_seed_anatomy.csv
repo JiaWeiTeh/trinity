@@ -1,0 +1,15 @@
+# switchon-successor Batch 4a: analytic anatomy of the phase-0 handover state.
+# No simulations. Seed from trinity.phase0_init.get_InitPhaseParam.get_y0, R1 from
+# trinity.bubble_structure.get_bubbleParams.solve_R1 at that seed.
+#   PdV/Lmech = 2 (v2/v_wind) / (R1/R2)^2   when R1 is at ram-pressure balance
+#   PdV/Lmech = (10/11)(v2 t/R2)            when the ramp drives R1 -> 0
+# 'floor' is 2*(v0/v_wind): the smallest PdV/Lmech reachable at this handover by ANY
+# choice of E0, because E0 enters only through R1/R2 <= 1. floor > 1 means the seed
+# cannot be made self-sustaining by reseeding the energy.
+# Command: python docs/dev/switchon-successor/harness/s4_seed_anatomy.py   (2026-08-06)
+config,dt_phase0_Myr,r0_pc,v0_over_vwind,E0_au,R1_over_R2,balance_A,PdV_over_Lmech_unramped,PdV_over_Lmech_ramped,floor_2v_over_vwind,v2_over_vwind_for_PdV_eq_Lmech
+simple_cluster,3.388192e-07,1.266927e-03,1.000000,9.370689e+01,0.869167,2.200000,2.647425,0.909091,2.000000,0.377726
+f1edge_lowdens,1.383224e-04,5.172206e-01,0.999999,6.375946e+06,0.869167,2.200000,2.647421,0.909090,1.999997,0.377726
+f1edge_hidens,1.956174e-07,7.314604e-04,1.000000,1.803390e+02,0.869167,2.200000,2.647425,0.909091,2.000000,0.377726
+m43_probe,1.148705e-08,4.295283e-05,1.000000,3.176961e-04,0.869167,2.200000,2.647425,0.909091,2.000000,0.377726
+gmc_control,1.956174e-06,7.314604e-03,1.000000,1.803390e+02,0.869167,2.200000,2.647425,0.909091,2.000000,0.377726
