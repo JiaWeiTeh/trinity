@@ -28,7 +28,12 @@ SP = ("/tmp/claude-0/-home-user-trinity/bba6f6fe-c67c-5539-b2c1-ded81f52c5db"
 CONFIGS = ["simple_cluster", "f1edge_hidens", "f1edge_lowdens", "gmc_control",
            "m43_probe"]
 GRID_MYR = [1e-5, 1e-4, 1e-3, 3e-3, 1e-2, 2e-2]
-N1_SNAPS = 6          # snapshots 0-5, the window D1/D3 scored
+# Snapshots 1-5, matching the window D3's data/s2_state_trigger.csv scored so the
+# two batches are directly comparable. Snapshot 0 is excluded on purpose: E0 is
+# seeded from Weaver Eq.20, so its ratio is 1.000 by construction and including it
+# just rescales every number by 5/6 (verified: reference 0.0827 over 0-5 vs the
+# 0.0992 over 1-5 recorded in D3, and 0.0992*5/6 = 0.0827).
+N1_FIRST, N1_LAST = 1, 5
 WEAVER = 5.0 / 11.0
 
 
@@ -48,10 +53,10 @@ def read_run(run_dir):
         return [json.loads(ln) for ln in fh if ln.strip()]
 
 
-def weaver_series(rows, n):
-    """|1 - (Eb/t)/((5/11) L_wind)| per snapshot, and the signed ratio."""
+def weaver_series(rows):
+    """Signed (Eb/t)/((5/11) L_wind) over the N1 window (snapshots 1-5)."""
     out = []
-    for r in rows[:n]:
+    for r in rows[N1_FIRST:N1_LAST + 1]:
         t, Eb = r.get("t_now"), r.get("Eb")
         Lw = r.get("Lmech_W", r.get("Lmech_total"))
         if not t or Eb is None or not Lw:
@@ -75,7 +80,7 @@ def main():
             print(f"!! missing reference for {cfg}: {ref_dir}")
             continue
         ref_fate = screen.fate(ref, ref_dir)
-        ref_w = weaver_series(ref, N1_SNAPS)
+        ref_w = weaver_series(ref)
         ref_mean = sum(abs(1 - v) for v in ref_w) / len(ref_w) if ref_w else float("nan")
         tb = [r["t_now"] for r in ref]
         rb = [r["R2"] for r in ref]
@@ -95,11 +100,11 @@ def main():
                                  measured=cf,
                                  verdict="PASS" if cf == ref_fate else "FAIL"))
 
-            cw = weaver_series(cand, N1_SNAPS)
+            cw = weaver_series(cand)
             cm = sum(abs(1 - v) for v in cw) / len(cw) if cw else float("nan")
             rows_out.append(dict(
                 gate="N1", config=cfg, variant=var,
-                quantity=f"mean abs(1 - Weaver Eb/t ratio) over snaps 0-{N1_SNAPS - 1}",
+                quantity=f"mean abs(1 - Weaver Eb/t ratio) over snaps {N1_FIRST}-{N1_LAST}",
                 reference=f"{ref_mean:.4f}", measured=f"{cm:.4f}",
                 verdict="PASS" if cm <= ref_mean else "FAIL"))
             rows_out.append(dict(
