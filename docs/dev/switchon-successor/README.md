@@ -32,16 +32,17 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-06):** 🔵 actionable — **Batches 1-3 done; no `trinity/` line touched.** The drain
+**Status (2026-08-06):** 🔵 actionable — **Batches 1-4 done; no `trinity/` line touched.** The drain
 is **PdV work**, not cooling, and the seed violates Weaver's work partition by 4.85× while
 satisfying its energy exactly (D1). Two candidates are dead: the physical clock **S1** (fails the
 fate bar on 3 of 5, and not in order of window length — the whole "better clock" family is retired,
 D2) and the sustainability cap **S2** (first to clear fates on all five, but pins `dEb/dt≈0` so it
-lands twice as far from the physics reference as the constant it would replace, D3). **Batch 4 (S4)
-is running**; its pre-registration is committed and already shows the handover's work rate is
-algebraic in the *velocity*, with `E0` absent — so a consistent seed can only mean a slower
-handover velocity, not a different seed energy. After it, only **S0** (keep the constant, justified
-by D1-D4) remains. See `PLAN.md` for the numbers; do not cite a partial D4.
+lands twice as far from the physics reference as the constant it would replace, D3); and the
+consistent seed **S4** (the handover work rate is `PdV/Lmech = 2(v2/v_wind)/(R1/R2)²` with `E0`
+absent, so reseeding the energy was ruled out analytically, and both measured velocity variants
+still fail N0 on one config, N1 on all five and N2 everywhere, D4). **All four candidate families
+are measured dead.** The outcome is **S0**: keep the constant and write D1-D4 into the source.
+Next is **Batch 5**, which is that write-up. See `PLAN.md` for the numbers.
 
 ## The question — and the one it is NOT
 

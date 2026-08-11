@@ -32,7 +32,7 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-06):** 🔵 actionable — **Batches 1-3 done; nothing implemented, no `trinity/`
+**Status (2026-08-06):** 🔵 actionable — **Batches 1-4 done; nothing implemented, no `trinity/`
 line touched.** **D1:** the drain is **PdV work**, not cooling (0.1-0.8% of gain in both arms), and
 the seed satisfies Weaver's *energy* exactly while violating its *work partition* by **4.85×** —
 the ramp is a relaxation device for an inconsistent initial condition. **D2:** the physical-clock
@@ -44,12 +44,16 @@ which retro-explains why S1's 1× behaved like no ramp. But it **fails N1 on all
 "no net energy loss" pins `dEb/dt≈0`, so `Eb` plateaus and `Eb/t` decays by construction, landing
 about twice as far from the physics reference as the shipped ramp. **S2 is out, and the limiter
 family with it** — a correct criterion needs a target *growth rate*, which needs a reference
-solution TRINITY does not have (Weaver is wind-only; §0.3). **Batch 4 (S4) is RUNNING** — its
-pre-registration (§3, end) is committed and its algebra is already decisive: the handover work rate
-is `PdV/Lmech = 2(v2/v_wind)/(R1/R2)²`, **`E0` is not in it**, so "reseed the energy consistently"
-cannot work and the only lever is the handover velocity. Remaining after it: **S0** (keep the
-constant, justified by D1-D4). ⚠️ **Results below the pre-registration are incomplete until this
-line says Batch 4 is done — do not cite a partial D4.**
+solution TRINITY does not have (Weaver is wind-only; §0.3). **D4:** the handover work rate is
+algebraic — `PdV/Lmech = 2(v2/v_wind)/(R1/R2)²`, with **`E0` absent** — so "reseed the energy" was
+ruled out before running, and the seed is **identical to six digits on all five configs**. Both
+measured seed-velocity variants **rescue 2 of the 3 fates full ablation destroys** (so most of the
+ramp's protection is *velocity*, not geometry — the pre-registered prediction was half wrong) but
+still **fail N0 on `f1edge_hidens`, N1 on all five (3.6-6.0× worse) and N2 everywhere**: starting
+marginal only delays the runaway, because `R1/R2 → 1` as `Eb` dips. **All four candidate families
+are now measured dead** (clock, limiter, seed-energy, seed-velocity). **Outcome: S0 — keep the
+constant and write D1-D4 into the source.** Next: **Batch 5 (write S0)**; nothing implemented yet,
+no `trinity/` line touched by this workstream.
 
 The workstream asks whether the *fixed 1e-3 Myr clock* in `dt_switchon` can be replaced by a
 scale-free, physically-derived criterion. **This is not a re-run of "can the ramp be deleted" —
@@ -394,6 +398,57 @@ failed N1 because it held `dEb/dt ≈ 0` *continuously*, flattening `Eb`. S4b ap
 equality **once, at the seed**, then lets the physics run free. So S2's specific N1 failure mode
 does not automatically carry over — N1 has to be measured, not inferred.
 
+### D4 — Batch 4 result: S4 rescues most of the fates, and wrecks the physics doing it
+### (2026-08-06; `data/s4_consistent_seed.csv`, harnesses `harness/s4_consistent_seed.py`, `harness/s4_compare.py`)
+
+Both pre-registered variants ran on all five configs, ramp OFF, separate processes, matched `t`.
+N1 is scored over snapshots 1-5 — the window D3 used — and the reference column reproduces D3's
+recorded values **exactly** on all five, so D3 and D4 sit on identical footing.
+
+| config | N0 `sustain` | N0 `similarity` | N1 HEAD | N1 `sustain` | N1 `similarity` | N2 worst `sustain` |
+|---|---|---|---|---|---|---|
+| `simple_cluster` | ✅ `stopping_time` | ✅ | 0.0992 | **0.4230** | **0.5510** | 4.752% |
+| `f1edge_hidens` | ❌ **`energy_collapsed`** | ❌ **`energy_collapsed`** | 0.1234 | **0.5212** | **0.6368** | 8.160% |
+| `f1edge_lowdens` | ✅ | ✅ | 0.0938 | **0.3956** | **0.5277** | 6.741% |
+| `gmc_control` | ✅ | ✅ | 0.0864 | **0.3696** | **0.5058** | 7.706% |
+| compact probe | ✅ | ✅ | 0.0839 | **0.3607** | **0.4983** | 1.448% |
+
+**N0 fails** (one flip is fatal), **N1 fails 5/5** at 3.6-6.0× the shipped ramp's distance from the
+reference, and **N2 fails everywhere** (1.4-8.2% vs the 0.5% bar). **S4 does not land.**
+
+**The pre-registered prediction for S4a was half wrong, and the half that was wrong is the
+interesting half.** It said S4a would kill "the same 3 of 5 that die under ablation". Only **one**
+dies. Both variants **rescue `simple_cluster` and `f1edge_lowdens`** — two of the three fates that
+full ablation destroys (`phase1a-stiffness` D6). So **most of the ramp's fate protection comes from
+the handover velocity, not from the geometry it actually manipulates.** That is a genuinely new
+fact about what the constant is doing, and it was not visible from any previous batch.
+
+**The identity ordered the variants correctly before either ran.** `sustain` (`PdV/Lmech = 1.000`)
+beats `similarity` (1.588) on N1 for **every single config**, by 0.11-0.14. The algebra of §3's
+Batch-4 pre-registration predicted the ranking of two candidates it had never seen executed.
+
+**Why it still fails, in one line: the runaway is delayed, not stopped.** Starting at
+`PdV/Lmech = 1.000` only holds for an instant — `Eb` dips, the balance root `R1/R2` climbs toward 1,
+and `2(v2/v_wind)/(R1/R2)²` rises straight back above 1. The signed Weaver ratio shows it plainly on
+`simple_cluster`: HEAD sits flat near 0.885 while `sustain` slides 0.876 → **0.306** and
+`similarity` 0.781 → **0.187**, monotonically *diverging* (unlike S2's N2, which converged). The
+pre-registration named this exact failure mode as the uncertainty; the measurement resolved it
+against the candidate. `data/s4_identity_check.csv` records the same race in the fully ablated run:
+`v2/v_wind` falls 1.000 → 0.626 over six snapshots while `R1/R2` climbs 0.869 → 0.999, so
+`PdV/Lmech` only eases 2.65 → 1.26 and never reaches 1. **The shell decelerates and the bubble
+empties, and the bubble wins.**
+
+**All four candidate families are now measured dead** — clock (D2), limiter (D3), seed-energy (D4,
+analytically, before running), seed-velocity (D4, measured). **S0 is the outcome.**
+
+**What the workstream found that S0 should carry.** The ramp is not a model of the termination
+shock forming. It is a crutch for handing over to the energy-driven description at the one moment
+that description is marginal: at `t = dt_phase0` the shell is still moving at the wind speed by
+construction, and `PdV/Lmech = 2(v2/v_wind)/(R1/R2)² ≥ 2` follows with no freedom left in it. The
+honest fix is not a different seed but **a decelerating phase between free expansion and the
+energy-driven solution — a phase TRINITY does not have.** That is a real physics gap, well outside
+a magic-number audit, and it is recorded here as a pointer rather than started.
+
 ## 4. PRE-REGISTERED BARS (registered before any measurement or edit)
 
 - **N0 — fate preservation (checked first, decisive).** All five screen configs keep the stopping
@@ -428,8 +483,8 @@ does not automatically carry over — N1 has to be measured, not inferred.
 | **1** | ✅ **DONE 2026-08-06 — Diagnose the drain** | `harness/drain_budget.py` → `data/drain_budget.csv` (131 rows, no new sims) | **D1 (§3, end): the drain is PdV work, cooling is 0.1-0.8% in both arms.** Geometric candidates address the right term. And the seed violates the Weaver work partition by 4.85× while satisfying its energy exactly ⇒ **S4 promoted, S1 expected to fail for a stateable reason, S2 gains a dimensionless trigger** | ran 10 min |
 | **2** | ✅ **DONE 2026-08-06 — S1, the physical clock** (`tmin = k·dt_phase0`, k=1, all five configs) | `harness/s1_physical_clock.py` → `data/s1_physical_clock.csv` | **D2: N0 FAILS 3/5 ⇒ S1 out — and the failures are not ordered by window shortening (87,055× survives, 7× dies), so no `k` rescues it and the whole "better clock" family is retired** | ran 25 min |
 | **3** | ✅ **DONE 2026-08-06 — S2, the state-based trigger** (sustainability cap + one-way latch, no free constant) | `harness/s2_state_trigger.py` → `data/s2_state_trigger.csv` | **D3: N0 PASSES 5/5 (a first) but N1 FAILS 5/5** — the cap pins `dEb/dt≈0` so `Eb` plateaus and `Eb/t` decays by construction; N2 passes at end-of-run everywhere, fails as written at intermediate times on 2/5. **S2 out**; the limiter family with it | ran 35 min |
-| **4** | **S4, the consistent IC** (only if Batch 1 points at the seed) | `data/s4_consistent_ic.csv` | N0/N1, plus an explicit check that phase 0's published behaviour is unchanged | ~1 h |
-| **5** | **Gate & land, or write S0** | screen ledger + failing-first test, or the S0 write-up | N2/N4; docs reconciled | ~40 min |
+| **4** | ✅ **DONE 2026-08-06 — S4, the consistent IC** (two ramp-off seed-velocity variants; `r0`/`E0`/`T0`/`dt_phase0` untouched, so phase 0's published behaviour is unchanged) | `harness/s4_seed_anatomy.py`, `harness/s4_consistent_seed.py`, `harness/s4_compare.py` → `data/s4_seed_anatomy.csv`, `data/s4_identity_check.csv`, `data/s4_consistent_seed.csv` | **D4: `E0` is absent from the handover work rate (so seed-energy is dead analytically), and both velocity variants FAIL N0 on `f1edge_hidens`, N1 5/5 and N2 everywhere — though they do rescue 2 of the 3 fates full ablation destroys.** S4 out; all four families dead ⇒ **S0** | ran 40 min |
+| **5** | **Write S0** (the only remaining outcome — no candidate cleared §4) | the physics justification written into `trinity/bubble_structure/get_bubbleParams.py` + the workstream closed | N4 (suite, `pre-commit`, mypy vs baseline); docs reconciled | ~40 min |
 
 **Batch 1 first, and no candidate is written before it reports.** The measurements in §0.2 say the
 unramped run leaves the Weaver attractor; they do not say *why*. If the energy leaves through
