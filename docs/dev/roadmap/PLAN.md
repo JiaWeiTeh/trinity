@@ -86,7 +86,9 @@ Owned by `docs/dev/transition/pdv-trigger/` (INDEX.md §3 is the live thread). Q
 | id | item | tier | owner |
 |---|---|---|---|
 | C1 | backward-compat cleanup (~95% unexecuted) | [M] | `misc/backward-compat-audit.md` |
-| C2 | magic numbers #2–#5 (+ audit F8 tolerances) | [J justify, M fix] | `magic-numbers/AUDIT.md` |
+| C2 | ~~magic numbers #2–#5~~ **AUDIT CLOSED 2026-08-06** (branch `hotfix/other-magic-numbers`): #3 fixed & gated, #2 documented-and-pinned (measured not removable), #5 re-verified with its tail handed to the transition workstream. Only audit F8 tolerances remain under this id | [J justify, M fix] | `magic-numbers/AUDIT.md` |
+| C2a | **spawned by C2, DONE:** phase-1a segment-integrator stiffness — in-band energy-collapse guard landed, byte-identical on all five configs. Open: a one-line maintainer ruling on the mypy clause (§2 D5) | [M] | `phase1a-stiffness/PLAN.md` |
+| C2b | **spawned by C2, PRE-REGISTERED:** `dt_switchon`'s *form* (deletion is settled; the fixed 1e-3 Myr clock vs the `dt_phase0` the code computes). Batch 1 pending | [J] | `switchon-successor/PLAN.md` |
 | C3 | HOTPATH §F1-cousin + §F5 | [J] | `performance/HOTPATH_PLAN.md` |
 | C4 | leaking luminosities Phase D/F/G + findings #7/#8 | [J] | `misc/LEAKING_LUMINOSITIES_SKELETON.md` |
 | C5 | cooling loader refactor PR-1–4 | [M] | `cooling/refactor-audit.md` |
@@ -116,6 +118,16 @@ Owned by `docs/dev/transition/pdv-trigger/` (INDEX.md §3 is the live thread). Q
 **Recommended next five, in order: A1 → B2 → B3+B4 → A2 → B6.**
 
 ## §3 Session ledger (newest first)
+
+- **2026-08-06** — magic-numbers round 2 (branch `hotfix/other-magic-numbers`). **C2 closed**, and
+  it spawned two workstreams (C2a, C2b) by following the evidence rather than by scope drift; the
+  trail, so a later reader can see why the branch reaches beyond its title: audit #2's stall was
+  traced to phase 1a's segment integrator, not the bubble solve → **C2a** fixed that (in-band
+  energy-collapse guard) → with a clean stop available, #2's removability could finally be tested,
+  and it **failed** (fate flips on 3/5 configs) → that measurement also showed the constant matters
+  on the *published* config, which is why its form is now **C2b**. **Return path when C2b
+  finishes: nothing is left open in C2 itself** — the remaining tails are #5's fallbacks (transition
+  workstream), audit F8 tolerances (still under C2), and the C2a mypy ruling.
 
 - **2026-07-06** — workstream created. Solver audit ran (`solver-audit.md`); F1 diagnosed
   (scipy-1.10.1 brentq NaN behavior, env below floor) and fixed; sync gate
