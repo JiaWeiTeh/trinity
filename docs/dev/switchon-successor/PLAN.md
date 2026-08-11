@@ -32,12 +32,15 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-06):** 🔵 actionable — **Batch 1 done; nothing implemented, no `trinity/` line
-touched.** D1 (§3, end): the drain is **PdV work**, not cooling (0.1-0.8% of gain in both arms), and
-the seeded state satisfies Weaver's *energy* exactly while violating its *work partition* by
-**4.85×** — so the ramp is a relaxation device for an inconsistent initial condition, which
-promotes **S4** (consistent seed) over the clock-shaped candidates. Next: **Batch 2** (run S1
-anyway, cheaply, to convert an expectation into a measurement).
+**Status (2026-08-06):** 🔵 actionable — **Batches 1-2 done; nothing implemented, no `trinity/`
+line touched.** **D1:** the drain is **PdV work**, not cooling (0.1-0.8% of gain in both arms), and
+the seed satisfies Weaver's *energy* exactly while violating its *work partition* by **4.85×** —
+the ramp is a relaxation device for an inconsistent initial condition. **D2:** the physical-clock
+candidate S1 **fails N0 on 3 of 5 configs**, and the failures are *not* ordered by how much the
+window shrinks (87,055× survives, 7× dies), so **no value of `k` rescues it and the entire
+"better clock" family is retired** — window length is not the controlling variable. Remaining:
+**S2** (state-based release, now front-runner), **S4** (consistent seed, root cause), and **S0**
+(keep the constant, justify it with D1/D2). Next: **Batch 3**.
 
 The workstream asks whether the *fixed 1e-3 Myr clock* in `dt_switchon` can be replaced by a
 scale-free, physically-derived criterion. **This is not a re-run of "can the ramp be deleted" —
@@ -213,6 +216,50 @@ same masking class `phase1a-init` found for the old `vd` override. The harness n
 ramped `Pb` from the shell-volume ratio, and the budget reproduces the observed `dEb/dt` to ~4%.
 Validating a decomposition against the trajectory it claims to explain is what caught it.
 
+### D2 — Batch 2 result: S1 is dead, and so is the whole "better clock" family
+### (2026-08-06; `data/s1_physical_clock.csv`, harness `harness/s1_physical_clock.py`)
+
+S1 sets the ramp window to `k·dt_phase0` (k = 1) — the free-expansion time the code already
+computes — instead of the fixed 1e-3 Myr. All five configs, `stop_t = 0.02`, against the
+ramp-active arms.
+
+| config | `dt_phase0` | window shrinks by | fate |
+|---|---|---|---|
+| `simple_cluster` | 0.339 yr | 2951× | **`energy_collapsed`** — FLIP |
+| `f1edge_lowdens` | 138.3 yr | **7×** | **`energy_collapsed`** — FLIP |
+| `f1edge_hidens` | 0.196 yr | 5112× | **`energy_collapsed`** — FLIP |
+| `gmc_control` | 1.956 yr | 511× | `stopping_time` — survives |
+| compact probe | 0.0115 yr | **87055×** | `stopping_time` — survives |
+
+**N0 fails on 3 of 5 ⇒ S1 is out.** SWEEP2 §5's argument is now a measurement, which was this
+batch's stated purpose whichever way it went.
+
+**The stronger result is *why*, and it retires more than one candidate.** The failures are **not
+ordered by how much the window shrinks**: the config that shrinks the *most* (compact probe,
+87,055×) survives, and the one that shrinks the *least* (`f1edge_lowdens`, 7×) dies. Survivors
+span 511-87,055× and failures span 7-5112× — the ranges **overlap**, so no threshold in window
+length separates them, and therefore **no single value of `k` rescues S1.** Window length is not
+the controlling variable; the config's own early state is. That kills the entire
+"replace the clock with a better clock" family, not merely `k = 1`.
+
+Corroborating detail: the three configs S1 kills are **exactly** the three that die under full
+ablation (`phase1a-stiffness/data/dt_switchon_removability.csv`). S1 does not behave like a
+shorter ramp — it behaves like *no* ramp, because by the time these configs need the suppression
+the physical clock has long since expired.
+
+**Consistent with D1, and it sharpens the remaining candidates.** D1 found the seed violates the
+Weaver work partition by 4.85× and that geometry alone cannot fix it. If the problem were the
+clock, a shorter window would hurt in proportion; it does not. What decides survival is whether a
+config can tolerate the full `Pb` at the moment the ramp lets go.
+
+- **S2 survives, and is now the pragmatic front-runner:** a state-based release (hand over when
+  the solution can take it — e.g. `PdV/L_w` reaching its partition) releases *when the state is
+  ready* rather than when a clock says so, which is precisely the failure mode measured here.
+- **S4 remains the root-cause candidate** (a seed that does not need rescuing at all).
+- **S0 remains registered.** If S2 and S4 both fail their bars, the honest outcome is to keep the
+  constant with the D1/D2 evidence written into the source — which would now be a far better
+  justification than the "no derivation" the constant carries today.
+
 ## 4. PRE-REGISTERED BARS (registered before any measurement or edit)
 
 - **N0 — fate preservation (checked first, decisive).** All five screen configs keep the stopping
@@ -245,7 +292,7 @@ Validating a decomposition against the trajectory it claims to explain is what c
 |---|---|---|---|---|
 | **0** | Pre-registration | this doc | committed before any measurement | done |
 | **1** | ✅ **DONE 2026-08-06 — Diagnose the drain** | `harness/drain_budget.py` → `data/drain_budget.csv` (131 rows, no new sims) | **D1 (§3, end): the drain is PdV work, cooling is 0.1-0.8% in both arms.** Geometric candidates address the right term. And the seed violates the Weaver work partition by 4.85× while satisfying its energy exactly ⇒ **S4 promoted, S1 expected to fail for a stateable reason, S2 gains a dimensionless trigger** | ran 10 min |
-| **2** | **S1, the physical clock** — `tmin = k·dt_phase0`, all five configs | `data/s1_physical_clock.csv` | N0/N1; converts SWEEP2 §5's argument into a measurement either way | ~40 min |
+| **2** | ✅ **DONE 2026-08-06 — S1, the physical clock** (`tmin = k·dt_phase0`, k=1, all five configs) | `harness/s1_physical_clock.py` → `data/s1_physical_clock.csv` | **D2: N0 FAILS 3/5 ⇒ S1 out — and the failures are not ordered by window shortening (87,055× survives, 7× dies), so no `k` rescues it and the whole "better clock" family is retired** | ran 25 min |
 | **3** | **S2, the state-based trigger** (only if Batch 1 says geometry, not cooling) | `data/s2_state_trigger.csv` | N0/N1 | ~40 min |
 | **4** | **S4, the consistent IC** (only if Batch 1 points at the seed) | `data/s4_consistent_ic.csv` | N0/N1, plus an explicit check that phase 0's published behaviour is unchanged | ~1 h |
 | **5** | **Gate & land, or write S0** | screen ledger + failing-first test, or the S0 write-up | N2/N4; docs reconciled | ~40 min |
