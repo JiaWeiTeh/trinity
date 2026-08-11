@@ -32,12 +32,11 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-06):** 🟡 partial — **Batches 1-5 done; the C2 fix is in and gated, with one bar
-clause open.** It clears P0, P1, P1-free (`dictionary.jsonl` **byte-identical on all five configs**,
+**Status (2026-08-06):** ✅ shipped on the branch — **all six batches done, every bar closed.** It clears P0, P1, P1-free (`dictionary.jsonl` **byte-identical on all five configs**,
 where the bar required only `simple_cluster`), P2 (worst 1.007×) and P4 (behavioural test, verified
-failing-first); suite 1057/0 and `pre-commit` pass. **P3's mypy clause fails as written** — 144 vs
-137 baseline, all +7 of an `attr-defined` idiom the same file already carries 49 of — and is
-recorded in `PLAN.md` §2 D5 for a maintainer ruling rather than reinterpreted. **Batch 6 answered
+failing-first); suite 1057/0 and `pre-commit` pass. P3's mypy clause failed as written (144 vs 137 baseline, all +7 of an
+`attr-defined` idiom the same file already carries 49 of) and was **ruled ACCEPT** by the
+maintainer on 2026-08-06 (`PLAN.md` §2 D5); 144 is the new baseline. **Batch 6 answered
 the workstream's motivating question: `dt_switchon` is NOT removable** — ablation still flips the
 fate on 3 of 5 configs, including the default published one, so magic-number #2 stays
 document-and-pinned (§2 D6). Batch 1: production is ≥4.3e4×
@@ -75,8 +74,7 @@ in-band energy-floor event — byte-identical on every production config — and
 2. `PLAN.md` §2 — the load-bearing unknown: does this bite with the ramp *active*?
 3. `PLAN.md` §3 §5 — the pre-registered bars and the decision rule, including the
    stiffness-vs-singularity trap that decides which remedy is even correct.
-4. `PLAN.md` §6 — the batches. **All six are done** (D1-D6 in §2). The only open item is the
-   mypy-clause ruling in D5.
+4. `PLAN.md` §6 — the batches. **All six are done** (D1-D6 in §2) and every bar is closed.
 
 ## Why it exists
 

@@ -32,8 +32,8 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-06):** 🟡 partial — **all six batches done; the fix is landed on the branch and
-one bar clause is open.** §1 is source-verified against `adfc23f`; the §3 bars and §5 decision rule
+**Status (2026-08-06):** ✅ shipped on the branch — **all six batches done and every bar closed.**
+The mypy clause was ruled ACCEPT by the maintainer (§2 D5); nothing is outstanding. §1 is source-verified against `adfc23f`; the §3 bars and §5 decision rule
 were registered *before* any edit and are unchanged.
 
 - **D1:** production is ≥4.3e4× away from the stall (the whole phase-1a integrator costs
@@ -45,9 +45,9 @@ were registered *before* any edit and are unchanged.
   starting `Eb`, bounded on both sides by measurement); P0 passes (22 s instead of a hang) and the
   equivalence screen is **byte-identical on all five configs**, worst cost 1.007×.
 - **D5:** P4 passes (behavioural test, verified failing-first); suite 1057/0 and `pre-commit`
-  green. **Open: P3's mypy clause fails as written** — 144 vs a 137 baseline, all +7 of one
-  `attr-defined` class the file already carries 49 of. Recorded for a maintainer ruling rather
-  than reinterpreted; three options and a recommendation are in D5.
+  green. **P3's mypy clause failed as written** (144 vs a 137 baseline, all +7 of one `attr-defined`
+  class the file already carries 49 of) and was **ruled ACCEPT by the maintainer 2026-08-06** —
+  intent met, wording not, both left on the page. 144 is the new baseline. No code changed.
 - **D6:** the motivating question is answered — **`dt_switchon` is NOT removable.** Even with a
   collapsing segment now stopping cleanly, ablation flips the stopping fate on **3 of 5** configs,
   including `simple_cluster`, the default published one. Magic-number #2 stays document-and-pinned,
@@ -302,6 +302,14 @@ P3 (full suite / pre-commit / mypy), then the status flip.
   (the attributes are still dynamic) and would have to be undone the day someone types the whole
   module properly. Not applied unilaterally — the bar stays marked FAILED-AS-WRITTEN until ruled
   on.
+
+  > **RULED 2026-08-06 (maintainer): ACCEPT — option 1.** The clause's intent ("do not add new
+  > type-checking problems") is met; its literal wording ("no new errors") is not, and both
+  > readings stay on this page rather than the wording being edited to match the outcome. `mypy
+  > trinity` therefore sits at **144**, and that is the new baseline for anything measured against
+  > this branch. No code changed as a result of this ruling. If the module is ever properly typed
+  > (a `Protocol` for the event callable, say), all 56 `attr-defined` errors in
+  > `phase_events.py` — the 49 pre-existing and these 7 — go together.
 
 ### Batch 6 — PRE-REGISTERED BARS (registered 2026-08-06, before Batch 6 was run)
 

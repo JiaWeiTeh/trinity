@@ -72,7 +72,7 @@ docs/dev/
 │   └── harness/ + PROVENANCE_PROTOCOL.md    shared run-stamping tooling
 ├── rosette-cf/            Rosette Cf scan, in-container (🔵 plan + harness + param committed; runs pending)
 ├── phase1a-init/          early-phase (1a) init at sub-GMC scale — compact probe (🔵 — FINDINGS.md)
-├── phase1a-stiffness/     is 1a's RK45 segment integrator a latent defect? (🟡 fix landed on branch — PLAN.md)
+├── phase1a-stiffness/     is 1a's RK45 segment integrator a latent defect? (✅ fix landed on branch — PLAN.md)
 ├── switchon-successor/    can dt_switchon's fixed 1e-3 Myr clock be made physical? (🔵 pre-registered — PLAN.md)
 ├── screen/                multi-config scheme screen: 2 refs x N configs, matched-t ledger (🔵 — README.md)
 ├── cooling/               cooling-table refactor (🟡 partial)

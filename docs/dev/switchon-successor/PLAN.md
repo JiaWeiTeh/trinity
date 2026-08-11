@@ -66,9 +66,42 @@ Two things changed that make the argument worth testing:
    (`phase0_init/get_InitPhaseParam.py`) — predicts `Eb/t = (5/11)L_w`. Measured on
    `simple_cluster` over the first six segments: **ramp on, `Eb/t` holds within ~12% of the
    analytic value (2.77e8 → 2.45e8); ramp off, it falls 154× below (→1.8e6)**. So the ramp is not
-   only preventing a stall — it is keeping the early solution on the analytic attractor its own
-   initial conditions assume. That gives a successor something to be *right* against, rather than
-   merely equivalent to.
+   only preventing a stall — it is keeping the early solution near the analytic attractor its own
+   initial conditions are seeded from. **§0.3 bounds how far that argument can be pushed:** Weaver
+   is wind-only, and radiation supplies a third to three-fifths of the drive here — so the
+   reference bounds a successor's plausibility rather than defining its target. Even so it gives
+   a candidate something to be *wrong* against, which pure equivalence testing cannot.
+
+### 0.3 Caveat: Weaver is **wind-only**, and TRINITY is not (maintainer, 2026-08-06)
+
+Weaver+77 solves a bubble driven by winds alone. TRINITY additionally carries **radiation
+pressure, gravity, ionized-gas pressure and cooling**, so its solution is not Weaver's and has no
+obligation to reproduce Eq. 20 or the 6/11 partition. Measured on `simple_cluster` in the early
+window (ramp on, from the Batch 4 run):
+
+| quantity | measured over the first six snapshots |
+|---|---|
+| `F_rad / (4πR2²·Pb)` | **0.39, 0.37, 0.35, 0.34, 0.32, 0.60** — radiation is a third to three-fifths of the drive |
+| `F_grav / (4πR2²·Pb)` | 0.006-0.009 — negligible |
+| `P_HII / Pb` | **1.0000** exactly — the known `n_IF_Str` min-cap (`phase1a-init` FINDINGS, Extra findings #1), so the ionized-gas term adds nothing independent here |
+
+Four consequences, and they change how the rest of this plan must be read:
+
+1. **Weaver is a limiting-case reference, not ground truth.** Departures of tens of percent are
+   expected and *physical*. Any claim of the form "the solution should equal Weaver" is wrong.
+2. **N1 is therefore comparative by design** — "no worse than the shipped ramp" — and must never
+   be tightened into "must match Weaver". Its wording in §4 is unchanged; this is how to read it.
+3. **The direction is still informative.** Extra radiative push means more expansion work and so
+   *less* retained `Eb`: a deficit against wind-only Weaver is exactly what one expects, and the
+   ramp-on arm shows 0.88-0.94. Likewise D1's `PdV/L_w → 0.563` against the wind-only 6/11 = 0.545
+   should be read as "slightly above the wind-only partition, in the direction radiation pushes
+   it" — not as proof of correctness.
+4. **The ablated arm's 154× deficit is not attributable to the extra physics.** No plausible
+   radiation/gravity/cooling contribution moves `Eb/t` by two orders of magnitude, so that
+   collapse remains a genuine failure rather than a modelling difference.
+
+A stricter reference — the wind + radiation similarity solution — would be a better yardstick and
+is *not* attempted here; it would be its own derivation, and N1 does not need it.
 
 ## 1. Removal vs replacement — keep these separate
 
@@ -185,8 +218,9 @@ Validating a decomposition against the trajectory it claims to explain is what c
 - **N0 — fate preservation (checked first, decisive).** All five screen configs keep the stopping
   fate they have on current `HEAD`. One flip kills the candidate. This is the bar the ramp itself
   fails when deleted, so it is the minimum a successor must clear.
-- **N1 — the physics bar (new, and the point of this workstream).** Over the early window, the
-  candidate's `|Eb/t − (5/11)L_w| / ((5/11)L_w)` must be **no worse than the current ramp's**
+- **N1 — the physics bar (new, and the point of this workstream; read it with §0.3 — Weaver is a
+  wind-only *reference*, not ground truth, because TRINITY also has radiation, gravity, P_HII and
+  cooling).** Over the early window, the candidate's `|Eb/t − (5/11)L_w| / ((5/11)L_w)` must be **no worse than the current ramp's**
   (measured: within ~12% on `simple_cluster`). A successor that preserves fates while drifting
   further off the analytic attractor is not an improvement — it is a differently-shaped fudge.
 - **N2 — trajectory.** `|ΔR2| ≤ 0.5%` at every matched grid time and at end of run vs current
