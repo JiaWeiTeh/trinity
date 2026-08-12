@@ -108,6 +108,7 @@ the run accelerates sharply mid-way as the shell grows, then slows again after
    return the same fate and the arm carries no information about `c`. Replace it
    with a dense-but-viable cloud (higher `sfe`, or `nCore` nearer 1e4–1e5) that
    forms a bubble at c = 1 so weakening the wind has something to change.
+   **Resolved 2026-08-12 by the two probes below: the fix is `nCore`, not `sfe`.**
 2. **`1e7_sfe050_n1e2` terminates on `stop_r` = 500 pc at t = 3.73 Myr** — the
    default radius cap, not physics, and it fires just as SNe switch on (~3.6 Myr).
    **H4 (SN-era reconvergence) is untestable on this cloud as configured.**
@@ -200,6 +201,57 @@ from a pre-rename copy of its param file whose only difference was `path2output`
 `outputs/weak_winds_h0/explicit`). Physics and gate result are unaffected; a
 fresh run of the committed file writes to the documented path, as the untouched
 arm — which did use the committed file — demonstrates.
+
+## Dense-arm replacement probes (2026-08-12) — the blocker is density, not feedback
+
+Batch 1 defect 1 asked for a dense-but-viable arm and offered two levers: raise
+`sfe`, or relax `nCore`. Both were probed. **Only `nCore` works, and `sfe` fails in
+the direction opposite to the one expected** — worth recording because the intuition
+"more feedback ⇒ bigger bubble" is wrong here and would otherwise be retried.
+
+### Probe 1 — raising `sfe` at `nCore` = 1e6 makes it strictly worse
+
+`harness/batches/probe_dense_sfe.param`, `mCloud` = 1e7, c = 1, 3/3 succeeded.
+Row 1 is the batch-1 arm, for reference:
+
+| `sfe` | fate | t_end [Myr] | R2_max [pc] |
+|---|---|---|---|
+| 0.01 (batch-1 arm) | collapsed, small radius | 0.047 | 0.57 |
+| 0.05 | collapsed, small radius | 0.023 | 0.44 |
+| 0.10 | collapsed, small radius | 0.018 | 0.37 |
+| 0.30 | **collapse-velocity runaway** | 0.009 | 0.29 |
+
+Monotonic over four points: **more star formation ⇒ earlier collapse at a smaller
+radius.** `mCluster = sfe·mCloud` enters the shell equation of motion through gravity
+(`F_grav ∝ mCluster + mShell/2`), so at this density each increment of `sfe` deepens
+the potential well faster than it adds outward push; it also removes gas, shrinking
+`rCloud` so the shell starts deeper in. Feedback loses the race. **Do not retry the
+`sfe` lever on a dense cloud** — it cannot rescue this arm at any value.
+
+### Probe 2 — relaxing `nCore` at `sfe` = 0.01 works; 1e5 is the pick
+
+`harness/batches/probe_dense_ncore.param`, `mCloud` = 1e7, `sfe` = 0.01, c = 1.
+The container was recycled mid-probe, so these are **last-sample-before-kill**, not
+final fates — but all three had cleared the "expands rather than collapsing" bar,
+which is what the probe was asked to settle:
+
+| `nCore` | last t [Myr] | R2 there [pc] | phase | still expanding? |
+|---|---|---|---|---|
+| 1e3 | 0.103 | 6.95 | implicit | yes |
+| 1e4 | 0.095 | 3.98 | implicit | yes |
+| **1e5** | 0.044 | **1.47** | implicit | yes |
+| 1e6 (batch-1 arm) | 0.047 | 0.57 → collapsed | 1c | **no** |
+
+The last two rows are the decisive comparison: at matched t ≈ 0.045 Myr the 1e5 cloud
+is at 1.47 pc and still growing, where the 1e6 cloud had already turned around at its
+0.57 pc maximum — a 2.6× larger radius on the same clock.
+
+**Recommended replacement arm: `mCloud` = 1e7, `sfe` = 0.01, `nCore` = 1e5.** It keeps
+what made the arm valuable (most massive cloud, weakest feedback, densest survivor)
+while actually forming a bubble, so weakening `c` has something to act on.
+**Caveat to close before relying on it:** 1e5 was only observed to t = 0.044, the
+shortest of the three. Re-run it alone to `stop_t` and confirm it does not turn around
+later before cutting batches 2–5 against it.
 
 ## Numerical findings (loader-level, pre-existing)
 

@@ -1,0 +1,21 @@
+# PROBE 3 — confirm the recommended dense arm survives to stop_t.
+#
+# Probe 2 picked nCore=1e5 as the densest cloud that still expands at c=1, but
+# the container was recycled with that run only at t=0.044 Myr -- the shortest
+# of the three samples. FINDINGS.md flags that as the one caveat to close
+# before batches 2-5 are cut against this arm: confirm it does not turn around
+# later, the way the nCore=1e6 arm did at 0.57 pc.
+#
+#   python run.py docs/dev/weak-winds/harness/batches/probe_dense_confirm.param --yes
+#   python docs/dev/weak-winds/harness/check_batch.py outputs/weak_winds_probe_confirm
+#
+# PASS = reaches stop_t (or stop_r) rather than a collapse fate.
+
+mCloud    1e7
+sfe       0.01
+nCore     1e5
+
+FB_thermCoeffWind    1.0
+
+stop_t    1.5
+path2output    outputs/weak_winds_probe_confirm
