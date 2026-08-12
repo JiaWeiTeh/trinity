@@ -47,14 +47,23 @@ def canon(d, drop):
     return {k: repr(v) for k, v in d.items() if k not in drop}
 
 
-def compare(base_dir, new_dir):
+def compare(base_dir, new_dir, allow_prefix=False):
     """Returns (verdict, detail, n_rows, new_keys)."""
     b_path, n_path = base_dir / "dictionary.jsonl", new_dir / "dictionary.jsonl"
     if not b_path.exists() or not n_path.exists():
         return "SKIP", "missing dictionary.jsonl", 0, ""
     base, new = load(b_path), load(n_path)
+    truncated = ""
     if len(base) != len(new):
-        return "FAIL", f"row count {len(base)} vs {len(new)}", len(base), ""
+        # A wall-clock timeout truncates an arm at a non-deterministic row, so a
+        # length mismatch is only meaningful when both arms ran to completion.
+        # With --allow-prefix we still check the overlap, which is what actually
+        # proves the diagnostic inert, and say so in the verdict.
+        if not allow_prefix:
+            return "FAIL", f"row count {len(base)} vs {len(new)}", len(base), ""
+        n_common = min(len(base), len(new))
+        truncated = f" (prefix only: {len(base)} vs {len(new)} rows, compared {n_common})"
+        base, new = base[:n_common], new[:n_common]
 
     new_keys = (
         sorted(set().union(*(d.keys() for d in new)) - set().union(*(d.keys() for d in base)))
@@ -83,8 +92,8 @@ def compare(base_dir, new_dir):
                 ",".join(new_keys),
             )
     return (
-        "PASS",
-        f"{len(base)} rows identical on all pre-existing keys",
+        "PASS-PREFIX" if truncated else "PASS",
+        f"{len(base)} rows identical on all pre-existing keys{truncated}",
         len(base),
         ",".join(new_keys),
     )
@@ -95,6 +104,11 @@ def main():
     ap.add_argument("--base", type=Path, required=True, help="baseline arm root")
     ap.add_argument("--new", type=Path, required=True, help="new arm root")
     ap.add_argument("--out", type=Path)
+    ap.add_argument(
+        "--allow-prefix",
+        action="store_true",
+        help="compare the common prefix when an arm was cut short by a wall-clock timeout",
+    )
     args = ap.parse_args()
 
     configs = sorted(p.name for p in args.new.iterdir() if p.is_dir()) if args.new.is_dir() else []
@@ -105,7 +119,7 @@ def main():
     w = max(len(c) for c in configs)
     print(f"{'config':{w}}  {'verdict':>7}  detail")
     for cfg in configs:
-        verdict, detail, n, keys = compare(args.base / cfg, args.new / cfg)
+        verdict, detail, n, keys = compare(args.base / cfg, args.new / cfg, args.allow_prefix)
         failed |= verdict == "FAIL"
         print(f"{cfg:{w}}  {verdict:>7}  {detail}")
         rows.append(
@@ -119,7 +133,8 @@ def main():
             fh.write(f"# base: {args.base}\n# new:  {args.new}\n")
             fh.write(
                 "# PASS = every pre-existing key bit-identical on every row "
-                "(floats compared via repr, so 1 ULP fails).\n"
+                "(floats compared via repr, so 1 ULP fails). PASS-PREFIX = same, but one arm "
+                "was cut short by a wall-clock timeout so only the common prefix was compared.\n"
             )
             fh.write("config,verdict,n_rows,new_keys,detail\n")
             for r in rows:
