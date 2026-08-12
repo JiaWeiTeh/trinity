@@ -32,9 +32,15 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-12):** 🔵 actionable — plan written and pre-registered; **no batch has run,
-nothing in `trinity/` has changed.** Evidence base: `docs/dev/phii-identity/README.md` (same
-folder). Work happens on branch `bugfix/phii-pt1`.
+**Status (2026-08-12):** 🔵 actionable — **Batches 0 and 1 are DONE and both PASS.** The cap
+binds on **100% of rows in every phase**, and the blow-up it suppresses tops out at **3.33×**, so
+the pre-registered C2a kill bar (p99 > 1e2) does **not** trip: bare cap removal is authorised to
+test. The only `trinity/` change so far is the inert shadow diagnostic `n_IF_Str_raw`
+(bit-identity gated). Two Batch-0 by-products changed the problem statement — the double-count is
+far larger than assumed (transition median **1.82×**, momentum exactly **2.000×**), and the energy
+phase carries a *separate* defect: `P_HII` smuggles the un-ramped bubble pressure past the
+`dt_switchon` R1 ramp (up to **3.2×**). Evidence base: `docs/dev/phii-identity/README.md`.
+Branch `bugfix/phii-pt1`.
 
 ---
 
@@ -96,8 +102,21 @@ sightings across three branches, 4–10 digits, ULP-level residual reproduced by
   downstream.
 
 Phase exposure: 1a/1b safe (`max(Pb, P_HII)` absorbs the identity exactly); 1c and 2 affected.
-Cap-slack windows exist and matter: early 1a (`Pb/P_HII = 0.33` at t=0 in the weak-winds
-baseline — the start is genuinely HII-dominated) and late times (1.0069 at 15 Myr).
+
+⚠️ **Superseded 2026-08-12 by Batches 0/1 — read this paragraph with the corrections below.**
+1. **There is no cap-slack window.** The cap binds on 100% of rows in every phase of every config
+   measured. weak-winds' `Pb/P_HII = 0.33` at t=0 is an artifact of reconstructing `Pb` from
+   `F_ram` (which carries the *ramped* pressure); reading `Pb` directly gives 1.0000000000 there.
+   The few rows where `P_HII ≠ Pb` are `Pb` staleness at the 1a→1b handoff, with the cap still bound.
+2. **D-sum is much bigger than "a few percent".** Transition's median `P_drive` overshoot is
+   **1.82×**, reaching 1.998; momentum is exactly **2.000×**.
+3. **A third defect exists, in the phase this doc called safe.** 1a/1b remain safe *in the `max`
+   sense* — `P_drive == Pb == P_HII` — but `get_effective_bubble_pressure` applies a
+   `dt_switchon = 1e-3` Myr ramp that pulls R1 → 0, while `params['Pb']` (hence `P_HII`) uses the
+   un-ramped R1. Inside that window the two differ by up to **3.2×**, so the `P_HII` channel
+   reintroduces exactly the pressure the ramp exists to suppress. **This is the single biggest
+   risk to any cap fix**: removing the cap drops early driving pressure by up to 3×, which will
+   look like the fix breaking the code. Call this **D-ramp**; it is new work, tracked in §9.
 
 ## 2. Maintainer input on record
 
@@ -190,7 +209,7 @@ pre-registered here *before* it runs (edit bars only via a dated §9 entry, neve
 artifacts committed same session; §8 ledger updated; full `pytest` + ruff F-rules before any
 commit that touches code.
 
-### Batch 0 — baseline capture + first identity grid — Status: ⬜
+### Batch 0 — baseline capture + first identity grid — Status: ✅ PASS (2026-08-12)
 No code change. Run the **full-12** at base SHA (separate processes); harvest trajectories +
 force budgets + identity metrics; record wall times.
 - Commands: `python run.py <param>` per config (or a sweep param + `--workers 4`), then
@@ -203,7 +222,7 @@ force budgets + identity metrics; record wall times.
 - Kill/branch rule: a config that won't run at base is dropped from the matrix by dated log
   entry, not silently.
 
-### Batch 1 — shadow uncapped diagnostic (the C2 de-risk) — Status: ⬜
+### Batch 1 — shadow uncapped diagnostic (the C2 de-risk) — Status: ✅ PASS (2026-08-12)
 Smallest possible `trinity/` change, diagnostics-only: `shell_structure.py` also returns the
 **pre-cap** value as `n_IF_Str_raw` (pattern: `n_IF_ODE` at `:225` — a raw value already kept for
 diagnostics), new `ParamSpec` (`runtime_shell`, like `registry.py:513-515`), so it lands in every
@@ -245,7 +264,7 @@ Implement the 5-site diff (§3). Gates, all mandatory:
   values recorded in §8.
 - Artifacts: `data/b3_c1_ledger.csv`; the diff itself.
 
-### Batch 4 — C2: cap experiments — Status: ⬜ (gated by B1's kill bar)
+### Batch 4 — C2: cap experiments — Status: ⬜ **UNBLOCKED** — B1's kill bar did not trip (max blow-up 3.33× vs the 1e2 bar)
 - **4a (bare removal, C2a):** only if the kill bar did not trip. Screen vs C0 across core-6 +
   PRB compulsory. Watch: integrator stalls, the bubble-structure monotonic guard, overflow;
   `P_HII` decoupling from `Pb` (the identity must *break* — that's the point); freeze-ratchet
@@ -283,8 +302,8 @@ under D4 with a table of before/after.
 ### 8.1 Batch verdicts
 | batch | status | date | verdict (one line) | artifacts |
 |---|---|---|---|---|
-| 0 | ⬜ | — | — | — |
-| 1 | ⬜ | — | — | — |
+| 0 | ✅ | 2026-08-12 | **PASS** on 5/6 core (WW timed out — §9). Identity holds on 100% of implicit/transition/momentum rows and ≥96.97% of energy rows, relΔ ≤2.9e-16, across 4 decades of nCore. B3M independently reproduces momentum-pdrive (`P_HII` vs `P_ram` = 2.39e-16 over 34 rows). Drive anatomy: implicit exactly 1, transition ≤1.998 (median 1.82), momentum exactly 2.000, energy ≤3.21 | `data/b0_identity_grid.csv`, `data/b0_trajectories.csv`, `data/b0_walltimes.csv` |
+| 1 | ✅ | 2026-08-12 | **PASS.** G1(i): B3M 231 + PRB 184 rows exactly equal on every pre-existing key (repr compare), matching row counts ⇒ diagnostic inert. Cap binds **100% of rows in every phase**; blow-up p99 1.06–3.33, max 3.33. **Kill bar NOT tripped ⇒ C2a survives, Batch 4a authorised.** Corrects B0: sub-100% energy rows are `Pb` staleness at the 1a→1b handoff, not cap-slack | `data/b1_bitidentity.csv`, `data/b1_capmap.csv` |
 | 2 | ⬜ | — | — | — |
 | 3 | ⬜ | — | — | — |
 | 4 | ⬜ | — | — | — |
@@ -292,15 +311,32 @@ under D4 with a table of before/after.
 | 6 | ⬜ | — | — | — |
 
 ### 8.2 Config wall-times (filled by Batch 0)
-| config | stop condition (as committed) | wall_s @ base | notes |
-|---|---|---|---|
-| _pending Batch 0_ | | | |
+Shared 4-core box, 3–4 concurrent runs, so these are contention-inflated upper bounds.
+
+| config | stop_t used | wall_s | snapshots | notes |
+|---|---|---|---|---|
+| SC | 1.5 (override) | 1369 | 192 | energy→implicit only |
+| B3M | 1.5 (override) | 682 | 231 | **only config reaching momentum** — all 4 phases |
+| F1LO | 1.5 (override) | 802 | 133 | |
+| F1HI | 1.5 (override) | 832 | 144 | reaches transition (4 rows); fate `shell_collapsed` |
+| PRB | 0.1 (as committed) | 713 | 184 | compact probe; 781 s standalone, uncontended |
+| WW | 1.5 (override) | >5400 | — | **timed out** at t≈0.02 of 1.5 Myr — §9 |
 
 ### 8.3 Artifact index
 | file | producer | batch | stamp SHA |
 |---|---|---|---|
 | `data/phii_identity_evidence.csv` | (evidence phase) | pre | `6d84b1e` |
 | `data/roundtrip_ulp.csv` | `harness/roundtrip_ulp.py` | pre | `6d84b1e` |
+| `data/b0_identity_grid.csv` | `harness/harvest_identity.py` | 0 | runs @ `6b55657` |
+| `data/b0_trajectories.csv` | `harness/harvest_identity.py` | 0 | runs @ `6b55657` |
+| `data/b0_walltimes.csv` | `harness/run_batch.py` | 0 | runs @ `6b55657` |
+| `data/b1_bitidentity.csv` | `harness/compare_bitidentical.py` | 1 | b0 `6b55657` vs b1 `bb302e0` |
+| `data/b1_capmap.csv` | `harness/harvest_identity.py` | 1 | runs @ `bb302e0` |
+
+Run dirs (not committed — regenerate with `harness/run_batch.py`):
+`outputs/phii/b0__6b55657_dirty/`, `outputs/phii/b1__386df59_dirty/`. The `_dirty` suffix reflects
+uncommitted **harness/docs** files at launch; `trinity/` was byte-identical to `6b55657` for every
+b0 run and to `bb302e0` for every b1 run (§9 records how that was protected).
 
 ## 9. Dated log (append-only; newest last)
 
@@ -310,3 +346,63 @@ under D4 with a table of before/after.
   and put the B1 shadow diagnostic before any cap edit. Candidate set C0–C4 pre-registered with
   gates; matrix drawn entirely from committed params (screen defaults + bench5 + cleanroom +
   f1edge + phase1a-init probes + a WW rung). Nothing run yet.
+
+- **2026-08-12 (later, same session) — Batches 0 and 1 ran; both PASS. Four things changed.**
+
+  **(a) The identity is broader than recorded, and there is no cap-slack window.** Across five
+  configs spanning 4 decades in `nCore`, 1e5–1e7 Msun, sfe 0.01–0.5 and compact-probe→GMC scale,
+  `P_HII == Pb` to ≤2.9e-16 on **100%** of implicit, transition and momentum rows. Batch 1's
+  `n_IF_Str_raw` then showed the cap binding on **100% of rows in every phase**, which reinterprets
+  Batch 0's 96.97–99.24% energy figure: those rows are not cap-slack (the cap is still bound on
+  them) but `params['Pb']` staleness — B3M has exactly one, at t = 3.0e-3 Myr, the 1a→1b handoff,
+  a 7.2% offset. **Consequence:** §1's "cap-slack windows exist and matter" is retracted, and so is
+  weak-winds' "P_HII is genuinely independent early and late". Their `Pb/P_HII = 0.33` at t=0 came
+  from reconstructing `Pb` as `F_ram/4πR2²`; `F_ram` carries the *ramped* pressure (see (c)), so the
+  reconstruction is off by exactly that factor. Read `Pb` directly and it is 1.0000000000.
+
+  **(b) D-sum is an order of magnitude bigger than assumed.** The new `Pdrive_over_Fram_*` columns
+  measure `P_drive` against the pressure implied by the reported `F_ram`. Transition's **median**
+  is 1.824 (max 1.998) and momentum is exactly **2.000** — not the "~2.7%" a first read of the
+  transition `P_ram/P_HII` ratio suggested (that ratio's 36.8 was a *max*, not typical). Implicit
+  is exactly 1, confirming the `max` genuinely absorbs the identity there.
+
+  **(c) A third defect, D-ramp — and it is the main risk to any cap fix.**
+  `get_effective_bubble_pressure` (`get_bubbleParams.py:311+`) applies a `dt_switchon = 1e-3` Myr
+  ramp pulling `R1 → 0`, while `params['Pb']` — which `P_HII` equals identically — uses the
+  un-ramped `R1`. Inside that window the two differ by up to **3.2×** on all four configs
+  measured, and the median outside it is exactly 1.000. So `P_HII` is silently reintroducing the
+  pressure the ramp exists to suppress. Phases 1a/1b remain "safe" in the `max` sense
+  (`P_drive == Pb == P_HII` on 149/150 SC rows) — but **removing the cap would drop early driving
+  pressure by up to 3×**, which will read as "the fix broke everything" unless it is expected.
+  This connects to `phase1a-init`'s stale-pressure ratchet and to the `dt_switchon` work on
+  `hotfix/other-magic-numbers`. **Re-plan:** Batch 4 must A/B against a D-ramp-aware reference,
+  not against C0 alone; and D1/D2 should be answered knowing the cap is currently load-bearing for
+  the early-time pressure.
+
+  *Method note:* (c) was nearly reported as a 3× **overdrive bug**. The first reconstruction used
+  `Eb/(2πR2³)`, which is not `press_bubble`; checking `P_drive` directly showed
+  `P_drive == Pb == P_HII` and the alarm dissolved. The real finding is the ramp mismatch. Retract
+  fast when the data disagrees — CLAUDE.md rule 5.
+
+  **(d) C2a is authorised.** Pre-registered kill bar: p99 `raw/shell_n0` > 1e2 in phase 1a/1b of
+  any core config ⇒ C2a dead on arrival. Measured p99: **1.06–3.33**; max **3.33** (B3M energy),
+  **3.31** on the compact probe — the small-ΔV regime the cap was built for. So the ΔV→0 blow-up
+  the cap guards against does not materialise at anything like the feared magnitude in these
+  regimes, and Batch 4a may run. *Caveat:* neither config probes the first instants where ΔV→0 is
+  most acute, and PRB stopped at 0.1 Myr; a Batch 4a stall would still most likely appear there.
+
+  **Process notes.** (i) *Contamination near-miss, caught:* the Batch 1 patch was applied while
+  four Batch 0 runs were in flight. Each `run.py` imports fresh at spawn, so WW and F1HI — not yet
+  started — would have run patched code inside the `b0__` tree, violating C-7. Verified by mtime
+  that the four in-flight runs predated the edit, reverted `trinity/` until they finished, then
+  re-applied. Rule C-7 needs a stronger form: **never edit `trinity/` while any run_batch stream is
+  alive**, since a stream spawns its later configs long after launch. (ii) `run_batch.py` was
+  clobbering its own wall-time CSV when driven as concurrent streams; now merges. Rows for the
+  clobbered configs were recovered from the stream logs. (iii) The b0/b1 run dirs carry a `_dirty`
+  suffix from uncommitted *harness* files; `trinity/` was byte-identical to `6b55657` (b0) and
+  `bb302e0` (b1) throughout. (iv) WW (weak-wind rung) timed out at 5400 s having reached t ≈ 0.02
+  of 1.5 Myr — the weak arm is slow in the implicit phase. It is the one core config without a
+  Batch 0 row; re-run it with a shorter `stop_t` (≈0.3 Myr, past the weak-winds collapse at 0.282)
+  rather than more wall time. (v) The `n_IF_Str_raw` ParamSpec shifted
+  `test_materialize_runtime.py`'s pinned live-flow inventory 105→106 and its snapshot split 9/96→
+  9/97; counts, test names and docstring provenance updated. Full suite: **1013 passed**.

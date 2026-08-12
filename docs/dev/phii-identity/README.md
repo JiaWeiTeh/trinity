@@ -32,8 +32,11 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-12):** 🔵 actionable — **evidence gathered and the mechanism is now proved,
-not inferred.** Five workstreams across three unmerged branches each measured `P_HII` equal to the
+**Status (2026-08-12):** 🔵 actionable — **evidence gathered, mechanism proved, and now
+measured directly.** Batches 0/1 (see `PLAN.md`) confirm the identity on 100% of implicit,
+transition and momentum rows across five configs, show the cap binding on **100% of rows in every
+phase** (so §3's cap-slack reading is retracted), and size the double-count at **1.82× median in
+transition, exactly 2.000× in momentum**. **Original framing below.** Five workstreams across three unmerged branches each measured `P_HII` equal to the
 local confining pressure to 4–10 digits. This doc consolidates them and shows the equality is an
 **exact algebraic identity** — `P_HII` re-derives its own input — whenever the `n_IF_Str ≤ shell_n0`
 cap binds. **Nothing in `trinity/` has been changed.** What to *do* about it is an intent question
@@ -91,7 +94,7 @@ the branches named; **none of them are on `main` @ `731ac50`** except the `html-
 | workstream | branch @ SHA | phase | ratio | value |
 |---|---|---|---|---|
 | `weak-winds` | `feature/low-winds-regime` @ `ee84fc7` | implicit | `Pb/P_HII` | **1.0000000000** (t = 0.016 and 0.295 Myr) |
-| `weak-winds` | same | energy / late | `Pb/P_HII` | 0.3333 → 0.9781 → … → 1.0069 (**cap slack at both ends**) |
+| `weak-winds` | same | energy / late | `Pb/P_HII` | 0.3333 → 0.9781 → … → 1.0069 (~~cap slack at both ends~~ — **retracted, see below**) |
 | `switchon-successor` | `hotfix/other-magic-numbers` @ `704c96b` | energy | `P_HII/Pb` | **1.0000** exactly, first 6 snapshots of `simple_cluster` |
 | `phase1a-init` | same | energy (1a) | `P_HII/Pb` | **1.0** to all printed digits, all 128 snapshots, M43 probe |
 | `transition/cleanroom` | same | implicit | `Pb ≡ P_HII` | machine precision, **all 6 configs** |
@@ -102,10 +105,18 @@ The `momentum-pdrive` arms are the strongest single piece of evidence, because t
 identity across a **88× dynamic range in `P_ram` within one run** — a coincidence cannot track a
 quantity over two orders of magnitude.
 
-The `weak-winds` row is the most informative about **scope**: the ratio departs from 1 at both
-ends of the run (0.333 at t=0, 1.0069 at 15 Myr). So the cap is *not* always binding — `P_HII` is
-genuinely independent in early phase 1a and at late times, and the identity holds over the long
-middle. Any fix must handle both sides of that transition.
+The `weak-winds` row *appeared* to be the most informative about **scope**: its ratio departs
+from 1 at both ends (0.333 at t=0, 1.0069 at 15 Myr), suggesting the cap is not always binding.
+
+⚠️ **Retracted 2026-08-12 by `PLAN.md` Batch 1 — there is no cap-slack window.** Measuring the cap
+directly (`n_IF_Str_raw`, the pre-cap value) shows it binding on **100% of rows in every phase** of
+every config tested. weak-winds reconstructed `Pb` as `F_ram/4πR2²`, and `F_ram` carries the
+*ramped* bubble pressure (`get_effective_bubble_pressure` pulls `R1 → 0` for the first
+`dt_switchon = 1e-3` Myr) while `P_HII` carries the un-ramped one — so the reconstruction is off by
+exactly that ramp factor, which is ~3 early and 1 later. Reading `Pb` directly gives
+1.0000000000 at t=0. The handful of rows where `P_HII ≠ Pb` are `Pb` staleness at the 1a→1b
+handoff, with the cap still bound. A fix therefore does **not** need to handle a slack regime — but
+it does need to handle the ramp mismatch (`PLAN.md` §9, "D-ramp").
 
 ## 4. Why it is not bit-identical — and why that is reassuring, not puzzling
 
@@ -221,7 +232,17 @@ They are consistent; each is a different downstream consequence of §2.
 - **`momentum-pdrive/README.md` §2** labels the mechanism ⚠️ *"inferred from a code comment, not
   measured"*. §2 and §4 here supersede that: it is now derived algebraically and confirmed
   numerically. Worth folding back when that branch next moves.
-- **Nothing here contradicts any branch's measurements.** All numbers reproduced as reported.
+- **`weak-winds` FINDINGS' cap-slack claim.** Its "P_HII is genuinely independent only when the cap
+  is slack: early phase 1a (ratio 0.33 → 0.98) and late times (1.0069)" does not survive direct
+  measurement (§3). The measurements are right; the `Pb = F_ram/4πR2²` reconstruction behind them
+  is not. Worth folding back when that branch next moves.
+- **`F_ram` is not `4πR2²·P_drive`.** The reported `F_ram` uses the ramped pressure, so any force
+  budget read from snapshots understates the shell-facing force by up to ~3× inside the
+  `dt_switchon` window. `params['F_ram']` is never read back by the solver, so this is a reporting
+  defect, not a dynamics one — but it is what every force-budget analysis here consumes, and it is
+  what produced the item above.
+- **All other numbers reproduced as reported**, including momentum-pdrive's three benches
+  (independently re-measured at relΔ 2.39e-16 over 34 momentum rows — `PLAN.md` §8.1).
 
 ## Layout
 
