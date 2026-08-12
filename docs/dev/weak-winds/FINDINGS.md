@@ -110,9 +110,12 @@ the run accelerates sharply mid-way as the shell grows, then slows again after
    forms a bubble at c = 1 so weakening the wind has something to change.
 2. **`1e7_sfe050_n1e2` terminates on `stop_r` = 500 pc at t = 3.73 Myr** — the
    default radius cap, not physics, and it fires just as SNe switch on (~3.6 Myr).
-   **H4 (SN-era reconvergence) is untestable on this cloud as configured.** Either
-   raise `stop_r` for the study or restate the lowdens metric as "time to reach
-   500 pc".
+   **H4 (SN-era reconvergence) is untestable on this cloud as configured.**
+   *(Decision 2026-08-09, maintainer: keep `stop_r` = 500 pc — it is already a
+   very large radius. Accepted as a scope limitation, not a defect: for the
+   diffuse arm the ladder metric is **"time to reach 500 pc"**, a clean
+   monotonic discriminator, and H4 is tested on the baseline cloud, which runs
+   the full 15 Myr and does sample the SN era.)*
 
 ### P_HII is not an independent driver — it is the bubble pressure, relabelled
 

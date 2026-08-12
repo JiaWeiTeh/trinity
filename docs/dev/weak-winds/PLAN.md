@@ -108,7 +108,10 @@ Free-streaming initial conditions shift but stay finite (derivation in
 - **H4 (SN era):** after ~3.6 Myr the totals are SN-dominated; trajectories at
   different c should converge once SNe switch on, unless the early-phase
   divergence has already changed the shell's location/mass enough to matter
-  (hysteresis — the interesting outcome).
+  (hysteresis — the interesting outcome). *(Scope 2026-08-09: H4 is tested on the
+  **baseline** cloud only. The diffuse arm stops on the `stop_r` = 500 pc cap at
+  t = 3.73 Myr — `stop_r` is deliberately kept, so that arm's metric is "time to
+  reach 500 pc" instead. See `FINDINGS.md` §batch 1.)*
 - **H0 (control):** c = 1.0 must reproduce the untouched baseline for each cloud
   — the equivalence gate before quoting any trend (rule 5, root CLAUDE.md).
   *(Confirmed 2026-08-08 on the baseline cloud: `max |dR2/R2| = 0.000e+00` over

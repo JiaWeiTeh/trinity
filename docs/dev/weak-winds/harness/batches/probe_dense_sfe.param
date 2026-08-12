@@ -1,0 +1,24 @@
+# PROBE — pick a viable dense cloud to replace 1e7/sfe0.01/n1e6.
+#
+# Batch 1 showed the original dense arm collapses at t=0.047 Myr at FULL wind
+# strength (R2_max = 0.57 pc), so every rung of the ladder would return the same
+# fate and the arm cannot discriminate c. Raising sfe raises mCluster = sfe*mCloud
+# and so the feedback budget. This probe finds the lowest sfe that actually forms
+# an expanding bubble at c = 1, so that weakening the wind has something to change.
+#
+#   python run.py docs/dev/weak-winds/harness/batches/probe_dense_sfe.param --workers 3 --yes
+#   python docs/dev/weak-winds/harness/check_batch.py outputs/weak_winds_probe
+#
+# PASS for a candidate = survives to stop_t (or at least reaches R2 >> rCloud)
+# instead of collapsing in the first ~0.1 Myr. Short horizon on purpose: this is
+# an arm-selection probe, not a science run.
+
+mCloud    1e7
+nCore     1e6
+
+sfe    [0.05, 0.10, 0.30]
+
+FB_thermCoeffWind    1.0
+
+stop_t    1.5
+path2output    outputs/weak_winds_probe
