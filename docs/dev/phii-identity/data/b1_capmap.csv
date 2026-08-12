@@ -1,0 +1,11 @@
+# generated 2026-08-12T14:28:56Z | builder harvest_identity.py | code 4bdade8+dirty
+# Per-(run,phase) P_HII identity metrics. See docs/dev/phii-identity/PLAN.md.
+# frac_PHII_eq_Pb: fraction of rows with |P_HII-Pb|/Pb <= 5e-16.
+# frac_cap_binding/blowup_*: need n_IF_Str_raw (Batch 1); 'NA' before it lands.
+run,phase,n_rows,t_first,t_last,Pb_max_over_min,relmax_PHII_vs_Pb,frac_PHII_eq_Pb,relmax_PHII_vs_Pram,frac_cap_binding,blowup_max,blowup_p99,Pdrive_over_Fram_max,Pdrive_over_Fram_med,fate,wall_s
+B3M,energy,87,8.32603e-07,0.003,1672.43,0.0722,0.9885,NA,1.0000,3.331,3.331,3.069,1.24,stopping_time,NA
+B3M,implicit,68,0.0035,0.270768,40.0229,2.79e-16,1.0000,NA,1.0000,1.26,1.26,1,1,stopping_time,NA
+B3M,transition,42,0.272768,0.404979,60.3338,2.47e-16,1.0000,36.8,1.0000,2.714,2.714,1.998,1.824,stopping_time,NA
+B3M,momentum,34,0.406979,1.5,6.72945,2.39e-16,1.0000,2.39e-16,1.0000,2.694,2.694,2,2,stopping_time,NA
+PRB,energy,132,1.1487e-08,0.003,55409,0.0771,0.9924,NA,1.0000,3.306,3.302,3.058,1.071,stopping_time,NA
+PRB,implicit,52,0.0035,0.1,22.4303,2.52e-16,1.0000,NA,1.0000,1.06,1.06,1,1,stopping_time,NA
