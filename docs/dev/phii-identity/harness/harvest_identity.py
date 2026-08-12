@@ -57,6 +57,8 @@ GRID_COLS = [
     "frac_cap_binding",
     "blowup_max",
     "blowup_p99",
+    "Pdrive_over_Fram_max",
+    "Pdrive_over_Fram_med",
     "fate",
     "wall_s",
 ]
@@ -122,9 +124,19 @@ def analyse_phase(run_name, rows, phase, fate, wall_s):
     rows = [d for d in rows if d.get("current_phase") == phase]
     if not rows:
         return None
-    pbs, rel_pb, rel_pram, blowups = [], [], [], []
+    pbs, rel_pb, rel_pram, blowups, drive_ratio = [], [], [], [], []
     n_eq = n_cap = n_cap_seen = 0
     for d in rows:
+        # Drive anatomy: P_drive against the pressure implied by the REPORTED
+        # F_ram. They should agree; where they don't, the force budget written to
+        # the snapshot is not the force the ODE actually applied. Catches both
+        # known defects at once — the dt_switchon R1 ramp being bypassed via
+        # P_HII (ratio -> ~3 early) and the momentum bare sum (ratio == 2).
+        P_drive, F_ram, R2 = _num(d.get("P_drive")), _num(d.get("F_ram")), _num(d.get("R2"))
+        if None not in (P_drive, F_ram, R2) and R2 and F_ram > 0:
+            implied = F_ram / (4.0 * math.pi * R2**2)
+            if implied > 0:
+                drive_ratio.append(P_drive / implied)
         P_HII, Pb = _num(d.get("P_HII")), _num(d.get("Pb"))
         if P_HII is not None and Pb:
             pbs.append(Pb)
@@ -163,6 +175,10 @@ def analyse_phase(run_name, rows, phase, fate, wall_s):
         "frac_cap_binding": f"{n_cap / n_cap_seen:.4f}" if n_cap_seen else na,
         "blowup_max": f"{max(blow_sorted):.4g}" if blow_sorted else na,
         "blowup_p99": f"{_pct(blow_sorted, 0.99):.4g}" if blow_sorted else na,
+        "Pdrive_over_Fram_max": f"{max(drive_ratio):.4g}" if drive_ratio else na,
+        "Pdrive_over_Fram_med": (
+            f"{sorted(drive_ratio)[len(drive_ratio) // 2]:.4g}" if drive_ratio else na
+        ),
         "fate": fate,
         "wall_s": wall_s,
     }
