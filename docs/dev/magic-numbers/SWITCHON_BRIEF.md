@@ -41,10 +41,18 @@ phase-1a integrator work (stiff/switching segment solver or a terminal in-segmen
 event), not a re-shaping of this constant — **pre-registered as
 `docs/dev/phase1a-stiffness/PLAN.md`, where re-opening this constant is Batch 6.**
 **UPDATE 2026-08-06:** that work ran and confirmed the ramp is **not deletable** (fate flips on
-3 of 5 configs). The constant's *form*, however, is now under test in
-`docs/dev/switchon-successor/PLAN.md`, against a physics bar this brief did not have: with the
-ramp the early solution tracks Weaver Eq. 20 (`Eb/t ≈ (5/11)L_w`), without it it falls 154× below.
-This brief stays closed for the deletion question; the successor plan owns the form question.
+3 of 5 configs). The constant's *form* was then tested separately in
+`docs/dev/switchon-successor/PLAN.md`, against a physics bar this brief did not have (Weaver
+Eq. 20: with the ramp `Eb/t` holds within ~12% of `(5/11)L_w`, without it it falls 154× below).
+**That search has also concluded, the same day, and the answer is likewise no:** four
+pre-registered successors — a physical clock, a sustainability cap, a consistent seed energy and a
+consistent seed velocity — were measured across all five configs and **all four failed their
+bars** (D1-D4). The decisive result is algebraic and worth carrying: with `R1` at ram-pressure
+balance, `PdV/Lmech = 2(v2/v_wind)/(R1/R2)²`, in which `Eb` does not appear, so no reseeding of the
+energy can help; and since `R1/R2 ≤ 1` while phase 0 hands over `v2 = v_wind` by construction, the
+handover *must* start over-working by ≥2×. **So this brief is closed on both questions**: the ramp
+cannot be deleted and cannot be replaced by anything derived that was tried. The remaining honest
+fix is a decelerating phase TRINITY does not have.
 Owned by `AUDIT.md` finding **#2**.
 
 ## 0. What you are being asked to do

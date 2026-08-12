@@ -32,7 +32,7 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-06):** 🔵 actionable — **Batches 1-4 done; no `trinity/` line touched.** The drain
+**Status (2026-08-06):** ✅ **CONCLUDED — S0, the constant stays; all five batches done.** The drain
 is **PdV work**, not cooling, and the seed violates Weaver's work partition by 4.85× while
 satisfying its energy exactly (D1). Two candidates are dead: the physical clock **S1** (fails the
 fate bar on 3 of 5, and not in order of window length — the whole "better clock" family is retired,
@@ -41,8 +41,8 @@ lands twice as far from the physics reference as the constant it would replace, 
 consistent seed **S4** (the handover work rate is `PdV/Lmech = 2(v2/v_wind)/(R1/R2)²` with `E0`
 absent, so reseeding the energy was ruled out analytically, and both measured velocity variants
 still fail N0 on one config, N1 on all five and N2 everywhere, D4). **All four candidate families
-are measured dead.** The outcome is **S0**: keep the constant and write D1-D4 into the source.
-Next is **Batch 5**, which is that write-up. See `PLAN.md` for the numbers.
+are measured dead.** The outcome is **S0**: keep the constant, with D1-D4 written into the source
+at the constant itself (Batch 5). No `trinity/` behaviour changed. See `PLAN.md` for the numbers.
 
 ## The question — and the one it is NOT
 
@@ -51,14 +51,14 @@ first 1000 yr. **Whether the ramp can be deleted is settled: it cannot** — abl
 stopping fate on three of five configs, including the default published one
 (`docs/dev/phase1a-stiffness/PLAN.md` §2 D6). Do not re-run that.
 
-What is open is its **form**. The ramp resembles a real effect — the termination shock does not
+What was open — and is now closed, see the Status line — is its **form**. The ramp resembles a real effect — the termination shock does not
 exist until the wind has swept its own mass, the standard free-expansion → energy-driven
 transition — but TRINITY already computes that moment as `dt_phase0`, and it is **0.0115-1.96 yr**
 across the screen configs, i.e. the fixed 1000-yr window runs 500× to ~87,000× longer than the
 physics it imitates. The shape (linear from zero) has no derivation, and no literature was found
 for a fixed-duration ramp on `R1`.
 
-## Why it is worth the effort now
+## Why it was worth the effort (kept as the record of why this was opened)
 
 Two measurements changed the stakes:
 

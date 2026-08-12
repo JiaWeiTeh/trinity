@@ -252,7 +252,10 @@ first surviving an `Eb` collapse on its own.** A merely scale-relative switch-of
 earlier at the stiff edge — the direction the stall lives in — to buy ≤0.006-0.017% accuracy on
 healthy configs.
 
-> **RE-OPENED FOR REPLACEMENT (2026-08-06) — `docs/dev/switchon-successor/PLAN.md`.** Two flags on
+> **RE-OPENED FOR REPLACEMENT, THEN CLOSED (2026-08-06) — `docs/dev/switchon-successor/PLAN.md`.**
+> The replacement search ran to completion: four pre-registered successors were measured on all
+> five configs and **all four failed**, so the constant stays and the argument flagged below was
+> ultimately vindicated — but by measurement this time, not by assertion. Two flags on
 > the sentence immediately above. It is an **argument, not a measurement**: no scale-relative
 > switch-off was ever run. And the "≤0.006-0.017%" it weighs against was measured on the only two
 > configs that survive ablation (see the scope correction in §4) — the real stake is that ablation

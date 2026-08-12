@@ -73,12 +73,12 @@ docs/dev/
 ├── rosette-cf/            Rosette Cf scan, in-container (🔵 plan + harness + param committed; runs pending)
 ├── phase1a-init/          early-phase (1a) init at sub-GMC scale — compact probe (🔵 — FINDINGS.md)
 ├── phase1a-stiffness/     is 1a's RK45 segment integrator a latent defect? (✅ fix landed on branch — PLAN.md)
-├── switchon-successor/    can dt_switchon's fixed 1e-3 Myr clock be made physical? (🔵 measured: no — PLAN.md)
+├── switchon-successor/    can dt_switchon's fixed 1e-3 Myr clock be made physical? (✅ measured: no — PLAN.md)
 ├── screen/                multi-config scheme screen: 2 refs x N configs, matched-t ledger (🔵 — README.md)
 ├── cooling/               cooling-table refactor (🟡 partial)
 ├── performance/           hot-path cost & conditioning (📘 reference + 🟡 open items)
 ├── shell-solver/          shell ODE migration + float64 overflow fix (🟡 mixed)
-├── magic-numbers/         hardcoded-constant audit (🟡 #1, #4 fixed; #2 measured; #3, #5 open)
+├── magic-numbers/         hardcoded-constant audit (✅ closed 2026-08-06: #1/#3/#4 fixed, #2 kept+pinned, #5 re-verified)
 ├── failed-large-clouds/   1b collapse of large clouds (✅ shipped; 1b routing superseded 2026-07-01)
 ├── misc/                  standalone audits / notes (🟡 mixed)
 ├── cluster/               on-cluster plotting workflow guide (📘 operational)
@@ -132,7 +132,7 @@ The top-level `scratch/` (repo root) is separate, git-ignored, local-only.
 - **`switchon-successor/`** — [`PLAN.md`](switchon-successor/PLAN.md): given that the ramp cannot
   be deleted, can its **fixed 1e-3 Myr clock** be replaced by a scale-free physical criterion? The
   code already computes the establishment time it imitates (`dt_phase0` = 0.0115-1.96 yr, i.e.
-  500-87,000× shorter). 🔵 **Batches 1-4 done; nothing implemented — the measured answer is no.** Bar N3 forbids swapping in
+  500-87,000× shorter). ✅ **CONCLUDED — the measured answer is no; outcome S0, the constant stays.** Bar N3 forbids swapping in
   another absolute constant; bar N1 judges candidates against Weaver Eq. 20 comparatively (§0.3 —
   Weaver is wind-only, TRINITY is not); "keep it and justify it better" is a registered outcome.
   Two candidate families are measured dead — the **clock** (window length is not the controlling

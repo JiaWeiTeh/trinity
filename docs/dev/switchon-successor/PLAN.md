@@ -32,8 +32,10 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-06):** 🔵 actionable — **Batches 1-4 done; nothing implemented, no `trinity/`
-line touched.** **D1:** the drain is **PdV work**, not cooling (0.1-0.8% of gain in both arms), and
+**Status (2026-08-06):** ✅ **CONCLUDED — outcome S0: the constant stays.** All five batches done.
+No `trinity/` behaviour changed; the only source edit is the rationale block this workstream
+produced, at the constant in `trinity/bubble_structure/get_bubbleParams.py`, plus a correction to
+the stale mechanism claim in `test/test_dt_switchon_ramp.py`'s docstring. **D1:** the drain is **PdV work**, not cooling (0.1-0.8% of gain in both arms), and
 the seed satisfies Weaver's *energy* exactly while violating its *work partition* by **4.85×** —
 the ramp is a relaxation device for an inconsistent initial condition. **D2:** the physical-clock
 candidate S1 **fails N0 on 3 of 5 configs**, and the failures are *not* ordered by how much the
@@ -52,8 +54,10 @@ ramp's protection is *velocity*, not geometry — the pre-registered prediction 
 still **fail N0 on `f1edge_hidens`, N1 on all five (3.6-6.0× worse) and N2 everywhere**: starting
 marginal only delays the runaway, because `R1/R2 → 1` as `Eb` dips. **All four candidate families
 are now measured dead** (clock, limiter, seed-energy, seed-velocity). **Outcome: S0 — keep the
-constant and write D1-D4 into the source.** Next: **Batch 5 (write S0)**; nothing implemented yet,
-no `trinity/` line touched by this workstream.
+constant and write D1-D4 into the source.** **Batch 5 did exactly that** — the identity, the
+per-config seed numbers, the four failed successors and the missing decelerating phase are now
+written at the constant itself, so the next person to call it "uncalibrated" finds out why it is
+still there before deleting it.
 
 The workstream asks whether the *fixed 1e-3 Myr clock* in `dt_switchon` can be replaced by a
 scale-free, physically-derived criterion. **This is not a re-run of "can the ramp be deleted" —
@@ -484,7 +488,7 @@ a magic-number audit, and it is recorded here as a pointer rather than started.
 | **2** | ✅ **DONE 2026-08-06 — S1, the physical clock** (`tmin = k·dt_phase0`, k=1, all five configs) | `harness/s1_physical_clock.py` → `data/s1_physical_clock.csv` | **D2: N0 FAILS 3/5 ⇒ S1 out — and the failures are not ordered by window shortening (87,055× survives, 7× dies), so no `k` rescues it and the whole "better clock" family is retired** | ran 25 min |
 | **3** | ✅ **DONE 2026-08-06 — S2, the state-based trigger** (sustainability cap + one-way latch, no free constant) | `harness/s2_state_trigger.py` → `data/s2_state_trigger.csv` | **D3: N0 PASSES 5/5 (a first) but N1 FAILS 5/5** — the cap pins `dEb/dt≈0` so `Eb` plateaus and `Eb/t` decays by construction; N2 passes at end-of-run everywhere, fails as written at intermediate times on 2/5. **S2 out**; the limiter family with it | ran 35 min |
 | **4** | ✅ **DONE 2026-08-06 — S4, the consistent IC** (two ramp-off seed-velocity variants; `r0`/`E0`/`T0`/`dt_phase0` untouched, so phase 0's published behaviour is unchanged) | `harness/s4_seed_anatomy.py`, `harness/s4_consistent_seed.py`, `harness/s4_compare.py` → `data/s4_seed_anatomy.csv`, `data/s4_identity_check.csv`, `data/s4_consistent_seed.csv` | **D4: `E0` is absent from the handover work rate (so seed-energy is dead analytically), and both velocity variants FAIL N0 on `f1edge_hidens`, N1 5/5 and N2 everywhere — though they do rescue 2 of the 3 fates full ablation destroys.** S4 out; all four families dead ⇒ **S0** | ran 40 min |
-| **5** | **Write S0** (the only remaining outcome — no candidate cleared §4) | the physics justification written into `trinity/bubble_structure/get_bubbleParams.py` + the workstream closed | N4 (suite, `pre-commit`, mypy vs baseline); docs reconciled | ~40 min |
+| **5** | ✅ **DONE 2026-08-06 — Write S0** (the only remaining outcome — no candidate cleared §4) | the D1-D4 rationale written at the constant in `trinity/bubble_structure/get_bubbleParams.py`; the stale "bubble-structure solve stalls" claim corrected in `test/test_dt_switchon_ramp.py`'s docstring; `magic-numbers/AUDIT.md` #2, `SWITCHON_BRIEF.md` and `SWEEP2_PLAN.md` closed on the form question | N4 green; docs reconciled | ran 15 min |
 
 **Batch 1 first, and no candidate is written before it reports.** The measurements in §0.2 say the
 unramped run leaves the Weaver attractor; they do not say *why*. If the energy leaves through

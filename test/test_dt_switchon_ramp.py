@@ -3,15 +3,26 @@
 SWITCHON_BRIEF.md).
 
 The ramp is LOAD-BEARING, not inert: with it ablated, ``f1edge_hidens``
-(nCore=1e6) drains Eb 180 -> 29 au within four segments and the bubble-structure
-solve grinds ~20 min/segment instead of completing in minutes (measured twice,
-independently: docs/dev/phase1a-init/data/e8b_hidens_noramp_STALLED.csv and
-docs/dev/magic-numbers/data/switchon_stall_probe.csv). Its trajectory cost on
-healthy configs is bounded at |dR2| <= 0.006-0.017% beyond the early window.
+(nCore=1e6) drains Eb 180 -> 29 au within four segments and the run grinds to a
+halt (measured twice, independently:
+docs/dev/phase1a-init/data/e8b_hidens_noramp_STALLED.csv and
+docs/dev/magic-numbers/data/switchon_stall_probe.csv). The grind is in the
+**phase-1a segment integrator** (RK45 in run_energy_phase.py, taking micro-steps
+on a stiff manifold), NOT in the bubble-structure solve as this docstring said
+before docs/dev/phase1a-stiffness measured it — see that workstream's PLAN.md
+§2 D2. Ablation flips the stopping fate on 3 of 5 screen configs including the
+default published one (phase1a-stiffness/data/dt_switchon_removability.csv);
+the |dR2| <= 0.006-0.017% cost figure describes only the two configs that
+survive ablation, so it is not a whole-suite bound.
+
 These tests exist so that deleting the ramp as "inert" — the audit's original,
 now-struck recommendation — fails loudly instead of stalling the stiff edge in
-production. They pin the *current, measured* behaviour; a gated scale-relative
-successor would re-pin them.
+production. They pin the *current, measured* behaviour. **The successor search
+is concluded, not pending:** four derived replacements (physical clock,
+sustainability cap, consistent seed energy, consistent seed velocity) were
+pre-registered and measured, and all four failed their bars
+(docs/dev/switchon-successor/PLAN.md §3 D1-D4), so the constant stays and these
+pins stay with it.
 
 State values are the segment-1 entry state of the f1edge_hidens run (the regime
 the ramp protects), with R1/R2 at the measured peak leverage (R1/R2)^3 = 0.673.
