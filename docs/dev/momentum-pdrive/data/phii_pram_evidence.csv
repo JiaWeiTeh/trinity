@@ -1,0 +1,8 @@
+# generated 2026-08-12T12:28:18Z | builder check_phii_pram.py | code 95d9467+dirty
+# Momentum-phase P_HII vs wind ram pressure. relΔ vs calc compares the recorded
+# P_HII against pRam = L/(2*pi*R2^2*v) recomputed from the row's own columns.
+# See docs/dev/momentum-pdrive/README.md — this REPORTS, it does not judge intent.
+run,n_momentum_rows,t_first,t_last,P_ram_max_over_min,max_abs_rel_diff_PHII_vs_PRAM,max_abs_rel_diff_PHII_vs_recomputed_pRam,n_rows_bitequal,F_HII_equals_F_ram_all_rows,P_drive_equals_2x_P_ram
+bench1_m5e4_r20__none_diag,30,1.5845,2.5688,1.92711,2.82e-16,2.82e-16,6,False,True
+bench2_m1e5_r10__none_diag,95,0.747441,4.98174,22.3483,3.42e-16,3.42e-16,35,False,True
+bench3_m1e5_r5__none_diag,104,0.406979,5,88.4828,3.64e-16,3.64e-16,38,False,True

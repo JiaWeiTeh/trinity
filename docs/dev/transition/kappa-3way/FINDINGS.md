@@ -58,7 +58,13 @@ second and independent ground**. `§16`: screening Option 3 found a sharper inst
 saturated-flux cap — Lancaster **Eq 10**, a closed-form ℓ-free Θ prediction — and it **fails 0/3**:
 TRINITY's implied prefactor is 5–50× outside the order-unity bracket *and* drifts 3–6× across the
 window. Read the other way, Eq 10 at TRINITY's own Ṙ_b/V_w predicts **Θ = 0.93/0.95/0.97, inside the
-L21b band**, against TRINITY's resolved 0.29/0.44/0.58.
+L21b band**, against TRINITY's resolved 0.29/0.44/0.58. `§16e` then records the maintainer's
+wind-only objection: Lancaster has no radiation pressure, photoionized gas or SNe, which **widens**
+the Eq-10 gap rather than explaining it, but devalues the precise multiple — and argues for
+reframing Lancaster as a **component benchmark in the wind-only limit** rather than a shell
+calibration target. ⚠️ Chasing that surfaced a separate `trinity/` problem in the momentum-phase
+force budget, written up in **`docs/dev/momentum-pdrive/`** — it touches no Θ number here, but it
+sits upstream of every fate.
 
 ---
 
@@ -861,10 +867,16 @@ Builder `data/make_merge_rebaseline.py` (`table=EQ10`), on the three arms re-run
 | bench2_m1e5_r10 | **74.8** | 32.0 – 136.8 | 4.3× | 0.950 | 0.436 | ❌ FAIL |
 | bench3_m1e5_r5 | **92.8** | 45.9 – 150.4 | 3.3× | 0.965 | 0.579 | ❌ FAIL |
 
-Two failures, and the second is the more damaging. **(i)** The implied C sits 5–50× above
-Lancaster's bracket on every arm and every row — not one point lands inside. **(ii)** It **drifts
-3.3–5.6× across the window**, where Eq 10 with fixed constants predicts a constant. So the
-*functional form* misses, not merely the normalisation; no choice of α_p, α_R or f_turb rescues it.
+Two failures, and the second is the more damaging. **(i)** The implied C sits **one to two orders of
+magnitude** above Lancaster's bracket on every arm and every row — not one point lands inside.
+**(ii)** It **drifts 3.3–5.6× across the window**, where Eq 10 with fixed constants predicts a
+constant. So the *functional form* misses, not merely the normalisation; no choice of α_p, α_R or
+f_turb rescues it.
+
+⚠️ **Quote the order of magnitude, not the multiple.** `§16e` shows the two sides of this comparison
+do not contain the same physics (Lancaster is wind-only), which biases C *downward* here — so the
+direction and rough size are robust but the precise factor is not. An earlier draft of this section
+said "5–50×"; that was over-reading.
 
 **Read the other way round, which is the result worth keeping.** At TRINITY's *own* Ṙ_b/V_w, Eq 10
 evaluated at the generous end of Lancaster's bracket predicts **Θ = 0.93 / 0.95 / 0.97** — inside
@@ -906,3 +918,51 @@ V_w/(6α_p−2)`, which cannot exceed Eq 12's `v_equiv`)"* — **the opposite di
 flux construction only works one way round (`v_equiv ≤ v_hot` is a flux limit; the reverse is a
 lower bound and produces no saturation). Both docs are secondary; resolving it needs Lancaster
 2021a Eq 15 itself. Not resolved here, and the Eq-10 screen above does not depend on it.
+
+### §16e. ⚠️ Lancaster is WIND-ONLY — what that does to `§16`, and what it does to the whole program
+
+Raised by the maintainer 2026-08-08, and it is the right objection: Lancaster+2021 Paper I/II
+simulate **wind only** — no radiation pressure, no photoionized-gas pressure, no supernovae. TRINITY
+carries all three. So is the Eq-10 comparison apples-to-oranges?
+
+**Partly, and it cuts the opposite way from what you would guess.**
+
+- **SNe are moot in this window.** Measured on these arms: `Lmech_SN/Lmech_W ≈ 7e-27` at the start,
+  and the implicit window closes at 0.27–0.60 Myr — far before first SNe. That difference does not
+  touch `§16`.
+- **Radiation and photoionized gas make the gap WIDER, not narrower.** Both push the shell, but
+  neither enters θ's denominator — `Lmech_total` is *mechanical* (wind+SN) power only. So TRINITY's
+  Ṙ_b is faster than a wind-only bubble at the same L_mech. Since C = (1−Θ)/(Ṙ_b/V_w), an inflated
+  denominator **deflates** C. The measured C = 59/75/93 is therefore a **lower bound** on what a
+  wind-only TRINITY would show.
+
+⚠️ **So the objection does not rescue Eq 10 — but it does devalue the exact factor.** Read `§16b` as
+*"order-of-magnitude discrepancy, direction robust"*, **not** as *"the gap is 5–50×"*. Quoting the
+precise multiple would be over-reading a comparison whose two sides do not contain the same physics.
+
+**The deeper version of the objection is the one that should reorder the program.** Lancaster's Θ
+measures the **wind bubble's** interface cooling. If radiation and photoionized gas dominate TRINITY's
+*shell* force budget in this regime, then whether the wind bubble is energy- or momentum-driven is a
+second-order determinant of shell evolution — and this campaign has spent 294 arms calibrating a
+subdominant term. That is a measurable question, not a rhetorical one.
+
+> **The reframing this argues for.** Stop treating Lancaster as a calibration target for TRINITY's
+> **shell**. Treat it as a benchmark for TRINITY's **wind-bubble interface sub-model, in the wind-only
+> limit where the benchmark applies** — validate the component in its own regime, then run full
+> physics with the validated component. That dissolves the physics mismatch instead of arguing about
+> it, and it is a cleaner methods story than *"we tuned a cooling multiplier until Θ_cum entered a
+> band measured in a different physics setup"* — which is what the band-entry framing currently
+> amounts to. It also offers a reason **why all three knobs failed**: they were being asked to
+> reconcile a component model against a whole-system measurement.
+>
+> `include_PHII` is a real `.param` switch (default `True`), so a photoionization-off bench is one
+> line. There is **no** `include_Frad`; killing radiation pressure would need the dust opacity zeroed.
+> A wind-only bench is the honest configuration for `§16` and costs ~30 min of runs. **Not done.**
+
+⚠️ **Trying to measure that force budget surfaced a separate, more urgent problem in `trinity/`** —
+the momentum-phase `P_HII` equals the wind ram pressure to ≤3.6e-16, so the ODE's
+`P_drive = P_HII + P_ram` evaluates to `2 × P_ram`. It is in the integrator, and it is written up in
+its own workstream: **`docs/dev/momentum-pdrive/README.md`**. It does **not** touch any Θ number here
+(Θ_cum integrates the implicit phase, which ends at the transition), but it does sit upstream of every
+fate and stopping outcome, including K3's determinism arm. The force-budget question above cannot be
+answered until it is resolved.
