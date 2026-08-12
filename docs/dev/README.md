@@ -72,6 +72,7 @@ docs/dev/
 │   └── harness/ + PROVENANCE_PROTOCOL.md    shared run-stamping tooling
 ├── rosette-cf/            Rosette Cf scan, in-container (🔵 plan + harness + param committed; runs pending)
 ├── phase1a-init/          early-phase (1a) init at sub-GMC scale — M43 probe (🔵 — FINDINGS.md)
+├── phii-identity/         P_HII === the confining pressure while the Strömgren cap binds (🔵 — README.md)
 ├── screen/                multi-config scheme screen: 2 refs x N configs, matched-t ledger (🔵 — README.md)
 ├── cooling/               cooling-table refactor (🟡 partial)
 ├── performance/           hot-path cost & conditioning (📘 reference + 🟡 open items)
@@ -115,6 +116,11 @@ The top-level `scratch/` (repo root) is separate, git-ignored, local-only.
   #2 measured and found load-bearing, #3/#5 open), [`TCLAMP_PLAN.md`](magic-numbers/TCLAMP_PLAN.md)
   (✅ #1 fixed & gated) and [`SWITCHON_BRIEF.md`](magic-numbers/SWITCHON_BRIEF.md) (🔵 brief for
   a scale-relative successor to #2's `dt_switchon`).
+- **`phii-identity/`** — [`README.md`](phii-identity/README.md): consolidates five independent
+  sightings (across three unmerged branches) of `P_HII` equalling the local confining pressure to
+  4–10 digits, proves it is an exact algebraic identity of the `n_IF_Str ≤ shell_n0` cap, and maps
+  where it lands in each phase's `P_drive`. Read before trusting `F_HII`, `include_PHII`, or any
+  momentum-phase force budget.
 - **`screen/`** — [`README.md`](screen/README.md): the multi-config scheme screen. Two git refs,
   N configs, both arms in separate processes, compared at matched `t`, ledger + pass/fail out.
   Run it before landing a scheme change; the suite's end-to-end tests all use one config.
