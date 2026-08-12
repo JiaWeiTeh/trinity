@@ -37,7 +37,9 @@ not inferred.** Five workstreams across three unmerged branches each measured `P
 local confining pressure to 4–10 digits. This doc consolidates them and shows the equality is an
 **exact algebraic identity** — `P_HII` re-derives its own input — whenever the `n_IF_Str ≤ shell_n0`
 cap binds. **Nothing in `trinity/` has been changed.** What to *do* about it is an intent question
-for the maintainer (§7).
+for the maintainer (§7). **Fix effort:** planned and pre-registered in
+[`PLAN.md`](PLAN.md) (branch `bugfix/phii-pt1`) — candidates, config matrix, batch gates, and
+the running ledger all live there; this README stays the evidence record.
 
 ---
 
@@ -189,7 +191,9 @@ They are consistent; each is a different downstream consequence of §2.
    already has one and it never binds (§5).
 2. **Should the cap be a cap at all?** Under it, `P_HII` cannot exceed `Pb` *by construction*, so
    the ionized-gas channel can never be the dominant driver anywhere in the code — which is a
-   strong physical claim to make implicitly, in a `min()`.
+   strong physical claim to make implicitly, in a `min()`. *(Update 2026-08-12: maintainer states
+   the cap's origin is numerical — a guard against the ΔV→0 blow-up of `n_IF_Str` — not a physics
+   claim. See `PLAN.md` §2; the guard-replacement candidate C2b follows from this.)*
 3. **Is `include_PHII` doing what its name promises?** It gates `P_HII` in all four phases
    (`run_energy_phase.py:223`, `run_energy_implicit_phase.py:980,1378`,
    `run_transition_phase.py:563,844`, `run_momentum_phase.py:633`), but in phases 1a–1c the `max`
@@ -223,6 +227,7 @@ They are consistent; each is a different downstream consequence of §2.
 
 ```
 README.md                      this file — the consolidated evidence
+PLAN.md                        the fix effort: candidates, gates, batch ladder, ledger, dated log
 data/phii_identity_evidence.csv  every sighting, one row each, with branch + SHA provenance
 data/roundtrip_ulp.csv         the float round-trip model output
 harness/roundtrip_ulp.py       reproduces the ULP signature (pure arithmetic, ~1 s)

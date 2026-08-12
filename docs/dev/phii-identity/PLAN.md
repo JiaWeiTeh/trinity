@@ -1,0 +1,312 @@
+# PLAN — fixing the P_HII identity (branch `bugfix/phii-pt1`)
+
+> ⚠️ **This document may be out of date — verify before trusting it.** It is a
+> point-in-time analysis/audit, not a maintained spec; the code moves faster
+> than these notes (paths, line numbers, and "what shipped" status drift).
+> **Any agent or person reading this: treat it as unverified. Flag that it may
+> be stale and re-check each claim, snippet, and line reference against the
+> current source before relying on it.**
+>
+> 🔄 **Living plan — recheck and refine on every visit.** This is an evolving
+> strategy doc, not a frozen record. Any agent or person who opens this file
+> must, as part of the visit: (1) re-verify the claims and line references above
+> against current source; (2) update anything that has drifted; (3) **rethink the
+> strategy itself** — if a better ordering, gate, candidate, or experiment
+> exists, revise the doc and note what changed and why (date it). Leave it better
+> than you found it. **Keep all banner paragraphs at the top of every plan and
+> analysis doc.**
+>
+> 💾 **Persist diagnostics — commit, don't re-run.** The container is ephemeral
+> and full/hybr runs cost hours, so any diagnostic worth keeping must be saved as
+> a committed artifact under `docs/dev/` (a CSV/table in `docs/dev/data/`, or a
+> harness/figure in the relevant `docs/dev/<workstream>/` folder) — never left in
+> `/tmp`, the local-only `scratch/`, or an untracked `outputs/`. A future visit must be able to reproduce or compare
+> against the numbers **without re-running**; record the exact config + command
+> that produced each artifact.
+>
+> 🔗 **Cross-check the sibling docs — keep the workstream self-consistent.** This file is one of
+> several living docs for its workstream (its `PLAN.md`, `FINDINGS.md`, `runs/README.md`, `NOTE_PATCHES.md`,
+> and any other notes in the same folder). They drift out of sync *with each other* as fast as they drift
+> from the code. Any agent or person editing one MUST, as part of the visit, circle back through the
+> siblings and reconcile: if a number, status, claim, or line reference here contradicts a sibling — or a
+> sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
+> update one in isolation.
+
+**Status (2026-08-12):** 🔵 actionable — plan written and pre-registered; **no batch has run,
+nothing in `trinity/` has changed.** Evidence base: `docs/dev/phii-identity/README.md` (same
+folder). Work happens on branch `bugfix/phii-pt1`.
+
+---
+
+## 0. The contract: one source of truth, self-updating, contamination-free
+
+This section is normative. It exists because the transition/pdv-trigger effort sprawled to
+10+ docs that drifted against each other, and because this fix touches ODE right-hand sides where
+a contaminated comparison produces confident nonsense.
+
+**One doc.** Everything about the fix effort lives HERE: strategy, candidates, gates, batch
+results, verdicts, decisions, the dated log. Do **not** create sibling `FINDINGS.md`,
+`RUNBOOK.md`, or per-batch notes — results land in this doc's §8 ledger and §9 log. The only
+other files this workstream may grow are committed artifacts (`data/*.csv`, `figures/*.png`) and
+runnable code (`harness/*`), each indexed in §8.3. The sibling `README.md` stays what it is — the
+frozen-ish evidence record; it gets a pointer here and per-visit reconciliation, nothing more.
+
+**Self-update protocol.** Every visit, in order:
+1. Re-verify the §2 line references and §4 param paths against current source; fix drift in place.
+2. Update batch Status fields (§6) and ledger tables (§8) in place — the tables are the state.
+3. Append a dated entry to §9 (what changed, what was learned, what was re-planned and why).
+   No entry, no edit — an undated change is contamination of the record.
+4. Re-rank the remaining batches if the new evidence warrants it; record the re-ranking in §9.
+5. Supersede by marking ⛔ with a date and one-line reason. Never delete history.
+
+**Contamination rules** (all mandatory; violations invalidate the batch):
+- **C-1 Pinned baseline.** Every comparison names its two git SHAs. The effort's base is
+  `6d84b1e` (= `main` @ `731ac50` + the evidence workstream). If any of the three sibling
+  branches (`feature/threeway-pt2`, `feature/low-winds-regime`, `hotfix/other-magic-numbers`)
+  merges into `main` mid-effort, STOP, re-baseline Batch 0 on the new `main`, and log it.
+- **C-2 No cross-branch code.** The three sibling branches are read-only evidence. Do not port
+  their harness code or (worse) their `trinity/` edits piecemeal; lift ideas, reimplement here.
+- **C-3 Separate processes.** One run per process, always (trinity leaks module-level global
+  state in-process — CLAUDE.md rule 5). `run.py --workers N` satisfies this; calling the solver
+  twice in one Python process does not.
+- **C-4 Single param source.** Arms differ by code ref or by exactly one toggle line, never by
+  hand-copied param files. A harness that materializes a variant param writes the diff into the
+  artifact header.
+- **C-5 Matched `t`.** Runs truncate at different `t`; every trajectory comparison interpolates
+  to matched simulation time and reports the compared window (the screen tool does this — §5).
+- **C-6 Provenance stamps.** Every committed CSV starts with `# generated <UTC> | <command> |
+  code <SHA>[+dirty]`. No stamp, no trust.
+- **C-7 Never reuse outputs across code changes.** Output dirs embed arm + SHA in the name;
+  a `dictionary.jsonl` produced by different code than the header claims is poison.
+
+## 1. Problem statement (condensed from README.md — the evidence doc)
+
+Wherever the Strömgren-density cap binds, `P_HII` is an exact algebraic relabelling of the
+confining pressure: `shell_n0` is defined by pressure balance against `Pb`
+(`shell_structure.py:124-126`), `n_IF_Str` is capped at it (`:251`), and `P_HII` converts back
+with the same three factors (`run_{energy,transition,momentum}_phase.py:224/564/634`). Five
+sightings across three branches, 4–10 digits, ULP-level residual reproduced by
+`harness/roundtrip_ulp.py`. **There are two distinct defects, and they are orthogonal:**
+
+- **D-identity (the cap):** while the cap binds, `P_HII` carries no information about `Qi`,
+  `f_esc`, or the ionized volume. The "photoionized gas" channel is fictional in that regime.
+- **D-sum (the ODE forms):** transition drives on `max(Pb, P_HII + P_ram)` — which, with
+  `P_HII ≡ Pb`, reduces to `Pb + P_ram` on every step (the `max` never binds) — and momentum
+  drives on the bare `P_HII + P_ram = 2·P_ram`. Both are ODE right-hand sides; fates are
+  downstream.
+
+Phase exposure: 1a/1b safe (`max(Pb, P_HII)` absorbs the identity exactly); 1c and 2 affected.
+Cap-slack windows exist and matter: early 1a (`Pb/P_HII = 0.33` at t=0 in the weak-winds
+baseline — the start is genuinely HII-dominated) and late times (1.0069 at 15 Myr).
+
+## 2. Maintainer input on record
+
+**2026-08-12 (this session):** the cap's origin is numerical, not physical — *"Originally i had
+the PHII cap because at small volume it'd give very high n_str_if and that would give very high
+PHII, and i dont know if that breaks things."* At small ionized volume ΔV → 0 the Strömgren
+balance `n_IF_Str = sqrt(3(1−f_esc)Qi / (4π χ_e αB ΔV))` (`shell_structure.py:246`) diverges;
+the cap was the guard.
+
+This materially updates the evidence doc's §7.2: the cap is **not** a deliberate physics claim
+that HII pressure can never exceed the confining pressure — it is a blow-up guard whose side
+effect is the identity. Consequence for strategy: replacing the guard with one that doesn't
+manufacture the identity is on the table (§3, C2b), and "the sum is intended because the cap is
+intended" is not a valid inference. The intent question for the *sum* (evidence doc §7.1) is
+still open and is decision **D1** below.
+
+Still needed from the maintainer: D1–D4 in §7.
+
+## 3. Fix candidates
+
+Legend: footprint = phases whose dynamics can change. All candidates keep `include_PHII`
+working as a global off-switch.
+
+| id | change | footprint | risk | cost |
+|---|---|---|---|---|
+| **C0** | none — reference arm | — | — | free |
+| **C1** | *transmit, don't add*: momentum `P_drive = max(P_HII, P_ram)` (`run_momentum_phase.py:265,445`); transition `P_drive = max(Pb, P_HII, P_ram)` (`run_transition_phase.py:331`, `energy_phase_ODEs.py:253,385`) — 5 expression sites | 1c, 2 only; **1a/1b must be bit-identical** (hard gate) | low — smallest diff that kills D-sum | tiny |
+| **C2a** | *bare cap removal* (`shell_structure.py:251` deleted) | ALL phases (1a/1b via `max(Pb, P_HII_raw)`, which un-absorbs whenever raw > `shell_n0`… i.e. exactly where the cap used to bind) | **high** — the ΔV→0 divergence the cap was built for; interacts with the per-segment freeze ratchet (phase1a-init Extra finding #1) which is *catastrophic* at compact scale | tiny diff, expensive validation |
+| **C2b** | *replace the guard*: keep a blow-up guard that is not the confining pressure — candidates: floor ΔV at a resolved skin thickness; cap at `shell_nMax` instead of `shell_n0`; smooth (harmonic) min | ALL phases, but only where the old cap bound AND the new guard differs | medium | small |
+| **C3** | *advanced physical method* (needs D2 + a design pass): **(a) interface-pressure transmission** — drive the neutral shell with the pressure at the ionized/neutral interface taken from the already-integrated ionized-layer structure (`shell_structure.py` integrates `nShell_arr_ion(r)` with radiation), so no density→pressure back-conversion exists and no cap is needed; **(b) two-zone regime switch** — classical D-type (Spitzer-like) expansion when `P_HII_raw > P_ram`, wind-driven otherwise (crude limit of this = C1⊕C2); **(c) excess-only partition** — `P_drive = P_ram + max(P_HII_raw − P_confining, 0)`: the skin transmits the confining pressure and only its *excess* adds | ALL | design risk; must reproduce limiting cases (wind-only → Weaver-like, photo-only → Spitzer-like) | largest |
+| **C4** | diagnostics-only honesty fix: report `F_HII` as the independent component, not the relabelled one | none (output only) | none | tiny; fold into whichever lands |
+
+**Composability — read this before picking arms.** C1 and C2 attack different defects:
+C1 fixes D-sum but leaves `P_HII` fictional while capped; C2 fixes D-identity but leaves the
+double-count arithmetic in place (merely no longer *exactly* 2×). They compose: **C1⊕C2 =
+`max(P_HII_raw, P_ram)`**, which is also C3b's crude limit. C3c *requires* C2 (with the cap,
+excess ≡ 0 identically). So the batches measure C1 and C2 separately first — their composition
+is then predictable rather than a third experiment.
+
+## 4. Config / regime matrix
+
+All committed, all on this branch. Two tiers: **core-6** gates every batch; **full-12** gates
+landing (Batch 6). Wall times unknown until Batch 0 measures them (`wall_s` column in the
+ledger); prior anchors: screen 5-config two-arm ≈ 1 h at `stop_t 0.02` (screen/README), the
+three bench momentum A/B ≈ 30 min (momentum-pdrive), weak-winds control ≈ 35 min at
+`stop_t 1.5`.
+
+| tier | id | param | regime it exercises |
+|---|---|---|---|
+| core | SC | `param/simple_cluster.param` | energy-driven baseline (CLAUDE.md's named edge) |
+| core | F1LO | `docs/dev/performance/f1edge_lowdens_himass_hisfe.param` | low density × high mass × high sfe — feedback-strong edge |
+| core | F1HI | `docs/dev/performance/f1edge_hidens_himass_losfe.param` | high density × high mass × low sfe — stiffest committed edge |
+| core | B3M | `docs/dev/transition/pdv-trigger/runs/params/bench5/bench3_m1e5_r5__none_diag.param` | momentum-heavy; 104 momentum rows, 88× `P_ram` range — the sharpest identity arm |
+| core | PRB | `docs/dev/phase1a-init/harness/params/probe.param` | compact sub-GMC — small-ΔV blow-up regime + freeze-ratchet stress; **C2's likely failure point** |
+| core | WW | SC + `FB_thermCoeffWind 0.1` (harness-materialized per C-4) | weak winds — cap-slack candidate; where an independent `P_HII` floor matters most (weak-winds H2) |
+| full | B1M | `…/bench5/bench1_m5e4_r20__none_diag.param` | momentum, gentler (1.9× range) |
+| full | B2M | `…/bench5/bench2_m1e5_r10__none_diag.param` | momentum, mid (22× range) |
+| full | GMC | `docs/dev/phase1a-init/harness/params/gmc_control.param` | GMC-scale control for PRB |
+| full | BE | `docs/dev/transition/cleanroom/configs/be_sphere.param` | Bonnor–Ebert profile (slope axis) |
+| full | PL2 | `docs/dev/transition/cleanroom/configs/pl2_steep.param` | steep power-law profile (slope axis) |
+| full | LDLS | `docs/dev/transition/cleanroom/configs/large_diffuse_lowsfe.param` | low density × low sfe — the one cleanroom config whose `Eb` actually peaks |
+| full | SDHS | `docs/dev/transition/cleanroom/configs/small_dense_highsfe.param` | high density × high sfe, compact |
+
+Axes covered: density 4+ decades (F1LO↔F1HI, LDLS↔SDHS), mass (5e4→himass), sfe (losfe↔hisfe),
+profile slope (PL0/BE/PL2), phase chronology (energy-only SC ↔ momentum-heavy benches ↔ compact
+PRB), wind strength (WW). This is the "high/low dens, high/low mass, sfe, slopes, pdv/compact"
+spread, drawn from the params the prior workstreams already trust.
+
+## 5. Measurement infrastructure
+
+- **Comparator:** `docs/dev/screen/screen.py` — two git refs × N configs, separate worktrees +
+  processes, matched-`t` ledger, fate check, exit-1 gating. Built for exactly this ("run it
+  before landing a scheme change"); it has never been run in anger, so Batch 0 doubles as its
+  first real outing. Extend its `CONFIGS` map with §4 (a screen-tool change, kept out of
+  `trinity/`, gated by `test/test_scheme_screen.py`).
+- **Identity harvester:** new `harness/harvest_identity.py` — reads a run dir's
+  `dictionary.jsonl`, emits per-phase identity metrics (relΔ `P_HII` vs confining pressure,
+  cap-binding fraction, raw/cap blow-up ratio once Batch 1 lands) with C-6 stamps. Reimplements
+  the useful third of momentum-pdrive's `check_phii_pram.py` under C-2.
+- **Bars:** trajectory attention bar `|ΔR2/R2| > 5%` at matched `t` (the G2 bar phase1a-init
+  adopted 2026-08-05); identity bar relΔ ≤ 5e-16 (measured ceiling 3.6e-16 + margin); bit-identity
+  bar = byte equality of `dictionary.jsonl` (Batch 1: after stripping the new key from each row).
+  Fate changes are **enumerated, never silently passed** — under C1 a fate flip may be the *fix
+  working*; the gate is "explained and signed off (D3)", not "unchanged".
+
+## 6. The batch ladder
+
+Statuses: ⬜ not started · 🔷 in flight · ✅ pass · ❌ fail · ⛔ superseded. Every batch: bars
+pre-registered here *before* it runs (edit bars only via a dated §9 entry, never retroactively);
+artifacts committed same session; §8 ledger updated; full `pytest` + ruff F-rules before any
+commit that touches code.
+
+### Batch 0 — baseline capture + first identity grid — Status: ⬜
+No code change. Run the **full-12** at base SHA (separate processes); harvest trajectories +
+force budgets + identity metrics; record wall times.
+- Commands: `python run.py <param>` per config (or a sweep param + `--workers 4`), then
+  `python docs/dev/phii-identity/harness/harvest_identity.py outputs/<run>...`
+- Artifacts: `data/b0_trajectories.csv` (matched-grid, one block per config),
+  `data/b0_identity_grid.csv` (per config × phase), wall-time column.
+- **PASS bars:** ≥ core-6 exit cleanly (full-12 failures documented, not fatal); identity bar
+  holds wherever the cap binds — this *extends the evidence to the full grid* and re-derives the
+  three bench numbers as a consistency check (they must reproduce to the printed digits).
+- Kill/branch rule: a config that won't run at base is dropped from the matrix by dated log
+  entry, not silently.
+
+### Batch 1 — shadow uncapped diagnostic (the C2 de-risk) — Status: ⬜
+Smallest possible `trinity/` change, diagnostics-only: `shell_structure.py` also returns the
+**pre-cap** value as `n_IF_Str_raw` (pattern: `n_IF_ODE` at `:225` — a raw value already kept for
+diagnostics), new `ParamSpec` (`runtime_shell`, like `registry.py:513-515`), so it lands in every
+snapshot.
+- **PASS bars:** (i) dynamics bit-identical on core-6 — every pre-existing key of every matched
+  row byte-equal; (ii) full `pytest` green; (iii) product delivered: the **cap-binding map** —
+  per config × phase: fraction of snapshots with raw > `shell_n0`, and the blow-up distribution
+  `raw/shell_n0` (max, p99).
+- Artifacts: `data/b1_capmap.csv`, updated `b0_identity_grid` columns.
+- **Pre-registered C2 kill bar:** if p99(`raw/shell_n0`) > 1e2 in any core config's phase 1a/1b,
+  **C2a is dead on arrival** (the ODE would see a 100× pressure spike exactly where the freeze
+  ratchet amplifies it) — skip to C2b/C3 without running Batch 4a. This answers "i dont know if
+  that breaks things" *predictively*, for the cost of one diagnostics run.
+- Also closes evidence-doc §7 open question 4 (where does the cap bind?) with data.
+
+### Batch 2 — zero-code bracket: `include_PHII` off vs on — Status: ⬜
+No `trinity/` change; the knob exists (`registry.py:365`). Screen the matrix `False` vs `True`.
+- Why it brackets: `P_HII = 0` ⇒ momentum drives on `P_ram`, transition on `max(Pb, P_ram)` —
+  **identical to C1 wherever the cap binds**. Differences from C1 localize to cap-slack windows
+  (early 1a, where `P_HII = 3·Pb` genuinely drives, and late times). So B2 ≈ a free preview of
+  C1, plus the maximal envelope any P_HII fix can reach.
+- **Confound, documented up front:** the off arm also removes the *legitimate* early-1a HII
+  driving; interpret early-time ΔR2 as envelope, not as C1 prediction. B1's cap map says exactly
+  where the confound lives.
+- **PASS bars:** screen completes on core-6; ledger records ΔR2(t), Δfate, Δt_end per config;
+  no bar on the *size* of Δ (this batch measures, it does not judge).
+- Artifacts: `data/b2_bracket_ledger.csv`.
+
+### Batch 3 — C1: transmit-don't-add — Status: ⬜
+Implement the 5-site diff (§3). Gates, all mandatory:
+- **G3.1 (hard):** phases 1a/1b **bit-identical** full-run on core-6 (the diff's transition
+  branch lives in the shared `energy_phase_ODEs.py` — this catches a slipped guard).
+- **G3.2:** screen vs C0 on core-6 at matched `t`; every |ΔR2| > 5% and every fate change
+  enumerated with the phase it originates in (must be 1c/2 only).
+- **G3.3 (mechanism cross-check):** wherever B1 says the cap binds, C1's transition/momentum
+  trajectories must match B2's off-arm to tight tolerance (they are algebraically identical
+  there). Divergence = implementation bug, not physics.
+- **G3.4:** full `pytest`; goldens re-baselined only under D4 sign-off, with the before/after
+  values recorded in §8.
+- Artifacts: `data/b3_c1_ledger.csv`; the diff itself.
+
+### Batch 4 — C2: cap experiments — Status: ⬜ (gated by B1's kill bar)
+- **4a (bare removal, C2a):** only if the kill bar did not trip. Screen vs C0 across core-6 +
+  PRB compulsory. Watch: integrator stalls, the bubble-structure monotonic guard, overflow;
+  `P_HII` decoupling from `Pb` (the identity must *break* — that's the point); freeze-ratchet
+  amplification at PRB.
+- **4b (guard replacement, C2b):** pick ONE replacement guard by B1's data (the one that binds
+  only in the blow-up regime and nowhere else), screen it identically.
+- **PASS bars:** run survival on all arms; identity broken (relΔ `P_HII` vs `Pb` becomes O(1)
+  where the old cap bound); ΔR2/fate ledger complete; PRB terminates.
+- Artifacts: `data/b4_cap_ledger.csv`.
+
+### Batch 5 — C3: the advanced method — Status: ⬜ (only if B3/B4 fail their gates, or D2 asks for it)
+Not designed here beyond §3's three candidates — a design pass goes THROUGH this doc (new §,
+dated) and needs D2 first. Pre-registered acceptance floor for any C3 design: reproduces the
+wind-only limit (matches C0 when `Qi → 0`) and the photo-only limit (Spitzer-like `R ∝ t^{4/7}`
+slope when `Lmech → 0`, checked on a WW-descendant config); then the full ladder as Batch 3.
+
+### Batch 6 — land — Status: ⬜
+Chosen candidate (D1 decides between C1, C1⊕C2b, or a C3) on the **full-12**; full ladder
+re-verify; CHANGELOG entry; reconcile the evidence README (§7 answers), DOC_STATUS, and — when
+the sibling branches merge — fold-back notes for momentum-pdrive (its §2 "inferred" caveat, its
+CSV column rename) and weak-winds (quantitative collapse times now clean). Goldens re-baselined
+under D4 with a table of before/after.
+
+## 7. Decisions needed from the maintainer
+
+| id | question | blocks | state |
+|---|---|---|---|
+| D1 | Is the `P_HII + P_ram` **sum** intended (separate reservoir) or is the skin a transmitter (→ `max`)? Evidence doc §5 shows the transition `max` never binds, so "it's already guarded" is not a defense. | Batch 3 landing (running/measuring it is not blocked) | **open** |
+| D2 | Cap philosophy: is a blow-up guard supposed to exist at all, and may it be something other than `shell_n0`? §2 records the cap as pragmatic, which opens C2b — but that's my reading of one sentence; confirm. | Batch 4b design; Batch 5 | **open** |
+| D3 | Fate flips under a candidate fix: acceptable-if-explained, or a re-tune trigger? | Batch 3/4 verdicts | **open** |
+| D4 | Authority to re-baseline goldens (`test_phase_boundary.py`, `test_betadelta_hybr_stress.py`, `test_scheme_screen.py` fixtures) if the landed fix moves them. | Batch 6 | **open** |
+
+## 8. Ledger (results land here — the one source of truth)
+
+### 8.1 Batch verdicts
+| batch | status | date | verdict (one line) | artifacts |
+|---|---|---|---|---|
+| 0 | ⬜ | — | — | — |
+| 1 | ⬜ | — | — | — |
+| 2 | ⬜ | — | — | — |
+| 3 | ⬜ | — | — | — |
+| 4 | ⬜ | — | — | — |
+| 5 | ⬜ | — | — | — |
+| 6 | ⬜ | — | — | — |
+
+### 8.2 Config wall-times (filled by Batch 0)
+| config | stop condition (as committed) | wall_s @ base | notes |
+|---|---|---|---|
+| _pending Batch 0_ | | | |
+
+### 8.3 Artifact index
+| file | producer | batch | stamp SHA |
+|---|---|---|---|
+| `data/phii_identity_evidence.csv` | (evidence phase) | pre | `6d84b1e` |
+| `data/roundtrip_ulp.csv` | `harness/roundtrip_ulp.py` | pre | `6d84b1e` |
+
+## 9. Dated log (append-only; newest last)
+
+- **2026-08-12** — Plan created on `bugfix/phii-pt1` (base `6d84b1e` = `main` @ `731ac50` +
+  evidence workstream). Recorded maintainer input on the cap's numerical origin (§2) from the
+  live session; this reframed C2 from "remove a physics claim" to "replace a guard", added C2b,
+  and put the B1 shadow diagnostic before any cap edit. Candidate set C0–C4 pre-registered with
+  gates; matrix drawn entirely from committed params (screen defaults + bench5 + cleanroom +
+  f1edge + phase1a-init probes + a WW rung). Nothing run yet.
