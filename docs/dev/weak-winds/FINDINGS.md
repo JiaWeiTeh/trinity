@@ -214,12 +214,17 @@ the direction opposite to the one expected** — worth recording because the int
 `harness/batches/probe_dense_sfe.param`, `mCloud` = 1e7, c = 1, 3/3 succeeded.
 Row 1 is the batch-1 arm, for reference:
 
-| `sfe` | fate | t_end [Myr] | R2_max [pc] |
-|---|---|---|---|
-| 0.01 (batch-1 arm) | collapsed, small radius | 0.047 | 0.57 |
-| 0.05 | collapsed, small radius | 0.023 | 0.44 |
-| 0.10 | collapsed, small radius | 0.018 | 0.37 |
-| 0.30 | **collapse-velocity runaway** | 0.009 | 0.29 |
+Artifact: `data/probe_dense_sfe.csv`.
+
+| `sfe` | fate | t_end [Myr] | R2_max [pc] | v2 at end [km/s] |
+|---|---|---|---|---|
+| 0.01 (batch-1 arm) | collapsed, small radius | 0.047 | 0.57 | — |
+| 0.05 | collapsed, small radius | 0.023 | 0.44 | −14.9 |
+| 0.10 | collapsed, small radius | 0.018 | 0.37 | −160.0 |
+| 0.30 | **collapse-velocity runaway** | 0.009 | 0.29 | −500.0 |
+
+Every row has `R2_max > R2_end` (the shell turned over) and `v2 < 0` (it is moving
+inward), and the infall speed steepens with `sfe` — the collapse is not marginal.
 
 Monotonic over four points: **more star formation ⇒ earlier collapse at a smaller
 radius.** `mCluster = sfe·mCloud` enters the shell equation of motion through gravity
@@ -235,12 +240,20 @@ The container was recycled mid-probe, so these are **last-sample-before-kill**, 
 final fates — but all three had cleared the "expands rather than collapsing" bar,
 which is what the probe was asked to settle:
 
-| `nCore` | last t [Myr] | R2 there [pc] | phase | still expanding? |
-|---|---|---|---|---|
-| 1e3 | 0.103 | 6.95 | implicit | yes |
-| 1e4 | 0.095 | 3.98 | implicit | yes |
-| **1e5** | 0.044 | **1.47** | implicit | yes |
-| 1e6 (batch-1 arm) | 0.047 | 0.57 → collapsed | 1c | **no** |
+Artifact: `data/probe_dense_ncore.csv`.
+
+| `nCore` | last t [Myr] | R2 there [pc] | v2 [km/s] | turned over? | phase |
+|---|---|---|---|---|---|
+| 1e3 | 0.103 | 6.95 | **+39.0** | no (`R2_max = R2_last`) | implicit |
+| 1e4 | 0.095 | 3.98 | **+23.8** | no (`R2_max = R2_last`) | implicit |
+| **1e5** | 0.044 | **1.47** | **+17.8** | no (`R2_max = R2_last`) | implicit |
+| 1e6 (batch-1 arm) | 0.047 | 0.57 → collapsed | negative | **yes** | 1c |
+
+`R2_max = R2_last` exactly, for all three — the radius is strictly monotonic to the
+last sample, so none of them had begun to turn over, and all three have `v2 > 0`.
+That is a stronger statement than "bigger radius": the sign of the velocity and the
+absence of a turning point separate these cleanly from the `sfe` probe above, where
+every run had already turned over and was falling inward.
 
 The last two rows are the decisive comparison: at matched t ≈ 0.045 Myr the 1e5 cloud
 is at 1.47 pc and still growing, where the 1e6 cloud had already turned around at its
@@ -252,6 +265,16 @@ while actually forming a bubble, so weakening `c` has something to act on.
 **Caveat to close before relying on it:** 1e5 was only observed to t = 0.044, the
 shortest of the three. Re-run it alone to `stop_t` and confirm it does not turn around
 later before cutting batches 2–5 against it.
+
+### Probe 3 — confirmation run, still open
+
+`harness/batches/probe_dense_confirm.param` re-runs the 1e5 candidate alone to
+`stop_t` = 1.5 to close that caveat. It has been started three times and killed by
+container recycling each time; furthest reach so far is **t = 0.0118 Myr, R2 = 0.716 pc,
+v2 = +33.7 km/s, no turnover** (`data/probe_dense_confirm.csv`). Consistent with probe 2
+and with the arm being viable, but it does **not** yet close the caveat — the run has
+not reached the t ≈ 0.047 Myr mark where the old 1e6 arm collapsed, let alone `stop_t`.
+Treat `nCore` = 1e5 as the recommended arm *pending confirmation*, not as settled.
 
 ## Numerical findings (loader-level, pre-existing)
 
