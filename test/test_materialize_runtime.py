@@ -3,7 +3,8 @@
 Pins ``materialize_runtime`` against the behavior the pre-Phase-9
 inline Step-10 block produced for the runtime/derived-init adds (105
 in the original audit; 106 after adding the ``v_neg_frac_thick``
-Problem-2 diagnostic).  The reconciliation tests in ``test_registry.py``
+Problem-2 diagnostic; 106 again after the ``n_IF_Str_raw`` cap
+diagnostic replaced the retired ``EarlyPhaseApproximation`` flag).  The reconciliation tests in ``test_registry.py``
 (``test_registry_covers_all_param_keys``, ``test_runtime_units_match_live``,
 ``test_exclude_from_snapshot_matches_live``) already prove the
 post-``read_param`` param sets are byte-identical on both densBE
@@ -90,31 +91,34 @@ def _step10_entry_state(profile: str) -> dict:
 
 
 @pytest.mark.parametrize("profile", ["densPL", "densBE"])
-def test_live_flow_adds_exactly_105(profile: str) -> None:
+def test_live_flow_adds_exactly_106(profile: str) -> None:
     """At Step 10 entry on a real read_param run (densPL or densBE),
-    materialize_runtime adds exactly 105 items.  Both branches converge
+    materialize_runtime adds exactly 106 items.  Both branches converge
     because the 9 densBE_* runtime are owned by Phase 8 either way --
     materialize_runtime sees them and skips.
 
-    105 = the original 105-param fidelity audit, + 1 for the snapshot-included
+    106 = the original 105-param fidelity audit, + 1 for the snapshot-included
     ``v_neg_frac_thick`` Problem-2 diagnostic (runtime_bubble), - 1 for the
     retired ``EarlyPhaseApproximation`` flag (runtime_control), deleted with
     the phase-1a ``vd = -1e8`` override it gated
-    (docs/dev/phase1a-init/FINDINGS.md)."""
+    (docs/dev/phase1a-init/FINDINGS.md), + 1 for the snapshot-included
+    ``n_IF_Str_raw`` Stroemgren-cap diagnostic (runtime_shell,
+    docs/dev/phii-identity/)."""
     params = _step10_entry_state(profile)
     pre = set(params)
     materialize_runtime(params)
     added = set(params) - pre
-    assert len(added) == 105, f"{profile}: expected 105 adds, got {len(added)}"
+    assert len(added) == 106, f"{profile}: expected 106 adds, got {len(added)}"
 
 
-def test_live_flow_add_excl_split_is_9_true_96_false() -> None:
-    """Of the 105 live-flow adds, 9 carry exclude_from_snapshot=True
-    (cooling cubes, sps_data/sps_f, the rcloud counter) and 96 carry
+def test_live_flow_add_excl_split_is_9_true_97_false() -> None:
+    """Of the 106 live-flow adds, 9 carry exclude_from_snapshot=True
+    (cooling cubes, sps_data/sps_f, the rcloud counter) and 97 carry
     False (time-varying simulation state).  Locks in the exact split
-    from the fidelity audit (96 = the audited 96, + the snapshot-included
+    from the fidelity audit (97 = the audited 96, + the snapshot-included
     ``v_neg_frac_thick`` Problem-2 diagnostic, - the retired
-    ``EarlyPhaseApproximation`` flag; both were snapshot-included, so the
+    ``EarlyPhaseApproximation`` flag, + the snapshot-included
+    ``n_IF_Str_raw`` cap diagnostic; all three were snapshot-included, so the
     exclude_from_snapshot=True side is untouched)."""
     params = _step10_entry_state("densPL")
     pre = set(params)
@@ -123,7 +127,7 @@ def test_live_flow_add_excl_split_is_9_true_96_false() -> None:
     n_true = sum(1 for k in added if params[k].exclude_from_snapshot)
     n_false = sum(1 for k in added if not params[k].exclude_from_snapshot)
     assert n_true == 9
-    assert n_false == 96
+    assert n_false == 97
 
 
 def test_added_items_metadata_comes_from_spec() -> None:
