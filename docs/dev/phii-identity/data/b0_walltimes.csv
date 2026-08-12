@@ -1,0 +1,6 @@
+# generated 2026-08-12T14:19:15Z | builder run_batch.py | code eada0e4+dirty
+# arm=b0 tier=core stop_t_override=1.5
+# run root: outputs/phii/b0__6b55657_dirty
+config,status,wall_s,n_snapshots
+F1LO,ok,801.8,133
+F1HI,ok,831.7,144
