@@ -1,0 +1,27 @@
+# PROBE 2 — the dense arm's blocker is density, not feedback budget.
+#
+# Probe 1 (probe_dense_sfe.param) raised sfe at nCore=1e6 and the cloud
+# collapsed EARLIER and SMALLER at every step (sfe 0.01/0.05/0.10/0.30 ->
+# collapse at t = 0.047/0.023/0.018/0.009 Myr, R2_max 0.57/0.44/0.37/0.29 pc).
+# mCluster = sfe*mCloud enters gravity as F_grav ∝ (mCluster + mShell/2), so at
+# this density more stars deepen the potential faster than they add push, and
+# less gas also shrinks rCloud. Raising sfe cannot rescue this arm.
+#
+# So hold sfe at the weak-feedback value that defines the arm and relax the
+# density instead: find the highest nCore that still forms an expanding bubble
+# at c = 1, keeping the arm a genuine dense/weak-feedback edge.
+#
+#   python run.py docs/dev/weak-winds/harness/batches/probe_dense_ncore.param --workers 3 --yes
+#   python docs/dev/weak-winds/harness/check_batch.py outputs/weak_winds_probe_ncore
+#
+# PASS for a candidate = expands instead of collapsing in the first ~0.1 Myr.
+
+mCloud    1e7
+sfe       0.01
+
+nCore    [1e3, 1e4, 1e5]
+
+FB_thermCoeffWind    1.0
+
+stop_t    1.5
+path2output    outputs/weak_winds_probe_ncore
