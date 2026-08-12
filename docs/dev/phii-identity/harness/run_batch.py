@@ -152,13 +152,27 @@ def main():
 
     DATA.mkdir(parents=True, exist_ok=True)
     out = DATA / f"{args.arm}_walltimes.csv"
+    # Merge, don't clobber: the matrix is normally driven as several concurrent
+    # streams (one per core), and each would otherwise overwrite the others' rows.
+    merged = {}
+    if out.exists():
+        for line in out.read_text().splitlines():
+            if line.startswith("#") or line.startswith("config,"):
+                continue
+            parts = line.split(",")
+            if len(parts) == 4:
+                merged[parts[0]] = tuple(parts)
+    for row in results:
+        if row[1] != "skipped" or row[0] not in merged:
+            merged[row[0]] = row
     with out.open("w") as fh:
         fh.write(stamp(__file__) + "\n")
-        fh.write(f"# arm={args.arm} tier={args.tier} stop_t_override={args.stop_t or 'none'}\n")
+        fh.write(f"# arm={args.arm} stop_t_override={args.stop_t or 'none'} (last writer)\n")
         fh.write(f"# run root: {root.relative_to(REPO)}\n")
+        fh.write("# Rows merged across concurrent streams; wall_s reflects a shared 4-core box.\n")
         fh.write("config,status,wall_s,n_snapshots\n")
-        for row in results:
-            fh.write(",".join(row) + "\n")
+        for cfg in sorted(merged):
+            fh.write(",".join(merged[cfg]) + "\n")
     print(f"\nwrote {out}")
     return 0 if all(r[1] in ("ok", "skipped") for r in results) else 1
 
