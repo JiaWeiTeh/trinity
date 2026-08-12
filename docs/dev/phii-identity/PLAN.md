@@ -302,7 +302,7 @@ under D4 with a table of before/after.
 ### 8.1 Batch verdicts
 | batch | status | date | verdict (one line) | artifacts |
 |---|---|---|---|---|
-| 0 | ✅ | 2026-08-12 | **PASS** on 5/6 core (WW timed out — §9). Identity holds on 100% of implicit/transition/momentum rows and ≥96.97% of energy rows, relΔ ≤2.9e-16, across 4 decades of nCore. B3M independently reproduces momentum-pdrive (`P_HII` vs `P_ram` = 2.39e-16 over 34 rows). Drive anatomy: implicit exactly 1, transition ≤1.998 (median 1.82), momentum exactly 2.000, energy ≤3.21 | `data/b0_identity_grid.csv`, `data/b0_trajectories.csv`, `data/b0_walltimes.csv` |
+| 0 | ✅ | 2026-08-12 | **PASS** on 6/6 core. Identity holds on 100% of implicit/transition/momentum rows and ≥96.97% of energy rows, relΔ ≤2.9e-16, across 4 decades of nCore. B3M independently reproduces momentum-pdrive (`P_HII` vs `P_ram` = 2.39e-16 over 34 rows). Drive anatomy: implicit exactly 1, transition ≤1.998 (median 1.82), momentum exactly 2.000, energy ≤3.31. **`frac_nIFStr_eq_n0` = 1.0000 in every phase of every config** — the cap is bound everywhere, needing no diagnostic to show it | `data/b0_identity_grid.csv`, `data/b0_trajectories.csv`, `data/b0_walltimes.csv` |
 | 1 | ✅ | 2026-08-12 | **PASS.** G1(i): B3M 231 + PRB 184 rows exactly equal on every pre-existing key (repr compare), matching row counts ⇒ diagnostic inert. Cap binds **100% of rows in every phase**; blow-up p99 1.06–3.33, max 3.33. **Kill bar NOT tripped ⇒ C2a survives, Batch 4a authorised.** Corrects B0: sub-100% energy rows are `Pb` staleness at the 1a→1b handoff, not cap-slack | `data/b1_bitidentity.csv`, `data/b1_capmap.csv` |
 | 2 | ⬜ | — | — | — |
 | 3 | ⬜ | — | — | — |
@@ -320,7 +320,7 @@ Shared 4-core box, 3–4 concurrent runs, so these are contention-inflated upper
 | F1LO | 1.5 (override) | 802 | 133 | |
 | F1HI | 1.5 (override) | 832 | 144 | reaches transition (4 rows); fate `shell_collapsed` |
 | PRB | 0.1 (as committed) | 713 | 184 | compact probe; 781 s standalone, uncontended |
-| WW | 1.5 (override) | >5400 | — | **timed out** at t≈0.02 of 1.5 Myr — §9 |
+| WW | 1.5 (override) | >5400 (killed) | 178 | timeout, but **reached its natural end**: collapse at t = 0.2816 Myr, v2 = −10 km/s, all 4 phases |
 
 ### 8.3 Artifact index
 | file | producer | batch | stamp SHA |
@@ -406,3 +406,31 @@ b0 run and to `bb302e0` for every b1 run (§9 records how that was protected).
   rather than more wall time. (v) The `n_IF_Str_raw` ParamSpec shifted
   `test_materialize_runtime.py`'s pinned live-flow inventory 105→106 and its snapshot split 9/96→
   9/97; counts, test names and docstring provenance updated. Full suite: **1013 passed**.
+
+- **2026-08-12 (Batch 0 completed to 6/6).** WW was re-read rather than re-run: its 5400 s timeout
+  killed the *process*, but the run had already reached its physical end — **collapse at
+  t = 0.2816 Myr, R2 = 0.897 pc, v2 = −10.05 km/s**, covering all four phases (78/53/20/27 rows).
+  That independently reproduces weak-winds' headline fate flip (their smoke pair: SHELL_COLLAPSED
+  at t = 0.282, R2 = 0.90, v2 = −9.8) on a different harness and a different param path, which is
+  worth more than the missing 1.2 Myr of post-collapse wall time. WW is now in the Batch 0 grid.
+
+  It also settles the last open question about scope. A new harvester column, `frac_nIFStr_eq_n0`,
+  detects cap-binding **without** the Batch-1 diagnostic — the stored `n_IF_Str` came from the
+  `min()` iff it sits exactly at `shell_n0` — so it can be read on baseline runs and, crucially,
+  separates a genuine cap-slack row from a merely stale-`Pb` row. Measured: **1.0000 in every phase
+  of all six configs, including WW.** WW's momentum phase has one row at `P_HII/Pb = 0.787`, which
+  looked like the cap finally going slack in the weak-wind collapse — the very regime weak-winds
+  predicted it would. It is not: `n_IF_Str/shell_n0 = 1.000000` there, so the cap is bound and the
+  offset is `Pb` staleness during fast collapse (`Pb := pRam` moves quickly when v2 = −10).
+
+  **So the identity is total across the tested matrix**: there is no config, phase, or row where
+  `P_HII` carries independent physics. Every apparent exception — 1a→1b handoff, collapse — is
+  `params['Pb']` moving between the `shell_structure` call that set `shell_n0` and the snapshot
+  write. Two consequences: (i) a fix cannot be scoped to "the regime where the cap binds", because
+  that is everywhere; (ii) weak-winds' caveat that a weaker wind might leave the cap slack is
+  **not** borne out at c = 0.1 — if that transition exists it is further out, and Batch 4 should
+  look for it with the diagnostic rather than assume it.
+
+  *Not done:* WW has no `b1` (diagnostic) arm, so it has no blow-up number. It is the most likely
+  place for a large `raw/shell_n0` — weak winds, small ΔV, collapse — so **run `b1` WW before
+  Batch 4a** and re-check the kill bar against it.

@@ -12,9 +12,14 @@ wind ram pressure: `run_momentum_phase.py:585` sets `params['Pb'] = pRam(...)`.
 So one column (`relmax_PHII_vs_Pb`) covers every phase, and `P_ram` is carried
 separately for the momentum cross-check.
 
-Cap-binding is reported two ways, because the two answer different questions:
+Cap-binding is reported three ways, because they answer different questions:
   * `frac_PHII_eq_Pb`  — how often the identity actually holds (<= IDENTITY_BAR).
     Available at base SHA. This is Batch 0's product.
+  * `frac_nIFStr_eq_n0` — how often the cap was BOUND, inferred without any
+    diagnostic: the stored n_IF_Str came from the min() iff it sits exactly at
+    shell_n0. Works on baseline runs, and is what separates a genuine cap-slack
+    row from a row where P_HII != Pb only because params['Pb'] moved between the
+    shell_structure call and the snapshot write (handoffs, fast collapse).
   * `frac_cap_binding` / `blowup_*` — how often the raw Strömgren density exceeded
     the cap, and by how much. Needs `n_IF_Str_raw`, which only exists once the
     Batch-1 diagnostic lands; columns read `NA` before that. This is Batch 1's
@@ -54,6 +59,7 @@ GRID_COLS = [
     "relmax_PHII_vs_Pb",
     "frac_PHII_eq_Pb",
     "relmax_PHII_vs_Pram",
+    "frac_nIFStr_eq_n0",
     "frac_cap_binding",
     "blowup_max",
     "blowup_p99",
@@ -125,7 +131,7 @@ def analyse_phase(run_name, rows, phase, fate, wall_s):
     if not rows:
         return None
     pbs, rel_pb, rel_pram, blowups, drive_ratio = [], [], [], [], []
-    n_eq = n_cap = n_cap_seen = 0
+    n_eq = n_cap = n_cap_seen = n_bound = n_bound_seen = 0
     for d in rows:
         # Drive anatomy: P_drive against the pressure implied by the REPORTED
         # F_ram. They should agree; where they don't, the force budget written to
@@ -149,6 +155,13 @@ def analyse_phase(run_name, rows, phase, fate, wall_s):
         # Batch-1 shadow diagnostic: present only once the fix lands.
         raw, capped = _num(d.get("n_IF_Str_raw")), _num(d.get("n_IF_Str"))
         n0 = _num(d.get("shell_n0"))
+        # Cap-bound detection that needs NO diagnostic: the stored n_IF_Str came
+        # from the min() iff it sits exactly at shell_n0. Works on baseline runs,
+        # and separates a genuine cap-slack row from a merely stale-Pb row (where
+        # P_HII != Pb but the cap is still bound).
+        if capped is not None and n0:
+            n_bound_seen += 1
+            n_bound += capped == n0
         if raw is not None and n0:
             n_cap_seen += 1
             # The cap bit iff the raw value exceeded shell_n0 (i.e. the stored
@@ -172,6 +185,7 @@ def analyse_phase(run_name, rows, phase, fate, wall_s):
         "relmax_PHII_vs_Pb": f"{max(rel_pb):.3g}",
         "frac_PHII_eq_Pb": f"{n_eq / len(rel_pb):.4f}",
         "relmax_PHII_vs_Pram": f"{max(rel_pram):.3g}" if rel_pram else na,
+        "frac_nIFStr_eq_n0": f"{n_bound / n_bound_seen:.4f}" if n_bound_seen else na,
         "frac_cap_binding": f"{n_cap / n_cap_seen:.4f}" if n_cap_seen else na,
         "blowup_max": f"{max(blow_sorted):.4g}" if blow_sorted else na,
         "blowup_p99": f"{_pct(blow_sorted, 0.99):.4g}" if blow_sorted else na,
