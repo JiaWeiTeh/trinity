@@ -34,8 +34,9 @@
 
 **Status (2026-08-13):** 🔵 actionable — **Batches 0, 1 and 4a done; D1/D2 answered; an
 independent adversarial audit (2026-08-13) corrected two critical and eleven major items — see
-§9. Do not quote any figure from an unmarked earlier revision of this file.** Batch 3 (C1) is
-running; C1 has never carried a measured verdict. The momentum `P_HII + P_ram` sum is *intended* (D1), which points at the
+§9. Do not quote any figure from an unmarked earlier revision of this file.** **Batch 3 (C1) is now MEASURED**: safe and small (ΔR2 0.000–4.00% across weak-wind, two masses
+and two bench radii; no fate changes) but aimed at the wrong target — it deletes the photoionised
+channel rather than decoupling it. Superseded by C3; next step is the offline C3a/C3b screen. The momentum `P_HII + P_ram` sum is *intended* (D1), which points at the
 circularity `P_ram → Pb → shell_n0 → n_IF_Str → P_HII` rather than the sum as the defect — **but C1
 has never been run and therefore carries no verdict; Batch 3 owes one.** §3b proves
 the **cap is only the last link**: `ΔV ∝ shell_n0^-2.13` already forces `n_IF_Str ∝ shell_n0^+1.04`
@@ -366,7 +367,40 @@ No `trinity/` change; the knob exists (`registry.py:365`). Screen the matrix `Fa
   no bar on the *size* of Δ (this batch measures, it does not judge).
 - Artifacts: `data/b2_bracket_ledger.csv`.
 
-### Batch 3 — C1: transmit-don't-add — Status: ⬜
+### Batch 3 — C1: transmit-don't-add — Status: ✅ **MEASURED 2026-08-13**
+
+**Result.** Arm = `harness/b3_c1_momentum_max.patch` (momentum sites only — `run_momentum_phase.py:265,445`;
+§3's "5-site" wording predates D1's ruling that the transition `max` is deliberate, so the transition
+sites were deliberately left alone). Baselines are the matching b1 arms; matched-`t` ledger in
+`data/b3_c1_ledger.csv`.
+
+| config | what it spans | momentum rows | ΔR2 max | fate |
+|---|---|---|---|---|
+| **B1M** | 5e4 M☉, r20 — **never reaches momentum** | 0 / 195 | **0.000%** | unchanged |
+| B2M | 1e5 M☉, r10 | 26 / 225 (11.6%) | 1.243% | unchanged |
+| B3M | 1e5 M☉, r5 | 34 / 231 (14.7%) | 4.003% | unchanged |
+| WW | **weak winds** (`FB_thermCoeffWind` 0.1) | 27 / 178 (15.2%) | 1.291% | unchanged |
+
+- **The control did its job.** B1M was pre-registered as a falsifiable check: C1 touches only the
+  momentum phase, B1M never enters it, so C1 *must* be inert — and ΔR2 is 0.000% at matched `t`.
+  (Its `dictionary.jsonl` is not bit-identical, but every differing key traces to `Lmech_SN`, which
+  is `Lmech_total − Lmech_W` and therefore exactly zero before SN onset at 3.6 Myr; the stored ~1e-18
+  is a cancellation remnant ~1e-26 *relative*, and it seeds last-bit integrator drift reaching only
+  2.9e-14 in R2. That measurement is what set `NOISE_FLOOR` in `compare_bitidentical.py`.)
+- **Halving the momentum drive costs ≤4% in final radius** on these configs, because momentum is
+  only 12–15% of the run. Weak winds is *not* the worst case (1.29%); the densest bench is (4.00%).
+- **Nothing broke** — no fate changes, no distress.
+
+**Verdict: C1 is viable but aimed at the wrong target.** Two independent reasons, one measured and
+one from intent: (1) with `P_HII ≡ P_ram` in the momentum phase, `max(P_HII, P_ram)` is just `P_ram`
+— C1 removes the double-count by *deleting* the photoionised channel, which is the opposite of D2's
+"`P_HII` should be a real, separate pressure"; (2) D1 rules the sum intended. C1 is therefore
+**superseded by C3**, and its value is as the measured price tag on the double-count: ≤4% ΔR2, which
+is the number to beat when judging whether a C3 formulation is worth its complexity.
+⚠️ Note this verdict now rests on runs, not on the intent ruling alone — the earlier
+intent-only rejection was retracted before these runs existed.
+
+### Batch 3 (original pre-registration) — Status: superseded by the result above
 Implement the 5-site diff (§3). Gates, all mandatory:
 - **G3.1 (hard):** phases 1a/1b **bit-identical** full-run on core-6 (the diff's transition
   branch lives in the shared `energy_phase_ODEs.py` — this catches a slipped guard).
@@ -462,7 +496,7 @@ under D4 with a table of before/after.
 | 0 | ✅ | 2026-08-12 | **PASS** on 6/6 core. Identity holds on 100% of implicit and transition rows and 26/27 momentum rows (WW's final collapse row is stale-`Pb`) and ≥96.97% of energy rows, relΔ ≤2.9e-16, across 4 decades of nCore. B3M independently reproduces momentum-pdrive (`P_HII` vs `P_ram` = 2.39e-16 over 34 rows). Drive anatomy: implicit exactly 1, transition ≤1.998 (median 1.82), momentum exactly 2.000, energy ≤3.31. **`frac_nIFStr_eq_n0` = 1.0000 in every phase of every config** — the cap is bound everywhere, needing no diagnostic to show it | `data/b0_identity_grid.csv`, `data/b0_trajectories.csv`, `data/b0_walltimes.csv` |
 | 1 | ✅ | 2026-08-12 | **PASS.** G1(i): B3M 231 + PRB 184 + WW 178 = **593 rows** exactly equal on every pre-existing key (repr compare), matching row counts ⇒ diagnostic inert; independently corroborated by the matched-t comparator returning 0.000% on both. Cap binds **100% of rows in every phase**; blow-up p99 1.06–7.79, max **7.786** (WW momentum; B3M 3.331, PRB 3.306, B1M 3.308). **Kill bar NOT tripped ⇒ C2a survives, Batch 4a authorised.** Corrects B0: sub-100% energy rows are `Pb` staleness at the 1a→1b handoff, not cap-slack | `data/b1_bitidentity.csv`, `data/b1_capmap.csv` |
 | 2 | ⬜ | — | — | — |
-| 3 | ⬜ | — | **C1 must be MEASURED, not inferred.** A verdict was briefly recorded from D1's intent ruling alone and has been retracted; no run has ever been executed for C1 | — |
+| 3 | ✅ | 2026-08-13 | **C1 MEASURED — safe, small, and aimed at the wrong target.** Momentum-only `max(P_HII, P_ram)` (halving `P_drive` from `2·P_ram` to `P_ram` there) on 4 configs spanning weak winds, two masses and two bench radii. **All WITHIN-BAR, no fate changes:** B1M **0.000%**, B2M 1.24%, B3M 4.00%, WW 1.29% ΔR2 at matched `t`. B1M is the pre-registered falsifiable control — it never reaches momentum, so C1 must be inert there, and it is to 0.000%. The effect is small because momentum is only 12–15% of these runs. **Verdict: C1 does not break anything, but it does not do what D2 asks** — with `P_HII ≡ P_ram` in momentum, `max(P_HII, P_ram) = P_ram`, so C1 *deletes* the photoionised channel rather than decoupling it, and D1 says the sum is intended. Superseded as a fix by C3; retained as the measured cost of the double-count | `data/b3_c1_ledger.csv` |
 | 4 | 🟡 | 2026-08-12 | **4a MEASURED — survives, but is not behaviourally neutral.** 4/4 configs (PRB, B3M, F1HI, F1LO) ran to their natural end, **zero** distress lines (no excess-work, overflow, monotonic-guard or convergence warnings), wall times *within* baseline (492–764 s vs 682–832 s). **No fate changed** on any config. Identity destroyed as intended: `frac_PHII_eq_Pb` = **0.0000** in every phase of every config (was ≥0.9697), relΔ now O(1) (0.06–2.55). But **every config breaches the 5% bar**: ΔR2 max 15.3–28.4%, all located inside the `dt_switchon` window (t = 1.3e-7 … 9e-6 Myr); ΔR2 at end-of-overlap 0.95% (PRB, recovers) → 14.4% (F1LO, retained). Mechanism: uncapped `P_HII` exceeds `Pb` on **100%** of rows (max 7.79× across the matrix; 3.36× on PRB) so it wins the `max`, lifting median `P_drive/Pb` from 1.0000 to 1.83 (PRB). **Verdict: C2a is numerically viable and physically consequential — not a free win. Landing it needs D2.** 4b not started | `data/b4a_ledger.csv`, `data/b4a_identity_grid.csv` |
 | 5 | ⬜ | — | — | — |
 | 6 | ⬜ | — | — | — |
@@ -499,6 +533,7 @@ the rule being enforced.
 | `harness/b4a_cap_removal.patch` | the exact 4a code change (apply to `088a8d6` to reproduce) | 4a | `088a8d6` |
 | `harness/b3_c1_momentum_max.patch` | the exact C1 arm diff — **momentum sites only** (`run_momentum_phase.py:265,445`); §3's "5-site" wording predates D1's ruling that the transition `max` is deliberate | 3 | `41511ac` |
 | `data/b3b_coupling_regression.csv` | `harness/coupling_regression.py` | 3b | `3a38a87`+dirty |
+| `data/b3_c1_ledger.csv` | `harness/compare_trajectories.py` | 3 | `41511ac`+C1 patch |
 | `data/b0_identity_grid.csv` | `harness/harvest_identity.py` | 0 | runs @ `6b55657` |
 | `data/b0_trajectories.csv` | `harness/harvest_identity.py` | 0 | runs @ `6b55657` |
 | `data/b0_walltimes.csv` | `harness/run_batch.py` | 0 | runs @ `6b55657` |
@@ -684,3 +719,22 @@ b0 run and to `bb302e0` for every b1 run (§9 records how that was protected).
   in the same way — correcting a claim where it was *discovered* rather than everywhere it was
   *written*. Future visits: when retracting, grep the retracted phrasing across the whole workstream
   and mark every copy, and regenerate derived CSVs whenever a new arm lands rather than at write time.
+
+- **2026-08-13 (Batch 3 — C1 measured, and the retraction vindicated)** — C1 (momentum-only
+  `max(P_HII, P_ram)`) run against matching b1 baselines on four configs: B1M, B2M, B3M and WW
+  (weak winds). **All within the 5% bar, no fate changes: 0.000% / 1.24% / 4.00% / 1.29%.** The
+  pre-registered control worked — B1M never reaches the momentum phase, so C1 had to be inert there,
+  and it is to 0.000% at matched `t`. Halving the momentum drive costs ≤4% in final radius because
+  momentum is only 12–15% of these runs; weak winds is not the worst case, the densest bench is.
+  **Verdict: C1 is safe but wrong-target** — with `P_HII ≡ P_ram`, `max(P_HII, P_ram) = P_ram`, so it
+  deletes the photoionised channel instead of decoupling it (against D2), and D1 rules the sum
+  intended. Superseded by C3; kept as the measured price of the double-count, ≤4% ΔR2, which is the
+  bar any C3 formulation must justify clearing.
+  Two methodological by-products, both now baked into the tooling: (a) the B1M control quantified a
+  **cross-worktree noise floor** — physical keys agree to machine precision until t ≈ 0.8 Myr then
+  drift to at most 2.9e-14 in R2, seeded by `Lmech_SN`, which is `Lmech_total − Lmech_W` and thus
+  exactly zero pre-SN (the stored ~1e-18 is a ~1e-26-relative cancellation remnant). That is 13
+  orders below Batch 4a's 15–28%, so 4a's conclusions are unaffected. (b) `compare_bitidentical.py`
+  gained that floor plus array-aware and per-key-scale comparison, because strict bit-identity is the
+  right gate for a *diagnostic* change and the wrong one for a cross-worktree comparison — it was
+  reporting "100% difference" on a quantity that is identically zero.
