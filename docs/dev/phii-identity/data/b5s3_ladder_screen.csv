@@ -1,0 +1,71 @@
+# generated 2026-08-13T20:47:49Z | builder c3_offline_screen.py | code 70f8711+dirty
+# Offline screen of decoupled P_HII candidates. NO SOLVER RUN: every candidate
+# is closed-form in quantities already stored in the snapshots, evaluated ON the
+# stock trajectory. It therefore answers 'what would this pressure have been',
+# NOT 'what would the run have done' — a candidate that passes still needs an arm.
+# slope_vs_Pb: stock scores ~+1 (fully slaved); decoupled should be near 0.
+run,phase,candidate,n_rows,slope_vs_Pb,r_vs_Pb,ratio_Pb_min,ratio_Pb_max,ratio_Pram_min,ratio_Pram_max,crosses_Pram,n_cm3_min,n_cm3_max
+B3MW01,energy,stock,69,1.0000,1.0000,1,1,NA,NA,NA,4.263e+04,2.512e+07
+B3MW01,energy,uncapped,69,1.1392,0.9993,2.57,6.073,NA,NA,NA,1.096e+05,1.496e+08
+B3MW01,energy,C3a_cavity,69,0.6943,0.9982,0.1056,0.6602,NA,NA,NA,2.745e+04,2.652e+06
+B3MW01,energy,C3b_ambient,69,0.0000,0.0000,0.0002198,0.1295,NA,NA,NA,5520,5520
+B3MW01,implicit,stock,78,1.0000,1.0000,1,1,NA,NA,NA,560.1,3.774e+04
+B3MW01,implicit,uncapped,78,1.1263,0.9997,1.421,2.493,NA,NA,NA,795.9,9.409e+04
+B3MW01,implicit,C3a_cavity,78,0.9914,0.9996,0.5742,0.6396,NA,NA,NA,355.4,2.405e+04
+B3MW01,implicit,C3b_ambient,78,0.0176,0.1961,0.1462,9.444,NA,NA,NA,2048,5520
+B3MW01,transition,stock,34,1.0000,1.0000,1,1,1.006,18.8,no,23.75,496.5
+B3MW01,transition,uncapped,34,0.6097,0.9996,1.465,4.539,4.567,27.54,no,107.8,727.5
+B3MW01,transition,C3a_cavity,34,0.0294,0.9202,0.7144,13.52,13.43,13.6,no,321.1,354.7
+B3MW01,transition,C3b_ambient,34,2.6524,0.9940,0.04096,3.493,0.04211,65.66,yes,1.001,1735
+B3MW01,momentum,stock,41,1.0000,1.0000,1,1,1,1,no,21.52,24.57
+B3MW01,momentum,uncapped,41,1.2474,0.9705,4.38,4.549,4.38,4.549,no,94.52,108.8
+B3MW01,momentum,C3a_cavity,41,0.8623,0.7491,12.36,13.62,12.36,13.62,no,286.5,320.7
+B3MW01,momentum,C3b_ambient,41,0.0027,0.4590,0.0407,0.04647,0.0407,0.04647,no,1,1.001
+B3MW1,energy,stock,87,1.0000,1.0000,1,1,NA,NA,NA,1.502e+05,2.512e+08
+B3MW1,energy,uncapped,87,1.1543,0.9997,1.27,3.331,NA,NA,NA,1.908e+05,8.302e+08
+B3MW1,energy,C3a_cavity,87,0.7619,0.9963,0.02565,0.1236,NA,NA,NA,1.633e+04,6.442e+06
+B3MW1,energy,C3b_ambient,87,0.0000,0.0000,2.198e-05,0.03676,NA,NA,NA,5520,5520
+B3MW1,implicit,stock,68,1.0000,1.0000,1,1,NA,NA,NA,3321,1.329e+05
+B3MW1,implicit,uncapped,68,1.0403,1.0000,1.076,1.26,NA,NA,NA,3578,1.675e+05
+B3MW1,implicit,C3a_cavity,68,1.0058,0.9998,0.09902,0.1075,NA,NA,NA,345.3,1.429e+04
+B3MW1,implicit,C3b_ambient,68,0.0742,0.2154,0.04153,1.53,NA,NA,NA,259.6,5520
+B3MW1,transition,stock,42,1.0000,1.0000,1,1,1.002,37.8,no,46.36,2797
+B3MW1,transition,uncapped,42,0.7441,0.9991,1.091,2.714,2.699,41.24,no,124.9,3052
+B3MW1,transition,C3a_cavity,42,0.0822,0.8998,0.1227,5.1,4.638,5.109,no,236.5,343.2
+B3MW1,transition,C3b_ambient,42,0.5615,0.7084,0.00145,0.04076,0.01487,1.541,yes,1,114
+B3MW1,momentum,stock,34,1.0000,1.0000,1,1,1,1,no,6.835,46
+B3MW1,momentum,uncapped,34,1.1293,0.9999,2.12,2.694,2.12,2.694,no,14.7,123.9
+B3MW1,momentum,C3a_cavity,34,0.8315,0.9997,5.116,7.019,5.116,7.019,no,46.87,235.3
+B3MW1,momentum,C3b_ambient,34,0.0000,0.0000,0.02174,0.1463,0.02174,0.1463,no,1,1
+B3MW3,energy,stock,96,1.0000,1.0000,1,1,NA,NA,NA,2.469e+05,7.535e+08
+B3MW3,energy,uncapped,96,1.1296,0.9999,1.114,2.589,NA,NA,NA,2.751e+05,1.935e+09
+B3MW3,energy,C3a_cavity,96,0.8087,0.9958,0.01585,0.06019,NA,NA,NA,1.208e+04,1.194e+07
+B3MW3,energy,C3b_ambient,96,0.0000,0.0000,7.326e-06,0.02236,NA,NA,NA,5520,5520
+B3MW3,implicit,stock,62,1.0000,1.0000,1,1,NA,NA,NA,7756,2.18e+05
+B3MW3,implicit,uncapped,62,1.0208,1.0000,1.026,1.106,NA,NA,NA,7978,2.411e+05
+B3MW3,implicit,C3a_cavity,62,1.0200,0.9998,0.04396,0.04839,NA,NA,NA,352.2,1.055e+04
+B3MW3,implicit,C3b_ambient,62,0.0248,0.2232,0.02532,0.6739,NA,NA,NA,2358,5520
+B3MW3,transition,stock,45,1.0000,1.0000,1,1,1.001,49.3,no,63.94,6304
+B3MW3,transition,uncapped,45,0.8058,0.9992,1.039,2.197,2.179,51.24,no,139.2,6552
+B3MW3,transition,C3a_cavity,45,0.1066,0.8958,0.05533,3.165,2.728,3.168,no,202.4,348.8
+B3MW3,transition,C3b_ambient,45,0.7467,0.7212,0.0007338,0.148,0.008796,7.299,yes,1,933.3
+B3MW3,momentum,stock,35,1.0000,1.0000,1,1,1,1,no,4.715,63.31
+B3MW3,momentum,uncapped,35,1.0583,0.9996,1.822,2.176,1.822,2.176,no,9.211,137.8
+B3MW3,momentum,C3a_cavity,35,0.8647,0.9976,3.174,4.671,3.174,4.671,no,19.57,201
+B3MW3,momentum,C3b_ambient,35,-0.0000,-0.0000,0.01579,0.2121,0.01579,0.2121,no,1,1
+B3MW10,energy,stock,105,1.0000,1.0000,1,1,NA,NA,NA,4.128e+05,2.512e+09
+B3MW10,energy,uncapped,105,1.0955,0.9999,1.026,2.004,NA,NA,NA,4.235e+05,4.989e+09
+B3MW10,energy,C3a_cavity,105,0.8640,0.9959,0.009542,0.02799,NA,NA,NA,8546,2.396e+07
+B3MW10,energy,C3b_ambient,105,-0.0000,-0.0000,2.198e-06,0.01337,NA,NA,NA,5520,5520
+B3MW10,implicit,stock,56,1.0000,1.0000,0.9982,1,NA,NA,NA,1.898e+04,3.639e+05
+B3MW10,implicit,uncapped,56,1.0076,1.0000,0.9982,1.039,NA,NA,NA,1.917e+04,3.706e+05
+B3MW10,implicit,C3a_cavity,56,1.0364,0.9999,0.0183,0.02047,NA,NA,NA,351.2,7449
+B3MW10,implicit,C3b_ambient,56,0.0364,0.2343,0.01517,0.2761,NA,NA,NA,2031,5520
+B3MW10,transition,stock,49,1.0000,1.0000,1,1,1,64.65,no,79,1.474e+04
+B3MW10,transition,uncapped,49,0.8650,0.9995,1.009,1.78,1.764,65.21,no,139.3,1.487e+04
+B3MW10,transition,C3a_cavity,49,0.1456,0.8983,0.02346,1.932,1.517,1.933,no,152.6,345.9
+B3MW10,transition,C3b_ambient,49,0.3695,0.5663,0.0001993,0.02599,0.004932,1.68,yes,1,383.2
+B3MW10,momentum,stock,37,1.0000,1.0000,1,1,1,1,no,3.325,78.97
+B3MW10,momentum,uncapped,37,1.0118,0.9997,1.581,1.763,1.581,1.763,no,5.771,139.2
+B3MW10,momentum,C3a_cavity,37,0.9057,0.9964,1.933,2.939,1.933,2.939,no,7.958,152.6
+B3MW10,momentum,C3b_ambient,37,0.0000,0.0000,0.01266,0.3008,0.01266,0.3008,no,1,1

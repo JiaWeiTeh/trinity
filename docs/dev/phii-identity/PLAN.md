@@ -699,6 +699,64 @@ implicit is **void, not evidence**, and must be reported as such.
   because snapshots are segment-spaced. WW's crossing is bracketed by 3 snapshots, so a lag below
   ~2% of `t_entry` is at the resolution limit and must not be reported as a resolved ordering.
 
+**B3M LADDER RESULT (2026-08-13) — neither registered branch is right, and the truth is a third
+thing.** All four rungs completed, all four reach transition *and* momentum, none void. Artifacts:
+`data/b5s3_ladder_lag.csv`, `data/b5s3_ladder_regime.csv`, `data/b5s3_ladder_screen.csv`; tool
+`harness/lag_vs_handover.py`.
+
+| `Lw` | `t_entry` | `t_cross` | lag | lag/`t_entry` | %tr dur | ratio@entry | confined frac of transition |
+|---|---|---|---|---|---|---|---|
+| 0.1 | 0.66317 | 0.67284 | +0.00968 | +1.5% | 7.4% | 0.7144 | 8.8% |
+| 1 | 0.27277 | 0.30121 | +0.02844 | +10.4% | 21.5% | 0.1227 | 23.8% |
+| 3 | 0.17799 | 0.21229 | +0.03430 | +19.3% | 26.6% | 0.0553 | 28.9% |
+| 10 | 0.11617 | 0.15935 | +0.04318 | +37.2% | 32.9% | 0.0235 | 38.8% |
+
+**The quantitative prediction held, out of the regime it was fitted in.** Predicted `ratio@entry`
+0.68 / 0.12 / 0.054 / 0.022; measured 0.7144 / 0.1227 / 0.0553 / 0.0235 — errors +5.1% / anchor /
++2.4% / +6.8%, and the fitted exponent comes out **−0.743** against the pre-registered −0.74. The
+Weaver-derived scaling survives to the handover. **This is direct evidence *against* (b)'s
+conclusion**: C3a's normalization is not too generous by an O(1) factor, it is right.
+
+**But `t_cross` FALLS with wind** (0.673 → 0.159), which is literally (b)'s trigger, and the
+momentum phase is **100% HII-dominated on all four rungs**, which is (b)'s other trigger. Both
+triggers fire while (b)'s conclusion is false — so the registered dichotomy was mis-specified, not
+merely unresolved.
+
+**The mechanism, from the phase durations — this is the part neither branch anticipated:**
+
+| `Lw` | energy dur | implicit dur | transition dur | momentum dur |
+|---|---|---|---|---|
+| 0.1 | 0.0030 | 0.6577 | 0.1314 | 0.7034 |
+| 1 | 0.0030 | 0.2673 | 0.1322 | 1.0930 |
+| 3 | 0.0030 | 0.1725 | 0.1291 | 1.1909 |
+| 10 | 0.0030 | 0.1107 | 0.1311 | 1.2528 |
+
+The energy phase lasts **exactly 0.0030 Myr at every wind strength**, and the transition phase is
+**wind-independent** (0.129–0.132, exponent −0.002). Everything that moves is the **implicit** phase,
+which collapses as `Lw^−0.388` (0.658 → 0.111 Myr). So `t_cross` falls with wind purely because
+stronger winds reach the handover sooner — not because wind fails to confine.
+
+**Wind domination is real, strongly wind-sensitive, and lives in the transition phase.** Measured as
+the confined fraction of transition — the quantity that is *not* contaminated by the handover moving
+— it grows monotonically **8.8% → 38.8%** across two decades of wind, and the lag grows +1.5% →
++37.2% of `t_entry`. That is the registered (a) evidence, and it passes.
+
+**Momentum is the part that does NOT resolve.** `P_C3a/P_ram` in momentum falls only as `Lw^−0.33`
+(max branch; −0.40 on the min branch), so reaching unity would need `Lw ≈ 260` (≈ 51 on the min
+branch) — far outside any physical wind strength. The C3c momentum drive does weaken steeply with
+wind (7.1× stock at `Lw` = 0.1 → 1.7× at `Lw` = 10), but never inverts. **C3c predicts a
+photoionisation-dominated momentum phase universally**, and the ladder shows this is not fixable by
+re-normalising C3a — the exponent, not the prefactor, is what keeps momentum HII-dominated. The
+Lancaster tension is therefore *resolved in transition and open in momentum*.
+
+⚠️ **Retraction (2026-08-13), recorded because it was reported before being checked.** Mid-run I
+read the energy-phase *row counts* (69/87/96/105 here, 97/105/115 on the void ladder) as "stronger
+winds hold the run in the energy phase longer". **That is wrong.** The energy-phase *duration* is
+identical (0.0030 Myr) across all four rungs; the extra rows are timestep refinement, because
+stronger winds are stiffer. Row count is not duration, and the two point in opposite directions here
+— measured in time, stronger winds leave the early phases *sooner*. Any future reading of phase
+occupancy in this workstream must use durations.
+
 **Stage 2 RESULT (2026-08-13) — C3c runs clean on 5/5, no fate changes, and the offline screen
 predicted it.** Arm `harness/b5s2_c3c.patch`; ledgers `data/b5s2_c3c_ledger.csv` (matched-`t`) and
 `data/b5s2_c3c_arm_regime.csv` (the arm's own regime structure).
