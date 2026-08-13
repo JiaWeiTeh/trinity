@@ -636,6 +636,27 @@ intends. The cost is unchanged from C3a where it matters: the momentum drive ris
 stock, and the early-energy drive drops up to 3.3× (the ramp finally biting). **Both are large,
 real behavioural changes — the stage-2 arm decides whether fates survive them.**
 
+**External anchor — Lancaster's coevolution model (maintainer, 2026-08-13).** The maintainer notes
+that Lachlan Lancaster's wind/HII coevolution work finds **wind-dominated regimes** exist. That is a
+constraint on how C3c's stage-1 screen should be read, and it cuts two ways:
+
+- It **supports** the C3c *structure* over both stock and bare C3a: an ordering that can go either
+  way is exactly what a coevolution model needs, and stock cannot express it at all (its cap makes
+  `P_HII ≤ Pb` an identity). C3c's confined branch **is** the wind-dominated regime.
+- It is a **tension with C3c's current prediction**, and should be treated as one: the screen finds
+  momentum 100% HII-dominated in all five configs. Either (a) these five configs simply do not
+  sample the wind-dominated corner — plausible, since none is a strong-wind cloud and all reach
+  momentum only after the bubble has failed — or (b) C3a's normalization is too generous by an O(1)
+  factor and the true crossover sits inside the momentum phase.
+
+**(a) and (b) are distinguishable, and stage 3 is the discriminator.** If the strong-wind rungs
+(`FB_thermCoeffWind` 3/10) push `t_cross` later or out of the run, that is (a) and C3c reproduces
+Lancaster's qualitative result. If even strongly-wind-driven clouds come out HII-dominated in
+momentum, that is (b) and the C3a normalization needs revisiting (§3c already flags its O(1)
+ambiguity: uniform sphere vs the R1..R2 shell, and the photoevaporative-flow closures that land on
+the same √(Qi/R2³) scaling with different prefactors). **Recorded before stage 2 runs so the
+prediction cannot be retrofitted to whatever comes back.**
+
 **Stage 3 (proposed 2026-08-13, from a maintainer question): the regime map — schemes where `Pb`
 dominates over `P_HII`.** Under stock the ordering is frozen: the cap makes `P_HII ≤ Pb` an identity,
 so "`Pb` dominates" is true by construction and carries no information. **Under C3c the ordering is
