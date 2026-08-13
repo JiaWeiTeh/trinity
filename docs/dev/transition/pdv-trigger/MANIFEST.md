@@ -12,10 +12,11 @@
 > are exact; stamp-less artifacts predate the convention (2026-07-02) — for those, only
 > the commit date is known. **Every new/edited builder must write the stamp.**
 
-1228 artifacts · 2 stale-risk · 0 untracked · 326 stamped 🕐
+1229 artifacts · 2 stale-risk · 0 untracked · 327 stamped 🕐
 
 | last updated (commit) | artifact | producer / flags |
 |---|---|---|
+| 2026-08-13 `d4d23ef2` | `data/exponent_synthesis.csv` | by `make_exponent_synthesis.py` · 🕐 generated 2026-08-13T20:18:21Z | builder make_exponent_synthesis.py | code 96707dc+dirty |
 | 2026-08-08 `9663d496` | `data/merge_rebaseline.csv` | by `make_merge_rebaseline.py` · 🕐 generated 2026-08-08T16:44:52Z | builder make_merge_rebaseline.py | code bec0ffb+dirty |
 | 2026-08-08 `9663d496` | `merge_rebaseline.png` | by `make_merge_rebaseline.py` |
 | 2026-08-03 `082add90` | `data/farea_screen.csv` | by `make_farea_screen.py` · 🕐 generated 2026-08-03T09:46:08Z | builder make_farea_screen.py | code bb94c78+dirty |
