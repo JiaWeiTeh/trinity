@@ -140,6 +140,40 @@ def panel_rebaseline(rows):
     return "\n".join(out)
 
 
+def panel_exponents(rows):
+    """EXPONENT + SPREAD from data/exponent_synthesis.csv (FINDINGS §17) — why every knob is weak."""
+    ex = [r for r in rows if r.get("table") == "EXPONENT"]
+    sp = [r for r in rows if r.get("table") == "SPREAD"]
+    if not ex and not sp:
+        return ('<p class="note">missing <code>data/exponent_synthesis.csv</code> — '
+                "run make_exponent_synthesis.py</p>")
+    out = []
+    if ex:
+        body = []
+        for r in ex:
+            ratio = float(r["q_over_weaver_2_7"])
+            # within 10% of the Weaver 2/7 eigenvalue = conduction-locked
+            kind = "bad" if abs(ratio - 1.0) <= 0.10 else "ok"
+            body.append((esc(r["knob"]), esc(r["acts_through"]), esc(r["q_per_bench"]),
+                         f'{float(r["q_mean"]):.3f}', pill(f"{ratio:.2f}", kind)))
+        out.append("<p><b>Measured &Theta; &prop; f<sup>q</sup>, grouped by the channel each knob "
+                   "acts through.</b> The Weaver v(R1)=0 eigenvalue exponent is "
+                   "2/7 = 0.286; a ratio of 1.00 means the bubble absorbs that knob.</p>")
+        out.append(table(["knob", "acts through", "q per bench (3/2/1)", "mean q", "q ÷ (2/7)"], body))
+    if sp:
+        body = [(esc(r["knob"]), f'{float(r["q_mean"]):.3f}',
+                 f'{float(r["predicted_dose_spread_at_mean_q"]):.1f}&times;',
+                 f'{float(r["measured_dose_spread"]):.1f}&times;',
+                 f'{float(r["predicted_over_measured"]):.2f}',
+                 f'<span class="dim">{esc(r["upstream_flag"])}</span>') for r in sp]
+        out.append("<p><b>Is the band-entry dose spread just &Theta;<sub>0</sub> variation through "
+                   "1/q?</b> Predicted = (&Theta;<sub>0</sub> ratio spread)<sup>1/q</sup> at each "
+                   "knob's own mean q. The <i>ordering</i> is reproduced exactly; the factor is not "
+                   "(bench1's q runs high, compressing the spread).</p>")
+        out.append(table(["knob", "mean q", "predicted", "measured", "pred/meas", "upstream flag"], body))
+    return "\n".join(out)
+
+
 def panel_gate_g0(rows):
     g0 = [r for r in rows if r.get("table") == "G0"]
     if not g0:
@@ -378,6 +412,7 @@ def build():
     ana = _read(PDV / "data" / "bench7_analysis.csv")
     fresh = _read(PDV / "data" / "freshness_audit.csv")
     reb = _read(PDV / "data" / "merge_rebaseline.csv")
+    expsyn = _read(PDV / "data" / "exponent_synthesis.csv")
     counts = _arm_counts()
     now = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     sha = subprocess.run(
@@ -397,6 +432,8 @@ def build():
         p1=panel_p1(gate),
         freshness=panel_freshness(fresh),
         rebaseline=panel_rebaseline(reb),
+        exponents=panel_exponents(expsyn),
+        exp_stamp=esc(_stamp_of(PDV / "data" / "exponent_synthesis.csv") or "not built"),
         reb_stamp=esc(_stamp_of(PDV / "data" / "merge_rebaseline.csv") or "not built"),
         fig_rebaseline=fig(
             "merge_rebaseline.png",
@@ -722,6 +759,40 @@ are live in <a href="FINDINGS.md">FINDINGS §16c</a>.</p>
 </div>
 
 {fig_rebaseline}
+
+<h2>4c. Why every knob is weak — the exponents converge on the Weaver 2/7</h2>
+
+<p class="note">From <code>data/exponent_synthesis.csv</code> &middot; stamped {exp_stamp}. Pure
+re-reduction of <code>bench7_analysis.csv</code> &mdash; no runs, no new measurement.</p>
+
+{exponents}
+
+<div class="box stop">
+<p><b>&#9940; The enhanced-cooling problem is not a missing multiplier &mdash; it is an absorbing
+bubble.</b> &sect;13 diagnosed the f_area failure as the Weaver v(R1)=0 evaporation eigenvalue, from a
+<i>per-call</i> mass-flux measurement. The band-entry campaign independently fitted &Theta; &prop;
+f<sup>q</sup> on <i>full runs</i> across 294 arms. Grouped by mechanism, the two <b>conduction</b>
+knobs land on <b>2/7 = 0.286</b> (f_A 0.268, f_&kappa; 0.290 &mdash; within 6% and 1%) while f_mix,
+which multiplies L<sub>cool</sub> directly and bypasses the eigenvalue, comes in at <b>1.75&times;</b>
+that. Two independent measurements of different quantities, agreeing on one exponent, split along the
+mechanism classification &sect;15 argued for from the literature. <b>Boost conduction and the interior
+restructures until the eigenvalue claws it back as f<sup>2/7</sup></b> &mdash; which is why bench1
+needs f_A &asymp; 83 to travel from &Theta;<sub>0</sub> = 0.22 to 0.90. It also makes P1's
+falsification constructive: the achievable exponent is set by <i>which channel the knob enters</i>,
+and two of the three are eigenvalue-locked. See <a href="FINDINGS.md">FINDINGS §17</a>.</p>
+</div>
+
+<div class="box hold">
+<p><b>&#9888; And the spread metric rewards steepness, not fidelity.</b> Band entry is
+f = (0.90/&Theta;<sub>0</sub>)<sup>1/q</sup>, and &Theta;<sub>0</sub> varies 2.09&times; across the
+benches while q is nearly constant per knob (1.17&ndash;1.25&times;). So a knob with a larger exponent
+shows a tighter dose spread almost regardless of what it represents &mdash; <b>f_mix's tighter spread
+follows from its steeper response</b>. Scoped carefully: this is the &Theta;<sub>cum</sub>
+<i>band-entry</i> spread (&sect;1, &sect;2, the G0 gate). &sect;11/&sect;12's decisive solved-row
+metric is a different quantity, is <b>not</b> analysed here, and stands untouched. Nothing in
+&sect;1&ndash;&sect;16 is retracted; what changes is what the metric is understood to be sensitive
+to.</p>
+</div>
 
 <h2>5. What happened — why the old numbers were not trusted</h2>
 

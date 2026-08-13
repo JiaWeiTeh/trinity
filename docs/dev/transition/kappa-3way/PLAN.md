@@ -32,7 +32,7 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-03):** 🟡 campaign COMPLETE — 294/294 arms ran and are reduced. Results in
+**Status (2026-08-08):** 🟡 campaign COMPLETE — 294/294 arms ran and are reduced. Results in
 `FINDINGS.md`; §5's analysis plan is executed and `make_bench7_analysis.py` is written. G0 **failed
 2/11** (truncation, §1 there — mechanism *inferred*, not verified). ⚠️ **Corrected 2026-08-03:** the
 old status line called for "re-running the 21 truncated arms with more walltime" — `FINDINGS §1a`
@@ -48,6 +48,7 @@ on all three arms and bench1's native failure is its implicit window closing 3.4
 on its Θ₀ (`FINDINGS §14`). Full-run numbers are quotable again with that amendment. Separately,
 `FINDINGS §15` re-aims `§10b`'s indictment and strikes f_area Option 2, and `FINDINGS §16` screens
 Option 3 via Lancaster Eq 10 — **0/3 FAIL**, exhausting all three f_area options.
+`FINDINGS §17` (re-reduction, no runs) then explains *why* every knob is weak: the two conduction knobs' Θ ∝ f^q exponents land on the Weaver **2/7** eigenvalue, so the bubble **absorbs** enhanced conduction — and the band-entry dose spread is dominated by 1/q, meaning that metric rewards steep response rather than physical fidelity.
 
 ---
 
@@ -364,6 +365,7 @@ prediction, which `FINDINGS §1`–`§12` had already superseded. They are measu
 | f_area Option 2 (f on the evaporative flux) | ⛔ **DEAD 2026-08-08** — no derivable value (§3.3) *and* no warrant for an area law on the conduction channel (`FINDINGS §15c`) |
 | f_area Option 3 (Θ → 1 saturated-flux cap) | ⛔ **SCREENED AND FAILED 0/3, 2026-08-08** — via Lancaster Eq 10, a sharper ℓ-free instrument than the cap; implied prefactor 5–50× outside the order-unity bracket and drifting 3–6× (`FINDINGS §16`) |
 | Θ₀ re-baseline after the `main` merge | ✅ **MEASURED 2026-08-08** — 5 PASS / 1 FAIL; bench1's native failure is a 3.4% window-length effect worth 1.3% on its Θ₀ (`FINDINGS §14`) |
+| Why every knob is weak (`FINDINGS §17`) | ✅ **ANSWERED 2026-08-08, no runs** — the two conduction knobs' Θ ∝ f^q exponents land on the Weaver **2/7** (f_A 0.268, f_κ 0.290); f_mix, which bypasses the eigenvalue, is 1.75× that. The bubble **absorbs** enhanced conduction. Also: the band-entry dose spread is dominated by 1/q, so that metric rewards steep response, not fidelity |
 | The Eq-10 result itself | 🔵 **the live decision** — Eq 10 at TRINITY's own Ṙ_b/V_w predicts Θ = 0.93/0.95/0.97, inside the L21b band, vs TRINITY's 0.29/0.44/0.58. Kills the area program, or replaces the band with a derived pointwise target (`F_AREA_PLAN` open question 4″) |
 
 **Production is untouched.** Default remains `cooling_boost_mode='none'`, f_κ = 1.0, f_A = 1.0.

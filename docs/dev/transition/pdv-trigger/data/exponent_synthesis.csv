@@ -1,0 +1,13 @@
+# generated 2026-08-13T20:18:21Z | builder make_exponent_synthesis.py | code 96707dc+dirty
+# SOURCES READ: bench7_analysis.csv <- re-reduction only, no runs.
+# EXPONENT: measured Theta ~ f^q grouped by the channel the knob acts through.
+# Weaver v(R1)=0 eigenvalue exponent 2/7 = 0.285714 (FINDINGS 13).
+# SPREAD: predicted = (Theta0 ratio spread)^(1/q_mean), i.e. what the inter-bench
+# dose spread would be from Theta0 variation ALONE at that knob's own exponent.
+table,knob,acts_through,q_per_bench,q_mean,q_over_weaver_2_7,q_spread_max_over_min,n_benches,theta0_ratio_spread,predicted_dose_spread_at_mean_q,measured_dose_spread,predicted_over_measured,upstream_flag
+EXPONENT,fA,conduction,0.252 0.246 0.307,0.268433,0.9395,1.249,3,,,,,
+EXPONENT,fkappa,conduction,0.277 0.273 0.318,0.289633,1.014,1.165,3,,,,,
+EXPONENT,fmix,L_cool directly,0.469 0.464 0.563,0.4988,1.746,1.214,3,,,,,
+SPREAD,fA,conduction,,0.268433,,,,2.0905,15.5967,5.997,2.601,all in-grid
+SPREAD,fkappa,conduction,,0.289633,,,,2.0905,12.7558,16.242,0.7854,PARTLY EXTRAPOLATED/UNREACHED
+SPREAD,fmix,L_cool directly,,0.4988,,,,2.0905,4.38571,2.745,1.598,all in-grid

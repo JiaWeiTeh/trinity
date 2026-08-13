@@ -65,6 +65,13 @@ reframing Lancaster as a **component benchmark in the wind-only limit** rather t
 calibration target. ⚠️ Chasing that surfaced a separate `trinity/` problem in the momentum-phase
 force budget, written up in **`docs/dev/momentum-pdrive/`** — it touches no Θ number here, but it
 sits upstream of every fate.
+**`§17` (re-reduction, no runs) closes the loop on why every knob is weak.** Grouped by the channel
+each acts through, the measured Θ ∝ f^q exponents separate exactly as `§13`/`§15` imply: the two
+**conduction** knobs land on the Weaver **2/7 = 0.286** eigenvalue (f_A 0.268, f_κ 0.290 — within 6%
+and 1%), while f_mix, which multiplies `L_cool` directly, comes in at 1.75× that. So the bubble
+**absorbs** enhanced conduction rather than lacking a multiplier. `§17c` also finds the band-entry
+dose spread is dominated by 1/q, meaning **the spread metric rewards steep response, not physical
+fidelity** — ⚠️ scoped to the Θ_cum entry spread; `§11`/`§12`'s solved-row metric is untouched.
 
 ---
 
@@ -966,3 +973,100 @@ its own workstream: **`docs/dev/momentum-pdrive/README.md`**. It does **not** to
 (Θ_cum integrates the implicit phase, which ends at the transition), but it does sit upstream of every
 fate and stopping outcome, including K3's determinism arm. The force-budget question above cannot be
 answered until it is resolved.
+
+---
+
+## §17. [physics] Every knob's exponent is the Weaver 2/7 — the bubble absorbs enhanced cooling, and the "spread" metric measures steepness, not fidelity
+
+Pure re-reduction of `data/bench7_analysis.csv` — **no runs, no new measurement.** The campaign
+recorded both inputs; this puts them side by side for the first time. Builder
+`data/make_exponent_synthesis.py`, artifact `data/exponent_synthesis.csv`.
+
+### §17a. Grouped by the channel each knob acts through, the exponents separate cleanly
+
+`§13` diagnosed the f_area failure as the **Weaver `v(R1)=0` evaporation eigenvalue**: TRINITY's Ṁ
+tracks `f^{2/7}`, absorbing any conduction-side boost. That was a *per-call* measurement on the mass
+flux. The band-entry campaign independently fitted **Θ ∝ f^q** on *full runs*. If `§13` is right, the
+two knobs that act through conduction should land on **2/7 = 0.2857** and the one that does not
+should not:
+
+| knob | acts through | q per bench (bench3/2/1) | mean q | **q ÷ (2/7)** | q spread |
+|---|---|---|---|---|---|
+| f_A | conduction | 0.252 · 0.246 · 0.307 | 0.268 | **0.94** | 1.25× |
+| f_κ | conduction | 0.277 · 0.273 · 0.318 | 0.290 | **1.01** | 1.17× |
+| f_mix | `L_cool` directly | 0.469 · 0.464 · 0.563 | 0.499 | **1.75** | 1.21× |
+
+**Both conduction knobs sit within 6% of 2/7, and f_κ within 1%.** f_mix, which multiplies the loss
+term directly and bypasses the eigenvalue, comes in at 1.75× that — roughly double, as bypassing a
+`^{2/7}` absorption should give.
+
+This is a genuine cross-check, not a restatement: `§13` measured a per-call mass flux at two frozen
+states, `§17a` reads full-run Θ dose–response across 294 arms. Two independent measurements of
+different quantities land on the same exponent, and the split follows the **mechanism**
+classification `§15` argued for on literature grounds. Three lines now agree.
+
+### §17b. So the enhanced-cooling problem is not a missing multiplier — it is an absorbing bubble
+
+> **Restated.** TRINITY does not merely under-cool; **its Θ responds too weakly to any cooling
+> enhancement, because the bubble restructures to absorb it.** Boost conduction and the interior
+> adjusts until the Weaver eigenvalue claws the boost back as `f^{2/7}`. That is why bench1 needs
+> f_A ≈ 83 to travel from Θ₀ = 0.22 to 0.90 — a negative feedback with a name, not a tuning
+> shortfall.
+
+It also explains `P1`'s falsification constructively. P1 predicted `q ∈ [0.55, 0.70]`; every knob
+came in below, and only bench1's f_mix (0.563) landed inside. `§17a` says that was never a tuning
+question — the achievable exponent is set by which channel the knob enters, and two of the three
+channels are eigenvalue-locked.
+
+### §17c. And the dose "spread" the knobs were ranked by largely tracks 1/q
+
+Band entry is `f = (0.90/Θ₀)^{1/q}`. Θ₀ varies **2.09×** across the three benches
+(0.90/Θ₀ = 1.948 / 2.639 / 4.072) while q is nearly constant *per knob* (1.17–1.25×). So the
+inter-bench dose spread is mostly Θ₀ variation raised to the 1/q:
+
+| knob | mean q | spread predicted by Θ₀ alone | measured | pred/meas | |
+|---|---|---|---|---|---|
+| f_A | 0.268 | 15.6× | 6.0× | 2.60 | all in-grid |
+| f_κ | 0.290 | 12.8× | 16.2× | 0.79 | ⚠️ partly extrapolated |
+| f_mix | 0.499 | 4.4× | 2.7× | 1.60 | all in-grid |
+
+⚠️ **Read the ordering, not the factor.** Pure Θ₀-propagation reproduces the *ranking* exactly —
+f_mix tightest, the two conduction knobs far wider — but over-predicts f_A and f_mix by 1.6–2.6×.
+The residual has an identified cause: bench1's q is systematically the highest of the three for
+every knob (0.307 / 0.318 / 0.563), which compresses the spread below constant-q propagation. So the
+claim is *"dominated by 1/q"*, **not** *"explained by 1/q"*.
+
+**What follows is still the uncomfortable part:** a knob with a larger exponent will show a tighter
+dose spread across benches almost regardless of what it represents. **f_mix's tighter spread follows
+from its steeper response, not from better physics** — which is the opposite of how a low spread
+reads. Ranking by spread rewards steepness.
+
+⚠️ **Scope, carefully.** This addresses the **Θ_cum band-entry spread** (`§1`, `§2`, the G0 gate).
+`§11`/`§12`'s decisive ranking used a *different* metric — the instantaneous trigger criterion on
+solved rows, f_A 2.71× vs f_mix 3.70× — which is **not analysed here**. The 1/q sensitivity
+plausibly carries over to any dose-based spread, but that is an expectation, not a measurement, and
+`§11`/`§12`'s numbers stand untouched. Nothing in `§1`–`§16` is retracted by this section; what
+changes is what the spread metric is understood to be *sensitive to*.
+
+### §17d. Where this leaves the program
+
+Combined with `§16` (Lancaster's ℓ-free Eq 10 predicts Θ = 0.93/0.95/0.97 at TRINITY's own
+Ṙ_b/V_w — inside the band — against TRINITY's 0.29/0.44/0.58), the picture is consistent from three
+directions: **the band is the right target, TRINITY really does miss it, and no scalar knob can
+honestly close the gap** — the conduction ones are eigenvalue-locked, and f_mix reaches the band
+only by acting on the answer rather than the mechanism.
+
+> **The recommendation this argues for: decouple the two problems.** The campaign has been solving
+> *"make TRINITY's Θ match observation"* (physics fidelity) in order to solve *"when should the
+> bubble transition"* (engineering). They do not have to be solved together, and coupling them is
+> what forced the knob hunt.
+>
+> - **The trigger does not need TRINITY's θ to be right.** `§16` supplies an external prediction of
+>   when the bubble should go momentum-driven, from a dynamical variable TRINITY computes exactly.
+>   *"We do not resolve interface cooling; we therefore trigger on the dynamical variable the theory
+>   relates it to"* is defensible and honest.
+> - **The fidelity gap is a modelling problem, not a knob.** The missing entrainment channel
+>   (`§15`) is paper-length work. `f^{2/7}` is the code saying no scalar closes it.
+>
+> ⚠️ Gate unchanged from `§16e`: **pin C** from Lancaster's α_p, α_R, f_turb before committing to the
+> Ṙ_b/V_w trigger. On the current bracket the firing time spans "immediately" to "never".

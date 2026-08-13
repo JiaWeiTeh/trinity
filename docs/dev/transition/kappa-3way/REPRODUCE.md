@@ -37,6 +37,7 @@
 screen, which ran 2026-08-03 and **failed its gate GA0**, so the 514-arm bench8 campaign it gated was
 never submitted and has no rows here. Rows 12a/12b (new, 2026-08-08) are the post-merge Θ₀
 re-baseline — **5 PASS / 1 FAIL** — and the Lancaster Eq-10 screen of f_area Option 3 — **0/3 FAIL**.
+Row 12c is `§17`'s exponent synthesis: a pure re-reduction, no runs.
 
 ---
 
@@ -58,6 +59,7 @@ All commands run **from the repo root**. Cost: 🟢 seconds (reads committed CSV
 | 11 | **f_area Phase A0 — the pre-registered offline screen of the combined knob** (`F_AREA_PLAN §5`/`§5a`): 30 production solves at the two committed captured states, f ∈ {1,2,4,8,16} × {κ-only, fA-only, combined}, scoring A0.1–A0.5 | `python docs/dev/transition/pdv-trigger/data/make_farea_screen.py` | `pdv-trigger/data/farea_screen.csv` (30 CALL rows + the CHECK scorecard) + `pdv-trigger/farea_screen.png` | 🟡 ~40 s | ❌ **GA0 FAILED** — `FINDINGS §13`; bench8 not submitted |
 | 12a | **The three Θ₀ arms, re-run at the merge** — the inputs row 12b reads. Separate processes, one `path2output` each (`PROVENANCE §6` rule 3) | `for b in bench1_m5e4_r20 bench2_m1e5_r10 bench3_m1e5_r5; do python run.py docs/dev/transition/pdv-trigger/runs/params/bench5/${b}__none_diag.param; done` | `outputs/bench5/*__none_diag/dictionary.jsonl` (untracked — row 12b distils them) | 🟡 ~30 min, 3-way parallel on 4 cores | ✅ ran 2026-08-08 |
 | 12b | **Θ₀ re-baseline (CODE BASELINE clause) + the Lancaster Eq-10 screen** — `table=THETA0` scores the re-runs against the committed Θ₀ at G0's bar, native and matched-window; `table=EQ10` inverts Eq 10 on the same trajectories | `python docs/dev/transition/pdv-trigger/data/make_merge_rebaseline.py` | `pdv-trigger/data/merge_rebaseline.csv` + `pdv-trigger/merge_rebaseline.png` | 🟢 seconds | ✅ **THETA0 5/6** (`FINDINGS §14`) · ❌ **EQ10 0/3** (`FINDINGS §16`) |
+| 12c | **The exponent synthesis** (`FINDINGS §17`) — regroups the committed Θ ∝ f^q exponents by the channel each knob acts through, and tests whether the band-entry dose spread is Θ₀ variation through 1/q. Pure re-reduction, no runs | `python docs/dev/transition/pdv-trigger/data/make_exponent_synthesis.py` | `pdv-trigger/data/exponent_synthesis.csv` | 🟢 seconds | ✅ conduction knobs land on 2/7 (`FINDINGS §17a`) |
 
 ## Rebuild everything runnable today, in one block
 
