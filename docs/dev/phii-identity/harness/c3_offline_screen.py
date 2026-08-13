@@ -131,7 +131,7 @@ def candidates_for_row(d, params):
 def analyse(run_dir):
     param_files = sorted(run_dir.glob("*.param"))
     if not param_files:
-        return [], [], f"{run_dir.name}: no .param"
+        return [], [], [], f"{run_dir.name}: no .param"
     params = read_param(str(param_files[0]))
     # read_param does NOT populate quantities derived during cloud init — rCloud
     # comes back 0, which makes get_density_profile() treat every radius as
@@ -151,7 +151,7 @@ def analyse(run_dir):
                     params[k].value = v
                     overlaid.append(k)
     if "rCloud" not in overlaid and float(params["rCloud"].value or 0) <= 0:
-        return [], [], f"{run_dir.name}: rCloud unavailable — C3b would be meaningless"
+        return [], [], [], f"{run_dir.name}: rCloud unavailable — C3b would be meaningless"
 
     rows = []
     with (run_dir / "dictionary.jsonl").open() as fh:
@@ -208,6 +208,7 @@ def analyse(run_dir):
 
     # ---- C3c regime analysis (PLAN §3c) ------------------------------------
     regime, t_cross, phase_cross = [], None, None
+    seq = []  # (t, phase, dom, stock_drive, c3c_drive) in time order, for seam analysis
     for d in rows:
         ph = d.get("current_phase")
         if ph not in PHASES:
@@ -232,6 +233,7 @@ def analyse(run_dir):
             c3c = max(conf, P_a)
         if Pdrv and Pdrv > 0:
             regime.append((ph, dom, c3c / Pdrv))
+            seq.append((d.get("t_now"), ph, dom, Pdrv, c3c))
     reg_rows = []
     for ph in PHASES:
         sel = [(dom, ratio) for p_, dom, ratio in regime if p_ == ph]
@@ -251,7 +253,33 @@ def analyse(run_dir):
                 "phase_at_cross": phase_cross or "NA",
             }
         )
-    return out, reg_rows, None
+
+    # ---- Seam analysis: adjacent-snapshot drive ratios at phase boundaries ----
+    # and at the C3c regime switch. CAVEAT: snapshots are segment-spaced, so each
+    # "jump" is discontinuity PLUS one segment of genuine evolution — an upper
+    # bound. Stock and C3c are measured on the SAME row pairs, so the comparison
+    # between them is fair even though neither number is a pure discontinuity.
+    seam_rows = []
+    for (t0, ph0, dom0, s0, c0), (t1, ph1, dom1, s1, c1) in zip(seq, seq[1:]):
+        kind = None
+        if ph1 != ph0:
+            kind = f"{ph0}->{ph1}"
+        elif dom1 != dom0:
+            kind = f"regime-switch ({ph0})"
+        if kind and s0 > 0 and c0 > 0:
+            seam_rows.append(
+                {
+                    "run": run_dir.name,
+                    "kind": kind,
+                    "t_before": f"{t0:.6g}",
+                    "t_after": f"{t1:.6g}",
+                    "stock_jump": f"{s1 / s0:.4f}",
+                    "c3c_jump": f"{c1 / c0:.4f}",
+                    "c3c_before": f"{c0:.6g}",
+                    "c3c_after": f"{c1:.6g}",
+                }
+            )
+    return out, reg_rows, seam_rows, None
 
 
 def main():
@@ -261,18 +289,22 @@ def main():
     ap.add_argument(
         "--regime-out", type=Path, help="also write the C3c regime/drive CSV (PLAN §3c)"
     )
+    ap.add_argument(
+        "--seams-out", type=Path, help="also write the phase-seam / regime-switch continuity CSV"
+    )
     args = ap.parse_args()
 
-    allrows, allreg, notes = [], [], []
+    allrows, allreg, allseams, notes = [], [], [], []
     for run_dir in args.runs:
         if not (run_dir / "dictionary.jsonl").exists():
             notes.append(f"{run_dir}: no dictionary.jsonl")
             continue
-        rows, reg, err = analyse(run_dir)
+        rows, reg, seams, err = analyse(run_dir)
         if err:
             notes.append(err)
         allrows.extend(rows)
         allreg.extend(reg)
+        allseams.extend(seams)
     if not allrows:
         print("nothing to report:", "; ".join(notes))
         return 1
@@ -351,6 +383,39 @@ def main():
             wr.writeheader()
             wr.writerows(allreg)
         print(f"wrote {args.regime_out}")
+
+    if args.seams_out and allseams:
+        w3 = max(len(r["run"]) for r in allseams)
+        print(f"\n{'run':{w3}} {'seam':>26} {'t_after':>10} {'stock jump':>11} {'c3c jump':>9}")
+        for r in allseams:
+            print(
+                f"{r['run']:{w3}} {r['kind']:>26} {r['t_after']:>10} "
+                f"{r['stock_jump']:>11} {r['c3c_jump']:>9}"
+            )
+        args.seams_out.parent.mkdir(parents=True, exist_ok=True)
+        with args.seams_out.open("w", newline="") as fh:
+            fh.write(stamp(__file__) + "\n")
+            fh.write("# Drive continuity at phase seams and at the C3c regime switch, as the\n")
+            fh.write(
+                "# adjacent-snapshot ratio drive(after)/drive(before). CAVEAT: snapshots are\n"
+            )
+            fh.write("# segment-spaced, so each ratio is discontinuity PLUS one segment of real\n")
+            fh.write("# evolution — an upper bound. stock and c3c use the SAME row pairs, so the\n")
+            fh.write("# comparison between columns is fair.\n")
+            cols = [
+                "run",
+                "kind",
+                "t_before",
+                "t_after",
+                "stock_jump",
+                "c3c_jump",
+                "c3c_before",
+                "c3c_after",
+            ]
+            wr = csv.DictWriter(fh, fieldnames=cols)
+            wr.writeheader()
+            wr.writerows(allseams)
+        print(f"wrote {args.seams_out}")
     return 0
 
 

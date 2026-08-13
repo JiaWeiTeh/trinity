@@ -329,6 +329,42 @@ Three consequences fall out **without further design**, all screenable offline:
   fills the cavity *always*; C3c asserts it only on the branch where the wind is too weak to keep the
   cavity evacuated — which is precisely when filling is credible.
 
+### §3c.1 Continuity across the regime switch and the phase seams (added 2026-08-13)
+
+Raised by the maintainer: does the formulation stay smooth at the regime switch and across the
+energy/transition/momentum seams? Measured offline on the same five runs — artifact
+`data/b5_c3c_seams.csv` (adjacent-snapshot drive ratios; each is discontinuity *plus* one segment of
+real evolution, so an upper bound — but stock and C3c use the same row pairs, so the comparison is
+fair):
+
+| seam | stock jump (after/before) | C3c jump | reading |
+|---|---|---|---|
+| energy → implicit | 0.81–0.84 | **0.89–0.92** | C3c smoother — no fictional `P_HII` discontinuity riding the ramp end |
+| implicit → transition | 0.59–0.99 | 0.53–0.96 | comparable; see the `P_ram` note below |
+| **regime switch** (in transition) | 0.75–0.83 *(same rows)* | **0.86–0.99** | the switch is nearly invisible: `max` is C0 — at the crossover both branches are *equal*, so the drive is continuous and only its derivative kinks |
+| transition → momentum | 0.993–0.996 | **0.995–0.999** | continuous **by construction**: `P_C3a` depends only on `Qi, R2` and does not know the phase label, unlike stock's `P_HII`, which is redefined (`Pb`-slaved → `P_ram`-slaved) at this seam |
+
+Three structural points, beyond the numbers:
+
+1. **Within a phase, C3c is C0-continuous with derivative kinks only** — that is what `max()` gives.
+   At `t_cross` the two branches cross at equal value; there is no drive jump to integrate over. The
+   stiffness question at the kink is the same class the code already handles at every `max` it
+   contains today.
+2. **The `P_ram` switch-on at implicit → transition is a stock discontinuity that C3c *mediates*.**
+   Stock's transition drive is effectively `Pb + P_ram` from the first transition step — `P_ram`
+   turns on instantaneously. Under C3c the `max` clips it: the drive stays `Pb` (continuous with
+   implicit) until the physical crossover, and `P_ram` enters only as part of the HII-branch
+   takeover. This is why C3c's raw ratio at this seam is *slightly lower* than stock's in WW
+   (0.526 vs 0.586): stock's instantaneous `+P_ram` partially masks the genuine decline of `Pb`
+   across the gap. The smoother-looking stock number is the artifact; the discontinuity is stock's.
+3. **If the stage-2 arm shows the integrator stumbling at `t_cross`, the pre-registered remedy is
+   event detection, not smoothing constants.** `trinity/phase_general/phase_events.py` already
+   provides the factory machinery (`make_cloud_boundary_event` precedent) to let the solver land on
+   the crossover exactly instead of stepping over it. A smooth-max (softmax / p-norm) blend is the
+   fallback, but it introduces a width parameter — a new magic number, which this codebase is
+   actively purging — so it requires a maintainer ruling before use. The `dt_switchon` ramp is the
+   in-repo precedent for time-smoothing if a ramped variant is ever preferred.
+
 **Caveats, stated up front:** the C3a branch carries an O(1) normalization ambiguity (uniform sphere
 vs the R1..R2 shell — small since R1³ ≪ R2³; photoevaporative-flow closures land on the same
 √(Qi/R2³) scaling with different O(1) factors). And in the confined branch, "contributes nothing
@@ -597,7 +633,8 @@ real behavioural changes — the stage-2 arm decides whether fates survive them.
 be near-inert: only its energy-phase ramp window changes) and B1M, gated exactly as Batch 3 was —
 matched-`t` ledger, fates enumerated under D3. Expect ΔR2 well over the 5% bar by construction
 (momentum drive ×2.4–4.3, early-energy drive ÷ up to 3.3); the questions the arm answers are whether
-fates flip, whether the integrator tolerates the transition handover kink, and what the fate map
+fates flip, whether the integrator tolerates the transition handover kink (§3c.1: pre-registered remedy is an
+event via `phase_events.py`, not a smoothing constant), and what the fate map
 looks like vs stock. Implementation note for the arm: replace the `n_IF_Str` → `P_HII` path with the
 §3c branch — smallest diff is computing `P_C3a` in the phase runners next to the existing `P_HII`
 lines and selecting per §3c's table; the cap and shell structure stay untouched (they still serve
@@ -668,6 +705,7 @@ the rule being enforced.
 | `data/b3_c1_ledger.csv` | `harness/compare_trajectories.py` | 3 | `41511ac`+C1 patch |
 | `data/b5_c3_screen.csv` | `harness/c3_offline_screen.py` | 5 (stage 1) | evaluated on b1 runs; no arm |
 | `data/b5_c3c_regime.csv` | `harness/c3_offline_screen.py --regime-out` | 5 (stage 1b) | evaluated on b1 runs; no arm |
+| `data/b5_c3c_seams.csv` | `harness/c3_offline_screen.py --seams-out` | 5 (stage 1b) | seam/switch continuity; evaluated on b1 runs |
 | `data/b0_identity_grid.csv` | `harness/harvest_identity.py` | 0 | runs @ `6b55657` |
 | `data/b0_trajectories.csv` | `harness/harvest_identity.py` | 0 | runs @ `6b55657` |
 | `data/b0_walltimes.csv` | `harness/run_batch.py` | 0 | runs @ `6b55657` |
@@ -910,3 +948,17 @@ b0 run and to `bb302e0` for every b1 run (§9 records how that was protected).
   *does* appear — vs the confining pressure in transition, not vs `P_ram` within momentum. C3c
   supersedes bare C3a; stage 2 is the run arm, and its open risks are fate flips and the integrator's
   tolerance of the handover kink, both only answerable by running it.
+
+- **2026-08-13 (§3c.1 — continuity at the regime switch and the phase seams)** — Raised by the
+  maintainer; measured offline on the same five runs (`data/b5_c3c_seams.csv`). Result: **C3c is as
+  smooth as or smoother than stock at every seam.** Energy→implicit 0.89–0.92 vs stock's 0.81–0.84;
+  transition→momentum 0.995–0.999, continuous *by construction* because `P_C3a` does not know the
+  phase label (stock's `P_HII` is redefined from `Pb`-slaved to `P_ram`-slaved at that seam). The
+  regime switch itself is nearly invisible (0.86–0.99 on the same rows where stock, which has no
+  switch, moves 0.75–0.83): `max` is C0 — the branches are equal at the crossover, so only the
+  derivative kinks. One honest subtlety recorded: at implicit→transition, stock *looks* marginally
+  smoother in WW (0.586 vs 0.526) — but that is stock's instantaneous `+P_ram` switch-on partially
+  masking the real decline of `Pb`; the discontinuity is stock's, and C3c mediates it through the
+  `max`. Pre-registered remedy if the stage-2 arm stumbles at `t_cross`: solver event via the
+  existing `phase_events.py` machinery; smooth-max is fallback only, since its width parameter is a
+  new magic number and needs a maintainer ruling.

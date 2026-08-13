@@ -1,4 +1,4 @@
-# generated 2026-08-13T13:11:46Z | builder c3_offline_screen.py | code 4a56c29+dirty
+# generated 2026-08-13T13:28:45Z | builder c3_offline_screen.py | code 5ed854b+dirty
 # C3c regime screen (PLAN §3c): P_C3a vs the ODE-consistent confining
 # pressure conf = F_ram/(4 pi R2^2) (falls back to Pb). frac_HII_dom = rows
 # with P_C3a > conf. drive_ratio = C3c drive / STORED stock P_drive, with

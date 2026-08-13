@@ -1,4 +1,4 @@
-# generated 2026-08-13T13:11:46Z | builder c3_offline_screen.py | code 4a56c29+dirty
+# generated 2026-08-13T13:28:45Z | builder c3_offline_screen.py | code 5ed854b+dirty
 # Offline screen of decoupled P_HII candidates. NO SOLVER RUN: every candidate
 # is closed-form in quantities already stored in the snapshots, evaluated ON the
 # stock trajectory. It therefore answers 'what would this pressure have been',
