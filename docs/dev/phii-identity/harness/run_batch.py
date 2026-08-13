@@ -55,6 +55,18 @@ MATRIX = {
     "PL2": ("full", f"{P_CR}/pl2_steep.param", {}),
     "LDLS": ("full", f"{P_CR}/large_diffuse_lowsfe.param", {}),
     "SDHS": ("full", f"{P_CR}/small_dense_highsfe.param", {}),
+    # --- Batch 5 stage 3: the regime map (PLAN §3c stage 3) -----------------
+    # A wind-strength ladder on ONE cloud, so the only thing varying is the wind:
+    #   WW = 0.1  ...  SC = 1.0 (default)  ...  SW3 = 3  ...  SW10 = 10
+    # The Lancaster discriminator: do strong winds push t_cross later or out of
+    # the run (-> C3c reproduces wind-dominated regimes), or not (-> the C3a
+    # normalisation needs revisiting)? Pre-registered in PLAN §3c.
+    "SW3": ("stage3", "param/simple_cluster.param", {"FB_thermCoeffWind": "3"}),
+    "SW10": ("stage3", "param/simple_cluster.param", {"FB_thermCoeffWind": "10"}),
+    # Late-time Qi fade: past SN onset (~3.6 Myr in the bundled SB99 table) the
+    # ionizing output collapses while winds+SNe keep Lmech up, so C3c predicts a
+    # possible SECOND crossover back to confinement. Stock cannot express this.
+    "B3ML": ("stage3", f"{P_BENCH}/bench3_m1e5_r5__none_diag.param", {}),
 }
 
 
@@ -104,7 +116,7 @@ def done(run_dir):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--arm", required=True, help="label for the code state, e.g. b0 / b1")
-    ap.add_argument("--tier", default="core", choices=["core", "full", "all"])
+    ap.add_argument("--tier", default="core", choices=["core", "full", "stage3", "all"])
     ap.add_argument("--configs", help="comma-separated ids, overrides --tier")
     ap.add_argument("--stop-t", help="override stop_t on every config (documented in the CSV)")
     ap.add_argument("--timeout", type=int, default=7200, help="per-run seconds")
