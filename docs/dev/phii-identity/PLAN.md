@@ -47,11 +47,17 @@ not quote any figure from an unmarked earlier revision of this file.**
   changes, on weak-wind/two-mass/two-radius configs. C1 is safe but wrong-target (it deletes the
   photoionised channel instead of decoupling it), so it is superseded by C3 and kept as the price tag.
 - **Batch 5 stage 1 (offline, no solver run): C3b ⛔ rejected** — `n = n_cloud(R2)` has no `Qi`
-  dependence, so it fails the pre-registered wind-only limit structurally. **C3a advances** to a run
-  arm: decoupled, correct `Qi → 0` limit, sensible densities, but predicts a
-  photoionisation-dominated momentum phase (3.5–7.6× `P_ram`, never crossing). **C3c unevaluated.**
-- **Next:** C3a stage 2 (run arm on B2M/B3M/WW + B1M control), and a C3c design pass — C3c is the
-  only candidate that keeps the ionised layer where it physically belongs, between wind and shell.
+  dependence, failing the pre-registered wind-only limit structurally. C3a passed but asserted
+  cavity-filling everywhere.
+- **Batch 5 stage 1b: C3c designed (§3c) and screened — it is the surviving candidate.** The design
+  pass proves a confined skin has no independent density, so C3c is a **regime switch**: transmit
+  while `P_C3a ≤ P_conf`, drive at `P_C3a` above. On the stock trajectories it leaves the implicit
+  phase *exactly* untouched, fixes D-ramp as a side effect, puts the handover crossover inside the
+  transition phase in all four configs that reach it, and raises the momentum drive to 2.4–4.3×
+  stock. The coevolution crossover D2 asked about **does** appear — vs the confining pressure, in
+  transition — not vs `P_ram` within momentum.
+- **Next:** Batch 5 stage 2 — run the C3c arm (B2M/B3M/WW + PRB/B1M controls), fates enumerated
+  under D3. Expect >5% ΔR2 by construction; the arm decides whether fates survive.
 
 ---
 
@@ -265,6 +271,69 @@ no simulation needed, because both are closed-form in quantities already stored 
 `rCloud`, profile). Only the surviving candidate gets a run arm. This inverts the usual order
 deliberately: the cheap screen is decisive here because the failure mode is *magnitude*, not
 stability.
+
+## 3c. C3c designed (2026-08-13): the confined skin has no independent density — so C3c is a regime switch
+
+D2's brief for C3c was "keep the skin geometry, decouple its `Pb`-derived inner boundary condition."
+The design pass shows that brief, taken literally, is **ill-posed** — and what survives of it is a
+two-branch formulation that reuses C3a as one branch. The elimination argument, kept because it is
+the actual content of the design:
+
+1. **Independent-thickness skins are C3a × O(1), on the wrong side.** Any Strömgren balance over a
+   skin of decoupled thickness ΔR gives `n ∝ ΔV^(−1/2)`; a skin's ΔV is *smaller* than the cavity's,
+   so its pressure is **higher** than C3a's — e.g. ΔR = 0.1·R2 gives ≈1.8× C3a. Since C3a is already
+   3.5–7.6× `P_ram` in momentum, every member of this family makes the overshoot worse. In ionization
+   equilibrium at fixed absorbed `Qi`, **the cavity-filling configuration (C3a) is the *minimum*
+   pressure**; confinement can only raise it.
+2. **Jump-condition closures re-couple.** Setting the ionized density from the I-front jump condition
+   ties it to the neutral shell's density — which is pressure-confined by the drive. Circular again.
+3. **Mass closures re-couple.** Setting it from the ionized shell mass imports the shell-structure
+   integration, whose inner BC is `Pb`. Circular again.
+4. **The remaining closure is pressure equilibrium with the confinement — which is the current code.**
+   A confined skin in equilibrium *has no independent density*: its density IS the confining pressure
+   restated. That is not a bug in the implementation; it is what the cap has been measuring all along.
+
+**So the physical content is a regime switch, not a new density formula:**
+
+```
+P_free = P_C3a = (μc/μi)·kT·sqrt(3(1−f_esc)Qi / (4π χe αB R2³))     (the relaxed equilibrium)
+
+if P_free ≤ P_conf :  wind/bubble CONFINES the ionized gas → it is a thin skin at P_conf,
+                      transmits the confinement, contributes NOTHING independent (F_HII_indep = 0)
+if P_free > P_conf :  confinement cannot hold → ionized gas fills its own volume and DRIVES
+                      at P_C3a, which self-regulates (∝ R2^(−3/2)) as the shell moves out
+```
+
+Per-phase drive under C3c, honouring D1's rulings (momentum = sum; transition `max` = deliberate
+handover):
+
+| phase | stock | C3c |
+|---|---|---|
+| energy / implicit | `max(Pb_eff, P_HII≡Pb)` | `max(Pb_eff, P_C3a)` |
+| transition | `max(Pb, P_HII + P_ram)` | `max(Pb, P_C3a + P_ram)` |
+| momentum | `P_HII + P_ram = 2·P_ram` | `P_C3a + P_ram` |
+
+Three consequences fall out **without further design**, all screenable offline:
+
+- **D-ramp is fixed as a side effect.** In the energy phase `P_C3a ≪ Pb`, so the `max` selects the
+  ODE's own (ramped) bubble pressure — there is no longer a fictional `P_HII` carrying the un-ramped
+  pressure past `dt_switchon`.
+- **The transition `max` finally binds physically.** The screen shows `P_C3a/Pb` crossing 1 *inside
+  the transition phase* in **every config that reaches transition** (B3M 0.12→5.1, WW 0.49→4.3,
+  B1M 0.36→6.8, B2M 0.17→7.4). The handover the maintainer intends the `max` to represent is exactly
+  the moment the dying bubble pressure falls under the HII-region pressure. ⚠️ This also corrects the
+  Batch-5 stage-1 statement that "the coevolution crossover does not appear": it does not appear vs
+  `P_ram` *within* momentum, but the physically relevant crossover — vs the confining pressure —
+  appears in transition, in all four configs that get there.
+- **The cavity-filling assumption is only invoked where it is plausible.** C3a asserted ionized gas
+  fills the cavity *always*; C3c asserts it only on the branch where the wind is too weak to keep the
+  cavity evacuated — which is precisely when filling is credible.
+
+**Caveats, stated up front:** the C3a branch carries an O(1) normalization ambiguity (uniform sphere
+vs the R1..R2 shell — small since R1³ ≪ R2³; photoevaporative-flow closures land on the same
+√(Qi/R2³) scaling with different O(1) factors). And in the confined branch, "contributes nothing
+independent" is a *model choice* consistent with D1's "decoupled `P_HII`" instruction — the skin
+still transmits `P_conf`, it just stops being double-counted as a separate entry.
 
 ## 4. Config / regime matrix
 
@@ -502,13 +571,37 @@ the coevolution crossover D2 hoped for does **not** appear within these configs'
 (`P_C3a ∝ R2^-3/2` vs `P_ram ∝ R2^-2`, so the crossover sits at smaller `R2` than the momentum phase
 ever reaches).
 
-**Stage 2 (not started).** Run C3a as an arm on the momentum-reaching configs (B2M, B3M, WW) plus
-B1M as the inert control, gated exactly as Batch 3 was. Expect a *large* ΔR2 — Batch 3 measured that
-halving the momentum drive costs ≤4%, so multiplying it by ~4–7 should cost considerably more, and
-the question is whether fates flip. Open design question first: C3a assumes ionised gas fills the
-wind-evacuated cavity, which sits awkwardly with the momentum-phase picture; **C3c** (keep the skin
-geometry, replace only its `Pb`-derived inner boundary condition) remains unevaluated and is the
-candidate that would avoid that objection.
+**Stage 1b (2026-08-13) — C3c designed (§3c) and screened jointly.** Artifact:
+`data/b5_c3c_regime.csv` (same builder, same five runs, still no solver run). The regime structure
+comes out exactly as §3c predicts, in every config:
+
+| phase | frac HII-dominated | C3c drive / stock drive (min..med..max) | reading |
+|---|---|---|---|
+| energy | **0.0000** (all 5) | 0.30 .. 0.70–0.94 .. 1 | confined branch; the <1 ratios ARE the D-ramp fix — C3c honours the ramped pressure, stock's fictional `P_HII` did not (1/3.3 ≈ 0.30) |
+| implicit | **0.0000** (all 5) | **1 .. 1 .. 1 exactly** | provable no-op — the falsifiable control, passed on every row |
+| transition | 0.76–0.90 | 0.84–0.94 .. 2.5–3.7 .. 3.0–4.2 | the handover: early transition C3c *removes* the 1.82× double-count (ratio < 1), then the HII branch takes over as `Pb` dies |
+| momentum | **1.0000** (all 4 that reach it) | 2.4 .. 2.7–4.2 .. 4.3 | HII-dominated everywhere; drive = `P_C3a + P_ram` = 2.4–4.3× stock's `2·P_ram` |
+
+`t_cross` lands **inside the transition phase in all four configs that reach it** (B3M 0.301, WW
+0.163, B1M 0.666, B2M 0.449 Myr); PRB never leaves implicit and never crosses — also as predicted.
+
+**Verdict: C3c supersedes bare C3a as the candidate.** Same decoupled physics on the driving branch,
+but (i) the cavity-filling assumption is invoked only where the wind is too weak to prevent it,
+(ii) the implicit phase is exactly untouched, (iii) D-ramp is fixed as a side effect rather than as
+separate work, and (iv) the transition `max` becomes the physically binding handover the maintainer
+intends. The cost is unchanged from C3a where it matters: the momentum drive rises 2.4–4.3× over
+stock, and the early-energy drive drops up to 3.3× (the ramp finally biting). **Both are large,
+real behavioural changes — the stage-2 arm decides whether fates survive them.**
+
+**Stage 2 (not started).** Run **C3c** as an arm on B2M, B3M, WW (momentum-reaching) plus PRB (must
+be near-inert: only its energy-phase ramp window changes) and B1M, gated exactly as Batch 3 was —
+matched-`t` ledger, fates enumerated under D3. Expect ΔR2 well over the 5% bar by construction
+(momentum drive ×2.4–4.3, early-energy drive ÷ up to 3.3); the questions the arm answers are whether
+fates flip, whether the integrator tolerates the transition handover kink, and what the fate map
+looks like vs stock. Implementation note for the arm: replace the `n_IF_Str` → `P_HII` path with the
+§3c branch — smallest diff is computing `P_C3a` in the phase runners next to the existing `P_HII`
+lines and selecting per §3c's table; the cap and shell structure stay untouched (they still serve
+absorption fractions and diagnostics).
 
 ### Batch 6 — land — Status: ⬜
 Chosen candidate (D1 decides between C1, C1⊕C2b, or a C3) on the **full-12**; full ladder
@@ -537,7 +630,7 @@ under D4 with a table of before/after.
 | 2 | ⬜ | — | — | — |
 | 3 | ✅ | 2026-08-13 | **C1 MEASURED — safe, small, and aimed at the wrong target.** Momentum-only `max(P_HII, P_ram)` (halving `P_drive` from `2·P_ram` to `P_ram` there) on 4 configs spanning weak winds, two masses and two bench radii. **All WITHIN-BAR, no fate changes:** B1M **0.000%**, B2M 1.24%, B3M 4.00%, WW 1.29% ΔR2 at matched `t`. B1M is the pre-registered falsifiable control — it never reaches momentum, so C1 must be inert there, and it is to 0.000%. The effect is small because momentum is only 12–15% of these runs. **Verdict: C1 does not break anything, but it does not do what D2 asks** — with `P_HII ≡ P_ram` in momentum, `max(P_HII, P_ram) = P_ram`, so C1 *deletes* the photoionised channel rather than decoupling it, and D1 says the sum is intended. Superseded as a fix by C3; retained as the measured cost of the double-count | `data/b3_c1_ledger.csv` |
 | 4 | 🟡 | 2026-08-12 | **4a MEASURED — survives, but is not behaviourally neutral.** 4/4 configs (PRB, B3M, F1HI, F1LO) ran to their natural end, **zero** distress lines (no excess-work, overflow, monotonic-guard or convergence warnings), wall times *within* baseline (492–764 s vs 682–832 s). **No fate changed** on any config. Identity destroyed as intended: `frac_PHII_eq_Pb` = **0.0000** in every phase of every config (was ≥0.9697), relΔ now O(1) (0.06–2.55). But **every config breaches the 5% bar**: ΔR2 max 15.3–28.4%, all located inside the `dt_switchon` window (t = 1.3e-7 … 9e-6 Myr); ΔR2 at end-of-overlap 0.95% (PRB, recovers) → 14.4% (F1LO, retained). Mechanism: uncapped `P_HII` exceeds `Pb` on **100%** of rows (max 7.79× across the matrix; 3.36× on PRB) so it wins the `max`, lifting median `P_drive/Pb` from 1.0000 to 1.83 (PRB). **Verdict: C2a is numerically viable and physically consequential — not a free win. Landing it needs D2.** 4b not started | `data/b4a_ledger.csv`, `data/b4a_identity_grid.csv` |
-| 5 | 🟡 | 2026-08-13 | **Stage 1 (offline screen) done — C3b ⛔ REJECTED, C3a advances.** No solver run: both candidates are closed-form in stored quantities, evaluated on the stock trajectory across 5 configs. C3b fails the pre-registered wind-only limit *structurally* — `n = n_cloud(R2)` has **no `Qi` dependence**, so switching the ionizing source off leaves its `P_HII` unchanged; it also steps 4 decades at `rCloud`. C3a is causally decoupled (`Qi`, `R2` only), has the correct `Qi → 0` limit, and gives sensible ionised densities (19–8055 cm⁻³ in momentum) — but sits uniformly **3.5–7.6× above `P_ram`** and never crosses it, i.e. predicts a photoionisation-dominated momentum phase in all five configs. Stage 2 (run arm) not started; **C3c still unevaluated** | `data/b5_c3_screen.csv` |
+| 5 | 🟡 | 2026-08-13 | **Stage 1 (offline screen) done — C3b ⛔ REJECTED, C3a advances.** No solver run: both candidates are closed-form in stored quantities, evaluated on the stock trajectory across 5 configs. C3b fails the pre-registered wind-only limit *structurally* — `n = n_cloud(R2)` has **no `Qi` dependence**, so switching the ionizing source off leaves its `P_HII` unchanged; it also steps 4 decades at `rCloud`. C3a is causally decoupled (`Qi`, `R2` only), has the correct `Qi → 0` limit, and gives sensible ionised densities (19–8055 cm⁻³ in momentum) — but sits uniformly **3.5–7.6× above `P_ram`** and never crosses it, i.e. predicts a photoionisation-dominated momentum phase in all five configs. **Stage 1b: C3c designed (§3c) and screened — it supersedes bare C3a.** The confined skin has no independent density (any decoupled-thickness skin is C3a × O(1), *higher*), so C3c is a regime switch: transmit when `P_C3a ≤ P_conf`, drive at `P_C3a` when above. Screened on the same 5 runs: implicit **exactly** untouched (ratio 1..1..1), D-ramp fixed as a side effect (energy ratio down to 0.30 = the ramp honoured), `t_cross` inside transition in all 4 configs that reach it, momentum drive 2.4–4.3× stock. Stage 2 (run arm) not started | `data/b5_c3_screen.csv`, `data/b5_c3c_regime.csv` |
 | 6 | ⬜ | — | — | — |
 
 ### 8.2 Config wall-times (filled by Batch 0)
@@ -574,6 +667,7 @@ the rule being enforced.
 | `data/b3b_coupling_regression.csv` | `harness/coupling_regression.py` | 3b | `3a38a87`+dirty |
 | `data/b3_c1_ledger.csv` | `harness/compare_trajectories.py` | 3 | `41511ac`+C1 patch |
 | `data/b5_c3_screen.csv` | `harness/c3_offline_screen.py` | 5 (stage 1) | evaluated on b1 runs; no arm |
+| `data/b5_c3c_regime.csv` | `harness/c3_offline_screen.py --regime-out` | 5 (stage 1b) | evaluated on b1 runs; no arm |
 | `data/b0_identity_grid.csv` | `harness/harvest_identity.py` | 0 | runs @ `6b55657` |
 | `data/b0_trajectories.csv` | `harness/harvest_identity.py` | 0 | runs @ `6b55657` |
 | `data/b0_walltimes.csv` | `harness/run_batch.py` | 0 | runs @ `6b55657` |
@@ -799,3 +893,20 @@ b0 run and to `bb302e0` for every b1 run (§9 records how that was protected).
   phase, where R2 is deep inside the cloud. The screen now overlays the run's `metadata.json`
   constants and refuses to report C3b at all if `rCloud` is unavailable. Had that gone unnoticed,
   C3b would have been rejected for the wrong reason and the record would have looked identical.
+
+- **2026-08-13 (C3c designed, then both screened together)** — The design pass (§3c) turned up
+  something better than the brief: "keep the skin, decouple its inner BC" is **ill-posed**, because
+  every decoupled closure either re-couples (jump condition → shell density; mass closure → shell
+  structure) or lands back on the C3a scaling with a *higher* pressure (any independent-thickness
+  skin has smaller ΔV, and Strömgren pressure ∝ ΔV^(−1/2) — the cavity-filling C3a is the *minimum*).
+  The only remaining closure, pressure equilibrium with the confinement, **is the current code** —
+  which is what the cap has been measuring all along. So the physical content of C3c is a **regime
+  switch**: the ionized layer transmits (contributes nothing independent) while `P_C3a ≤ P_conf`, and
+  drives at `P_C3a` once confinement cannot hold. Joint screen (`b5_c3c_regime.csv`, same five runs,
+  still no solver): implicit phase **exactly** untouched (ratio 1..1..1 — the falsifiable control);
+  energy ratios 0.30–1 which *is* the D-ramp fix (the ramp finally biting, 1/3.3 ≈ 0.30); crossover
+  inside transition in all four configs that reach it (0.16–0.67 Myr); momentum 100% HII-dominated at
+  2.4–4.3× stock drive. One correction to stage 1's wording, marked in §3c: the coevolution crossover
+  *does* appear — vs the confining pressure in transition, not vs `P_ram` within momentum. C3c
+  supersedes bare C3a; stage 2 is the run arm, and its open risks are fate flips and the integrator's
+  tolerance of the handover kink, both only answerable by running it.

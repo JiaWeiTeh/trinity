@@ -27,9 +27,18 @@ The screen reports, per (run, phase):
     `P_ram` cannot reproduce the coevolution behaviour D2 is asking for.
   * `n_cm3_*` — physical sanity. H II regions around young clusters run ~10–10³ cm⁻³.
 
+C3c (PLAN §3c) is screened jointly via --regime-out: it is not a new density but
+a regime switch — the ionized gas contributes nothing independent while the
+confining pressure exceeds P_C3a (thin skin, transmits), and drives at P_C3a once
+it does not (confinement cannot hold). The regime CSV reports, per (run, phase),
+the HII-dominated row fraction and the C3c drive relative to the stored stock
+P_drive, plus each run's crossover epoch. The confining pressure is read as
+F_ram/(4π R2²) — the ODE-consistent (ramped) value — falling back to Pb.
+
 Usage (from the repo root):
     python docs/dev/phii-identity/harness/c3_offline_screen.py \
         --out docs/dev/phii-identity/data/b5_c3_screen.csv \
+        --regime-out docs/dev/phii-identity/data/b5_c3c_regime.csv \
         outputs/phii/b1__<sha>/<config> [...]
 """
 
@@ -122,7 +131,7 @@ def candidates_for_row(d, params):
 def analyse(run_dir):
     param_files = sorted(run_dir.glob("*.param"))
     if not param_files:
-        return [], f"{run_dir.name}: no .param"
+        return [], [], f"{run_dir.name}: no .param"
     params = read_param(str(param_files[0]))
     # read_param does NOT populate quantities derived during cloud init — rCloud
     # comes back 0, which makes get_density_profile() treat every radius as
@@ -142,7 +151,7 @@ def analyse(run_dir):
                     params[k].value = v
                     overlaid.append(k)
     if "rCloud" not in overlaid and float(params["rCloud"].value or 0) <= 0:
-        return [], f"{run_dir.name}: rCloud unavailable — C3b would be meaningless"
+        return [], [], f"{run_dir.name}: rCloud unavailable — C3b would be meaningless"
 
     rows = []
     with (run_dir / "dictionary.jsonl").open() as fh:
@@ -196,24 +205,74 @@ def analyse(run_dir):
                     "n_cm3_max": f"{max(ns):.4g}",
                 }
             )
-    return out, None
+
+    # ---- C3c regime analysis (PLAN §3c) ------------------------------------
+    regime, t_cross, phase_cross = [], None, None
+    for d in rows:
+        ph = d.get("current_phase")
+        if ph not in PHASES:
+            continue
+        Pb, Pram, R2, F_ram = d.get("Pb"), d.get("P_ram"), d.get("R2"), d.get("F_ram")
+        Pdrv = d.get("P_drive")
+        n_a = candidates_for_row(d, params).get("C3a_cavity")
+        if not n_a or n_a <= 0 or not Pb or Pb <= 0:
+            continue
+        P_a = n_to_P(n_a, params)
+        # ODE-consistent confining pressure: F_ram carries the ramped value in 1a.
+        conf = (F_ram / (4.0 * math.pi * R2**2)) if (F_ram and R2 and F_ram > 0) else Pb
+        dom = P_a > conf
+        if dom and t_cross is None:
+            t_cross, phase_cross = d.get("t_now"), ph
+        # C3c drive per PLAN §3c (D1: momentum sums, transition max is the handover)
+        if ph == "momentum":
+            c3c = P_a + (Pram or 0.0)
+        elif ph == "transition":
+            c3c = max(Pb, P_a + (Pram or 0.0))
+        else:
+            c3c = max(conf, P_a)
+        if Pdrv and Pdrv > 0:
+            regime.append((ph, dom, c3c / Pdrv))
+    reg_rows = []
+    for ph in PHASES:
+        sel = [(dom, ratio) for p_, dom, ratio in regime if p_ == ph]
+        if not sel:
+            continue
+        ratios = sorted(r for _, r in sel)
+        reg_rows.append(
+            {
+                "run": run_dir.name,
+                "phase": ph,
+                "n_rows": len(sel),
+                "frac_HII_dom": f"{sum(1 for d_, _ in sel if d_) / len(sel):.4f}",
+                "drive_ratio_min": f"{ratios[0]:.4g}",
+                "drive_ratio_med": f"{ratios[len(ratios) // 2]:.4g}",
+                "drive_ratio_max": f"{ratios[-1]:.4g}",
+                "t_cross": f"{t_cross:.6g}" if t_cross is not None else "never",
+                "phase_at_cross": phase_cross or "NA",
+            }
+        )
+    return out, reg_rows, None
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("runs", nargs="+", type=Path)
     ap.add_argument("--out", type=Path, required=True)
+    ap.add_argument(
+        "--regime-out", type=Path, help="also write the C3c regime/drive CSV (PLAN §3c)"
+    )
     args = ap.parse_args()
 
-    allrows, notes = [], []
+    allrows, allreg, notes = [], [], []
     for run_dir in args.runs:
         if not (run_dir / "dictionary.jsonl").exists():
             notes.append(f"{run_dir}: no dictionary.jsonl")
             continue
-        rows, err = analyse(run_dir)
+        rows, reg, err = analyse(run_dir)
         if err:
             notes.append(err)
         allrows.extend(rows)
+        allreg.extend(reg)
     if not allrows:
         print("nothing to report:", "; ".join(notes))
         return 1
@@ -249,6 +308,49 @@ def main():
         wr.writeheader()
         wr.writerows(allrows)
     print(f"\nwrote {args.out}")
+
+    if args.regime_out and allreg:
+        w2 = max(len(r["run"]) for r in allreg)
+        print(
+            f"\n{'run':{w2}} {'phase':>11} {'rows':>5} {'frac HII-dom':>13} "
+            f"{'C3c/stock drive (min..med..max)':>32} {'t_cross':>9} {'at':>11}"
+        )
+        for r in allreg:
+            print(
+                f"{r['run']:{w2}} {r['phase']:>11} {r['n_rows']:>5} {r['frac_HII_dom']:>13} "
+                f"{r['drive_ratio_min']+'..'+r['drive_ratio_med']+'..'+r['drive_ratio_max']:>32} "
+                f"{r['t_cross']:>9} {r['phase_at_cross']:>11}"
+            )
+        args.regime_out.parent.mkdir(parents=True, exist_ok=True)
+        with args.regime_out.open("w", newline="") as fh:
+            fh.write(stamp(__file__) + "\n")
+            fh.write("# C3c regime screen (PLAN §3c): P_C3a vs the ODE-consistent confining\n")
+            fh.write(
+                "# pressure conf = F_ram/(4 pi R2^2) (falls back to Pb). frac_HII_dom = rows\n"
+            )
+            fh.write("# with P_C3a > conf. drive_ratio = C3c drive / STORED stock P_drive, with\n")
+            fh.write(
+                "# C3c drive = max(conf, P_C3a) in energy/implicit, max(Pb, P_C3a + P_ram) in\n"
+            )
+            fh.write(
+                "# transition, P_C3a + P_ram in momentum (D1 rulings). Evaluated on the stock\n"
+            )
+            fh.write("# trajectory — no solver run; a passing formulation still needs an arm.\n")
+            reg_cols = [
+                "run",
+                "phase",
+                "n_rows",
+                "frac_HII_dom",
+                "drive_ratio_min",
+                "drive_ratio_med",
+                "drive_ratio_max",
+                "t_cross",
+                "phase_at_cross",
+            ]
+            wr = csv.DictWriter(fh, fieldnames=reg_cols)
+            wr.writeheader()
+            wr.writerows(allreg)
+        print(f"wrote {args.regime_out}")
     return 0
 
 

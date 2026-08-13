@@ -1,0 +1,25 @@
+# generated 2026-08-13T13:11:46Z | builder c3_offline_screen.py | code 4a56c29+dirty
+# C3c regime screen (PLAN §3c): P_C3a vs the ODE-consistent confining
+# pressure conf = F_ram/(4 pi R2^2) (falls back to Pb). frac_HII_dom = rows
+# with P_C3a > conf. drive_ratio = C3c drive / STORED stock P_drive, with
+# C3c drive = max(conf, P_C3a) in energy/implicit, max(Pb, P_C3a + P_ram) in
+# transition, P_C3a + P_ram in momentum (D1 rulings). Evaluated on the stock
+# trajectory — no solver run; a passing formulation still needs an arm.
+run,phase,n_rows,frac_HII_dom,drive_ratio_min,drive_ratio_med,drive_ratio_max,t_cross,phase_at_cross
+B3M,energy,87,0.0000,0.3258,0.8067,1,0.301207,transition
+B3M,implicit,68,0.0000,1,1,1,0.301207,transition
+B3M,transition,42,0.7619,0.8656,2.653,3.052,0.301207,transition
+B3M,momentum,34,1.0000,3.058,3.537,4.009,0.301207,transition
+PRB,energy,132,0.0000,0.327,0.9371,1,never,NA
+PRB,implicit,52,0.0000,1,1,1,never,NA
+WW,energy,78,0.0000,0.3022,0.6994,1,0.163115,transition
+WW,implicit,53,0.0000,1,1,1,0.163115,transition
+WW,transition,20,0.9000,0.8444,2.471,2.669,0.163115,transition
+WW,momentum,27,1.0000,2.385,2.674,2.751,0.163115,transition
+B1M,energy,65,0.0000,0.3268,0.7057,1,0.665536,transition
+B1M,implicit,83,0.0000,1,1,1,0.665536,transition
+B1M,transition,47,0.8085,0.938,3.68,3.956,0.665536,transition
+B2M,energy,76,0.0000,0.3264,0.766,1,0.449094,transition
+B2M,implicit,76,0.0000,1,1,1,0.449094,transition
+B2M,transition,47,0.8085,0.8864,3.666,4.223,0.449094,transition
+B2M,momentum,26,1.0000,3.707,4.227,4.319,0.449094,transition
