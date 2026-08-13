@@ -56,13 +56,32 @@ MATRIX = {
     "LDLS": ("full", f"{P_CR}/large_diffuse_lowsfe.param", {}),
     "SDHS": ("full", f"{P_CR}/small_dense_highsfe.param", {}),
     # --- Batch 5 stage 3: the regime map (PLAN §3c stage 3) -----------------
-    # A wind-strength ladder on ONE cloud, so the only thing varying is the wind:
-    #   WW = 0.1  ...  SC = 1.0 (default)  ...  SW3 = 3  ...  SW10 = 10
+    # A wind-strength ladder on ONE cloud, so the only thing varying is the wind.
     # The Lancaster discriminator: do strong winds push t_cross later or out of
     # the run (-> C3c reproduces wind-dominated regimes), or not (-> the C3a
     # normalisation needs revisiting)? Pre-registered in PLAN §3c.
+    #
+    # VOID LADDER, kept for the record (see PLAN §3c stage 3): on simple_cluster
+    # -- WW = 0.1, SC = 1.0, SW3 = 3, SW10 = 10 -- every rung at wind >= 1
+    # terminates at stop_t STILL IN THE IMPLICIT PHASE and so reports
+    # t_cross = "never". That is NOT the discriminator answering (a): the
+    # crossover is structurally confined to the transition/momentum phases
+    # (ratio@entry < 1 on every config measured), so a cloud that never reaches
+    # transition cannot cross at ANY wind strength. Only WW crosses, and only
+    # because weak winds let the shell collapse, which is what drags it through
+    # transition. Re-run on B3M below, which spends 42 rows in transition.
     "SW3": ("stage3", "param/simple_cluster.param", {"FB_thermCoeffWind": "3"}),
     "SW10": ("stage3", "param/simple_cluster.param", {"FB_thermCoeffWind": "10"}),
+    # The LIVE ladder: same design on bench3, a cloud that actually reaches the
+    # regime under test (energy 87 / implicit 68 / transition 42 / momentum 34).
+    # B3M itself is the 1.0 rung; run it alongside so all four share one SHA.
+    "B3MW01": ("b3mladder", f"{P_BENCH}/bench3_m1e5_r5__none_diag.param",
+               {"FB_thermCoeffWind": "0.1"}),
+    "B3MW1": ("b3mladder", f"{P_BENCH}/bench3_m1e5_r5__none_diag.param", {}),
+    "B3MW3": ("b3mladder", f"{P_BENCH}/bench3_m1e5_r5__none_diag.param",
+              {"FB_thermCoeffWind": "3"}),
+    "B3MW10": ("b3mladder", f"{P_BENCH}/bench3_m1e5_r5__none_diag.param",
+               {"FB_thermCoeffWind": "10"}),
     # Late-time Qi fade: past SN onset (~3.6 Myr in the bundled SB99 table) the
     # ionizing output collapses while winds+SNe keep Lmech up, so C3c predicts a
     # possible SECOND crossover back to confinement. Stock cannot express this.
@@ -116,7 +135,9 @@ def done(run_dir):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--arm", required=True, help="label for the code state, e.g. b0 / b1")
-    ap.add_argument("--tier", default="core", choices=["core", "full", "stage3", "all"])
+    ap.add_argument(
+        "--tier", default="core", choices=["core", "full", "stage3", "b3mladder", "all"]
+    )
     ap.add_argument("--configs", help="comma-separated ids, overrides --tier")
     ap.add_argument("--stop-t", help="override stop_t on every config (documented in the CSV)")
     ap.add_argument("--timeout", type=int, default=7200, help="per-run seconds")
