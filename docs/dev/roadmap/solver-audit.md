@@ -131,9 +131,9 @@ against the gate; **[J]** judgment — needs a strong model or the maintainer).
   per phase — a committed `.param` that *provably reaches* 1c and 2 quickly (start from
   `transition/cleanroom/configs/` + `docs/dev/performance/f1edge_*.param`; verify phase entry
   in the output before committing), asserting termination outcome + snapshot count + a few
-  key finals against committed reference values. This is PLAN item **B3** and deliberately
-  sits *before* every other solver-touching item in the queue: it is the gate the rest of the
-  queue executes against.
+  key finals against committed reference values. This is PLAN item **B2** (this line said B3 until
+  2026-08-06; B3 is the P_ext silent-zero fix) and deliberately sits *before* every other
+  solver-touching item in the queue: it is the gate the rest of the queue executes against.
 
 ## F5 — MEDIUM: phase-runner duplication — one trio verbatim, one trio silently diverged
 
