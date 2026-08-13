@@ -61,10 +61,21 @@ not quote any figure from an unmarked earlier revision of this file.**
   configs are OVER-BAR at 12.8–20.5% ΔR2, which was pre-registered as expected rather than as a
   failure. WW collapses 16% earlier but still collapses. The `t_cross` kink did not trouble the
   integrator, so §3c.1's event-detection remedy is registered but unneeded so far.
-- **Next:** **D3** (is WW's 16%-earlier collapse acceptable? — the only behavioural change needing a
-  ruling) and **stage 3's regime map**, which is where the Lancaster tension gets settled: do
-  strong-wind rungs push `t_cross` out (→ C3c reproduces wind-dominated regimes) or not (→ the C3a
-  normalisation needs revisiting).
+- **Batch 5 stage 3 DONE: the wind ladder splits the Lancaster verdict.** The first ladder (on
+  `simple_cluster`) was **void** — three rungs never reach the transition phase, so their
+  `t_cross = never` says nothing about winds. Re-run on B3M, all four rungs valid. **Resolved in
+  transition:** the confined fraction grows 8.8% → 38.8% across two decades of wind and
+  `ratio@entry` follows `Lw^−0.743` against a pre-registered −0.74 (per-rung error 2–7%), so C3c
+  reproduces wind-dominated regimes with a Weaver-derived exponent. **Open in momentum:** all four
+  rungs stay 100% HII-dominated; `P_C3a/P_ram` falls only as `Lw^−0.33`, so inversion needs
+  `Lw ≈ 260`. Crucially this is **not** an O(1) normalisation error — the same normalisation
+  predicts transition to within 7%. It is the **exponent**, i.e. the `R2^−3/2` cavity-Strömgren
+  geometry, not the prefactor.
+- **D3 and D4 ✅ ANSWERED 2026-08-13** (§7): WW's 16%-earlier collapse is accepted as an explained
+  timing change; golden re-baselining is authorised subject to G3.4's before/after table.
+- **Next:** **Batch 6** — landing on the full-12 matrix. The one physics question left open is the
+  momentum result above, which is a modelling call (accept photoionisation-dominated momentum as the
+  prediction, or revisit the cavity geometry), not something another ladder settles.
 
 ---
 
@@ -895,8 +906,8 @@ under D4 with a table of before/after.
 | D1 | ✅ **ANSWERED 2026-08-12/13** — the momentum sum **is** intended, conditional on `P_HII` being genuinely its own calculation; the transition `max` is a **deliberate** smooth handover as `Pb → 0`. See §2. Open remainder: whether a better handover formulation exists, and what C1 actually costs (Batch 3, unrun at the time of writing) | Batch 3 verdict | **answered; C1 still unmeasured** |
 | D2 | ✅ **ANSWERED 2026-08-12** — `P_HII` should be a real, separate pressure, treated as one unless the architecture cannot support it (then the assumption must be explicit). Consequence: the target is **decoupling**, and §3b shows the cap is not the coupling — the ionised volume is. Open sub-question for Batch 5: which decoupled formulation (C3a/C3b/C3c) | Batch 5 | **answered; formulation open** |
 | ~~D2-old~~ | ⛔ superseded by the above. **WAS THE CRUX (Batch 4a).** Removal is proven *safe* — no blow-up materialises in any regime tested, including the compact probe. So the question is no longer "can we?" but "should we?": is the uncapped Strömgren pressure physically trustworthy at these ionized volumes, given it exceeds `Pb` on 100% of rows (up to 7.79×; the 3.36 quoted earlier was PRB's `blowup_max`, not the matrix max) and shifts trajectories 15–28%? No measurement can settle this; it needs the model's intent. Also confirm §2's reading that the cap was pragmatic, not a physics claim. | Batch 4b design; Batch 5; **4a landing** | **open** |
-| D3 | Fate flips under a candidate fix: acceptable-if-explained, or a re-tune trigger? | Batch 3/4 verdicts | **open** |
-| D4 | Authority to re-baseline goldens (`test_phase_boundary.py`, `test_betadelta_hybr_stress.py`, `test_scheme_screen.py` fixtures) if the landed fix moves them. | Batch 6 | **open** |
+| D3 | ✅ **ANSWERED 2026-08-13** — acceptable-if-explained. Fate *flips* remain reportable, but a **timing** change under an explained mechanism is not a re-tune trigger. Applied to the standing case: WW's collapse moving 0.2816 → 0.2358 Myr (16% earlier) under C3c is **accepted** — it still collapses, and the mechanism (a stronger photoionised drive reordering the collapse) is documented in §3c stage 2. | Batch 3/4 verdicts | **answered** |
+| D4 | ✅ **ANSWERED 2026-08-13** — re-baselining authority **granted** for `test_phase_boundary.py`, `test_betadelta_hybr_stress.py` and `test_scheme_screen.py` fixtures, conditional on G3.4: every re-baseline lands with a committed before/after table and the mechanism named. A golden that moves for an *unexplained* reason is still a stop, not a re-baseline. | Batch 6 | **answered** |
 
 ## 8. Ledger (results land here — the one source of truth)
 
@@ -910,6 +921,7 @@ under D4 with a table of before/after.
 | 4 | 🟡 | 2026-08-12 | **4a MEASURED — survives, but is not behaviourally neutral.** 4/4 configs (PRB, B3M, F1HI, F1LO) ran to their natural end, **zero** distress lines (no excess-work, overflow, monotonic-guard or convergence warnings), wall times *within* baseline (492–764 s vs 682–832 s). **No fate changed** on any config. Identity destroyed as intended: `frac_PHII_eq_Pb` = **0.0000** in every phase of every config (was ≥0.9697), relΔ now O(1) (0.06–2.55). But **every config breaches the 5% bar**: ΔR2 max 15.3–28.4%, all located inside the `dt_switchon` window (t = 1.3e-7 … 9e-6 Myr); ΔR2 at end-of-overlap 0.95% (PRB, recovers) → 14.4% (F1LO, retained). Mechanism: uncapped `P_HII` exceeds `Pb` on **100%** of rows (max 7.79× across the matrix; 3.36× on PRB) so it wins the `max`, lifting median `P_drive/Pb` from 1.0000 to 1.83 (PRB). **Verdict: C2a is numerically viable and physically consequential — not a free win. Landing it needs D2.** 4b not started | `data/b4a_ledger.csv`, `data/b4a_identity_grid.csv` |
 | 5 | 🟡 | 2026-08-13 | **Stage 1 (offline screen) done — C3b ⛔ REJECTED, C3a advances.** No solver run: both candidates are closed-form in stored quantities, evaluated on the stock trajectory across 5 configs. C3b fails the pre-registered wind-only limit *structurally* — `n = n_cloud(R2)` has **no `Qi` dependence**, so switching the ionizing source off leaves its `P_HII` unchanged; it also steps 4 decades at `rCloud`. C3a is causally decoupled (`Qi`, `R2` only), has the correct `Qi → 0` limit, and gives sensible ionised densities (19–8055 cm⁻³ in momentum) — but sits uniformly **3.5–7.6× above `P_ram`** and never crosses it, i.e. predicts a photoionisation-dominated momentum phase in all five configs. **Stage 1b: C3c designed (§3c) and screened — it supersedes bare C3a.** The confined skin has no independent density (any decoupled-thickness skin is C3a × O(1), *higher*), so C3c is a regime switch: transmit when `P_C3a ≤ P_conf`, drive at `P_C3a` when above. Screened on the same 5 runs: implicit **exactly** untouched (ratio 1..1..1), D-ramp fixed as a side effect (energy ratio down to 0.30 = the ramp honoured), `t_cross` inside transition in all 4 configs that reach it, momentum drive 2.4–4.3× stock. **Stage 2 DONE: C3c runs clean on 5/5** — zero distress, no fate changes, null passed exactly (`P_HII`=0 on 0/330 implicit rows, `P_drive`==`Pb`), all OVER-BAR at 12.8–20.5% as pre-registered. WW collapses 16% earlier but still collapses. The offline screen predicted the self-consistent regime structure to the printed digit on 3/5 configs. Physics verdict still open: needs D3 + stage 3 | `data/b5_c3_screen.csv`, `data/b5_c3c_regime.csv`, `data/b5s2_c3c_ledger.csv`, `data/b5s2_c3c_arm_regime.csv` |
 | 6 | ⬜ | — | — | — |
+| 5-s3 | ✅ | 2026-08-13 | **Wind ladder DONE — Lancaster resolved in transition, open in momentum.** First ladder (`simple_cluster`: SC/SW3/SW10) **VOID** — all three terminate at `stop_t` still in implicit, so `t_cross = never` is not evidence about winds; the crossover is structurally floored at the transition handover (`ratio@entry` < 1 on every config). Re-run on B3M (`B3MW01/1/3/10`), all four valid. **Transition: (a) PASSES** — confined fraction 8.8% → 23.8% → 28.9% → 38.8%, lag/`t_entry` +1.5% → +37.2%, and `ratio@entry` = 0.7144/0.1227/0.0553/0.0235 vs the **pre-registered** 0.68/0.12/0.054/0.022 (exponent **−0.743** vs −0.74, errors 2–7%) — a Weaver-derived prediction holding out of its fitted regime. **Momentum: OPEN** — 100% HII-dominated on all four; `P_C3a/P_ram ∝ Lw^−0.33` ⇒ inversion needs `Lw ≈ 260`. **Not** an O(1) normalisation error (same normalisation predicts transition to 7%): it is the `R2^−3/2` geometry. Mechanism: energy duration **identical** (0.0030 Myr) and transition duration wind-independent; only implicit moves (`Lw^−0.388`), which is why `t_cross` *falls* with wind. ⚠️ Retracted mid-run claim that energy row counts (69/87/96/105) meant longer energy phases — that is timestep refinement, not duration | `data/b5s3_ladder_lag.csv`, `data/b5s3_ladder_regime.csv`, `data/b5s3_ladder_screen.csv`, `harness/lag_vs_handover.py` |
 
 ### 8.2 Config wall-times (filled by Batch 0)
 Shared 4-core box, 3–4 concurrent runs, so these are contention-inflated upper bounds.
@@ -1240,3 +1252,29 @@ b0 run and to `bb302e0` for every b1 run (§9 records how that was protected).
   so its ΔR2 is non-zero by construction (1.1–3.9% measured). The null is about the **drive**, and
   tested that way it passes exactly. Only D3 (WW's 16%-earlier collapse) and stage 3 remain before
   C3c can carry a physics verdict.
+
+- **2026-08-13 (Batch 5 stage 3 — the wind ladder, a void experiment, and a split verdict)** — The
+  stage-3 discriminator as originally written was **unsafe**, and the first ladder proved it rather
+  than answering it. On `simple_cluster`, SC/SW3/SW10 all terminate at `stop_t` **still in the
+  implicit phase**, so all three report `t_cross = never`. Read at face value that is a triumphant
+  confirmation of Lancaster; it is an artifact. The C3c crossover is structurally floored at the
+  energy→transition handover (`ratio@entry` is 0.12–0.71 across every complete run, always < 1), so
+  a cloud that never reaches transition cannot cross at **any** wind strength. The lesson is now a
+  tool: `harness/lag_vs_handover.py` reports such runs as **VOID**, not "never crossed", and the
+  void rungs stay in the MATRIX commented with their reason so this is not re-derived expensively.
+  Re-run on B3M — which spends 42 rows in transition and 34 in momentum — the ladder splits:
+  **transition passes (a)**, with the confined fraction growing 8.8% → 38.8% over two decades of
+  wind, and `ratio@entry` = 0.7144/0.1227/0.0553/0.0235 against the **pre-registered**
+  0.68/0.12/0.054/0.022 (exponent −0.743 vs −0.74, per-rung error 2–7%). That prediction was
+  committed (`70f8711`) while the runs were in flight and flagged in-doc as an extrapolation out of
+  its fitted regime; it held anyway, which is the strongest evidence in this workstream that the C3a
+  normalisation is *right*. **Momentum stays open**: 100% HII-dominated on all four rungs, with
+  `P_C3a/P_ram ∝ Lw^−0.33` ⇒ inversion at `Lw ≈ 260`. Both of branch (b)'s *triggers* fired while
+  (b)'s *conclusion* was false, so the registered dichotomy is recorded as **mis-specified** rather
+  than resolved — the fix is not a smaller prefactor but the `R2^−3/2` cavity geometry itself.
+  The mechanism only became visible from phase **durations**: energy lasts *exactly* 0.0030 Myr at
+  every wind strength and transition is wind-independent; only implicit moves (`Lw^−0.388`), which
+  is why `t_cross` falls with wind while confinement strengthens. ⚠️ **Retraction:** mid-run I read
+  energy-phase *row counts* (69/87/96/105) as longer energy phases. Wrong — that is timestep
+  refinement under stiffer winds. Row count is not duration, and here they point opposite ways.
+  With **D3 and D4 answered** (§7), Batch 6 is unblocked.
