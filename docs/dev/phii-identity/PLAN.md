@@ -664,6 +664,41 @@ ambiguity: uniform sphere vs the R1..R2 shell, and the photoevaporative-flow clo
 the same √(Qi/R2³) scaling with different prefactors). **Recorded before stage 2 runs so the
 prediction cannot be retrofitted to whatever comes back.**
 
+**⚠️ The discriminator as worded above is UNSAFE, and the first ladder proved it (2026-08-13).**
+"Push `t_cross` out of the run" is not sufficient evidence for (a), because a run can fail to cross
+for a reason that has nothing to do with winds. The C3c crossover is **structurally confined to the
+transition/momentum phases**: the confinement ratio at transition entry is 0.12–0.49 across every
+complete run measured — always below 1 — so energy and implicit are *unconditionally* confined and
+`t_entry` is a hard **floor** on `t_cross`. A cloud that never reaches transition cannot cross at any
+wind strength.
+
+`simple_cluster` is exactly such a cloud, so the pre-registered ladder was **void**: SC / SW3 / SW10
+all terminate at `stop_t` still in the implicit phase (energy 97/105/115, implicit 95/96/96,
+`stopping_time`), reporting `t_cross = never` for a reason unrelated to wind. Only WW crosses, and
+only because weak winds let the shell *collapse* — collapse is what drags it through transition. Had
+this been read at face value it would have been a false confirmation of Lancaster. Ladder re-run on
+**B3M**, which spends 42 rows in transition and 34 in momentum (configs `B3MW01/B3MW1/B3MW3/B3MW10`).
+
+**Re-registered discriminator for the B3M ladder (written 2026-08-13 while the runs were still in
+flight, results unseen).** All four rungs share one cloud and one SHA; only `FB_thermCoeffWind`
+moves. A rung counts as *crossing* only if it reaches transition at all — a rung that terminates in
+implicit is **void, not evidence**, and must be reported as such.
+
+- **(a) Lancaster reproduced** — `t_cross` rises monotonically with wind, *and* the lag
+  `t_cross − t_entry` rises with wind (not just `t_entry` itself). The lag term is what separates a
+  genuine wind-sensitive crossover from the handover simply moving.
+- **(b) C3a normalization suspect** — `t_cross` flat or falling with wind, or all four rungs still
+  100% HII-dominated in momentum.
+- **Quantitative prediction, so this can fail sharply:** the energy-phase ladder gave
+  `P_C3a/P_conf ∝ Lw^−0.74` (measured `dlnR2/dlnLw = +0.200`, exactly Weaver; `dlnPb/dlnLw = +0.44`
+  vs Weaver's +0.40). Extrapolating from B3M's measured `ratio@entry` = 0.1227 at `Lw` = 1 predicts
+  **0.68 / 0.12 / 0.054 / 0.022** at `Lw` = 0.1 / 1 / 3 / 10. This is an *extrapolation out of the
+  regime it was fitted in* — Weaver scalings do not hold at the handover — so a miss falsifies the
+  extrapolation, not C3c.
+- **Resolution caveat, registered up front:** `ratio@cross` lands at 1.03–1.47 rather than 1.0
+  because snapshots are segment-spaced. WW's crossing is bracketed by 3 snapshots, so a lag below
+  ~2% of `t_entry` is at the resolution limit and must not be reported as a resolved ordering.
+
 **Stage 2 RESULT (2026-08-13) — C3c runs clean on 5/5, no fate changes, and the offline screen
 predicted it.** Arm `harness/b5s2_c3c.patch`; ledgers `data/b5s2_c3c_ledger.csv` (matched-`t`) and
 `data/b5s2_c3c_arm_regime.csv` (the arm's own regime structure).
