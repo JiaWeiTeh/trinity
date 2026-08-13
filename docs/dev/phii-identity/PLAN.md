@@ -733,7 +733,32 @@ physics**, and both regimes are reachable:
   clarified table above. Offline-screenable *after* a cheap b1-style run of each rung.
 - **Low-`Qi` corner**: low-sfe clouds (F1HI's sfe = 0.01 is already committed but collapses early; a
   low-sfe *diffuse* variant would live longer in the ionized phases).
-- **Late-time `Qi` fade**: `stop_t 15` on B3M/SC. Past SN onset (~3.6 Myr in the bundled table) the
+**Stage 3 partial result — B3ML (2026-08-13): the second-crossover prediction is FALSIFIED.**
+B3M run to `stop_t` 5, past the bundled table's ~3.6 Myr SN onset. Out to 5 Myr there is **exactly
+one** regime flip — confined → HII-dominated at t = 0.3012 Myr, in transition, matching B3M's
+`t_cross` to the digit. It never flips back.
+
+| t [Myr] | `Qi/Qi₀` | `Lmech/L₀` | R2 [pc] | `P_C3a/P_conf` |
+|---|---|---|---|---|
+| 0.207 | 1.01 | 1.01 | 4.4 | 0.10 (confined) |
+| 0.349 | 1.02 | 1.03 | 5.9 | **4.58** (flipped) |
+| 2.09 | 1.22 | 1.16 | 27.8 | 6.30 |
+| **3.59** (SN onset) | 1.17 | **2.09** | 53.0 | **3.03** |
+| 5.00 | **0.50** | 1.71 | 77.9 | 3.61 |
+
+**The prediction was directionally right and quantitatively wrong.** SN onset does what §3c said:
+`Lmech` doubles and the ratio **halves**, 6.30 → 3.03; `Qi` does fade, to half its initial value by
+5 Myr. Both push toward confinement. **But R2 expansion beats them**: `P_C3a ∝ R2^(−3/2)` falls more
+slowly than `P_ram ∝ R2^(−2)`, so the ratio *grows* with radius, and by SN onset the shell is at
+53 pc. The geometric tailwind exceeds the SN wind boost; the ratio bottoms at 3.0 and turns back up.
+
+**What this changes:** the late-time re-confinement channel is not available at this cloud's
+expansion rate. It is not ruled out in general — a config where the shell is still small at SN onset
+(dense, confined, slowly expanding) would have far less geometric tailwind to overcome. But it is no
+longer a headline C3c prediction, and any future claim of it must name the R2 at SN onset. ⛔ as a
+general prediction; open only for the small-R2-at-SN-onset corner.
+
+- ~~**Late-time `Qi` fade**~~ (⛔ tested above, falsified for B3M-like expansion): `stop_t 15` on B3M/SC. Past SN onset (~3.6 Myr in the bundled table) the
   ionizing output collapses while winds+SNe keep `Lmech` high, so C3c predicts a possible **second
   crossover back to confinement** — `P_C3a` falling under `P_ram` late, the drive relaxing to `P_ram`
   alone. Stock cannot represent this at all; it is a C3c-only, falsifiable prediction, and the
