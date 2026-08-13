@@ -677,8 +677,21 @@ physics**, and both regimes are reachable:
   alone. Stock cannot represent this at all; it is a C3c-only, falsifiable prediction, and the
   cheapest genuinely new physics this workstream could buy next.
 
-**Stage 2 (not started).** Run **C3c** as an arm on B2M, B3M, WW (momentum-reaching) plus PRB (must
-be near-inert: only its energy-phase ramp window changes) and B1M, gated exactly as Batch 3 was —
+**Stage 2 — 🔷 IN FLIGHT (launched 2026-08-13).** Arm = `harness/b5s2_c3c.patch`; five configs:
+B2M, B3M, WW (momentum-reaching) plus PRB and B1M. Gated exactly as Batch 3 was —
+
+⚠️ **Controls are weaker here than in Batch 3 — do not read them the same way.** For C1, B1M was a
+*provably inert* control: C1 touched only the momentum phase and B1M never enters it, so ΔR2 had to
+be 0.000% and was. **Under C3c nothing is inert**, because the energy phase changes too (the D-ramp
+fix — the confined branch returns 0.0, so `max(Pb_eff, 0) = Pb_eff` replaces stock's un-ramped
+`P_HII`). PRB and B1M are therefore *isolation* controls, not null controls: neither reaches
+momentum, so they isolate C3c's energy/implicit half from its momentum half. The offline screen
+predicts their energy-phase drive ratio at 0.30–0.94, i.e. **they should move, and a 0.000% result
+would mean the arm is not wired in.** The falsifiable null that does survive is narrower: the
+*implicit* phase, where the screen predicts exactly 1.000 — any implicit-phase deviation beyond the
+~3e-14 cross-worktree noise floor is a bug in the arm, not physics.
+
+
 matched-`t` ledger, fates enumerated under D3. Expect ΔR2 well over the 5% bar by construction
 (momentum drive ×2.4–4.3, early-energy drive ÷ up to 3.3); the questions the arm answers are whether
 fates flip, whether the integrator tolerates the transition handover kink (§3c.1: pre-registered remedy is an
