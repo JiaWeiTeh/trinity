@@ -28,6 +28,17 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _stamp import stamp  # noqa: E402
 
+# Empirical noise floor for a CROSS-WORKTREE comparison where the code change
+# provably cannot act. Measured on B1M (Batch 3 control: never reaches the
+# momentum phase, so C1 is inert there): every physical key agrees to machine
+# precision until t ~ 0.8 Myr, then last-bit integrator drift grows to at most
+# 2.9e-14 in R2 / 2.2e-13 in Pb by t = 1.5 Myr. The seed is `Lmech_SN`, which is
+# `Lmech_total - Lmech_W` and therefore exactly zero before SN onset -- the stored
+# ~1e-18 is a cancellation remnant ~1e-26 RELATIVE to Lmech_total, i.e. ten orders
+# below double precision. 1e-10 sits ~3 decades above that drift and ~12 decades
+# below any effect this workstream cares about (Batch 4a moved R2 by 15-28%).
+NOISE_FLOOR = 1e-10
+
 
 def load(path):
     rows = []
@@ -45,6 +56,51 @@ def load(path):
 def canon(d, drop):
     """Exact, order-insensitive rendering of a row minus the new keys."""
     return {k: repr(v) for k, v in d.items() if k not in drop}
+
+
+def _abs_max(v):
+    """Largest magnitude inside a snapshot value (scalar or per-radius array)."""
+    if isinstance(v, bool) or v is None:
+        return 0.0
+    if isinstance(v, (int, float)):
+        return abs(float(v))
+    if isinstance(v, list):
+        return max((_abs_max(x) for x in v), default=0.0)
+    return 0.0
+
+
+def key_scales(rows):
+    """Per-key largest magnitude over the whole run — the scale a difference is
+    judged against.
+
+    Judging a difference against the *local* value is wrong for any quantity whose
+    true value is zero: `pdot_SN` is `pdot_total - pdot_W` and no SNe occur before
+    t = 3.6 Myr, so it holds cancellation garbage and a self-relative comparison
+    reports 100% for a difference of ~1e-21. Normalising by the largest value the
+    key ever reaches asks the question that actually matters — is this difference
+    significant on the scale this quantity attains? — and leaves genuinely
+    load-bearing keys judged as strictly as before.
+    """
+    scales = {}
+    for d in rows:
+        for k, v in d.items():
+            m = _abs_max(v)
+            if m > scales.get(k, 0.0):
+                scales[k] = m
+    return scales
+
+
+def _abs_diff(va, vb):
+    """Largest absolute difference between two snapshot values; inf if unalignable."""
+    if isinstance(va, bool) or isinstance(vb, bool):
+        return 0.0 if va == vb else float("inf")
+    if isinstance(va, (int, float)) and isinstance(vb, (int, float)):
+        return abs(float(va) - float(vb))
+    if isinstance(va, list) and isinstance(vb, list):
+        if len(va) != len(vb):
+            return float("inf")
+        return max((_abs_diff(x, y) for x, y in zip(va, vb)), default=0.0)
+    return 0.0 if va == vb else float("inf")
 
 
 def compare(base_dir, new_dir, allow_prefix=False):
@@ -72,6 +128,11 @@ def compare(base_dir, new_dir, allow_prefix=False):
     )
     drop = set(new_keys)
 
+    # Scan EVERY row, not just up to the first difference: an exact-match prefix
+    # followed by last-bit integrator drift is the normal signature of a genuine
+    # no-op, and stopping early would report only the drift's first symptom.
+    scales = key_scales(base)
+    worst_rel, worst_key, worst_row, n_exact = 0.0, "", -1, 0
     for i, (b, n) in enumerate(zip(base, new)):
         cb, cn = canon(b, drop), canon(n, drop)
         if cb.keys() != cn.keys():
@@ -83,17 +144,28 @@ def compare(base_dir, new_dir, allow_prefix=False):
                 ",".join(new_keys),
             )
         diffs = [k for k in cb if cb[k] != cn[k]]
-        if diffs:
-            k = diffs[0]
-            return (
-                "FAIL",
-                f"row {i}: {len(diffs)} key(s) differ, first {k}={cb[k]} vs {cn[k]}",
-                len(base),
-                ",".join(new_keys),
-            )
+        if not diffs:
+            n_exact += 1
+            continue
+        for k in diffs:
+            ad = _abs_diff(b.get(k), n.get(k))
+            scale = scales.get(k, 0.0)
+            rel = float("inf") if (ad and not scale) else (ad / scale if scale else 0.0)
+            if rel > worst_rel:
+                worst_rel, worst_key, worst_row = rel, k, i
+
+    if worst_rel == 0.0:
+        return (
+            "PASS-PREFIX" if truncated else "PASS",
+            f"{len(base)} rows identical on all pre-existing keys{truncated}",
+            len(base),
+            ",".join(new_keys),
+        )
+    verdict = "PASS-NOISE" if worst_rel <= NOISE_FLOOR else "FAIL"
     return (
-        "PASS-PREFIX" if truncated else "PASS",
-        f"{len(base)} rows identical on all pre-existing keys{truncated}",
+        verdict + ("-PREFIX" if truncated else ""),
+        f"{n_exact}/{len(base)} rows exact; worst rel diff {worst_rel:.2e} "
+        f"on {worst_key} at row {worst_row} (floor {NOISE_FLOOR:.0e}){truncated}",
         len(base),
         ",".join(new_keys),
     )

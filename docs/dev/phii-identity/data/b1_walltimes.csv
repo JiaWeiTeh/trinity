@@ -1,7 +1,9 @@
-# generated 2026-08-12T22:26:39Z | builder run_batch.py | code 153fa03+dirty
+# generated 2026-08-13T12:23:38Z | builder run_batch.py | code 3a38a87+dirty
 # arm=b1 stop_t_override=1.5 (last writer)
-# run root: outputs/phii/b1__088a8d6
+# run root: outputs/phii/b1__41511ac_dirty
 # Rows merged across concurrent streams; wall_s reflects a shared 4-core box.
 config,status,wall_s,n_snapshots
+B1M,ok,582.7,195
+B2M,ok,647.4,225
 PRB,ok,699.7,184
 WW,ok,765.0,178

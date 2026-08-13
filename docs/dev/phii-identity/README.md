@@ -32,8 +32,7 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-12):** 🔵 actionable — **evidence gathered, mechanism proved, and now
-measured directly.** Batches 0/1 (see `PLAN.md`) confirm the identity on 100% of implicit,
+**Status (2026-08-13):** 🔵 actionable — **evidence gathered, mechanism proved, measured directly, and independently audited.** An adversarial audit on 2026-08-13 corrected several claims in this file (§5's "1a/1b are safe", §7.3's `_yesPHII` scope, §8's reproduction breadth) — each is marked in place. `PLAN.md` §9 carries the full list; do not quote a figure from an unmarked earlier revision. Batches 0/1 (see `PLAN.md`) confirm the identity on 100% of implicit,
 transition and momentum rows across five configs, show the cap binding on **100% of rows in every
 phase** (so §3's cap-slack reading is retracted), and size the double-count at **1.82× median in
 transition, exactly 2.000× in momentum**. **Original framing below.** Five workstreams across three unmerged branches each measured `P_HII` equal to the
@@ -64,7 +63,7 @@ Verified against current source on `main` @ `731ac50` (all three lines still pre
 | step | source | expression |
 |---|---|---|
 | 1 | `trinity/shell_structure/shell_structure.py:124-126` | `shell_n0 = (mu_ion_shell / mu_convert / (k_B · TShell_ion)) · Pb` |
-| 2 | `trinity/shell_structure/shell_structure.py:251` | `n_IF_Str = min(n_IF_Str, shell_n0)` |
+| 2 | `trinity/shell_structure/shell_structure.py:253` | `n_IF_Str = min(n_IF_Str, shell_n0)` |
 | 3 | `run_energy_phase.py:224` · `run_transition_phase.py:564` · `run_momentum_phase.py:634` | `P_HII = (mu_convert / mu_ion_shell) · n_IF_Str · k_B · TShell_ion` |
 
 Step 1 defines the shell's inner density by **pressure balance against `Pb`**. Step 2 caps the
@@ -155,6 +154,16 @@ on `main` @ `731ac50`:
 | **transition (1c)** | `energy_phase_ODEs.py:253, 385` (gated `current_phase == 'transition'`) · `phase1c_transition/run_transition_phase.py:331` | `max(Pb, P_HII + P_ram)` | **not absorbed** — see below |
 | **momentum (2)** | `phase2_momentum/run_momentum_phase.py:265, 445` | **`P_HII + P_ram`** — bare sum, no `max` | **`= 2 · P_ram`.** Shell driven at twice the justified pressure |
 
+⚠️ **Corrected 2026-08-13 (audit).** The paragraph below says the `max` makes 1a/1b safe. That is
+true only in the narrow sense that `P_drive == Pb == P_HII` there. It is **not** a no-op: in phase
+1a the ODE compares against the **ramped** bubble pressure (`get_effective_bubble_pressure` pulls
+`R1 → 0` for the first `dt_switchon = 1e-3` Myr) while `P_HII` carries the **un-ramped** one, so
+inside that window `P_HII` wins the `max` and supplies up to **3.31×** the ODE's own pressure —
+measured in `PLAN.md` §1(3) (D-ramp) and visible as `Pdrive_over_Fram_max` = 3.06–3.31 in
+`data/b0_identity_grid.csv`. Batch 4a's largest trajectory shifts all landed inside that window,
+i.e. in the phase this section calls safe. Read "safe" as **"a genuine no-op in 1b, and in 1a only
+outside the `dt_switchon` window."**
+
 **The `max()` only protects phases 1a/1b.** There, `max(Pb, Pb)` is exactly `Pb`, so the identity is
 invisible in the trajectory — which is precisely why `_analysis/check_yesno.py` exists and why
 toggling `include_PHII` changes nothing there (its docstring already states
@@ -170,7 +179,7 @@ max(Pb, P_HII + P_ram)  =  max(Pb, Pb + P_ram)  =  Pb + P_ram      — always, f
 so the second argument wins on **every** step and the double count lands in full. This sharpens
 `momentum-pdrive`'s open question 2 ("does the same pairing appear in `phase1c_transition`?"): yes —
 and the `max` wrapper does **not** make the exposure conditional, as one might assume from reading
-it. Phases 1c and 2 are both affected; only 1a/1b are safe.
+it. Phases 1c and 2 are both affected. 1a/1b are safe **only in the `max` sense**, and 1a is not safe inside the `dt_switchon` window — see the correction above.
 
 Both sites are in ODE right-hand sides (`vd` at `energy_phase_ODEs.py:263`; `F_pressure` at
 `run_momentum_phase.py:448`), not diagnostics — so this propagates into `R2(t)`, the force budget,
@@ -208,8 +217,11 @@ They are consistent; each is a different downstream consequence of §2.
 3. **Is `include_PHII` doing what its name promises?** It gates `P_HII` in all four phases
    (`run_energy_phase.py:223`, `run_energy_implicit_phase.py:980,1378`,
    `run_transition_phase.py:563,844`, `run_momentum_phase.py:633`), but in phases 1a–1c the `max`
-   makes it a no-op whenever the cap binds. Runs labelled `_yesPHII` / `_noPHII` differ only via
-   the momentum phase — worth knowing before any published comparison rests on that label.
+   makes it a no-op whenever the cap binds — *except* in phase 1a inside the `dt_switchon` window,
+   where `P_HII` carries the un-ramped bubble pressure and therefore does change the answer (D-ramp,
+   `PLAN.md` §1(3)), and in transition, where §5 shows the `max` never binds. ⚠️ *Corrected
+   2026-08-13 (audit): this section previously said `_yesPHII`/`_noPHII` differ only via the momentum
+   phase, which contradicted §5 four sections earlier.* Runs so labelled differ via 1a, 1c and 2 — worth knowing before any published comparison rests on that label.
 4. **What changes if it is fixed?** `momentum-pdrive` estimates an A/B on its three benches at
    ~30 min. That is the cheapest next measurement and should precede any code change.
 5. **Fates are downstream and unaudited.** Anything quoting a fate, collapse/dissolution time, or
@@ -241,8 +253,11 @@ They are consistent; each is a different downstream consequence of §2.
   `dt_switchon` window. `params['F_ram']` is never read back by the solver, so this is a reporting
   defect, not a dynamics one — but it is what every force-budget analysis here consumes, and it is
   what produced the item above.
-- **All other numbers reproduced as reported**, including momentum-pdrive's three benches
-  (independently re-measured at relΔ 2.39e-16 over 34 momentum rows — `PLAN.md` §8.1).
+- **All other numbers reproduced as reported.** ⚠️ *Narrowed 2026-08-13 (audit): an earlier revision
+  added "including momentum-pdrive's three benches". Only **bench3's** config was re-run, under a
+  `stop_t 1.5` override giving **34** momentum rows over a **6.7×** `Pb` range — not the 104 rows
+  over 88× that momentum-pdrive reported. The identity itself reproduces (relΔ 2.39e-16), but the
+  other two benches were never re-measured.*
 
 ## Layout
 

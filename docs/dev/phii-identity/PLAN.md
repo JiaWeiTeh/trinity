@@ -32,19 +32,22 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-12):** 🔵 actionable — **Batches 0, 1 and 4a are DONE; D1/D2 answered, and the
-diagnosis has moved.** The momentum `P_HII + P_ram` sum is *intended* (D1), which points at the
+**Status (2026-08-13):** 🔵 actionable — **Batches 0, 1 and 4a done; D1/D2 answered; an
+independent adversarial audit (2026-08-13) corrected two critical and eleven major items — see
+§9. Do not quote any figure from an unmarked earlier revision of this file.** Batch 3 (C1) is
+running; C1 has never carried a measured verdict. The momentum `P_HII + P_ram` sum is *intended* (D1), which points at the
 circularity `P_ram → Pb → shell_n0 → n_IF_Str → P_HII` rather than the sum as the defect — **but C1
 has never been run and therefore carries no verdict; Batch 3 owes one.** §3b proves
 the **cap is only the last link**: `ΔV ∝ shell_n0^-2.13` already forces `n_IF_Str ∝ shell_n0^+1.04`
 (r = 0.993, N = 803) *before* the cap, and 4a's uncapped runs never put `P_HII` below `Pb`. The
-intervention point is the shell ODE's inner BC (`shell_structure.py:124-126`), not the cap (`:251`).
+intervention point is the shell ODE's inner BC (`shell_structure.py:124-126`), not the cap (`:253`).
 **Next: Batch 5 (C3), starting with an offline screen of the decoupled formulations.** Prior
 findings retained below. The cap
-binds on **100% of rows in every phase**, and the blow-up it suppresses tops out at **3.33×**, so
+binds on **100% of rows in every phase**, and the blow-up it suppresses tops out at **7.79×** (WW momentum; corrected 2026-08-13 — an
+earlier revision said 3.33×, which was B3M's value quoted before the WW/SC arms were folded in), so
 the pre-registered C2a kill bar (p99 > 1e2) did **not** trip. **Batch 4a then removed the cap and
-measured it: it survives cleanly on 4/4 configs — no numerical distress, no fate changes, faster
-than baseline — but shifts trajectories 15.3–28.4%, over the 5% bar on every config.** So bare
+measured it: it survives cleanly on 4/4 configs — no numerical distress, no fate changes, wall
+times comparable to baseline — but shifts trajectories 15.3–28.4%, over the 5% bar on every config.** So bare
 removal is *safe but not neutral*, and the open question is now physics, not numerics (**D2**). The only `trinity/` change so far is the inert shadow diagnostic `n_IF_Str_raw`
 (bit-identity gated). Two Batch-0 by-products changed the problem statement — the double-count is
 far larger than assumed (transition median **1.82×**, momentum exactly **2.000×**), and the energy
@@ -99,7 +102,7 @@ frozen-ish evidence record; it gets a pointer here and per-visit reconciliation,
 
 Wherever the Strömgren-density cap binds, `P_HII` is an exact algebraic relabelling of the
 confining pressure: `shell_n0` is defined by pressure balance against `Pb`
-(`shell_structure.py:124-126`), `n_IF_Str` is capped at it (`:251`), and `P_HII` converts back
+(`shell_structure.py:124-126`), `n_IF_Str` is capped at it (`:253`), and `P_HII` converts back
 with the same three factors (`run_{energy,transition,momentum}_phase.py:224/564/634`). Five
 sightings across three branches, 4–10 digits, ULP-level residual reproduced by
 `harness/roundtrip_ulp.py`. **There are two distinct defects, and they are orthogonal:**
@@ -123,17 +126,23 @@ Phase exposure: 1a/1b safe (`max(Pb, P_HII)` absorbs the identity exactly); 1c a
 3. **A third defect exists, in the phase this doc called safe.** 1a/1b remain safe *in the `max`
    sense* — `P_drive == Pb == P_HII` — but `get_effective_bubble_pressure` applies a
    `dt_switchon = 1e-3` Myr ramp that pulls R1 → 0, while `params['Pb']` (hence `P_HII`) uses the
-   un-ramped R1. Inside that window the two differ by up to **3.2×**, so the `P_HII` channel
-   reintroduces exactly the pressure the ramp exists to suppress. **This is the single biggest
-   risk to any cap fix**: removing the cap drops early driving pressure by up to 3×, which will
-   look like the fix breaking the code. Call this **D-ramp**; it is new work, tracked in §9.
+   un-ramped R1. Inside that window the two differ by up to **3.31×** (WW energy), so the `P_HII`
+   channel reintroduces exactly the pressure the ramp exists to suppress. Call this **D-ramp**.
+
+   ⚠️ **Retracted 2026-08-13, in place.** An earlier revision of this bullet ended: *"This is the
+   single biggest risk to any cap fix: removing the cap drops early driving pressure by up to 3×,
+   which will look like the fix breaking the code."* **That is backwards.** The cap clamps the
+   Strömgren density *downward*, so removing it raises `P_HII` above `Pb` and the drive goes **up**
+   — Batch 4a measured median `P_drive/Pb` rising and ΔR2 growing, never falling. The wrong
+   sentence survived here, inside the block a reader is told to treat as the corrections, for a full
+   day after being retracted at §6; it is struck now. Flagged by the independent audit.
 
 ## 2. Maintainer input on record
 
 **2026-08-12 (this session):** the cap's origin is numerical, not physical — *"Originally i had
 the PHII cap because at small volume it'd give very high n_str_if and that would give very high
 PHII, and i dont know if that breaks things."* At small ionized volume ΔV → 0 the Strömgren
-balance `n_IF_Str = sqrt(3(1−f_esc)Qi / (4π χ_e αB ΔV))` (`shell_structure.py:246`) diverges;
+balance `n_IF_Str = sqrt(3(1−f_esc)Qi / (4π χ_e αB ΔV))` (`shell_structure.py:247-250`) diverges;
 the cap was the guard.
 
 This materially updates the evidence doc's §7.2: the cap is **not** a deliberate physics claim
@@ -172,7 +181,7 @@ working as a global off-switch.
 |---|---|---|---|---|
 | **C0** | none — reference arm | — | — | free |
 | **C1** | *transmit, don't add*: momentum `P_drive = max(P_HII, P_ram)` (`run_momentum_phase.py:265,445`); transition `P_drive = max(Pb, P_HII, P_ram)` (`run_transition_phase.py:331`, `energy_phase_ODEs.py:253,385`) — 5 expression sites | 1c, 2 only; **1a/1b must be bit-identical** (hard gate) | low — smallest diff that kills D-sum | tiny |
-| **C2a** | *bare cap removal* (`shell_structure.py:251` deleted) | ALL phases (1a/1b via `max(Pb, P_HII_raw)`, which un-absorbs whenever raw > `shell_n0`… i.e. exactly where the cap used to bind) | **high** — the ΔV→0 divergence the cap was built for; interacts with the per-segment freeze ratchet (phase1a-init Extra finding #1) which is *catastrophic* at compact scale | tiny diff, expensive validation |
+| **C2a** | *bare cap removal* (`shell_structure.py:253` deleted) | ALL phases (1a/1b via `max(Pb, P_HII_raw)`, which un-absorbs whenever raw > `shell_n0`… i.e. exactly where the cap used to bind) | **high** — the ΔV→0 divergence the cap was built for; interacts with the per-segment freeze ratchet (phase1a-init Extra finding #1) which is *catastrophic* at compact scale | tiny diff, expensive validation |
 | **C2b** | *replace the guard*: keep a blow-up guard that is not the confining pressure — candidates: floor ΔV at a resolved skin thickness; cap at `shell_nMax` instead of `shell_n0`; smooth (harmonic) min | ALL phases, but only where the old cap bound AND the new guard differs | medium | small |
 | **C3** | *advanced physical method* (needs D2 + a design pass): **(a) interface-pressure transmission** — drive the neutral shell with the pressure at the ionized/neutral interface taken from the already-integrated ionized-layer structure (`shell_structure.py` integrates `nShell_arr_ion(r)` with radiation), so no density→pressure back-conversion exists and no cap is needed; **(b) two-zone regime switch** — classical D-type (Spitzer-like) expansion when `P_HII_raw > P_ram`, wind-driven otherwise (crude limit of this = C1⊕C2); **(c) excess-only partition** — `P_drive = P_ram + max(P_HII_raw − P_confining, 0)`: the skin transmits the confining pressure and only its *excess* adds | ALL | design risk; must reproduce limiting cases (wind-only → Weaver-like, photo-only → Spitzer-like) | largest |
 | **C4** | diagnostics-only honesty fix: report `F_HII` as the independent component, not the relabelled one | none (output only) | none | tiny; fold into whichever lands |
@@ -196,14 +205,29 @@ the coupling precisely, and it is **not** where the workstream assumed.
 **The real coupling runs through the ionised volume.** Regressions over the b1 arm
 (N = 803 rows, 8.8 decades of dynamic range, stock dynamics + pre-cap diagnostic):
 
-| relation | measured | meaning |
-|---|---|---|
-| `shell_n0` vs `Pb` | exact (`shell_structure.py:124-126`) | the inner BC *is* `Pb/(k T)·μ` |
-| `log ΔV` vs `log shell_n0` | slope **−2.126**, r = −0.909 | denser shell ⇒ thinner ionised skin |
-| `n_IF_Str ∝ ΔV^(−1/2)` | by construction (`:246`) | — |
-| ⇒ `log n_IF_Str_raw` vs `log shell_n0` | slope **+1.039**, r = **0.993** | `P_HII` tracks `Pb` linearly |
+Artifact: `data/b3b_coupling_regression.csv` (`harness/coupling_regression.py`), over the **four
+complete b1 runs** (B3M, PRB, WW, B1M; 788 rows, 8.77 dex of `shell_n0`).
 
-−2.126 × (−1/2) = +1.06, which is the +1.039 measured. The chain closes quantitatively:
+| relation | pooled | per-config spread | meaning |
+|---|---|---|---|
+| `shell_n0` vs `Pb` | exact (`shell_structure.py:124-126`) | — | the inner BC *is* `Pb/(k T)·μ` |
+| `log ΔV` vs `log shell_n0` | slope **−2.348**, r = −0.940 | −2.02 … −2.72 (r ≤ −0.985) | denser shell ⇒ thinner skin |
+| `n_IF_Str ∝ ΔV^(−1/2)` | by construction (`:247-250`) | — | — |
+| ⇒ `log n_IF_Str_raw` vs `log shell_n0` | slope **+1.036**, r = **0.994** | **+0.996 … +1.096** | `P_HII` tracks `Pb` linearly |
+| uncapped `P_HII`/`Pb` | 1.031 … **7.786** | frac < 1 = **0.0000** everywhere | `Pb` is never the larger one |
+
+Read the **per-config spread as the result**, not the pooled exponent: the pooled fit is a
+between-config average whose r is *worse* than any individual run, and the closure
+"−2.348 × (−½) ≈ +1.04" is forced by construction, so it corroborates the arithmetic rather than
+testing it independently. The load-bearing fact is that `n_IF_Str_raw` tracks `shell_n0` with an
+exponent within 10% of 1 **in every config**, and never falls below it.
+
+⚠️ **Corrected 2026-08-13 (independent audit).** An earlier revision quoted −2.126 / +1.039 from a
+pool of N=803 that included two runs killed mid-flight, one duplicating ~110 rows of its own
+completed re-run (C-7), and cited no artifact at all. Conclusion unchanged; digits were not
+reproducible.
+
+The chain closes:
 
 ```
 Pb ──> shell_n0 ──> [shell ODE inner BC] ──> R_IF ──> ΔV ∝ shell_n0^-2.13
@@ -211,7 +235,7 @@ Pb ──> shell_n0 ──> [shell ODE inner BC] ──> R_IF ──> ΔV ∝ sh
                           n_IF_Str ∝ ΔV^-1/2 ∝ shell_n0^+1.06 ≈ Pb  <──┘
 ```
 
-**So the intervention point is `shell_structure.py:124-126`, not `:251`.** The Strömgren balance is
+**So the intervention point is `shell_structure.py:124-126`, not `:253`.** The Strömgren balance is
 being evaluated over a volume whose size is set by `Pb`, so it cannot report anything but `Pb`. Any
 decoupling must break the ΔV path; removing the cap alone provably does not.
 
@@ -219,8 +243,14 @@ decoupling must break the ΔV path; removing the cap alone provably does not.
 
 - **C3a — Strömgren over the cavity.** `n_HII = sqrt(3 Q_i,abs / (4π χ_e α_B R2³))`: depends on
   `Qi` and `R2` only, **zero** dependence on `Pb`, `P_ram` or `shell_n0`. Measured offline on B3M's
-  momentum rows: n = 235 → 49 cm⁻³ and P/k = 2.4e6 → 4.9e5 K cm⁻³ over R2 = 6.6 → 19 pc — physically
-  reasonable H II magnitudes. Scaling `P_HII ∝ R2^-3/2` vs `P_ram ∝ R2^-2` means the two **cross
+  momentum rows: n = **235 → 47 cm⁻³** over R2 = 6.6 → 19 pc, i.e.
+  **P/k = 5.2e6 → 1.0e6 K cm⁻³** once the `mu_convert/mu_ion_shell` = 2.2 factor that the code's own
+  `P_HII` applies is included — physically reasonable H II magnitudes.
+  ⚠️ *Corrected 2026-08-13 (audit): an earlier revision quoted `n·T` = 2.4e6 → 4.9e5 K cm⁻³, omitting
+  that 2.2 factor, while quoting the companion "5–7× `P_ram`" ratio that does include it — the two
+  were mutually inconsistent, and the "physically reasonable" verdict rested on the low one. The
+  density also shifts 49 → 47 cm⁻³ using absorbed `(1−f_esc)·Qi` as the code's balance does, rather
+  than total `Qi`. Still has no committed harness or CSV — see the §5 note below.* Scaling `P_HII ∝ R2^-3/2` vs `P_ram ∝ R2^-2` means the two **cross
   over**, which is the coevolution behaviour D2 asks for. ⚠️ Caveat: it assumes ionised gas fills
   the cavity, which sits awkwardly with the wind-evacuated-cavity picture, and on B3M it makes
   `P_HII` ≈ 5–7× `P_ram`, i.e. it would dominate the momentum drive.
@@ -306,7 +336,7 @@ force budgets + identity metrics; record wall times.
 
 ### Batch 1 — shadow uncapped diagnostic (the C2 de-risk) — Status: ✅ PASS (2026-08-12)
 Smallest possible `trinity/` change, diagnostics-only: `shell_structure.py` also returns the
-**pre-cap** value as `n_IF_Str_raw` (pattern: `n_IF_ODE` at `:225` — a raw value already kept for
+**pre-cap** value as `n_IF_Str_raw` (pattern: `n_IF_ODE` at `:226` — a raw value already kept for
 diagnostics), new `ParamSpec` (`runtime_shell`, like `registry.py:513-515`), so it lands in every
 snapshot.
 - **PASS bars:** (i) dynamics bit-identical on core-6 — every pre-existing key of every matched
@@ -323,9 +353,12 @@ snapshot.
 ### Batch 2 — zero-code bracket: `include_PHII` off vs on — Status: ⬜
 No `trinity/` change; the knob exists (`registry.py:365`). Screen the matrix `False` vs `True`.
 - Why it brackets: `P_HII = 0` ⇒ momentum drives on `P_ram`, transition on `max(Pb, P_ram)` —
-  **identical to C1 wherever the cap binds**. Differences from C1 localize to cap-slack windows
-  (early 1a, where `P_HII = 3·Pb` genuinely drives, and late times). So B2 ≈ a free preview of
-  C1, plus the maximal envelope any P_HII fix can reach.
+  **identical to C1 wherever the cap binds**, which Batch 1 shows is everywhere. ⚠️ *Rewritten
+  2026-08-13 (audit): the original rationale localised the difference to "cap-slack windows (early
+  1a, where `P_HII = 3·Pb` genuinely drives)" — that premise was retracted by Batch 1 and would have
+  carried a known-false assumption into this experiment's design. The real difference is **D-ramp**:
+  inside the `dt_switchon` window `P_HII` carries the un-ramped bubble pressure, so an
+  `include_PHII=False` arm removes that too and over-states what a momentum-only fix would do.*
 - **Confound, documented up front:** the off arm also removes the *legitimate* early-1a HII
   driving; interpret early-time ΔR2 as envelope, not as C1 prediction. B1's cap map says exactly
   where the confound lives.
@@ -351,17 +384,28 @@ Implement the 5-site diff (§3). Gates, all mandatory:
   PRB compulsory. Watch: integrator stalls, the bubble-structure monotonic guard, overflow;
   `P_HII` decoupling from `Pb` (the identity must *break* — that's the point); freeze-ratchet
   amplification at PRB.
-  - **Arm:** the cap line (`shell_structure.py:251`) commented out in a throwaway git worktree, so
+  - **Arm:** the cap line (`shell_structure.py:253`) commented out in a throwaway git worktree, so
     the main tree stays clean and the b1 WW run could proceed concurrently. Runs land under
-    `outputs/phii/b4a__088a8d6_dirty/`. The edit is deliberately NOT committed to the branch —
-    4a is a measurement, not a proposed change.
+    the **worktree's** `outputs/phii/b4a__088a8d6_dirty/` — never inside this repo. The edit is
+    deliberately NOT committed to the branch: 4a is a measurement, not a proposed change.
+    ⚠️ **The 4a raw run dirs no longer exist** (2026-08-13, audit): the worktree was removed with
+    `git worktree remove --force` once the ledgers were written, taking every `dictionary.jsonl`
+    with it. Only `data/b4a_ledger.csv` and `data/b4a_identity_grid.csv` survive. **Any 4a claim not
+    in those two CSVs is now unverifiable** — specifically "zero distress lines" (read from the
+    deleted logs), "`P_HII/Pb` never below 1 on any row", and "median `P_drive/Pb` 1.83 (PRB)"
+    (a pooled-over-phases figure matching no cell in the grid, whose PRB medians are 1.949 and
+    1.041). Re-run from `harness/b4a_cap_removal.patch` into a tracked path before quoting them.
 - **4b (guard replacement, C2b):** pick ONE replacement guard by B1's data (the one that binds
   only in the blow-up regime and nowhere else), screen it identically.
 - **PASS bars:** run survival on all arms; identity broken (relΔ `P_HII` vs `Pb` becomes O(1)
   where the old cap bound); ΔR2/fate ledger complete; PRB terminates.
 - Artifacts: `data/b4a_ledger.csv`, `data/b4a_identity_grid.csv`.
 
-**4a result (2026-08-12).** Every PASS bar met except the trajectory bar, which is breached everywhere:
+**4a result.** Ran **4 of the pre-registered core-6** — SC and WW were never run, and WW is the
+config this plan itself flags as the likeliest place for a large blow-up (weak winds, small ΔV,
+collapse), which the corrected capmap confirms at 7.79×. So "4/4" below means four of six, not
+complete coverage. Of the bars that were exercised, every one is met except the trajectory bar,
+which is breached everywhere:
 
 | config | wall_s | fate base → 4a | ΔR2 max | at t | ΔR2 end | distress |
 |---|---|---|---|---|---|---|
@@ -371,13 +415,13 @@ Implement the 5-site diff (§3). Gates, all mandatory:
 | F1HI | 492 | shell_collapsed → shell_collapsed | 15.3% | 3.2e-06 | 6.2% | none |
 
 - **Survival: unambiguous.** No stalls, no overflow, no monotonic-guard rejection, no convergence
-  warnings, and 4a is *faster* than baseline on every config. The ΔV→0 blow-up the cap was built
+  warnings, and 4a's wall times are comparable to baseline (492–764 s vs 682–832 s; PRB is 7% *slower*, 764 vs 713 s). The ΔV→0 blow-up the cap was built
   for does not materialise in any regime tested — including PRB, the compact probe chosen precisely
   because it is the most likely place for it.
 - **Identity destroyed, as intended.** `frac_PHII_eq_Pb` = 0.0000 in every phase of every config.
   `P_HII` again depends on `Qi`, `f_esc` and the ionized volume.
 - **But it is a real physics change, not a cleanup.** Uncapped `P_HII` exceeds `Pb` on 100% of rows
-  (up to 3.36×), so it now *wins* `max(Pb, P_HII)` everywhere and the median `P_drive/Pb` rises
+  (up to 7.79×; the 3.36 quoted earlier was PRB's `blowup_max`, not the matrix max), so it now *wins* `max(Pb, P_HII)` everywhere and the median `P_drive/Pb` rises
   1.0000 → 1.83 (PRB). Every ΔR2 maximum sits inside the `dt_switchon = 1e-3` Myr window: the cap
   was doing its heaviest work exactly where the R1 ramp is active.
 - ⚠️ **Retraction (2026-08-12).** An earlier reading of the §1 correction predicted cap removal would
@@ -404,9 +448,9 @@ under D4 with a table of before/after.
 
 | id | question | blocks | state |
 |---|---|---|---|
-| D1 | Is the `P_HII + P_ram` **sum** intended (separate reservoir) or is the skin a transmitter (→ `max`)? Evidence doc §5 shows the transition `max` never binds, so "it's already guarded" is not a defense. | Batch 3 landing (running/measuring it is not blocked) | **open** |
+| D1 | ✅ **ANSWERED 2026-08-12/13** — the momentum sum **is** intended, conditional on `P_HII` being genuinely its own calculation; the transition `max` is a **deliberate** smooth handover as `Pb → 0`. See §2. Open remainder: whether a better handover formulation exists, and what C1 actually costs (Batch 3, unrun at the time of writing) | Batch 3 verdict | **answered; C1 still unmeasured** |
 | D2 | ✅ **ANSWERED 2026-08-12** — `P_HII` should be a real, separate pressure, treated as one unless the architecture cannot support it (then the assumption must be explicit). Consequence: the target is **decoupling**, and §3b shows the cap is not the coupling — the ionised volume is. Open sub-question for Batch 5: which decoupled formulation (C3a/C3b/C3c) | Batch 5 | **answered; formulation open** |
-| ~~D2-old~~ | ⛔ superseded by the above. **WAS THE CRUX (Batch 4a).** Removal is proven *safe* — no blow-up materialises in any regime tested, including the compact probe. So the question is no longer "can we?" but "should we?": is the uncapped Strömgren pressure physically trustworthy at these ionized volumes, given it exceeds `Pb` on 100% of rows (up to 3.36×) and shifts trajectories 15–28%? No measurement can settle this; it needs the model's intent. Also confirm §2's reading that the cap was pragmatic, not a physics claim. | Batch 4b design; Batch 5; **4a landing** | **open** |
+| ~~D2-old~~ | ⛔ superseded by the above. **WAS THE CRUX (Batch 4a).** Removal is proven *safe* — no blow-up materialises in any regime tested, including the compact probe. So the question is no longer "can we?" but "should we?": is the uncapped Strömgren pressure physically trustworthy at these ionized volumes, given it exceeds `Pb` on 100% of rows (up to 7.79×; the 3.36 quoted earlier was PRB's `blowup_max`, not the matrix max) and shifts trajectories 15–28%? No measurement can settle this; it needs the model's intent. Also confirm §2's reading that the cap was pragmatic, not a physics claim. | Batch 4b design; Batch 5; **4a landing** | **open** |
 | D3 | Fate flips under a candidate fix: acceptable-if-explained, or a re-tune trigger? | Batch 3/4 verdicts | **open** |
 | D4 | Authority to re-baseline goldens (`test_phase_boundary.py`, `test_betadelta_hybr_stress.py`, `test_scheme_screen.py` fixtures) if the landed fix moves them. | Batch 6 | **open** |
 
@@ -415,11 +459,11 @@ under D4 with a table of before/after.
 ### 8.1 Batch verdicts
 | batch | status | date | verdict (one line) | artifacts |
 |---|---|---|---|---|
-| 0 | ✅ | 2026-08-12 | **PASS** on 6/6 core. Identity holds on 100% of implicit/transition/momentum rows and ≥96.97% of energy rows, relΔ ≤2.9e-16, across 4 decades of nCore. B3M independently reproduces momentum-pdrive (`P_HII` vs `P_ram` = 2.39e-16 over 34 rows). Drive anatomy: implicit exactly 1, transition ≤1.998 (median 1.82), momentum exactly 2.000, energy ≤3.31. **`frac_nIFStr_eq_n0` = 1.0000 in every phase of every config** — the cap is bound everywhere, needing no diagnostic to show it | `data/b0_identity_grid.csv`, `data/b0_trajectories.csv`, `data/b0_walltimes.csv` |
-| 1 | ✅ | 2026-08-12 | **PASS.** G1(i): B3M 231 + PRB 184 + WW 178 = **593 rows** exactly equal on every pre-existing key (repr compare), matching row counts ⇒ diagnostic inert; independently corroborated by the matched-t comparator returning 0.000% on both. Cap binds **100% of rows in every phase**; blow-up p99 1.06–3.33, max 3.33. **Kill bar NOT tripped ⇒ C2a survives, Batch 4a authorised.** Corrects B0: sub-100% energy rows are `Pb` staleness at the 1a→1b handoff, not cap-slack | `data/b1_bitidentity.csv`, `data/b1_capmap.csv` |
+| 0 | ✅ | 2026-08-12 | **PASS** on 6/6 core. Identity holds on 100% of implicit and transition rows and 26/27 momentum rows (WW's final collapse row is stale-`Pb`) and ≥96.97% of energy rows, relΔ ≤2.9e-16, across 4 decades of nCore. B3M independently reproduces momentum-pdrive (`P_HII` vs `P_ram` = 2.39e-16 over 34 rows). Drive anatomy: implicit exactly 1, transition ≤1.998 (median 1.82), momentum exactly 2.000, energy ≤3.31. **`frac_nIFStr_eq_n0` = 1.0000 in every phase of every config** — the cap is bound everywhere, needing no diagnostic to show it | `data/b0_identity_grid.csv`, `data/b0_trajectories.csv`, `data/b0_walltimes.csv` |
+| 1 | ✅ | 2026-08-12 | **PASS.** G1(i): B3M 231 + PRB 184 + WW 178 = **593 rows** exactly equal on every pre-existing key (repr compare), matching row counts ⇒ diagnostic inert; independently corroborated by the matched-t comparator returning 0.000% on both. Cap binds **100% of rows in every phase**; blow-up p99 1.06–7.79, max **7.786** (WW momentum; B3M 3.331, PRB 3.306, B1M 3.308). **Kill bar NOT tripped ⇒ C2a survives, Batch 4a authorised.** Corrects B0: sub-100% energy rows are `Pb` staleness at the 1a→1b handoff, not cap-slack | `data/b1_bitidentity.csv`, `data/b1_capmap.csv` |
 | 2 | ⬜ | — | — | — |
 | 3 | ⬜ | — | **C1 must be MEASURED, not inferred.** A verdict was briefly recorded from D1's intent ruling alone and has been retracted; no run has ever been executed for C1 | — |
-| 4 | 🟡 | 2026-08-12 | **4a MEASURED — survives, but is not behaviourally neutral.** 4/4 configs (PRB, B3M, F1HI, F1LO) ran to their natural end, **zero** distress lines (no excess-work, overflow, monotonic-guard or convergence warnings), wall times *within* baseline (492–764 s vs 682–832 s). **No fate changed** on any config. Identity destroyed as intended: `frac_PHII_eq_Pb` = **0.0000** in every phase of every config (was ≥0.9697), relΔ now O(1) (0.06–2.55). But **every config breaches the 5% bar**: ΔR2 max 15.3–28.4%, all located inside the `dt_switchon` window (t = 1.3e-7 … 9e-6 Myr); ΔR2 at end-of-overlap 0.95% (PRB, recovers) → 14.4% (F1LO, retained). Mechanism: uncapped `P_HII` exceeds `Pb` on **100%** of rows (max 3.36×) so it wins the `max`, lifting median `P_drive/Pb` from 1.0000 to 1.83 (PRB). **Verdict: C2a is numerically viable and physically consequential — not a free win. Landing it needs D2.** 4b not started | `data/b4a_ledger.csv`, `data/b4a_identity_grid.csv` |
+| 4 | 🟡 | 2026-08-12 | **4a MEASURED — survives, but is not behaviourally neutral.** 4/4 configs (PRB, B3M, F1HI, F1LO) ran to their natural end, **zero** distress lines (no excess-work, overflow, monotonic-guard or convergence warnings), wall times *within* baseline (492–764 s vs 682–832 s). **No fate changed** on any config. Identity destroyed as intended: `frac_PHII_eq_Pb` = **0.0000** in every phase of every config (was ≥0.9697), relΔ now O(1) (0.06–2.55). But **every config breaches the 5% bar**: ΔR2 max 15.3–28.4%, all located inside the `dt_switchon` window (t = 1.3e-7 … 9e-6 Myr); ΔR2 at end-of-overlap 0.95% (PRB, recovers) → 14.4% (F1LO, retained). Mechanism: uncapped `P_HII` exceeds `Pb` on **100%** of rows (max 7.79× across the matrix; 3.36× on PRB) so it wins the `max`, lifting median `P_drive/Pb` from 1.0000 to 1.83 (PRB). **Verdict: C2a is numerically viable and physically consequential — not a free win. Landing it needs D2.** 4b not started | `data/b4a_ledger.csv`, `data/b4a_identity_grid.csv` |
 | 5 | ⬜ | — | — | — |
 | 6 | ⬜ | — | — | — |
 
@@ -436,6 +480,14 @@ Shared 4-core box, 3–4 concurrent runs, so these are contention-inflated upper
 | WW | 1.5 (override) | >5400 (killed) | 178 | timeout, but **reached its natural end**: collapse at t = 0.2816 Myr, v2 = −10 km/s, all 4 phases |
 
 ### 8.3 Artifact index
+
+⚠️ **2026-08-13 (audit).** The SHA column means *code that produced the runs*, which is **not** the
+same as the C-6 stamp inside each file (the stamp is the harness tree's SHA at write time, so a CSV
+regenerated later stamps a newer SHA than the runs it summarises). Where the two differ, the stamp
+is authoritative about *when it was written* and this column about *what it describes*. Two legacy
+CSVs (`phii_identity_evidence.csv`, `roundtrip_ulp.csv`) carry **no C-6 stamp at all** — by this
+plan's own "no stamp, no trust" rule they are the least trustworthy artifacts here, and both predate
+the rule being enforced.
 | file | producer | batch | stamp SHA |
 |---|---|---|---|
 | `data/phii_identity_evidence.csv` | (evidence phase) | pre | `6d84b1e` |
@@ -445,6 +497,8 @@ Shared 4-core box, 3–4 concurrent runs, so these are contention-inflated upper
 | `data/b4a_identity_grid.csv` | `harness/harvest_identity.py` | 4a | `088a8d6`+cap-removed |
 | `data/b4a_walltimes.csv` | `harness/run_batch.py` | 4a | `088a8d6`+cap-removed |
 | `harness/b4a_cap_removal.patch` | the exact 4a code change (apply to `088a8d6` to reproduce) | 4a | `088a8d6` |
+| `harness/b3_c1_momentum_max.patch` | the exact C1 arm diff — **momentum sites only** (`run_momentum_phase.py:265,445`); §3's "5-site" wording predates D1's ruling that the transition `max` is deliberate | 3 | `41511ac` |
+| `data/b3b_coupling_regression.csv` | `harness/coupling_regression.py` | 3b | `3a38a87`+dirty |
 | `data/b0_identity_grid.csv` | `harness/harvest_identity.py` | 0 | runs @ `6b55657` |
 | `data/b0_trajectories.csv` | `harness/harvest_identity.py` | 0 | runs @ `6b55657` |
 | `data/b0_walltimes.csv` | `harness/run_batch.py` | 0 | runs @ `6b55657` |
@@ -580,9 +634,53 @@ b0 run and to `bb302e0` for every b1 run (§9 records how that was protected).
   8.8 decades, that **the cap is only the last link**: `ΔV ∝ shell_n0^-2.126` and
   `n_IF_Str ∝ ΔV^-1/2` give `n_IF_Str ∝ shell_n0^+1.039` (r = 0.993) *before* the cap applies, and
   Batch 4a's uncapped runs still never put `P_HII` below `Pb`. The intervention point is the shell
-  ODE's inner boundary condition at `shell_structure.py:124-126`, not the cap at `:251`.
+  ODE's inner boundary condition at `shell_structure.py:124-126`, not the cap at `:253`.
   (3) **Batch 4b is deprioritised** — replacing the guard cannot decouple anything, because the
   guard is not what couples. Batch 5 (C3) is promoted to next, and its first stage is an *offline*
   screen of C3a/C3b against committed snapshots, since both are closed-form in already-stored
   quantities and the likely failure mode is magnitude rather than stability. C3a measured offline on
-  B3M momentum rows: 235 → 49 cm⁻³, P/k 2.4e6 → 4.9e5 K cm⁻³, decoupled, but ≈5–7× `P_ram`.
+  B3M momentum rows: 235 → 47 cm⁻³, P/k 5.2e6 → 1.0e6 K cm⁻³, decoupled, but ≈5–7× `P_ram`
+  (figures corrected 2026-08-13 by audit — see §3b).
+
+- **2026-08-13 (independent audit — two CRITICAL, eleven MAJOR findings; all fixed here)** — An
+  adversarial audit was commissioned specifically to assume this file over-claims. It did, in ways
+  worth recording rather than quietly patching:
+  1. **CRITICAL — the cap's line number was wrong in all 7 citations.** Batch 1's own diagnostic
+     commit inserted two lines above it, moving the cap from `:251` to `:253`, and no citation was
+     updated. C2a's instruction "delete `shell_structure.py:251`" would have deleted the Batch-1
+     diagnostic and left the cap in place. (The committed 4a patch was correct; only prose was wrong.)
+  2. **CRITICAL — the retracted "removal lowers the drive" prediction still stood, unmarked, inside
+     the block headed "read this paragraph with the corrections below".** Retracting a claim in §6
+     while leaving it live in §1 is not a retraction. Struck in place.
+  3. **The blow-up maximum was wrong by 2.3×.** `b1_capmap.csv` was never regenerated after the WW
+     and SC b1 arms landed, so 3.33× (B3M) was quoted as the matrix maximum in four places. It is
+     **7.786×** (WW momentum). The C2a kill bar was 1e2, so no verdict changes — but the plan had
+     explicitly pre-registered "run b1 WW before Batch 4a and re-check the kill bar against it", the
+     WW run was made, and the re-check was silently skipped. Done now.
+  4. **§3b's regression pooled two aborted runs**, one duplicating ~110 rows of its own completed
+     re-run (C-7), and cited no artifact. Recomputed over the four *complete* runs and committed as
+     `data/b3b_coupling_regression.csv`: pooled slopes −2.348 / +1.036 (were −2.126 / +1.039), with
+     a per-config spread of −2.02…−2.72 and +0.996…+1.096 now reported as the honest error bar. The
+     conclusion is unchanged and if anything stronger: **frac(uncapped `P_HII` < `Pb`) = 0.0000 in
+     every config.**
+  5. **The C3a screen was internally inconsistent by 2.2×** — its pressures omitted the
+     `mu_convert/mu_ion_shell` factor the code applies while its `P_ram` ratio included it, so the
+     "physically reasonable magnitudes" verdict rested on the low number. Corrected to
+     P/k = 5.2e6 → 1.0e6 K cm⁻³.
+  6. **"Faster than baseline" was false** (PRB 764 s vs 713 s, 7% slower); **"100% of momentum rows"**
+     was false (WW is 26/27); **"4/4 configs"** hid that Batch 4a ran **4 of the pre-registered
+     core-6**, omitting WW — the very config with the largest blow-up.
+  7. **The 4a raw outputs were deleted with a scratch worktree and the docs never said so.** Now
+     disclosed, with the three claims that are consequently unverifiable named explicitly.
+  8. Also fixed: §7 still listed D1 as open a day after it was answered; README §5/§7.3 asserted
+     "only 1a/1b are safe" and "`_yesPHII`/`_noPHII` differ only via momentum", both superseded by
+     D-ramp and mutually contradictory within one file; Batch 2's rationale still rested on the
+     retracted cap-slack premise; the artifact index's SHA column conflated "stamp" with "code that
+     produced the runs"; two legacy CSVs carry no C-6 stamp at all.
+
+  **Process lesson, recorded because it recurred:** every one of these is a *bookkeeping* failure on
+  top of measurements that survived recomputation. The physics held up under adversarial re-derivation;
+  the layer of headline numbers on top of it did not. Retraction discipline in particular failed twice
+  in the same way — correcting a claim where it was *discovered* rather than everywhere it was
+  *written*. Future visits: when retracting, grep the retracted phrasing across the whole workstream
+  and mark every copy, and regenerate derived CSVs whenever a new arm lands rather than at write time.
