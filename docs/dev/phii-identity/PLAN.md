@@ -311,7 +311,14 @@ handover):
 |---|---|---|
 | energy / implicit | `max(Pb_eff, P_HII≡Pb)` | `max(Pb_eff, P_C3a)` |
 | transition | `max(Pb, P_HII + P_ram)` | `max(Pb, P_C3a + P_ram)` |
-| momentum | `P_HII + P_ram = 2·P_ram` | `P_C3a + P_ram` |
+| momentum | `P_HII + P_ram = 2·P_ram` | `P_C3a + P_ram` on the driving branch; **`P_ram` alone on the confined branch** |
+
+⚠️ *Clarified 2026-08-13, prompted by a maintainer question:* the branch rule is primary **in every
+phase**, momentum included. If `P_C3a ≤ P_ram` there (strong winds, faded `Qi`), the wind confines
+the ionized gas and the skin contributes nothing independent — the drive is `P_ram` alone, not the
+sum. The table's earlier unconditional `P_C3a + P_ram` was written against the current screen data,
+where momentum is HII-dominated on 100% of rows, so the confined-momentum corner never arose; the
+regime map (stage 3) is designed to reach it.
 
 Three consequences fall out **without further design**, all screenable offline:
 
@@ -628,6 +635,26 @@ separate work, and (iv) the transition `max` becomes the physically binding hand
 intends. The cost is unchanged from C3a where it matters: the momentum drive rises 2.4–4.3× over
 stock, and the early-energy drive drops up to 3.3× (the ramp finally biting). **Both are large,
 real behavioural changes — the stage-2 arm decides whether fates survive them.**
+
+**Stage 3 (proposed 2026-08-13, from a maintainer question): the regime map — schemes where `Pb`
+dominates over `P_HII`.** Under stock the ordering is frozen: the cap makes `P_HII ≤ Pb` an identity,
+so "`Pb` dominates" is true by construction and carries no information. **Under C3c the ordering is
+physics**, and both regimes are reachable:
+
+- **Already in hand:** the confined branch *is* the `Pb`-dominated regime, and the current screen
+  shows it holding through 100% of energy and implicit rows in all five configs — and through PRB's
+  **entire run** (never crosses; compact, dense, confined throughout). See `b5_c3c_regime.csv`.
+- **Strong-wind rung** (the mirror of WW): `FB_thermCoeffWind ∈ {3, 10}` on the SC cloud. Prediction:
+  `t_cross` moves later or out of the run entirely, and if the momentum phase is reached while
+  `P_C3a ≤ P_ram`, the drive there is `P_ram` alone — the wind-dominated coevolution branch of the
+  clarified table above. Offline-screenable *after* a cheap b1-style run of each rung.
+- **Low-`Qi` corner**: low-sfe clouds (F1HI's sfe = 0.01 is already committed but collapses early; a
+  low-sfe *diffuse* variant would live longer in the ionized phases).
+- **Late-time `Qi` fade**: `stop_t 15` on B3M/SC. Past SN onset (~3.6 Myr in the bundled table) the
+  ionizing output collapses while winds+SNe keep `Lmech` high, so C3c predicts a possible **second
+  crossover back to confinement** — `P_C3a` falling under `P_ram` late, the drive relaxing to `P_ram`
+  alone. Stock cannot represent this at all; it is a C3c-only, falsifiable prediction, and the
+  cheapest genuinely new physics this workstream could buy next.
 
 **Stage 2 (not started).** Run **C3c** as an arm on B2M, B3M, WW (momentum-reaching) plus PRB (must
 be near-inert: only its energy-phase ramp window changes) and B1M, gated exactly as Batch 3 was —
@@ -962,3 +989,17 @@ b0 run and to `bb302e0` for every b1 run (§9 records how that was protected).
   `max`. Pre-registered remedy if the stage-2 arm stumbles at `t_cross`: solver event via the
   existing `phase_events.py` machinery; smooth-max is fallback only, since its width parameter is a
   new magic number and needs a maintainer ruling.
+
+- **2026-08-13 (§3c momentum branch clarified; stage 3 regime map proposed)** — A maintainer question
+  ("can we test schemes where `Pb` dominates over `P_HII`?") exposed an ambiguity in §3c: the
+  per-phase drive table gave momentum an unconditional `P_C3a + P_ram`, while the branch rule says
+  the confined ionized layer contributes nothing independent. Reconciled in place: **the branch rule
+  is primary in every phase** — strong winds or faded `Qi` in momentum give `P_ram` alone. The
+  ambiguity was invisible in current data (momentum is 100% HII-dominated in all screened configs),
+  which is exactly why it needed writing down before a config reached the other corner. Stage 3
+  (regime map) added to Batch 5: strong-wind rungs (`FB_thermCoeffWind` 3/10), the low-`Qi` corner,
+  and `stop_t 15` runs to catch the post-SN `Qi` fade — where C3c predicts a possible **second
+  crossover back to confinement**, a falsifiable prediction stock cannot express at all (its cap
+  makes "`Pb` ≥ `P_HII`" an identity rather than a measurable regime). Also noted: the `Pb`-dominated
+  regime is not hypothetical — it already holds through 100% of energy/implicit rows in every
+  screened config, and through PRB's entire run.
