@@ -33,8 +33,9 @@
 > update one in isolation.
 
 **Status (2026-08-12):** 🔵 actionable — **Batches 0, 1 and 4a are DONE; D1/D2 answered, and the
-diagnosis has moved.** The momentum `P_HII + P_ram` sum is *intended* (D1) — so **C1 is rejected**;
-the defect is the circularity `P_ram → Pb → shell_n0 → n_IF_Str → P_HII`, not the sum. §3b proves
+diagnosis has moved.** The momentum `P_HII + P_ram` sum is *intended* (D1), which points at the
+circularity `P_ram → Pb → shell_n0 → n_IF_Str → P_HII` rather than the sum as the defect — **but C1
+has never been run and therefore carries no verdict; Batch 3 owes one.** §3b proves
 the **cap is only the last link**: `ΔV ∝ shell_n0^-2.13` already forces `n_IF_Str ∝ shell_n0^+1.04`
 (r = 0.993, N = 803) *before* the cap, and 4a's uncapped runs never put `P_HII` below `Pb`. The
 intervention point is the shell ODE's inner BC (`shell_structure.py:124-126`), not the cap (`:251`).
@@ -148,8 +149,11 @@ still open and is decision **D1** below.
   form. *But* the maintainer's condition is that `P_HII` "should be its own calculation and be
   decoupled from `P_ram` as much as possible", because today the chain is circular:
   `P_ram → Pb → shell_n0 → n_IF_Str → P_HII`. So the sum is not the defect; **the circularity is**.
-  C1 (`max` instead of `+`) is therefore **REJECTED for the momentum phase** — it fixes the wrong
-  thing. ⛔ 2026-08-12.
+  ⚠️ **An earlier revision of this line marked C1 ⛔ REJECTED on the strength of this ruling alone.
+  That was wrong and is retracted (2026-08-12): a verdict was declared from stated intent with no run
+  behind it, which violates this workstream's own bar. C1's status is reset to ⬜ pending **Batch 3**,
+  which must measure it across configs — weak-wind, high-sfe, low-sfe, both density extremes — before
+  any verdict. The intent ruling is an *input* to that verdict, not a substitute for it.**
 - **D1 (transition) — the `max` is deliberate.** `max(Pb, P_HII + P_ram)` is intended as a gradual
   handover between the thermal and momentum drives as `Pb → 0`. Maintainer is open to a better
   formulation but has not proposed one. So the transition `max` is NOT to be "fixed" into a
@@ -414,7 +418,7 @@ under D4 with a table of before/after.
 | 0 | ✅ | 2026-08-12 | **PASS** on 6/6 core. Identity holds on 100% of implicit/transition/momentum rows and ≥96.97% of energy rows, relΔ ≤2.9e-16, across 4 decades of nCore. B3M independently reproduces momentum-pdrive (`P_HII` vs `P_ram` = 2.39e-16 over 34 rows). Drive anatomy: implicit exactly 1, transition ≤1.998 (median 1.82), momentum exactly 2.000, energy ≤3.31. **`frac_nIFStr_eq_n0` = 1.0000 in every phase of every config** — the cap is bound everywhere, needing no diagnostic to show it | `data/b0_identity_grid.csv`, `data/b0_trajectories.csv`, `data/b0_walltimes.csv` |
 | 1 | ✅ | 2026-08-12 | **PASS.** G1(i): B3M 231 + PRB 184 + WW 178 = **593 rows** exactly equal on every pre-existing key (repr compare), matching row counts ⇒ diagnostic inert; independently corroborated by the matched-t comparator returning 0.000% on both. Cap binds **100% of rows in every phase**; blow-up p99 1.06–3.33, max 3.33. **Kill bar NOT tripped ⇒ C2a survives, Batch 4a authorised.** Corrects B0: sub-100% energy rows are `Pb` staleness at the 1a→1b handoff, not cap-slack | `data/b1_bitidentity.csv`, `data/b1_capmap.csv` |
 | 2 | ⬜ | — | — | — |
-| 3 | ⬜ | — | — | — |
+| 3 | ⬜ | — | **C1 must be MEASURED, not inferred.** A verdict was briefly recorded from D1's intent ruling alone and has been retracted; no run has ever been executed for C1 | — |
 | 4 | 🟡 | 2026-08-12 | **4a MEASURED — survives, but is not behaviourally neutral.** 4/4 configs (PRB, B3M, F1HI, F1LO) ran to their natural end, **zero** distress lines (no excess-work, overflow, monotonic-guard or convergence warnings), wall times *within* baseline (492–764 s vs 682–832 s). **No fate changed** on any config. Identity destroyed as intended: `frac_PHII_eq_Pb` = **0.0000** in every phase of every config (was ≥0.9697), relΔ now O(1) (0.06–2.55). But **every config breaches the 5% bar**: ΔR2 max 15.3–28.4%, all located inside the `dt_switchon` window (t = 1.3e-7 … 9e-6 Myr); ΔR2 at end-of-overlap 0.95% (PRB, recovers) → 14.4% (F1LO, retained). Mechanism: uncapped `P_HII` exceeds `Pb` on **100%** of rows (max 3.36×) so it wins the `max`, lifting median `P_drive/Pb` from 1.0000 to 1.83 (PRB). **Verdict: C2a is numerically viable and physically consequential — not a free win. Landing it needs D2.** 4b not started | `data/b4a_ledger.csv`, `data/b4a_identity_grid.csv` |
 | 5 | ⬜ | — | — | — |
 | 6 | ⬜ | — | — | — |
@@ -568,9 +572,11 @@ b0 run and to `bb302e0` for every b1 run (§9 records how that was protected).
 - **2026-08-12 (D1/D2 answered; the diagnosis moves)** — Maintainer ruled: the momentum
   `P_HII + P_ram` sum is **intended**, conditional on `P_HII` being genuinely its own calculation;
   the transition `max` is a **deliberate** smooth handover as `Pb → 0`; and `P_HII` should be a real
-  separate pressure. Three consequences, all recorded above. (1) **C1 is rejected** — replacing the
-  momentum `+` with a `max` fixes a thing that is not broken; the defect is the circularity
-  `P_ram → Pb → shell_n0 → n_IF_Str → P_HII`, not the sum. (2) New §3b proves, with N = 803 rows over
+  separate pressure. Three consequences, all recorded above. (1) C1 was briefly marked ⛔ on the
+  strength of the intent ruling alone; **that verdict is retracted the same day** — it was declared
+  without a single run, which this workstream's own bar forbids. C1 is reset to ⬜ pending Batch 3.
+  The ruling still makes the circularity `P_ram → Pb → shell_n0 → n_IF_Str → P_HII` the more likely
+  defect than the sum, but "more likely" is a hypothesis, not a verdict. (2) New §3b proves, with N = 803 rows over
   8.8 decades, that **the cap is only the last link**: `ΔV ∝ shell_n0^-2.126` and
   `n_IF_Str ∝ ΔV^-1/2` give `n_IF_Str ∝ shell_n0^+1.039` (r = 0.993) *before* the cap applies, and
   Batch 4a's uncapped runs still never put `P_HII` below `Pb`. The intervention point is the shell
