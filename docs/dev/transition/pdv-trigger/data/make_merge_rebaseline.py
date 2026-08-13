@@ -81,11 +81,21 @@ REF = {
 }
 BAR = 5e-4  # absolute, = half the last digit the pre-registration quotes
 
-# Lancaster Eq-10 prefactor bracket from the measured order-unity constants:
-#   C = ½(1+f_turb)·α_p/α_R + S,  with α_p ∈ [1.2, 4] (F_KAPPA_FUNCTIONAL_FORM.md:139),
-#   α_R ~ 1, S ≈ α_p within 6% (Eq 6), f_turb ∈ [0, 3].
-# Low corner: α_p=1.2, f_turb=0 → ½·1·1.2 + 1.2 = 1.8. High: α_p=4, f_turb=3 → 8 + 4 = 12.
-C_LO, C_HI = 1.8, 12.0
+# Lancaster Eq-10 prefactor bracket — PINNED 2026-08-13 from the papers themselves, superseding
+# an earlier hand-built [1.8, 12] that was ~3× too generous at the top (FINDINGS §16f).
+# Lancaster+2021b (Paper II) §4.7.1 defines the Figure-17 shaded band as exactly this pair:
+#   lower  Eq 10 with f_turb = 0, S = α_R = α_p = 1                     -> C = 3/2
+#   upper  Eq 14, the EC-VALIDITY limit 1−Θ < 4(5/6)^{1/4} Ṙ_EC/V_w     -> C = 3.82
+# quoted in the paper as "different coefficients (3.8 and 1.5, respectively)".
+#
+# The upper bound is NOT a parameter corner — it is the condition for the Efficiently Cooled
+# solution to apply at all. An implied C above it does not mean "a large α_p"; it means the run
+# is outside the regime EC theory describes. That is what makes §16's failure decisive.
+#
+# Measured constants behind it (Paper II §4.4, abstract): α_p ~ 1.2–4 (smallest for the most
+# luminous winds), α_R ~ 0.5–1.5 and "quite close to unity", f_turb ≈ 1 (equipartition between
+# turbulent and radial shell motion), S ≈ α_p within 6% (Paper I Eq A16).
+C_LO, C_HI = 1.5, 4.0 * (5.0 / 6.0) ** 0.25  # = 1.5, 3.8218
 
 
 def _fin(v):

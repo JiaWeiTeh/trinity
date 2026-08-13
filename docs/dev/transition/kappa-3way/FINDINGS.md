@@ -56,15 +56,27 @@ channel** — Lancaster's area law multiplies turbulent entrainment, which TRINI
 at all, while TRINITY's Ṁ is the conductive-evaporation eigenvalue — so **Option 2 is dead on a
 second and independent ground**. `§16`: screening Option 3 found a sharper instrument than the
 saturated-flux cap — Lancaster **Eq 10**, a closed-form ℓ-free Θ prediction — and it **fails 0/3**:
-TRINITY's implied prefactor is 5–50× outside the order-unity bracket *and* drifts 3–6× across the
-window. Read the other way, Eq 10 at TRINITY's own Ṙ_b/V_w predicts **Θ = 0.93/0.95/0.97, inside the
-L21b band**, against TRINITY's resolved 0.29/0.44/0.58. `§16e` then records the maintainer's
+TRINITY's implied prefactor is **6–40× above Lancaster's own EC-validity ceiling** *and* drifts 3–6×
+across the window (`§16f`: C pinned to **[1.5, 3.82]** from the papers 2026-08-13, superseding an
+earlier over-generous [1.8, 12]). Read the other way, Eq 10 at the pinned bound predicts **Θ = 0.978 / 0.984 / 0.989**, inside the
+L21b band, against TRINITY's resolved 0.29/0.44/0.58. `§16e` then records the maintainer's
 wind-only objection: Lancaster has no radiation pressure, photoionized gas or SNe, which **widens**
 the Eq-10 gap rather than explaining it, but devalues the precise multiple — and argues for
 reframing Lancaster as a **component benchmark in the wind-only limit** rather than a shell
 calibration target. ⚠️ Chasing that surfaced a separate `trinity/` problem in the momentum-phase
 force budget, written up in **`docs/dev/momentum-pdrive/`** — it touches no Θ number here, but it
 sits upstream of every fate.
+**2026-08-13 — C pinned from the papers, and it settles two open questions.** `§16f`: Lancaster+2021b
+§4.7.1 states the bracket itself — **C ∈ [1.5, 3.82]**, where the upper bound is **Eq 14, the
+EC-validity limit**, not a parameter corner. So an implied C above it means the run is *outside the
+regime EC theory describes*, and **every row of every arm** — minimum rows included — sits 6–40×
+above it. `§16d` **RESOLVED**: the inequality is `v_hot ≤ v_equiv` (`LANCASTER_REFERENCE.md:341` was
+right, `F_AREA_PLAN §3.3` wrong), and it is a *validity condition*, not a saturation cap — so
+Option 3 never existed as stated. `§16g`: **the Ṙ_b/V_w trigger is not viable** — at the pinned
+bracket it fires in the first 1–11% of the window. ⚠️ Which points somewhere bigger: Eq 10 puts Θ
+above 0.95 almost from birth, so **in the EC picture there is no extended energy-driven phase to
+transition out of** — the transition-trigger framing itself, not just its calibration, is what
+disagrees with Lancaster. Flagged as interpretation, for a maintainer call.
 **`§17` (re-reduction, no runs) closes the loop on why every knob is weak.** Grouped by the channel
 each acts through, the measured Θ ∝ f^q exponents separate exactly as `§13`/`§15` imply: the two
 **conduction** knobs land on the Weaver **2/7 = 0.286** eigenvalue (f_A 0.268, f_κ 0.290 — within 6%
@@ -880,10 +892,11 @@ magnitude** above Lancaster's bracket on every arm and every row — not one poi
 constant. So the *functional form* misses, not merely the normalisation; no choice of α_p, α_R or
 f_turb rescues it.
 
-⚠️ **Quote the order of magnitude, not the multiple.** `§16e` shows the two sides of this comparison
-do not contain the same physics (Lancaster is wind-only), which biases C *downward* here — so the
-direction and rough size are robust but the precise factor is not. An earlier draft of this section
-said "5–50×"; that was over-reading.
+⚠️ **Superseded by `§16f`, which pins the bracket.** This subsection's "5–50×" was measured against a
+hand-built `C ∈ [1.8, 12]`. The papers give **C ∈ [1.5, 3.82]**, so the correct statement is that
+**every row of every arm is 6–40× above Lancaster's EC-validity ceiling**. `§16e` separately notes
+the two sides do not contain the same physics (Lancaster is wind-only), which biases C *downward*
+here — i.e. the gap is if anything understated.
 
 **Read the other way round, which is the result worth keeping.** At TRINITY's *own* Ṙ_b/V_w, Eq 10
 evaluated at the generous end of Lancaster's bracket predicts **Θ = 0.93 / 0.95 / 0.97** — inside
@@ -915,16 +928,103 @@ track Eq 10.
 and TRINITY's `R2` is the contact/shell radius; Lancaster's Θ = `L_int/Ė_in` and TRINITY's
 θ = `bubble_Lloss/Lmech_total` (`LANCASTER_REFERENCE.md §7b` treats these as the comparable pair,
 which is inherited here, not re-derived). Both mappings are order-unity-faithful, not exact, so read
-the 5–50× gap as robust and the exact factor as indicative.
+the order-of-magnitude gap as robust and the exact factor as indicative (see `§16f`).
 
-### §16d. An unresolved contradiction between two repo docs, flagged not fixed
+### §16d. RESOLVED 2026-08-13 — the inequality runs `v_hot ≤ v_equiv`, and `F_AREA_PLAN §3.3` had it backwards
 
-`F_AREA_PLAN §3.3` describes the saturation cap as *"Eq 12's `v_equiv` may not exceed Eq 15's
-`v_hot`"*. `LANCASTER_REFERENCE.md:341` records the same equation as *"Eq 15 (`v_hot(R_b) ≈
-V_w/(6α_p−2)`, which cannot exceed Eq 12's `v_equiv`)"* — **the opposite direction**. The saturated-
-flux construction only works one way round (`v_equiv ≤ v_hot` is a flux limit; the reverse is a
-lower bound and produces no saturation). Both docs are secondary; resolving it needs Lancaster
-2021a Eq 15 itself. Not resolved here, and the Eq-10 screen above does not depend on it.
+`F_AREA_PLAN §3.3` described the saturation cap as *"Eq 12's `v_equiv` may not exceed Eq 15's
+`v_hot`"*; `LANCASTER_REFERENCE.md:341` recorded it the opposite way. Read from the paper
+(Lancaster+2021b §2, immediately after Eq 15), verbatim:
+
+> *"Another limit is that the velocity of shocked hot gas flowing into the boundary layer,*
+> `v_hot(R_b) = v_ps (R_f/R_b)² ~ V_w/(6α_p − 2)`, *(15) **cannot exceed the equivalent velocity that
+> turbulent diffusion can accommodate**, given in Equation 12."*
+
+**`v_hot ≤ v_equiv`.** `LANCASTER_REFERENCE.md:341` is **right**; `F_AREA_PLAN §3.3` is **wrong** and
+is corrected there.
+
+⚠️ **And the correction retires the construction, not just the sign.** The relation is a *validity
+condition* — turbulent diffusion must be fast enough to carry away everything advection delivers —
+**not** a flux cap that makes Θ saturate at 1. Paper II Figure 18 confirms it holds with "excellent
+agreement" in their sims. So `F_AREA_PLAN §5a` item 3, *"the Θ → 1 saturated-flux limit"*, was built
+on a misreading: there is no saturation mechanism there to exploit. Option 3 was already dead by
+measurement (`§16b`); it turns out never to have existed as stated.
+
+### §16e-bis / §16f. C is PINNED — and TRINITY sits outside the EC solution's own validity limit
+
+⚠️ **This supersedes the `C ∈ [1.8, 12]` bracket used in `§16a`–`§16c`,** which was hand-built from a
+secondary quote of α_p and was **~3× too generous at the top**. Read from the papers 2026-08-13:
+
+| constant | measured value | source |
+|---|---|---|
+| α_p | **1.2 – 4**, smallest for the most luminous winds | Paper II abstract, §4.4 Fig 8 |
+| α_R | **0.5 – 1.5**, "quite close to unity"; lower in denser clouds | Paper II §4.4 Fig 9 |
+| f_turb | **≈ 1** — equipartition; *"the energy in turbulent motion is at least as large as the energy in radial motion"* | Paper II §4.4 Fig 10 |
+| S | **≈ α_p within 6%** | Paper I Eq A16 |
+| 1−Θ | **0.1 – 0.01**, ∝ t^{−1/2} | Paper II abstract, Fig 17 |
+
+But the bracket does not have to be assembled from those at all — **Lancaster states it himself.**
+Paper II §4.7.1, defining the shaded band of its Figure 17:
+
+> *"…bounded above by the locus at which the EC condition applies as given by Equation 14, and
+> bounded below the locus of maximum cooling as given by Equation 10 with f_turb = 0 and
+> S = α_R = α_p = 1 … Both of these limits have retained energy fraction 1 − Θ ∝ Ṙ_EC/V_w with
+> **different coefficients (3.8 and 1.5, respectively)**."*
+
+> **C ∈ [1.5, 3.82]**, where 3.82 = 4(5/6)^{1/4} is **Eq 14, the EC-validity limit** — not a
+> parameter corner. An implied C above it does not mean "a large α_p"; it means **the run is outside
+> the regime the Efficiently Cooled solution describes.**
+
+**Rescored against the pinned bracket, `§16b`'s failure is far worse than reported:**
+
+| arm | implied C, **minimum row** | × above the EC ceiling | Θ at C = 3.82 | Θ measured |
+|---|---|---|---|---|
+| bench1_m5e4_r20 | 22.3 | **5.8×** | 0.978 | 0.288 |
+| bench2_m1e5_r10 | 32.0 | **8.4×** | 0.984 | 0.436 |
+| bench3_m1e5_r5 | 45.9 | **12.0×** | 0.989 | 0.579 |
+
+Not the median — the **minimum**. **Every row of every arm** sits above Lancaster's own EC-validity
+ceiling, by 6–40×. And Eq 10 at the pinned bound predicts **Θ = 0.978 / 0.984 / 0.989**, deeper into
+the L21b band than the 0.93/0.95/0.97 quoted earlier, against TRINITY's 0.29 / 0.44 / 0.58.
+
+### §16g. The Ṙ_b/V_w trigger is NOT viable — and the reason reframes the whole trigger question
+
+`§16c` reading (2) and the `§17d` recommendation both rested on possibly triggering on Ṙ_b/V_w
+instead of θ, once C was pinned. **Pinning it kills the idea.** θ\* = 0.95 ⟺ Ṙ_b/V_w = 0.05/C, so the
+pinned bracket gives a threshold of **0.0131 – 0.0333**, and TRINITY's shells cross it at:
+
+| arm | fires (C = 3.82) | fires (C = 1.5) | implicit window ends | fraction of window |
+|---|---|---|---|---|
+| bench1_m5e4_r20 | t = 0.0684 | 0.0069 | 0.596 | 1–11% |
+| bench2_m1e5_r10 | t = 0.0236 | 0.0035 | 0.397 | 1–6% |
+| bench3_m1e5_r5 | t = 0.0085 | 0.0035 | 0.271 | 1–3% |
+
+The trigger would fire in the **first few percent** of the window — essentially immediately, nowhere
+near the physical transition. The bracket is now tight (2.5×, not 6.7×), so this is not an
+uncertainty problem: it is what Eq 10 actually says.
+
+> ⚠️ **And that is the substantive finding, not a null result.** Eq 10 puts Θ above 0.95 almost from
+> the start, which is Lancaster's own headline — `1−Θ ~ 0.1–0.01`, *decreasing* from early times. **In
+> the EC picture a wind bubble in a GMC is momentum-driven essentially from birth; there is no
+> extended energy-driven phase to transition out of.** TRINITY models a long energy-driven phase and
+> then hunts for the moment it ends. Those are not two calibrations of one picture — they are two
+> different pictures.
+>
+> So the tension is not that TRINITY's θ is mis-calibrated. It is that **the transition-trigger
+> framing itself is what disagrees with Lancaster.** ⚠️ Stated as an interpretation, not a
+> measurement: it follows from Eq 10 plus the pinned constants, and it is exactly the kind of
+> reading `PROVENANCE §2` warns is the failure mode a freshness rule cannot catch. It wants a
+> maintainer's judgement before anything is built on it.
+
+### §16h. Lancaster's own caveats, which back the `§16e` wind-only objection
+
+Recorded because they came from the authors, not from us. Paper II §5: *"our present simulations do
+not resolve the scale ℓ_cool at the wind bubble interface"* — the same scale `F_AREA_PLAN §3.3` found
+undeliverable at 10⁻¹⁵ pc. And: *"we have not included radiation or magnetic fields,"* followed by a
+paragraph on how photoionized gas would change the interaction — *"The free wind and shocked wind
+regions would then in general interact with photoionized gas that has been evaporated from the
+shell, rather than directly with the denser shell gas… the turbulent mixing process would likely
+occupy a larger volume."* `§16e`'s objection is one the authors share.
 
 ### §16e. ⚠️ Lancaster is WIND-ONLY — what that does to `§16`, and what it does to the whole program
 
@@ -944,8 +1044,9 @@ carries all three. So is the Eq-10 comparison apples-to-oranges?
   wind-only TRINITY would show.
 
 ⚠️ **So the objection does not rescue Eq 10 — but it does devalue the exact factor.** Read `§16b` as
-*"order-of-magnitude discrepancy, direction robust"*, **not** as *"the gap is 5–50×"*. Quoting the
-precise multiple would be over-reading a comparison whose two sides do not contain the same physics.
+*"order-of-magnitude discrepancy, direction robust"*. ⚠️ Since this was written, `§16f` pinned the
+bracket from the papers and rescored it: **6–40× above the EC-validity ceiling**, measured on each
+arm's *minimum* row. The wind-only mismatch biases C downward, so that is a floor.
 
 **The deeper version of the objection is the one that should reorder the program.** Lancaster's Θ
 measures the **wind bubble's** interface cooling. If radiation and photoionized gas dominate TRINITY's

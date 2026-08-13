@@ -49,7 +49,8 @@ derivable value *and* no warrant for putting an area law on the conduction chann
 Θ → 1 saturated-flux cap, is promoted** to the one live thread because it sidesteps §3.3 instead of
 depending on it — **and was then screened the same day and FAILED 0/3**, via Lancaster **Eq 10**, a
 closed-form ℓ-free Θ prediction found in the repo's own reference notes. TRINITY's implied prefactor
-is 5–50× outside the order-unity bracket and drifts 3–6× where Eq 10 predicts a constant; read the
+is 6–40× above Lancaster's EC-validity ceiling (C pinned to [1.5, 3.82], `FINDINGS §16f`) and drifts
+3–6× where Eq 10 predicts a constant; read the
 other way, Eq 10 at TRINITY's own Ṙ_b/V_w lands **inside** the L21b band while TRINITY resolves 3–5×
 less (`FINDINGS §16`). **All three §5a options are now screened out or exhausted**; open question 4
 → 4′ → **4″**, which is the choice between the two readings of that result.
@@ -427,7 +428,8 @@ order a next visit should weigh it:
 > S ≈ α_p ⇒ C ∈ [1.8, 12]). That is strictly better than the cap: it needs no inequality direction
 > and no truncation scale at all. Inverting it on TRINITY's own trajectory
 > (`data/make_merge_rebaseline.py`, `table=EQ10`) gives implied **C = 59 / 75 / 93** (bench1/2/3
-> medians), **5–50× outside the bracket on every row, and drifting 3.3–5.6× across the window** where
+> medians), **6–40× above the pinned EC-validity ceiling on every row — minimum rows included — and
+> drifting 3.3–5.6× across the window** where
 > Eq 10 predicts a constant. **0 PASS / 3 FAIL.**
 >
 > Read the other way — the part worth keeping — at TRINITY's own Ṙ_b/V_w, Eq 10 predicts
@@ -437,9 +439,17 @@ order a next visit should weigh it:
 > Option 3 dies with Option 2, *or* Eq 10 becomes a derived pointwise calibration target that no
 > scalar dose can reach (the drift forbids it) — and the screen deliberately does not choose.
 >
-> ⚠️ `§3.3`'s description of the cap as "`v_equiv` may not exceed `v_hot`" **contradicts**
-> `LANCASTER_REFERENCE.md:341`, which records the inequality the other way round. Unresolved, flagged
-> in `FINDINGS §16d`; the Eq-10 screen does not depend on it.
+> ⛔ **RESOLVED 2026-08-13, against this plan.** `§3.3` describes the cap as "`v_equiv` may not
+> exceed `v_hot`". Read from Lancaster+2021b §2, right after Eq 15: *"the velocity of shocked hot gas
+> flowing into the boundary layer … **cannot exceed the equivalent velocity that turbulent diffusion
+> can accommodate**, given in Equation 12."* The inequality is **`v_hot ≤ v_equiv`** —
+> `LANCASTER_REFERENCE.md:341` had it right and **`§3.3` here is wrong**.
+>
+> The correction retires the construction rather than flipping it: the relation is a **validity
+> condition** on the EC solution (diffusion must keep up with advection — Paper II Fig 18 confirms it
+> holds in their sims), **not** a flux cap that makes Θ saturate at 1. So item 3 above, "the Θ → 1
+> saturated-flux limit", never existed as stated. It was already dead by measurement
+> (`FINDINGS §16b`); it is now also dead by construction. See `FINDINGS §16d`.
 
 **Nothing below §5a has been acted on.**
 

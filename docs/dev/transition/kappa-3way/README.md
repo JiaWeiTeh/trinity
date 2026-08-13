@@ -32,11 +32,13 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-08):** 🔵 actionable — **294/294 arms ran, the three-way table is MEASURED, and it
+**Status (2026-08-13):** 🔵 actionable — **294/294 arms ran, the three-way table is MEASURED, and it
 survived the `main` merge** (`FINDINGS §14`: 5 PASS / 1 FAIL, the failure a window artifact worth
 1.3% on bench1's Θ₀). `FINDINGS §15` re-aims `§10b`'s indictment and strikes f_area Option 2;
 `FINDINGS §16` screens Option 3 via Lancaster Eq 10 and it **fails 0/3** — so all three f_area
-options are exhausted and the live decision is which reading of that result to act on
+options are exhausted. **2026-08-13:** C pinned from the papers to **[1.5, 3.82]** (`§16f`), which
+rescores that failure as 6–40× outside the EC solution's own validity limit, resolves `§16d`, and
+rules out the Ṙ_b/V_w trigger (`§16g`). The live decision is which reading to act on
 (`F_AREA_PLAN` open question 4″). Prior status (2026-08-02, still accurate on the measurements):
 (`FINDINGS.md`, `report.html`). Headline: **f_κ is the worst of the three knobs** on both metrics and **P1 is falsified**. ⚠️ But
 `FINDINGS §11`: Θ_cum is the wrong metric for the knob decision — on the trigger's own instantaneous
@@ -60,11 +62,21 @@ screened the same day and ⛔ failed 0/3** (`FINDINGS §16`) — not via the sat
 named, but via **Lancaster Eq 10**, a closed-form Θ prediction with no ℓ, no fractal area and no
 fitted constant, which was already sitting in `pdv-trigger/LANCASTER_REFERENCE.md`.
 
-The Eq-10 number is the one to carry forward: at TRINITY's *own* Ṙ_b/V_w, Eq 10 predicts
-**Θ = 0.93 / 0.95 / 0.97 — inside the L21b band** the whole program is trying to reach — while
-TRINITY's resolved structure delivers **0.29 / 0.44 / 0.58**. Lancaster's theory already lands in the
-band on TRINITY's own trajectory. Whether that kills the area program or replaces the band with a
-derived pointwise target is `F_AREA_PLAN` open question **4″**, and it is a maintainer call.
+The Eq-10 number is the one to carry forward, and it sharpened on 2026-08-13 when **C was pinned
+from the papers to [1.5, 3.82]** (`FINDINGS §16f`) — the upper bound being Lancaster's own
+**EC-validity limit**, so every row of every arm sits **6–40× outside the regime his theory
+describes**. At TRINITY's *own* Ṙ_b/V_w, Eq 10 predicts **Θ = 0.978 / 0.984 / 0.989 — inside the
+L21b band** the whole program is trying to reach — while TRINITY's resolved structure delivers
+**0.29 / 0.44 / 0.58**. Pinning C also killed the Ṙ_b/V_w trigger idea (`§16g`: it would fire in the
+first 1–11% of the window) and resolved `§16d` — the inequality is `v_hot ≤ v_equiv`, a *validity
+condition* rather than a saturation cap, so Option 3 never existed as stated.
+
+So Lancaster's theory already lands in the band on TRINITY's own trajectory, with no free parameter.
+Whether that kills the area program or replaces the band with a derived pointwise target is
+`F_AREA_PLAN` open question **4″**, and it is a maintainer call. ⚠️ `FINDINGS §16g` raises a larger
+one: Eq 10 puts Θ above 0.95 almost from birth, so in the EC picture there may be **no extended
+energy-driven phase to transition out of at all** — which would make the transition-trigger framing,
+not its calibration, the thing at odds with Lancaster. Interpretation, not measurement.
 
 ---
 

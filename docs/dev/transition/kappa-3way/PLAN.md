@@ -363,9 +363,10 @@ prediction, which `FINDINGS §1`–`§12` had already superseded. They are measu
 | The three-way table | ✅ **measured** (`FINDINGS §2`, `§11c`, `§12c`): f_κ worst on both metrics; f_A the best single knob on solved rows |
 | Successor: f_area (`F_AREA_PLAN.md`) | ⛔ **Phase A0 ran 2026-08-03, GA0 FAILED** — bench8 (514 arms) not submitted, no params emitted (`FINDINGS §13`) |
 | f_area Option 2 (f on the evaporative flux) | ⛔ **DEAD 2026-08-08** — no derivable value (§3.3) *and* no warrant for an area law on the conduction channel (`FINDINGS §15c`) |
-| f_area Option 3 (Θ → 1 saturated-flux cap) | ⛔ **SCREENED AND FAILED 0/3, 2026-08-08** — via Lancaster Eq 10, a sharper ℓ-free instrument than the cap; implied prefactor 5–50× outside the order-unity bracket and drifting 3–6× (`FINDINGS §16`) |
+| f_area Option 3 (Θ → 1 saturated-flux cap) | ⛔ **SCREENED AND FAILED 0/3, 2026-08-08** — via Lancaster Eq 10, a sharper ℓ-free instrument than the cap; implied prefactor 6–40× above Lancaster's EC-validity ceiling, C pinned to [1.5, 3.82] from the papers, drifting 3–6× (`FINDINGS §16`, `§16f`) |
 | Θ₀ re-baseline after the `main` merge | ✅ **MEASURED 2026-08-08** — 5 PASS / 1 FAIL; bench1's native failure is a 3.4% window-length effect worth 1.3% on its Θ₀ (`FINDINGS §14`) |
 | Why every knob is weak (`FINDINGS §17`) | ✅ **ANSWERED 2026-08-08, no runs** — the two conduction knobs' Θ ∝ f^q exponents land on the Weaver **2/7** (f_A 0.268, f_κ 0.290); f_mix, which bypasses the eigenvalue, is 1.75× that. The bubble **absorbs** enhanced conduction. Also: the band-entry dose spread is dominated by 1/q, so that metric rewards steep response, not fidelity |
+| C, the Eq-10 prefactor | ✅ **PINNED 2026-08-13** from Lancaster+2021b §4.7.1: **[1.5, 3.82]**, upper bound = Eq 14 EC-validity limit. Every arm sits 6–40× outside it. Also resolved `§16d` (`v_hot ≤ v_equiv`, a validity condition not a cap) and killed the Ṙ_b/V_w trigger (`§16g`) |
 | The Eq-10 result itself | 🔵 **the live decision** — Eq 10 at TRINITY's own Ṙ_b/V_w predicts Θ = 0.93/0.95/0.97, inside the L21b band, vs TRINITY's 0.29/0.44/0.58. Kills the area program, or replaces the band with a derived pointwise target (`F_AREA_PLAN` open question 4″) |
 
 **Production is untouched.** Default remains `cooling_boost_mode='none'`, f_κ = 1.0, f_A = 1.0.
