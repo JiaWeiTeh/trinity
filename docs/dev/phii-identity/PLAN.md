@@ -32,29 +32,26 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-13):** 🔵 actionable — **Batches 0, 1 and 4a done; D1/D2 answered; an
-independent adversarial audit (2026-08-13) corrected two critical and eleven major items — see
-§9. Do not quote any figure from an unmarked earlier revision of this file.** **Batch 3 (C1) is now MEASURED**: safe and small (ΔR2 0.000–4.00% across weak-wind, two masses
-and two bench radii; no fate changes) but aimed at the wrong target — it deletes the photoionised
-channel rather than decoupling it. Superseded by C3; next step is the offline C3a/C3b screen. The momentum `P_HII + P_ram` sum is *intended* (D1), which points at the
-circularity `P_ram → Pb → shell_n0 → n_IF_Str → P_HII` rather than the sum as the defect — **but C1
-has never been run and therefore carries no verdict; Batch 3 owes one.** §3b proves
-the **cap is only the last link**: `ΔV ∝ shell_n0^-2.13` already forces `n_IF_Str ∝ shell_n0^+1.04`
-(r = 0.993, N = 803) *before* the cap, and 4a's uncapped runs never put `P_HII` below `Pb`. The
-intervention point is the shell ODE's inner BC (`shell_structure.py:124-126`), not the cap (`:253`).
-**Next: Batch 5 (C3), starting with an offline screen of the decoupled formulations.** Prior
-findings retained below. The cap
-binds on **100% of rows in every phase**, and the blow-up it suppresses tops out at **7.79×** (WW momentum; corrected 2026-08-13 — an
-earlier revision said 3.33×, which was B3M's value quoted before the WW/SC arms were folded in), so
-the pre-registered C2a kill bar (p99 > 1e2) did **not** trip. **Batch 4a then removed the cap and
-measured it: it survives cleanly on 4/4 configs — no numerical distress, no fate changes, wall
-times comparable to baseline — but shifts trajectories 15.3–28.4%, over the 5% bar on every config.** So bare
-removal is *safe but not neutral*, and the open question is now physics, not numerics (**D2**). The only `trinity/` change so far is the inert shadow diagnostic `n_IF_Str_raw`
-(bit-identity gated). Two Batch-0 by-products changed the problem statement — the double-count is
-far larger than assumed (transition median **1.82×**, momentum exactly **2.000×**), and the energy
-phase carries a *separate* defect: `P_HII` smuggles the un-ramped bubble pressure past the
-`dt_switchon` R1 ramp (up to **3.2×**). Evidence base: `docs/dev/phii-identity/README.md`.
-Branch `bugfix/phii-pt1`.
+**Status (2026-08-13):** 🔵 actionable — **Batches 0, 1, 3, 4a and 5-stage-1 done. D1/D2 answered.
+An independent adversarial audit (2026-08-13) corrected 2 critical + 11 major items — see §9, and do
+not quote any figure from an unmarked earlier revision of this file.**
+
+- **The identity is real and universal**: `P_HII` == the confining pressure to ≤2.9e-16, and the cap
+  binds on **100% of rows in every phase** of every config (6 configs, 4 decades of `nCore`).
+- **The cap is not the coupling** (§3b). Removing it (Batch 4a) leaves `P_HII` still tracking `Pb`
+  — per-config slope **+0.996…+1.096**, and `P_HII < Pb` on **zero** rows. The coupling runs through
+  the ionised volume, because `shell_n0 = Pb/(kT)·μ` is the shell ODE's inner boundary condition.
+  **The intervention point is `shell_structure.py:124-126`, not the cap at `:253`.**
+- **The double-count is measured, both ways.** Momentum drives on exactly `2·P_ram`; transition
+  overshoots by 1.82× median. Batch 3 then measured what removing it costs: **≤4.0% ΔR2**, no fate
+  changes, on weak-wind/two-mass/two-radius configs. C1 is safe but wrong-target (it deletes the
+  photoionised channel instead of decoupling it), so it is superseded by C3 and kept as the price tag.
+- **Batch 5 stage 1 (offline, no solver run): C3b ⛔ rejected** — `n = n_cloud(R2)` has no `Qi`
+  dependence, so it fails the pre-registered wind-only limit structurally. **C3a advances** to a run
+  arm: decoupled, correct `Qi → 0` limit, sensible densities, but predicts a
+  photoionisation-dominated momentum phase (3.5–7.6× `P_ram`, never crossing). **C3c unevaluated.**
+- **Next:** C3a stage 2 (run arm on B2M/B3M/WW + B1M control), and a C3c design pass — C3c is the
+  only candidate that keeps the ionised layer where it physically belongs, between wind and shell.
 
 ---
 
@@ -203,8 +200,8 @@ the coupling precisely, and it is **not** where the workstream assumed.
 `P_HII/Pb` is still **1.06–3.55 and never below 1** on any row of any config. Cap removal changes
 `P_HII` from `1.00·Pb` to `(1–3.5)·Pb`; it does not decouple it.
 
-**The real coupling runs through the ionised volume.** Regressions over the b1 arm
-(N = 803 rows, 8.8 decades of dynamic range, stock dynamics + pre-cap diagnostic):
+**The real coupling runs through the ionised volume.** Regressions on the pre-cap diagnostic over
+the stock (b1) trajectories:
 
 Artifact: `data/b3b_coupling_regression.csv` (`harness/coupling_regression.py`), over the **four
 complete b1 runs** (B3M, PRB, WW, B1M; 788 rows, 8.77 dex of `shell_n0`).
@@ -465,11 +462,53 @@ which is breached everywhere:
 - **Open, and it is now the crux:** the larger uncapped `P_HII` is only trustworthy if the Strömgren
   balance is trustworthy at these ionized volumes. Nothing measured here settles that — it is D2.
 
-### Batch 5 — C3: the advanced method — Status: ⬜ (only if B3/B4 fail their gates, or D2 asks for it)
-Not designed here beyond §3's three candidates — a design pass goes THROUGH this doc (new §,
-dated) and needs D2 first. Pre-registered acceptance floor for any C3 design: reproduces the
-wind-only limit (matches C0 when `Qi → 0`) and the photo-only limit (Spitzer-like `R ∝ t^{4/7}`
-slope when `Lmech → 0`, checked on a WW-descendant config); then the full ladder as Batch 3.
+### Batch 5 — C3: the advanced method — Status: 🟡 **stage 1 (offline screen) DONE — C3b rejected, C3a advances**
+
+**Stage-1 screen (2026-08-13).** `harness/c3_offline_screen.py` → `data/b5_c3_screen.csv`, over the
+five complete b1 runs (B3M, PRB, WW, B1M, B2M). **No solver was run**: both candidates are
+closed-form in quantities already in the snapshots, so each is evaluated *on the stock trajectory*.
+That answers "what would this pressure have been", **not** "what would the run have done" — a
+candidate that survives still needs an arm.
+
+| test | stock | uncapped | **C3a** cavity | **C3b** ambient |
+|---|---|---|---|---|
+| slope of `log P` vs `log Pb` | **1.0000 / r 1.0000** in every row | 0.37 … 1.19 | 0.02 … 1.15 | ≈ 0 … 0.56 |
+| depends on `Qi`? | no (cap erases it) | yes | **yes** | **NO** |
+| `P/P_ram`, momentum | 1.000 | 2.1 … 9.9 | 3.5 … 7.6 | 0.02 … 94 |
+| crosses `P_ram`? | never | never | never | in transition (B1M, B2M) |
+| ionised `n` [cm⁻³], momentum | 2.9 … 2273 | 6.7 … 1.8e4 | 19 … 8055 | 1 (ISM) … 1e5 |
+
+⚠️ **Read the slope test carefully.** Stock scores *exactly* 1.0000/1.0000 because it **is** `Pb`.
+C3a's 0.7–1.1 in several phases is **not** causal coupling — C3a never reads `Pb`; both quantities
+simply decline together along a trajectory. Shared time-dependence is not dependence, and this
+column cannot separate them. The discriminator that does is the `Qi` row.
+
+**C3b — REJECTED.** It fails the acceptance floor this plan pre-registered before any C3 was
+designed ("reproduces the wind-only limit: matches C0 when `Qi → 0`"). `n = n_cloud(R2)` has **no
+`Qi` dependence at all**, so switching the ionizing source off entirely leaves its `P_HII`
+unchanged. That is structural, not a tuning problem. Two lesser faults confirm it: the value is the
+*neutral* gas ahead of the shell rather than the ionised gas pushing it, and it steps
+discontinuously from `nCore` to `nISM` at `rCloud`, collapsing to ~1 cm⁻³ exactly where the momentum
+phase lives (B3M, B2M) — while for WW, which collapses inside the cloud, it instead reaches 94×
+`P_ram`. A driver that swings four decades on a geometric boundary is not a pressure law. ⛔
+
+**C3a — PASSES stage 1, advances to an arm.** It is causally decoupled (`Qi` and `R2` only), it has
+the correct `Qi → 0` limit by construction, and its ionised densities are physically sensible
+(19–8055 cm⁻³ in momentum, i.e. P/k ≈ 4e5–2e8 K cm⁻³). **But it is not a small change**: it sits
+uniformly **3.5–7.6× above `P_ram`** in the momentum phase of all five configs and never crosses,
+so it predicts a *photoionisation-dominated* momentum phase everywhere. Whether that is right is a
+physics call, not something this screen can settle — but note it is a *falsifiable* prediction, and
+the coevolution crossover D2 hoped for does **not** appear within these configs' `R2` range
+(`P_C3a ∝ R2^-3/2` vs `P_ram ∝ R2^-2`, so the crossover sits at smaller `R2` than the momentum phase
+ever reaches).
+
+**Stage 2 (not started).** Run C3a as an arm on the momentum-reaching configs (B2M, B3M, WW) plus
+B1M as the inert control, gated exactly as Batch 3 was. Expect a *large* ΔR2 — Batch 3 measured that
+halving the momentum drive costs ≤4%, so multiplying it by ~4–7 should cost considerably more, and
+the question is whether fates flip. Open design question first: C3a assumes ionised gas fills the
+wind-evacuated cavity, which sits awkwardly with the momentum-phase picture; **C3c** (keep the skin
+geometry, replace only its `Pb`-derived inner boundary condition) remains unevaluated and is the
+candidate that would avoid that objection.
 
 ### Batch 6 — land — Status: ⬜
 Chosen candidate (D1 decides between C1, C1⊕C2b, or a C3) on the **full-12**; full ladder
@@ -498,7 +537,7 @@ under D4 with a table of before/after.
 | 2 | ⬜ | — | — | — |
 | 3 | ✅ | 2026-08-13 | **C1 MEASURED — safe, small, and aimed at the wrong target.** Momentum-only `max(P_HII, P_ram)` (halving `P_drive` from `2·P_ram` to `P_ram` there) on 4 configs spanning weak winds, two masses and two bench radii. **All WITHIN-BAR, no fate changes:** B1M **0.000%**, B2M 1.24%, B3M 4.00%, WW 1.29% ΔR2 at matched `t`. B1M is the pre-registered falsifiable control — it never reaches momentum, so C1 must be inert there, and it is to 0.000%. The effect is small because momentum is only 12–15% of these runs. **Verdict: C1 does not break anything, but it does not do what D2 asks** — with `P_HII ≡ P_ram` in momentum, `max(P_HII, P_ram) = P_ram`, so C1 *deletes* the photoionised channel rather than decoupling it, and D1 says the sum is intended. Superseded as a fix by C3; retained as the measured cost of the double-count | `data/b3_c1_ledger.csv` |
 | 4 | 🟡 | 2026-08-12 | **4a MEASURED — survives, but is not behaviourally neutral.** 4/4 configs (PRB, B3M, F1HI, F1LO) ran to their natural end, **zero** distress lines (no excess-work, overflow, monotonic-guard or convergence warnings), wall times *within* baseline (492–764 s vs 682–832 s). **No fate changed** on any config. Identity destroyed as intended: `frac_PHII_eq_Pb` = **0.0000** in every phase of every config (was ≥0.9697), relΔ now O(1) (0.06–2.55). But **every config breaches the 5% bar**: ΔR2 max 15.3–28.4%, all located inside the `dt_switchon` window (t = 1.3e-7 … 9e-6 Myr); ΔR2 at end-of-overlap 0.95% (PRB, recovers) → 14.4% (F1LO, retained). Mechanism: uncapped `P_HII` exceeds `Pb` on **100%** of rows (max 7.79× across the matrix; 3.36× on PRB) so it wins the `max`, lifting median `P_drive/Pb` from 1.0000 to 1.83 (PRB). **Verdict: C2a is numerically viable and physically consequential — not a free win. Landing it needs D2.** 4b not started | `data/b4a_ledger.csv`, `data/b4a_identity_grid.csv` |
-| 5 | ⬜ | — | — | — |
+| 5 | 🟡 | 2026-08-13 | **Stage 1 (offline screen) done — C3b ⛔ REJECTED, C3a advances.** No solver run: both candidates are closed-form in stored quantities, evaluated on the stock trajectory across 5 configs. C3b fails the pre-registered wind-only limit *structurally* — `n = n_cloud(R2)` has **no `Qi` dependence**, so switching the ionizing source off leaves its `P_HII` unchanged; it also steps 4 decades at `rCloud`. C3a is causally decoupled (`Qi`, `R2` only), has the correct `Qi → 0` limit, and gives sensible ionised densities (19–8055 cm⁻³ in momentum) — but sits uniformly **3.5–7.6× above `P_ram`** and never crosses it, i.e. predicts a photoionisation-dominated momentum phase in all five configs. Stage 2 (run arm) not started; **C3c still unevaluated** | `data/b5_c3_screen.csv` |
 | 6 | ⬜ | — | — | — |
 
 ### 8.2 Config wall-times (filled by Batch 0)
@@ -534,6 +573,7 @@ the rule being enforced.
 | `harness/b3_c1_momentum_max.patch` | the exact C1 arm diff — **momentum sites only** (`run_momentum_phase.py:265,445`); §3's "5-site" wording predates D1's ruling that the transition `max` is deliberate | 3 | `41511ac` |
 | `data/b3b_coupling_regression.csv` | `harness/coupling_regression.py` | 3b | `3a38a87`+dirty |
 | `data/b3_c1_ledger.csv` | `harness/compare_trajectories.py` | 3 | `41511ac`+C1 patch |
+| `data/b5_c3_screen.csv` | `harness/c3_offline_screen.py` | 5 (stage 1) | evaluated on b1 runs; no arm |
 | `data/b0_identity_grid.csv` | `harness/harvest_identity.py` | 0 | runs @ `6b55657` |
 | `data/b0_trajectories.csv` | `harness/harvest_identity.py` | 0 | runs @ `6b55657` |
 | `data/b0_walltimes.csv` | `harness/run_batch.py` | 0 | runs @ `6b55657` |
@@ -666,7 +706,7 @@ b0 run and to `bb302e0` for every b1 run (§9 records how that was protected).
   without a single run, which this workstream's own bar forbids. C1 is reset to ⬜ pending Batch 3.
   The ruling still makes the circularity `P_ram → Pb → shell_n0 → n_IF_Str → P_HII` the more likely
   defect than the sum, but "more likely" is a hypothesis, not a verdict. (2) New §3b proves, with N = 803 rows over
-  8.8 decades, that **the cap is only the last link**: `ΔV ∝ shell_n0^-2.126` and
+  8.8 decades *(⚠️ those figures were corrected on 2026-08-13 — see the audit entry below; the pool included two aborted runs. Corrected: N=788, slopes −2.348/+1.036, conclusion unchanged)*, that **the cap is only the last link**: `ΔV ∝ shell_n0^-2.126` and
   `n_IF_Str ∝ ΔV^-1/2` give `n_IF_Str ∝ shell_n0^+1.039` (r = 0.993) *before* the cap applies, and
   Batch 4a's uncapped runs still never put `P_HII` below `Pb`. The intervention point is the shell
   ODE's inner boundary condition at `shell_structure.py:124-126`, not the cap at `:253`.
@@ -738,3 +778,24 @@ b0 run and to `bb302e0` for every b1 run (§9 records how that was protected).
   gained that floor plus array-aware and per-key-scale comparison, because strict bit-identity is the
   right gate for a *diagnostic* change and the wrong one for a cross-worktree comparison — it was
   reporting "100% difference" on a quantity that is identically zero.
+
+- **2026-08-13 (Batch 5 stage 1 — the offline C3 screen; C3b dies, C3a advances)** — Both decoupling
+  candidates screened without running the solver, on five complete b1 runs. **C3b is rejected on the
+  acceptance floor this plan pre-registered before any C3 existed**: `n = n_cloud(R2)` contains no
+  `Qi` term, so it cannot reproduce the wind-only limit — turn the cluster off and its `P_HII` does
+  not move. Its other failures (it is the *neutral* gas ahead of the shell, and it steps from `nCore`
+  to `nISM` at `rCloud`, swinging four decades on a geometric boundary) are corroborating, not the
+  reason. **C3a passes**: causally decoupled, correct `Qi → 0` limit, sensible ionised densities. Its
+  cost is that it predicts a photoionisation-dominated momentum phase in every config (3.5–7.6×
+  `P_ram`, never crossing), which is falsifiable but large.
+  Two things worth recording beyond the verdict. (1) **The decoupling metric nearly fooled me.** C3a
+  scores slope ≈ 0.7–1.1 against `Pb` in several phases despite never reading `Pb` — because both
+  decline together along a trajectory. Shared time-dependence is not dependence; the honest
+  discriminator was the structural question "does this depend on `Qi` at all", not the regression.
+  Stock's exact 1.0000/1.0000 is the only slope in the table that means what it looks like.
+  (2) **A harness bug was caught in smoke-testing and is worth remembering**: `read_param` leaves
+  `rCloud = 0` because it is derived during cloud init, so `get_density_profile` treated every radius
+  as outside the cloud and C3b silently reported the ISM density *everywhere* — including the energy
+  phase, where R2 is deep inside the cloud. The screen now overlays the run's `metadata.json`
+  constants and refuses to report C3b at all if `rCloud` is unavailable. Had that gone unnoticed,
+  C3b would have been rejected for the wrong reason and the record would have looked identical.
