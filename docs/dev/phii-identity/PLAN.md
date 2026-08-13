@@ -32,7 +32,14 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-12):** 🔵 actionable — **Batches 0, 1 and 4a are DONE.** The cap
+**Status (2026-08-12):** 🔵 actionable — **Batches 0, 1 and 4a are DONE; D1/D2 answered, and the
+diagnosis has moved.** The momentum `P_HII + P_ram` sum is *intended* (D1) — so **C1 is rejected**;
+the defect is the circularity `P_ram → Pb → shell_n0 → n_IF_Str → P_HII`, not the sum. §3b proves
+the **cap is only the last link**: `ΔV ∝ shell_n0^-2.13` already forces `n_IF_Str ∝ shell_n0^+1.04`
+(r = 0.993, N = 803) *before* the cap, and 4a's uncapped runs never put `P_HII` below `Pb`. The
+intervention point is the shell ODE's inner BC (`shell_structure.py:124-126`), not the cap (`:251`).
+**Next: Batch 5 (C3), starting with an offline screen of the decoupled formulations.** Prior
+findings retained below. The cap
 binds on **100% of rows in every phase**, and the blow-up it suppresses tops out at **3.33×**, so
 the pre-registered C2a kill bar (p99 > 1e2) did **not** trip. **Batch 4a then removed the cap and
 measured it: it survives cleanly on 4/4 configs — no numerical distress, no fate changes, faster
@@ -135,7 +142,22 @@ manufacture the identity is on the table (§3, C2b), and "the sum is intended be
 intended" is not a valid inference. The intent question for the *sum* (evidence doc §7.1) is
 still open and is decision **D1** below.
 
-Still needed from the maintainer: D1–D4 in §7.
+**2026-08-12 (D1 + D2 answered).** Maintainer rulings, verbatim in substance:
+
+- **D1 — the momentum sum is INTENDED.** `P_drive = P_HII + P_ram` is the intended momentum-phase
+  form. *But* the maintainer's condition is that `P_HII` "should be its own calculation and be
+  decoupled from `P_ram` as much as possible", because today the chain is circular:
+  `P_ram → Pb → shell_n0 → n_IF_Str → P_HII`. So the sum is not the defect; **the circularity is**.
+  C1 (`max` instead of `+`) is therefore **REJECTED for the momentum phase** — it fixes the wrong
+  thing. ⛔ 2026-08-12.
+- **D1 (transition) — the `max` is deliberate.** `max(Pb, P_HII + P_ram)` is intended as a gradual
+  handover between the thermal and momentum drives as `Pb → 0`. Maintainer is open to a better
+  formulation but has not proposed one. So the transition `max` is NOT to be "fixed" into a
+  competition; any replacement must still be a smooth handover.
+- **D2 — `P_HII` should be a real, separate pressure**, and should be treated as one unless the
+  architecture genuinely cannot support it (in which case the assumption must be explicit).
+
+Still needed from the maintainer: D3, D4 in §7.
 
 ## 3. Fix candidates
 
@@ -157,6 +179,60 @@ double-count arithmetic in place (merely no longer *exactly* 2×). They compose:
 `max(P_HII_raw, P_ram)`**, which is also C3b's crude limit. C3c *requires* C2 (with the cap,
 excess ≡ 0 identically). So the batches measure C1 and C2 separately first — their composition
 is then predictable rather than a third experiment.
+
+## 3b. The circularity is NOT the cap — measured 2026-08-12
+
+D2 asks for a way to decouple `P_HII` from `P_ram`/`Pb`. Batch 4a plus the b1 raw diagnostic locate
+the coupling precisely, and it is **not** where the workstream assumed.
+
+**The cap is only the last link.** With the cap removed (Batch 4a, self-consistent runs) the ratio
+`P_HII/Pb` is still **1.06–3.55 and never below 1** on any row of any config. Cap removal changes
+`P_HII` from `1.00·Pb` to `(1–3.5)·Pb`; it does not decouple it.
+
+**The real coupling runs through the ionised volume.** Regressions over the b1 arm
+(N = 803 rows, 8.8 decades of dynamic range, stock dynamics + pre-cap diagnostic):
+
+| relation | measured | meaning |
+|---|---|---|
+| `shell_n0` vs `Pb` | exact (`shell_structure.py:124-126`) | the inner BC *is* `Pb/(k T)·μ` |
+| `log ΔV` vs `log shell_n0` | slope **−2.126**, r = −0.909 | denser shell ⇒ thinner ionised skin |
+| `n_IF_Str ∝ ΔV^(−1/2)` | by construction (`:246`) | — |
+| ⇒ `log n_IF_Str_raw` vs `log shell_n0` | slope **+1.039**, r = **0.993** | `P_HII` tracks `Pb` linearly |
+
+−2.126 × (−1/2) = +1.06, which is the +1.039 measured. The chain closes quantitatively:
+
+```
+Pb ──> shell_n0 ──> [shell ODE inner BC] ──> R_IF ──> ΔV ∝ shell_n0^-2.13
+                                                        │
+                          n_IF_Str ∝ ΔV^-1/2 ∝ shell_n0^+1.06 ≈ Pb  <──┘
+```
+
+**So the intervention point is `shell_structure.py:124-126`, not `:251`.** The Strömgren balance is
+being evaluated over a volume whose size is set by `Pb`, so it cannot report anything but `Pb`. Any
+decoupling must break the ΔV path; removing the cap alone provably does not.
+
+### C3 candidates, re-derived against this diagnosis
+
+- **C3a — Strömgren over the cavity.** `n_HII = sqrt(3 Q_i,abs / (4π χ_e α_B R2³))`: depends on
+  `Qi` and `R2` only, **zero** dependence on `Pb`, `P_ram` or `shell_n0`. Measured offline on B3M's
+  momentum rows: n = 235 → 49 cm⁻³ and P/k = 2.4e6 → 4.9e5 K cm⁻³ over R2 = 6.6 → 19 pc — physically
+  reasonable H II magnitudes. Scaling `P_HII ∝ R2^-3/2` vs `P_ram ∝ R2^-2` means the two **cross
+  over**, which is the coevolution behaviour D2 asks for. ⚠️ Caveat: it assumes ionised gas fills
+  the cavity, which sits awkwardly with the wind-evacuated-cavity picture, and on B3M it makes
+  `P_HII` ≈ 5–7× `P_ram`, i.e. it would dominate the momentum drive.
+- **C3b — pre-shock/ambient Strömgren.** Set the balance from the unperturbed cloud density at `R2`
+  (a pure input from the density profile). Decoupled by construction; the classical D-type front
+  picture. Untested.
+- **C3c — decouple the skin's inner BC only.** Keep the current skin geometry (which *is* the right
+  place for the ionised layer physically — between the wind and the neutral shell) but stop letting
+  `Pb` set the ionisation calculation's starting density. Smallest conceptual change, hardest to
+  specify; needs a defensible independent thickness or density scale.
+
+**Recommended next (Batch 5): C3a and C3b measured offline first**, on committed b0/b1 snapshots —
+no simulation needed, because both are closed-form in quantities already stored (`Qi`, `R2`,
+`rCloud`, profile). Only the surviving candidate gets a run arm. This inverts the usual order
+deliberately: the cheap screen is decisive here because the failure mode is *magnitude*, not
+stability.
 
 ## 4. Config / regime matrix
 
@@ -325,7 +401,8 @@ under D4 with a table of before/after.
 | id | question | blocks | state |
 |---|---|---|---|
 | D1 | Is the `P_HII + P_ram` **sum** intended (separate reservoir) or is the skin a transmitter (→ `max`)? Evidence doc §5 shows the transition `max` never binds, so "it's already guarded" is not a defense. | Batch 3 landing (running/measuring it is not blocked) | **open** |
-| D2 | **NOW THE CRUX (Batch 4a).** Removal is proven *safe* — no blow-up materialises in any regime tested, including the compact probe. So the question is no longer "can we?" but "should we?": is the uncapped Strömgren pressure physically trustworthy at these ionized volumes, given it exceeds `Pb` on 100% of rows (up to 3.36×) and shifts trajectories 15–28%? No measurement can settle this; it needs the model's intent. Also confirm §2's reading that the cap was pragmatic, not a physics claim. | Batch 4b design; Batch 5; **4a landing** | **open** |
+| D2 | ✅ **ANSWERED 2026-08-12** — `P_HII` should be a real, separate pressure, treated as one unless the architecture cannot support it (then the assumption must be explicit). Consequence: the target is **decoupling**, and §3b shows the cap is not the coupling — the ionised volume is. Open sub-question for Batch 5: which decoupled formulation (C3a/C3b/C3c) | Batch 5 | **answered; formulation open** |
+| ~~D2-old~~ | ⛔ superseded by the above. **WAS THE CRUX (Batch 4a).** Removal is proven *safe* — no blow-up materialises in any regime tested, including the compact probe. So the question is no longer "can we?" but "should we?": is the uncapped Strömgren pressure physically trustworthy at these ionized volumes, given it exceeds `Pb` on 100% of rows (up to 3.36×) and shifts trajectories 15–28%? No measurement can settle this; it needs the model's intent. Also confirm §2's reading that the cap was pragmatic, not a physics claim. | Batch 4b design; Batch 5; **4a landing** | **open** |
 | D3 | Fate flips under a candidate fix: acceptable-if-explained, or a re-tune trigger? | Batch 3/4 verdicts | **open** |
 | D4 | Authority to re-baseline goldens (`test_phase_boundary.py`, `test_betadelta_hybr_stress.py`, `test_scheme_screen.py` fixtures) if the landed fix moves them. | Batch 6 | **open** |
 
@@ -487,3 +564,19 @@ b0 run and to `bb302e0` for every b1 run (§9 records how that was protected).
   settle that. Re-ranking: 4b (guard replacement) now matters more than C1 alone, because 4a shows
   the identity is load-bearing at the ~2× level rather than cosmetic; but both still wait on D1/D2.
   Added `harness/compare_trajectories.py` (matched-t, validated against the b0-vs-b1 null at 0.000%).
+
+- **2026-08-12 (D1/D2 answered; the diagnosis moves)** — Maintainer ruled: the momentum
+  `P_HII + P_ram` sum is **intended**, conditional on `P_HII` being genuinely its own calculation;
+  the transition `max` is a **deliberate** smooth handover as `Pb → 0`; and `P_HII` should be a real
+  separate pressure. Three consequences, all recorded above. (1) **C1 is rejected** — replacing the
+  momentum `+` with a `max` fixes a thing that is not broken; the defect is the circularity
+  `P_ram → Pb → shell_n0 → n_IF_Str → P_HII`, not the sum. (2) New §3b proves, with N = 803 rows over
+  8.8 decades, that **the cap is only the last link**: `ΔV ∝ shell_n0^-2.126` and
+  `n_IF_Str ∝ ΔV^-1/2` give `n_IF_Str ∝ shell_n0^+1.039` (r = 0.993) *before* the cap applies, and
+  Batch 4a's uncapped runs still never put `P_HII` below `Pb`. The intervention point is the shell
+  ODE's inner boundary condition at `shell_structure.py:124-126`, not the cap at `:251`.
+  (3) **Batch 4b is deprioritised** — replacing the guard cannot decouple anything, because the
+  guard is not what couples. Batch 5 (C3) is promoted to next, and its first stage is an *offline*
+  screen of C3a/C3b against committed snapshots, since both are closed-form in already-stored
+  quantities and the likely failure mode is magnitude rather than stability. C3a measured offline on
+  B3M momentum rows: 235 → 49 cm⁻³, P/k 2.4e6 → 4.9e5 K cm⁻³, decoupled, but ≈5–7× `P_ram`.
