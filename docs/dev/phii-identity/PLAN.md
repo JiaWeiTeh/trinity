@@ -56,8 +56,15 @@ not quote any figure from an unmarked earlier revision of this file.**
   transition phase in all four configs that reach it, and raises the momentum drive to 2.4–4.3×
   stock. The coevolution crossover D2 asked about **does** appear — vs the confining pressure, in
   transition — not vs `P_ram` within momentum.
-- **Next:** Batch 5 stage 2 — run the C3c arm (B2M/B3M/WW + PRB/B1M controls), fates enumerated
-  under D3. Expect >5% ΔR2 by construction; the arm decides whether fates survive.
+- **Batch 5 stage 2 DONE: the C3c arm runs clean.** 5/5 configs, **zero numerical distress**, **no
+  fate changes**, and the pre-registered null passed exactly (`P_HII`=0 on 0/330 implicit rows). All
+  configs are OVER-BAR at 12.8–20.5% ΔR2, which was pre-registered as expected rather than as a
+  failure. WW collapses 16% earlier but still collapses. The `t_cross` kink did not trouble the
+  integrator, so §3c.1's event-detection remedy is registered but unneeded so far.
+- **Next:** **D3** (is WW's 16%-earlier collapse acceptable? — the only behavioural change needing a
+  ruling) and **stage 3's regime map**, which is where the Lancaster tension gets settled: do
+  strong-wind rungs push `t_cross` out (→ C3c reproduces wind-dominated regimes) or not (→ the C3a
+  normalisation needs revisiting).
 
 ---
 
@@ -657,6 +664,61 @@ ambiguity: uniform sphere vs the R1..R2 shell, and the photoevaporative-flow clo
 the same √(Qi/R2³) scaling with different prefactors). **Recorded before stage 2 runs so the
 prediction cannot be retrofitted to whatever comes back.**
 
+**Stage 2 RESULT (2026-08-13) — C3c runs clean on 5/5, no fate changes, and the offline screen
+predicted it.** Arm `harness/b5s2_c3c.patch`; ledgers `data/b5s2_c3c_ledger.csv` (matched-`t`) and
+`data/b5s2_c3c_arm_regime.csv` (the arm's own regime structure).
+
+| config | ΔR2 max | ΔR2 end | fate | t_end | R2_end (stock → C3c) |
+|---|---|---|---|---|---|
+| PRB | 12.97% | **0.73%** | stopping_time → same | 0.100 → 0.100 | 0.462 → 0.459 |
+| B1M | 12.93% | 5.61% | stopping_time → same | 1.5 → 1.5 | 40.45 → 42.72 |
+| B2M | 12.77% | 11.61% | stopping_time → same | 1.5 → 1.5 | 29.60 → 33.04 |
+| WW | 17.06% | 17.06% | **shell_collapsed → shell_collapsed** | 0.2816 → **0.2358** | 0.897 → 0.997 |
+| B3M | 20.52% | 20.52% | stopping_time → same | 1.5 → 1.5 | 19.29 → 23.25 |
+
+- **Zero numerical distress** on every config — no excess-work, overflow, monotonic-guard or
+  convergence warnings. **The `t_cross` kink did not trouble the integrator**, so the §3c.1 remedy
+  (a solver event via `phase_events.py`) is *not* needed on this evidence. Keep it registered in case
+  a stage-3 config behaves differently.
+- **No fate changed.** WW still collapses, 16% earlier (0.2816 → 0.2358 Myr) — the stronger
+  photoionised drive does not save it, it reorders the collapse. Under D3 this is a *timing* change,
+  not a fate change.
+- **Every config is OVER-BAR (12.8–20.5%), which was pre-registered as expected**, not a failure:
+  the momentum drive rises 2.4–4.3× and the early-energy drive falls up to 3.3×. All five R2_end
+  values move *outward* except PRB (which barely moves, 0.73%, because it never leaves implicit).
+
+**The falsifiable null passed exactly.** Pre-registered before the runs: implicit-phase `P_HII` must
+be 0 on every row and `P_drive` must equal `Pb` exactly. Measured: `P_HII > 0` on **0 of 330 implicit
+rows** across all five configs, `P_drive == Pb` to machine precision on every one. In the energy
+phase `P_drive` equals the **ramped** bubble pressure on 86/87, 75/76, 64/65 rows (the one outlier
+per run is the 1a→1b handoff) — the D-ramp fix, working as designed.
+
+**The offline screen predicted the self-consistent arm closely** — the methodological result worth
+keeping:
+
+| quantity | screen (on stock trajectories) | arm (self-consistent) |
+|---|---|---|
+| frac HII-dom, energy / implicit | 0.0000 / 0.0000 | **0.0000 / 0.0000** |
+| frac HII-dom, transition B3M | 0.7619 | **0.7619** (exact) |
+| frac HII-dom, transition B2M/B1M | 0.8085 | **0.8043** |
+| frac HII-dom, momentum | 1.0000 | **1.0000** |
+| `t_cross` B3M / B2M | 0.301207 / 0.449094 | **0.301207 / 0.449094** (exact) |
+| `t_cross` B1M / WW | 0.665536 / 0.163115 | 0.686245 / **0.116782** |
+| PRB crossover | never | **never** |
+
+B3M, B2M and PRB reproduce to the printed digit; B1M drifts 3%; WW moves 28% earlier, which is
+expected — WW is the only config whose *trajectory* changed enough to move its own crossover. **A
+cheap offline screen on stock trajectories is a trustworthy filter for this class of change**, which
+is what makes stage 3 affordable.
+
+**Implementation fidelity confirmed independently:** re-running the C3c screen *on the arm's own
+output* returns a drive ratio of 1.000 in every phase of every config — the shipped arm computes
+exactly what §3c specifies.
+
+**Verdict: C3c passes stage 2 on numerics and on structure.** It does **not** yet have a physics
+verdict — that needs D3 (is a 16%-earlier collapse acceptable?) and stage 3's regime map, which is
+where the Lancaster tension gets settled.
+
 **Stage 3 (proposed 2026-08-13, from a maintainer question): the regime map — schemes where `Pb`
 dominates over `P_HII`.** Under stock the ordering is frozen: the cap makes `P_HII ≤ Pb` an identity,
 so "`Pb` dominates" is true by construction and carries no information. **Under C3c the ordering is
@@ -728,7 +790,7 @@ under D4 with a table of before/after.
 | 2 | ⬜ | — | — | — |
 | 3 | ✅ | 2026-08-13 | **C1 MEASURED — safe, small, and aimed at the wrong target.** Momentum-only `max(P_HII, P_ram)` (halving `P_drive` from `2·P_ram` to `P_ram` there) on 4 configs spanning weak winds, two masses and two bench radii. **All WITHIN-BAR, no fate changes:** B1M **0.000%**, B2M 1.24%, B3M 4.00%, WW 1.29% ΔR2 at matched `t`. B1M is the pre-registered falsifiable control — it never reaches momentum, so C1 must be inert there, and it is to 0.000%. The effect is small because momentum is only 12–15% of these runs. **Verdict: C1 does not break anything, but it does not do what D2 asks** — with `P_HII ≡ P_ram` in momentum, `max(P_HII, P_ram) = P_ram`, so C1 *deletes* the photoionised channel rather than decoupling it, and D1 says the sum is intended. Superseded as a fix by C3; retained as the measured cost of the double-count | `data/b3_c1_ledger.csv` |
 | 4 | 🟡 | 2026-08-12 | **4a MEASURED — survives, but is not behaviourally neutral.** 4/4 configs (PRB, B3M, F1HI, F1LO) ran to their natural end, **zero** distress lines (no excess-work, overflow, monotonic-guard or convergence warnings), wall times *within* baseline (492–764 s vs 682–832 s). **No fate changed** on any config. Identity destroyed as intended: `frac_PHII_eq_Pb` = **0.0000** in every phase of every config (was ≥0.9697), relΔ now O(1) (0.06–2.55). But **every config breaches the 5% bar**: ΔR2 max 15.3–28.4%, all located inside the `dt_switchon` window (t = 1.3e-7 … 9e-6 Myr); ΔR2 at end-of-overlap 0.95% (PRB, recovers) → 14.4% (F1LO, retained). Mechanism: uncapped `P_HII` exceeds `Pb` on **100%** of rows (max 7.79× across the matrix; 3.36× on PRB) so it wins the `max`, lifting median `P_drive/Pb` from 1.0000 to 1.83 (PRB). **Verdict: C2a is numerically viable and physically consequential — not a free win. Landing it needs D2.** 4b not started | `data/b4a_ledger.csv`, `data/b4a_identity_grid.csv` |
-| 5 | 🟡 | 2026-08-13 | **Stage 1 (offline screen) done — C3b ⛔ REJECTED, C3a advances.** No solver run: both candidates are closed-form in stored quantities, evaluated on the stock trajectory across 5 configs. C3b fails the pre-registered wind-only limit *structurally* — `n = n_cloud(R2)` has **no `Qi` dependence**, so switching the ionizing source off leaves its `P_HII` unchanged; it also steps 4 decades at `rCloud`. C3a is causally decoupled (`Qi`, `R2` only), has the correct `Qi → 0` limit, and gives sensible ionised densities (19–8055 cm⁻³ in momentum) — but sits uniformly **3.5–7.6× above `P_ram`** and never crosses it, i.e. predicts a photoionisation-dominated momentum phase in all five configs. **Stage 1b: C3c designed (§3c) and screened — it supersedes bare C3a.** The confined skin has no independent density (any decoupled-thickness skin is C3a × O(1), *higher*), so C3c is a regime switch: transmit when `P_C3a ≤ P_conf`, drive at `P_C3a` when above. Screened on the same 5 runs: implicit **exactly** untouched (ratio 1..1..1), D-ramp fixed as a side effect (energy ratio down to 0.30 = the ramp honoured), `t_cross` inside transition in all 4 configs that reach it, momentum drive 2.4–4.3× stock. Stage 2 (run arm) not started | `data/b5_c3_screen.csv`, `data/b5_c3c_regime.csv` |
+| 5 | 🟡 | 2026-08-13 | **Stage 1 (offline screen) done — C3b ⛔ REJECTED, C3a advances.** No solver run: both candidates are closed-form in stored quantities, evaluated on the stock trajectory across 5 configs. C3b fails the pre-registered wind-only limit *structurally* — `n = n_cloud(R2)` has **no `Qi` dependence**, so switching the ionizing source off leaves its `P_HII` unchanged; it also steps 4 decades at `rCloud`. C3a is causally decoupled (`Qi`, `R2` only), has the correct `Qi → 0` limit, and gives sensible ionised densities (19–8055 cm⁻³ in momentum) — but sits uniformly **3.5–7.6× above `P_ram`** and never crosses it, i.e. predicts a photoionisation-dominated momentum phase in all five configs. **Stage 1b: C3c designed (§3c) and screened — it supersedes bare C3a.** The confined skin has no independent density (any decoupled-thickness skin is C3a × O(1), *higher*), so C3c is a regime switch: transmit when `P_C3a ≤ P_conf`, drive at `P_C3a` when above. Screened on the same 5 runs: implicit **exactly** untouched (ratio 1..1..1), D-ramp fixed as a side effect (energy ratio down to 0.30 = the ramp honoured), `t_cross` inside transition in all 4 configs that reach it, momentum drive 2.4–4.3× stock. **Stage 2 DONE: C3c runs clean on 5/5** — zero distress, no fate changes, null passed exactly (`P_HII`=0 on 0/330 implicit rows, `P_drive`==`Pb`), all OVER-BAR at 12.8–20.5% as pre-registered. WW collapses 16% earlier but still collapses. The offline screen predicted the self-consistent regime structure to the printed digit on 3/5 configs. Physics verdict still open: needs D3 + stage 3 | `data/b5_c3_screen.csv`, `data/b5_c3c_regime.csv`, `data/b5s2_c3c_ledger.csv`, `data/b5s2_c3c_arm_regime.csv` |
 | 6 | ⬜ | — | — | — |
 
 ### 8.2 Config wall-times (filled by Batch 0)
@@ -767,6 +829,9 @@ the rule being enforced.
 | `data/b5_c3_screen.csv` | `harness/c3_offline_screen.py` | 5 (stage 1) | evaluated on b1 runs; no arm |
 | `data/b5_c3c_regime.csv` | `harness/c3_offline_screen.py --regime-out` | 5 (stage 1b) | evaluated on b1 runs; no arm |
 | `data/b5_c3c_seams.csv` | `harness/c3_offline_screen.py --seams-out` | 5 (stage 1b) | seam/switch continuity; evaluated on b1 runs |
+| `data/b5s2_c3c_ledger.csv` | `harness/compare_trajectories.py` | 5 (stage 2) | arm vs b1 baselines, matched-t |
+| `data/b5s2_c3c_arm_regime.csv` | `harness/c3_offline_screen.py --regime-out` | 5 (stage 2) | the arm's OWN regime structure |
+| `harness/b5s2_c3c.patch` | the exact C3c arm diff (apply to `c01626e`) | 5 (stage 2) | helper + 6 call sites; no `P_drive` edits |
 | `data/b0_identity_grid.csv` | `harness/harvest_identity.py` | 0 | runs @ `6b55657` |
 | `data/b0_trajectories.csv` | `harness/harvest_identity.py` | 0 | runs @ `6b55657` |
 | `data/b0_walltimes.csv` | `harness/run_batch.py` | 0 | runs @ `6b55657` |
@@ -1037,3 +1102,23 @@ b0 run and to `bb302e0` for every b1 run (§9 records how that was protected).
   makes "`Pb` ≥ `P_HII`" an identity rather than a measurable regime). Also noted: the `Pb`-dominated
   regime is not hypothetical — it already holds through 100% of energy/implicit rows in every
   screened config, and through PRB's entire run.
+
+- **2026-08-13 (Batch 5 stage 2 — the C3c arm runs, and the screen is vindicated)** — Five configs,
+  zero numerical distress, **no fate changes**, ΔR2 12.8–20.5% (pre-registered as expected). The
+  falsifiable null passed **exactly**: `P_HII` = 0 on 0 of 330 implicit rows and `P_drive` == `Pb` to
+  machine precision, so the confined branch is wired in correctly; in the energy phase `P_drive`
+  equals the *ramped* pressure on 86/87, 75/76, 64/65 rows, which is the D-ramp fix visible directly.
+  The `t_cross` kink did not trouble the integrator on any config — §3c.1's event-detection remedy
+  stays registered but is unneeded on this evidence.
+  **The methodological result is the one to remember:** the offline screen, computed on *stock*
+  trajectories, predicted the self-consistent arm's regime structure to the printed digit on B3M,
+  B2M and PRB (`t_cross` 0.301207 and 0.449094 exactly; PRB "never" exactly), 3% off on B1M, and 28%
+  early on WW — the one config whose trajectory changed enough to move its own crossover. A cheap
+  screen on stock trajectories is therefore a trustworthy filter for this class of change, which is
+  what makes stage 3's regime map affordable. Implementation fidelity was checked independently by
+  re-running the screen on the arm's own output: drive ratio 1.000 in every phase of every config.
+  One correction to my own earlier framing, recorded because it nearly went out wrong: I had called
+  the implicit phase a "0% ΔR2 null". That is sloppy — implicit *inherits* the energy-phase offset,
+  so its ΔR2 is non-zero by construction (1.1–3.9% measured). The null is about the **drive**, and
+  tested that way it passes exactly. Only D3 (WW's 16%-earlier collapse) and stage 3 remain before
+  C3c can carry a physics verdict.
