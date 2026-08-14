@@ -32,8 +32,10 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-08):** 🔵 in force — the rule gained a second clause, it fired, and the workstream
-cleared it. §7's "if a fresh number contradicts a VERIFY number" clause **fired** once already (G0 failed
+**Status (2026-08-13):** 🟡 partial — the CODE BASELINE clause has now fired **twice**, and the
+second firing is open. ⚠️ **Full-run numbers are VERIFY again** pending `§4b`'s re-baseline at merge
+`e98c1d1`, which unlike `§4a` changes the **implicit phase** itself (the C3c `P_HII` regime switch),
+so `§4a`'s "negligible early window" argument is not available. Prior state: §7's "if a fresh number contradicts a VERIFY number" clause **fired** once already (G0 failed
 2/11; reconciliation in `FINDINGS.md` §1). The new **CODE BASELINE** clause (`§1`) then fired on the
 2026-08-08 `main` merge, which moved `trinity/` under all 294 arms — and the Θ₀ re-baseline it demanded
 **came back 5 PASS / 1 FAIL** (`§4a`, `FINDINGS §14`), the one failure a 3.4% window-length effect worth
@@ -48,7 +50,7 @@ A0 screen is exempt and was re-verified at the merge.
 > whose own first-line provenance stamp reads `# generated <ISO8601> …` with a date **on or after the
 > cutoff**. Anything earlier is **VERIFY**: possibly true, not citable until re-measured.
 >
-> **CODE BASELINE = `1056c6d`** (added 2026-08-08). A number produced by a **full run** is quotable
+> **CODE BASELINE = the artifact's own stamped sha** (added 2026-08-08; the campaign's is `1056c6d`). A number produced by a **full run** is quotable
 > only if `git diff <the artifact's stamped sha> HEAD -- trinity/` is **empty**, or the difference has
 > been measured and recorded as survivable. Non-empty and unmeasured ⇒ **VERIFY**, exactly as a
 > pre-cutoff date would be.
@@ -177,6 +179,37 @@ reproduces the identical scorecard (A0.1 5/3, A0.2 0/8, A0.3 0/8, A0.4 2/0, A0.5
 with 37 numeric fields drifting by **≤9.2e-16** (~4 ULP) and no verdict moved. `FINDINGS §13` stands
 unchanged at `3c090b7`. The regenerated CSV was **not** committed — a timestamp and 4 ULP are not a new
 measurement.
+
+## 4b. The 2026-08-13 merge — the clause fires a SECOND time, and this one reaches Θ
+
+`main` was merged again (merge `e98c1d1`), bringing four workstreams that landed while this branch
+was open: `phii-identity`, `switchon-successor`, `phase1a-stiffness`, and the magic-numbers sweep +
+solver audit. **`trinity/` moved in 12 files, +275/−19 lines.**
+
+**Why this firing is more serious than `§4a`'s.** The 2026-08-08 merge touched phase 1a only, and
+`FINDINGS §14` could argue the disturbed window was the first 0.06% of the integration. This one
+touches the **implicit phase directly**:
+
+| change | where | why it can move Θ |
+|---|---|---|
+| `P_HII` becomes a **photoionised regime switch** (C3c) | `run_energy_implicit_phase.py`, `run_transition_phase.py`, `run_momentum_phase.py`, `run_energy_phase.py` | replaces the capped-Strömgren relabelling of `P_b`; changes `P_drive`, hence R₂(t), in the very window Θ_cum integrates |
+| β–δ residual tolerances measured and justified | `get_betadelta.py` (+37) | the implicit solver's own convergence criteria |
+| `pdotdot_total` from an exact spline derivative, not a finite difference | `sps/read_sps.py`, `sps/update_feedback.py` | feeds the ODEs; `V_w = 2L/ṗ` is unchanged in *definition*, so `§16`'s Eq-10 mapping still holds |
+| energy-collapse event at `ENERGY_COLLAPSE_FRAC` | `phase_events.py` (new), `run_energy_phase.py` | phase-1a; byte-identical on all five configs per `phase1a-stiffness`, so expected inert here |
+
+So the `§4a` argument — *"the disturbed window is a negligible fraction of the integration"* — **is
+not available this time**, and must not be reused. The C3c change acts throughout the implicit
+phase, which *is* the Θ_cum window.
+
+🟡 **PENDING — the second Θ₀ re-baseline.** The three `__none_diag` arms are re-running at `e98c1d1`
+and will be scored against the same G0 bar by the same committed harness
+(`data/make_merge_rebaseline.py`). Until it lands, every full-run number in this workstream is
+**VERIFY** again under `§1`'s CODE BASELINE clause. Result goes to `FINDINGS §14a`.
+
+⚠️ **`§4a`'s A0 exemption does NOT automatically carry over.** It rested on A0 importing only
+`bubble_structure/bubble_luminosity.py`. This merge changes `bubble_structure/get_bubbleParams.py`
+(+115), which is in the same package — the exemption has to be re-argued from the actual import
+graph, not assumed.
 
 ## 5. The stamping contract
 

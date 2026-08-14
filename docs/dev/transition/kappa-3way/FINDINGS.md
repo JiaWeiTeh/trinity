@@ -32,8 +32,11 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-08):** 🔵 actionable — **294/294 arms ran, the three-way table is MEASURED, and it
-SURVIVED the `main` merge** (`§14`: Θ₀ re-baseline 5 PASS / 1 FAIL, the one failure a window-length
+**Status (2026-08-13):** 🟡 partial — ⚠️ **full-run numbers are VERIFY again** after a SECOND `main`
+merge (`e98c1d1`) that changes the **implicit phase** via the C3c `P_HII` regime switch, so the first
+merge's "negligible early window" argument does not apply (`PROVENANCE §4b`); re-baseline running,
+result lands in `§14a`. Prior state: **294/294 arms ran, the three-way table is MEASURED, and it
+survived the FIRST `main` merge** (`§14`: Θ₀ re-baseline 5 PASS / 1 FAIL, the one failure a window-length
 artifact worth 1.3% on bench1 alone).
 **f_κ is the worst of the three on both metrics** (it never even reaches the trigger θ = 0.95 on
 bench1) and **P1 is falsified**. ⚠️ **`§2`'s ranking of f_mix over f_A is superseded twice:** `§11`
@@ -1063,9 +1066,49 @@ subdominant term. That is a measurable question, not a rhetorical one.
 > amounts to. It also offers a reason **why all three knobs failed**: they were being asked to
 > reconcile a component model against a whole-system measurement.
 >
-> `include_PHII` is a real `.param` switch (default `True`), so a photoionization-off bench is one
-> line. There is **no** `include_Frad`; killing radiation pressure would need the dust opacity zeroed.
-> A wind-only bench is the honest configuration for `§16` and costs ~30 min of runs. **Not done.**
+> `include_PHII` is a real `.param` switch (default `True`, still present after the C3c fix), so a
+> photoionization-off bench is one line. There is **no** `include_Frad`; killing radiation pressure
+> would need the dust opacity zeroed. A wind-only bench is the honest configuration for `§16` and
+> costs ~30 min of runs. **Not done.**
+
+#### §16e-1. The force budget is MEASURED in `main`, and the reframing is already house doctrine
+
+⚠️ **An earlier attempt in this workstream to measure the force budget was WRONG and is retracted.**
+It read `F_ram`/`F_HII`/`F_rad` on *implicit-phase* rows, where they are stale carry-over written by
+`phase2_momentum`; the suspicious exact `F_ram == F_HII` split it produced is what led to the
+`P_HII` identity (now `docs/dev/phii-identity/`). No number from that attempt was ever committed.
+
+The real measurement exists, by the maintainer, in `docs/dev/switchon-successor/PLAN.md §0.3`
+(2026-08-06), on `simple_cluster` over the early window:
+
+| quantity | measured |
+|---|---|
+| `F_rad / (4πR₂²·P_b)` | **0.39 · 0.37 · 0.35 · 0.34 · 0.32 · 0.60** — radiation is a third to three-fifths of the drive |
+| `F_grav / (4πR₂²·P_b)` | 0.006–0.009 — negligible |
+| `P_HII / P_b` | **1.0000 exactly** — the same identity `phii-identity` later proved |
+
+So the deeper form of the objection has a number: **radiation is 32–60% of the early drive**, which
+is not a perturbation. (The third row is the reason our own attempt failed — the budget we were
+trying to read was contaminated by the very bug we then found.)
+
+**And the reframing `§16e` argues for is already the maintainer's standing rule, applied to Weaver
+rather than Lancaster,** written a week before we got there independently
+(`switchon-successor §0.3`, consequences 1–2, verbatim):
+
+> *"**Weaver is a limiting-case reference, not ground truth.** Departures of tens of percent are
+> expected and *physical*. Any claim of the form 'the solution should equal Weaver' is wrong."* …
+> *"N1 is therefore comparative by design — 'no worse than the shipped ramp' — and must never be
+> tightened into 'must match Weaver'."*
+
+Read Lancaster the same way and `§16` lands cleanly: a wind-only reference **bounds plausibility
+rather than defining the target**. ⚠️ But note the calibration that precedent supplies — the
+expected size of a wind-only mismatch is **tens of percent**. `§16f` measures **6–40×**. So the
+physics mismatch does not explain the Eq-10 gap; it is the wrong order of magnitude to.
+
+**A better yardstick is already named and unbuilt.** `switchon-successor §0.3` closes: *"A stricter
+reference — the wind + radiation similarity solution — would be a better yardstick and is not
+attempted here; it would be its own derivation."* That is the honest successor to both this
+section and `§16g`, and nobody has built it.
 
 ⚠️ **Trying to measure that force budget surfaced a separate, more urgent problem in `trinity/`** —
 the momentum-phase `P_HII` equals the wind ram pressure to ≤3.6e-16, so the ODE's
