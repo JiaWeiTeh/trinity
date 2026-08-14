@@ -32,9 +32,9 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-06):** ✅ shipped on the branch — **all six batches done and every bar closed.**
+**Status (2026-08-14):** ✅ shipped on the branch — **all six batches done and every bar closed.**
 The mypy clause was ruled ACCEPT by the maintainer (§2 D5); nothing is outstanding. §1 is source-verified against `adfc23f`; the §3 bars and §5 decision rule
-were registered *before* any edit and are unchanged.
+were registered *before* any edit and are unchanged. ⚠️ **POST-MERGE 2026-08-14:** these fate results predate the C3c photoionised regime switch (`c43a50e`), which changed the phase-1a shell drive from `max(ramped_Pb, P_HII=unramped_Pb)` to `max(ramped_Pb, 0)` — i.e. the ramp now governs the drive as well as the energy drain, so it is **more** load-bearing than measured here, not less. The qualitative verdict (not removable) is expected to hold a fortiori; the percentages need re-measuring before being quoted. See `docs/dev/switchon-successor/PLAN.md` §0.3.
 
 - **D1:** production is ≥4.3e4× away from the stall (the whole phase-1a integrator costs
   0.2-0.6 s/run) ⇒ the LSODA swap C1 is ruled out on economics.
