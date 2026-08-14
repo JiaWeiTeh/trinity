@@ -121,8 +121,10 @@ def materialise(cfg, out_dir, extra):
     out_dir.mkdir(parents=True, exist_ok=True)
     param = out_dir / f"{cfg}.param"
     param.write_text("\n".join(lines) + "\n")
+    # C-7 provenance lives HERE, not only in the directory name, so an explicit --root
+    # never costs us the record of which code produced the run.
     (out_dir / "_overrides.txt").write_text(
-        f"base: {base_rel}\noverrides: {over}\nforced: {forced}\n"
+        f"base: {base_rel}\noverrides: {over}\nforced: {forced}\ncode: {code_version()}\n"
     )
     return param, over
 
@@ -142,10 +144,20 @@ def main():
     ap.add_argument("--stop-t", help="override stop_t on every config (documented in the CSV)")
     ap.add_argument("--timeout", type=int, default=7200, help="per-run seconds")
     ap.add_argument("--force", action="store_true", help="re-run even if output exists")
+    ap.add_argument(
+        "--root",
+        help="explicit output root, overriding the SHA-derived default. Use this for any "
+        "batch that spans a commit: the default embeds code_version(), which includes a "
+        "'+dirty' flag, so an innocuous tree change mid-batch (even an untracked CSV) "
+        "silently scatters one logical arm across sibling directories. C-7 provenance is "
+        "preserved either way — the code version is recorded in each run's _overrides.txt.",
+    )
     args = ap.parse_args()
 
     sha = code_version()
-    root = REPO / "outputs" / "phii" / f"{args.arm}__{sha.replace('+', '_')}"
+    root = Path(args.root) if args.root else (
+        REPO / "outputs" / "phii" / f"{args.arm}__{sha.replace('+', '_')}"
+    )
     names = select(args.tier, args.configs.split(",") if args.configs else None)
     extra = {"stop_t": args.stop_t} if args.stop_t else {}
 
