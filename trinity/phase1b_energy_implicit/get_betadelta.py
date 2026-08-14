@@ -44,7 +44,38 @@ DELTA_MIN = -1.0
 DELTA_MAX = 0.0
 
 # Convergence thresholds
+#
+# RESIDUAL_THRESHOLD is a 1% CLOSURE CRITERION, not an inherited magic number
+# (solver-audit F8, measured 2026-08-06; data docs/dev/roadmap/data/
+# f8_residual_tolerance.csv, harness docs/dev/roadmap/harness/
+# f8_residual_tolerance.py). Both residuals from get_residual_pure are
+# *relative* --
+#     Edot_residual = (Edot_from_beta - Edot_from_balance) / Edot_from_beta
+#     T_residual    = (T_bubble - T0) / T0
+# -- and acceptance is Edot_residual**2 + T_residual**2 < RESIDUAL_THRESHOLD.
+# So 1e-4 is the square of 1e-2: accept (beta, delta) once the 2-norm of the
+# relative-residual vector is under 1%. Dimensionless, and a statement about how
+# well the energy-rate and temperature closure relations hold.
+#
+# It BINDS: across five screen configs / 139 phase-1b solves, all converged and
+# every config's worst accepted residual sits at 0.82-0.95 of this bar, because
+# the search stops the moment it clears. In closure terms runs sit at 0.91-0.97%
+# error against a 1% bar.
+#
+# It sits on a PLATEAU, not a cliff: tightening it 100x (to 0.1% closure) leaves
+# the stopping fate and snapshot count identical and moves R2 by at most 0.0129%
+# on simple_cluster. The solver reaches ~1e-14 when pushed (median residual falls
+# 1.77e-05 -> 2.17e-14), so the current value is an economy choice that costs
+# nothing measurable. **The risk direction is loosening, not tightening** --
+# residuals already press against the bar, so a looser threshold admits worse
+# closure immediately.
 RESIDUAL_THRESHOLD = 1e-4
+# maxiter for the L-BFGS-B fallback only (_solve_lbfgsb), so under the production
+# default betadelta_solver='hybr' it is reached solely through the legacy rescue
+# ladder, not the healthy path. NOT calibrated: betadelta_iterations is never
+# written to the snapshot, so iteration counts cannot be recovered from committed
+# runs. All 139 surveyed solves converged, which shows the cap is not *binding*
+# on those configs -- weaker than "15 is the right number" (F8, unresolved).
 MAX_ITERATIONS = 15
 
 # Threshold for L-BFGS-B fallback: only run L-BFGS-B if grid residual exceeds this
@@ -52,7 +83,11 @@ MAX_ITERATIONS = 15
 # and wastes ~50 expensive function evaluations
 LBFGSB_FALLBACK_THRESHOLD = 5.0
 
-# Grid search parameters (matching original get_betadelta.py)
+# Grid search parameters (matching original get_betadelta.py). Both are used only
+# by _solve_grid, which is reached only via _solve_betadelta_legacy -- i.e. under
+# the production default betadelta_solver='hybr' they are on the rescue ladder,
+# not the healthy path. Provenance is "inherited from the original
+# get_betadelta.py"; no derivation was found for either value (solver-audit F8).
 GRID_SIZE = 5  # 5x5 grid (matching original get_betadelta.py)
 GRID_EPSILON = 0.02  # Search range around guess
 

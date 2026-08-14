@@ -12,7 +12,7 @@ One CSV per run, produced by `../harness/extract_csv.py` from the run's
 provenance header in each file records the exact config + command). All runs
 at commit bb94c78, numpy 1.26.4 / scipy 1.17.1, single core.
 
-| file | what varies vs the M43 probe baseline |
+| file | what varies vs the compact probe baseline |
 |---|---|
 | `m43_probe.csv` | nothing — stock constants (the brief's §2.1 run) |
 | `gmc_control.csv` | GMC-scale control (brief §2.2), stock constants |

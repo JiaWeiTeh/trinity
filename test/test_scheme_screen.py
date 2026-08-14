@@ -130,6 +130,29 @@ def test_compare_uses_the_last_shared_time_when_arms_truncate_apart() -> None:
 
 
 # ---------------------------------------------------------------------------
+# fate — where the end record actually lives
+# ---------------------------------------------------------------------------
+def test_fate_reads_metadata_termination_block(tmp_path: Path) -> None:
+    """Real runs stamp the end record in metadata.json[termination], NOT in the
+    snapshot rows: a STOPPING_TIME run flushes its last snapshot before main.py
+    sets the code, so the jsonl tail carries SimulationEndCode: None (verified
+    2026-08-06 on f1edge_hidens). A fate check that only reads the rows is
+    vacuous on every such run."""
+    (tmp_path / "metadata.json").write_text(json.dumps(
+        {"termination": {"exit_code": 1, "outcome": "stopping_time",
+                         "detail": "Stopping time reached"}}))
+    rows = _rows([0.001, 0.01], [0.5, 1.0], end_code=None, end_reason=None)
+    assert screen.fate(rows, str(tmp_path)) == "1 stopping_time"
+
+
+def test_fate_falls_back_to_rows_then_reports_vacuous(tmp_path: Path) -> None:
+    rows_with = _rows([0.001], [0.5], 4, "SHELL_COLLAPSED")
+    assert screen.fate(rows_with, str(tmp_path)) == "4 SHELL_COLLAPSED"
+    rows_without = _rows([0.001], [0.5], end_code=None, end_reason=None)
+    assert screen.fate(rows_without, str(tmp_path)) == "(no stop condition reached)"
+
+
+# ---------------------------------------------------------------------------
 # param rewriting
 # ---------------------------------------------------------------------------
 def test_write_param_overrides_only_what_the_screen_controls(tmp_path: Path) -> None:
@@ -179,4 +202,10 @@ def test_config_runs_and_is_structurally_sound(name: str, tmp_path: Path) -> Non
     for key in ("R2", "v2", "Eb", "t_now"):
         assert all(math.isfinite(r[key]) for r in rows), f"{name} has non-finite {key}"
     assert all(r["R2"] > 0 for r in rows), f"{name} has a non-positive radius"
-    assert rows[-1].get("SimulationEndReason"), f"{name} recorded no stopping reason"
+    # The end record lives in metadata.json[termination], not the jsonl tail
+    # (see test_fate_reads_metadata_termination_block).
+    meta = json.loads((tmp_path / "outputs" / "screen" / "metadata.json").read_text())
+    term = meta.get("termination") or {}
+    assert term.get("exit_code") is not None or term.get("outcome"), (
+        f"{name} recorded no stopping fate in metadata.json[termination]"
+    )

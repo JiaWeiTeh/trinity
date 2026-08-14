@@ -34,7 +34,7 @@
 
 **Status (2026-08-05):** 🟡 partial — investigation complete and the fix implemented + gated on this branch; one maintainer decision outstanding (the G2 stock-comparison bar, `PLAN.md` §4) before it can land.
 
-Why a TRINITY run at M43 scale (0.15 pc, 2.1e4 yr compact H II region;
+Why a TRINITY run at sub-GMC scale (0.15 pc, 2.1e4 yr compact H II region;
 `mCloud=300`, `sfe=0.01`, `nCore=8.7e3`) crosses the observed radius ~30x too
 early at ~12x the observed velocity — and what that means for the phase-1a
 initialisation (`get_y0`, `SEGMENT_DURATION`, the `vd=-1e8` branch).

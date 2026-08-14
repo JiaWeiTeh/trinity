@@ -71,13 +71,15 @@ docs/dev/
 │   ├── pt4/               hypothesis audits H1–H5 + R1 shadow (concluded, feeds pdv-trigger)
 │   └── harness/ + PROVENANCE_PROTOCOL.md    shared run-stamping tooling
 ├── rosette-cf/            Rosette Cf scan, in-container (🔵 plan + harness + param committed; runs pending)
-├── phase1a-init/          early-phase (1a) init at sub-GMC scale — M43 probe (🔵 — FINDINGS.md)
+├── phase1a-init/          early-phase (1a) init at sub-GMC scale — compact probe (🔵 — FINDINGS.md)
+├── phase1a-stiffness/     is 1a's RK45 segment integrator a latent defect? (✅ fix landed on branch — PLAN.md)
+├── switchon-successor/    can dt_switchon's fixed 1e-3 Myr clock be made physical? (✅ measured: no — PLAN.md)
 ├── phii-identity/         P_HII === the confining pressure while the Strömgren cap binds (🔵 — README.md evidence, PLAN.md fix)
 ├── screen/                multi-config scheme screen: 2 refs x N configs, matched-t ledger (🔵 — README.md)
 ├── cooling/               cooling-table refactor (🟡 partial)
 ├── performance/           hot-path cost & conditioning (📘 reference + 🟡 open items)
 ├── shell-solver/          shell ODE migration + float64 overflow fix (🟡 mixed)
-├── magic-numbers/         hardcoded-constant audit (🟡 #1, #4 fixed; #2 measured; #3, #5 open)
+├── magic-numbers/         hardcoded-constant audit (✅ closed 2026-08-06: #1/#3/#4 fixed, #2 kept+pinned, #5 re-verified)
 ├── failed-large-clouds/   1b collapse of large clouds (✅ shipped; 1b routing superseded 2026-07-01)
 ├── misc/                  standalone audits / notes (🟡 mixed)
 ├── cluster/               on-cluster plotting workflow guide (📘 operational)
@@ -112,10 +114,33 @@ The top-level `scratch/` (repo root) is separate, git-ignored, local-only.
 - **`shell-solver/`** — [`OVERFLOW_FIX_PLAN.md`](shell-solver/OVERFLOW_FIX_PLAN.md) (🟢 the real
   fix, implemented) and [`MIGRATION_PLAN.md`](shell-solver/MIGRATION_PLAN.md) (🟠 correction:
   its `mxstep` diagnosis was retracted — read OVERFLOW first).
-- **`magic-numbers/`** — [`AUDIT.md`](magic-numbers/AUDIT.md) (triaged findings; #1 and #4 fixed,
-  #2 measured and found load-bearing, #3/#5 open), [`TCLAMP_PLAN.md`](magic-numbers/TCLAMP_PLAN.md)
-  (✅ #1 fixed & gated) and [`SWITCHON_BRIEF.md`](magic-numbers/SWITCHON_BRIEF.md) (🔵 brief for
-  a scale-relative successor to #2's `dt_switchon`).
+- **`magic-numbers/`** — [`AUDIT.md`](magic-numbers/AUDIT.md) (✅ audit closed 2026-08-06: #1/#3/#4
+  fixed & gated, #2 documented-and-pinned, #5's tail owned by the transition workstream),
+  [`SWEEP2_PLAN.md`](magic-numbers/SWEEP2_PLAN.md) (round 2 — pre-registered bars + results for
+  #2/#3/#5), [`TCLAMP_PLAN.md`](magic-numbers/TCLAMP_PLAN.md) (✅ #1 fixed & gated) and
+  [`SWITCHON_BRIEF.md`](magic-numbers/SWITCHON_BRIEF.md) (✅ #2 resolved as document-and-pin).
+- **`phase1a-stiffness/`** — [`PLAN.md`](phase1a-stiffness/PLAN.md): phase 1a integrates on
+  `RK45` with no step bounds while 1b/1c/2 use LSODA with both; with #2's ramp ablated, an `Eb`
+  collapse inside a segment grinds the solver and the between-segment collapse guard never gets
+  to fire. 🔵 **Batches 1-2 done, still no `trinity/` edit** — production measured ≥4.3e4× from
+  the stall (worst segment 4 steps / 0.021 s), so the LSODA swap is ruled out on economics; the
+  grind is **stiffness** at collapsed `Eb` (pinned at 1.6e-6 au, λ ≈ −1e13, ~7 days/segment), and
+  `Eb` never reaches 0 so the existing `Eb ≤ 0` guard would miss it. Batch 3 built the in-band
+  *positive*, scale-relative energy-floor event (threshold bounded both sides by measurement) and
+  it clears P0 — the stalling control now ends in 22 s with the pre-existing `ENERGY_COLLAPSED`
+  fate — and Batch 4's screen came back **byte-identical on all five configs**, so it lands at
+  Batch 5. Batch 6 then closed the removability question: `dt_switchon` is **not** removable.
+- **`switchon-successor/`** — [`PLAN.md`](switchon-successor/PLAN.md): given that the ramp cannot
+  be deleted, can its **fixed 1e-3 Myr clock** be replaced by a scale-free physical criterion? The
+  code already computes the establishment time it imitates (`dt_phase0` = 0.0115-1.96 yr, i.e.
+  500-87,000× shorter). ✅ **CONCLUDED — the measured answer is no; outcome S0, the constant stays.** Bar N3 forbids swapping in
+  another absolute constant; bar N1 judges candidates against Weaver Eq. 20 comparatively (§0.3 —
+  Weaver is wind-only, TRINITY is not); "keep it and justify it better" is a registered outcome.
+  Two candidate families are measured dead — the **clock** (window length is not the controlling
+  variable) and the **limiter** (holding `dEb/dt ≥ 0` makes `Eb` plateau, which is worse than the
+  constant), and now the **seed** as well: the handover work rate is algebraic in the *velocity*
+  with the seed energy absent, and both measured velocity variants fail. **All four families are
+  dead**, so the outcome is **S0** — keep the constant and write the evidence into the source.
 - **`phii-identity/`** — [`README.md`](phii-identity/README.md): consolidates five independent
   sightings (across three unmerged branches) of `P_HII` equalling the local confining pressure to
   4–10 digits, proves it is an exact algebraic identity of the `n_IF_Str ≤ shell_n0` cap, and maps

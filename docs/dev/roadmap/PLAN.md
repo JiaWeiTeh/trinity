@@ -72,7 +72,7 @@ Owned by `docs/dev/transition/pdv-trigger/` (INDEX.md §3 is the live thread). Q
 |---|---|---|---|---|
 | B0 | ✅ DONE 2026-07-06: `solve_R1` non-finite guard (audit F1) | — | `test_r1_bracket.py` + `test_energy_collapse_guard.py` green on scipy 1.10.1 and CI | `solver-audit.md` F1 |
 | B1 | ✅ DONE 2026-07-06: duplication sync gate | — | `test/test_phase_helper_sync.py` green | `solver-audit.md` F5 |
-| B2 | **Per-phase fast regression fixtures** (audit F4) — *do this before any other solver edit; it is the gate the rest of this lane runs against* | [M; param choice J-lite] | committed fast `.param` per phase, verified to reach 1c and 2; test asserts outcome + snapshot count + key finals vs committed reference | `solver-audit.md` F4 |
+| B2 | ✅ **DONE 2026-08-06: per-phase fast regression fixtures** (audit F4) — `test/test_phase_runner_fixtures.py`. **The gate the rest of this lane runs against; run it before and after every solver edit.** `test_all_four_phase_runners_execute` (default suite, ~2 min) walks energy→implicit→transition→momentum in one run and pins phase-entry snapshots, snapshot count, termination outcome and two finals — the first test in the repo to execute `run_phase_transition` or `run_phase_momentum` at all. `test_phase1b_runner_at_production_defaults` (`stress`) is the zero-deviation complement. **Scope caveat that shaped the fixture:** phases 1c/2 are unreachable from TRINITY's defaults (the implicit→momentum hand-off never fires; cleanroom's diagnosed physics gap, lane A A4), corroborated on the 72 committed rosette-cf runs — no `coverFraction=1.0` arm reached 1c/2 in 3 Myr while 45 deviating arms reached momentum. The 1c/2 fixture therefore uses a committed rosette arm and is documented in-module as a **code-path gate, not a physical configuration**. Verified byte-identical across separate processes before goldens were written, and verified failing-first | [M; param choice J-lite] | `solver-audit.md` F4 |
 | B3 | P_ext silent-zero fix (audit F2) | [M] | monkeypatch test (warning fires, fallback preserved) + byte-identical `dictionary.jsonl` on `simple_cluster` + f1edge pair | `solver-audit.md` F2 |
 | B4 | narrow the residual-path `except` so code bugs propagate (audit F3) | [J classify, M apply] | injection tests (TypeError propagates; ValueError → penalty) + full-run equivalence, stiff regimes, separate processes | `solver-audit.md` F3 |
 | B5 | classify the forces-trio divergence (audit F5) | [J] | every hunk labeled intentional/missed-fix, in-code comments or synced; only then extend sync test or consolidate (`REORG.md` R2) | `solver-audit.md` F5 |
@@ -86,7 +86,9 @@ Owned by `docs/dev/transition/pdv-trigger/` (INDEX.md §3 is the live thread). Q
 | id | item | tier | owner |
 |---|---|---|---|
 | C1 | backward-compat cleanup (~95% unexecuted) | [M] | `misc/backward-compat-audit.md` |
-| C2 | magic numbers #2–#5 (+ audit F8 tolerances) | [J justify, M fix] | `magic-numbers/AUDIT.md` |
+| C2 | ~~magic numbers #2–#5~~ **AUDIT CLOSED 2026-08-06** (branch `hotfix/other-magic-numbers`): #3 fixed & gated, #2 documented-and-pinned (measured not removable), #5 re-verified with its tail handed to the transition workstream. **F8 tolerances resolved 2026-08-06** — `RESIDUAL_THRESHOLD = 1e-4` measured as a 1% closure criterion that binds but sits on a plateau (100x tighter moves R2 by <=0.0129%), rationale written at the constants; scope corrected (two of F8's three already had rationale; the grid/L-BFGS-B constants are rescue-ladder only). **Nothing open under this id** except the `MAX_ITERATIONS` adequacy question, which needs `betadelta_iterations` recorded in the snapshot first | [J justify, M fix] | `magic-numbers/AUDIT.md`, `roadmap/solver-audit.md` F8 |
+| C2a | **spawned by C2, DONE — nothing open:** phase-1a segment-integrator stiffness — in-band energy-collapse guard landed, byte-identical on all five configs; the mypy clause was **ruled ACCEPT** (§2 D5), making 144 the new baseline | [M] | `phase1a-stiffness/PLAN.md` |
+| C2b | **spawned by C2, ✅ DONE — nothing open:** `dt_switchon`'s *form* (deletion is settled; the fixed 1e-3 Myr clock vs the `dt_phase0` the code computes). Batches 1-4 done, nothing implemented: **all four candidate families are measured dead** (clock, limiter, seed-energy, seed-velocity). **Outcome S0 — the constant stays, with D1-D4 written into the source at the constant itself (Batch 5).** No `trinity/` behaviour changed. **C2's audit tail (F8 tolerances) is now the only thing left under C2** | [J] | `switchon-successor/PLAN.md` |
 | C3 | HOTPATH §F1-cousin + §F5 | [J] | `performance/HOTPATH_PLAN.md` |
 | C4 | leaking luminosities Phase D/F/G + findings #7/#8 | [J] | `misc/LEAKING_LUMINOSITIES_SKELETON.md` |
 | C5 | cooling loader refactor PR-1–4 | [M] | `cooling/refactor-audit.md` |
@@ -116,6 +118,16 @@ Owned by `docs/dev/transition/pdv-trigger/` (INDEX.md §3 is the live thread). Q
 **Recommended next five, in order: A1 → B2 → B3+B4 → A2 → B6.**
 
 ## §3 Session ledger (newest first)
+
+- **2026-08-06** — magic-numbers round 2 (branch `hotfix/other-magic-numbers`). **C2 closed**, and
+  it spawned two workstreams (C2a, C2b) by following the evidence rather than by scope drift; the
+  trail, so a later reader can see why the branch reaches beyond its title: audit #2's stall was
+  traced to phase 1a's segment integrator, not the bubble solve → **C2a** fixed that (in-band
+  energy-collapse guard) → with a clean stop available, #2's removability could finally be tested,
+  and it **failed** (fate flips on 3/5 configs) → that measurement also showed the constant matters
+  on the *published* config, which is why its form is now **C2b**. **Return path when C2b
+  finishes: nothing is left open in C2 itself** — the remaining tails are #5's fallbacks (transition
+  workstream), audit F8 tolerances (still under C2), and the C2a mypy ruling.
 
 - **2026-07-06** — workstream created. Solver audit ran (`solver-audit.md`); F1 diagnosed
   (scipy-1.10.1 brentq NaN behavior, env below floor) and fixed; sync gate

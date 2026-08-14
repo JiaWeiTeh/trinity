@@ -1,0 +1,19 @@
+# switchon-successor Batch 2 (PLAN.md par.5): candidate S1 -- replace the fixed 1e-3 Myr ramp
+# window with k * dt_phase0, the free-expansion time the code already computes (k = 1).
+# Ramp-active reference = the Batch 4 "after" arms of docs/dev/phase1a-stiffness
+# (data/equivalence_screen.csv), same code with the shipped 1e-3 Myr window. stop_t = 0.02 Myr,
+# separate processes. dt_phase0 recovered per run as t0 - tSF (t0 is the first integration time).
+# Command: python docs/dev/switchon-successor/harness/s1_physical_clock.py \
+#            --config <name> --k 1.0 --stop-t 0.02 --workdir <dir>            (2026-08-06)
+# VERDICT: N0 FAILS on 3 of 5 -- S1 is dead. And the failures are NOT ordered by how much the
+# window shrinks (see the last two columns): the config that shrinks most survives and the one
+# that shrinks least dies, so window length is not the controlling variable and no single k
+# rescues the candidate. That retires the whole "better clock" family, not just k = 1.
+gate,config,dt_phase0_yr,window_shortening_vs_1e-3Myr,ramp_active_fate,s1_fate,verdict
+N0,simple_cluster,0.3388,2951x,1 stopping_time,51 energy_collapsed,FAIL - FATE FLIP (default published config)
+N0,f1edge_lowdens,138.3,7x,1 stopping_time,51 energy_collapsed,FAIL - FATE FLIP (smallest shortening of all five)
+N0,f1edge_hidens,0.1956,5112x,1 stopping_time,51 energy_collapsed,FAIL - FATE FLIP
+N0,gmc_control,1.956,511x,1 stopping_time,1 stopping_time,PASS - survives
+N0,m43_probe,0.01149,87055x,1 stopping_time,1 stopping_time,PASS - survives (largest shortening of all five)
+inference,all five,-,7x to 87055x,-,-,survivors span 511-87055x and failures span 7-5112x: the ranges OVERLAP, so no threshold in window length separates them
+inference,all five,-,-,-,-,the three S1 failures are the same three configs that fail under full ablation (dt_switchon_removability.csv) -- S1 behaves like ablation, not like a shorter ramp

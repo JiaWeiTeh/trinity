@@ -85,9 +85,15 @@ before landing a scheme change, not something that belongs in `pytest`. Start wi
 - The grid always includes **the last time both arms share**, which is the "or the end of the run
   if it terminates earlier" clause any bar needs when a config can collapse at 0.04 Myr while
   another runs to 2 Myr.
-- **A run that stops before any stop condition fires reports
-  `(no stop condition reached)`**, not `None`. Both arms stopping short still compare equal —
-  but the fate check is then vacuous, and the ledger says so rather than dressing it up.
+- **The stopping fate is read from `metadata.json[termination]`** (exit_code + outcome), falling
+  back to the snapshot rows' `SimulationEndCode`/`Reason` fields. The first screen run in anger
+  (2026-08-06, finding-#3 gate) found the original rows-only read was vacuous on real runs — a
+  clean STOPPING_TIME run flushes its last snapshot *before* `main.py` stamps the code, so the
+  jsonl tail carries `None`. Pinned by `test_fate_reads_metadata_termination_block`.
+- **A run that stops before any stop condition fires** (neither a termination record nor row
+  fields) **reports `(no stop condition reached)`**, not `None`. Both arms stopping short still
+  compare equal — but the fate check is then vacuous, and the ledger says so rather than
+  dressing it up.
 - **Stopping fate is checked separately from the radius bar.** A loose radius threshold on its own
   can pass a run that collapses when it should not, by comparing at its own truncated endpoint.
 

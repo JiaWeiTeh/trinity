@@ -72,6 +72,10 @@ MIN_RADIUS_SAFETY = 0.01       # pc - absolute minimum radius
 MIN_RADIUS_FACTOR = 1.5        # Factor above coll_r for early termination
 MAX_VELOCITY_COLLAPSE = 500.0  # pc/Myr (~490 km/s) - extreme inward velocity
 MAX_VELOCITY_EXPANSION = 1000.0  # pc/Myr (~978 km/s) - extreme outward velocity
+# Fraction of a phase-1a segment's starting Eb below which the energy-driven
+# bubble counts as collapsed. Bounded on both sides by measurement, not chosen:
+# see make_energy_collapse_event and docs/dev/phase1a-stiffness/PLAN.md.
+ENERGY_COLLAPSE_FRAC = 1e-3
 
 
 # =============================================================================
@@ -313,6 +317,69 @@ def make_velocity_sign_event(y_index: int = 1, name: str = "velocity_sign"):
     event.is_simulation_ending = False
     event.reason_code = "velocity_sign_change"
     event.reason_message = "Velocity changed sign (collapse onset)"
+    return event
+
+
+def make_energy_collapse_event(Eb_segment_start: float,
+                               frac: float = ENERGY_COLLAPSE_FRAC,
+                               name: str = "energy_collapse"):
+    """
+    Create event that triggers when Eb falls to `frac` of its segment-start value.
+
+    Phase 1a already stops cleanly on a collapsed energy-driven bubble, but that
+    check runs *between* segments and tests ``Eb <= 0``. Both parts miss the
+    measured failure: the collapse happens *inside* one segment, and Eb does not
+    reach zero -- it pins at a small positive value (1.6e-6 au, measured) on a
+    stiff slow manifold where an explicit solver needs ~1e9 steps to cross the
+    segment. This event puts the same decision in-band, so the segment ends
+    instead of grinding. See docs/dev/phase1a-stiffness/PLAN.md.
+
+    The threshold is relative to the segment-start Eb, which makes it scale-free
+    (segment-start Eb spans 90 to 2.4e5 au across the screen configs). Its value
+    is bounded on both sides by measurement (`data/seg_stepcount.csv`):
+
+    * healthy segments never lose energy at all -- across 437 segments on five
+      configs spanning four decades of mass and density, Eb *grows* every
+      segment (min ratio 1.027), so any frac < 1 is unreachable in a healthy
+      run and this event is inert there;
+    * a segment that loses 59% of Eb still integrates fine (the ablated control
+      completes segments at ratios 0.67, 0.58, 0.41), so frac must sit well
+      below 0.41 or it would end runs that can continue;
+    * by the time Eb reaches 5.5e-8 of segment-start the integrator is already
+      dead, so frac must sit well above that.
+
+    ENERGY_COLLAPSE_FRAC = 1e-3 is ~2.6 decades below the deepest survivable
+    drop and ~4.2 decades above the value at which the solver stalls -- near the
+    geometric middle of the measured window.
+
+    Parameters
+    ----------
+    Eb_segment_start : float
+        Bubble energy at the start of this segment [au]. The event is built per
+        segment because the reference value changes with it.
+    frac : float
+        Fraction of Eb_segment_start at which the bubble counts as collapsed.
+    name : str
+        Name for identifying this event in results.
+
+    Returns
+    -------
+    event : callable
+        Event function for solve_ivp with terminal=True, direction=-1.
+    """
+    floor = frac * Eb_segment_start
+
+    def event(t, y):
+        Eb = y[2]
+        return Eb - floor
+
+    event.terminal = True
+    event.direction = -1  # only on the downward crossing
+    event.name = name
+    event.is_simulation_ending = True
+    event.reason_code = "energy_collapse_event"
+    event.reason_message = "Energy-driven bubble collapsed (Eb fell to a fraction of segment start)"
+    event.end_code = SimulationEndCode.ENERGY_COLLAPSED
     return event
 
 

@@ -1,0 +1,62 @@
+# switchon-successor Batch 4b: candidate S4 -- fix the handover state, no ramp.
+#   similarity: v0 = (3/5) v_wind      sustain: v0 = (R1/R2)^2/2 * v_wind
+# r0, E0, T0 and dt_phase0 are left as phase 0 computed them.
+# Reference arm = the ramp-active Batch 4 'after' runs of docs/dev/phase1a-stiffness
+# (current HEAD with the shipped 1e-3 Myr ramp). stop_t = 0.02 Myr, separate
+# processes, matched t by linear interpolation.
+# Command: python docs/dev/switchon-successor/harness/s4_consistent_seed.py \
+#            --config <name> --variant <v> --stop-t 0.02 --workdir <dir>
+#          python docs/dev/switchon-successor/harness/s4_compare.py   (2026-08-06)
+# N1 is scored over snapshots 1-5, the window data/s2_state_trigger.csv used (snapshot 0 is
+# excluded: E0 is seeded from Weaver Eq.20 so its ratio is 1.000 by construction). The reference
+# column reproduces D3's recorded values exactly on all five configs.
+# VERDICT: both variants FAIL N0 on f1edge_hidens, FAIL N1 on all five (3.6-6.0x further from the
+# reference than the shipped ramp) and FAIL N2 everywhere. S4 does not land, and with it the last
+# candidate family -- S0 (keep the constant, justified by D1-D4) is the outcome.
+# Two results worth keeping. (1) The PRE-REGISTERED PREDICTION FOR S4a WAS HALF WRONG: it said the
+# same 3 of 5 that die under full ablation would die here; only 1 does. Slowing the handover
+# velocity genuinely rescues simple_cluster and f1edge_lowdens -- most of the ramp's fate
+# protection comes from the velocity, not the geometry. (2) The identity ORDERED THE TWO VARIANTS
+# CORRECTLY before either was run: sustain (PdV/Lmech = 1.000) beats similarity (1.588) on N1 for
+# every single config.
+gate,config,variant,quantity,reference,measured,verdict
+N0,simple_cluster,sustain,stopping_fate,1 stopping_time,1 stopping_time,PASS
+N1,simple_cluster,sustain,mean abs(1 - Weaver Eb/t ratio) over snaps 1-5,0.0992,0.4230,FAIL
+N1-direction,simple_cluster,sustain,signed Weaver ratio per snapshot,0.940 0.906 0.889 0.884 0.885,0.876 0.720 0.562 0.421 0.306,-
+N2,simple_cluster,sustain,dR2% at 1e-05/0.0001/0.001/0.003/0.01/0.02 Myr,0,-4.752 -2.039 -0.682 -0.286 -0.086 -0.042,FAIL (worst 4.752%)
+N0,simple_cluster,similarity,stopping_fate,1 stopping_time,1 stopping_time,PASS
+N1,simple_cluster,similarity,mean abs(1 - Weaver Eb/t ratio) over snaps 1-5,0.0992,0.5510,FAIL
+N1-direction,simple_cluster,similarity,signed Weaver ratio per snapshot,0.940 0.906 0.889 0.884 0.885,0.781 0.581 0.414 0.283 0.187,-
+N2,simple_cluster,similarity,dR2% at 1e-05/0.0001/0.001/0.003/0.01/0.02 Myr,0,-4.624 -2.027 -0.681 -0.285 -0.086 -0.042,FAIL (worst 4.624%)
+N0,f1edge_hidens,sustain,stopping_fate,1 stopping_time,51 energy_collapsed,FAIL
+N1,f1edge_hidens,sustain,mean abs(1 - Weaver Eb/t ratio) over snaps 1-5,0.1234,0.5212,FAIL
+N1-direction,f1edge_hidens,sustain,signed Weaver ratio per snapshot,0.933 0.890 0.864 0.851 0.845,0.855 0.656 0.455 0.282 0.146,-
+N2,f1edge_hidens,sustain,dR2% at 3.46548e-07 Myr,0,-8.160,FAIL (worst 8.160%)
+N0,f1edge_hidens,similarity,stopping_fate,1 stopping_time,51 energy_collapsed,FAIL
+N1,f1edge_hidens,similarity,mean abs(1 - Weaver Eb/t ratio) over snaps 1-5,0.1234,0.6368,FAIL
+N1-direction,f1edge_hidens,similarity,signed Weaver ratio per snapshot,0.933 0.890 0.864 0.851 0.845,0.762 0.525 0.322 0.163 0.043,-
+N2,f1edge_hidens,similarity,dR2% at 3.15044e-07 Myr,0,-5.353,FAIL (worst 5.353%)
+N0,f1edge_lowdens,sustain,stopping_fate,1 stopping_time,1 stopping_time,PASS
+N1,f1edge_lowdens,sustain,mean abs(1 - Weaver Eb/t ratio) over snaps 1-5,0.0938,0.3956,FAIL
+N1-direction,f1edge_lowdens,sustain,signed Weaver ratio per snapshot,0.941 0.910 0.895 0.891 0.894,0.881 0.737 0.591 0.460 0.352,-
+N2,f1edge_lowdens,sustain,dR2% at 1e-05/0.0001/0.001/0.003/0.01/0.02 Myr,0,-- -- -6.741 -4.230 -1.436 -0.707,FAIL (worst 6.741%)
+N0,f1edge_lowdens,similarity,stopping_fate,1 stopping_time,1 stopping_time,PASS
+N1,f1edge_lowdens,similarity,mean abs(1 - Weaver Eb/t ratio) over snaps 1-5,0.0938,0.5277,FAIL
+N1-direction,f1edge_lowdens,similarity,signed Weaver ratio per snapshot,0.941 0.910 0.895 0.891 0.894,0.786 0.596 0.438 0.316 0.225,-
+N2,f1edge_lowdens,similarity,dR2% at 1e-05/0.0001/0.001/0.003/0.01/0.02 Myr,0,-- -- -6.034 -3.983 -1.369 -0.685,FAIL (worst 6.034%)
+N0,gmc_control,sustain,stopping_fate,1 stopping_time,1 stopping_time,PASS
+N1,gmc_control,sustain,mean abs(1 - Weaver Eb/t ratio) over snaps 1-5,0.0864,0.3696,FAIL
+N1-direction,gmc_control,sustain,signed Weaver ratio per snapshot,0.943 0.915 0.903 0.901 0.906,0.887 0.753 0.619 0.497 0.396,-
+N2,gmc_control,sustain,dR2% at 1e-05/0.0001/0.001/0.003/0.01/0.02 Myr,0,-7.706 -4.958 -1.818 -0.766 -0.222 -0.119,FAIL (worst 7.706%)
+N0,gmc_control,similarity,stopping_fate,1 stopping_time,1 stopping_time,PASS
+N1,gmc_control,similarity,mean abs(1 - Weaver Eb/t ratio) over snaps 1-5,0.0864,0.5058,FAIL
+N1-direction,gmc_control,similarity,signed Weaver ratio per snapshot,0.943 0.915 0.903 0.901 0.906,0.791 0.610 0.462 0.347 0.262,-
+N2,gmc_control,similarity,dR2% at 1e-05/0.0001/0.001/0.003/0.01/0.02 Myr,0,-6.559 -4.871 -1.810 -0.764 -0.221 -0.118,FAIL (worst 6.559%)
+N0,m43_probe,sustain,stopping_fate,1 stopping_time,1 stopping_time,PASS
+N1,m43_probe,sustain,mean abs(1 - Weaver Eb/t ratio) over snaps 1-5,0.0839,0.3607,FAIL
+N1-direction,m43_probe,sustain,signed Weaver ratio per snapshot,0.944 0.917 0.906 0.905 0.910,0.889 0.758 0.628 0.510 0.411,-
+N2,m43_probe,sustain,dR2% at 1e-05/0.0001/0.001/0.003/0.01/0.02 Myr,0,-1.448 -0.420 -0.108 -0.041 -0.012 -0.006,FAIL (worst 1.448%)
+N0,m43_probe,similarity,stopping_fate,1 stopping_time,1 stopping_time,PASS
+N1,m43_probe,similarity,mean abs(1 - Weaver Eb/t ratio) over snaps 1-5,0.0839,0.4983,FAIL
+N1-direction,m43_probe,similarity,signed Weaver ratio per snapshot,0.944 0.917 0.906 0.905 0.910,0.793 0.615 0.470 0.357 0.274,-
+N2,m43_probe,similarity,dR2% at 1e-05/0.0001/0.001/0.003/0.01/0.02 Myr,0,-1.443 -0.420 -0.108 -0.041 -0.012 -0.006,FAIL (worst 1.443%)

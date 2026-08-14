@@ -110,14 +110,29 @@ def run_arm(run_py, config, arm, stop_t, workdir):
         return [json.loads(line) for line in fh if line.strip()], cwd
 
 
-def fate(rows):
-    """The run's stopping fate, as 'code reason'.
+def fate(rows, run_dir=None):
+    """The run's stopping fate, as 'code outcome'.
 
-    A run truncated before any stop condition fires records neither, so this
-    says so rather than printing 'None' into a ledger. Two arms that both stop
-    short still compare equal -- but the fate check is then vacuous, so make
-    that visible instead of dressing it up as a pass.
+    The end record lands in ``metadata.json[termination]`` (exit_code,
+    outcome), NOT in the snapshot rows: a run that stops on ``stop_t`` flushes
+    its last snapshot before ``main.py`` stamps the code, so the jsonl tail
+    carries ``SimulationEndCode: None`` even for a clean STOPPING_TIME end
+    (verified 2026-08-06 on f1edge_hidens -- the first screen run in anger).
+    Fall back to the row fields for outputs that do carry them; only a run
+    with neither reports ``(no stop condition reached)``. Two arms that both
+    stop short still compare equal -- but the fate check is then vacuous, so
+    make that visible instead of dressing it up as a pass.
     """
+    if run_dir:
+        meta = os.path.join(run_dir, "metadata.json")
+        if os.path.exists(meta):
+            try:
+                with open(meta) as fh:
+                    term = json.load(fh).get("termination") or {}
+            except ValueError:
+                term = {}
+            if term.get("exit_code") is not None or term.get("outcome"):
+                return f"{term.get('exit_code')} {term.get('outcome', '')}".strip()
     last = rows[-1]
     code, reason = last.get("SimulationEndCode"), last.get("SimulationEndReason")
     if code is None and not reason:
@@ -125,7 +140,7 @@ def fate(rows):
     return f"{code} {reason}".strip()
 
 
-def compare(config, before, after, bar):
+def compare(config, before, after, bar, before_dir=None, after_dir=None):
     """Ledger rows + a verdict for one config, at matched t."""
     tb = [r["t_now"] * MYR2YR for r in before]
     ta = [r["t_now"] * MYR2YR for r in after]
@@ -145,7 +160,7 @@ def compare(config, before, after, bar):
                     f"{pct:+.3f}", f"{abs(pct) / 100:.2e}",
                     "PASS" if abs(pct) < bar else "FAIL"))
 
-    fb, fa = fate(before), fate(after)
+    fb, fa = fate(before, before_dir), fate(after, after_dir)
     same_fate = fb == fa
     out.append(("screen", config, "stopping_fate", fb, "before arm", fa,
                 "0.00e+00" if same_fate else "NA", "PASS" if same_fate else "FAIL"))
@@ -195,7 +210,10 @@ def main():
             failures.append(cfg)
             print(f"{cfg:<18}{'—':>13}{'—':>13}  run failed          FAIL  ({dead})")
             continue
-        rows, ok, worst, last, fb, fa = compare(cfg, rows_b, rows_a, a.bar)
+        rows, ok, worst, last, fb, fa = compare(
+            cfg, rows_b, rows_a, a.bar,
+            os.path.join(cwd_b, "outputs", "screen"),
+            os.path.join(cwd_a, "outputs", "screen"))
         ledger += rows
         if not ok:
             failures.append(cfg)

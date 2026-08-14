@@ -421,7 +421,63 @@ def get_effective_bubble_pressure(current_phase, Eb, R2, R1, gamma,
         return P_eff
     else:
         # Energy/implicit phases: thermal pressure from hot bubble.
-        # Include the early-phase R1 ramp-up if timing info provided
+        # Include the early-phase R1 ramp-up if timing info provided.
+        #
+        # LOAD-BEARING — do not delete as "inert" (magic-number audit #2), and
+        # do not "improve" it without reading why four replacements failed.
+        #
+        # WHAT IT DOES. For the first 1e-3 Myr after star formation, R1 is
+        # ramped linearly into bubble_E2P, enlarging the shocked-wind volume and
+        # so holding the early driving pressure down.
+        #
+        # WHY IT IS NEEDED — the handover is inconsistent, and provably so.
+        # solve_R1 puts R1 where the free wind's ram pressure balances the
+        # bubble pressure, i.e. Pb = Lmech/(2 pi v_wind R1**2). Substituting
+        # that into phase 1a's energy equation collapses the work term to
+        #
+        #     PdV / Lmech = 2 (v2/v_wind) / (R1/R2)**2
+        #
+        # in which Eb does not appear (verified to 1e-12 along a whole run:
+        # docs/dev/switchon-successor/data/s4_identity_check.csv). Since
+        # R1/R2 <= 1, PdV/Lmech >= 2 (v2/v_wind) for ANY seed energy — and
+        # phase 0 hands over v2 = v_wind by construction, because the
+        # free-expansion phase ends with the shell at the wind terminal speed.
+        # So the energy-driven phase starts doing work ~2.6x faster than the
+        # wind supplies it, on every config: the seed state is identical to six
+        # digits across four decades of density and mass (R1/R2 = 0.869167,
+        # PdV/Lmech = 2.647425; data/s4_seed_anatomy.csv). Unramped, Eb drains,
+        # which drives R1 -> R2, which raises Pb further; the runaway ends the
+        # bubble on 3 of 5 screen configs including the default published one
+        # (docs/dev/phase1a-stiffness/data/dt_switchon_removability.csv).
+        #
+        # WHY THIS SHAPE, GIVEN IT IS UNCALIBRATED. The 1e-3 Myr window is
+        # absolute, not scale-relative, and runs 500-87,000x longer than
+        # dt_phase0, the establishment time the code itself computes — that is
+        # a real wart. Four successors were pre-registered and measured
+        # (docs/dev/switchon-successor/PLAN.md), and all four failed:
+        #   - a physical clock (tmin = k*dt_phase0) flips fates on 3 of 5, and
+        #     not in order of window length, so no k rescues it (D2);
+        #   - a sustainability cap on Pb clears every fate but pins dEb/dt ~ 0,
+        #     so Eb plateaus and the solution lands ~2x further from the
+        #     Weaver Eq.20 reference than this ramp does (D3);
+        #   - reseeding E0 cannot work at all — see the identity above (D4);
+        #   - reseeding v0 rescues 2 of the 3 fates but still fails on
+        #     f1edge_hidens and is 3.6-6.0x worse on the physics bar, because
+        #     starting marginal only delays the runaway (D4).
+        # With the ramp, Eb/t tracks Weaver Eq.20 within ~12%; without it, it
+        # falls 154x below. The constant is kept because it measurably beats
+        # every derived alternative tried, not because nobody looked.
+        #
+        # COST. Bounded at |dR2| <= 0.006-0.017% beyond the early window on the
+        # two configs that survive ablation; on the three that do not, the ramp
+        # is the difference between a bubble and no bubble, so no cost figure
+        # is meaningful there.
+        #
+        # THE REAL FIX, not attempted here: a decelerating phase between free
+        # expansion and the energy-driven solution, so the handover does not
+        # happen while v2 is still v_wind. TRINITY has no such phase.
+        #
+        # Pinned by test/test_dt_switchon_ramp.py.
         dt_switchon = 1e-3
         tmin = dt_switchon
 

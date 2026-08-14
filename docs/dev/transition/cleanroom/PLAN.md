@@ -590,7 +590,7 @@ judged against (TRINITY/WARPFIELD/Weaver are the hypotheses, not these).
   conduction & cooling (arXiv:1902.09547).
 - **Geen, Pellegrini, Bieri & Klessen 2021**, MNRAS 501, 1352 — wind bubbles in
   photoionised HII regions; stored energy ~1% of input (arXiv:2009.08742).
-- **Pabst et al. 2020** — Orion [CII] M42/M43/NGC 1977, expanding wind shells
+- **Pabst et al. 2020** — Orion [CII] M42/the compact probe/NGC 1977, expanding wind shells
   (arXiv:2005.03917).
 - **Mac Low & McCray 1988; Koo & McKee 1992** — classic cooling/timescale criteria
   (cumulative `t_cool`, not the instantaneous form — see candidate caveats).

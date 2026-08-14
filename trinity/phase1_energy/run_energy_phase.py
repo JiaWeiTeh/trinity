@@ -43,6 +43,7 @@ from trinity.phase_general.phase_events import (
     build_energy_phase_events,
     check_event_termination,
     apply_event_result,
+    make_energy_collapse_event,
 )
 
 logger = logging.getLogger(__name__)
@@ -308,12 +309,21 @@ def run_energy(params):
         def ode_func(t, y):
             return energy_phase_ODEs.get_ODE_Edot_pure(t, y, snapshot, params)
 
+        # In-band energy-collapse guard, rebuilt per segment because its
+        # reference is this segment's starting Eb. The Eb<=0 check below runs
+        # only *between* segments and Eb never actually reaches 0 -- it pins at
+        # a small positive value on a stiff manifold the explicit solver cannot
+        # cross, so without this the run grinds instead of stopping.
+        # Inert on healthy runs (Eb grows every segment). See
+        # docs/dev/phase1a-stiffness/PLAN.md.
+        segment_events = ode_events + [make_energy_collapse_event(Eb)]
+
         solution = scipy.integrate.solve_ivp(
             ode_func,
             t_span=(t_now, t_segment_end),
             y0=y0,
             method='RK45',
-            events=ode_events,
+            events=segment_events,
             rtol=RTOL,
             atol=ATOL,
             dense_output=True
@@ -327,13 +337,13 @@ def run_energy(params):
                 t_span=(t_now, t_segment_end),
                 y0=y0,
                 method='RK23',
-                events=ode_events,
+                events=segment_events,
                 rtol=RTOL * 10,
                 atol=ATOL * 10
             )
 
         # Check if an event terminated the integration
-        event_result = check_event_termination(solution, ode_events)
+        event_result = check_event_termination(solution, segment_events)
         if event_result.triggered:
             logger.info(f"Event '{event_result.name}' triggered at t={event_result.t:.6e} Myr")
             apply_event_result(params, event_result, event_result.t, event_result.y,
