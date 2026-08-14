@@ -513,6 +513,7 @@ SPECS: tuple[ParamSpec, ...] = (
     ParamSpec(name='n_IF_ODE', default=0.0, info='Raw ODE-derived n_IF (same as n_IF, kept for diagnostics)', category='runtime_shell', unit='1/pc**3'),
     ParamSpec(name='R_IF', default=0.0, info='Radius of ionization front', category='runtime_radii', unit='pc'),
     ParamSpec(name='n_IF_Str', default=0.0, info='Stroemgren ionization balance density (Lancaster+2025), sole source of P_HII', category='runtime_shell', unit='1/pc**3'),
+    ParamSpec(name='n_IF_Str_raw', default=0.0, info='Pre-cap n_IF_Str (before the min against shell_n0). Diagnostic only, never used in dynamics: raw > n_IF_Str marks where the cap binds and P_HII degenerates to the confining pressure. See docs/dev/phii-identity/.', category='runtime_shell', unit='1/pc**3'),
     ParamSpec(name='P_HII', default=0.0, info='HII pressure from Stroemgren ionization balance in shell (n_IF_Str)', category='runtime_pressure', unit='Msun/Myr**2/pc'),
     ParamSpec(name='P_drive', default=0.0, info='Total driving pressure', category='runtime_pressure', unit='Msun/Myr**2/pc'),
     ParamSpec(name='P_ram', default=0.0, info='Ram pressure from freely-streaming wind', category='runtime_pressure', unit='Msun/Myr**2/pc'),

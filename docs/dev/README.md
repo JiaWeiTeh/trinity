@@ -74,6 +74,7 @@ docs/dev/
 ├── phase1a-init/          early-phase (1a) init at sub-GMC scale — compact probe (🔵 — FINDINGS.md)
 ├── phase1a-stiffness/     is 1a's RK45 segment integrator a latent defect? (✅ fix landed on branch — PLAN.md)
 ├── switchon-successor/    can dt_switchon's fixed 1e-3 Myr clock be made physical? (✅ measured: no — PLAN.md)
+├── phii-identity/         P_HII === the confining pressure while the Strömgren cap binds (🔵 — README.md evidence, PLAN.md fix)
 ├── screen/                multi-config scheme screen: 2 refs x N configs, matched-t ledger (🔵 — README.md)
 ├── cooling/               cooling-table refactor (🟡 partial)
 ├── performance/           hot-path cost & conditioning (📘 reference + 🟡 open items)
@@ -140,6 +141,13 @@ The top-level `scratch/` (repo root) is separate, git-ignored, local-only.
   constant), and now the **seed** as well: the handover work rate is algebraic in the *velocity*
   with the seed energy absent, and both measured velocity variants fail. **All four families are
   dead**, so the outcome is **S0** — keep the constant and write the evidence into the source.
+- **`phii-identity/`** — [`README.md`](phii-identity/README.md): consolidates five independent
+  sightings (across three unmerged branches) of `P_HII` equalling the local confining pressure to
+  4–10 digits, proves it is an exact algebraic identity of the `n_IF_Str ≤ shell_n0` cap, and maps
+  where it lands in each phase's `P_drive`. Read before trusting `F_HII`, `include_PHII`, or any
+  momentum-phase force budget. [`PLAN.md`](phii-identity/PLAN.md) (branch `bugfix/phii-pt1`) is
+  the pre-registered fix effort — candidates C0–C4, a 12-config regime matrix, batch gates, and
+  the single running ledger.
 - **`screen/`** — [`README.md`](screen/README.md): the multi-config scheme screen. Two git refs,
   N configs, both arms in separate processes, compared at matched `t`, ledger + pass/fail out.
   Run it before landing a scheme change; the suite's end-to-end tests all use one config.

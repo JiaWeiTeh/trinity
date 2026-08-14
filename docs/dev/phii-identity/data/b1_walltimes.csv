@@ -1,0 +1,15 @@
+# generated 2026-08-13T20:39:44Z | builder run_batch.py | code 70f8711+dirty
+# arm=b1 stop_t_override=1.5 (last writer)
+# run root: outputs/phii/b1__288f02f
+# Rows merged across concurrent streams; wall_s reflects a shared 4-core box.
+config,status,wall_s,n_snapshots
+B3ML,ok,688.8,301
+B3MW01,ok,839.9,222
+B3MW1,ok,676.7,231
+B3MW10,ok,467.7,247
+B3MW3,ok,427.2,238
+PRB,ok,699.7,184
+SC,ok,1396.5,192
+SW10,ok,1450.1,211
+SW3,ok,1478.8,201
+WW,ok,765.0,178

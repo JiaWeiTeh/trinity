@@ -308,6 +308,63 @@ def pRam(r, Lmech, v_mech):
     return Lmech / (2 * np.pi * r**2 * v_mech)
 
 
+def get_phii_c3c(params, shell_props):
+    """Photoionised pressure as a regime switch (the C3c scheme).
+
+    The ionised gas either is, or is not, confined by the surrounding pressure, and
+    those two cases are physically different:
+
+        P_C3a = (mu_c/mu_i) * k_B * T * sqrt(3 Qi_abs / (4 pi chi_e alpha_B R2**3))
+
+        P_C3a <= P_conf :  confinement holds it as a thin skin. The skin TRANSMITS the
+                           confining pressure and contributes nothing of its own, so
+                           this returns 0.0.
+        P_C3a >  P_conf :  confinement cannot hold it. It fills its own volume and
+                           drives at P_C3a.
+
+    Returning exactly 0.0 on the confined branch is load-bearing: it is what makes
+    every existing P_drive expression correct without editing any of them --
+
+        energy/implicit   max(Pb_eff, 0)       = Pb_eff
+        transition        max(Pb, 0 + P_ram)   = max(Pb, P_ram)
+        momentum          0 + P_ram            = P_ram alone
+
+    -- so a change that returns a small non-zero value there silently alters all four
+    phases. test/test_phii_c3c.py pins this.
+
+    This replaces computing P_HII from the CAPPED Stromgren density, which made it an
+    exact algebraic relabelling of the confining pressure (the cap's shell_n0 is
+    Pb/(k_B T) * mu), carrying no information about Qi or the ionised volume.
+
+    P_conf is read as params['Pb'], which IS the wind ram pressure in the momentum
+    phase (run_momentum_phase.py assigns it so) and the bubble pressure elsewhere.
+    Note this is the un-ramped Pb; in the energy phase P_C3a/Pb is far below 1 by
+    either measure, so the branch outcome is insensitive to that choice.
+
+    KNOWN OPEN BEHAVIOUR: the momentum phase comes out photoionisation-dominated in
+    every configuration measured so far. P_C3a/P_ram falls only as Lw**-0.33 with wind
+    strength, so an inversion would need an unphysical Lw ~ 260. This is NOT an O(1)
+    normalisation error -- the same normalisation predicts the transition-phase
+    crossover to within 7% -- it is the R2**-1.5 cavity geometry. See
+    docs/dev/phii-identity/PLAN.md 3c stage 3.
+    """
+    R2 = params['R2'].value
+    Qi = params['Qi'].value
+    if not (R2 > 0 and Qi > 0):
+        return 0.0
+    f_abs = getattr(shell_props, 'shell_fAbsorbedIon', 1.0)
+    if not (isinstance(f_abs, float) and 0.0 <= f_abs <= 1.0):
+        f_abs = 1.0
+    Qi_abs = Qi * f_abs
+    denom = 4.0 * np.pi * params['chi_e_shell'].value * params['caseB_alpha'].value * R2**3
+    if not (denom > 0.0 and Qi_abs > 0.0):
+        return 0.0
+    n_c3a = np.sqrt(3.0 * Qi_abs / denom)
+    P_c3a = ((params['mu_convert'].value / params['mu_ion_shell'].value)
+             * n_c3a * params['k_B'].value * params['TShell_ion'].value)
+    return float(P_c3a) if P_c3a > params['Pb'].value else 0.0
+
+
 def get_effective_bubble_pressure(current_phase, Eb, R2, R1, gamma,
                                    Lmech_total=None, v_mech_total=None,
                                    t=None, tSF=None):

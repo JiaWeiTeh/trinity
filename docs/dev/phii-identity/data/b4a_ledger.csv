@@ -1,0 +1,9 @@
+# generated 2026-08-12T22:36:31Z | builder compare_trajectories.py | code 153fa03+dirty
+# arm=b4a  base=outputs/phii/b0__6b55657_dirty  new=/tmp/claude-0/-home-user-trinity/0c647590-3faa-5b94-920f-15d7edb91cda/scratchpad/wt-b4a/outputs/phii/b4a__088a8d6_dirty
+# Matched-t comparison on the overlap window; bar |dR2| > 5.0%.
+# Fate changes are enumerated, never silently passed (PLAN D3).
+config,verdict,dR2_max_pct,dR2_end_pct,t_at_max,t_overlap_lo,t_overlap_hi,n_base,n_new,R2_end_base,R2_end_new,fate_base,fate_new,note
+B3M,OVER-BAR,27.376,13.572,9.02002e-06,8.32603e-07,1.5,230,229,19.2942,21.9128,stopping_time,stopping_time,
+F1HI,OVER-BAR,15.257,6.238,3.16186e-06,1.95617e-07,0.0445907,143,139,0.566971,0.60234,shell_collapsed,shell_collapsed,
+F1LO,OVER-BAR,25.875,14.351,0.00148747,0.000138322,1.5,133,129,189.326,216.497,stopping_time,stopping_time,
+PRB,OVER-BAR,28.418,0.948,1.26995e-07,1.1487e-08,0.1,184,184,0.462032,0.46641,stopping_time,stopping_time,
