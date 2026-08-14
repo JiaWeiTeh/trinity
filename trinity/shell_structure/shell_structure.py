@@ -75,6 +75,7 @@ class ShellProperties:
     n_IF_ODE: float  # Same as n_IF (raw ODE value, kept for diagnostics)
     R_IF: float  # Radius of ionization front (pc)
     n_IF_Str: float  # Strömgren ionization balance density (Lancaster+2025), sole source of P_HII
+    n_IF_Str_raw: float  # Pre-cap n_IF_Str (diagnostic only; see docs/dev/phii-identity/)
 
     # Shell density profile arrays (ionized + neutral)
     shell_r_arr: Union[np.ndarray, float]  # Radial grid through shell [pc]
@@ -247,10 +248,12 @@ def shell_structure_pure(params) -> ShellProperties:
             3.0 * _Qi_absorbed /
             (4.0 * np.pi * params['chi_e_shell'].value * params['caseB_alpha'].value * _vol_ion)
         )
+        n_IF_Str_raw = n_IF_Str  # Preserve pre-cap value for diagnostics
         # Cap: thin ionised skin → P_HII cannot exceed P_b
         n_IF_Str = min(n_IF_Str, shell_n0)
     else:
         n_IF_Str = 0.0
+        n_IF_Str_raw = 0.0
 
     # =============================================================================
     # Continue computation if shell hasn't dissolved
@@ -432,6 +435,7 @@ def shell_structure_pure(params) -> ShellProperties:
         n_IF_ODE = 0.0
         R_IF = 0.0
         n_IF_Str = 0.0
+        n_IF_Str_raw = 0.0
         shell_r_arr = np.array([])
         shell_n_arr = np.array([])
         shell_ion_idx = -1
@@ -466,6 +470,7 @@ def shell_structure_pure(params) -> ShellProperties:
         n_IF_ODE=n_IF_ODE,
         R_IF=R_IF,
         n_IF_Str=n_IF_Str,
+        n_IF_Str_raw=n_IF_Str_raw,
         shell_r_arr=shell_r_arr,
         shell_n_arr=shell_n_arr,
         shell_ion_idx=shell_ion_idx,

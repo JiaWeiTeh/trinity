@@ -1,0 +1,16 @@
+# generated 2026-08-13T20:47:39Z | builder lag_vs_handover.py | code 70f8711+dirty
+# t_cross vs the energy->transition handover (PLAN.md §3c stage 3).
+# lag = t_cross - t_entry is the part NOT explained by the handover moving.
+# VOID = the run never reaches transition, so it cannot cross at any wind
+# strength; that is not evidence about winds.
+# ratio_at_cross > 1 is snapshot granularity: a lag under ~2% of t_entry is
+# at the resolution limit and is NOT a resolved ordering.
+run,status,t_entry,t_cross,lag,lag_over_t_entry,pct_of_transition_duration,ratio_at_entry,ratio_at_cross
+B3MW01,ok,0.663165,0.672843,+0.00967777,+0.0146,7.4,0.7144,1.2570
+B3MW1,ok,0.272768,0.301207,+0.0284385,+0.1043,21.5,0.1227,1.2812
+B3MW3,ok,0.177987,0.212291,+0.0343039,+0.1927,26.6,0.0553,1.0682
+B3MW10,ok,0.116171,0.15935,+0.0431787,+0.3717,32.9,0.0235,1.2250
+SC,VOID (never enters transition),,,,,,,
+SW3,VOID (never enters transition),,,,,,,
+SW10,VOID (never enters transition),,,,,,,
+WW,ok,0.160264,0.163115,+0.00285058,+0.0178,14.6,0.4945,1.4678

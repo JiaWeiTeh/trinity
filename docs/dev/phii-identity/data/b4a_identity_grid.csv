@@ -1,0 +1,16 @@
+# generated 2026-08-12T22:36:41Z | builder harvest_identity.py | code 153fa03+dirty
+# Per-(run,phase) P_HII identity metrics. See docs/dev/phii-identity/PLAN.md.
+# frac_PHII_eq_Pb: fraction of rows with |P_HII-Pb|/Pb <= 5e-16.
+# frac_cap_binding/blowup_*: need n_IF_Str_raw (Batch 1); 'NA' before it lands.
+run,phase,n_rows,t_first,t_last,Pb_max_over_min,relmax_PHII_vs_Pb,frac_PHII_eq_Pb,relmax_PHII_vs_Pram,frac_nIFStr_eq_n0,frac_cap_binding,blowup_max,blowup_p99,Pdrive_over_Fram_max,Pdrive_over_Fram_med,fate,wall_s
+B3M,energy,87,8.32603e-07,0.003,2000.23,2.39,0.0000,NA,0.0000,1.0000,3.39,3.39,11.91,3.1,stopping_time,"ok,625.0,229"
+B3M,implicit,67,0.0035,0.265216,34.8912,0.267,0.0000,NA,0.0000,1.0000,1.267,1.267,1.267,1.135,stopping_time,"ok,625.0,229"
+B3M,transition,42,0.267216,0.401755,62.1001,1.7,0.0000,40,0.0000,1.0000,2.701,2.701,3.69,3.402,stopping_time,"ok,625.0,229"
+B3M,momentum,33,0.403755,1.5,8.15461,1.68,0.0000,1.68,0.0000,1.0000,2.678,2.678,3.678,3.391,stopping_time,"ok,625.0,229"
+F1HI,energy,102,1.95617e-07,0.0029653,5172.59,2.29,0.0000,NA,0.0000,1.0000,3.294,3.218,11.11,2.245,shell_collapsed,"ok,491.5,139"
+F1HI,implicit,33,0.0034653,0.0387378,4.95486,0.146,0.0000,NA,0.0000,1.0000,1.146,1.146,1.146,1.134,shell_collapsed,"ok,491.5,139"
+F1HI,transition,4,0.0407378,0.0445907,2.95425,2.55,0.0000,4.87,0.0000,1.0000,3.551,3.551,4.538,4.436,shell_collapsed,"ok,491.5,139"
+F1LO,energy,33,0.000138322,0.00292051,56.4877,2.44,0.0000,NA,0.0000,1.0000,3.442,3.442,12.13,7.122,stopping_time,"ok,762.0,129"
+F1LO,implicit,96,0.00342051,1.5,446.355,1.95,0.0000,NA,0.0000,1.0000,2.945,2.945,2.945,1.529,stopping_time,"ok,762.0,129"
+PRB,energy,132,1.1487e-08,0.003,58120.6,2.36,0.0000,NA,0.0000,1.0000,3.364,3.364,11.73,1.949,stopping_time,"ok,764.2,184"
+PRB,implicit,52,0.0035,0.1,22.1266,0.0599,0.0000,NA,0.0000,1.0000,1.06,1.06,1.06,1.041,stopping_time,"ok,764.2,184"
