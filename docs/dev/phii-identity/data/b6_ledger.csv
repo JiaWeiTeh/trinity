@@ -1,26 +1,37 @@
-# generated 2026-08-14T12:02:11Z | builder compare_trajectories.py | code 2199699+dirty
-# PARTIAL: F1HI, GMC and SDHS had NOT finished when this was written -- their
-#   'FATE-CHANGE -> NA' rows mean 'no terminal fate yet', NOT a real fate change.
-#   Re-run compare_trajectories.py once all 13 C3c runs are complete.
+# generated 2026-08-14T12:18:12Z | builder compare_trajectories.py | code 701e386+dirty
+# COMPLETE: all 13 configs, both arms, terminal fates on every run.
+# NO FATE CHANGED on any config. But read dR2_max WITH the phase-structure column:
+#
+# SDHS: PHASE STRUCTURE CHANGED. Stock goes energy->implicit->transition->momentum
+#   (transition at t=0.147, momentum at t=0.791); C3c stays energy-driven in the
+#   IMPLICIT phase for the whole run to t=1.5 and never hands over. Its 59.2% dR2_max
+#   is that difference (at t=0.221 stock R2=18.7 vs C3c R2=7.6), not a transient.
+#   dR2_end is only 0.71% because the two reconverge by t=1.5. The fate label is the
+#   same ('stopping_time'), so a fate-only check does NOT catch this -- the comparator
+#   should learn to diff the phase sequence. Mechanism is the intended one: stock's
+#   un-ramped P_HII over-drove the shell into an early handover; C3c's correct (lower)
+#   drive keeps the bubble energy-driven. Needs a maintainer read under D3.
+#
 # PRB's 5661% is a COMPARATOR ARTIFACT, not a divergence: both arms collapse to the
 #   same 0.01 pc floor; C3c DELAYS collapse (t 0.7232 -> 1.1254, +56%). Once one arm
 #   is pinned at the floor the relative difference against 0.01 pc explodes.
-# PRB stock here is shell_collapsed/235 rows, vs stopping_time/184 in batches 0/1/5,
+# PRB stock is shell_collapsed/235 rows here vs stopping_time/184 in batches 0/1/5,
 #   because batch 6 applies --stop-t 1.5 uniformly. Not comparable across batches.
-# arm=b6  base=outputs/phii/b6stock__fca7d88  new=outputs/phii/b6c3c
-# Matched-t comparison on the overlap window; bar |dR2| > 5.0%.
-# Fate changes are enumerated, never silently passed (PLAN D3).
+#
+# Both arms ran on bugfix/phii-pt1 code (fca7d88 stock, 2199699 C3c). Clean
+# stock-vs-C3c at a fixed base, but NOT a statement about main, which also carries
+# the energy-collapse event, the betadelta tolerances and the exact sps spline.
 config,verdict,dR2_max_pct,dR2_end_pct,t_at_max,t_overlap_lo,t_overlap_hi,n_base,n_new,R2_end_base,R2_end_new,fate_base,fate_new,note
 B1M,OVER-BAR,12.925,5.607,4.52232e-05,6.66275e-06,1.5,195,195,40.4504,42.7185,stopping_time,stopping_time,
 B2M,OVER-BAR,12.767,11.611,1.58906e-05,2.35496e-06,1.5,225,224,29.601,33.0381,stopping_time,stopping_time,
 B3M,OVER-BAR,20.517,20.517,1.5,8.32603e-07,1.5,230,230,19.2942,23.2527,stopping_time,stopping_time,
 BE,OVER-BAR,11.440,3.307,9.39317e-06,1.38322e-06,1.5,176,176,29.2449,28.2777,stopping_time,stopping_time,
-F1HI,FATE-CHANGE,7.600,2.802,1.19895e-06,1.95617e-07,0.000140444,143,70,0.0346798,0.0337081,shell_collapsed,NA,fate differs
+F1HI,OVER-BAR,7.600,2.704,1.22444e-06,1.95617e-07,0.0387547,143,135,0.555995,0.54096,shell_collapsed,shell_collapsed,
 F1LO,OVER-BAR,10.981,2.011,0.000774953,0.000138322,1.5,133,134,189.326,185.519,stopping_time,stopping_time,
-GMC,FATE-CHANGE,12.718,0.653,1.30485e-05,1.95617e-06,0.0252277,179,110,1.89867,1.88627,stopping_time,NA,fate differs
+GMC,OVER-BAR,12.719,0.531,1.31017e-05,1.95617e-06,1.5,179,179,18.9027,18.8022,stopping_time,stopping_time,
 LDLS,OVER-BAR,12.716,0.481,0.00013301,1.95617e-05,1.5,156,156,53.7254,53.4668,stopping_time,stopping_time,
 PL2,OVER-BAR,9.004,5.136,3.49533e-06,6.18596e-07,1.5,173,174,49.4937,46.9515,stopping_time,stopping_time,
 PRB,OVER-BAR,5661.360,5661.360,0.723241,1.1487e-08,0.723241,235,234,0.01,0.576136,shell_collapsed,shell_collapsed,
 SC,OVER-BAR,10.150,3.760,2.21901e-06,3.38819e-07,1.5,192,192,91.3231,87.8889,stopping_time,stopping_time,
-SDHS,FATE-CHANGE,9.550,1.542,2.89419e-07,4.37414e-08,0.0307552,279,150,0.373742,0.367979,stopping_time,NA,fate differs
+SDHS,OVER-BAR,59.206,0.713,0.221382,4.37414e-08,1.5,279,213,71.3412,70.8329,stopping_time,stopping_time,
 WW,OVER-BAR,17.053,17.053,0.235836,1.90532e-06,0.235836,178,164,1.2016,0.996688,shell_collapsed,shell_collapsed,
