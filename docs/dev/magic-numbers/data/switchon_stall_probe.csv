@@ -1,0 +1,9 @@
+# R3 stall probe: f1edge_hidens (nCore=1e6) with the dt_switchon R1 ramp ABLATED, on HEAD 731ac50.
+# One row per bubble_luminosity.get_bubbleproperties_pure call (wall time + entry state). All calls are FAST;
+# the run then grinds >40 min inside segment 5's scipy.integrate.solve_ivp (RK45) at run_energy_phase.py:309
+# — see switchon_stall_stacks.txt. Command: timeout 1200 python docs/dev/magic-numbers/harness/switchon_probe_runner.py <hidens param stop_t=0.02>. 2026-08-06
+call,t_now_Myr,R2_pc,Eb_au,Pb_au,wall_s,outcome
+1,1.9561736288333052e-07,0.0007314603970843167,180.33898437948136,213576570088.3554,1.33,ok
+2,2.1517909917166357e-07,0.0008035197803925233,121.37295718251076,213576570088.3554,1.22,ok
+3,2.3669700908882993e-07,0.0008789223194401049,70.91683456463252,159610051446.58517,1.28,ok
+4,2.6036670999771293e-07,0.0009560267784976583,29.24170952381248,123096140736.97961,1.21,ok

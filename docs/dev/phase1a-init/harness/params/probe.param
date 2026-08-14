@@ -1,4 +1,4 @@
-# Single TRINITY run at M43 scale.
+# Single TRINITY run at sub-GMC scale.
 mCloud                  300         # Msun
 sfe                     0.01        # -> Mstar = 3.0 Msun (Q-matched to N_LyC = 1.6e47)
 nCore                   8.7e3       # cm^-3

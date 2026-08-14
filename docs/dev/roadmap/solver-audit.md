@@ -32,7 +32,7 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-07-06):** 🔵 actionable — F1 fixed same session; F2–F8 open, each with a gate.
+**Status (2026-08-06):** 🔵 actionable — **F1 fixed** (2026-07-06, same session), **F4 closed** (2026-08-06: per-phase regression fixtures landed as `test/test_phase_runner_fixtures.py`, lane-B item B2), **F8 resolved** (2026-08-06: tolerances measured and justified at the constants; one sub-question left open and named in the finding). **F2, F3, F5, F6, F7 still open, each with a gate.**
 
 ## Scope & method
 
@@ -117,7 +117,16 @@ against the gate; **[J]** judgment — needs a strong model or the maintainer).
   gate on the f1edge pair + `simple_cluster` (hot-loop change → CLAUDE.md rule 5 depth:
   separate processes, matched t; expected bit-identical since healthy paths never raise).
 
-## F4 — MEDIUM-HIGH: three of four phase runners have no direct tests
+## F4 — ✅ CLOSED (2026-08-06): three of four phase runners had no direct tests
+
+**Closed by `test/test_phase_runner_fixtures.py`** (lane-B item B2). One ~2-minute default-suite
+run now walks energy → implicit → transition → momentum, pinning phase-entry snapshots, snapshot
+count, termination outcome and two finals — the first test in the repo to execute
+`run_phase_transition` or `run_phase_momentum` at all. Verified byte-identical across separate
+processes before its goldens were written, and verified failing-first. **One scope fact this
+finding did not anticipate:** phases 1c/2 are unreachable from TRINITY's defaults, so the fixture
+deliberately uses a committed `rosette-cf` arm and is labelled in-module as a code-path gate
+rather than a physical configuration (see B2's roadmap row). The original finding follows.
 
 - **Facts:** `run_phase_energy()` (~830 lines, `run_energy_implicit_phase.py:631`),
   `run_phase_transition()` (~520 lines, `run_transition_phase.py:367`),
@@ -131,9 +140,9 @@ against the gate; **[J]** judgment — needs a strong model or the maintainer).
   per phase — a committed `.param` that *provably reaches* 1c and 2 quickly (start from
   `transition/cleanroom/configs/` + `docs/dev/performance/f1edge_*.param`; verify phase entry
   in the output before committing), asserting termination outcome + snapshot count + a few
-  key finals against committed reference values. This is PLAN item **B3** and deliberately
-  sits *before* every other solver-touching item in the queue: it is the gate the rest of the
-  queue executes against.
+  key finals against committed reference values. This is PLAN item **B2** (this line said B3 until
+  2026-08-06; B3 is the P_ext silent-zero fix) and deliberately sits *before* every other
+  solver-touching item in the queue: it is the gate the rest of the queue executes against.
 
 ## F5 — MEDIUM: phase-runner duplication — one trio verbatim, one trio silently diverged
 
@@ -183,13 +192,42 @@ against the gate; **[J]** judgment — needs a strong model or the maintainer).
 - Production runs record **no provenance** (no commit hash, param hash, or command line in
   `metadata.json`; `run_stamped.py` is opt-in research tooling). `REORG.md` R4. [M]
 
-## F8 — LOW: magic-number registry for the solver core
+## F8 — ✅ RESOLVED (2026-08-06): tolerances measured and justified in source
 
-`run_energy_implicit_phase.py:109-181` and `get_betadelta.py:47-74` carry ~20 named constants
-(good: named, commented) — but `magic-numbers/AUDIT.md` items #2–#5 remain open and several
-tolerances (`RESIDUAL_THRESHOLD=1e-4`, `LBFGSB_FALLBACK_THRESHOLD=5.0`, hybr `eps=3e-4`) have
-no recorded justification. Not urgent; folded into PLAN lane C (C2). [J for the justification,
-M for the bookkeeping]
+**As written this finding had drifted**, and re-verification changed its scope. The file is now
+`phase1b_energy_implicit/get_betadelta.py` (not `bubble_structure/`), `magic-numbers/AUDIT.md`
+#2–#5 are all closed, and **two of the three named tolerances already carried rationale in
+place**: `LBFGSB_FALLBACK_THRESHOLD = 5.0` explains its ~50-evaluation saving, and the hybr
+`eps = 3e-4` cites the Phase-2.1 transect measurement. What was genuinely bare was
+`RESIDUAL_THRESHOLD`, plus `MAX_ITERATIONS`/`GRID_SIZE`/`GRID_EPSILON`, which F8 never listed.
+
+**`RESIDUAL_THRESHOLD = 1e-4` is a 1% closure criterion, not an inherited constant.** Both
+residuals from `get_residual_pure` are *relative* — `(Edot_from_beta − Edot_from_balance)/
+Edot_from_beta` and `(T_bubble − T0)/T0` — and acceptance is `Edot_res² + T_res² < 1e-4`, i.e.
+the square of 1e-2: accept once the 2-norm of the relative-residual vector is under 1%.
+
+**Measured, and it needed no new simulations** — `betadelta_total_residual` is already written
+to every phase-1b snapshot, which this audit did not notice. Across five screen configs and
+**139 phase-1b solves: all converged, and every config's worst accepted residual sits at
+0.82–0.95 of the bar**, because the search stops the moment it clears (runs sit at 0.91–0.97%
+closure error against a 1% bar). So the threshold **binds**. But it sits on a **plateau, not a
+cliff**: tightening it 100× leaves the fate and snapshot count identical and moves `R2` by at
+most **0.0129%**, while the solver's median residual falls 1.77e-05 → 2.17e-14. The current
+value is an economy choice that costs nothing measurable, and **the risk direction is loosening,
+not tightening**.
+
+**Scope correction the finding lacked:** `RESIDUAL_THRESHOLD` is live on *both* solver paths,
+but `GRID_SIZE`/`GRID_EPSILON` (only `_solve_grid`) and `MAX_ITERATIONS` (only `_solve_lbfgsb`)
+are reached under the default `hybr` **solely through the legacy rescue ladder** — much lower
+stakes than the wording implied.
+
+**Left open, deliberately not invented:** whether `MAX_ITERATIONS = 15` is *adequate*.
+`betadelta_iterations` is never written to the snapshot, so iteration counts cannot be recovered
+from committed runs; all 139 solves converging shows only that the cap is not *binding*. Closing
+that would mean recording the field first — a small observability gap, not a correctness one.
+
+Evidence: `docs/dev/roadmap/data/f8_residual_tolerance.csv`; harness
+`docs/dev/roadmap/harness/f8_residual_tolerance.py`; rationale written at the constants.
 
 ---
 

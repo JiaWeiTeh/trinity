@@ -308,6 +308,63 @@ def pRam(r, Lmech, v_mech):
     return Lmech / (2 * np.pi * r**2 * v_mech)
 
 
+def get_phii_c3c(params, shell_props):
+    """Photoionised pressure as a regime switch (the C3c scheme).
+
+    The ionised gas either is, or is not, confined by the surrounding pressure, and
+    those two cases are physically different:
+
+        P_C3a = (mu_c/mu_i) * k_B * T * sqrt(3 Qi_abs / (4 pi chi_e alpha_B R2**3))
+
+        P_C3a <= P_conf :  confinement holds it as a thin skin. The skin TRANSMITS the
+                           confining pressure and contributes nothing of its own, so
+                           this returns 0.0.
+        P_C3a >  P_conf :  confinement cannot hold it. It fills its own volume and
+                           drives at P_C3a.
+
+    Returning exactly 0.0 on the confined branch is load-bearing: it is what makes
+    every existing P_drive expression correct without editing any of them --
+
+        energy/implicit   max(Pb_eff, 0)       = Pb_eff
+        transition        max(Pb, 0 + P_ram)   = max(Pb, P_ram)
+        momentum          0 + P_ram            = P_ram alone
+
+    -- so a change that returns a small non-zero value there silently alters all four
+    phases. test/test_phii_c3c.py pins this.
+
+    This replaces computing P_HII from the CAPPED Stromgren density, which made it an
+    exact algebraic relabelling of the confining pressure (the cap's shell_n0 is
+    Pb/(k_B T) * mu), carrying no information about Qi or the ionised volume.
+
+    P_conf is read as params['Pb'], which IS the wind ram pressure in the momentum
+    phase (run_momentum_phase.py assigns it so) and the bubble pressure elsewhere.
+    Note this is the un-ramped Pb; in the energy phase P_C3a/Pb is far below 1 by
+    either measure, so the branch outcome is insensitive to that choice.
+
+    KNOWN OPEN BEHAVIOUR: the momentum phase comes out photoionisation-dominated in
+    every configuration measured so far. P_C3a/P_ram falls only as Lw**-0.33 with wind
+    strength, so an inversion would need an unphysical Lw ~ 260. This is NOT an O(1)
+    normalisation error -- the same normalisation predicts the transition-phase
+    crossover to within 7% -- it is the R2**-1.5 cavity geometry. See
+    docs/dev/phii-identity/PLAN.md 3c stage 3.
+    """
+    R2 = params['R2'].value
+    Qi = params['Qi'].value
+    if not (R2 > 0 and Qi > 0):
+        return 0.0
+    f_abs = getattr(shell_props, 'shell_fAbsorbedIon', 1.0)
+    if not (isinstance(f_abs, float) and 0.0 <= f_abs <= 1.0):
+        f_abs = 1.0
+    Qi_abs = Qi * f_abs
+    denom = 4.0 * np.pi * params['chi_e_shell'].value * params['caseB_alpha'].value * R2**3
+    if not (denom > 0.0 and Qi_abs > 0.0):
+        return 0.0
+    n_c3a = np.sqrt(3.0 * Qi_abs / denom)
+    P_c3a = ((params['mu_convert'].value / params['mu_ion_shell'].value)
+             * n_c3a * params['k_B'].value * params['TShell_ion'].value)
+    return float(P_c3a) if P_c3a > params['Pb'].value else 0.0
+
+
 def get_effective_bubble_pressure(current_phase, Eb, R2, R1, gamma,
                                    Lmech_total=None, v_mech_total=None,
                                    t=None, tSF=None):
@@ -364,7 +421,63 @@ def get_effective_bubble_pressure(current_phase, Eb, R2, R1, gamma,
         return P_eff
     else:
         # Energy/implicit phases: thermal pressure from hot bubble.
-        # Include the early-phase R1 ramp-up if timing info provided
+        # Include the early-phase R1 ramp-up if timing info provided.
+        #
+        # LOAD-BEARING — do not delete as "inert" (magic-number audit #2), and
+        # do not "improve" it without reading why four replacements failed.
+        #
+        # WHAT IT DOES. For the first 1e-3 Myr after star formation, R1 is
+        # ramped linearly into bubble_E2P, enlarging the shocked-wind volume and
+        # so holding the early driving pressure down.
+        #
+        # WHY IT IS NEEDED — the handover is inconsistent, and provably so.
+        # solve_R1 puts R1 where the free wind's ram pressure balances the
+        # bubble pressure, i.e. Pb = Lmech/(2 pi v_wind R1**2). Substituting
+        # that into phase 1a's energy equation collapses the work term to
+        #
+        #     PdV / Lmech = 2 (v2/v_wind) / (R1/R2)**2
+        #
+        # in which Eb does not appear (verified to 1e-12 along a whole run:
+        # docs/dev/switchon-successor/data/s4_identity_check.csv). Since
+        # R1/R2 <= 1, PdV/Lmech >= 2 (v2/v_wind) for ANY seed energy — and
+        # phase 0 hands over v2 = v_wind by construction, because the
+        # free-expansion phase ends with the shell at the wind terminal speed.
+        # So the energy-driven phase starts doing work ~2.6x faster than the
+        # wind supplies it, on every config: the seed state is identical to six
+        # digits across four decades of density and mass (R1/R2 = 0.869167,
+        # PdV/Lmech = 2.647425; data/s4_seed_anatomy.csv). Unramped, Eb drains,
+        # which drives R1 -> R2, which raises Pb further; the runaway ends the
+        # bubble on 3 of 5 screen configs including the default published one
+        # (docs/dev/phase1a-stiffness/data/dt_switchon_removability.csv).
+        #
+        # WHY THIS SHAPE, GIVEN IT IS UNCALIBRATED. The 1e-3 Myr window is
+        # absolute, not scale-relative, and runs 500-87,000x longer than
+        # dt_phase0, the establishment time the code itself computes — that is
+        # a real wart. Four successors were pre-registered and measured
+        # (docs/dev/switchon-successor/PLAN.md), and all four failed:
+        #   - a physical clock (tmin = k*dt_phase0) flips fates on 3 of 5, and
+        #     not in order of window length, so no k rescues it (D2);
+        #   - a sustainability cap on Pb clears every fate but pins dEb/dt ~ 0,
+        #     so Eb plateaus and the solution lands ~2x further from the
+        #     Weaver Eq.20 reference than this ramp does (D3);
+        #   - reseeding E0 cannot work at all — see the identity above (D4);
+        #   - reseeding v0 rescues 2 of the 3 fates but still fails on
+        #     f1edge_hidens and is 3.6-6.0x worse on the physics bar, because
+        #     starting marginal only delays the runaway (D4).
+        # With the ramp, Eb/t tracks Weaver Eq.20 within ~12%; without it, it
+        # falls 154x below. The constant is kept because it measurably beats
+        # every derived alternative tried, not because nobody looked.
+        #
+        # COST. Bounded at |dR2| <= 0.006-0.017% beyond the early window on the
+        # two configs that survive ablation; on the three that do not, the ramp
+        # is the difference between a bubble and no bubble, so no cost figure
+        # is meaningful there.
+        #
+        # THE REAL FIX, not attempted here: a decelerating phase between free
+        # expansion and the energy-driven solution, so the handover does not
+        # happen while v2 is still v_wind. TRINITY has no such phase.
+        #
+        # Pinned by test/test_dt_switchon_ramp.py.
         dt_switchon = 1e-3
         tmin = dt_switchon
 

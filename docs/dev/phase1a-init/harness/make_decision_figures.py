@@ -95,7 +95,7 @@ def fig_fingerprint():
     fig, ax = plt.subplots(figsize=(7.4, 3.5))
     ax.axhline(722.82, color=STOCK, lw=1, ls="--", alpha=0.7)
     ax.plot(masses, vexit, "o-", color=STOCK, lw=1.6, ms=6, label="stock: segment-1 exit velocity")
-    ax.plot([300], [probe], "D", color=STOCK, ms=7, label="stock: M43 probe (mCloud=300)")
+    ax.plot([300], [probe], "D", color=STOCK, ms=7, label="stock: compact probe (mCloud=300)")
     ax.plot([300], [ablated], "s", color=MUTED, ms=6,
             label="override deleted, stock segments (2429 km/s)")
     ax.set_xscale("log")
@@ -112,7 +112,7 @@ def fig_fingerprint():
     save(fig, "decision_fingerprint.png")
 
 
-# ------------------------------------------------------------------ M43 truth
+# ------------------------------------------------------------------ compact-probe truth
 def fig_m43():
     ts, rs = series("m43_probe")
     tf, rf = series("g2_m43_prod")
@@ -122,7 +122,7 @@ def fig_m43():
     # observation box
     ax.add_patch(plt.Rectangle((17000, 0.142), 4000, 0.164 - 0.142,
                                facecolor=OBS, alpha=0.25, edgecolor=OBS, lw=1.2, zorder=5))
-    ax.annotate("M43 observed\n0.153 pc at 1.7–2.1e4 yr", xy=(19000, 0.145),
+    ax.annotate("compact-probe observed\n0.153 pc at 1.7–2.1e4 yr", xy=(19000, 0.145),
                 xytext=(2.2e4, 0.021), color=OBS, fontsize=8.5, ha="center",
                 arrowprops=dict(arrowstyle="->", color=OBS, lw=0.9))
     ax.axhline(0.153, color=OBS, lw=0.8, ls=":", alpha=0.8)
@@ -136,7 +136,7 @@ def fig_m43():
     ax.set_xlabel("time since star formation  [yr]")
     ax.set_ylabel("shell radius  $R_2$  [pc]")
     ax.legend(loc="upper left", fontsize=8)
-    ax.set_title("M43: the fix moves the model onto the observation", loc="left",
+    ax.set_title("the compact probe: the fix moves the model onto the observation", loc="left",
                  fontsize=10.5, color=INK, pad=8)
     save(fig, "decision_m43.png")
 
@@ -226,7 +226,7 @@ def fig_eps():
 def fig_e8b():
     fig, ax = plt.subplots(figsize=(7.4, 3.6))
     for act, abl, col, lab in (("g2_gmc_prod", "e8b_gmc_noramp", STOCK, "GMC control"),
-                               ("g2_m43_prod", "e8b_m43_noramp", FIXED, "M43 probe")):
+                               ("g2_m43_prod", "e8b_m43_noramp", FIXED, "compact probe")):
         ta, ra = series(act)
         tb, rb = series(abl)
         grid = [t for t in (10, 20, 30, 50, 70, 100, 200, 300, 1e3, 3e3, 1e4, 2.1e4, 3e4, 8e4)

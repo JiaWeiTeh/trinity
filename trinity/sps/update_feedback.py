@@ -59,7 +59,7 @@ class SPSFeedback:
     pdot_total : float
         Total momentum rate [M_sun·pc/Myr²]
     pdotdot_total : float
-        Time derivative of total momentum rate
+        Time derivative of total momentum rate [Msun*pc/Myr**3]
     v_mech_total : float
         Effective total mechanical velocity [pc/Myr]
     """
@@ -132,7 +132,7 @@ def get_current_sps_feedback(t, params) -> SPSFeedback:
         - pdot_W : float, wind momentum rate [M_sun·pc/Myr²]
         - pdot_SN : float, SN momentum rate [M_sun·pc/Myr²]
         - pdot_total : float, total momentum rate [M_sun·pc/Myr²]
-        - pdotdot_total : float, time derivative of pdot_total
+        - pdotdot_total : float, time derivative of pdot_total [Msun*pc/Myr**3]
         - v_mech_total : float, effective total mechanical velocity [pc/Myr]
 
     Notes
@@ -180,9 +180,11 @@ def get_current_sps_feedback(t, params) -> SPSFeedback:
     # Effective mechanical velocity: v = 2L/pdot gives P_ram = pdot_total/(4*pi*r^2)
     v_mech_total = (2. * Lmech_total / pdot_total)[()]
 
-    # Numerical derivative of total momentum rate for time evolution
-    dt = 1e-9  # Myr (small timestep for derivative)
-    pdotdot_total = (sps_f['fpdot_total'](t + dt)[()] - sps_f['fpdot_total'](t - dt)[()]) / (2.0 * dt)
+    # Time derivative of total momentum rate: the exact derivative of the
+    # pdot_total interpolant (built in read_sps.get_interpolation). Must not be
+    # a finite difference: t +/- h leaves the table within h of the edges, and
+    # any h far below the table grid is roundoff-dominated (audit finding #3).
+    pdotdot_total = sps_f['fpdotdot_total'](t)[()]
 
     # Return SPSFeedback dataclass (supports both attribute access and unpacking)
     return SPSFeedback(

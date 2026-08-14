@@ -32,11 +32,22 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-08):** 🔵 actionable — **measured and open.** The momentum-phase `P_HII` equals the
-wind ram pressure to ≤3.6e-16 on every row of every run checked, so the ODE's
-`P_drive = P_HII + P_ram` evaluates to exactly `2 × P_ram`. The *measurement* is settled; whether
-summing them is correct is a question about model intent and is **not resolved here**. Nothing has
-been changed in `trinity/`.
+**Status (2026-08-13):** ⛔ **SUPERSEDED by `docs/dev/phii-identity/`** — which consolidated this
+finding with four others, proved the mechanism, and **shipped the fix in `main`**
+(`c43a50e`, "Replace the capped-Strömgren P_HII with a photoionised regime switch (C3c)").
+**Do not extend this doc; read `phii-identity/README.md` instead.** It is kept, not moved to
+`to-be-removed/`, because `phii-identity/README.md` §3 cites these arms **by branch and commit**
+(`feature/threeway-pt2 @ 96707dc`) and calls them *"the strongest single piece of evidence, because
+they hold the identity across an 88× dynamic range in `P_ram` within one run"*. Deleting it would
+break a live citation from a merged workstream.
+
+**What they confirmed, and what they corrected.** Confirmed: the identity holds, and the momentum
+double-count is **exactly 2.000×** — matching this doc's `P_drive == 2·P_ram` measurement. They
+extended it to **1.82× median in the transition phase** and showed the cap binds on **100% of rows
+in every phase**, so §3's "is the sum intended?" question is answered: it is a genuine double count.
+⚠️ Corrected: §2 below calls the mechanism *"inferred from a code comment, not measured"* — they
+**measured** it, and found the missing link this doc did not cite, a `Pb := pRam` assignment. The
+inference was right; the evidence for it here was weaker than what now exists.
 
 ---
 

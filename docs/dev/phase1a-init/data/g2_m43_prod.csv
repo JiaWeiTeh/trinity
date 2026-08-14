@@ -1,4 +1,4 @@
-# GATE G2: PRODUCTION code (a944727) at the phase1a_segFrac=0.1 default, M43 probe, stop_t=0.025. Compare vs data/m43_logseg.csv (prototype). Command: python run.py <probe.param with stop_t=0.025>; 2026-08-04
+# GATE G2: PRODUCTION code (a944727) at the phase1a_segFrac=0.1 default, compact probe, stop_t=0.025. Compare vs data/m43_logseg.csv (prototype). Command: python run.py <probe.param with stop_t=0.025>; 2026-08-04
 # columns in TRINITY AU (Msun, pc, Myr) except v2_kms; p_shell = shell_mass*v2
 t_now,R2,v2,shell_mass,Eb,Pb,P_HII,P_drive,F_grav,F_rad,F_ram_wind,Lmech_total,current_phase,v2_kms,p_shell
 1.148704707732367e-08,4.295283349421644e-05,3739.240659943729,9.99764511773013e-11,0.0003176960939831329,1858116159.4780183,1858116159.4780185,1858116159.4780185,0.0007313129552389839,0.3359075666896722,32.5441350390168,60845.17649715148,energy,3656.1996033676987,3.7383601127904415e-07

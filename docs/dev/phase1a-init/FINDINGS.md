@@ -1,4 +1,4 @@
-# Phase-1a initialisation at sub-GMC scale — findings (M43 probe)
+# Phase-1a initialisation at sub-GMC scale — findings (compact probe)
 
 > ⚠️ **This document may be out of date — verify before trusting it.** It is a
 > point-in-time analysis/audit, not a maintained spec; the code moves faster
@@ -34,7 +34,7 @@
 
 **Status (2026-08-05):** 🔵 actionable — artifact diagnosed and quantified; the fix is implemented, gated and **ready to land** on this branch (`0df441f` + `a944727`). The maintainer decision this doc was waiting on is made: the pre-registered G2 bar compared against stock at the instant phase 1a hands off — which this document's own finding says is the wrong reference — so it was re-sited to `|ΔR2| < 5%` at 1 Myr / end of run plus fate unchanged (`PLAN.md` §4), and every config passes it.
 
-Investigation of why a TRINITY run at M43 scale (`mCloud=300`, `sfe=0.01`,
+Investigation of why a TRINITY run at sub-GMC scale (`mCloud=300`, `sfe=0.01`,
 `nCore=8.7e3 cm^-3`; a 0.15 pc / 2.1e4 yr H II region) crosses the observed radius
 ~30x too early at ~12x the observed velocity. Verdicts per question of the brief; all
 run data committed as CSVs in `data/` (see `data/README.md` for the manifest and
@@ -47,7 +47,7 @@ wrong at this scale, and it alone produces the entire discrepancy.** The
 `vd = -1e8` branch (`energy_phase_ODEs.py:269-270` @ bb94c78) plus the fixed
 `SEGMENT_DURATION = 3e-5` Myr first segment injects a fixed, system-independent
 momentum (~283 Msun pc/Myr for the probe) that exceeds the wind's cumulative
-momentum input at that scale by a factor ~3e5. The M43 trajectory afterwards is
+momentum input at that scale by a factor ~3e5. The compact-probe trajectory afterwards is
 pure momentum-coasting on that artifact (p = m·v constant to 0.1% for the next
 ~3000 yr). At GMC scale the same artifact is real but forgiven within ~400 yr
 (the wind re-supplies it quickly) — which is why the published validation never
@@ -97,7 +97,7 @@ sqrt(M*), r0 ∝ sqrt(M*), E0 ∝ M*^{3/2}. The *shell* velocity handed over,
 v0 = v_w, is the free-streaming front velocity — legitimate *at t0*, because at
 that instant the swept mass equals the (still fast-moving) wind mass. What is
 NOT legitimate is keeping the shell at O(v_w) for 30 years afterwards (see Q4).
-The Weaver attractor velocity at the segment-1 boundary is 83 km/s (M43) vs
+The Weaver attractor velocity at the segment-1 boundary is 83 km/s (compact probe) vs
 649 km/s (GMC) — v0's mass-independence is fine, the *duration over which the
 code lets it persist* is what breaks scale-invariance.
 
@@ -108,13 +108,13 @@ free-expansion definition; both verified against `lib/default` values.
 
 The physical timescale of the early energy phase is the expansion time
 R/Rdot = (5/3)t (Weaver), whose *starting* value is t0 = dt_phase0. dt_phase0
-spans 0.0115 yr (M43 probe) to 1.96 yr (GMC control) across the two configs —
+spans 0.0115 yr (compact probe) to 1.96 yr (GMC control) across the two configs —
 it scales as sqrt(M*/rho)/v_w^{3/2}. A fixed 30-yr first segment is therefore
-2600 dt_phase0 at M43 scale but only 15 dt_phase0 at GMC scale. Everything the
+2600 dt_phase0 at sub-GMC scale but only 15 dt_phase0 at GMC scale. Everything the
 shell structure/feedback/P_HII snapshot freezes per segment changes on the
 timescale ~t, so segments must satisfy dt ≲ eps * t (log-spaced), not a fixed
 30 yr. TFINAL_ENERGY_PHASE = 3e-3 Myr is likewise absolute: at GMC scale it is
-0.15% of the run; at M43 scale it is 14% of the observed age, and the entire
+0.15% of the run; at sub-GMC scale it is 14% of the observed age, and the entire
 observed epoch (2.1e4 yr) is handled by phase 1b whose DT_SEGMENT_* floors
 (1e-4 Myr = 100 yr) are also absolute. TFINAL itself is a second-order knob:
 with TFINAL=3e-4 (handoff at 300 yr instead of 2900) the 1a portion is
@@ -151,13 +151,13 @@ What it does (verified analytically and in `data/`): for exactly the first
 segment, the RHS velocity derivative is replaced by -1e8 pc/Myr^2, so the shell
 exits segment 1 with v = v0 - 1e8*SEGMENT_DURATION = 3739-3000 = 739 pc/Myr
 (723 km/s) at R ≈ 0.067-0.075 pc, *independent of the system*. The true
-|vd| at t0 is 3 v0^2/r0 ≈ 1e12 (M43) / 5.7e9 (GMC) pc/Myr^2 — the branch is
+|vd| at t0 is 3 v0^2/r0 ≈ 1e12 (compact probe) / 5.7e9 (GMC) pc/Myr^2 — the branch is
 4-6 dex weaker than the physics it replaces, so it is not a stiffness guard in
 any quantitative sense; it is a scripted linear coast-down. Its pairing with
 SEGMENT_DURATION is fine-tuned: Δv = 1e8 * 3e-5 = 3000 pc/Myr ≈ 0.8 v0, and
 the exit state (723 km/s at 0.075 pc) sits within a factor ~2 of the GMC
 Weaver attractor at 30 yr (649 km/s, 0.033 pc) — for the GMC it is a crude but
-serviceable "relax onto Weaver in one segment". For M43 the same fixed exit
+serviceable "relax onto Weaver in one segment". For the compact probe the same fixed exit
 state is 9x the attractor velocity at 16x the attractor radius, i.e. 3.4e4x the
 attractor momentum.
 
@@ -192,7 +192,7 @@ fine-tuned pair, not independent knobs.
 scale would refute it — `data/gmc_noapprox.csv` vs `data/gmc_control.csv` at
 matched t: ΔR/R = 36% at 100 yr, 10% at 1e3 yr, 1.0% at 1e4 yr, 0.09% at
 1e5 yr, 0.02% at 3e5 yr. The branch is irrelevant to published GMC-scale
-results beyond ~1e4 yr; at M43 scale it changes the whole run — and neither
+results beyond ~1e4 yr; at sub-GMC scale it changes the whole run — and neither
 variant is right there.
 
 ### Q5 — budgets close everywhere except segment 1, where they are violated by 4-5 dex
@@ -219,14 +219,14 @@ a second defect; it closes to trapezoid accuracy.
 
 GMC control vs adiabatic Weaver R(t) (`data/gmc_control.csv`): ratio 2.16 at
 segment-1 exit (32 yr), 1.4 at 150 yr, 1.13 at 600 yr, 1.05 by 2.7e3 yr —
-agreement to ~5% for the remaining 2 Myr. The M43 probe *never* reaches its
+agreement to ~5% for the remaining 2 Myr. The compact probe *never* reaches its
 attractor inside the observed epoch: still 6x the Weaver radius at 620 yr
 (where it crosses the observed R), and by the time real impulse catches up
 (~1e5 yr) the bubble is far beyond the observed object. The recovery time is
 set by p_artifact/pdot_wind ∝ rho R_hack^3 v_hack / M* — a *physical* resupply
-time, not a numerical one. It is ~4e-4 Myr for the GMC and ~8.7 Myr for M43:
+time, not a numerical one. It is ~4e-4 Myr for the GMC and ~8.7 Myr for the compact probe:
 the artifact is forgiven at exactly the scales the code was validated on and
-fatal at M43 scale.
+fatal at sub-GMC scale.
 
 **Falsifier:** if the GMC run agreed with Weaver from t0 onward the overshoot
 story would be wrong; the committed CSV shows the factor-2 early overshoot.
@@ -252,7 +252,7 @@ pressure is subdominant), but worth remembering for dustier objects.
 
 ## Numerics vs physics
 
-Numerics (does NOT survive convergence): the entire early M43 trajectory —
+Numerics (does NOT survive convergence): the entire early compact-probe trajectory —
 R(t), v(t), shell momentum and KE for the first >=1e4 yr — is set by the
 segment-1 artifact and changes by factors of 3-200 under purely numerical
 knobs (SEGMENT_DURATION, the -1e8 branch). Physics (survives): the IC values
@@ -260,13 +260,13 @@ knobs (SEGMENT_DURATION, the -1e8 branch). Physics (survives): the IC values
 momentum-coasting behaviour once forces are negligible, and the budget closure
 from segment 2 on.
 
-The physical prediction TRINITY *does* make at M43 scale when converged
+The physical prediction TRINITY *does* make at sub-GMC scale when converged
 (measured, `data/m43_logseg.csv`): a Weaver-like wind bubble at R2 = 0.196 pc,
 v2 = 5.1 km/s at the observed age with the SB99 effective-cluster wind —
 velocity exactly observed, radius +28% (and R ∝ L_w^{1/5} puts the observed
 radius inside the Q7 wind range). The independent Spitzer D-type solution for
 the observed Q and density passes through the observed point too (0.154 pc,
-3.7 km/s at 2.1e4 yr for c_i=10 km/s). The M43 comparison failing is a
+3.7 km/s at 2.1e4 yr for c_i=10 km/s). The compact-probe comparison failing is a
 *discretisation* failure, not an equations failure.
 
 ## Independent corroboration — code-audit "Cluster C" (2026-08-04)
@@ -333,7 +333,7 @@ Demonstrated with a zero-production-line prototype (`TRIN_LOGSEG=0.1
 TRIN_NO_EARLY_APPROX=1` in `harness/patched_runner.py`, which substitutes an
 object for the SEGMENT_DURATION constant):
 
-- **M43 probe** (`data/m43_logseg.csv`): tracks the adiabatic Weaver solution
+- **compact probe** (`data/m43_logseg.csv`): tracks the adiabatic Weaver solution
   from the very first segment — R/R_Weaver = 1.25 max during the
   free-streaming relaxation, 1.07 by 1.4 yr, 1.00 by 160 yr, 0.90 by 2.4e4 yr
   (mild sub-adiabatic drift; cooling/PdV). v2 decays smoothly 3656 → 27 km/s
@@ -372,7 +372,7 @@ object for the SEGMENT_DURATION constant):
 
 **The gate has now been run (2026-08-04) — full results in `data/gate_results.csv`.**
 Headline: the schedule reproduces the converged reference *exactly* where one
-exists (production vs prototype at M43 and GMC scale: worst rel diff 2.3e-8 in
+exists (production vs prototype at compact-probe and GMC scale: worst rel diff 2.3e-8 in
 R2, 1.3e-7 in v2, at identical t), `phase1a_segFrac = 0` reproduces stock
 **byte-identically** (G1a) and the committed ablation baselines to 1e-15 (G1b),
 and eps convergence passes (0.1 -> 0.03 moves R2 at the observed age by 0.11%).
@@ -425,7 +425,7 @@ the *deletion* half re-derives the committed ablation baselines
 (`data/*_noapprox.csv`, 2429 km/s) — only the combined change needs the
 full-run gate.
 
-Not part of the minimal change, but required before TRINITY output at M43
+Not part of the minimal change, but required before TRINITY output at the compact probe
 scale is *quantitatively* trustworthy (see Extra findings): the
 `n_IF_Str`/P_HII min-cap (P_HII == Pb identically) and phase 1b's absolute
 DT floors.
@@ -437,16 +437,16 @@ DT floors.
    below its segment-start Pb. In any segment where Pb declines (all early
    segments), the shell is driven by the *stale* pressure for the whole
    segment. This is mild at GMC scale (Pb changes ~10%/segment) and
-   catastrophic in an M43 segment 1 (Pb falls ~7 dex within the segment). The
+   catastrophic in a compact-probe segment 1 (Pb falls ~7 dex within the segment). The
    min-cap is a separate known issue, but its *interaction with per-segment
    freezing* is what makes the no-hack ablation blow up — worth knowing before
    anyone "fixes" the -1e8 branch by deletion.
 2. **The SPS cubic-interpolation worry is a non-issue.** Feedback interpolants
    are flat to <1% over 0-0.1 Myr despite the duplicated t=0 row (checked for
-   fLmech_W, fpdot_W, fQi, fLbol at M43 mass scaling).
-3. **Phase 1b's absolute floors are adequate at M43 scale — once 1a hands over
+   fLmech_W, fpdot_W, fQi, fLbol at compact-probe mass scaling).
+3. **Phase 1b's absolute floors are adequate at sub-GMC scale — once 1a hands over
    a sane state.** DT_SEGMENT_MIN = 100 yr and the 3e-3 Myr handoff are
-   absolute, and most of the M43 observed epoch is integrated by 1b; but the
+   absolute, and most of the compact-probe observed epoch is integrated by 1b; but the
    log-spaced prototype run (`data/m43_logseg.csv`), which enters 1b on the
    Weaver attractor, stays on it through 1b (R/R_Weaver = 0.95 at 5.7e3 yr) —
    so 1b's resolution is not the binding problem; 1a's segment-1 artifact is.

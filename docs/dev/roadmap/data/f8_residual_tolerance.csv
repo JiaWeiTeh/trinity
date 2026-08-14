@@ -1,0 +1,53 @@
+# solver-audit F8: is RESIDUAL_THRESHOLD = 1e-4 calibrated? Measured 2026-08-06.
+# WHAT THE CONSTANT IS, read off trinity/phase1b_energy_implicit/get_betadelta.py rather
+# than guessed: both residuals are RELATIVE --
+#     Edot_residual = (Edot_from_beta - Edot_from_balance) / Edot_from_beta
+#     T_residual    = (T_bubble - T0) / T0
+# and acceptance is Edot_residual**2 + T_residual**2 < RESIDUAL_THRESHOLD. So 1e-4 is the
+# square of 1e-2: accept when the 2-norm of the relative-residual vector is under 1%.
+#
+# SURVEY rows need NO new simulations: betadelta_total_residual is already written to every
+# phase-1b snapshot. Source = the ramp-active Batch 4 runs of docs/dev/phase1a-stiffness
+# (current HEAD, stop_t = 0.02 Myr).
+#   python docs/dev/roadmap/harness/f8_residual_tolerance.py --survey <run_dir>
+# SENSITIVITY row re-ran simple_cluster with the threshold scaled 100x tighter (grid early
+# exit kept at threshold/10, the relation the source defines):
+#   python docs/dev/roadmap/harness/f8_residual_tolerance.py --tighten 0.01 \
+#       --config simple_cluster --stop-t 0.02 --workdir <dir>
+#
+# VERDICT: the threshold is BINDING (every config's worst accepted residual sits at
+# 0.82-0.95 of the bar, because the solver stops the moment it clears) but sits on a
+# PLATEAU, not a cliff: tightening it 100x changes R2 by at most 0.0129% and leaves the
+# stopping fate and snapshot count identical. So 1e-4 is a sound economy choice -- the
+# solver can reach ~1e-14 when pushed (median falls 1.77e-05 -> 2.17e-14), it just buys
+# nothing. The risk direction is LOOSENING, not tightening: residuals already sit at
+# 0.91-0.97% against a 1% bar, so a looser threshold admits worse closure immediately.
+section,config,threshold,n_1b_solves,n_converged,worst_residual,worst_over_threshold,median_residual,n_in_band_thr10_to_thr
+survey,simple_cluster,1e-4,28,28,9.21e-05,0.92,1.77e-05,17
+survey,f1edge_hidens,1e-4,25,25,8.24e-05,0.82,1.18e-05,13
+survey,f1edge_lowdens,1e-4,28,28,9.00e-05,0.90,4.17e-05,20
+survey,gmc_control,1e-4,29,29,9.40e-05,0.94,1.90e-05,16
+survey,m43_probe,1e-4,29,29,9.52e-05,0.95,8.79e-06,13
+sensitivity,simple_cluster,1e-6,28,28,8.08e-07,0.81,2.17e-14,10
+# Trajectory effect of the 100x tightening, simple_cluster, matched t by linear interpolation
+# against the HEAD run of the same config and stop_t. Phases 0/1a are identical because the
+# beta-delta solve does not run before TFINAL_ENERGY_PHASE = 3e-3 Myr.
+section,config,threshold,t_Myr,HEAD_R2_pc,tightened_R2_pc,dR2_pct,note
+trajectory,simple_cluster,1e-6,1e-5,0.010541427,0.010541427,+0.00000,phase 1a - no beta-delta solve yet
+trajectory,simple_cluster,1e-6,1e-4,0.037947337,0.037947337,+0.00000,phase 1a
+trajectory,simple_cluster,1e-6,1e-3,0.138879449,0.138879449,+0.00000,phase 1a
+trajectory,simple_cluster,1e-6,3e-3,0.259559756,0.259559756,+0.00000,phase 1a/1b boundary
+trajectory,simple_cluster,1e-6,1e-2,0.512742171,0.512808257,+0.01289,worst deviation of the whole run
+trajectory,simple_cluster,1e-6,2e-2,0.758686849,0.758730582,+0.00576,end of run
+trajectory,simple_cluster,1e-6,-,fate 1 stopping_time,fate 1 stopping_time,-,unchanged; 125 snapshots in both arms
+# SCOPE, verified from the call graph and not stated in F8: RESIDUAL_THRESHOLD is live on BOTH
+# solver paths (hybr and legacy). The three other bare constants in the same block are not:
+# GRID_SIZE = 5 and GRID_EPSILON = 0.02 are used only by _solve_grid, and MAX_ITERATIONS = 15
+# only by _solve_lbfgsb, both of which are reached solely through _solve_betadelta_legacy.
+# Under the production default betadelta_solver='hybr' that is the rescue ladder only, not the
+# healthy path -- so those three are far lower stakes than F8's wording implies.
+# NOT ESTABLISHED, and deliberately not invented: whether MAX_ITERATIONS = 15 is adequate.
+# betadelta_iterations is never written to the snapshot (the field is absent, 28/28 None on
+# simple_cluster), so iteration counts cannot be recovered from committed runs. All 139 solves
+# across the five configs converged, which shows the cap is NOT BINDING on any of them, but
+# that is a weaker statement than "15 is the right number" and should not be read as one.

@@ -631,7 +631,9 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
         # Compute P_HII from Strömgren ionization balance in shell (n_IF_Str)
         n_IF_Str = shell_props.n_IF_Str
         if params['include_PHII'].value and n_IF_Str > 0:
-            P_HII = (params['mu_convert'].value / params['mu_ion_shell'].value) * n_IF_Str * params['k_B'].value * params['TShell_ion'].value
+            # Photoionised pressure is a regime switch, not the capped Stromgren
+            # relabelling of Pb; see get_bubbleParams.get_phii_c3c.
+            P_HII = get_bubbleParams.get_phii_c3c(params, shell_props)
         else:
             P_HII = 0.0
         params['P_HII'].value = P_HII

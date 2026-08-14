@@ -26,6 +26,7 @@ EXEMPT = {
     "performance/harness/README.md",
     "phase1a-init/data/README.md",
     "phase1a-init/harness/README.md",
+    "phase1a-stiffness/harness/README.md",
     "rosette-cf/harness/README.md",
     "screen/data/README.md",
     "shell-solver/harness/README.md",

@@ -32,11 +32,34 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-05):** 🔵 actionable — the constant is measured and bounded, the obvious fix is
-*ruled out by measurement*, and no successor is designed yet. This is a brief for that design work,
-not a plan. Owned by `AUDIT.md` finding **#2**.
+**Status (2026-08-06):** ✅ resolved as **document-and-pin** — both load-bearing measurements
+reproduced on HEAD, the stall mechanism instrumented and **corrected** (it is the phase-1a RK45
+*segment integrator* that stalls, not the bubble-structure solve — see §4), and the pre-registered
+decision rule in `docs/dev/magic-numbers/SWEEP2_PLAN.md` §5 landed on: keep the constant, document
+it in-source, pin it with `test/test_dt_switchon_ramp.py`. A successor remains possible but is
+phase-1a integrator work (stiff/switching segment solver or a terminal in-segment `Eb`-floor
+event), not a re-shaping of this constant — **pre-registered as
+`docs/dev/phase1a-stiffness/PLAN.md`, where re-opening this constant is Batch 6.**
+**UPDATE 2026-08-06:** that work ran and confirmed the ramp is **not deletable** (fate flips on
+3 of 5 configs). The constant's *form* was then tested separately in
+`docs/dev/switchon-successor/PLAN.md`, against a physics bar this brief did not have (Weaver
+Eq. 20: with the ramp `Eb/t` holds within ~12% of `(5/11)L_w`, without it it falls 154× below).
+**That search has also concluded, the same day, and the answer is likewise no:** four
+pre-registered successors — a physical clock, a sustainability cap, a consistent seed energy and a
+consistent seed velocity — were measured across all five configs and **all four failed their
+bars** (D1-D4). The decisive result is algebraic and worth carrying: with `R1` at ram-pressure
+balance, `PdV/Lmech = 2(v2/v_wind)/(R1/R2)²`, in which `Eb` does not appear, so no reseeding of the
+energy can help; and since `R1/R2 ≤ 1` while phase 0 hands over `v2 = v_wind` by construction, the
+handover *must* start over-working by ≥2×. **So this brief is closed on both questions**: the ramp
+cannot be deleted and cannot be replaced by anything derived that was tried. The remaining honest
+fix is a decelerating phase TRINITY does not have.
+Owned by `AUDIT.md` finding **#2**.
 
 ## 0. What you are being asked to do
+
+> **SUPERSEDED 2026-08-06** — this design work was run and the pre-registered decision landed on
+> **document-and-pin, no successor** (see the Status line and `SWEEP2_PLAN.md` §5). The sections
+> below stand as the record; §4's mechanism is corrected in place.
 
 Design and gate a **scale-relative replacement** for an absolute-time constant in the bubble
 pressure path. You are *not* being asked to delete it — that was tried and measured, and it is
@@ -74,10 +97,17 @@ Everywhere else `R1` goes in unmodified.
 `R2`, so suppressing `R1` **inflates the volume and lowers `Pb`** — the ramp's leverage on the
 answer scales as `(R1/R2)³`.
 
-**Call sites** (only two, both in phase 1a's RHS):
-`trinity/phase1_energy/energy_phase_ODEs.py:224` and `:356`. Phases 1b/1c/2 reach
-`get_effective_bubble_pressure` through other branches, or pass `t=None`, so the ramp is a
-phase-1a-window effect. Verify this before relying on it — it is the kind of claim that rots.
+**Call sites** (only two, both in phase 1a): `trinity/phase1_energy/energy_phase_ODEs.py:224`
+(the RHS) and `:356` (`compute_derived_quantities`), both forwarding `t`/`tSF`.
+**CORRECTED 2026-08-06** (re-verified @ `731ac50`): an earlier version of this paragraph said
+phases 1b/1c/2 "reach `get_effective_bubble_pressure` through other branches, or pass `t=None`" —
+they do not reach it at all; they compute pressure via `bubble_E2P`/`pRam` directly
+(`get_betadelta.py:329`, `bubble_luminosity.py:228`, momentum's own snapshot path). The
+conclusion stands — the ramp is a phase-1a-window effect — but by absence of callers, not by
+branch selection. Corollary worth knowing: if phase 1a exits early via `cooling_balance`
+(`run_energy_phase.py:286-297`) before `tSF + 1e-3`, the 1b handoff drops the ramp mid-window,
+a Pb discontinuity at the boundary (recorded for the transition workstream, not worked here).
+Verify all of this before relying on it — it is the kind of claim that rots.
 
 ## 2. Why it is on the suspect list
 
@@ -86,12 +116,12 @@ therefore shapes the driving pressure across **the first third of phase 1a**.
 
 The smell is exactly the one that made #4 a defect: **an absolute time compared against physics
 whose timescale is not absolute.** The bubble's expansion timescale is `R/Ṙ = (5/3)t`, seeded at
-`t0 = dt_phase0`, which spans 0.0115 yr at M43 scale to 1.96 yr at GMC scale — a factor ~170 —
+`t0 = dt_phase0`, which spans 0.0115 yr at sub-GMC scale to 1.96 yr at GMC scale — a factor ~170 —
 because it scales as `sqrt(M*/ρ)/v_w^{3/2}`. A fixed 1000-yr window is a different fraction of
 the physics at every object scale, so:
 
 - at **GMC scale** 1e-3 Myr is a genuinely early time — the ramp does something plausible;
-- at **M43 scale** (relaxation complete by ~160 yr = 1.6e-4 Myr) the ramp is still suppressing
+- at **sub-GMC scale** (relaxation complete by ~160 yr = 1.6e-4 Myr) the ramp is still suppressing
   `R1` long after the bubble has physically established itself.
 
 There is also no physics reference and no sensitivity note anywhere for the value `1e-3`. It was
@@ -105,21 +135,36 @@ Ablated by forwarding `t=None` so the ramp branch is skipped and *nothing else* 
 
 | config | ablation effect on R2 | verdict |
 |---|---|---|
-| M43 probe (`mCloud=300, sfe=0.01, nCore=8.7e3`) | −1.43% @10 yr → −0.108% @1e3 yr → **−0.0059% @2.1e4 yr** | decays to nothing |
+| compact probe (`mCloud=300, sfe=0.01, nCore=8.7e3`) | −1.43% @10 yr → −0.108% @1e3 yr → **−0.0059% @2.1e4 yr** | decays to nothing |
 | GMC control (`mCloud=1e6, sfe=0.01, nCore=1e3`) | −4.71% @100 yr → −1.79% @1e3 yr → −0.079% @3e4 yr → **−0.017% @8e4 yr** | decays to nothing |
 | `f1edge_hidens` (`mCloud=1e7, sfe=0.01, nCore=1e6`) | **run STALLS** — 4 rows to 0.26 yr in 90 min wall, vs 127 rows to 2e4 yr in minutes with the ramp | ramp is load-bearing |
 
+> **SCOPE CORRECTION (2026-08-06).** Result 1 below is measured on the compact probe and
+> `gmc_control` only. Ablating all five screen configs
+> (`docs/dev/phase1a-stiffness/data/dt_switchon_removability.csv`) shows those are **the only two
+> of five that survive ablation**: `simple_cluster` — the default published config — and
+> `f1edge_lowdens` both collapse to `ENERGY_COLLAPSED`, as `f1edge_hidens` does. So "bounded and
+> small" describes the two recovering configs, not the ramp in general; on the majority of the
+> config span the ramp is the difference between a bubble that grows and one that dies. Result 2
+> stands and is strengthened.
+
 Two results, and the second is the important one:
 
-1. **Its trajectory consequence is bounded and small.** At M43's observed age the ramp is worth
+1. **Its trajectory consequence is bounded and small** *(on the two configs that survive ablation
+   — see the correction above).* At the compact probe's observed age the ramp is worth
    0.006% in R2 — an order of magnitude below the `phase1a_segFrac` 0.1→0.03 convergence step the
    shipped schedule itself carries. Note the effect is *weaker* in the compact regime, the
-   opposite scaling to `SEGMENT_DURATION`, because M43's `t0` is ~170× earlier so by the time the
+   opposite scaling to `SEGMENT_DURATION`, because the compact probe's `t0` is ~170× earlier so by the time the
    1e-3 Myr window closes `(R1/R2)³` has already fallen to 4e-3. **So it is not a second
    discretisation artifact.** Whatever it is costing in accuracy, it is not costing much.
 2. **It cannot simply be deleted.** At `nCore=1e6` ablation raises `Pb` (the suppressed `R1` was
-   inflating the shell volume), the bubble-structure ODE stiffens, and the solve stops converging
-   three segments in.
+   inflating the shell volume), ~~the bubble-structure ODE stiffens, and the solve stops
+   converging three segments in~~ — **mechanism corrected 2026-08-06 (R3, instrumented):** the
+   bubble-structure solve stays healthy (every `get_bubbleproperties_pure` call returns in
+   ~1.3 s); the raised `Pb` drains `Eb` 180 → 29 au across segments 1-4 and then **phase 1a's
+   segment integrator (`solve_ivp`, hard-coded `method='RK45'`, `run_energy_phase.py:309`)
+   stalls in micro-steps** on the stiffened energy ODE in segment 5. Evidence:
+   `docs/dev/magic-numbers/data/switchon_stall_probe.csv` + `switchon_stall_stacks.txt`.
 
 Raw numbers: `docs/dev/phase1a-init/data/gate_results.csv`, rows tagged `E8b`. Trajectories:
 `docs/dev/phase1a-init/data/e8b_{m43,gmc}_noramp.csv` and
@@ -131,8 +176,12 @@ Write-up: `docs/dev/phase1a-init/PLAN.md` §8.
 **`vd = -1e8` papered over a discretisation error; `dt_switchon` papers over genuine stiffness.**
 They look alike from the outside — both absolute early-time constants with no derivation — and
 they need opposite remedies. #4 was safe to delete once the segment schedule was fixed. #2 is not
-safe to delete at all, at any schedule, because what it is protecting against is the bubble
-structure ODE becoming unsolvable when `Pb` is high early.
+safe to delete at all, at any schedule, because what it is protecting against is ~~the bubble
+structure ODE becoming unsolvable when `Pb` is high early~~ **(corrected 2026-08-06, R3):**
+the early-`Pb`-driven collapse of `Eb`, which stiffens the phase-1a *segment energy ODE* until
+its hard-coded RK45 integrator stalls in micro-steps — the bubble-structure solve itself stays
+healthy throughout. Same conclusion, different protected component: the honest successor is
+phase-1a stiffness handling, not a better clock on this ramp.
 
 So the shape of the successor is:
 
@@ -142,7 +191,7 @@ So the shape of the successor is:
 And the ordering constraint that follows:
 
 > A **stiffness gate comes first**. `f1edge_hidens` must *complete at all* before any trajectory
-> bar is even meaningful. A candidate that improves M43 accuracy and stalls the stiff edge is not
+> bar is even meaningful. A candidate that improves compact-probe accuracy and stalls the stiff edge is not
 > a candidate.
 
 **AUDIT.md's own recommendation #2 is wrong and has been struck through** (2026-08-05). It said
@@ -173,7 +222,7 @@ the constant protects. Do not let that phrasing back into the plan.
 | config | where | why it matters here |
 |---|---|---|
 | `f1edge_hidens` | `docs/dev/performance/f1edge_hidens*.param` | `nCore=1e6`; the stiffness gate. Ablation stalls here — this is the config that decides the design |
-| M43 probe | `docs/dev/phase1a-init/harness/params/probe.param` | sub-GMC scale, where an absolute 1e-3 Myr is most wrong relative to the physics |
+| compact probe | `docs/dev/phase1a-init/harness/params/probe.param` | sub-GMC scale, where an absolute 1e-3 Myr is most wrong relative to the physics |
 | GMC control | `docs/dev/phase1a-init/harness/params/gmc_control.param` | the published regime; must not move |
 | `simple_cluster` | `param/simple_cluster.param` | the default everything else is tested at |
 | `f1edge_lowdens` | `docs/dev/performance/f1edge_lowdens*.param` | the other feedback extreme |
@@ -188,13 +237,17 @@ the constant protects. Do not let that phrasing back into the plan.
 2. **Is a ramp the right shape?** Linear-in-time from zero is arbitrary. If the real function is
    "keep `Pb` below what the ODE can integrate", a ramp is a proxy for a stiffness limiter and
    should perhaps be written as one.
-3. **What actually stiffens at `nCore=1e6`?** E8b established *that* it stalls, not *why*. The
-   answer decides whether a scale-relative switch-off is sufficient or whether the protection has
-   to be state-based. This is probably the first experiment.
+3. **What actually stiffens at `nCore=1e6`?** E8b established *that* it stalls, not *why*.
+   **ANSWERED 2026-08-06 (R3, `SWEEP2_PLAN.md` §4):** the phase-1a segment energy ODE, as `Eb`
+   collapses under the unramped pressure; the segment `solve_ivp` (hard-coded RK45) stalls in
+   micro-steps while the bubble-structure solve stays fast. The answer ruled *both* §7.1 shapes
+   out for now: neither a better clock nor a small state guard fixes an integrator failure mode —
+   the successor is phase-1a stiffness handling (stiff/switching segment solver, or a terminal
+   in-segment `Eb`-floor event), its own workstream.
 4. **Does the phase-1a segment schedule change the answer?** The fix landed
    `phase1a_segFrac = 0.1`, so segments now scale with the bubble age. It is plausible — not
    measured — that a scale-relative schedule makes a scale-relative switch-off easier to satisfy.
-5. **Is the effect large enough to be worth the risk at all?** 0.006% at M43's observed age is
+5. **Is the effect large enough to be worth the risk at all?** 0.006% at the compact probe's observed age is
    small. A legitimate outcome of this work is "document the constant, add the stiffness rationale
    and a test that pins it, change nothing" — that is a *result*, not a failure, and it should be
    on the table from the start.
@@ -268,6 +321,9 @@ mechanism entirely, and everything else is speculation until it is answered.
 | the audit row that owns this | `docs/dev/magic-numbers/AUDIT.md` finding #2 |
 | the sibling fix (model for diagnosis, counter-example for remedy) | `docs/dev/phase1a-init/FINDINGS.md`, `PLAN.md` |
 | matched-t comparison tool | `docs/dev/phase1a-init/harness/matched_t.py` |
+| 2026-08-06 reproduction of both E8b claims (to the digit / bit-for-bit) | `docs/dev/magic-numbers/data/switchon_repro_ledger.csv` + `switchon_repro_*.csv` |
+| the stall mechanism (R3): RK45 segment integrator, not the bubble solve | `docs/dev/magic-numbers/data/switchon_stall_probe.csv`, `switchon_stall_stacks.txt`; harness `docs/dev/magic-numbers/harness/switchon_probe_runner.py` |
+| the in-source pin | `trinity/bubble_structure/get_bubbleParams.py` comment at the constant; `test/test_dt_switchon_ramp.py` |
 | multi-config screen (2 refs x N configs, matched t, ledger + pass/fail) | `docs/dev/screen/` — built for exactly this kind of change; use it rather than hand-rolling a sweep |
 | the `dR2` / `dR2min` story | `test/test_dR2min_magic_number.py`, `docs/dev/performance/BUBBLE_CONDUCTION_STIFFNESS.md` |
 | `_T_INIT_BOUNDARY` study | `docs/dev/misc/tinit-sensitivity.md` |

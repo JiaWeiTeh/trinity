@@ -14,9 +14,9 @@ G2,m43_probe segFrac=0.1,worst_rel_v2_over_162_rows,0,data/m43_logseg.csv,1.349e
 G2,m43_probe segFrac=0.1,worst_rel_t_over_162_rows,0,data/m43_logseg.csv,0.000e+00,0.00e+00,PASS
 G2,gmc_control segFrac=0.1,worst_rel_R2_over_129_rows,0,data/gmc_logseg.csv,7.740e-09,7.74e-09,PASS
 G2,gmc_control segFrac=0.1,worst_rel_v2_over_129_rows,0,data/gmc_logseg.csv,8.108e-08,8.11e-08,PASS
-G2,m43_probe segFrac=0.1,R2_at_observed_age_2.1e4yr_pc,0.153,M43 observed values as recorded in FINDINGS.md (0.142-0.164 pc),0.1959,2.80e-01,INFO
-G2,m43_probe segFrac=0.1,v2_at_observed_age_2.1e4yr_kms,5.0,M43 observed values as recorded in FINDINGS.md (4.5-6.6 km/s),5.09,1.80e-02,INFO
-G2,m43_probe segFrac=0.1,t_crossing_observed_radius_yr,21000,M43 observed age as recorded in FINDINGS.md,13501,3.57e-01,INFO
+G2,m43_probe segFrac=0.1,R2_at_observed_age_2.1e4yr_pc,0.153,compact-probe observed values as recorded in FINDINGS.md (0.142-0.164 pc),0.1959,2.80e-01,INFO
+G2,m43_probe segFrac=0.1,v2_at_observed_age_2.1e4yr_kms,5.0,compact-probe observed values as recorded in FINDINGS.md (4.5-6.6 km/s),5.09,1.80e-02,INFO
+G2,m43_probe segFrac=0.1,t_crossing_observed_radius_yr,21000,compact-probe observed age as recorded in FINDINGS.md,13501,3.57e-01,INFO
 G2,simple_cluster stock-vs-fixed,phases_and_stopping_fate,energy+implicit,stock arm,energy+implicit,0.00e+00,PASS
 G2,f1edge_lowdens stock-vs-fixed,phases_and_stopping_fate,energy+implicit,stock arm,energy+implicit,0.00e+00,PASS
 G2,f1edge_hidens stock-vs-fixed,phases_and_stopping_fate,energy+implicit,stock arm,energy+implicit,0.00e+00,PASS

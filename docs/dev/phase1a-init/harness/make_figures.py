@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Figures for the phase-1a initialisation investigation (M43 probe).
+"""Figures for the phase-1a initialisation investigation (compact probe).
 
 Reads ONLY the committed CSVs in docs/dev/phase1a-init/data/ and writes
 PNGs to docs/dev/phase1a-init/figures/. Run from the repo root:
@@ -9,7 +9,7 @@ PNGs to docs/dev/phase1a-init/figures/. Run from the repo root:
 Analytic overlays (documented in FINDINGS.md §Q6):
   - Weaver adiabatic:  R(t) = 0.76 (Lw t^3 / rho)^(1/5)   [AU units]
   - Spitzer D-type:    R(t) = Rst (1 + 7 c_i t / (4 Rst))^(4/7)
-Constants below are for the M43 probe config (mCloud=300, sfe=0.01,
+Constants below are for the compact probe config (mCloud=300, sfe=0.01,
 nCore=8.7e3 cm^-3): Lw and rho from the SB99 default table at t=0 and
 nCore*mu_convert; Rst from Q=1.6185e47 s^-1, alphaB=2.59e-13 cm^3/s.
 """
@@ -28,7 +28,7 @@ DATA = os.path.join(HERE, '..', 'data')
 FIGS = os.path.join(HERE, '..', 'figures')
 
 KMS = 0.977792          # km/s per pc/Myr
-LW_AU = 6.0845e4        # M43 probe wind Lmech at t=0 [Msun pc^2/Myr^3]
+LW_AU = 6.0845e4        # compact probe wind Lmech at t=0 [Msun pc^2/Myr^3]
 RHO_AU = 301.008        # 8.7e3 cm^-3 * mu_convert -> Msun/pc^3
 RST_PC = 0.0406         # Stromgren radius for Q=1.6185e47, n=8.7e3
 CI_KMS = 10.0           # ionized-gas sound speed for the Spitzer overlay
@@ -77,14 +77,14 @@ def fig_convergence():
     ax2.loglog(t[1:] * 1e6, np.gradient(weaver_R(t), t)[1:] * KMS, 'k--', lw=1)
     ax2.loglog(t[1:] * 1e6, np.gradient(spitzer_R(t), t)[1:] * KMS, 'k:', lw=1.2)
     ax1.errorbar([2.1e4], [0.153], yerr=[[0.011], [0.011]],
-                 xerr=[[0.4e4], [1.3e4]], fmt='r*', ms=12, label='M43 observed')
+                 xerr=[[0.4e4], [1.3e4]], fmt='r*', ms=12, label='compact-probe observed')
     ax2.errorbar([2.1e4], [5.0], yerr=[[0.5], [1.6]], xerr=[[0.4e4], [1.3e4]],
                  fmt='r*', ms=12)
     ax1.set_xlabel('t [yr]'); ax1.set_ylabel('R2 [pc]')
     ax2.set_xlabel('t [yr]'); ax2.set_ylabel('v2 [km/s]')
     ax1.set_ylim(1e-5, 2); ax2.set_ylim(1, 5e3)
     ax1.legend(fontsize=7, loc='upper left')
-    fig.suptitle('M43 probe: trajectory vs purely numerical knobs (nothing physical varied)')
+    fig.suptitle('compact probe: trajectory vs purely numerical knobs (nothing physical varied)')
     fig.tight_layout()
     fig.savefig(os.path.join(FIGS, 'convergence.png'), dpi=135)
 
@@ -106,7 +106,7 @@ def fig_budget():
     ax.axvline(30, color='k', ls=':', lw=0.8)
     ax.annotate('end of segment 1', (33, 1e-5), fontsize=8, rotation=90)
     ax.set_xlabel('t [yr]'); ax.set_ylabel('momentum [Msun pc/Myr]')
-    ax.set_title('M43 probe baseline: momentum budget\n(shell exits segment 1 with 2.9e5x the wind impulse)')
+    ax.set_title('compact probe baseline: momentum budget\n(shell exits segment 1 with 2.9e5x the wind impulse)')
     ax.legend(fontsize=8, loc='lower right')
     fig.tight_layout()
     fig.savefig(os.path.join(FIGS, 'momentum_budget.png'), dpi=135)

@@ -264,7 +264,7 @@ its velocity in 30 years by arithmetic, not physics.</p>
   <img src="{fingerprint}" alt="Segment-1 exit velocity plotted against cloud mass, flat at 722.82 km/s across four decades of mass.">
   <figcaption><b>Four decades of cloud mass, one velocity.</b> Each point is an
   independent run. The stock code leaves segment 1 at 722.82 km/s whether the
-  cloud is 3×10³ or 3×10⁶ M<sub>☉</sub> — and the M43-scale probe (300 M<sub>☉</sub>,
+  cloud is 3×10³ or 3×10⁶ M<sub>☉</sub> — and the sub-GMC-scale probe (300 M<sub>☉</sub>,
   diamond) lands on the same value. Deleting the override alone does not fix it:
   the run then exits at 2429 km/s (grey square), a frozen-pressure snowplow.
   This invariance is the defect’s signature, and no solver-tolerance study can
@@ -292,8 +292,8 @@ on only one of five phase-1a exit paths, so it could leak the constant into
 phases 1b and 1c.</p>
 
 <figure>
-  <img src="{m43}" alt="M43 shell radius versus time, stock and fixed, against the observed radius and age.">
-  <figcaption><b>The payoff, at M43 scale.</b> Stock (rust) crosses the observed
+  <img src="{m43}" alt="compact-probe shell radius versus time, stock and fixed, against the observed radius and age.">
+  <figcaption><b>The payoff, at sub-GMC scale.</b> Stock (rust) crosses the observed
   0.153 pc radius at 620 years — 21.8× too early — and the kink at 30 years is
   the segment-1 artifact itself. The fixed run (teal) reaches
   <b>0.196 pc at 5.09 km/s</b> at the observed age, against an observed
@@ -340,7 +340,7 @@ phases 1b and 1c.</p>
 <figure>
   <img src="{eps}" alt="Radius at the observed age plotted against the segment fraction parameter, converging.">
   <figcaption><b>The result is a property of the physics, not of the step size.</b>
-  Refining the segment fraction 10× (81 → 454 segments) moves the M43 radius at
+  Refining the segment fraction 10× (81 → 454 segments) moves the compact-probe radius at
   the observed age by 0.31%, then 0.11%. This is precisely the claim the old
   fixed-segment code could never make: its answer was a pure function of
   <code>SEGMENT_DURATION</code>.</figcaption>
@@ -425,7 +425,7 @@ class, so I measured it.</p>
   <img src="{e8b}" alt="Effect of removing the R1 ramp for two configurations, with the third annotated as stalled.">
   <figcaption><b>Small where it runs — and load-bearing where it doesn’t.</b>
   Removing the ramp shifts the radius by up to 5.8% early on, decaying to
-  <b>0.006% at M43’s observed age</b>, well inside the noise floor. But on the
+  <b>0.006% at the compact probe's observed age</b>, well inside the noise floor. But on the
   stiffest config the run does not merely differ — it <b>stalls</b>: four
   snapshots in 90 minutes of wall clock, versus a complete run in minutes with
   the ramp in place. Removing the R1 suppression raises the bubble pressure, the
