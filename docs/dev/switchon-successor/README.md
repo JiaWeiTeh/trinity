@@ -32,7 +32,11 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-06):** ✅ **CONCLUDED — S0, the constant stays; all five batches done.** The drain
+**Status (2026-08-14):** ✅ **CONCLUDED — S0, the constant stays; all five batches done.** ⚠️ **Every
+measurement here predates C3c** (`c43a50e`, 2026-08-14), which changed how `dt_switchon` couples to
+the shell: the ablation and Weaver-N1 figures are not quotable as current, while the algebraic
+results are unaffected. The split, the mechanism and the one open item are in
+[`PLAN.md`](PLAN.md)'s Status block — read it before quoting a number from this file. The drain
 is **PdV work**, not cooling, and the seed violates Weaver's work partition by 4.85× while
 satisfying its energy exactly (D1). Two candidates are dead: the physical clock **S1** (fails the
 fate bar on 3 of 5, and not in order of window length — the whole "better clock" family is retired,

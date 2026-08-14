@@ -32,10 +32,32 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-06):** ✅ **CONCLUDED — outcome S0: the constant stays.** All five batches done.
-No `trinity/` behaviour changed; the only source edit is the rationale block this workstream
-produced, at the constant in `trinity/bubble_structure/get_bubbleParams.py`, plus a correction to
-the stale mechanism claim in `test/test_dt_switchon_ramp.py`'s docstring. **D1:** the drain is **PdV work**, not cooling (0.1-0.8% of gain in both arms), and
+**Status (2026-08-14):** ✅ **CONCLUDED — outcome S0: the constant stays** — ⚠️ **but every batch
+below was measured in a regime `main` no longer has.** All five batches done. No `trinity/`
+behaviour changed by *this* workstream; the only source edit is the rationale block it produced, at
+the constant in `trinity/bubble_structure/get_bubbleParams.py`, plus a correction to the stale
+mechanism claim in `test/test_dt_switchon_ramp.py`'s docstring.
+
+⚠️ **Pre-C3c provenance (added 2026-08-14).** Batches 1-5 ran against
+`P_drive = max(press_bubble, P_HII)` where `P_HII` was `params['Pb']` relabelled — the **un-ramped**
+pressure, frozen per segment (`docs/dev/phii-identity/PLAN.md` §3 item 3, "D-ramp"). The `max`
+therefore selected the un-ramped floor throughout the switch-on window, so **`dt_switchon` never
+reached the shell momentum equation**: it acted only through `Ed` and `L_leak`. `c43a50e` (PR #738,
+merged the same day as this workstream) zeroes `P_HII` in the energy phase, so the ramp now throttles
+`vd` too. Split of what that costs:
+
+- **Survives — the algebra.** D1 and D4's `PdV/Lmech = 2(v2/v_wind)/(R1/R2)^2` with `E0` absent, the
+  4.85× work-partition violation, and the six-digit seed universality all live in the energy
+  equation, which C3c does not touch.
+- **Does not survive as measurement — the ablations.** The full-ablation fate flips (3 of 5;
+  `docs/dev/phase1a-stiffness/PLAN.md` §2 D6), the N1 Weaver Eq. 20 distances (~12% with the ramp vs
+  154× below without), the 3.6-6.0× seed-variant figures, and the `|ΔR2| ≤ 0.006-0.017%` cost bound
+  were all taken with the ramp half-connected. **Do not quote them as current.** The S0 *conclusion*
+  is not in doubt — post-C3c, ablating the ramp restores the un-ramped pressure to **both** channels,
+  so the runaway it protects against can only be stronger — but that is an argument, not a re-run.
+  Re-running the ablation and the N1 bar on post-C3c `main` is this workstream's one open item.
+
+**D1:** the drain is **PdV work**, not cooling (0.1-0.8% of gain in both arms), and
 the seed satisfies Weaver's *energy* exactly while violating its *work partition* by **4.85×** —
 the ramp is a relaxation device for an inconsistent initial condition. **D2:** the physical-clock
 candidate S1 **fails N0 on 3 of 5 configs**, and the failures are *not* ordered by how much the

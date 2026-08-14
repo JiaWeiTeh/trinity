@@ -32,16 +32,17 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-13):** 🔵 actionable — **evidence gathered, mechanism proved, measured directly, and independently audited.** An adversarial audit on 2026-08-13 corrected several claims in this file (§5's "1a/1b are safe", §7.3's `_yesPHII` scope, §8's reproduction breadth) — each is marked in place. `PLAN.md` §9 carries the full list; do not quote a figure from an unmarked earlier revision. Batches 0/1 (see `PLAN.md`) confirm the identity on 100% of implicit,
+**Status (2026-08-14):** 🟡 **the fix (C3c) shipped — this file is now the historical evidence record for behaviour `main` no longer has.** `c43a50e` (PR #738) replaced the capped-Strömgren `P_HII` with a cavity-Strömgren regime switch at all six call sites, so the identity documented below describes the code **before** 2026-08-14. Read it to understand why `F_HII`/`include_PHII` behaved as they did, and `PLAN.md` for what replaced them. **Evidence gathered, mechanism proved, measured directly, and independently audited.** An adversarial audit on 2026-08-13 corrected several claims in this file (§5's "1a/1b are safe", §7.3's `_yesPHII` scope, §8's reproduction breadth) — each is marked in place. `PLAN.md` §9 carries the full list; do not quote a figure from an unmarked earlier revision. Batches 0/1 (see `PLAN.md`) confirm the identity on 100% of implicit,
 transition and momentum rows across five configs, show the cap binding on **100% of rows in every
 phase** (so §3's cap-slack reading is retracted), and size the double-count at **1.82× median in
 transition, exactly 2.000× in momentum**. **Original framing below.** Five workstreams across three unmerged branches each measured `P_HII` equal to the
 local confining pressure to 4–10 digits. This doc consolidates them and shows the equality is an
 **exact algebraic identity** — `P_HII` re-derives its own input — whenever the `n_IF_Str ≤ shell_n0`
-cap binds. **Nothing in `trinity/` has been changed.** What to *do* about it is an intent question
-for the maintainer (§7). **Fix effort:** planned and pre-registered in
-[`PLAN.md`](PLAN.md) (branch `bugfix/phii-pt1`) — candidates, config matrix, batch gates, and
-the running ledger all live there; this README stays the evidence record.
+cap binds. ~~**Nothing in `trinity/` has been changed.**~~ ⚠️ **Corrected 2026-08-14:** true when
+written, false now — C3c landed in `c43a50e`. What to *do* about it was an intent question for the
+maintainer (§7); it has been answered. **Fix effort:** planned and pre-registered in
+[`PLAN.md`](PLAN.md) (branch `bugfix/phii-pt1`, merged to `main` 2026-08-14) — candidates, config
+matrix, batch gates, and the running ledger all live there; this README stays the evidence record.
 
 ---
 
