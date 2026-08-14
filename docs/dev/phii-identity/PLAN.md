@@ -1,4 +1,4 @@
-# PLAN — fixing the P_HII identity (branch `bugfix/phii-pt1`)
+# PLAN — fixing the P_HII identity (branch `bugfix/phii-pt1`, merged to `main` 2026-08-14)
 
 > ⚠️ **This document may be out of date — verify before trusting it.** It is a
 > point-in-time analysis/audit, not a maintained spec; the code moves faster
@@ -32,9 +32,30 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-13):** 🔵 actionable — **Batches 0, 1, 3, 4a and 5-stage-1 done. D1/D2 answered.
-An independent adversarial audit (2026-08-13) corrected 2 critical + 11 major items — see §9, and do
-not quote any figure from an unmarked earlier revision of this file.**
+**Status (2026-08-14):** 🟡 **C3c IS IN PRODUCTION — this doc is no longer describing a candidate.**
+`c43a50e` (PR #738, merged `186cc5a`) replaced the capped-Strömgren `P_HII` at all six call sites in
+the four phase runners; the helper is `get_bubbleParams.get_phii_c3c` @ `c43a50e`. Batches 0, 1, 3,
+4a and 5-stages-1/1b/2/3 done; **D1-D4 answered**. What is still open is the **momentum branch** (a
+modelling call, §Batch-5-stage-3 below), not the landing. An independent adversarial audit
+(2026-08-13) corrected 2 critical + 11 major items — see §9, and do not quote any figure from an
+unmarked earlier revision of this file.
+
+⚠️ **Two consequences of landing, both foreseen here and neither finished:**
+(1) **D-ramp is now fixed in production** — the third consequence §3c predicted for C3c, defect
+defined at §3 item 3. The energy-phase drive is the ramped `Pb` alone, so the phase-1a-exit goldens
+moved by −1.1%: `test_run_smoke.py`
+`R2` 0.25955976 → 0.25672223 and `test_phase_boundary.py` `cool_beta` 0.888197 → 0.878395.
+`test_betadelta_hybr_stress.py` carries the same `(0.888197, -0.046294)` pair and is red too —
+measured 2026-08-14, `cool_beta` = 0.87839528 at t=0.00350 (`TRINITY_STRESS_N=1 pytest
+test/test_betadelta_hybr_stress.py -m stress`, 10 min) — but it is stress-marked, so it does not
+show in a default `pytest` or in CI.
+D4 granted re-baselining authority for `test_phase_boundary.py`, `test_betadelta_hybr_stress.py` and
+the `test_scheme_screen.py` fixtures conditional on G3.4's before/after table — **`test_run_smoke.py`
+is not on that list and needs its own sign-off.**
+(2) **`switchon-successor/` measured `dt_switchon` in the regime C3c has now removed.** Every batch
+there ran with `P_HII == Pb` un-ramped winning the `max`, so the ramp was inert in the momentum
+equation; it now throttles `vd`. Its algebraic results (D1, D4) survive; its ablation and Weaver-N1
+figures do not. Flagged in `docs/dev/DOC_STATUS.md`; that workstream owns the re-run.
 
 - **The identity is real and universal**: `P_HII` == the confining pressure to ≤2.9e-16, and the cap
   binds on **100% of rows in every phase** of every config (6 configs, 4 decades of `nCore`).
@@ -73,9 +94,12 @@ not quote any figure from an unmarked earlier revision of this file.**
   geometry, not the prefactor.
 - **D3 and D4 ✅ ANSWERED 2026-08-13** (§7): WW's 16%-earlier collapse is accepted as an explained
   timing change; golden re-baselining is authorised subject to G3.4's before/after table.
-- **Next:** **Batch 6** — landing on the full-12 matrix. The one physics question left open is the
-  momentum result above, which is a modelling call (accept photoionisation-dominated momentum as the
-  prediction, or revisit the cavity geometry), not something another ladder settles.
+- **Landed 2026-08-14 (`c43a50e`), ahead of Batch 6's full-12 matrix.** The one physics question
+  left open is the momentum result above, which is a modelling call (accept photoionisation-dominated
+  momentum as the prediction, or revisit the cavity geometry), not something another ladder settles.
+- **Next:** (a) the G3.4 before/after table + golden re-baseline (see the Status block); (b) Batch
+  6's full-12 matrix, now a post-landing validation rather than a gate; (c) hand the
+  `switchon-successor` re-run to that workstream.
 
 ---
 
@@ -1278,3 +1302,38 @@ b0 run and to `bb302e0` for every b1 run (§9 records how that was protected).
   energy-phase *row counts* (69/87/96/105) as longer energy phases. Wrong — that is timestep
   refinement under stiffer winds. Row count is not duration, and here they point opposite ways.
   With **D3 and D4 answered** (§7), Batch 6 is unblocked.
+
+- **2026-08-14 (C3c landed; two loose ends recorded, not closed)** — `c43a50e` merged to `main` in
+  `186cc5a` (PR #738): six `P_HII` call sites across `phase1_energy/run_energy_phase.py`,
+  `phase1b_energy_implicit/run_energy_implicit_phase.py`, `phase1c_transition/run_transition_phase.py`
+  and `phase2_momentum/run_momentum_phase.py` now call `get_bubbleParams.get_phii_c3c`. This entry
+  exists because the landing was *not* recorded anywhere at the time — DOC_STATUS, this doc's Status
+  line and `docs/dev/README.md` all still described C3c as a candidate under evaluation while it was
+  the production model. Fixed 2026-08-14 in all three.
+  **What the landing proved, on the suite rather than on the harness:** §3c's third consequence —
+  "**D-ramp is fixed as a side effect.** In the energy phase `P_C3a ≪ Pb`, so the `max` selects the
+  ODE's own (ramped) bubble pressure" — is what the suite is now reporting, in the form of moved
+  goldens. ⚠️ **Do not cite §3 item 3's struck sentence here.** That sentence ("removing the cap
+  drops early driving pressure by up to 3×") was retracted 2026-08-13 as backwards, and correctly so:
+  it was about **C1** (removing the cap), which raises `P_HII` *above* `Pb` and moves ΔR2 **up**. C3c
+  is a different intervention — it does not unclamp the density, it replaces the quantity — and it
+  lowers the energy-phase drive by zeroing the channel entirely. Same direction of golden movement,
+  opposite mechanism; the struck sentence is still struck. Three default-suite tests are red on
+  `main`: `test_run_smoke.py` (`R2` −1.09%), `test_phase_boundary.py` (`cool_beta` −1.10%), and
+  `test_mu_audit_drift.py::test_phase1_all_eleven_sites_refined_and_no_original_remains`, which is
+  pure bookkeeping — the refined `mu_convert/mu_ion_shell` factor count in the five phase files went
+  11 → 5 because six of the sites moved into the helper, where the factor still appears once. No
+  original `* 2.0 *` operation came back; the n-consistency invariant is intact.
+  **The mechanism, stated once so it is not re-derived:** in phase 1a the RHS drive is
+  `P_drive = max(press_bubble, P_HII)` (`energy_phase_ODEs.py:256` @ `c43a50e`), where
+  `press_bubble` is the `dt_switchon`-ramped pressure and the old `P_HII` was `params['Pb']`
+  relabelled — un-ramped, and frozen per segment. So the `max` selected the un-ramped floor and the
+  ramp never reached `vd` at all; it acted only through `Ed` and `L_leak`. C3c returns exactly `0.0`
+  on the confined branch, so `P_drive` is the ramped pressure alone and the ramp throttles the shell
+  for the first time. That is D-ramp being fixed, and it is why the shift is 1.1% rather than 0.
+  **Consequence for a sibling workstream:** `switchon-successor/` measured `dt_switchon` entirely in
+  the pre-C3c regime. Its algebra (D1, D4 — `PdV/Lmech = 2(v2/v_wind)/(R1/R2)^2`, `E0` absent) is in
+  `Ed` and survives untouched; its ablation fates, cost bounds and Weaver-N1 comparisons are not
+  quotable until re-measured. The 50-line rationale block that Batch 5 wrote into
+  `get_bubbleParams.get_effective_bubble_pressure` carries those figures, so it now carries a dated
+  pre-C3c provenance note as well.

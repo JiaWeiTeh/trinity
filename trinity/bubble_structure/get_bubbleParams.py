@@ -430,6 +430,20 @@ def get_effective_bubble_pressure(current_phase, Eb, R2, R1, gamma,
         # ramped linearly into bubble_E2P, enlarging the shocked-wind volume and
         # so holding the early driving pressure down.
         #
+        # PROVENANCE — the measurements below predate C3c (2026-08-14). They were
+        # taken when P_drive = max(this ramped pressure, P_HII) and P_HII was
+        # params['Pb'] relabelled, i.e. the UN-ramped pressure, frozen per
+        # segment. The max therefore selected the un-ramped floor and this ramp
+        # never reached the shell momentum equation at all -- it acted only
+        # through Edot and L_leak. get_phii_c3c now returns exactly 0.0 on the
+        # confined branch, so the ramp throttles vd for the first time. The
+        # ALGEBRA below (the PdV/Lmech identity, the seed universality) is in the
+        # energy equation and is unaffected; the ABLATION FIGURES (fate flips,
+        # the Weaver Eq.20 distances, the dR2 cost bound) were measured with the
+        # ramp half-connected and are pending a re-run. Do not quote them as
+        # current. See docs/dev/switchon-successor/PLAN.md Status block and
+        # docs/dev/phii-identity/PLAN.md section 3 item 3 ("D-ramp").
+        #
         # WHY IT IS NEEDED — the handover is inconsistent, and provably so.
         # solve_R1 puts R1 where the free wind's ram pressure balances the
         # bubble pressure, i.e. Pb = Lmech/(2 pi v_wind R1**2). Substituting

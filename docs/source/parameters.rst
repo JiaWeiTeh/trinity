@@ -154,9 +154,13 @@ Core parameters defining the molecular cloud and star formation.
    * - ``include_PHII``
      - ``True``
      - --
-     - Include HII pressure (from Strömgren ionization balance in the
-       shell) in the driving pressure. When ``False``,
-       :math:`P_{\rm HII}` is set to zero.
+     - Include the photoionised-gas pressure :math:`P_{\rm HII}` in the
+       driving pressure. When ``False``, :math:`P_{\rm HII}` is set to
+       zero. :math:`P_{\rm HII}` is a confinement regime switch on the
+       cavity Strömgren density: exactly zero while the ionised gas is
+       confined by the surrounding pressure (a confined skin transmits
+       that pressure rather than adding to it), and the cavity
+       photoionised pressure once confinement cannot hold it.
    * - ``coverFraction``
      - ``1.0``
      - --

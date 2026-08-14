@@ -32,8 +32,14 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-06):** ✅ shipped on the branch — **all six batches done and every bar closed.**
-The mypy clause was ruled ACCEPT by the maintainer (§2 D5); nothing is outstanding. §1 is source-verified against `adfc23f`; the §3 bars and §5 decision rule
+**Status (2026-08-14):** ✅ **shipped — merged to `main` 2026-08-14 (PR #737)**; **all six batches
+done and every bar closed.** The mypy clause was ruled ACCEPT by the maintainer (§2 D5); nothing is
+outstanding. ⚠️ **Pre-C3c provenance (added 2026-08-14):** the Batch-4 byte-identical screen and the
+Batch-6 `dt_switchon` ablation both ran before `c43a50e` (PR #738, merged the same day) removed the
+`P_HII` channel that was carrying un-ramped pressure into `P_drive` — see
+`docs/dev/switchon-successor/PLAN.md`'s Status block for which figures that invalidates (the
+ablation fates) and which it does not (the algebra). The energy-collapse event itself is unaffected
+in *kind*: it triggers off a segment's own starting `Eb`, which C3c does not redefine. §1 is source-verified against `adfc23f`; the §3 bars and §5 decision rule
 were registered *before* any edit and are unchanged.
 
 - **D1:** production is ≥4.3e4× away from the stall (the whole phase-1a integrator costs

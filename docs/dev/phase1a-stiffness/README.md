@@ -32,7 +32,7 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-06):** ✅ shipped on the branch — **all six batches done, every bar closed.** It clears P0, P1, P1-free (`dictionary.jsonl` **byte-identical on all five configs**,
+**Status (2026-08-14):** ✅ **shipped — merged to `main` 2026-08-14 (PR #737)** — **all six batches done, every bar closed.** ⚠️ The equivalence and ablation figures below predate C3c (`c43a50e`); see [`PLAN.md`](PLAN.md)'s Status block. It clears P0, P1, P1-free (`dictionary.jsonl` **byte-identical on all five configs**,
 where the bar required only `simple_cluster`), P2 (worst 1.007×) and P4 (behavioural test, verified
 failing-first); suite 1057/0 and `pre-commit` pass. P3's mypy clause failed as written (144 vs 137 baseline, all +7 of an
 `attr-defined` idiom the same file already carries 49 of) and was **ruled ACCEPT** by the
