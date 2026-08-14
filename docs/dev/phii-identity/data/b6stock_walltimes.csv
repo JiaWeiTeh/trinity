@@ -1,7 +1,10 @@
-# generated 2026-08-14T09:13:23Z | builder run_batch.py | code fca7d88+dirty
+# generated 2026-08-14T09:32:40Z | builder run_batch.py | code 8b19bdc+dirty
 # arm=b6stock stop_t_override=1.5 (last writer)
-# run root: outputs/phii/b6stock__fca7d88
+# run root: outputs/phii/b6stock__fca7d88_dirty
 # Rows merged across concurrent streams; wall_s reflects a shared 4-core box.
 config,status,wall_s,n_snapshots
 F1HI,ok,630.5,144
 F1LO,ok,564.7,133
+GMC,exit143,570.1,129
+SDHS,exit143,568.0,146
+WW,ok,975.7,178
