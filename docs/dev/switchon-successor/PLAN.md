@@ -103,7 +103,37 @@ window (ramp on, from the Batch 4 run):
 |---|---|
 | `F_rad / (4πR2²·Pb)` | **0.39, 0.37, 0.35, 0.34, 0.32, 0.60** — radiation is a third to three-fifths of the drive |
 | `F_grav / (4πR2²·Pb)` | 0.006-0.009 — negligible |
-| `P_HII / Pb` | **1.0000** exactly — the known `n_IF_Str` min-cap (`phase1a-init` FINDINGS, Extra findings #1), so the ionized-gas term adds nothing independent here |
+| `P_HII / Pb` | **1.0000** exactly *as measured 2026-08-06* — then the known `n_IF_Str` min-cap made `P_HII` an algebraic relabelling of the confining pressure. ⚠️ **SUPERSEDED 2026-08-14 by the C3c regime switch** (`get_bubbleParams.get_phii_c3c`, merged in `c43a50e`): the confined branch now returns **exactly 0.0**, and a fresh `simple_cluster` run on merged `main` measures `P_HII/Pb = 0.0000` through phase 1a. The *conclusion* is unchanged and in fact now explicit — the ionised term contributes nothing independent in the energy phase — but see the box below, because the change moves what the ramp controls. |
+
+> ### ⚠️ 2026-08-14, post-merge: C3c changed what `dt_switchon` controls
+>
+> Every measured number in this workstream (D1–D4, the screen references, the fate tables) was
+> taken **before** the C3c photoionised regime switch landed in `main` (`c43a50e`). That change is
+> not cosmetic for phase 1a, and it cuts in the direction that makes the ramp *more* load-bearing,
+> not less:
+>
+> * Phase 1a drives the shell with `P_drive = max(press_bubble, P_HII)`
+>   (`energy_phase_ODEs.py:256`), where `press_bubble` is the **ramped** pressure.
+> * **Before C3c**, `P_HII` equalled the unramped `Pb` exactly, so `P_drive` came out as the
+>   *unramped* pressure — **the ramp did not affect the shell drive at all**. It acted only on the
+>   energy equation's `PdV` drain (`:274`, which uses `press_bubble` directly).
+> * **After C3c**, `P_HII = 0` in the energy phase, so `P_drive = press_bubble` — **the ramp now
+>   governs the drive as well as the drain.**
+>
+> **What survives untouched:** everything algebraic. `PdV/Lmech = 2(v2/v_wind)/(R1/R2)²` is derived
+> from the energy equation and the `solve_R1` balance, neither of which involves `P_HII`; the seed
+> anatomy was re-run on merged `main` on 2026-08-14 and reproduces `R1/R2 = 0.869167` and
+> `PdV/Lmech = 2.647425` on all five configs, unchanged to six digits. So D4's core result, and the
+> conclusion that no seed *energy* can fix the handover, stand.
+>
+> **What is now dated and must be re-measured before being quoted:** the *trajectory and fate*
+> results — D1's budget table, D2/D3/D4's N0/N1/N2 numbers, and
+> `phase1a-stiffness/data/dt_switchon_removability.csv`. They remain the best evidence on record
+> and their qualitative verdicts are expected to hold a fortiori (the ramp gained influence), but
+> the specific percentages were measured under a different phase-1a drive.
+>
+> **What this does to S0:** it strengthens it. The constant is kept, and it is now doing strictly
+> more work than the write-up at the constant claims.
 
 Four consequences, and they change how the rest of this plan must be read:
 
