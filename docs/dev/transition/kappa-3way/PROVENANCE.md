@@ -32,10 +32,11 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-13):** 🟡 partial — the CODE BASELINE clause has now fired **twice**, and the
-second firing is open. ⚠️ **Full-run numbers are VERIFY again** pending `§4b`'s re-baseline at merge
-`e98c1d1`, which unlike `§4a` changes the **implicit phase** itself (the C3c `P_HII` regime switch),
-so `§4a`'s "negligible early window" argument is not available. Prior state: §7's "if a fresh number contradicts a VERIFY number" clause **fired** once already (G0 failed
+**Status (2026-08-13):** 🔵 in force — the CODE BASELINE clause has fired **twice** and both firings
+are now closed by measurement. The second (`§4b`, merge `e98c1d1`, the C3c `P_HII` regime switch)
+came back **0 PASS / 6 FAIL** with the matched window failing too, so unlike `§4a` it is a real θ(t)
+change: **Θ₀ is amended to 0.221962 / 0.342559 / 0.462692**, no `FINDINGS §1`–`§13` conclusion moves,
+and `§16` is unchanged. A0 re-verified bit-identical. Prior state: §7's "if a fresh number contradicts a VERIFY number" clause **fired** once already (G0 failed
 2/11; reconciliation in `FINDINGS.md` §1). The new **CODE BASELINE** clause (`§1`) then fired on the
 2026-08-08 `main` merge, which moved `trinity/` under all 294 arms — and the Θ₀ re-baseline it demanded
 **came back 5 PASS / 1 FAIL** (`§4a`, `FINDINGS §14`), the one failure a 3.4% window-length effect worth
@@ -201,10 +202,19 @@ So the `§4a` argument — *"the disturbed window is a negligible fraction of th
 not available this time**, and must not be reused. The C3c change acts throughout the implicit
 phase, which *is* the Θ_cum window.
 
-🟡 **PENDING — the second Θ₀ re-baseline.** The three `__none_diag` arms are re-running at `e98c1d1`
-and will be scored against the same G0 bar by the same committed harness
-(`data/make_merge_rebaseline.py`). Until it lands, every full-run number in this workstream is
-**VERIFY** again under `§1`'s CODE BASELINE clause. Result goes to `FINDINGS §14a`.
+✅ **MEASURED 2026-08-13 — 0 PASS / 6 FAIL, and the `§4a` escape does not apply.** Re-run at
+`e98c1d1` and scored by the same committed harness at the same G0 bar: bench1 1.41e-03 · bench2
+1.70e-03 · bench3 8.86e-04 native, and **the matched window fails by the same amount on every arm**
+(1.41e-03 / 1.68e-03 / 8.50e-04). `§4a`'s failure dissolved on a matched window and could therefore
+be called a window-length artifact; **this one cannot** — θ(t) itself moved. Full table in
+`FINDINGS §14a`.
+
+**Quotability.** Θ₀ is **amended to 0.221962 / 0.342559 / 0.462692** (bench1/2/3). The shifts are
++0.19% to +0.64%, all upward, largest on the most diffuse bench — consistent with removing the
+`P_drive` double-count. They propagate to ~0.4–2.5% on band-entry doses, well inside the 2.7–6×
+spreads the ranking turns on, so no `FINDINGS §1`–`§13` conclusion changes; the *numbers* are
+superseded. ⚠️ Momentum-phase outcomes moved far more (R₂ +16% / −7%, stopping times 2.57→2.64 and
+4.98→3.38 Myr), so any quoted fate, collapse time or final radius is affected and remains unaudited.
 
 ✅ **The A0 exemption was re-checked, not assumed, and it holds — bit-identically.** `§4a`'s
 exemption rested on A0 importing only `bubble_structure/bubble_luminosity.py`, and this merge adds

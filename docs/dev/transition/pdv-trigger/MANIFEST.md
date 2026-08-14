@@ -17,7 +17,7 @@
 | last updated (commit) | artifact | producer / flags |
 |---|---|---|
 | 2026-08-13 `7d081344` | `data/exponent_synthesis.csv` | by `make_exponent_synthesis.py` · 🕐 generated 2026-08-13T20:18:21Z | builder make_exponent_synthesis.py | code 96707dc+dirty |
-| 2026-08-13 `7e0d0940` | `data/merge_rebaseline.csv` | by `make_merge_rebaseline.py` · 🕐 generated 2026-08-13T20:39:19Z | builder make_merge_rebaseline.py | code db9c0a2+dirty |
+| 2026-08-13 `7e0d0940` | `data/merge_rebaseline.csv` | by `make_merge_rebaseline.py` · 🕐 generated 2026-08-14T12:27:57Z | builder make_merge_rebaseline.py | code 5a38a7e+dirty |
 | 2026-08-13 `7e0d0940` | `merge_rebaseline.png` | by `make_merge_rebaseline.py` |
 | 2026-08-03 `082add90` | `data/farea_screen.csv` | by `make_farea_screen.py` · 🕐 generated 2026-08-03T09:46:08Z | builder make_farea_screen.py | code bb94c78+dirty |
 | 2026-08-03 `082add90` | `farea_screen.png` | by `make_farea_screen.py` |

@@ -1,14 +1,14 @@
-# generated 2026-08-13T20:39:19Z | builder make_merge_rebaseline.py | code db9c0a2+dirty
+# generated 2026-08-14T12:27:57Z | builder make_merge_rebaseline.py | code 5a38a7e+dirty
 # Theta0 re-baseline after the 2026-08-08 main merge (kappa-3way PROVENANCE 4a, FINDINGS 14) + the Lancaster Eq-10 screen (F_AREA_PLAN 5a item 3, FINDINGS 15c).
 # table=THETA0: window=native scores the re-run against the COMMITTED value; window=matched scores the two trajectories on a common window (endpoint interpolated).
 # table=EQ10: C = (1-Theta)/(Rdot/Vw), the inverted Eq-10 prefactor. Lancaster's is order-unity; PASS means TRINITY's implied C lands inside his bracket.
 table,arm,window,C_drift,C_hi_lancaster,C_lo_lancaster,C_max,C_median,C_min,Rdot_over_Vw_last,abs_diff,bar,n_rows_committed,n_rows_rerun,t_end_committed,t_end_rerun,t_last,theta_committed,theta_measured_last,theta_pred_at_C_hi,theta_rerun,verdict
-THETA0,bench1_m5e4_r20,native,,,,,,,,0.00284831,0.0005,84,83,0.616673,0.596018,,0.220551,,,0.217702686,FAIL
-THETA0,bench1_m5e4_r20,matched,,,,,,,,0.000295681,0.0005,84,83,0.616673,0.596018,,0.217998367,,,0.217702686,PASS
-THETA0,bench2_m1e5_r10,native,,,,,,,,6.53837e-05,0.0005,76,76,0.397411,0.397494,,0.34086,,,0.340794616,PASS
-THETA0,bench2_m1e5_r10,matched,,,,,,,,8.64037e-05,0.0005,76,76,0.397411,0.397494,,0.340860404,,,0.340774,PASS
-THETA0,bench3_m1e5_r5,native,,,,,,,,5.39591e-06,0.0005,68,68,0.270679,0.270768,,0.461806,,,0.461811396,PASS
-THETA0,bench3_m1e5_r5,matched,,,,,,,,3.4759e-05,0.0005,68,68,0.270679,0.270768,,0.461806286,,,0.461771527,PASS
-EQ10,bench1_m5e4_r20,implicit,5.62,3.821771168817467,1.5,125.206,59.2877,22.2771,0.0056909,,,,,,,0.596018,,0.287467,0.978251,,FAIL
-EQ10,bench2_m1e5_r10,implicit,4.281,3.821771168817467,1.5,136.784,74.8138,31.9533,0.0041474,,,,,,,0.397494,,0.436179,0.98415,,FAIL
-EQ10,bench3_m1e5_r5,implicit,3.276,3.821771168817467,1.5,150.388,92.7643,45.9106,0.00290945,,,,,,,0.270768,,0.579242,0.988881,,FAIL
+THETA0,bench1_m5e4_r20,native,,,,,,,,0.00141142,0.0005,84,84,0.616673,0.616727,,0.220551,,,0.221962419,FAIL
+THETA0,bench1_m5e4_r20,matched,,,,,,,,0.00140511,0.0005,84,84,0.616673,0.616727,,0.220550996,,,0.221956104,FAIL
+THETA0,bench2_m1e5_r10,native,,,,,,,,0.001699,0.0005,76,76,0.397411,0.397494,,0.34086,,,0.342558995,FAIL
+THETA0,bench2_m1e5_r10,matched,,,,,,,,0.00167812,0.0005,76,76,0.397411,0.397494,,0.340860404,,,0.342538526,FAIL
+THETA0,bench3_m1e5_r5,native,,,,,,,,0.000885672,0.0005,68,68,0.270679,0.270768,,0.461806,,,0.462691672,FAIL
+THETA0,bench3_m1e5_r5,matched,,,,,,,,0.000850403,0.0005,68,68,0.270679,0.270768,,0.461806286,,,0.46265669,FAIL
+EQ10,bench1_m5e4_r20,implicit,5.635,3.821771168817467,1.5,125.828,60.454,22.3302,0.00580453,,,,,,,0.616727,,0.291331,0.977816,,FAIL
+EQ10,bench2_m1e5_r10,implicit,4.312,3.821771168817467,1.5,138.587,75.1046,32.1412,0.00406053,,,,,,,0.397494,,0.437263,0.984482,,FAIL
+EQ10,bench3_m1e5_r5,implicit,3.311,3.821771168817467,1.5,153.119,92.3219,46.2435,0.00283616,,,,,,,0.270768,,0.565729,0.989161,,FAIL

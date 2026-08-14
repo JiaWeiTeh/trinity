@@ -32,10 +32,12 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-13):** 🟡 partial — ⚠️ **full-run numbers are VERIFY again** after a SECOND `main`
-merge (`e98c1d1`) that changes the **implicit phase** via the C3c `P_HII` regime switch, so the first
-merge's "negligible early window" argument does not apply (`PROVENANCE §4b`); re-baseline running,
-result lands in `§14a`. Prior state: **294/294 arms ran, the three-way table is MEASURED, and it
+**Status (2026-08-13):** 🔵 actionable — a SECOND `main` merge (`e98c1d1`, the C3c `P_HII` regime
+switch) moved the implicit phase, and `§14a` measured it: **0 PASS / 6 FAIL, matched window too**, so
+this one is a real θ(t) change rather than a window artifact. **Θ₀ amended to
+0.221962 / 0.342559 / 0.462692** (+0.2 to +0.6%); no `§1`–`§13` conclusion moves and **`§16` is
+robust** (implied C 60/75/92 vs 59/75/93). ⚠️ Momentum-phase outcomes moved much more (R₂ +16%/−7%)
+— fates remain unaudited. Prior state: **294/294 arms ran, the three-way table is MEASURED, and it
 survived the FIRST `main` merge** (`§14`: Θ₀ re-baseline 5 PASS / 1 FAIL, the one failure a window-length
 artifact worth 1.3% on bench1 alone).
 **f_κ is the worst of the three on both metrics** (it never even reaches the trigger θ = 0.95 on
@@ -771,6 +773,49 @@ returns 8.6e-5 PASS. The committed builder interpolates.
 `bubble_structure/bubble_luminosity.py`, which the merge does not touch. Re-run post-merge it
 returns the identical scorecard — A0.1 5/3, A0.2 0/8, A0.3 0/8, A0.4 2/0, A0.5 0/8, **GA0 FAILED** —
 with 37 numeric fields drifting ≤9.2e-16 (~4 ULP) and no verdict moved.
+
+
+### §14a. The SECOND merge (2026-08-13) — Θ₀ moves on all three, and this time it is NOT a window artifact
+
+`PROVENANCE §4b` records why the clause fired again: merge `e98c1d1` brought the **C3c `P_HII`
+regime switch**, which acts inside `run_energy_implicit_phase.py` — the window Θ_cum integrates.
+Re-run and scored by the same committed harness at the same G0 bar:
+
+| arm | window | committed | re-run at `e98c1d1` | abs diff | verdict |
+|---|---|---|---|---|---|
+| bench1_m5e4_r20 | native | 0.220551 | 0.221962 | 1.41e-03 | ❌ FAIL |
+| bench1_m5e4_r20 | **matched** | 0.220551 | 0.221956 | **1.41e-03** | ❌ **FAIL** |
+| bench2_m1e5_r10 | native | 0.340860 | 0.342559 | 1.70e-03 | ❌ FAIL |
+| bench2_m1e5_r10 | **matched** | 0.340860 | 0.342539 | **1.68e-03** | ❌ **FAIL** |
+| bench3_m1e5_r5 | native | 0.461806 | 0.462692 | 8.86e-04 | ❌ FAIL |
+| bench3_m1e5_r5 | **matched** | 0.461806 | 0.462657 | **8.50e-04** | ❌ **FAIL** |
+
+**0 PASS / 6 FAIL.** ⚠️ **The matched-window column is the important one.** `§14`'s single failure
+dissolved on a matched window, which is what let it be called a window-length artifact. Here
+matched fails by the *same* amount as native on every arm — so **θ(t) itself has changed**. The
+`§14` escape does not apply and must not be quoted for this merge.
+
+**Size and direction.** +0.64% (bench1), +0.50% (bench2), +0.19% (bench3) — all **upward**, and
+largest on the most diffuse bench. Consistent with removing the `P_drive` double-count: less
+spurious push ⇒ slower shell ⇒ higher θ at matched t. Small in absolute terms, but every one is
+above the campaign's own 5e-4 bar, so **the three published Θ₀ values are now amended**:
+
+> **Θ₀ at `e98c1d1` = 0.221962 / 0.342559 / 0.462692** (bench1 / bench2 / bench3), superseding
+> 0.220551 / 0.340860 / 0.461806. Band entry goes as `(0.90/Θ₀)^{1/q}`, so at q ≈ 0.25–0.50 this
+> propagates to roughly 0.4–2.5% on the entry doses — smaller than the 2.7–6× spreads the ranking
+> turns on, so **no conclusion in `§1`–`§13` changes**, but the numbers themselves are stale.
+
+**The momentum phase moved much more, as `momentum-pdrive §4` warned.** Final radius R₂:
+60.41 → 70.17 pc on bench1 (+16%) and 91.54 → 84.87 pc on bench2 (−7%), with stopping times shifting
+2.57 → 2.64 and 4.98 → 3.38 Myr. So **anything quoting a fate, a collapse time or a final radius is
+materially affected** — including K3's fate-determinism arm. Still not audited; now demonstrably
+necessary rather than precautionary.
+
+✅ **`§16` is robust to the merge.** Re-running the Eq-10 screen on the same arms gives implied
+C = **60.5 / 75.1 / 92.3** against 59.3 / 74.8 / 92.8 before — third-digit motion, same 0/3 FAIL,
+same 6–40× above the EC-validity ceiling, same Θ predictions (0.978/0.985/0.989). A conclusion that
+survives a code change which moved its inputs is worth more than one that was never tested against
+one.
 
 ---
 

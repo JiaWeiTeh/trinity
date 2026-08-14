@@ -32,9 +32,10 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-13):** 🟡 partial — ⚠️ **a second `main` merge (`e98c1d1`) put the full-run numbers
-back under VERIFY**: it changes the implicit phase via the C3c `P_HII` regime switch, so the first
-merge's "negligible early window" argument does not apply (`PROVENANCE §4b`). Re-baseline running.
+**Status (2026-08-13):** 🔵 actionable — a second `main` merge (`e98c1d1`, C3c `P_HII` regime switch)
+moved the implicit phase; `FINDINGS §14a` measured it at **0 PASS / 6 FAIL including the matched
+window**, so **Θ₀ is amended to 0.221962 / 0.342559 / 0.462692**. No `§1`–`§13` conclusion moves,
+`§16` is robust, A0 bit-identical. ⚠️ Momentum-phase fates moved much more and are unaudited.
 Prior state: **294/294 arms ran, the three-way table is MEASURED, and it survived the first merge** (`FINDINGS §14`: 5 PASS / 1 FAIL, the failure a window artifact worth
 1.3% on bench1's Θ₀). `FINDINGS §15` re-aims `§10b`'s indictment and strikes f_area Option 2;
 `FINDINGS §16` screens Option 3 via Lancaster Eq 10 and it **fails 0/3** — so all three f_area
