@@ -206,10 +206,14 @@ and will be scored against the same G0 bar by the same committed harness
 (`data/make_merge_rebaseline.py`). Until it lands, every full-run number in this workstream is
 **VERIFY** again under `§1`'s CODE BASELINE clause. Result goes to `FINDINGS §14a`.
 
-⚠️ **`§4a`'s A0 exemption does NOT automatically carry over.** It rested on A0 importing only
-`bubble_structure/bubble_luminosity.py`. This merge changes `bubble_structure/get_bubbleParams.py`
-(+115), which is in the same package — the exemption has to be re-argued from the actual import
-graph, not assumed.
+✅ **The A0 exemption was re-checked, not assumed, and it holds — bit-identically.** `§4a`'s
+exemption rested on A0 importing only `bubble_structure/bubble_luminosity.py`, and this merge adds
++115 lines to `bubble_structure/get_bubbleParams.py` in the same package, so it had to be re-argued
+from the actual code rather than carried over. Re-run at `e98c1d1`, `farea_screen.csv` comes back
+with **0 of 66 rows differing in any field** — not "within tolerance", identical — and the scorecard
+is unchanged (A0.1 5/3 · A0.2 0/8 · A0.3 0/8 · A0.4 2/0 · A0.5 0/8 → **GA0 STOP**). The C3c helper
+`get_phii_c3c` is simply not on A0's call path. `FINDINGS §13` stands at `e98c1d1`. The regenerated
+CSV was not committed: a stamp change with zero data change is not a new measurement.
 
 ## 5. The stamping contract
 
