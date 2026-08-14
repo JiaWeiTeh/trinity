@@ -32,7 +32,7 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-05):** 🟡 partial — investigation complete and the fix implemented + gated on this branch; one maintainer decision outstanding (the G2 stock-comparison bar, `PLAN.md` §4) before it can land.
+**Status (2026-08-14):** ✅ shipped — investigation complete, fix implemented + gated, the G2 stock-comparison bar (`PLAN.md` §4) decided, and the whole thing **merged to `main` 2026-08-06**. ⚠️ Two of the three goldens re-baselined here went red again on 2026-08-14 for an unrelated reason (C3c, `c43a50e`) — see `PLAN.md`'s Status block before treating that as a regression in this fix.
 
 Why a TRINITY run at sub-GMC scale (0.15 pc, 2.1e4 yr compact H II region;
 `mCloud=300`, `sfe=0.01`, `nCore=8.7e3`) crosses the observed radius ~30x too

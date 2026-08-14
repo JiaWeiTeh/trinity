@@ -219,7 +219,7 @@ def run_energy(params):
         updateDict(params, shell_data)
         logger.debug('shell complete')
 
-        # Compute P_HII from Strömgren ionization balance in shell (n_IF_Str)
+        # Compute P_HII: photoionised pressure (get_bubbleParams.get_phii_c3c) -- exactly 0.0 while confined
         n_IF_Str = shell_data.n_IF_Str
         if params['include_PHII'].value and n_IF_Str > 0:
             # Photoionised pressure is a regime switch, not the capped Stromgren

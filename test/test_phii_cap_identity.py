@@ -16,9 +16,22 @@ These tests pin the mechanism so a future cap change announces itself:
   (2) where the cap binds, P_HII == Pb to <=2 ULP (the identity);
   (3) where the cap is slack, P_HII tracks the Strömgren balance instead.
 
-They are NOT an endorsement of the cap: (2) failing because the cap was
-deliberately replaced is a correct, expected failure — update the test with the
-new contract rather than restoring the old one.
+⚠️ READ THIS BEFORE TRUSTING A GREEN RUN (2026-08-14). The cap WAS deliberately
+replaced — `c43a50e` (C3c) — and this file did not announce it, because (2) and
+(3) reconstruct the pressure with the local `_P_HII` helper below instead of
+calling production. Nothing in `trinity/` computes P_HII this way any more; the
+six call sites go through `get_bubbleParams.get_phii_c3c`, which returns exactly
+0.0 while the ionised gas is confined. So:
+
+  - (1) still guards live behaviour: `shell_structure.py` still caps `n_IF_Str`,
+    and the cap still feeds the shell ODE's boundary condition, which is why it
+    still matters even though it no longer sets P_HII.
+  - (2) and (3) are now a HISTORICAL record of the defect the phii-identity
+    workstream was created for. They are green against an algebraic relationship
+    that is still true of the formula, and say nothing about what the code does.
+
+The live P_HII contract is `test/test_phii_c3c.py` — that is the file to change
+if the regime switch changes. Do not read this one as coverage of production.
 """
 from pathlib import Path
 
@@ -52,7 +65,11 @@ def _params(Pb=None, Qi=None):
 
 
 def _P_HII(params, n_IF_Str):
-    """The conversion used verbatim in all four phase runners."""
+    """The conversion the four phase runners used verbatim BEFORE C3c (`c43a50e`).
+
+    No production path computes P_HII this way now — this is a local
+    reconstruction kept so the historical identity stays checkable.
+    """
     return ((params["mu_convert"].value / params["mu_ion_shell"].value)
             * n_IF_Str * params["k_B"].value * params["TShell_ion"].value)
 

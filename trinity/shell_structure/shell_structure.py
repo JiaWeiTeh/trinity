@@ -74,7 +74,7 @@ class ShellProperties:
     n_IF: float  # Density at ionization front from shell ODE (code units)
     n_IF_ODE: float  # Same as n_IF (raw ODE value, kept for diagnostics)
     R_IF: float  # Radius of ionization front (pc)
-    n_IF_Str: float  # Strömgren ionization balance density (Lancaster+2025), sole source of P_HII
+    n_IF_Str: float  # Strömgren ionization balance density (Lancaster+2025); gates P_HII, no longer its source (C3c)
     n_IF_Str_raw: float  # Pre-cap n_IF_Str (diagnostic only; see docs/dev/phii-identity/)
 
     # Shell density profile arrays (ionized + neutral)

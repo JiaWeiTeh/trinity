@@ -92,6 +92,10 @@ Harvested every candidate trigger vs the Eb-peak oracle (`harvest_h0.py`,
   even cumulatively. Not a metric-form problem.
 - **F3 (force) never fires**; and `Pb ≡ P_HII` to machine precision (bubble–shell
   pressure continuity by construction) makes pressure-balance criteria degenerate.
+  ⚠️ *2026-08-14: that identity was an artifact of the Strömgren cap, and C3c (`c43a50e`) removed
+  it — `P_HII` is now `0.0` while confined. The degeneracy this bullet reports is therefore gone;
+  whether an F3-style pressure-balance criterion is viable **post-C3c is untested**, which matters
+  because pdv-trigger reads this file as live evidence.*
 - **F2 (instantaneous timescale) fires at t≈0** — an artifact (ignores Lgain
   replenishment).
 - **The Eb-peak oracle barely exists** — 5/6 the bubble's Eb grows monotonically to

@@ -522,7 +522,7 @@ def compute_forces_pure(
 
     # ==========================================================================
     # WARM IONIZED GAS PRESSURE (implicit phase)
-    # P_HII from Strömgren ionization balance in shell (n_IF_Str)
+    # P_HII: photoionised pressure (get_bubbleParams.get_phii_c3c) -- exactly 0.0 while confined
     # ==========================================================================
     n_IF = shell_props.n_IF
     R_IF = shell_props.R_IF
@@ -975,7 +975,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         shell_props = shell_structure_pure(params)
         updateDict(params, shell_props)
 
-        # Compute P_HII from Strömgren ionization balance in shell (n_IF_Str)
+        # Compute P_HII: photoionised pressure (get_bubbleParams.get_phii_c3c) -- exactly 0.0 while confined
         n_IF_Str = shell_props.n_IF_Str
         if params['include_PHII'].value and n_IF_Str > 0:
             # Photoionised pressure is a regime switch, not the capped Stromgren
@@ -1375,7 +1375,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
             params['Pb'].value = Pb_f
             shell_props_f = shell_structure_pure(params)
             updateDict(params, shell_props_f)
-            # P_HII from Strömgren ionization balance
+            # P_HII: photoionised pressure (get_bubbleParams.get_phii_c3c) -- exactly 0.0 while confined
             n_IF_Str_f = shell_props_f.n_IF_Str
             if params['include_PHII'].value and n_IF_Str_f > 0:
                 # Regime switch — see get_bubbleParams.get_phii_c3c.

@@ -616,7 +616,7 @@ which is breached everywhere:
 - **Open, and it is now the crux:** the larger uncapped `P_HII` is only trustworthy if the Strömgren
   balance is trustworthy at these ionized volumes. Nothing measured here settles that — it is D2.
 
-### Batch 5 — C3: the advanced method — Status: 🟡 **stage 1 (offline screen) DONE — C3b rejected, C3a advances**
+### Batch 5 — C3: the advanced method — Status: ✅ **ALL STAGES DONE** — 1 (offline screen: C3b rejected, C3a advances), 1b (C3c designed), 2 (run arm clean on 5/5), 3 (wind ladder: transition passes, momentum open). C3c then landed in `c43a50e`; see the Status block at the top of this file.
 
 **Stage-1 screen (2026-08-13).** `harness/c3_offline_screen.py` → `data/b5_c3_screen.csv`, over the
 five complete b1 runs (B3M, PRB, WW, B1M, B2M). **No solver was run**: both candidates are
@@ -916,7 +916,7 @@ looks like vs stock. Implementation note for the arm: replace the `n_IF_Str` →
 lines and selecting per §3c's table; the cap and shell structure stay untouched (they still serve
 absorption fractions and diagnostics).
 
-### Batch 6 — land — Status: ⬜
+### Batch 6 — land — Status: 🟡 **the landing happened early and out of order (`c43a50e`, 2026-08-14); the batch's own checklist below is mostly still outstanding.** C3c is in `main` at all six call sites, but the full-12 re-verify has not been run, the goldens have not been re-baselined, and the reconciliation this batch calls for was done retroactively on 2026-08-14. Treat the items below as a post-landing to-do list, not a gate.
 Chosen candidate (D1 decides between C1, C1⊕C2b, or a C3) on the **full-12**; full ladder
 re-verify; CHANGELOG entry; reconcile the evidence README (§7 answers), DOC_STATUS, and — when
 the sibling branches merge — fold-back notes for momentum-pdrive (its §2 "inferred" caveat, its

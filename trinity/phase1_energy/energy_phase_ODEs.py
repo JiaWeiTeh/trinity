@@ -101,7 +101,7 @@ class ODESnapshot:
     # Cloud properties
     rCloud: float
 
-    # HII pressure from Strömgren ionization balance in shell (n_IF_Str)
+    # P_HII: photoionised pressure (get_bubbleParams.get_phii_c3c) -- exactly 0.0 while confined
     P_HII: float
 
     # Covering-fraction leak: Cf=1 -> sealed bubble (no leak); c_sound is the
@@ -243,7 +243,7 @@ def get_ODE_Edot_pure(t: float, y: list, snapshot: ODESnapshot, params_for_feedb
 
     # ==========================================================================
     # WARM IONIZED GAS PRESSURE
-    # P_HII from Strömgren ionization balance in shell (n_IF_Str)
+    # P_HII: photoionised pressure (get_bubbleParams.get_phii_c3c) -- exactly 0.0 while confined
     # Pre-computed in phase runner and stored in snapshot.
     # ==========================================================================
     P_HII = snapshot.P_HII
@@ -375,7 +375,7 @@ def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_
 
     # ==========================================================================
     # WARM IONIZED GAS PRESSURE
-    # P_HII from Strömgren ionization balance in shell (n_IF_Str)
+    # P_HII: photoionised pressure (get_bubbleParams.get_phii_c3c) -- exactly 0.0 while confined
     # Pre-computed in phase runner and stored in snapshot.
     # ==========================================================================
     P_HII = snapshot.P_HII
