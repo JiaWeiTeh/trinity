@@ -23,6 +23,7 @@ resumes without redoing work.
 """
 
 import argparse
+import json
 import subprocess
 import sys
 import time
@@ -137,8 +138,25 @@ def materialise(cfg, out_dir, extra):
 
 
 def done(run_dir):
+    """True only for a run that reached a terminal state.
+
+    NOT merely "metadata.json exists": DescribedDict.flush() writes that file on the
+    FIRST flush, i.e. seconds into the run (see trinity/_output/_metadata_io.py, which
+    names all three writers). The `termination` block is added by write_simulation_end()
+    at run end, so it is the only honest completion marker. The earlier existence test
+    reported a still-running or crashed run as complete, which made --skip silently
+    accept partial output.
+    """
     d = run_dir / "dictionary.jsonl"
-    return d.exists() and d.stat().st_size > 0 and (run_dir / "metadata.json").exists()
+    if not (d.exists() and d.stat().st_size > 0):
+        return False
+    meta = run_dir / "metadata.json"
+    if not meta.exists():
+        return False
+    try:
+        return "termination" in json.loads(meta.read_text())
+    except (OSError, ValueError):
+        return False
 
 
 def main():

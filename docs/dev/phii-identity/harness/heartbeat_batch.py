@@ -68,6 +68,19 @@ def main():
     def complete(cfg):
         return run_batch.done(root / cfg)
 
+    def already_running(cfg):
+        """Is some OTHER process already solving this config?
+
+        Killing this loop orphans its children rather than stopping them, so a
+        naive relaunch after a restart would run one config TWICE in parallel --
+        the exact failure PLAN C-7 was written about. Match on the run's own param
+        path, which is unique per (root, config).
+        """
+        param = root / cfg / f"{cfg}.param"
+        r = subprocess.run(["pgrep", "-f", f"run.py {param}"],
+                           capture_output=True, text=True)
+        return bool(r.stdout.strip())
+
     def launch(cfg):
         run_dir = root / cfg
         param = run_dir / f"{cfg}.param"
@@ -114,6 +127,9 @@ def main():
         for cfg in pending:
             if len(alive) >= args.jobs:
                 break
+            if already_running(cfg):
+                log(f"  {cfg}: an untracked solve is already running — not relaunching")
+                continue
             alive[cfg] = launch(cfg)
 
         rows = {}
