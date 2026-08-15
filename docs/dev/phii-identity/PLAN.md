@@ -923,6 +923,56 @@ the sibling branches merge — fold-back notes for momentum-pdrive (its §2 "inf
 CSV column rename) and weak-winds (quantitative collapse times now clean). Goldens re-baselined
 under D4 with a table of before/after.
 
+### Batch 7 — confinement coverage + the weak-wind flip — Status: ⬜
+
+**Registered 2026-08-14 BEFORE any run of this batch started. Nothing below was written or
+edited after results existed.**
+
+Motivation. Every claim that the energy and implicit phases are 100% confined rests on **5
+configs with a real C3c arm** (B3M, WW, B2M, PRB, B1M — `data/b5s2_c3c_arm_regime.csv`) plus 4
+*offline* wind rungs evaluated on the stock trajectory. **Eight of the thirteen** matrix configs
+(SC, F1HI, F1LO, GMC, BE, PL2, LDLS, SDHS) have never been regime-screened at all. The confined
+fraction is a property of a C3c run **alone** — no stock arm is needed — so the gap costs 8 runs,
+not 16.
+
+The margin is not marginal: on B3M the ratio `P_C3a/P_conf` peaks at **0.120** in energy and
+**0.107** in implicit (`data/b7_regime_trajectory.csv`), i.e. **8.3×** and **9.4×** below the
+switch. The governing scaling, from Weaver (`R2 ∝ (Lw/ρ)^{1/5} t^{3/5}`,
+`Pb ∝ Lw^{2/5} ρ^{3/5} t^{−4/5}`) with `P_C3a ∝ Qi^{1/2} R2^{−3/2}`:
+
+```
+P_C3a / Pb  ∝  Qi^0.5 · Lw^−0.7 · ρ^−0.3 · t^−0.1
+```
+
+`Qi` and `Lw` both scale ≈linearly with cluster mass, so the ratio goes as **M^−0.2** — nearly
+mass-independent, which is why it barely moves across the mass/sfe grid; and `ρ^−0.3` puts the
+*denser* configs further from the switch, not closer.
+
+**G7.1 — coverage (the null).** On all 8 never-screened configs, the C3c arm returns
+`frac_HII_dom = 0.0000` in **both** energy and implicit.
+- FALSIFIED IF any of the 8 shows a non-zero energy or implicit HII-dominated fraction.
+- Registered secondary: `ratio_max` in energy stays **< 0.5** on all 8 (B3M is 0.120; the
+  spread across 4 decades of `nCore` should not cost 4×).
+
+**G7.2 — the flip (the control that proves the null CAN be non-null).** A new rung `B3MW001`
+(`FB_thermCoeffWind = 0.01`, `Qi` untouched — this decouples wind from ionising output, which no
+mass/sfe change can do) **DOES** break confinement in the energy phase.
+- From `Lw^−0.7`: the ratio scales by `0.01^−0.7 = 25.1×`. B3M energy max **0.120 → 3.01**,
+  median **0.072 → 1.81**.
+- Registered: energy `frac_HII_dom` **> 0.5**, and energy `ratio_max` in **[1.5, 6.0]**.
+- FALSIFIED IF energy `frac_HII_dom = 0`. That outcome would mean the Weaver scaling does not
+  govern the energy phase — which would **also remove the basis for G7.1's inference** to the
+  unmeasured configs, so the two gates stand or fall together.
+- Anchor already in hand: the same law predicts `B3MW01` (`Lw × 0.1`) at `0.120 × 5.01 = 0.60`,
+  i.e. still confined — and the committed offline screen reports exactly `frac_HII_dom = 0.0000`
+  for `B3MW01` energy. The law is therefore already right at one rung out.
+
+**VOID rule (the stage-3 lesson, §3c).** If a run terminates before leaving the implicit phase,
+or fails to complete, its row is reported **VOID** — never as a confirming null. A null is only
+evidence here because G7.2 is expected to produce a non-null on the same screen.
+
+Artifacts: `data/b7_confinement_screen.csv`, `harness/screen_confinement.py`.
+
 ## 7. Decisions needed from the maintainer
 
 | id | question | blocks | state |
@@ -945,6 +995,7 @@ under D4 with a table of before/after.
 | 4 | 🟡 | 2026-08-12 | **4a MEASURED — survives, but is not behaviourally neutral.** 4/4 configs (PRB, B3M, F1HI, F1LO) ran to their natural end, **zero** distress lines (no excess-work, overflow, monotonic-guard or convergence warnings), wall times *within* baseline (492–764 s vs 682–832 s). **No fate changed** on any config. Identity destroyed as intended: `frac_PHII_eq_Pb` = **0.0000** in every phase of every config (was ≥0.9697), relΔ now O(1) (0.06–2.55). But **every config breaches the 5% bar**: ΔR2 max 15.3–28.4%, all located inside the `dt_switchon` window (t = 1.3e-7 … 9e-6 Myr); ΔR2 at end-of-overlap 0.95% (PRB, recovers) → 14.4% (F1LO, retained). Mechanism: uncapped `P_HII` exceeds `Pb` on **100%** of rows (max 7.79× across the matrix; 3.36× on PRB) so it wins the `max`, lifting median `P_drive/Pb` from 1.0000 to 1.83 (PRB). **Verdict: C2a is numerically viable and physically consequential — not a free win. Landing it needs D2.** 4b not started | `data/b4a_ledger.csv`, `data/b4a_identity_grid.csv` |
 | 5 | 🟡 | 2026-08-13 | **Stage 1 (offline screen) done — C3b ⛔ REJECTED, C3a advances.** No solver run: both candidates are closed-form in stored quantities, evaluated on the stock trajectory across 5 configs. C3b fails the pre-registered wind-only limit *structurally* — `n = n_cloud(R2)` has **no `Qi` dependence**, so switching the ionizing source off leaves its `P_HII` unchanged; it also steps 4 decades at `rCloud`. C3a is causally decoupled (`Qi`, `R2` only), has the correct `Qi → 0` limit, and gives sensible ionised densities (19–8055 cm⁻³ in momentum) — but sits uniformly **3.5–7.6× above `P_ram`** and never crosses it, i.e. predicts a photoionisation-dominated momentum phase in all five configs. **Stage 1b: C3c designed (§3c) and screened — it supersedes bare C3a.** The confined skin has no independent density (any decoupled-thickness skin is C3a × O(1), *higher*), so C3c is a regime switch: transmit when `P_C3a ≤ P_conf`, drive at `P_C3a` when above. Screened on the same 5 runs: implicit **exactly** untouched (ratio 1..1..1), D-ramp fixed as a side effect (energy ratio down to 0.30 = the ramp honoured), `t_cross` inside transition in all 4 configs that reach it, momentum drive 2.4–4.3× stock. **Stage 2 DONE: C3c runs clean on 5/5** — zero distress, no fate changes, null passed exactly (`P_HII`=0 on 0/330 implicit rows, `P_drive`==`Pb`), all OVER-BAR at 12.8–20.5% as pre-registered. WW collapses 16% earlier but still collapses. The offline screen predicted the self-consistent regime structure to the printed digit on 3/5 configs. Physics verdict still open: needs D3 + stage 3 | `data/b5_c3_screen.csv`, `data/b5_c3c_regime.csv`, `data/b5s2_c3c_ledger.csv`, `data/b5s2_c3c_arm_regime.csv` |
 | 6 | ⬜ | — | — | — |
+| 7 | ⬜ | — | *registered 2026-08-14, unrun at time of writing: G7.1 coverage null on the 8 never-screened configs; G7.2 the `Lw × 0.01` flip that proves the null can be non-null* | `data/b7_confinement_screen.csv` |
 | 5-s3 | ✅ | 2026-08-13 | **Wind ladder DONE — Lancaster resolved in transition, open in momentum.** First ladder (`simple_cluster`: SC/SW3/SW10) **VOID** — all three terminate at `stop_t` still in implicit, so `t_cross = never` is not evidence about winds; the crossover is structurally floored at the transition handover (`ratio@entry` < 1 on every config). Re-run on B3M (`B3MW01/1/3/10`), all four valid. **Transition: (a) PASSES** — confined fraction 8.8% → 23.8% → 28.9% → 38.8%, lag/`t_entry` +1.5% → +37.2%, and `ratio@entry` = 0.7144/0.1227/0.0553/0.0235 vs the **pre-registered** 0.68/0.12/0.054/0.022 (exponent **−0.743** vs −0.74, errors 2–7%) — a Weaver-derived prediction holding out of its fitted regime. **Momentum: OPEN** — 100% HII-dominated on all four; `P_C3a/P_ram ∝ Lw^−0.33` ⇒ inversion needs `Lw ≈ 260`. **Not** an O(1) normalisation error (same normalisation predicts transition to 7%): it is the `R2^−3/2` geometry. Mechanism: energy duration **identical** (0.0030 Myr) and transition duration wind-independent; only implicit moves (`Lw^−0.388`), which is why `t_cross` *falls* with wind. ⚠️ Retracted mid-run claim that energy row counts (69/87/96/105) meant longer energy phases — that is timestep refinement, not duration | `data/b5s3_ladder_lag.csv`, `data/b5s3_ladder_regime.csv`, `data/b5s3_ladder_screen.csv`, `harness/lag_vs_handover.py` |
 
 ### 8.2 Config wall-times (filled by Batch 0)

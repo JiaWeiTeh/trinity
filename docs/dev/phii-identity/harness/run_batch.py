@@ -82,6 +82,13 @@ MATRIX = {
               {"FB_thermCoeffWind": "3"}),
     "B3MW10": ("b3mladder", f"{P_BENCH}/bench3_m1e5_r5__none_diag.param",
                {"FB_thermCoeffWind": "10"}),
+    # Batch 7 / G7.2: one rung BELOW the stage-3 ladder. Decoupling the wind from
+    # the ionising output is the only lever that moves P_C3a/Pb appreciably -- a
+    # mass or sfe change carries Qi and Lw together, giving only M^-0.2. At
+    # Lw x 0.01 the Weaver scaling predicts the ENERGY phase breaks confinement
+    # (ratio x25.1), which is the control proving Batch 7's null can be non-null.
+    "B3MW001": ("b7", f"{P_BENCH}/bench3_m1e5_r5__none_diag.param",
+                {"FB_thermCoeffWind": "0.01"}),
     # Late-time Qi fade: past SN onset (~3.6 Myr in the bundled SB99 table) the
     # ionizing output collapses while winds+SNe keep Lmech up, so C3c predicts a
     # possible SECOND crossover back to confinement. Stock cannot express this.
@@ -138,7 +145,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--arm", required=True, help="label for the code state, e.g. b0 / b1")
     ap.add_argument(
-        "--tier", default="core", choices=["core", "full", "stage3", "b3mladder", "all"]
+        "--tier", default="core", choices=["core", "full", "stage3", "b3mladder", "b7", "all"]
     )
     ap.add_argument("--configs", help="comma-separated ids, overrides --tier")
     ap.add_argument("--stop-t", help="override stop_t on every config (documented in the CSV)")
