@@ -22,13 +22,23 @@ _PARAM = (
 )
 
 # Matches test_betadelta_hybr_stress._GOLDEN[:2] for the shortened stop_t=0.004 run.
-# Re-baselined 2026-08-05 with the phase-1a segment schedule (was
-# (0.759260, -0.035387) twice, at t=0.00341/0.00381).  cool_alpha = t*v2/R2 is
-# carried into phase 1b FROM the phase-1a exit state, so a better 1a exit moves
-# this pair: see docs/dev/phase1a-init/PLAN.md §8, last block.
+# Verified 2026-08-14 that the two runs agree to all printed digits on both rows,
+# so stop_t does not perturb the trajectory ahead of the truncation.
+#
+# Re-baselined 2026-08-14 for C3c (`c43a50e`).  cool_alpha = t*v2/R2 is carried into
+# phase 1b FROM the phase-1a exit state, and C3c moves that exit state: the
+# capped-Strömgren `P_HII` was `Pb` un-ramped and won `max(press_bubble, P_HII)`, so
+# the dt_switchon ramp never reached the momentum equation; C3c returns exactly 0.0
+# while confined, so it does.  Before/after table + reproduce commands (the G3.4
+# condition on D4's re-baselining authority):
+# docs/dev/phii-identity/data/g34_golden_rebaseline.csv.  Was (0.888197, -0.046294).
+#
+# Earlier re-baseline 2026-08-05 with the phase-1a segment schedule (was
+# (0.759260, -0.035387) twice, at t=0.00341/0.00381): see
+# docs/dev/phase1a-init/PLAN.md §8, last block.
 _GOLDEN = [
-    (0.888197, -0.046294),  # t=0.00350 Myr
-    (0.888197, -0.046294),  # t=0.00390 Myr
+    (0.878396, -0.038973),  # t=0.00350 Myr
+    (0.878396, -0.038973),  # t=0.00390 Myr
 ]
 _TOL = 2e-3
 

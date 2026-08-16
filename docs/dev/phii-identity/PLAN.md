@@ -40,18 +40,25 @@ modelling call, §Batch-5-stage-3 below), not the landing. An independent advers
 (2026-08-13) corrected 2 critical + 11 major items — see §9, and do not quote any figure from an
 unmarked earlier revision of this file.
 
-⚠️ **Two consequences of landing, both foreseen here and neither finished:**
-(1) **D-ramp is now fixed in production** — the third consequence §3c predicted for C3c, defect
-defined at §3 item 3. The energy-phase drive is the ramped `Pb` alone, so the phase-1a-exit goldens
-moved by −1.1%: `test_run_smoke.py`
-`R2` 0.25955976 → 0.25672223 and `test_phase_boundary.py` `cool_beta` 0.888197 → 0.878395.
-`test_betadelta_hybr_stress.py` carries the same `(0.888197, -0.046294)` pair and is red too —
-measured 2026-08-14, `cool_beta` = 0.87839528 at t=0.00350 (`TRINITY_STRESS_N=1 pytest
-test/test_betadelta_hybr_stress.py -m stress`, 10 min) — but it is stress-marked, so it does not
-show in a default `pytest` or in CI.
-D4 granted re-baselining authority for `test_phase_boundary.py`, `test_betadelta_hybr_stress.py` and
-the `test_scheme_screen.py` fixtures conditional on G3.4's before/after table — **`test_run_smoke.py`
-is not on that list and needs its own sign-off.**
+⚠️ **Two consequences of landing, both foreseen here. The first is now closed; the second is not:**
+(1) **D-ramp is fixed in production, and the goldens it moved are re-baselined (2026-08-14).** This
+was the third consequence §3c predicted for C3c; the defect is defined at §3 item 3. The
+energy-phase drive is the ramped `Pb` alone, so the phase-1a exit state fell by ~1%, carrying every
+golden that pins it. Re-baselined under D4's authority with the G3.4 before/after table committed at
+`docs/dev/phii-identity/data/g34_golden_rebaseline.csv`:
+
+| test | quantity | before | after |
+|---|---|---|---|
+| `test_run_smoke.py` | `R2` / `v2` / `Eb` | 0.25955976 / 49.226112 / 662533.97 | 0.25672223 / 48.944359 / 657558.38 |
+| `test_phase_boundary.py` | `(cool_beta, cool_delta)` ×2 | (0.888197, −0.046294) | (0.878396, −0.038973) |
+| `test_betadelta_hybr_stress.py` | rows 1-2 / rows 3-4 | (0.888197, −0.046294) / (0.845829, −0.145668) | (0.878396, −0.038973) / (0.842071, −0.151456) |
+
+`test_mu_audit_drift.py`'s site count was red for an unrelated, purely structural reason and is
+fixed rather than re-baselined: the 11 refined sites are now 5 inline + 6 reached through
+`get_phii_c3c`, and the test asserts that accounting instead of a flat count of 11.
+**Authority note:** D4 covers `test_phase_boundary.py`, `test_betadelta_hybr_stress.py` and the
+`test_scheme_screen.py` fixtures (the last needed no change). `test_run_smoke.py` was **not** on
+D4's list; it was re-baselined on the maintainer's direct instruction, 2026-08-14.
 (2) **`switchon-successor/` measured `dt_switchon` in the regime C3c has now removed.** Every batch
 there ran with `P_HII == Pb` un-ramped winning the `max`, so the ramp was inert in the momentum
 equation; it now throttles `vd`. Its algebraic results (D1, D4) survive; its ablation and Weaver-N1
@@ -916,7 +923,7 @@ looks like vs stock. Implementation note for the arm: replace the `n_IF_Str` →
 lines and selecting per §3c's table; the cap and shell structure stay untouched (they still serve
 absorption fractions and diagnostics).
 
-### Batch 6 — land — Status: 🟡 **the landing happened early and out of order (`c43a50e`, 2026-08-14); the batch's own checklist below is mostly still outstanding.** C3c is in `main` at all six call sites, but the full-12 re-verify has not been run, the goldens have not been re-baselined, and the reconciliation this batch calls for was done retroactively on 2026-08-14. Treat the items below as a post-landing to-do list, not a gate.
+### Batch 6 — land — Status: 🟡 **the landing happened early and out of order (`c43a50e`, 2026-08-14); part of the batch's own checklist has since been done retroactively.** C3c is in `main` at all six call sites. Done after the fact on 2026-08-14: the goldens are re-baselined with the G3.4 before/after table (`data/g34_golden_rebaseline.csv`), and the DOC_STATUS / evidence-README reconciliation this batch calls for. **Still outstanding: the full-12 matrix re-verify and the ladder re-verify.** Treat the items below as a post-landing to-do list, not a gate.
 Chosen candidate (D1 decides between C1, C1⊕C2b, or a C3) on the **full-12**; full ladder
 re-verify; CHANGELOG entry; reconcile the evidence README (§7 answers), DOC_STATUS, and — when
 the sibling branches merge — fold-back notes for momentum-pdrive (its §2 "inferred" caveat, its
@@ -1337,3 +1344,26 @@ b0 run and to `bb302e0` for every b1 run (§9 records how that was protected).
   quotable until re-measured. The 50-line rationale block that Batch 5 wrote into
   `get_bubbleParams.get_effective_bubble_pressure` carries those figures, so it now carries a dated
   pre-C3c provenance note as well.
+
+- **2026-08-14 (G3.4 satisfied; the three red tests are closed)** — Re-baselined under D4, with the
+  before/after table committed at `data/g34_golden_rebaseline.csv` (mechanism named in its header,
+  reproduce commands included, every `rel_change` recomputed from its own two columns rather than
+  typed). Captures were three `run.py` runs, one per test config, each in its own process and cwd,
+  on post-C3c `main`. New values: smoke `R2` 0.2567222331253797 / `v2` 48.944358738549326 / `Eb`
+  657558.3776158141; `(cool_beta, cool_delta)` = (0.878396, −0.038973) at t=0.00350 and 0.00390, and
+  (0.842071, −0.151456) at t=0.00421 and 0.00446.
+  Two things worth keeping. **(a)** The `stop_t=0.004` and `stop_t=0.008` runs agree to all printed
+  digits on the two rows they share, which is the evidence that `stop_t` does not perturb the
+  trajectory ahead of its truncation — `test_phase_boundary` and `test_betadelta_hybr_stress` can
+  legitimately share a golden pair. **(b)** Headroom is ample and was checked rather than assumed:
+  `cool_beta` spans 3.4e-7 across CI's four Python versions against `abs=2e-3`, and smoke `R2` spans
+  1.6e-9 relative against `rel=1e-6`.
+  `test_mu_audit_drift`'s count was **fixed, not re-baselined** — a golden records a measurement, a
+  site count records a structural fact, and the fact is that the 11 refined sites are now 5 inline
+  plus 6 reached through `get_phii_c3c`. The test asserts that accounting (5 inline + 1 in the
+  helper + 6 call sites, summing to 11) instead of a flat 11, so it still fails if a site loses the
+  factor or an original `* 2.0 *` returns.
+  ⚠️ **`test_run_smoke.py` was outside D4's grant** (which named `test_phase_boundary`,
+  `test_betadelta_hybr_stress` and the `test_scheme_screen` fixtures). It was re-baselined on the
+  maintainer's direct instruction the same day. Recorded here because a future reader comparing the
+  test against §7 would otherwise find authority for two of the three and not the third.

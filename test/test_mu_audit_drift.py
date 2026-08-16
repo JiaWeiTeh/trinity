@@ -80,7 +80,15 @@ def test_phase1_pressure_factor_vs_original():
 
 def test_phase1_all_eleven_sites_refined_and_no_original_remains():
     """All 11 ionised-pressure sites carry the refined factor; not one of the
-    original `* 2.0 *` operations survives."""
+    original `* 2.0 *` operations survives.
+
+    Re-baselined 2026-08-14 for C3c (`c43a50e`): 6 of the 11 were `P_HII`
+    assignments that computed the factor inline, and they were consolidated into
+    `get_bubbleParams.get_phii_c3c`.  The audit invariant is unchanged -- every
+    ionised-pressure site still carries `mu_convert/mu_ion_shell` and no original
+    op came back -- but the factor is now written 5 times inline plus once in the
+    helper, reached from 6 call sites.  5 + 6 = the same 11 sites.
+    """
     files = [
         "trinity/phase1_energy/energy_phase_ODEs.py",
         "trinity/phase1_energy/run_energy_phase.py",
@@ -88,18 +96,32 @@ def test_phase1_all_eleven_sites_refined_and_no_original_remains():
         "trinity/phase1c_transition/run_transition_phase.py",
         "trinity/phase2_momentum/run_momentum_phase.py",
     ]
+    helper = "trinity/bubble_structure/get_bubbleParams.py"
     factor = "(params['mu_convert'].value / params['mu_ion_shell'].value)"
-    total = 0
-    for rel in files:
+    inline = 0
+    for rel in files + [helper]:
         s = _src(rel)
         for orig in ("P_ion = 2.0 *", "P_HII = 2.0 *", "P_ext = 2.0 *",
                      "P_HII_f = 2.0 *"):
             assert orig not in s, f"{rel}: original op '{orig}' reverted"
-        # the doubly-ionised bubble factor must NOT leak into the HII/shell sites
-        assert "params['mu_convert'].value / params['mu_ion'].value" not in s, (
-            f"{rel}: HII pressure must use mu_ion_shell (singly), not mu_ion")
-        total += s.count(factor)
-    assert total == 11, f"expected 11 refined HII-pressure sites, found {total}"
+        if rel != helper:
+            # the doubly-ionised bubble factor must NOT leak into the HII/shell
+            # sites.  Not asserted for the helper: get_bubbleParams.py also
+            # houses bubble-side code that legitimately uses mu_ion.
+            assert "params['mu_convert'].value / params['mu_ion'].value" not in s, (
+                f"{rel}: HII pressure must use mu_ion_shell (singly), not mu_ion")
+            inline += s.count(factor)
+
+    assert inline == 5, f"expected 5 inline P_ion/P_ext sites, found {inline}"
+
+    # The other 6: one refined factor in the helper, reached from 6 call sites.
+    hlp = _src(helper)
+    assert hlp.count(factor) == 1, (
+        f"get_phii_c3c must carry the refined factor exactly once, "
+        f"found {hlp.count(factor)}")
+    calls = sum(_src(rel).count("get_bubbleParams.get_phii_c3c(") for rel in files)
+    assert calls == 6, f"expected 6 get_phii_c3c call sites, found {calls}"
+    assert inline + calls == 11
 
 
 # =====================================================================
