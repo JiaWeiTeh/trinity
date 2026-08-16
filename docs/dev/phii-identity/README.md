@@ -1,4 +1,4 @@
-# phii-identity — `P_HII` is the confining pressure relabelled, in every phase
+# phii-identity — `P_HII` **was** the confining pressure relabelled, in every phase (fixed by C3c, `c43a50e`)
 
 > ⚠️ **This document may be out of date — verify before trusting it.** It is a
 > point-in-time analysis/audit, not a maintained spec; the code moves faster
@@ -47,6 +47,15 @@ matrix, batch gates, and the running ledger all live there; this README stays th
 ---
 
 ## 1. The finding in one paragraph
+
+> **STATUS 2026-08-14 — this section describes the DEFECT, which is fixed.** Everything below is
+> written in the present tense about *stock* `P_HII` (the capped-Strömgren pressure). That code is
+> gone: `c43a50e` (PR #738) replaced it with the C3c confinement regime switch, and `P_HII` is now
+> a cavity-Strömgren pressure that returns **exactly 0.0** while the ionised gas is confined. Read
+> this section as the historical diagnosis; see `PLAN.md` §3c for what shipped. Measured on a fresh
+> stock-vs-C3c pair (`data/b7_regime_trajectory.csv`), the stock identity still reproduces at
+> `|P_HII − Pb|/Pb` median **1.3e-16**, so the diagnosis below is correct — it is just no longer
+> the behaviour of the code.
 
 Three branches reported the same number from different directions:
 `feature/low-winds-regime` saw `Pb/P_HII = 1.0000000000`, `hotfix/other-magic-numbers` saw
