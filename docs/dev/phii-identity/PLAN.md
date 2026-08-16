@@ -924,9 +924,11 @@ absorption fractions and diagnostics).
 mean what they look like: **SDHS changed phase structure** (stock hands over to
 transition/momentum, C3c stays energy-driven to `t`=1.5; needs a maintainer read under D3), and
 PRB's 5661% is a collapse-floor artifact (both arms hit the 0.01 pc floor; C3c *delays* collapse
-by 56%). **Tooling gap this exposed:** `compare_trajectories.py` compares the terminal *fate* but
-not the *phase sequence*, so this whole class of change is invisible to it — fix before using it
-to judge any future candidate.
+by 56%). **Tooling gap this exposed — FIXED 2026-08-16.** `compare_trajectories.py` compared the terminal
+*fate* but not the *phase sequence*, so this whole class of change was invisible to it. It now
+emits `phases_base`/`phases_new` and a `PHASE-CHANGE` verdict (which also gates the exit status),
+plus a `floor_grid_pct` column that labels the PRB-style collapse-floor artifact instead of
+reporting it as a divergence. Pinned by `test/test_phii_comparator.py`.
 
 **Still owed:** full `pytest` on merged `main`; goldens re-baselined under D4 with the before/after
 table (`test_phase_boundary`, `test_betadelta_hybr_stress`, `test_scheme_screen`; note
