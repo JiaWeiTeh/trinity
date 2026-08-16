@@ -998,6 +998,73 @@ evidence here because G7.2 is expected to produce a non-null on the same screen.
 
 Artifacts: `data/b7_confinement_screen.csv`, `harness/screen_confinement.py`.
 
+### Batch 8 — the photo-only limit: Spitzer / Hosokawa–Inutsuka cross-check — Status: ⬜
+
+**Registered 2026-08-16 BEFORE the harness was written or run. Nothing below was written or
+edited after results existed.**
+
+Motivation. §3's candidate table put a **two-sided** obligation on C3: it "must reproduce limiting
+cases (wind-only → Weaver-like, photo-only → Spitzer-like)". The **wind-only half was discharged**
+by Batch 5 stage 3 — `ratio@entry` followed `Lw^−0.743` against Weaver's predicted −0.74, errors
+2–7%, out of the fitted regime. The **photo-only half has never been checked**, and it is the half
+that bears on the one question this workstream still has open: C3c predicts a photoionisation-
+dominated momentum phase in *every* configuration measured (`P_C3a/P_ram` = 3.5–7.6; inversion
+needs `Lw ≈ 260`). The shipped docstring asserts this is "NOT an O(1) normalisation error". That
+assertion currently rests on a *consistency* argument — the same normalisation predicts the
+transition crossover to 7% — not on an external anchor. Spitzer is the external anchor.
+
+This batch needs **no solver run**: it is closed-form in the shipped helper.
+
+**The target.** Classical D-type expansion into a uniform medium, thin swept-up shell, no wind:
+
+```
+d/dt (M R') = 4 pi R^2 P_HII ,   M = (4/3) pi R^3 rho_0 ,   P_HII = rho_0 c_i^2 (R_St/R)^{3/2}
+```
+
+`P_C3a ∝ R^{−3/2}` is exactly the Strömgren scaling, so the equation is self-similar with
+`R = A t^{4/7}`. Matching amplitudes gives `A = [(49/12) c_i^2 R_St^{3/2}]^{2/7}`, which is
+*identically* the large-`t` limit of Hosokawa & Inutsuka (2006),
+`R = R_St [1 + (7/4) sqrt(4/3) c_i t / R_St]^{4/7}`. Spitzer (1978)'s ram-balance closure
+(`rho_0 R'^2 = P_HII`) gives the same 4/7 index with amplitude lower by `(4/3)^{2/7} = 1.0855`.
+So the momentum-equation integration must land on **HI**, 8.55% above Spitzer — the two classical
+results bracket the answer and the gate can tell them apart.
+
+**G8.1 — the Strömgren anchor (algebra).** The shipped `get_phii_c3c` cavity density at
+`R2 = R_St ≡ (3 Qi / (4 pi chi_e alpha_B n_0^2))^{1/3}` equals the ambient `n_0`.
+- Bar: relative error **< 1e-12**. FALSIFIED IF above.
+
+**G8.2 — the pressure normalisation (algebra).** `P_C3a(R_St) = (2 + x_He(1+Z_He_shell)) n_0 k_B T`
+= `rho_0 c_i^2` with `c_i^2 = (2 + x_He(1+Z_He_shell)) k_B T / (mu_convert m_H)`. For pure hydrogen
+this is Spitzer's `2 n k T`; the shipped `mu_convert/mu_ion_shell` must *be* that particle count.
+- Bar: relative error **< 1e-12**. FALSIFIED IF above.
+
+**G8.3 — the expansion index (dynamics).** Integrating the thin-shell momentum equation with the
+shipped helper on its driving branch, `dlnR/dlnt → 4/7 = 0.571429` by `R/R_St = 10`.
+- Bar: **within 1%**. FALSIFIED IF outside.
+
+**G8.4 — the amplitude (dynamics; the real gate).** The integrated `R(t)` matches the HI closed
+form within **5%** over `R/R_St ∈ [2, 10]`, and sits **above** Spitzer by `(4/3)^{2/7}` within 5%.
+- FALSIFIED IF the integrated amplitude misses HI by >5%. That outcome would mean C3a's magnitude
+  does **not** reduce to the classical D-type result, and the shipped docstring's "not an O(1)
+  normalisation error" claim would be **retracted** — the momentum-phase dominance would then be
+  a normalisation artifact after all, and C3a's prefactor would need re-deriving.
+
+**G8.5 — the mutation control (what makes G8.4 evidence).** G8.1–G8.4 are *expected* to pass; a
+passing null is only evidence if the same gate demonstrably fails on a wrong normalisation. A
+deliberately mis-normalised variant that drops the `mu_convert/mu_ion_shell` factor (2.2× low in
+pressure, so `(1/2.2)^{2/7} = 0.7935`, i.e. 20.6% low in radius) **must FAIL G8.4**.
+- FALSIFIED IF the mis-normalised variant passes — the gate would then be insensitive to exactly
+  the class of error it exists to catch.
+
+**Scope, stated up front.** The cross-check idealises the *test*, not the code: uniform ambient
+density, no wind, no gravity, no dust absorption (`f_abs = 1`), fully swept-up thin shell. That is
+the setting in which Spitzer and HI are derived, and it is the only setting in which "reproduces
+the classical result" is a decidable claim. It therefore validates C3a's **magnitude and scaling**;
+it says nothing about the density profile or the wind coupling, which the ladder already covered.
+
+Artifacts: `data/b8_spitzer_crosscheck.csv`, `harness/spitzer_crosscheck.py`,
+`test/test_phii_c3c_spitzer.py`.
+
 ## 7. Decisions needed from the maintainer
 
 | id | question | blocks | state |
