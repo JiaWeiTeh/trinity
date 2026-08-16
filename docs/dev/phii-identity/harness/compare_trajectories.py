@@ -37,6 +37,12 @@ from _stamp import stamp  # noqa: E402
 BAR_PCT = 5.0  # PLAN §5: the G2 bar phase1a-init adopted 2026-08-05
 N_GRID = 400
 
+# The collapse floor, imported rather than restated so it cannot drift from the code.
+sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
+from trinity.phase_general.phase_events import MIN_RADIUS_SAFETY as FLOOR_PC  # noqa: E402
+
+FLOOR_TOL = 1.5  # within 1.5x the floor counts as pinned, not evolving
+
 COLS = [
     "config",
     "verdict",
@@ -51,16 +57,20 @@ COLS = [
     "R2_end_new",
     "fate_base",
     "fate_new",
+    "phases_base",
+    "phases_new",
+    "floor_grid_pct",
     "note",
 ]
 
 
 def series(run_dir):
-    """(t, R2) sorted and strictly increasing in t, plus the fate."""
+    """(t, R2) sorted and strictly increasing in t, plus the fate and phase sequence."""
     path = run_dir / "dictionary.jsonl"
     if not path.exists():
-        return None, None, None
+        return None, None, None, None
     pts = []
+    phases = []  # ordered [(phase, t_entry)], one entry per phase CHANGE
     with path.open() as fh:
         for line in fh:
             line = line.strip()
@@ -71,11 +81,14 @@ def series(run_dir):
             except ValueError:
                 continue
             t, r = d.get("t_now"), d.get("R2")
+            ph = d.get("current_phase")
+            if ph and isinstance(t, (int, float)) and (not phases or phases[-1][0] != ph):
+                phases.append((ph, float(t)))
             if isinstance(t, (int, float)) and isinstance(r, (int, float)):
                 if math.isfinite(t) and math.isfinite(r) and r > 0:
                     pts.append((float(t), float(r)))
     if not pts:
-        return None, None, None
+        return None, None, None, None
     pts.sort()
     ts, rs = [], []
     for t, r in pts:  # drop duplicate/non-increasing t so interpolation is well posed
@@ -90,7 +103,7 @@ def series(run_dir):
             fate = term.get("outcome") or term.get("reason") or "NA"
         except ValueError:
             pass
-    return ts, rs, fate
+    return ts, rs, fate, phases
 
 
 def interp(ts, rs, t):
@@ -118,8 +131,8 @@ def interp(ts, rs, t):
 
 
 def compare(base_dir, new_dir):
-    bt, br, bfate = series(base_dir)
-    nt, nr, nfate = series(new_dir)
+    bt, br, bfate, bph = series(base_dir)
+    nt, nr, nfate, nph = series(new_dir)
     if bt is None or nt is None:
         return {
             "config": base_dir.name,
@@ -141,20 +154,59 @@ def compare(base_dir, new_dir):
             "fate_new": nfate,
         }
 
-    worst, t_worst = 0.0, lo
+    # A small radius only means "collapse floor" AFTER the arm has peaked. Every
+    # run starts below 0.01 pc, so testing the radius alone flags the initial
+    # condition -- B3M, which grows monotonically to 23 pc and never collapses,
+    # scored 19.2% "on floor" that way.
+    bt_peak = bt[br.index(max(br))]
+    nt_peak = nt[nr.index(max(nr))]
+
+    worst, t_worst, worst_on_floor = 0.0, lo, False
+    floor_pts = 0
     step = (math.log(hi) - math.log(lo)) / (N_GRID - 1)
     for i in range(N_GRID):
         t = math.exp(math.log(lo) + i * step)
         b, n = interp(bt, br, t), interp(nt, nr, t)
+        # Once an arm is pinned at the collapse floor its radius stops being a
+        # trajectory and becomes a constant, so a ratio against it measures the
+        # floor, not a divergence. PRB reported 5661% this way while both arms
+        # were collapsing to the SAME 0.01 pc.
+        on_floor = ((b <= FLOOR_PC * FLOOR_TOL and t > bt_peak)
+                    or (n <= FLOOR_PC * FLOOR_TOL and t > nt_peak))
+        floor_pts += int(on_floor)
         if b > 0:
             d = abs(n - b) / b * 100.0
             if d > worst:
-                worst, t_worst = d, t
+                worst, t_worst, worst_on_floor = d, t, on_floor
     b_end, n_end = interp(bt, br, hi), interp(nt, nr, hi)
     d_end = abs(n_end - b_end) / b_end * 100.0 if b_end > 0 else float("nan")
 
     fate_changed = bfate != nfate
-    verdict = "FATE-CHANGE" if fate_changed else ("OVER-BAR" if worst > BAR_PCT else "WITHIN-BAR")
+    # A phase sequence is the run's STRUCTURE. Two runs can share a terminal fate
+    # and still have taken different routes -- SDHS did exactly that under C3c
+    # (stock handed over to transition/momentum; C3c stayed energy-driven) and a
+    # fate-only check saw nothing. Compare the ordered phase names, not entry times.
+    bseq = [p for p, _ in bph or []]
+    nseq = [p for p, _ in nph or []]
+    phase_changed = bseq != nseq
+
+    if fate_changed:
+        verdict = "FATE-CHANGE"
+    elif phase_changed:
+        verdict = "PHASE-CHANGE"
+    elif worst > BAR_PCT:
+        verdict = "OVER-BAR"
+    else:
+        verdict = "WITHIN-BAR"
+
+    notes = []
+    if fate_changed:
+        notes.append("fate differs")
+    if phase_changed:
+        notes.append(f"phase sequence differs: {'>'.join(bseq)} vs {'>'.join(nseq)}")
+    if worst_on_floor:
+        notes.append(f"dR2_max is a COLLAPSE-FLOOR ARTIFACT (an arm is pinned at "
+                     f"{FLOOR_PC} pc at t={t_worst:.4g}); compare collapse TIMES instead")
     return {
         "config": base_dir.name,
         "verdict": verdict,
@@ -169,7 +221,10 @@ def compare(base_dir, new_dir):
         "R2_end_new": f"{n_end:.6g}",
         "fate_base": bfate,
         "fate_new": nfate,
-        "note": "fate differs" if fate_changed else "",
+        "phases_base": ">".join(bseq),
+        "phases_new": ">".join(nseq),
+        "floor_grid_pct": f"{floor_pts / N_GRID * 100:.1f}",
+        "note": "; ".join(notes),
     }
 
 
@@ -198,6 +253,10 @@ def main():
             f"{r.get('t_overlap_lo','-')+' .. '+r.get('t_overlap_hi','-'):>22}  "
             f"{r.get('fate_base','?')} -> {r.get('fate_new','?')}"
         )
+        # The phase sequence and the floor caveat are the two things a reader must
+        # not have to open the CSV to discover -- they change what dR2 MEANS.
+        if r.get("note"):
+            print(f"{'':{w}}  -> {r['note']}")
 
     if args.out:
         args.out.parent.mkdir(parents=True, exist_ok=True)
@@ -206,11 +265,17 @@ def main():
             fh.write(f"# arm={args.label}  base={args.base}  new={args.new}\n")
             fh.write(f"# Matched-t comparison on the overlap window; bar |dR2| > {BAR_PCT}%.\n")
             fh.write("# Fate changes are enumerated, never silently passed (PLAN D3).\n")
+            fh.write("# phases_base/phases_new: the ordered phase sequence. Two runs can share a\n"
+                     "# fate and still differ structurally -- verdict PHASE-CHANGE catches that.\n")
+            fh.write(f"# floor_grid_pct: share of grid points where an arm sits within "
+                     f"{FLOOR_TOL}x the {FLOOR_PC} pc collapse floor. Where that is non-zero a\n"
+                     "# dR2 percentage measures the floor, not a divergence: compare collapse TIMES.\n")
             wr = csv.DictWriter(fh, fieldnames=COLS, extrasaction="ignore")
             wr.writeheader()
             wr.writerows(rows)
         print(f"\nwrote {args.out}")
-    bad = [r for r in rows if r.get("verdict") in ("OVER-BAR", "FATE-CHANGE", "NO-OVERLAP")]
+    bad = [r for r in rows
+           if r.get("verdict") in ("OVER-BAR", "FATE-CHANGE", "PHASE-CHANGE", "NO-OVERLAP")]
     return 1 if bad else 0
 
 
