@@ -1,0 +1,17 @@
+# generated 2026-08-16T08:41:26Z | builder screen_confinement.py | code 315e27d6+dirty
+# Batch 7 gates. frac_confined_delivered is ground truth (stored P_HII == 0.0); frac_HII_dom_recomputed is P_C3a > Pb recomputed here and exists to give ratio_min/med/max, the MARGIN to the switch.
+# mismatch_rows > 0 means the two disagree -- investigate, do not average.
+config,phase,n_rows,frac_confined_delivered,frac_HII_dom_recomputed,ratio_min,ratio_med,ratio_max,mismatch_rows,FB_thermCoeffWind,nCore_cm3,mCloud_Msun,sfe,status,run_reached,run_complete
+B3MW001,energy,51,0.2157,0.7843,0.4873,2.05,4.927,0,0.01,5520,110000,0.09090909090909091,ok_phase_closed,energy+implicit,False
+B3MW001,implicit,29,0.0000,1.0000,4.673,4.942,5.049,0,0.01,5520,110000,0.09090909090909091,PARTIAL_in_progress,energy+implicit,False
+F1HI,energy,102,1.0000,0.0000,0.01302,0.01901,0.02189,0,1,1e6,1e7,0.01,ok,energy+implicit+transition,True
+F1HI,implicit,31,1.0000,0.0000,0.01558,0.01593,0.0174,0,1,1e6,1e7,0.01,ok,energy+implicit+transition,True
+F1HI,transition,2,1.0000,0.0000,0.2129,0.3272,0.4415,0,1,1e6,1e7,0.01,ok,energy+implicit+transition,True
+F1LO,energy,33,1.0000,0.0000,0.02148,0.03121,0.06626,0,1,1e2,1e7,0.5,ok_phase_closed,energy+implicit,False
+F1LO,implicit,57,1.0000,0.0000,0.06821,0.07879,0.08652,0,1,1e2,1e7,0.5,PARTIAL_in_progress,energy+implicit,False
+GMC,energy,78,1.0000,0.0000,0.02813,0.06396,0.173,0,1,1e3,1e6,0.01,ok_phase_closed,energy+implicit,False
+GMC,implicit,42,1.0000,0.0000,0.1481,0.1565,0.1712,0,1,1e3,1e6,0.01,PARTIAL_in_progress,energy+implicit,False
+LDLS,energy,54,1.0000,0.0000,0.02813,0.04544,0.1045,0,1,1e2,1e7,0.01,ok_phase_closed,energy+implicit,False
+LDLS,implicit,56,1.0000,0.0000,0.1076,0.1588,0.1732,0,1,1e2,1e7,0.01,PARTIAL_in_progress,energy+implicit,False
+SC,energy,97,1.0000,0.0000,0.01858,0.04268,0.05173,0,1,,1e5,0.3,ok_phase_closed,energy+implicit,False
+SC,implicit,13,1.0000,0.0000,0.03872,0.0388,0.03891,0,1,,1e5,0.3,PARTIAL_in_progress,energy+implicit,False

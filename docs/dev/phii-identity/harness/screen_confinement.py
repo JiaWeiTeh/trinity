@@ -40,6 +40,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _stamp import stamp  # noqa: E402
 from c3_offline_screen import candidates_for_row, n_to_P  # noqa: E402
+from run_batch import done as run_batch_done  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(REPO))
@@ -67,7 +68,9 @@ def analyse(run_dir):
     cfg = run_dir.name
     param_path = run_dir / f"{cfg}.param"
     params = read_param(str(param_path))
-    complete = (run_dir / "metadata.json").exists()
+    # Same trap as run_batch.done(): metadata.json appears on the FIRST flush,
+    # seconds in, so its mere existence says nothing about completion.
+    complete = run_batch_done(run_dir)
 
     per = defaultdict(lambda: {"ratio": [], "conf_delivered": 0, "n": 0, "mismatch": 0})
     with (run_dir / "dictionary.jsonl").open() as fh:
@@ -109,7 +112,17 @@ def main():
             print(f"  !! {rd}: {e}")
             continue
         reached = [p for p in PHASES if per[p]["n"]]
-        void = (not complete) or set(reached) <= {"energy", "implicit"}
+        # Coverage is PER PHASE, not per run. A run killed mid-implicit still
+        # covers the ENERGY phase completely -- it demonstrably finished it, since
+        # it moved on. Blanket-VOIDing such a run would throw away exactly the rows
+        # G7.1/G7.2 are about. Only the LAST phase reached is partial, and only an
+        # incomplete run can be partial at all.
+        last_reached = reached[-1] if reached else None
+
+        def phase_status(ph):
+            if complete:
+                return "ok"
+            return "PARTIAL_in_progress" if ph == last_reached else "ok_phase_closed"
         for ph in PHASES:
             s = per[ph]
             if not s["n"]:
@@ -130,8 +143,13 @@ def main():
                 "nCore_cm3": param_text_value(param_path, "nCore"),
                 "mCloud_Msun": param_text_value(param_path, "mCloud"),
                 "sfe": param_text_value(param_path, "sfe"),
-                "status": ("VOID_never_left_implicit" if void and complete
-                           else "VOID_incomplete" if not complete else "ok"),
+                "status": phase_status(ph),
+                # Separate axis: whether the RUN can speak to the later phases at
+                # all. A run that stopped in implicit says nothing about
+                # transition/momentum confinement -- but that is a statement about
+                # the phases it never reached, not about the rows it did compute.
+                "run_reached": "+".join(reached),
+                "run_complete": complete,
             })
         print(f"  {cfg}: complete={complete} phases={reached}")
 
