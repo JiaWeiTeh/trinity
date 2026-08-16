@@ -195,6 +195,17 @@ Both sites are in ODE right-hand sides (`vd` at `energy_phase_ODEs.py:263`; `F_p
 `run_momentum_phase.py:448`), not diagnostics — so this propagates into `R2(t)`, the force budget,
 the fate, and the stopping outcome of every run that reaches transition or momentum.
 
+**Update 2026-08-16 — the momentum phase is *still* the outlier under the fix, and it is not a
+calibration error.** C3c (`c43a50e`) replaced the relabelled `P_HII`, but its successor `P_C3a`
+comes out dominant over `P_ram` in the momentum phase of every configuration measured. Batch 8
+(`PLAN.md` §Batch 8) tested that magnitude against the classical D-type limit and found the shipped
+`get_phii_c3c` reproduces **Hosokawa & Inutsuka (2006) exactly** — 0.0000% deviation over
+`R/R_St ∈ [2,50]`, index 0.57124 vs 4/7, sitting `(4/3)^{2/7}` = 8.56% above Spitzer as the
+momentum-equation closure requires — with the check demonstrably able to resolve a 0.1% pressure
+error. So the remaining momentum-phase question is about **model structure** (`P_C3a ∝ R2^{−3/2}`
+vs `P_ram ∝ R2^{−2}`: does a real momentum-phase cavity stay Strömgren-filled?), **not** about
+C3a's normalisation. Pinned by `test/test_phii_c3c_spitzer.py`.
+
 ## 6. Where the branches agree, and where they read it differently
 
 - **All three agree on the measurement and on the mechanism** (the `n_IF_Str ≤ shell_n0` cap).

@@ -1065,6 +1065,76 @@ it says nothing about the density profile or the wind coupling, which the ladder
 Artifacts: `data/b8_spitzer_crosscheck.csv`, `harness/spitzer_crosscheck.py`,
 `test/test_phii_c3c_spitzer.py`.
 
+**RESULT (2026-08-16) — C3a reproduces Hosokawa–Inutsuka exactly. G8.4 failed as written;
+the defect was in the gate, not the code.**
+
+| gate | measured | bar | verdict |
+|---|---|---|---|
+| G8.1 Strömgren anchor | `2.220e-16` | < 1e-12 | ✅ PASS |
+| G8.2 normalisation | `3.331e-16` | < 1e-12 | ✅ PASS |
+| G8.3 index → 4/7 | `0.0324%` (slope 0.57124 vs 0.571429) | < 1% | ✅ PASS |
+| **G8.4 as registered** | **9.511%** | < 5% | ❌ **FAIL** |
+| G8.4′ amended (below) | **0.0000%** | < 5% | ✅ PASS |
+| G8.5 mutation control | `20.140%` vs analytic `20.170%` | > 5% | ✅ PASS |
+
+**Why G8.4 failed, and why that is not a physics result.** I registered "the integrated `R(t)`
+matches the HI closed form within 5% over `R/R_St ∈ [2,10]`" and integrated *from rest*. But HI's
+closed form does not start from rest — differentiating it at `t=0` gives `v = sqrt(4/3) c_i`. So
+the comparison measured the **startup transient**, not the amplitude. Measured decay of that
+transient, from rest:
+
+| `R/R_St` | 2 | 5 | 10 | 20 | 50 | 100 | 150 |
+|---|---|---|---|---|---|---|---|
+| dev vs HI | −9.51% | −2.29% | −0.70% | −0.21% | −0.04% | −0.01% | −0.01% |
+| local index | 0.4985 | 0.5606 | 0.5683 | 0.5705 | 0.5712 | 0.5714 | 0.5714 |
+
+It decays monotonically to zero and the index converges on 4/7 — the signature of an initial
+condition relaxing onto an attractor, not of a wrong pressure. **G8.4 is recorded as failed as
+written and amended, not reinterpreted.**
+
+**G8.4′ (amended).** Compare like with like: integrate from HI's *own* `t=0` state. Then any
+residual is a pressure error and nothing else. Measured deviation is **0.0000% at every radius
+sampled over `R/R_St ∈ [2,50]`**, on all five `(n_0, Qi)` combinations — the shipped
+`get_phii_c3c`, driven through the thin-shell momentum equation, does not merely approximate
+Hosokawa–Inutsuka, it **is** its solution. The run simultaneously sits **8.56%** above Spitzer,
+against the analytic `(4/3)^{2/7} = 8.55%`, so it lands on the momentum-equation closure and is
+cleanly separated from the ram-balance one.
+
+**The amendment does not weaken the gate** — that was checked, not assumed. Under G8.4′ the
+mis-normalised control still misses by **−20.14%** against its analytic `−20.17%`, and
+`test_phii_c3c_spitzer.py` was mutation-checked against `P_C3a × 1.05` and `× 1.001`: both fail.
+The check resolves a **0.1%** pressure error.
+
+**What this establishes, and what it does not — stated because the headline invites overreading.**
+HI's law is *derived from* the same momentum equation with `P = rho_i c_i^2 (R_St/R)^{3/2}`. So once
+G8.1 and G8.2 hold, the ODE integration **must** return HI; it is not independent confirmation.
+The substantive content is therefore in the **algebra**, not the dynamics:
+
+- G8.1 says the density C3a inverts is the Strömgren density — the same balance, not a lookalike.
+- G8.2 is the real check, and it is the one that could have gone wrong: the prefactor could have
+  been 1 (ions only), 2 (pure hydrogen), or a `mu` confusion in either direction. It is the
+  He-correct **2.2** = `2 + x_He(1 + Z_He_shell)`, so `P_C3a` is `n_tot k T` exactly.
+- The dynamical gates are then a **propagation** check — that nothing further enters between the
+  helper and the shell's equation of motion — plus a demonstration, via G8.5 and the `× 1.001`
+  mutation, that the chain is sensitive to the error class it is asked about.
+
+That is weaker than "an independent test of C3a" and stronger than "algebra restated": it closes
+the specific worry that C3a's *magnitude* was mis-set, which is what the open momentum question
+needed ruled out.
+
+**Consequence for the open momentum question.** `get_phii_c3c`'s docstring asserts the
+photoionisation-dominated momentum phase is "NOT an O(1) normalisation error", and until now that
+rested on the internal consistency argument (the same normalisation predicts the transition
+crossover to 7%). **That assertion now has an external anchor and is CONFIRMED**: C3a's magnitude
+is exactly the classical D-type pressure, to the precision at which a 0.1% error is detectable. So
+the universal HII-dominated momentum phase is *not* a prefactor bug, and re-deriving C3a's
+normalisation is a dead end. What remains open is what Batch 5 stage 3 already isolated — the
+`R2^{−3/2}` cavity geometry against `P_ram ∝ R2^{−2}` — which is a **model-structure** question
+(does a real momentum-phase cavity stay Strömgren-filled?), not a calibration one.
+
+Both halves of §3's limiting-case obligation on C3 are now discharged: wind-only → Weaver-like
+(Batch 5 stage 3, exponent −0.743 vs −0.74) and photo-only → Spitzer-like (here, exact).
+
 ## 7. Decisions needed from the maintainer
 
 | id | question | blocks | state |
@@ -1088,6 +1158,7 @@ Artifacts: `data/b8_spitzer_crosscheck.csv`, `harness/spitzer_crosscheck.py`,
 | 5 | 🟡 | 2026-08-13 | **Stage 1 (offline screen) done — C3b ⛔ REJECTED, C3a advances.** No solver run: both candidates are closed-form in stored quantities, evaluated on the stock trajectory across 5 configs. C3b fails the pre-registered wind-only limit *structurally* — `n = n_cloud(R2)` has **no `Qi` dependence**, so switching the ionizing source off leaves its `P_HII` unchanged; it also steps 4 decades at `rCloud`. C3a is causally decoupled (`Qi`, `R2` only), has the correct `Qi → 0` limit, and gives sensible ionised densities (19–8055 cm⁻³ in momentum) — but sits uniformly **3.5–7.6× above `P_ram`** and never crosses it, i.e. predicts a photoionisation-dominated momentum phase in all five configs. **Stage 1b: C3c designed (§3c) and screened — it supersedes bare C3a.** The confined skin has no independent density (any decoupled-thickness skin is C3a × O(1), *higher*), so C3c is a regime switch: transmit when `P_C3a ≤ P_conf`, drive at `P_C3a` when above. Screened on the same 5 runs: implicit **exactly** untouched (ratio 1..1..1), D-ramp fixed as a side effect (energy ratio down to 0.30 = the ramp honoured), `t_cross` inside transition in all 4 configs that reach it, momentum drive 2.4–4.3× stock. **Stage 2 DONE: C3c runs clean on 5/5** — zero distress, no fate changes, null passed exactly (`P_HII`=0 on 0/330 implicit rows, `P_drive`==`Pb`), all OVER-BAR at 12.8–20.5% as pre-registered. WW collapses 16% earlier but still collapses. The offline screen predicted the self-consistent regime structure to the printed digit on 3/5 configs. Physics verdict still open: needs D3 + stage 3 | `data/b5_c3_screen.csv`, `data/b5_c3c_regime.csv`, `data/b5s2_c3c_ledger.csv`, `data/b5s2_c3c_arm_regime.csv` |
 | 6 | 🟡 | 2026-08-14 | **C3c LANDED (`c43a50e`, PR #738) — verification incomplete.** 13-config matched-`t` ledger complete on both arms, **no fate change on any config**, ΔR2_max 7.6–20.5%. **SDHS changed phase structure** (stock hands over at `t`=0.147/0.791; C3c stays energy-driven to 1.5) — a fate-only check does NOT catch this, and `compare_trajectories.py` cannot see it because it diffs the terminal fate, not the phase sequence. PRB's 5661% is a collapse-floor artifact (C3c *delays* collapse 56%). Still owed: full `pytest` on `main`, D4 goldens with before/after table, CHANGELOG, fold-back notes. Both arms ran at a pre-`main` base; Batch 7 re-ran B3M on `main` and reproduced the row exactly, so main's other physics is neutral **for that config only** | `data/b6_ledger.csv`, `data/b6c3c_walltimes.csv`, `data/b6stock_walltimes.csv` |
 | 7 | 🟡 | 2026-08-16 | **G7.2 PASSES — the control fires, so the null is evidence.** `B3MW001` (`Lw × 0.01`, `Qi` untouched) breaks confinement in the **energy** phase: 78.4% HII-dominated, `ratio_max` **4.927** against a pre-registered `[1.5, 6.0]` and a point prediction of 3.01 from `Qi^0.5 Lw^−0.7 ρ^−0.3 t^−0.1`. **G7.1 holds on all 8 nominal-wind configs** — 100% confined in the energy phase across **five decades** of core density (1e2–1e6 cm⁻³), worst margin GMC `ratio_max` 0.173, i.e. 2.9× below the registered 0.5 bar. Energy phase *closed* on 6 of 9 (PL2/SDHS/BE still inside it — partial coverage, not a closed null); implicit/transition/momentum coverage still accumulating. Recomputation validated against the delivered branch on 231/231 B3M rows, `mismatch_rows`=0. Verdict: **`P_HII`≡0 in the energy phase is a property of the regime, not a theorem** — it survives ~1.5 decades of wind suppression and breaks at 2 | `data/b7_confinement_screen.csv`, `data/b7_regime_trajectory.csv`, `figures/b7_regime.png`, `figures/b7_feedback_compare.png` |
+| 8 | ✅ | 2026-08-16 | **C3a IS the classical D-type pressure — the photo-only limit is exact.** No solver run; the shipped `get_phii_c3c` driven through the thin-shell momentum equation. Algebra gates exact to machine precision (Strömgren anchor 2.2e-16; the `mu_convert/mu_ion_shell` prefactor **is** the 2.2 particles per H nucleus, so `P_C3a(R_St) = n_tot k T = rho_0 c_i^2` — Spitzer's `2nkT` with He). Dynamics: index → **0.57124** vs 4/7 = 0.571429, and deviation from Hosokawa–Inutsuka **0.0000% over `R/R_St ∈ [2,50]`** on all 5 `(n_0, Qi)` combinations, while sitting **8.56%** above Spitzer against the analytic `(4/3)^{2/7}` = 8.55% — it lands on the momentum-equation closure, not the ram-balance one. ⚠️ **G8.4 FAILED as registered** (9.511% vs a 5% bar): I compared a from-rest integration against a closed form whose `t=0` state is `v = sqrt(4/3) c_i`, so the gate measured the startup transient (−9.51% at `R/R_St`=2 → −0.01% at 150, index converging on 4/7). Recorded as failed and **amended** (G8.4′), not reinterpreted; the amendment was checked not to weaken the gate — the mis-normalised control still misses by −20.14% vs analytic −20.17%, and the pinned tests fail on `P_C3a × 1.001`. ⚠️ **Not independent confirmation** — HI is *derived from* the same momentum equation, so once the algebra gates hold the ODE must return HI. The content is in G8.2 (the prefactor could have been 1, 2, or a `mu` confusion; it is the He-correct 2.2); the dynamics are a propagation + sensitivity check. **Consequence:** the shipped docstring's "NOT an O(1) normalisation error" is now externally anchored and **confirmed** — the universal HII-dominated momentum phase is not a prefactor bug, so re-deriving C3a's normalisation is a dead end; what stays open is the `R2^{−3/2}` vs `R2^{−2}` geometry, a model-structure question. Both halves of §3's limiting-case obligation on C3 are now discharged | `data/b8_spitzer_crosscheck.csv`, `harness/spitzer_crosscheck.py`, `test/test_phii_c3c_spitzer.py` |
 | 5-s3 | ✅ | 2026-08-13 | **Wind ladder DONE — Lancaster resolved in transition, open in momentum.** First ladder (`simple_cluster`: SC/SW3/SW10) **VOID** — all three terminate at `stop_t` still in implicit, so `t_cross = never` is not evidence about winds; the crossover is structurally floored at the transition handover (`ratio@entry` < 1 on every config). Re-run on B3M (`B3MW01/1/3/10`), all four valid. **Transition: (a) PASSES** — confined fraction 8.8% → 23.8% → 28.9% → 38.8%, lag/`t_entry` +1.5% → +37.2%, and `ratio@entry` = 0.7144/0.1227/0.0553/0.0235 vs the **pre-registered** 0.68/0.12/0.054/0.022 (exponent **−0.743** vs −0.74, errors 2–7%) — a Weaver-derived prediction holding out of its fitted regime. **Momentum: OPEN** — 100% HII-dominated on all four; `P_C3a/P_ram ∝ Lw^−0.33` ⇒ inversion needs `Lw ≈ 260`. **Not** an O(1) normalisation error (same normalisation predicts transition to 7%): it is the `R2^−3/2` geometry. Mechanism: energy duration **identical** (0.0030 Myr) and transition duration wind-independent; only implicit moves (`Lw^−0.388`), which is why `t_cross` *falls* with wind. ⚠️ Retracted mid-run claim that energy row counts (69/87/96/105) meant longer energy phases — that is timestep refinement, not duration | `data/b5s3_ladder_lag.csv`, `data/b5s3_ladder_regime.csv`, `data/b5s3_ladder_screen.csv`, `harness/lag_vs_handover.py` |
 
 ### 8.2 Config wall-times (filled by Batch 0)
@@ -1134,6 +1205,7 @@ the rule being enforced.
 | `data/b0_walltimes.csv` | `harness/run_batch.py` | 0 | runs @ `6b55657` |
 | `data/b1_bitidentity.csv` | `harness/compare_bitidentical.py` | 1 | b0 `6b55657` vs b1 `bb302e0` |
 | `data/b1_capmap.csv` | `harness/harvest_identity.py` | 1 | runs @ `bb302e0` |
+| `data/b8_spitzer_crosscheck.csv` | `harness/spitzer_crosscheck.py` | 8 | no run — closed-form on the shipped helper |
 
 Run dirs (not committed — regenerate with `harness/run_batch.py`):
 `outputs/phii/b0__6b55657_dirty/`, `outputs/phii/b1__386df59_dirty/`. The `_dirty` suffix reflects
