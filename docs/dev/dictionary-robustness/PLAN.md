@@ -36,12 +36,14 @@
 tests (`test/test_dictionary_stress.py` 49 + `test/test_dictionary_stress_process.py` 16, of which
 2 are `stress`), all green, pinning current behavior including the defects — a red one after a
 deliberate fix means re-baseline, not regression. 13 findings probe-verified (§1) + 5
-inherited (§1b) + 3 from execution (§1c). **Two fixes landed, each gated:** F20's empty-curve guard
-(§1d), which resolves the reachable phase-0 crash F19/F5a/F5d, and F7's loader handler-skip (§1e),
-which makes loading side-effect-free (I6 now holds). Both leave `dictionary.jsonl` **bit-identical**
-on the fast config. **Battery H partially executed**: the fast config is scanned and committed
-(`data/field_scan.csv`); the stiff/edge configs are still owed, for both the scan and the
-byte-comparisons.
+inherited (§1b) + 3 from execution (§1c). **Three fixes landed, each gated bit-identical on
+`dictionary.jsonl`:** F20's empty-curve guard (§1d, resolves the reachable phase-0 crash
+F19/F5a/F5d), F7's loader handler-skip (§1e, I6 now holds), and F6's transactional flush append
+(§1f) — whose re-verification **corrected §1's F6 row twice**: the consequence is worse than
+written (production retries 4× and compounds) and the trigger it names is unreachable, while an
+unnamed one (torn I/O write) is live. **Battery H partially executed**: the fast config is scanned
+and committed (`data/field_scan.csv`); the stiff/edge configs are still owed, for both the scan and
+the byte-comparisons.
 
 ## 0. Scope and object under test
 
@@ -73,7 +75,7 @@ Every row below was reproduced by the committed harness
 | F3 | P8 | **NaN `t_now` defeats the guard** (`NaN != NaN`): consecutive identical NaN-time states are all saved. | Medium |
 | F4 | — | Guard compares **only** `(t_now, R2)`: an in-window snapshot differing in any other key (phase label, energy, forces) is silently dropped. Phase code *relies* on this — `run_energy_phase.py:400-419` builds a reconciliation snapshot precisely so the guard blocks the next phase's stale first snapshot. F1 ⇒ whether a phase-handoff snapshot is deduped **depends on `save_count % 10` alignment**: record content is not a pure function of the trajectory. Design-level; battery A pins it. | Medium |
 | F5 | P3a–d | **Profile-array special cases crash `save_snapshot()`**: (a) empty `bubble_r_arr`+`bubble_T_arr` → `ValueError`; (b) `bubble_T_arr` present but companion `bubble_r_arr` missing → `KeyError`; (c) scalar-NaN arrays — exactly what `reset_keys()` writes by default — → `IndexError`; (d) empty `shell_grav_r`+`shell_grav_force_m` → `ValueError`. Only `shell_n_arr` has an empty-guard (dictionary.py:696) — and when it trips, the keys are silently absent from that line (per-line schema varies). The commented-out bubble entries in `COOLING_PHASE_KEYS` (dictionary.py:1217-1222) are the fossil of (c). **Refined by execution**: F19 shows (a)/(d) are reachable from a real `read_param` dict, and F20 locates the crash in the R² diagnostic rather than the downsampler. | **High — reachable (F19)** |
-| F6 | P4, P11, P13 | **A non-serializable value poisons `flush()` mid-append**: snapshots before the poisoned one are already written, the exception propagates, the buffer stays intact. On the **first** flush a retry self-heals by accident (`flush_count` still 0 → fresh-run delete rewrites). On any **later** flush, a retry appends the already-written lines again: verified file `t = [0.0, 1.0, 1.0, 2.0]` — every subsequent snapshot id shifts by one line. Contrast: the metadata path (dictionary.py:836-849) does a defensive per-key `json.dumps`; the snapshot path does not. | **High** |
+| F6 | P4, P11, P13 | **A non-serializable value poisons `flush()` mid-append**: snapshots before the poisoned one are already written, the exception propagates, the buffer stays intact. On the **first** flush a retry self-heals by accident (`flush_count` still 0 → fresh-run delete rewrites). On any **later** flush, a retry appends the already-written lines again: verified file `t = [0.0, 1.0, 1.0, 2.0]` — every subsequent snapshot id shifts by one line. Contrast: the metadata path (dictionary.py:836-849) does a defensive per-key `json.dumps`; the snapshot path did not. ⚠️ **This row was corrected on re-verification — see §1f:** the consequence is worse (production retries 4× and compounds; the failing snapshot never lands) and the *trigger* named here is **not reachable** (all interpolator keys are `exclude_from_snapshot`); the live trigger is an I/O failure mid-write. | ✅ **FIXED** 2026-08-17 — §1f |
 | F7 | P14 | **Merely loading a snapshot rewrites the loaded run's `metadata.json`.** `load_snapshot()` constructs `cls()` → registers atexit → at interpreter exit `_safe_flush()` writes a fresh `termination_debug` block + `metadata_humanreadable.txt` into the *loaded* run's directory. Verified: a recorded crash reason `'ODE solver failed'` is clobbered to `'Normal exit / atexit'` by an analysis script that only reads. | ✅ **FIXED** 2026-08-17 — §1e |
 | F8 | P7 | `t_now=None` passes the guard but crashes `save_snapshot()` with `TypeError` in the debug-log f-string (`:.6e` on None, dictionary.py:759) — only `KeyError` is caught, and the f-string is evaluated regardless of log level. | Low |
 | F9 | P6 | `print(params)` raises `TypeError` when any value is a 0-d `np.ndarray` (`shorten_display` calls `len()`; the `hasattr(__len__)` check passes because the attribute exists). | Low |
@@ -323,6 +325,65 @@ wrong.
   `..._leaves_the_source_run_untouched`; `test_read_only_load_also_writes_the_humanreadable_file` →
   `..._writes_no_humanreadable_file`), and two tests were added (signal-handler check, scope guard).
 
+## 1f. F6 fix — landed and gated (2026-08-17), and two corrections to §1's write-up
+
+The third `trinity/` change. **Scope: make the `flush()` append transactional.**
+
+**Re-verified before fixing — and §1's F6 row was wrong in two ways.** Both corrections matter
+more than the fix itself, because they change what the finding *means*:
+
+1. **The consequence is worse than described.** §1 recorded a retry producing
+   `t = [0.0, 1.0, 1.0, 2.0]` — one duplicated line, from one manual retry. But a failing flush is
+   retried **up to four times per run with the same buffer, every exception swallowed**: the
+   periodic flush inside `save_snapshot()`, `main.py`'s explicit `params.flush()` (in a
+   `try/except` that only logs), `write_termination_report()`, and the atexit `_safe_flush()`.
+   Measured pre-fix, that chain yields **`t = [0.0, 1.0, 1.0, 1.0, 1.0]`** — the clean prefix
+   duplicated once *per retry*, and the snapshot that caused the failure **never written at all**.
+2. **The described trigger is NOT reachable; a different one is.** §1 blames "a non-serializable
+   value", which a registry audit says cannot happen today: every interpolator/table key carries
+   `exclude_from_snapshot=True`, and the one un-excluded candidate (`shell_interpolate_massDot`) is
+   a plain `bool` (`False`) in a real run's snapshot. What *is* reachable is any **I/O failure
+   mid-write** — a full disk above all, which this environment documents as a real occurrence —
+   and it lands on the identical code path with the identical consequence. So F6's severity stands,
+   but for a reason §1 did not name.
+
+**The change**: build the whole payload before opening the file, write it in one call, and roll the
+file back to its pre-flush length if the write tears.
+
+```python
+payload = "".join(json.dumps(self.previous_snapshot[str(i)], cls=NpEncoder) + "\n"
+                  for i in snap_ids)          # serialize first: a bad value writes nothing
+mode = "a" if path2jsonl.exists() else "w"
+rollback_to = path2jsonl.stat().st_size if mode == "a" else 0
+try:
+    with open(path2jsonl, mode, encoding="utf-8") as f:
+        f.write(payload)
+except Exception:
+    os.truncate(path2jsonl, rollback_to)      # (guarded) so a retry cannot duplicate
+    raise
+```
+
+Covering both classes matters precisely because of correction 2: serialize-first alone would fix
+only the unreachable trigger, leaving the live one (a torn append on a full disk) still duplicating.
+Truncation is worth attempting even out of space — deletes and truncations still succeed there.
+
+**Pre-registered gate, and the result** (evidence: `data/f6_equivalence.csv`):
+
+| Gate | Bar | Result |
+|------|-----|--------|
+| Failing tests first | four expectations red pre-fix | ✅ poisoned flush writes nothing · later-flush retry does not duplicate · the 4-deep production chain appends nothing · a torn append rolls back |
+| Behaviour | retries are safe | ✅ `[0.0, 1.0, 2.0]` (was `[0.0, 1.0, 1.0, 2.0]`); production chain now leaves `[0.0]` (was five lines) |
+| Torn-append rollback | file bytes unchanged after a half-written append | ✅ byte-equal to pre-flush |
+| Writer path unchanged | `sha256(dictionary.jsonl)` unchanged on the fast config | ✅ `17370033…`, 97 snapshots — same hash as the F20 and F7 arms, across ~10 flushes through the rewritten path |
+| Suite · mypy · lint | no new failures | ✅ suite unchanged bar the three known-red goldens; mypy 4 → 4; ruff/black clean |
+
+**Not resolved here:** the retry chain itself. Production still calls `flush()` up to four times
+with a poisoned buffer and swallows every failure, so the *snapshots in that buffer are still lost*
+— the fix makes the file consistent, not the data complete. Surfacing a failed flush to the user
+(rather than a `logger.warning` inside `main.py`) is a separate call, and it belongs with the
+audit's #3 idempotency work at §6. `test_production_retry_chain_does_not_compound` pins the
+current, now-harmless behaviour of that chain.
+
 ## 2. Robustness invariants (what "outputs are robust" means)
 
 The batteries gate against these. Each is currently TRUE, FALSE, or UNKNOWN — the campaign's job
@@ -339,7 +400,7 @@ record, "pinned" names the battery whose test holds the behavior in place.
 | I4 | Per-line key-set is stable across a run (modulo documented phase-dependent keys) | **TRUE** in the field (1 distinct key-set / 97 lines). Still breakable via F5's silent shell-guard path. Pinned: D, H |
 | I5 | `save_snapshot()` never raises for states the code itself produces (incl. `reset_keys` output, phase-0 placeholders) | **STILL FALSE, but narrowed.** The phase-0 case (F19, via empty arrays F5a/F5d) is **fixed** (§1d) and now pinned green by `test_freshly_read_params_can_snapshot`. Remaining: F5b (missing companion → `KeyError`), F5c (`reset_keys`' NaN → `IndexError`), F8 (`t_now=None` → `TypeError`). Pinned: D, G |
 | I6 | Loading is side-effect-free on the run directory | ✅ **NOW TRUE** (F7 fixed, §1e) — pinned by a subprocess test that byte-compares *every* file in the run dir across a load, plus one asserting the process's signal handlers survive. Caveat: an **explicit** `save_snapshot()`/`flush()` on a loaded dict still writes, and still deletes the target as a "fresh run" (O1, open at §6.4). Pinned: C |
-| I7 | A failed `flush()` retried after remediation neither loses nor duplicates lines | **FALSE** for flush ≥ 2 (F6); accidentally TRUE for the first flush. Pinned: B |
+| I7 | A failed `flush()` retried after remediation neither loses nor duplicates lines | **DUPLICATES: ✅ fixed** (F6, §1f) — the append is now transactional, so no retry (including production's 4-deep swallowed chain) can duplicate a line, and a torn write rolls back. **LOSES: ❌ still true** — the snapshots in a poisoned buffer are never written, and `main.py` only logs the failure, so a run can finish "successfully" having silently dropped a window of snapshots. Pinned: B |
 | I8 | save→load→save round-trip is value-stable (types per F12's morphing table) | **TRUE** for values (a reloaded state re-serializes to an identical line); **FALSE** for types — lists become ndarrays, so `str`/`tuple` change class (F12). Pinned: E |
 | I9 | The recorded termination reason survives signals, atexit ordering, and later loads | **STILL FALSE, but half-fixed.** Surviving a later load: ✅ fixed (F7, §1e). Surviving a signal: ❌ still clobbered — `_signal_handler` writes `"Signal SIGINT"`, then `sys.exit` runs atexit, which overwrites it with the generic reason (O5). Needs the audit's `_termination_report_written` idempotency flag (#3/#11), open at §6. Pinned: C |
 
@@ -579,8 +640,14 @@ number is cited so the two are compared rather than re-derived.
    exploit it? The audit proposes adding `current_phase` to the key, which by its own §6 makes
    boundaries emit two same-`t_now` records. Any change must re-read
    `run_energy_phase.py:400-419` first.
-3. F6: make `flush()` serialize all lines *before* opening the file (atomic-ish append), or
-   at least clear the buffer only for lines actually written? Not in the audit — new here.
+3. ~~F6: make `flush()` serialize all lines *before* opening the file (atomic-ish append)?~~
+   **DONE 2026-08-17 (§1f)** — serialize-first *plus* a truncate-back rollback, because
+   re-verification showed the reachable trigger is a torn I/O write, which serialize-first alone
+   would not have covered. Not in the audit — new here. **The remaining half is a real decision:**
+   a failed flush still *loses* that buffer's snapshots, and `main.py` only logs it
+   (`logger.warning("Could not flush parameters: …")`), so a run can report success while a window
+   of snapshots is missing. Should a failed flush be fatal, retried after dropping the offending
+   key, or at minimum recorded in `metadata.json[termination]`?
 4. ~~F7: should `load_snapshot`-created dicts skip `_register_crash_handlers`?~~ **DONE 2026-08-17
    (§1e)** — taken as `register_handlers=False` on the loader path; loading no longer writes to the
    run directory or hijacks the process's signal handlers. **The write-side half is still open**:

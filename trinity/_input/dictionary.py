@@ -53,6 +53,7 @@ import atexit
 import collections.abc
 import dataclasses
 import json
+import os
 import signal
 import sys
 from pathlib import Path
@@ -882,13 +883,38 @@ class DescribedDict(dict):
                 f"{len(metadata) - 1} run-const keys"
             )
 
-        # Append each snapshot as one line
+        # Serialize every pending snapshot BEFORE opening the file, and append
+        # the result in one write.  A failed flush must leave the file exactly
+        # as it was: this method is retried with the *same* buffer up to four
+        # times per run — the periodic flush in save_snapshot(), main.py's
+        # explicit params.flush(), write_termination_report() and the atexit
+        # _safe_flush(), each swallowing the exception — so a partial append
+        # was re-appended once per retry, duplicating lines and shifting every
+        # later snapshot id (finding F6).
+        payload = "".join(
+            json.dumps(self.previous_snapshot[str(snap_id)], cls=NpEncoder) + "\n"
+            for snap_id in snap_ids
+        )
+
         mode = "a" if path2jsonl.exists() else "w"
-        with open(path2jsonl, mode, encoding="utf-8") as f:
-            for snap_id in snap_ids:
-                snap_data = self.previous_snapshot[str(snap_id)]
-                json_line = json.dumps(snap_data, cls=NpEncoder)
-                f.write(json_line + "\n")
+        rollback_to = path2jsonl.stat().st_size if mode == "a" else 0
+        try:
+            with open(path2jsonl, mode, encoding="utf-8") as f:
+                f.write(payload)
+        except Exception:
+            # A torn write (full disk, I/O error) is rolled back to the
+            # pre-flush length so the retries above cannot duplicate it.
+            # Deletes/truncations still succeed when writes fail for lack of
+            # space, so this is worth attempting even then.
+            try:
+                os.truncate(path2jsonl, rollback_to)
+            except OSError as trunc_err:
+                logger.error(
+                    "Could not roll back a partial flush of %s (%s); the file "
+                    "may contain a torn or duplicated line",
+                    path2jsonl, trunc_err,
+                )
+            raise
 
         logger.debug(f"Flushed {len(snap_ids)} snapshot(s) to dictionary.jsonl")
 

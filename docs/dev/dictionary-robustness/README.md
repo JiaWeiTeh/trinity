@@ -34,10 +34,12 @@
 
 **Status (2026-08-17):** 🟡 partial — 13 findings probe-verified against `030b658`, 5 inherited
 from an earlier off-trunk audit (`PLAN.md` §1b), and 3 more found by executing the plan (F19–F21,
-§1c). **Batteries A–G are landed as green characterization tests.** **Two fixes have shipped**, each
+§1c). **Batteries A–G are landed as green characterization tests.** **Three fixes have shipped**, each
 gated bit-identical on `dictionary.jsonl`: F20's empty-curve guard (`PLAN.md` §1d), resolving the
-reachable phase-0 crash, and F7's loader handler-skip (`PLAN.md` §1e), making a load side-effect-free.
-Everything else stays characterized-not-fixed and queued for the maintainer (`PLAN.md` §6).
+reachable phase-0 crash; F7's loader handler-skip (§1e), making a load side-effect-free; and F6's
+transactional flush append (§1f), after re-verification showed that finding was **understated in
+consequence and wrong about its trigger**. Everything else stays characterized-not-fixed and queued
+for the maintainer (`PLAN.md` §6).
 Battery H is scanned on the fast config only — the stiff/edge configs are owed.
 
 Motivating question (maintainer, 2026-08-17): *"Is it true that the duplicate guard is skipped
@@ -59,11 +61,13 @@ Contents:
   run's `dictionary.jsonl` (also imported by the test suite, so scanner and artifact never drift);
   see `harness/README.md` for the commands.
 - **`data/field_scan.csv`** — committed battery-H results, one row per (config, commit).
-- **`data/f20_equivalence.csv`** — the F20 fix's gate evidence: identical `dictionary.jsonl` hash
-  pre- and post-fix, with the exact config and commands.
+- **`data/f20_equivalence.csv`**, **`data/f7_equivalence.csv`**, **`data/f6_equivalence.csv`** —
+  one gate-evidence file per shipped fix: the identical `dictionary.jsonl` hash pre- and post-fix,
+  the behaviour arms, and the exact config and commands. F6's also records the two corrections that
+  re-verification forced on its original write-up.
 
-The tests that pin all of this: `test/test_dictionary_stress.py` (48, in-process) and
-`test/test_dictionary_stress_process.py` (12 default + 2 stress, real interpreters). They pin
+The tests that pin all of this: `test/test_dictionary_stress.py` (51, in-process) and
+`test/test_dictionary_stress_process.py` (14 default + 2 stress, real interpreters). They pin
 **current** behavior, defects included — a red test there after a deliberate fix means
 "re-baseline the pin", not "regression".
 
@@ -76,12 +80,15 @@ battery H compares instead of rediscovering. Its fix set is a proposal to evalua
 
 Highest-severity findings (details + probe output in `PLAN.md` §1): **F7** ✅ *fixed* — merely
 *loading* a snapshot used to rewrite the loaded run's `metadata.json` at interpreter exit,
-clobbering a recorded crash reason with `'Normal exit / atexit'`; **F6** — a non-serializable value
-makes `flush()` fail mid-append, and a retry duplicates already-written lines, silently shifting
-every later snapshot id; **F5** — four `save_snapshot()` crash modes on profile-array states the
+clobbering a recorded crash reason with `'Normal exit / atexit'`; **F6** ✅ *fixed* — a failed
+`flush()` used to leave a partial file that production's four swallowed retries then re-appended
+once each (re-verification corrected both the scale and the trigger: see `PLAN.md` §1f); **F5** — four `save_snapshot()` crash modes on profile-array states the
 code itself can produce; the two empty-array ones are ✅ *fixed* (F20), while the missing-companion
 `KeyError` and `reset_keys`' NaN `IndexError` remain open.
 
-Still open and worth knowing before you trust a run's record: **F6**'s id shift, **F1/F21**'s
-flush-alignment lottery at phase boundaries, **F11**'s bare `NaN` literals (every line of a real
-run), and **O1** — an explicit save on a *loaded* dict still deletes the source files.
+Still open and worth knowing before you trust a run's record: **F1/F21**'s flush-alignment lottery
+at phase boundaries, **F11**'s bare `NaN` literals (every line of a real run), **O1** — an explicit
+save on a *loaded* dict still deletes the source files — **F13**'s loader id shift on a corrupt or
+blank line, and the half of F6 that is not a file-consistency problem: a failed flush still *loses*
+its buffered snapshots while `main.py` only logs it, so a run can report success with a window of
+snapshots missing.

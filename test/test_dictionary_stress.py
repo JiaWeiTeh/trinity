@@ -23,6 +23,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from trinity._input import dictionary as dictionary_module
 from trinity._input.dictionary import (
     DescribedDict,
     DescribedItem,
@@ -179,9 +180,13 @@ class TestDuplicateGuard:
 # Battery B — flush atomicity, retry, fresh-run semantics (F6, O1, O2)
 # =============================================================================
 class TestFlushAtomicity:
-    def test_poisoned_flush_writes_partially_and_keeps_buffer(self, tmp_path, no_handlers):
-        """CANDIDATE-BUG F6 — json.dumps is inside the write loop, so the
-        file is already partly written when the bad line raises."""
+    def test_poisoned_flush_writes_nothing_and_keeps_buffer(self, tmp_path, no_handlers):
+        """F6 — **fixed**: serialization happens before the file is opened.
+
+        Was: `json.dumps` ran inside the write loop, so the clean prefix was
+        already on disk when the bad line raised. Now nothing is written and
+        the buffer is retained, so a retry is safe.
+        """
         d = _params(tmp_path)
         d["t_now"].value = 0.5
         d.save_snapshot()
@@ -192,8 +197,12 @@ class TestFlushAtomicity:
         with pytest.raises(TypeError):
             d.flush()
 
-        assert len(_lines(tmp_path)) == 1, "clean line 0 was written before the failure"
-        assert set(d.previous_snapshot) == {"0", "1"}, "buffer retained, so a retry re-writes"
+        jsonl = tmp_path / "dictionary.jsonl"
+        assert not jsonl.exists() or jsonl.read_text() == "", (
+            "a failed flush must not write a partial file (here it is never created:"
+            " serialization raises before the file is opened)"
+        )
+        assert set(d.previous_snapshot) == {"0", "1"}, "buffer retained for a safe retry"
         assert d.flush_count == 0
 
     def test_first_flush_retry_self_heals(self, tmp_path, no_handlers):
@@ -214,9 +223,13 @@ class TestFlushAtomicity:
 
         assert [ln["t_now"] for ln in _lines(tmp_path)] == [0.5, 0.6]
 
-    def test_later_flush_retry_duplicates_written_lines(self, tmp_path, no_handlers):
-        """CANDIDATE-BUG F6 — the real corruption: from flush #2 on, a retry
-        appends the lines it already wrote, shifting every later snapshot id."""
+    def test_later_flush_retry_does_not_duplicate(self, tmp_path, no_handlers):
+        """F6 — **fixed**: a retry after flush #2 no longer re-appends.
+
+        Was `[0.0, 1.0, 1.0, 2.0]` — the already-written line came back and
+        shifted every later snapshot id. The first flush used to self-heal by
+        accident (fresh-run delete); from flush #2 on there was no rescue.
+        """
         d = _params(tmp_path)
         d.save_snapshot()
         d.flush()  # flush_count -> 1, so no fresh-run rescue from here on
@@ -232,7 +245,77 @@ class TestFlushAtomicity:
         d.previous_snapshot["2"] = {"t_now": 2.0, "R2": 1.0}
         d.flush()
 
-        assert [ln["t_now"] for ln in _lines(tmp_path)] == [0.0, 1.0, 1.0, 2.0]
+        assert [ln["t_now"] for ln in _lines(tmp_path)] == [0.0, 1.0, 2.0]
+
+    def test_production_retry_chain_does_not_compound(self, tmp_path, no_handlers):
+        """F6 — the version of this bug that a real run would have hit.
+
+        A failing flush is retried up to four times with the *same* buffer, each
+        swallowed: the periodic flush in `save_snapshot`, `main.py`'s explicit
+        `params.flush()`, `write_termination_report()`, and the atexit
+        `_safe_flush()`. Pre-fix that produced `t = [0.0, 1.0, 1.0, 1.0, 1.0]`
+        — the clean prefix duplicated once per retry, with the poisoned
+        snapshot never written at all.
+        """
+        d = _params(tmp_path)
+        d.save_snapshot()
+        d.flush()
+        d["t_now"].value = 1.0
+        d.save_snapshot()
+        d["bad"] = DescribedItem(object())
+        d["t_now"].value = 2.0
+        d.save_snapshot()
+
+        for _ in range(4):  # production swallows every one of these
+            with pytest.raises(TypeError):
+                d.flush()
+
+        assert [ln["t_now"] for ln in _lines(tmp_path)] == [0.0], (
+            "repeated retries must not append anything"
+        )
+
+    def test_io_failure_midwrite_leaves_no_partial_append(self, tmp_path, no_handlers, monkeypatch):
+        """F6's reachable trigger — **not** a bad value but an I/O error.
+
+        The described trigger (a non-serializable value) is guarded in practice:
+        every interpolator/table key in the registry carries
+        ``exclude_from_snapshot=True``. A full disk is the live trigger, and it
+        hits the same code path, so the append must roll back rather than leave
+        a partial line for the retries to duplicate.
+        """
+        d = _params(tmp_path)
+        d.save_snapshot()
+        d.flush()  # flush_count -> 1
+        for t in (1.0, 2.0, 3.0):
+            d["t_now"].value = t
+            d.save_snapshot()
+
+        before = (tmp_path / "dictionary.jsonl").read_bytes()
+
+        class DiskFull(OSError):
+            pass
+
+        def tearing_open(path, mode="r", **kwargs):
+            """Write only half the payload, then fail — a torn append."""
+            fh = open(path, mode, **kwargs)
+            if "a" in mode or "w" in mode:
+                whole_write = fh.write
+
+                def torn_write(text):
+                    whole_write(text[: len(text) // 2])
+                    raise DiskFull("simulated disk full")
+
+                fh.write = torn_write
+            return fh
+
+        monkeypatch.setattr(dictionary_module, "open", tearing_open, raising=False)
+        with pytest.raises(DiskFull):
+            d.flush()
+        monkeypatch.undo()
+
+        assert (tmp_path / "dictionary.jsonl").read_bytes() == before, (
+            "a torn append must be rolled back to the pre-flush length"
+        )
 
     def test_empty_flush_deletes_a_previous_runs_output(self, tmp_path, no_handlers):
         """CANDIDATE-BUG O1 — the fresh-run branch fires on flush_count == 0
