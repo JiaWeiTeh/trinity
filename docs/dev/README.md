@@ -160,10 +160,11 @@ The top-level `scratch/` (repo root) is separate, git-ignored, local-only.
   `tinit-sensitivity.md` (🟡 rec #3 open), `TERMINATION_EVENTS.md` (📘 reference),
   `LEAKING_LUMINOSITIES_SKELETON.md` (🟡 D/F/G open).
 - **`dictionary-robustness/`** — [`PLAN.md`](dictionary-robustness/PLAN.md): edge-case audit of
-  the `DescribedDict` snapshot machinery (`trinity/_input/dictionary.py`). 13 findings verified
-  by committed probe harness (duplicate guard disarmed at every flush boundary; loading a
-  snapshot rewrites the run's recorded termination reason; poisoned-flush retry silently shifts
-  snapshot ids; four `save_snapshot` crash modes) + stress-test batteries A–H awaiting execution.
+  the `DescribedDict` snapshot machinery (`trinity/_input/dictionary.py`). 21 findings — probe
+  harness + 60 landed characterization tests (duplicate guard disarmed at every flush boundary;
+  loading a snapshot rewrites the run's recorded termination reason; poisoned-flush retry silently
+  shifts snapshot ids; `save_snapshot` crash modes reachable from a real `read_param` dict) and
+  reconciliation with the older off-trunk audit. 🟡 batteries A–G done, H owed on the edge configs.
 
 ## References / operational
 

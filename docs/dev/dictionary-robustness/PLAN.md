@@ -32,10 +32,12 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-17):** 🔵 actionable — 13 findings probe-verified against `030b658` (§1), plus 5
-inherited unverified (F14–F18) from an earlier off-trunk audit now reconciled in §1b; batteries
-A–H specified below, **none executed yet**. The executing session reads §1b first, writes
-`test/test_dictionary_stress.py` (characterization) and runs battery H, then updates this doc.
+**Status (2026-08-17):** 🟡 partial — **batteries A–G executed and landed** as 60 characterization
+tests (`test/test_dictionary_stress.py` 48 + `test/test_dictionary_stress_process.py` 12), all
+green, pinning current behavior including the defects. 13 findings probe-verified (§1) + 5
+inherited (§1b). **Battery H partially executed**: the fast config is scanned and committed
+(`data/field_scan.csv`); the stiff/edge configs are still owed. Execution results, three new
+findings, and the resolution of O5/O6 are in §1c — read it before touching this code.
 
 ## 0. Scope and object under test
 
@@ -66,7 +68,7 @@ Every row below was reproduced by the committed harness
 | F2 | P2 | Same skip after **any** flush: manual `flush()`, `write_termination_report()`, emergency `_safe_flush()` all clear the buffer and disarm the guard for the next save. | Medium |
 | F3 | P8 | **NaN `t_now` defeats the guard** (`NaN != NaN`): consecutive identical NaN-time states are all saved. | Medium |
 | F4 | — | Guard compares **only** `(t_now, R2)`: an in-window snapshot differing in any other key (phase label, energy, forces) is silently dropped. Phase code *relies* on this — `run_energy_phase.py:400-419` builds a reconciliation snapshot precisely so the guard blocks the next phase's stale first snapshot. F1 ⇒ whether a phase-handoff snapshot is deduped **depends on `save_count % 10` alignment**: record content is not a pure function of the trajectory. Design-level; battery A pins it. | Medium |
-| F5 | P3a–d | **Profile-array special cases crash `save_snapshot()`**: (a) empty `bubble_r_arr`+`bubble_T_arr` → `ValueError`; (b) `bubble_T_arr` present but companion `bubble_r_arr` missing → `KeyError`; (c) scalar-NaN arrays — exactly what `reset_keys()` writes by default — → `IndexError`; (d) empty `shell_grav_r`+`shell_grav_force_m` → `ValueError`. Only `shell_n_arr` has an empty-guard (dictionary.py:696) — and when it trips, the keys are silently absent from that line (per-line schema varies). The commented-out bubble entries in `COOLING_PHASE_KEYS` (dictionary.py:1217-1222) are the fossil of (c). | High (latent) |
+| F5 | P3a–d | **Profile-array special cases crash `save_snapshot()`**: (a) empty `bubble_r_arr`+`bubble_T_arr` → `ValueError`; (b) `bubble_T_arr` present but companion `bubble_r_arr` missing → `KeyError`; (c) scalar-NaN arrays — exactly what `reset_keys()` writes by default — → `IndexError`; (d) empty `shell_grav_r`+`shell_grav_force_m` → `ValueError`. Only `shell_n_arr` has an empty-guard (dictionary.py:696) — and when it trips, the keys are silently absent from that line (per-line schema varies). The commented-out bubble entries in `COOLING_PHASE_KEYS` (dictionary.py:1217-1222) are the fossil of (c). **Refined by execution**: F19 shows (a)/(d) are reachable from a real `read_param` dict, and F20 locates the crash in the R² diagnostic rather than the downsampler. | **High — reachable (F19)** |
 | F6 | P4, P11, P13 | **A non-serializable value poisons `flush()` mid-append**: snapshots before the poisoned one are already written, the exception propagates, the buffer stays intact. On the **first** flush a retry self-heals by accident (`flush_count` still 0 → fresh-run delete rewrites). On any **later** flush, a retry appends the already-written lines again: verified file `t = [0.0, 1.0, 1.0, 2.0]` — every subsequent snapshot id shifts by one line. Contrast: the metadata path (dictionary.py:836-849) does a defensive per-key `json.dumps`; the snapshot path does not. | **High** |
 | F7 | P14 | **Merely loading a snapshot rewrites the loaded run's `metadata.json`.** `load_snapshot()` constructs `cls()` → registers atexit → at interpreter exit `_safe_flush()` writes a fresh `termination_debug` block + `metadata_humanreadable.txt` into the *loaded* run's directory. Verified: a recorded crash reason `'ODE solver failed'` is clobbered to `'Normal exit / atexit'` by an analysis script that only reads. | **High** |
 | F8 | P7 | `t_now=None` passes the guard but crashes `save_snapshot()` with `TypeError` in the debug-log f-string (`:.6e` on None, dictionary.py:759) — only `KeyError` is caught, and the f-string is evaluated regardless of log level. | Low |
@@ -152,30 +154,98 @@ Consequences for this plan:
 3. **§6's decisions should start from the audit's fix set**, not a blank page — with the standing
    caveat that its fixes were never landed, never gated, and were written against the old layout.
 
+## 1c. Execution results (2026-08-17, batteries A–G + partial H)
+
+Landed as 60 tests, all green: `test/test_dictionary_stress.py` (48, in-process, batteries
+A/B/D/E/F/G) and `test/test_dictionary_stress_process.py` (12, real interpreters, battery C + the
+field scanner). Every §1/§1b finding that a test can express is now pinned, so a future
+"fix" flips a red test rather than passing silently. Run them with:
+
+```bash
+pytest test/test_dictionary_stress.py test/test_dictionary_stress_process.py   # default set
+pytest -m stress test/test_dictionary_stress_process.py                        # real-run scans
+```
+
+**Three new findings from execution:**
+
+| ID | Finding | Severity |
+|----|---------|----------|
+| F19 | **F5 is reachable from a real production dict, not merely latent.** `read_param.read_param()` on a minimal valid `.param` returns all five profile arrays as `np.array([])` with `exclude_from_snapshot=False`, and `save_snapshot()` on that dict raises `ValueError`. Production survives *only* because phase-0 init populates the arrays before the first save fires (confirmed: line 0 of a real run already carries `log_bubble_T_arr`). Consequence: **any `save_snapshot()` placed before phase-0 completes crashes the run**, which is a live constraint on anyone adding an initial-condition snapshot, an early-termination snapshot, or a pre-run validation record. | **High — reachable** |
+| F20 | **The empty-array crash is in the R² diagnostic, not the downsampler.** `_simplify` handles empty input fine (`test_simplify.py::test_empty`); the traceback ends in `_simplify_error` → `np.interp` ("array of sample points is empty"), called unconditionally by `DescribedDict.simplify()` (dictionary.py:524) for the R² log line — which is computed regardless of log level. So F5a/F5d are a *diagnostics* bug and the cheapest fix is guarding that one call, independent of the F5b/F5c pair-handling questions. | High |
+| F21 | **F1 and F4 interact: ~1 phase boundary in 10 will duplicate instead of suppress.** F4's suppression only happens while the guard is armed. A boundary landing at a line index ≡ 0 (mod `snapshot_interval`) has the guard disarmed (F1), so it emits **two** records at the same `t_now` instead of one. Observed boundary in the multi-phase run sat at index 97 (mod 10 = 7 ⇒ suppressed). Neither outcome is wrong-by-design, but which one occurs is decided by flush alignment, not physics — the concrete cost of F1. | Medium |
+
+**Resolved open questions:**
+
+- **O5 — resolved, the signal reason is clobbered.** `_signal_handler` writes `"Signal SIGINT"`,
+  then `sys.exit(128+signum)` runs the atexit handler, which overwrites it with
+  `"Normal exit / atexit"`. Exit codes are 130/143 as expected and pending snapshots *are*
+  flushed. So F7's mechanism destroys signal provenance too — the "likely" in §1 is now a fact,
+  pinned by battery C.
+- **O6 — resolved.** Constructing a `DescribedDict` off the main thread raises `ValueError`
+  (`signal.signal` restriction). `run.py --workers` uses processes, so this is a latent
+  constraint on any future threaded driver, not a live bug.
+- **O2 — bounded.** SIGKILL between flushes loses exactly the pending window and leaves the
+  flushed prefix complete and loadable (10/10 in the pinned case); no torn line when the kill
+  lands on a clean boundary.
+
+**Field scan (battery H, partial) — `data/field_scan.csv`:**
+
+| Config | Result |
+|--------|--------|
+| smoke (`mCloud 1e5`, `sfe 0.3`, `stop_t 1e-4`) — 97 snapshots, phase 1a only | I1 ✅ (0 unparsable) · I3 ✅ (t non-decreasing, **0 duplicates**) · I4 ✅ (1 distinct key-set) · F11 **97/97 lines carry `NaN`**, 0 carry `Infinity` |
+| `simple_cluster` (partial run, crossed into 1b) | **F4 field-confirmed on the current tree**: energy→implicit boundary Δt = **5.0e-4 Myr** against a typical energy segment of 1.008e-4 (≈5×), i.e. the implicit phase's iter-0 save was dropped and its first record is one segment late. This reproduces the old audit's 5.0e-4 figure exactly (§1b), so that signature has survived every merge since. |
+
+Two refinements to inherited claims:
+
+- **F11's NaN source is broader than the audit's #6.** The audit attributed the NaN literals to
+  `reset_keys(COOLING_PHASE_KEYS)` in the momentum phase; in the fast config *every* line carries
+  NaN while still in phase 1a, from keys the energy phase never populates (`v_neg_frac_thick`,
+  `bubble_Lgain`, `bubble_Lloss`, `residual_*`). Both sources are real; `reset_keys` is not the
+  only one, so a fix aimed only at it would not produce strict JSON.
+- **F1 has no observed field incidence in the fast config** — 0 duplicates in 97 snapshots. The
+  mechanism is real (battery A constructs it), but its practical consequence in a real run is
+  F21's boundary lottery rather than spurious duplicate rows.
+
+**Still owed** (for the next session): battery H on the stiff/edge configs
+(`docs/dev/performance/f1edge_{lowdens,hidens}*.param`) and on a run that completes all four
+phases, adding a row per config to `data/field_scan.csv`; the multi-phase row above came from a
+truncated run and records only the 1a→1b boundary.
+
 ## 2. Robustness invariants (what "outputs are robust" means)
 
 The batteries gate against these. Each is currently TRUE, FALSE, or UNKNOWN — the campaign's job
 is to make every cell KNOWN and pinned by a test.
 
-| ID | Invariant | Status @ 030b658 |
-|----|-----------|------------------|
-| I1 | Every line of `dictionary.jsonl` parses as JSON (Python `json`; strictness caveat F11) | UNKNOWN (battery H) |
-| I2 | Loader ids are contiguous `0..N-1` and equal the writer's `snap_id`s | FALSE on corrupt/blank lines (F13) and after F6 retry |
-| I3 | `t_now` is non-decreasing across lines; adjacent duplicate `(t_now, R2)` pairs occur **only** at line indices `≡ 0 (mod snapshot_interval)` | UNKNOWN in the field (battery H — any duplicate elsewhere is a *new* finding) |
-| I4 | Per-line key-set is stable across a run (modulo documented phase-dependent keys) | UNKNOWN (battery H; F5's shell guard drops keys silently) |
-| I5 | `save_snapshot()` never raises for states the code itself produces (incl. `reset_keys` output, phase-0 placeholders) | FALSE (F5, F8) |
-| I6 | Loading is side-effect-free on the run directory | **FALSE** (F7) |
-| I7 | A failed `flush()` retried after remediation neither loses nor duplicates lines | **FALSE** for flush ≥ 2 (F6) |
-| I8 | save→load→save round-trip is value-stable (types per F12's documented morphing table) | UNKNOWN (battery E) |
-| I9 | The recorded termination reason survives signals, atexit ordering, and later loads | FALSE for loads (F7); UNKNOWN for signals (O5, battery C) |
+Statuses below are as measured on 2026-08-17 (§1c); "field" means checked against a real run's
+record, "pinned" names the battery whose test holds the behavior in place.
+
+| ID | Invariant | Status @ `030b658` |
+|----|-----------|--------------------|
+| I1 | Every line of `dictionary.jsonl` parses as JSON (Python `json`; strictness caveat F11) | **TRUE** in the field (0 unparsable / 97) — but only under a *permissive* parser; strict RFC-8259 parsers reject 97/97 lines (F11). Pinned: E, H |
+| I2 | Loader ids are contiguous `0..N-1` and equal the writer's `snap_id`s | **FALSE** on corrupt/blank lines (F13) and after an F6 retry; TRUE in the field for an uncorrupted run. Pinned: B, F |
+| I3 | `t_now` is non-decreasing across lines; adjacent duplicate `(t_now, R2)` pairs occur **only** at line indices `≡ 0 (mod snapshot_interval)` | **TRUE** in the field (t non-decreasing; 0 duplicates in 97 snapshots). The mod-10 clause is unfalsified but untested in anger — no boundary has yet landed on a flush boundary (F21). Pinned: A, H |
+| I4 | Per-line key-set is stable across a run (modulo documented phase-dependent keys) | **TRUE** in the field (1 distinct key-set / 97 lines). Still breakable via F5's silent shell-guard path. Pinned: D, H |
+| I5 | `save_snapshot()` never raises for states the code itself produces (incl. `reset_keys` output, phase-0 placeholders) | **FALSE** — and F19 shows it is reachable from a freshly-read production dict, not just latent (F5, F8, F19, F20). Pinned: D, G |
+| I6 | Loading is side-effect-free on the run directory | **FALSE** (F7) — verified end-to-end in a subprocess: a read-only load rewrites `metadata.json` *and* `metadata_humanreadable.txt`. Pinned: C |
+| I7 | A failed `flush()` retried after remediation neither loses nor duplicates lines | **FALSE** for flush ≥ 2 (F6); accidentally TRUE for the first flush. Pinned: B |
+| I8 | save→load→save round-trip is value-stable (types per F12's morphing table) | **TRUE** for values (a reloaded state re-serializes to an identical line); **FALSE** for types — lists become ndarrays, so `str`/`tuple` change class (F12). Pinned: E |
+| I9 | The recorded termination reason survives signals, atexit ordering, and later loads | **FALSE** on both counts — clobbered by a later load (F7) *and* by atexit after a signal (O5, now resolved). Pinned: C |
 
 ## 3. Test batteries
 
+> **Executed 2026-08-17 — A–G complete, H partial (§1c).** The case lists below are kept as the
+> design record and as the map from finding → test. Two deliberate deviations from the plan as
+> written: (i) battery H's real-run scans are **all** `@pytest.mark.stress`, not just the
+> non-smoke configs — a ~40 s simulation per default-suite run buys little when
+> `test_run_smoke.py` already runs the same config, so the *scanner* is covered in the default set
+> against synthetic records instead; (ii) the scanner itself lives in
+> `harness/scan_field_record.py` and is imported by path (the `test_rosette_cf_harness.py`
+> pattern) so the committed CSV and the tests share one implementation.
+
 Batteries A–G are fast unit/characterization tests (milliseconds each, default `pytest` set).
-Battery H is integration on real runs (`@pytest.mark.stress` for anything beyond the smoke
-config). Each case states **expected current behavior** — the executing session pins behavior
-as-is (`pytest.raises`, equality on the probed values) and tags candidate bugs; it does NOT fix
-`dictionary.py` (see §4 ground rules).
+Battery H is integration on real runs. Each case states **expected current behavior** — the
+executing session pins behavior as-is (`pytest.raises`, equality on the probed values) and tags
+candidate bugs; it does NOT fix `dictionary.py` (see §4 ground rules).
 
 ### A. Duplicate-guard semantics (F1–F4, O3, O4)
 
@@ -340,11 +410,13 @@ re-running (💾).
    it needs a pre-registered gate stating the expected diff (e.g. "exactly the boundary-duplicate
    lines disappear; everything else byte-identical") on the battery-H config set, in separate
    processes, at matched `t`.
-2. **Where tests go**: one new file, `test/test_dictionary_stress.py`. Batteries A–G in the
-   default set (fast); battery H beyond the smoke config marked `@pytest.mark.stress`. Copy the
-   `disable_crash_handlers` fixture from `test/test_metadata.py:39` for every in-process test;
-   battery C uses subprocesses instead (real handlers). Suite invariant: 0 failed, before and
-   after (`test/CLAUDE.md`).
+2. **Where tests go** (as landed): `test/test_dictionary_stress.py` for the in-process batteries
+   and `test/test_dictionary_stress_process.py` for battery C + H — split because C's whole point
+   is the atexit/signal handlers that the in-process `no_handlers` fixture (copied from
+   `test/test_metadata.py:39`) disables. Real-run scans are `@pytest.mark.stress`. Suite
+   invariant: 0 *new* failures, before and after — the tree carries 3 known-red goldens pending
+   the post-C3c re-baseline (`test_run_smoke`, `test_phase_boundary`, `test_mu_audit_drift`; see
+   the `phii-identity/` row in `docs/dev/DOC_STATUS.md`), unrelated to this workstream.
 3. **Plausible values** per `test/CLAUDE.md`: where a test needs physical params (battery D.7,
    battery H), use realistic GMC values, not round numbers. Pure machinery tests (guard, flush)
    may use minimal dicts — they never touch physics.
@@ -357,13 +429,20 @@ re-running (💾).
 6. **Update this doc** (and `README.md` + `DOC_STATUS.md` row) with: battery results, resolved
    UNKNOWNs in §2, any new findings (F14+), and the battery-H CSV path. Date every change (🔄/🔗).
 
-## 5. Suggested execution order
+## 5. Execution order — done, and what remains
 
-1. Batteries A + B (the headline mechanics; ~an hour of work, all fast tests).
-2. Battery C (subprocess; resolves O5/O6 and hardens F7's evidence).
-3. Batteries D–G (breadth; D.7 is the one requiring real registry/param plumbing).
-4. Battery H smoke config; then stress configs if time/budget allows.
-5. Doc + DOC_STATUS updates; commit CSV.
+1. ~~Batteries A + B~~ — done (16 tests).
+2. ~~Battery C~~ — done (8 tests); resolved O5 and O6, hardened F7 to an end-to-end subprocess pin.
+3. ~~Batteries D–G~~ — done (36 tests). D.7 (the real registry/param path) produced F19/F20, the
+   most consequential result of the pass.
+4. **Battery H — partial.** Fast config scanned and committed; **owed**: the two
+   `f1edge_*` configs and one run that completes all four phases, each adding a
+   `data/field_scan.csv` row via `harness/scan_field_record.py`.
+5. ~~Doc + DOC_STATUS updates; commit CSV~~ — done for this pass; redo after the owed H rows.
+
+Next session's shortest path: run the owed H configs, append the CSV rows, then check whether any
+boundary landed at an index ≡ 0 (mod 10) — that is the one prediction (F21) still unobserved in
+the field, and it is the concrete cost of F1.
 
 ## 6. Maintainer decisions queued (fix vs. document — do not resolve unilaterally)
 
@@ -399,6 +478,13 @@ number is cited so the two are compared rather than re-derived.
 5. F5c (audit #5/#6): `reset_keys`' NaN default vs. the profile-array branches — guard the
    branches (audit #5: emit `[]`), or stop serializing reset keys at all (audit #6:
    `reset_keys(..., exclude=True)`)?
+5b. **F19/F20 (new, and the cheapest of the high-severity set)**: guard the `_simplify_error`
+   call in `DescribedDict.simplify()` (dictionary.py:524) so an empty curve skips the R² metric
+   instead of raising. This is a **diagnostics-only** change — it cannot alter any value written
+   for a non-empty array, so it is a candidate for the bit-identical gate (prove it: `pytest` plus
+   a byte-identical `dictionary.jsonl` on the battery-H configs). It removes the phase-0 crash
+   (F19) without touching the pair-handling or dedupe semantics, so it can land ahead of the
+   contentious decisions above.
 6. F11 (audit #6): `allow_nan=False` with a sanitize step would make files strict JSON — worth the
    content change? Note the audit measured 112 NaN-bearing lines in one run, so this is a
    *large* content diff, not a cosmetic one.
