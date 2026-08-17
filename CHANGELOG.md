@@ -38,6 +38,26 @@ First public release.
 
 ### Changed
 
+- **`P_HII` is now a real photoionised pressure, not a relabelling of the
+  confining pressure.** It was computed from the Strömgren density *after* that
+  density was capped at the shell's inner value `shell_n0` — and `shell_n0` is
+  itself defined by pressure balance against `Pb`, so converting it back to a
+  pressure returned `Pb` term for term. The cap bound on 100% of rows, making
+  `P_HII` carry no dependence on `Qi`, the escape fraction, or the ionised
+  volume. In the momentum phase, where `Pb` *is* the wind ram pressure, this
+  made `P_drive = P_HII + P_ram` come out at exactly `2 × P_ram` — the same
+  pressure counted twice, half of it attributed to photoionisation.
+  `P_HII` is now a confinement regime switch on the **cavity** Strömgren density
+  (`get_bubbleParams.get_phii_c3c`): while the ionised gas is confined it is a
+  thin skin that transmits the confining pressure and contributes exactly `0.0`;
+  once confinement fails it drives at its own pressure. Photoionisation now
+  responds to `Qi` and `R2`. Fates are unchanged on all 13 test configurations;
+  shell radii move by 7.6–20.5%, and one configuration (a small dense cloud at
+  high SFE) stays energy-driven where it previously handed over to the
+  momentum phase.
+- Fixes a related defect: the old `P_HII` read the **un-ramped** `Pb`, so it
+  smuggled un-ramped pressure past the `dt_switchon` ramp and the ramp never
+  throttled the drive. The confined branch returning exactly `0.0` restores it.
 - Bubble-structure integration migrated from `odeint` to
   `solve_ivp(method='LSODA', dense_output=True)`, decoupling integration accuracy
   from output sampling so near-duplicate radii in the legacy grid no longer trip

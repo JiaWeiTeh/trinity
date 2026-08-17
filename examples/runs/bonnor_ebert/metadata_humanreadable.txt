@@ -1,0 +1,43 @@
+============================================================
+TRINITY run: cloud_example_BE
+============================================================
+Status   : ✓ SUCCESS  (shell_collapsed)
+Detail   : Small radius reached (event)
+At       : 2026-08-17 10:09:13
+
+------------------------------------------------------------
+Cloud
+------------------------------------------------------------
+  mCloud        : 9.90e+05  Msun
+  nCore         : 1.00e+04  cm⁻³
+  rCloud        : 15.743  pc
+  rCore         : 0.010  pc
+  dens_profile  : densBE
+  nISM          : 1.00e+01  cm⁻³
+  sfe           : 0.0100
+  mCluster      : 1.00e+04  Msun
+  ZCloud        : 1.00  Z☉
+
+------------------------------------------------------------
+Final state  [t = 4.027 Myr]
+------------------------------------------------------------
+  R2            : 1.500 pc
+  v2            : -49.640 km/s    (-5.077e+01 pc/Myr)
+  shell_mass    : 9.493e+05 Msun
+  shell_nMax    : 7.450e+05 cm⁻³    (2.189e+61 pc⁻³)
+  Pb            : 4.625e+07 K cm⁻³ (P/k_B)    (9.869e+03 internal)
+  Eb            : 0.000e+00 erg    (0.000e+00 internal)
+  T0            : 2.166e+06 K
+  bubble_Tavg   : 5.335e+06 K
+  phase         : momentum
+  collapsed     : yes
+  dissolved     : no
+
+------------------------------------------------------------
+Termination diagnostics
+------------------------------------------------------------
+  reason        : Normal exit / atexit
+  large changes : 1
+    - Shell peak density: +3.7e+05 (+98.5%)
+  NaN values    : cool_beta, cool_delta, t_previousCoolingUpdate, bubble_LTotal, bubble_L1Bubble, bubble_L2Conduction, bubble_L3Intermediate, v_neg_frac_thick (+12 more)
+============================================================
