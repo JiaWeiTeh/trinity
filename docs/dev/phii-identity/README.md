@@ -224,9 +224,14 @@ rather than ~500%.
 
 So both the calibration (Batch 8) and geometry (Batch 9) explanations are excluded, and what is left
 is the **pressure coupling** — **D5** in `PLAN.md` §7, a physics-intent question. 🔍 Though note:
-stage 3's `Lw^−0.33` applied to 1.545 puts inversion at `Lw ≈ 3.4` rather than 260, which is a
-physical wind strength on rungs that already exist (`B3MW3`/`B3MW10`) — an extrapolation worth
-testing before treating D5 as the only route. ⛔ The Batch 9 *scope* first claimed the geometry
+an extrapolation from stage 3's `Lw^−0.33` briefly suggested inversion at a physical `Lw ≈ 3.4`.
+**Batch 10 tested that on `B3MW3`/`B3MW10` and falsified it.** The profile form does not inherit the
+cavity exponent — stronger winds *thin* the shell (`dR_ion/R2 ∝ Lw^−0.3375`), which *raises* the
+geometry correction and cancels ~43% of the cavity decline, leaving a net `Lw^−0.1133`. Momentum
+medians 1.5451 / 1.3412 / 1.1902 for `Lw` = 1/3/10, so inversion moves only to `Lw` ≈ 46.5 — still
+unphysical. **D5 is the route.** One useful by-product: `B3MW10` dips to `dR_ion/R2` = 0.3197, below
+the `R2/3` break-even, so the geometry correction's **sign is wind-dependent** — which is why the
+Batch 9 scope ("raises `P_HII`") and its verdict ("lowers it") were both partial views. ⛔ The Batch 9 *scope* first claimed the geometry
 correction was one-signed and *raised* `P_HII`; that was measured before momentum was covered and is
 retracted in `PLAN.md` §Batch 9.
 
