@@ -18,13 +18,21 @@ dR at radius R2, recombination balance over 4 pi R2^2 dR instead of (4/3) pi R2^
 
     n_layer / n_cavity = sqrt( R2 / (3 dR) )
 
-and pressure is linear in n, so that ratio is also the pressure ratio. It is > 1 for any
-dR < R2/3, i.e. the correction is ONE-SIGNED: making C3a's geometry match trinity's own
-shell solution makes the photoionised pressure LARGER, never smaller.
+and pressure is linear in n, so that ratio is also the pressure ratio. It crosses 1 at
+dR = R2/3.
 
-Consequence, and the reason this is worth scoping: the "does the cavity really stay
-Stroemgren-filled?" question cannot be the escape hatch for the universally
-HII-dominated momentum phase. It deepens it. See PLAN.md §Batch 9.
+⛔ The scoping version of this file claimed the correction is ONE-SIGNED (always makes the
+photoionised pressure larger). **That was measured before the momentum phase was covered and
+is retracted.** The shell is thin early (dR/R2 ~ 1e-3) and THICK in momentum (0.67-1.31), so
+past dR = R2/3 the correction LOWERS the pressure: measured frac(ratio > 1) = 1.0000 /
+1.0000 / 0.3810 / 0.0000 across energy / implicit / transition / momentum.
+
+⚠️ The `dR` here is the FULL shell thickness, not the ionised layer — see `layer_thickness`
+for why snapshot data cannot give the ionised layer, and use
+`harness/layer_density_check.py` for the true value. That harness also shows this screen's
+Stroemgren-balance framing overstates the real profile's density by up to 3.17x, because the
+balance assumes every absorbed ionising photon recombines while the real shell loses 61-75%
+of them to dust (G9.4, FALSIFIED). See PLAN.md §Batch 9.
 
     python docs/dev/phii-identity/harness/geometry_screen.py <run_dir> [<run_dir> ...] \
         --out docs/dev/phii-identity/data/b9_geometry_scope.csv
@@ -57,20 +65,28 @@ def rows_of(run_dir):
 
 
 def layer_thickness(row):
-    """Ionised-layer thickness from the shell solve.
+    """FULL shell thickness from the snapshot. Returns (dR, index_clamped) or None.
 
-    Returns (dR, whole_shell_ionised) or None.
+    ⚠️ **This is the whole shell, ionised + neutral — NOT the ionised layer**, and it cannot
+    be the ionised layer from snapshot data alone. `shell_ion_idx` indexes the ORIGINAL
+    `shell_r/n_arr` (`registry.py:499`) while the snapshot's `shell_r_arr` is the
+    DOWNSAMPLED grid paired with `log_shell_n_arr` (`dictionary.py:688-700`) — two different
+    index spaces. On the B3M run `shell_ion_idx` reaches 26848 against a saved array of <=100,
+    so the index clamps to the last element on 100% of rows in all four phases.
 
-    `shell_ion_idx` is the LAST INDEX of the ionised region, with **-1 as a sentinel
-    meaning there is no ionised region at all** (`shell_structure.py:441`, the dissolved
-    branch). That sentinel must not reach the arithmetic: `arr[-1] - arr[0]` is the whole
-    shell, i.e. the exact opposite of "no ionised gas", and it would understate the density
-    ratio. Rows with the sentinel are excluded and counted separately.
+    Verified consequence (G9.4, `harness/layer_density_check.py`): because the shell is
+    87-100% ionised, `dR_full` is within 0.5% of `dR_ion` in momentum and 13% in implicit, so
+    the Batch 9 ratios stood. But the quantity is still the full thickness, and since
+    `ratio = sqrt(R2/(3 dR))` falls with `dR`, any row where the shell is substantially
+    neutral would have its ratio UNDERSTATED here.
 
-    When `shell_ion_idx == len(arr) - 1` the entire shell is ionised
-    (`shell_structure.py:409`), which is the common case in the runs screened so far — so
-    the "ionised layer" is normally the whole shell, and the result rests on the shell being
-    thin compared with R2 rather than on an ionised sub-layer within it.
+    **For the true ionised-layer thickness, use `harness/layer_density_check.py`**, which
+    replays `shell_structure_pure` so `shell_ion_idx` and `shell_r_arr` share an index space.
+
+    `shell_ion_idx = -1` is a sentinel meaning there is no ionised region at all
+    (`shell_structure.py:441`, the dissolved branch). It must not reach the arithmetic:
+    `arr[-1] - arr[0]` is the whole shell, the exact opposite of "no ionised gas". Rows
+    carrying the sentinel are excluded and counted separately.
     """
     arr, idx = row.get("shell_r_arr"), row.get("shell_ion_idx")
     if not arr or idx is None or len(arr) < 2:
@@ -125,7 +141,7 @@ def screen(run_dir):
                 phase=phase,
                 rows=a["n"],
                 rows_no_ionised_region=a["no_ion"],
-                frac_whole_shell_ionised=a["whole"] / a["n"] if a["n"] else None,
+                frac_index_clamped=a["whole"] / a["n"] if a["n"] else None,
                 t_lo=a["t_lo"],
                 t_hi=a["t_hi"],
                 dR_over_R2_min=min(a["dR_over_R2"]),

@@ -210,12 +210,25 @@ C3a's normalisation. Pinned by `test/test_phii_c3c_spitzer.py`.
 either.** C3a spreads the shell-absorbed photon budget over the whole cavity, `(4/3) pi R2^3`, while
 trinity's own shell solve puts the ionised gas in the shell itself. Correcting the volume gives
 `n_layer/n_cavity = sqrt(R2/(3 dR))`, and on the B3M momentum rows the shell is **thick**
-(`dR/R2` = 0.670–1.308), so the correction **lowers** `P_HII` by 0.51–0.71×. It is not enough:
-`P_HII/P_ram` median 6.165 → **3.594**, with **34/34 momentum rows still HII-dominated**. With both
-the calibration (Batch 8) and geometry (Batch 9) explanations now excluded, what is left is the
-**pressure coupling** — registered as **D5** in `PLAN.md` §7, a physics-intent question. ⛔ Note the
-Batch 9 *scope* first claimed the geometry correction was one-signed and *raised* `P_HII`; that was
-measured before momentum was covered and is retracted in `PLAN.md` §Batch 9.
+(`dR/R2` = 0.670–1.308), so the correction **lowers** `P_HII` by 0.51–0.71×.
+
+**How much it lowers it depends on how the layer density is computed, and G9.4 settled that.**
+Replaying the shipped `shell_structure_pure` (`harness/layer_density_check.py`) shows the analytic
+thin-layer Strömgren scaling **overestimates** the real profile's recombination-equivalent density by
+up to **3.17×** — G9.4's 2× bar, so **FALSIFIED**. The cause is measured and exact where the layer is
+thin: a Strömgren balance assumes every absorbed ionising photon recombines, but the real shell loses
+61–75% of them to **dust**, and `sqrt(recomb/Qi_abs)` reproduces the gap to three decimals (0.497 vs
+0.496 in energy; 0.907 vs 0.906 in implicit). On the profile form, momentum `P_HII/P_ram` goes
+6.165 → **1.545** (1.322–1.666, *falling* with time) — still HII-dominated on every row, but by ~50%
+rather than ~500%.
+
+So both the calibration (Batch 8) and geometry (Batch 9) explanations are excluded, and what is left
+is the **pressure coupling** — **D5** in `PLAN.md` §7, a physics-intent question. 🔍 Though note:
+stage 3's `Lw^−0.33` applied to 1.545 puts inversion at `Lw ≈ 3.4` rather than 260, which is a
+physical wind strength on rungs that already exist (`B3MW3`/`B3MW10`) — an extrapolation worth
+testing before treating D5 as the only route. ⛔ The Batch 9 *scope* first claimed the geometry
+correction was one-signed and *raised* `P_HII`; that was measured before momentum was covered and is
+retracted in `PLAN.md` §Batch 9.
 
 ## 6. Where the branches agree, and where they read it differently
 

@@ -1,4 +1,4 @@
-# generated 2026-08-17T08:53:34Z | builder geometry_screen.py | code e265416e+dirty
+# generated 2026-08-17T09:10:57Z | builder geometry_screen.py | code dff85767+dirty
 # run /tmp/claude-0/-home-user-trinity/7bfa3495-35e3-526b-82f0-bbfcc0f20cb8/scratchpad/runs/b9/B3M/
 # run /tmp/claude-0/-home-user-trinity/7bfa3495-35e3-526b-82f0-bbfcc0f20cb8/scratchpad/runs/b7/B3MW001/
 # run /tmp/claude-0/-home-user-trinity/7bfa3495-35e3-526b-82f0-bbfcc0f20cb8/scratchpad/runs/b7/BE/
@@ -9,7 +9,7 @@
 # run /tmp/claude-0/-home-user-trinity/7bfa3495-35e3-526b-82f0-bbfcc0f20cb8/scratchpad/runs/b7/PL2/
 # run /tmp/claude-0/-home-user-trinity/7bfa3495-35e3-526b-82f0-bbfcc0f20cb8/scratchpad/runs/b7/SC/
 # run /tmp/claude-0/-home-user-trinity/7bfa3495-35e3-526b-82f0-bbfcc0f20cb8/scratchpad/runs/b7/SDHS/
-config,phase,rows,rows_no_ionised_region,frac_whole_shell_ionised,t_lo,t_hi,dR_over_R2_min,dR_over_R2_max,ratio_min,ratio_median,ratio_max,frac_ratio_gt_1,fabs_min,fabs_max,frac_fabs_ge_099
+config,phase,rows,rows_no_ionised_region,frac_index_clamped,t_lo,t_hi,dR_over_R2_min,dR_over_R2_max,ratio_min,ratio_median,ratio_max,frac_ratio_gt_1,fabs_min,fabs_max,frac_fabs_ge_099
 B3M,energy,87,0,1.0,8.326027884211955e-07,0.003,2.006989281281003e-05,0.0024003973473599705,11.784137560992578,30.81424820355129,128.8744563094245,1.0,0.05617560010167988,1.0,0.2413793103448276
 B3M,implicit,68,0,1.0,0.0035,0.2707684955093858,0.0023822660100536663,0.005587315716296318,7.723919992168234,10.753846084925927,11.828896871699053,1.0,1.0,1.0,1.0
 B3M,momentum,34,0,1.0,0.4048677755742118,1.5,0.6702321949385988,1.3084424590289483,0.5047334161174265,0.5959969291829006,0.7052234254666518,0.0,0.7208345416611595,1.0,0.7647058823529411
