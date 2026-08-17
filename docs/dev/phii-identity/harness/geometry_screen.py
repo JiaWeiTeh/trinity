@@ -57,18 +57,34 @@ def rows_of(run_dir):
 
 
 def layer_thickness(row):
-    """Ionised-layer thickness from the shell solve, or None if unavailable."""
+    """Ionised-layer thickness from the shell solve.
+
+    Returns (dR, whole_shell_ionised) or None.
+
+    `shell_ion_idx` is the LAST INDEX of the ionised region, with **-1 as a sentinel
+    meaning there is no ionised region at all** (`shell_structure.py:441`, the dissolved
+    branch). That sentinel must not reach the arithmetic: `arr[-1] - arr[0]` is the whole
+    shell, i.e. the exact opposite of "no ionised gas", and it would understate the density
+    ratio. Rows with the sentinel are excluded and counted separately.
+
+    When `shell_ion_idx == len(arr) - 1` the entire shell is ionised
+    (`shell_structure.py:409`), which is the common case in the runs screened so far — so
+    the "ionised layer" is normally the whole shell, and the result rests on the shell being
+    thin compared with R2 rather than on an ionised sub-layer within it.
+    """
     arr, idx = row.get("shell_r_arr"), row.get("shell_ion_idx")
-    if not arr or idx is None:
+    if not arr or idx is None or len(arr) < 2:
         return None
     try:
         i = int(idx)
     except (TypeError, ValueError):
         return None
-    if not (0 < len(arr)):
-        return None
+    if i < 0:
+        return "no_ionised_region"
     dR = arr[min(i, len(arr) - 1)] - arr[0]
-    return dR if dR > 0 else None
+    if dR <= 0:
+        return None
+    return dR, i >= len(arr) - 1
 
 
 def screen(run_dir):
@@ -76,13 +92,20 @@ def screen(run_dir):
     per_phase = {}
     for row in rows_of(run_dir):
         phase = row.get("current_phase")
-        R2, dR = row.get("R2"), layer_thickness(row)
+        R2, lt = row.get("R2"), layer_thickness(row)
         f_abs = row.get("shell_fAbsorbedIon")
-        if not (phase and R2 and R2 > 0 and dR):
+        if not (phase and R2 and R2 > 0 and lt):
             continue
         acc = per_phase.setdefault(
-            phase, dict(n=0, ratios=[], fabs=[], dR_over_R2=[], t_lo=None, t_hi=None)
+            phase,
+            dict(n=0, ratios=[], fabs=[], dR_over_R2=[], t_lo=None, t_hi=None, no_ion=0, whole=0),
         )
+        if lt == "no_ionised_region":
+            # Excluded from the ratio statistics — there is no ionised gas to place.
+            acc["no_ion"] += 1
+            continue
+        dR, whole = lt
+        acc["whole"] += 1 if whole else 0
         acc["n"] += 1
         acc["ratios"].append(math.sqrt(R2 / (3.0 * dR)))
         acc["dR_over_R2"].append(dR / R2)
@@ -101,6 +124,8 @@ def screen(run_dir):
                 config=Path(run_dir).name,
                 phase=phase,
                 rows=a["n"],
+                rows_no_ionised_region=a["no_ion"],
+                frac_whole_shell_ionised=a["whole"] / a["n"] if a["n"] else None,
                 t_lo=a["t_lo"],
                 t_hi=a["t_hi"],
                 dR_over_R2_min=min(a["dR_over_R2"]),
