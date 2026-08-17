@@ -1135,6 +1135,79 @@ normalisation is a dead end. What remains open is what Batch 5 stage 3 already i
 Both halves of §3's limiting-case obligation on C3 are now discharged: wind-only → Weaver-like
 (Batch 5 stage 3, exponent −0.743 vs −0.74) and photo-only → Spitzer-like (here, exact).
 
+### Batch 9 — SCOPE ONLY (the geometry question) — Status: ⬜ scoped 2026-08-16, not run
+
+**This is a scoping section, not a batch verdict.** The measurement below is a screen over
+*already-committed* Batch 7 run output (no new runs), written to motivate and bound the work. The
+gates are pre-registered; none is discharged.
+
+**The question.** C3a takes the density that balances recombination over the **whole cavity**,
+`n_C3a = sqrt(3 Qi_abs / (4 pi chi_e alpha_B R2^3))`. But trinity's own shell solve puts the
+photoionised gas in a **thin layer at the inner edge of the shell** (`shell_structure.py` integrates
+`nShell_arr_ion(r)` up to `shell_ion_idx`); the cavity interior holds hot/wind gas, not photoionised
+gas. And `Qi_abs = Qi * shell_fAbsorbedIon` is the photon budget **absorbed in the shell**. So C3a
+takes the photon budget of the layer and spreads it over the volume of the cavity. Those are
+different volumes holding different gas.
+
+For a layer of thickness `dR` at `R2`, balancing over `4 pi R2^2 dR` instead of `(4/3) pi R2^3`:
+
+```
+n_layer / n_cavity  =  sqrt( R2 / (3 dR) )        > 1  for any  dR < R2/3
+```
+
+and `P` is linear in `n`, so that is also the pressure ratio.
+
+**Measured (`data/b9_geometry_scope.csv`, `harness/geometry_screen.py`, 1085 rows, 9 configs):**
+
+| | energy | implicit | transition |
+|---|---|---|---|
+| `dR/R2` min | 5.7e-06 … 5.5e-04 | 6.2e-05 … 6.9e-02 | 3.1e-03 |
+| ratio median | 6.7 … 100.7 | 1.75 … 40.9 | 10.4 |
+| ratio max | 24.7 … 240.8 | 2.21 … 73.1 | 10.4 |
+
+**The correction is strictly one-signed: `ratio > 1` on 1.0000 of all rows**, in every phase of
+every config, median 1.75–100.7. **So making C3a's geometry agree with trinity's own shell solution
+makes `P_HII` LARGER, by one to two orders of magnitude — never smaller.**
+
+**This reframes the open momentum question.** "Does the momentum-phase cavity really stay
+Strömgren-filled?" is *not* the escape hatch for the universally HII-dominated momentum phase — the
+alternative geometry deepens the dominance. C3a is best read as a **conservative lower bound** on the
+photoionised pressure, which means the resolution must come from the **pressure coupling**, exactly
+as `c43a50e`'s own commit message flagged: *"a photoevaporative flow does not drive at n k T of the
+whole region, which is unexplored."* That is now the load-bearing unknown, and it is a **D-question**
+(D5 below), not a measurement.
+
+⚠️ **Correction made while scoping, recorded because it was reasoned from before being checked.**
+From a single last-row snapshot per config I read `shell_fAbsorbedIon = 1.000` everywhere and
+inferred "no ionising photon is left to maintain a cavity H II region, in any config". **Across full
+trajectories that is false**: `frac_fabs_ge_099` runs from **0.000** (B3MW001/F1LO/LDLS energy)
+to 1.000, so escaping fractions are substantial in the low-density and weak-wind configs. It does
+not change the volume-mismatch result above (escaping photons ionise nothing, and `Qi_abs` already
+carries `f_abs`), but the "all photons absorbed in the shell" premise is withdrawn.
+
+**Pre-registered gates, none discharged.**
+
+- **G9.1 — photon bookkeeping.** Per phase per config, report `frac_fabs_ge_099` and the escaping
+  fraction. No pass/fail: this is the input inventory G9.4 needs, and the scoping run shows it is
+  strongly config-dependent, so it must be measured rather than assumed.
+- **G9.2 — the correction is one-signed.** `n_layer/n_cavity > 1` on every row. **Screened at
+  1.0000 on 1085 rows (energy/implicit/transition)**; registered so momentum can falsify it.
+  FALSIFIED IF any row in any phase returns ≤ 1, which would mean a geometry correction that
+  *lowers* `P_HII` exists and the reframing above is wrong.
+- **G9.3 — momentum coverage (the gap that matters).** ⚠️ **The scoping run does not cover the
+  momentum phase at all** — Batch 7's configs never reached it, and B3M is the only config in the
+  matrix that does. No conclusion about momentum geometry may be drawn until G9.2 is measured on
+  momentum rows. This is the one thing that needs a run, and it needs exactly one.
+- **G9.4 — the layer model, computed not scaled.** The ratios above come from the analytic volume
+  scaling. Before any of this informs a code change, recompute the layer density through the same
+  shell machinery (`nShell_arr_ion`, `shell_ion_idx`) rather than from `sqrt(R2/3dR)`, and confirm
+  the two agree to within a stated tolerance. FALSIFIED IF they disagree by more than 2×, which
+  would mean the thin-layer scaling is not the right idealisation of trinity's own solve.
+
+**Explicitly out of scope.** This does not propose changing C3a's geometry. The measurement's
+purpose is the opposite — to show that the geometry lever moves `P_HII` the wrong way, so effort
+should go to D5 instead of to a volume refactor.
+
 ## 7. Decisions needed from the maintainer
 
 | id | question | blocks | state |
@@ -1143,6 +1216,7 @@ Both halves of §3's limiting-case obligation on C3 are now discharged: wind-onl
 | D2 | ✅ **ANSWERED 2026-08-12** — `P_HII` should be a real, separate pressure, treated as one unless the architecture cannot support it (then the assumption must be explicit). Consequence: the target is **decoupling**, and §3b shows the cap is not the coupling — the ionised volume is. Open sub-question for Batch 5: which decoupled formulation (C3a/C3b/C3c) | Batch 5 | **answered; formulation open** |
 | ~~D2-old~~ | ⛔ superseded by the above. **WAS THE CRUX (Batch 4a).** Removal is proven *safe* — no blow-up materialises in any regime tested, including the compact probe. So the question is no longer "can we?" but "should we?": is the uncapped Strömgren pressure physically trustworthy at these ionized volumes, given it exceeds `Pb` on 100% of rows (up to 7.79×; the 3.36 quoted earlier was PRB's `blowup_max`, not the matrix max) and shifts trajectories 15–28%? No measurement can settle this; it needs the model's intent. Also confirm §2's reading that the cap was pragmatic, not a physics claim. | Batch 4b design; Batch 5; **4a landing** | **open** |
 | D3 | ✅ **ANSWERED 2026-08-13** — acceptable-if-explained. Fate *flips* remain reportable, but a **timing** change under an explained mechanism is not a re-tune trigger. Applied to the standing case: WW's collapse moving 0.2816 → 0.2358 Myr (16% earlier) under C3c is **accepted** — it still collapses, and the mechanism (a stronger photoionised drive reordering the collapse) is documented in §3c stage 2. | Batch 3/4 verdicts | **answered** |
+| D5 | ⬜ **OPEN, and now the load-bearing one (raised 2026-08-16, Batch 9 scope).** **What pressure does a photoevaporative ionised layer transmit to the neutral shell?** C3c drives at the full `n_tot k T` of the ionised gas. `c43a50e`'s own commit message flags this as unexplored: *"a photoevaporative flow does not drive at n k T of the whole region."* Batch 8 removed the calibration explanation (C3a's magnitude **is** the classical D-type pressure, exactly) and Batch 9's scope removed the geometry explanation (the correction is one-signed and *raises* `P_HII` 1.75–100×). So the universally HII-dominated momentum phase is neither a prefactor bug nor a volume bug, and this is what is left. Candidate answers, none measured: (i) full `n k T` — the status quo; (ii) a momentum-flux-limited transmission (the flow carries `rho v^2`, not `n k T`); (iii) C3's never-implemented option (c), `P_ram + max(P_C3a − P_conf, 0)` — transmit the confining pressure, add only the excess. **This is a physics-intent call, not a code call**, and it cannot be settled by measurement | the momentum-phase verdict; any further C3 work | **open** |
 | D4 | ✅ **ANSWERED 2026-08-13** — re-baselining authority **granted** for `test_phase_boundary.py`, `test_betadelta_hybr_stress.py` and `test_scheme_screen.py` fixtures, conditional on G3.4: every re-baseline lands with a committed before/after table and the mechanism named. A golden that moves for an *unexplained* reason is still a stop, not a re-baseline. | Batch 6 | **answered** |
 
 ## 8. Ledger (results land here — the one source of truth)
