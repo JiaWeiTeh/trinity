@@ -103,6 +103,7 @@ def replay(run_dir, stride):
         except Exception as exc:  # a replayed state the solver rejects is reported, not hidden
             out.append(
                 dict(
+                    run=run_dir.name,
                     row_idx=k,
                     phase=row.get("current_phase"),
                     t=row.get("t_now"),
@@ -118,6 +119,7 @@ def replay(run_dir, stride):
         if r_all.size < 2 or i < 1:
             out.append(
                 dict(
+                    run=run_dir.name,
                     row_idx=k,
                     phase=row.get("current_phase"),
                     t=row.get("t_now"),
@@ -147,8 +149,13 @@ def replay(run_dir, stride):
         _tz = np.trapezoid if hasattr(np, "trapezoid") else np.trapz
         recomb = float(_tz(chi_e * alpha_B * n_ion**2 * 4.0 * np.pi * r_ion**2, r_ion))
 
+        # Shipped cavity-form drive ratio, straight from the snapshot.
+        pH, pb = row.get("P_HII"), row.get("Pb")
+        pd_cav = (pH / pb) if (pH and pb and pb > 0) else None
+
         out.append(
             dict(
+                run=run_dir.name,
                 row_idx=k,
                 phase=row.get("current_phase"),
                 t=row.get("t_now"),
@@ -169,6 +176,13 @@ def replay(run_dir, stride):
                 # the Batch 9 quantity, now with the TRUE ionised thickness
                 ratio_analytic=(n_lay / n_cav) if (n_lay and n_cav) else None,
                 ratio_from_profile=(n_rms / n_cav) if (n_rms and n_cav) else None,
+                # The drive ratio the gates are actually about. In the momentum phase
+                # params['Pb'] IS the wind ram pressure (run_momentum_phase assigns it so,
+                # see get_phii_c3c's docstring), so P_HII/Pb is the shipped cavity-form
+                # dominance and the two corrected columns rescale it by the density ratio.
+                pdrive_cavity=pd_cav,
+                pdrive_analytic=(pd_cav * n_lay / n_cav) if (pd_cav and n_lay and n_cav) else None,
+                pdrive_profile=(pd_cav * n_rms / n_cav) if (pd_cav and n_rms and n_cav) else None,
             )
         )
     return out
@@ -220,6 +234,28 @@ def main():
             f"\nG9.2 recheck, momentum, TRUE ionised dR: ratio {min(mom):.3f}..{max(mom):.3f}, "
             f"frac>1 = {sum(1 for x in mom if x > 1) / len(mom):.4f}"
         )
+
+    # Momentum-phase drive ratio per run — the Batch 10 gates (G10.1-G10.4).
+    for run in args.runs:
+        name = Path(run).name
+        v = [r for r in ok if r["phase"] == "momentum" and r.get("run") == name]
+        if not v:
+            print(f"\n{name}: NO MOMENTUM ROWS — VOID under the Batch 10 rule, not a null.")
+            continue
+        print(f"\n{name}: momentum drive ratio over {len(v)} rows")
+        for col in ("pdrive_cavity", "pdrive_analytic", "pdrive_profile"):
+            x = sorted(r[col] for r in v if r[col] is not None)
+            if not x:
+                continue
+            print(
+                f"  {col:17s} median {x[len(x) // 2]:.4f}  range {x[0]:.4f}..{x[-1]:.4f}"
+                f"  frac>1 {sum(1 for y in x if y > 1) / len(x):.4f}"
+            )
+        dr = sorted(r["dR_ion_over_R2"] for r in v if r["dR_ion_over_R2"] is not None)
+        if dr:
+            print(
+                f"  {'dR_ion/R2':17s} median {dr[len(dr) // 2]:.4f}  range {dr[0]:.4f}..{dr[-1]:.4f}"
+            )
 
     if args.out:
         args.out.parent.mkdir(parents=True, exist_ok=True)
