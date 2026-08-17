@@ -1,0 +1,42 @@
+============================================================
+TRINITY run: cloud_example_homogeneous
+============================================================
+Status   : ✓ SUCCESS  (stopping_time)
+Detail   : Stopping time reached
+At       : 2026-08-17 10:09:18
+
+------------------------------------------------------------
+Cloud
+------------------------------------------------------------
+  mCloud        : 9.90e+05  Msun
+  nCore         : 1.00e+03  cm⁻³
+  rCloud        : 18.970  pc
+  rCore         : 0.010  pc
+  dens_profile  : densPL
+  densPL_alpha  : 0.00
+  nISM          : 1.00e+01  cm⁻³
+  sfe           : 0.0100
+  mCluster      : 1.00e+04  Msun
+  ZCloud        : 1.00  Z☉
+
+------------------------------------------------------------
+Final state  [t = 15.000 Myr]
+------------------------------------------------------------
+  R2            : 85.719 pc
+  v2            : 0.825 km/s    (8.434e-01 pc/Myr)
+  shell_mass    : 1.893e+06 Msun
+  shell_nMax    : 1.625e+01 cm⁻³    (4.774e+56 pc⁻³)
+  Pb            : 1.491e+03 K cm⁻³ (P/k_B)    (3.182e-01 internal)
+  Eb            : 0.000e+00 erg    (0.000e+00 internal)
+  T0            : 1.656e+06 K
+  bubble_Tavg   : 4.150e+06 K
+  phase         : momentum
+  collapsed     : no
+  dissolved     : no
+
+------------------------------------------------------------
+Termination diagnostics
+------------------------------------------------------------
+  reason        : Normal exit / atexit
+  NaN values    : cool_beta, cool_delta, t_previousCoolingUpdate, bubble_LTotal, bubble_L1Bubble, bubble_L2Conduction, bubble_L3Intermediate, v_neg_frac_thick (+12 more)
+============================================================

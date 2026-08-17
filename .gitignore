@@ -22,12 +22,16 @@ paper/II-survey/
 paper/shellSSC6/
 paper/pedrini/
 paper/rosette/
+paper/orionNeAtHood/
+paper/orionM43/
+paper/trinity-phangs-I/
 # referee-revision staging area (new analysis + HPC control-sweep harness; review before wiring into src/)
 paper/methods/upgrade/
 test/test_barnes_population.py
 # tests that import the local-only paper/rosette/ mount (e.g. paper_Cf) — keep
 # local until that module is vendored, else they break collection in CI/containers
 test/test_paper_cf_csv_loader.py
+test/test_orion_legacy_sfe.py
 movie.txt
 lib/*
 !lib/default/
@@ -39,7 +43,7 @@ param/*
 !param/*_example.param
 !param/simple_cluster.param
 /scratch/
-!param/paperII*
+# !param/paperII*
 
 
 # Large test data files (optional - uncomment to exclude from git)
@@ -246,3 +250,7 @@ docs/dev/performance/data/states/
 # Stray sentinel output dir: path2output='def_dir' written literally (test/run without an
 # explicit path2output). Generated artifact, never source.
 def_dir/
+
+# Derived hand-off folder for trinity-web (rebuild with examples/export_web.sh);
+# the published copy lives in trinity-web, not here.
+examples/web/
