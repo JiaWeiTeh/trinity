@@ -33,8 +33,8 @@
 > update one in isolation.
 
 **Status (2026-08-17):** 🔵 actionable — 13 edge-case findings verified against `030b658`
-(probe harness committed, seconds to re-run); the stress-test batteries in `PLAN.md` are
-specified but **not yet executed**.
+(probe harness committed, seconds to re-run) + 5 inherited from an earlier off-trunk audit
+(`PLAN.md` §1b); the stress-test batteries in `PLAN.md` are specified but **not yet executed**.
 
 Motivating question (maintainer, 2026-08-17): *"Is it true that the duplicate guard is skipped
 entirely at every 10-snapshot boundary?"* — **Yes** (finding F1, probe P1): `flush()` clears the
@@ -46,11 +46,19 @@ adjacent duplicate lines in `dictionary.jsonl`. And the guard is load-bearing at
 
 Contents:
 
-- **`PLAN.md`** — the deliverable: verified findings F1–F13 with severities, robustness
-  invariants I1–I9, test batteries A–H for a follow-up session to execute, ground rules
-  (characterize, don't fix), and the queued maintainer decisions.
+- **`PLAN.md`** — the deliverable: verified findings F1–F13 with severities (§1), reconciliation
+  with the earlier off-trunk audit incl. 5 inherited findings F14–F18 (§1b — **read first**),
+  robustness invariants I1–I9, test batteries A–H for a follow-up session to execute, ground
+  rules (characterize, don't fix), and the queued maintainer decisions.
 - **`harness/`** — `probe_dictionary.py`, the self-contained reproduction of every finding
   (no simulation, ~seconds); see `harness/README.md` for the command.
+
+Prior art: an earlier 17-finding audit of the same file sits **off-trunk** on
+`fix/audit-dictionary-system` (`git show e554316f:analysis/dictionary-system-audit.md`), written
+against the old `src/` layout. It was found only after this workstream's probes ran; `PLAN.md` §1b
+reconciles the two ID sets, inherits its five findings that the probes did not cover, and inherits
+its field measurements (phase-boundary Δt signature, 112 NaN-bearing lines in one real run) so
+battery H compares instead of rediscovering. Its fix set is a proposal to evaluate, never landed.
 
 Highest-severity findings (details + probe output in `PLAN.md` §1): **F7** — merely *loading* a
 snapshot rewrites the loaded run's `metadata.json` at interpreter exit, clobbering a recorded

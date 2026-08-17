@@ -32,8 +32,9 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-17):** 🔵 actionable — 13 findings verified by probe against `030b658`;
-batteries A–H specified below, **none executed yet**. The executing session writes
+**Status (2026-08-17):** 🔵 actionable — 13 findings probe-verified against `030b658` (§1), plus 5
+inherited unverified (F14–F18) from an earlier off-trunk audit now reconciled in §1b; batteries
+A–H specified below, **none executed yet**. The executing session reads §1b first, writes
 `test/test_dictionary_stress.py` (characterization) and runs battery H, then updates this doc.
 
 ## 0. Scope and object under test
@@ -94,6 +95,62 @@ Unprobed design observations (each gets a battery case before it may be quoted a
   (`signal.signal` restriction). To verify in battery C.
 - **O7** — downstream effect of duplicate rows (F1): `np.diff(t) == 0` in any reader-side rate or
   interpolation. What `trinity_reader` actually does with duplicate `t` is unmeasured. Battery H.
+
+## 1b. Prior art — the earlier dictionary-system audit (read before executing)
+
+An earlier audit of this same file exists **off-trunk** and was found only after §1's probes were
+run: `analysis/dictionary-system-audit.md` (179 lines) on branch `fix/audit-dictionary-system`,
+pinned at `e554316f`. Read it with:
+
+```bash
+git show e554316f:analysis/dictionary-system-audit.md
+```
+
+It is written against the **old layout** (`src/_input/dictionary.py`), so **none of its line
+numbers map** to `trinity/_input/dictionary.py`; its *findings* do. Per the docs/dev rule, treat
+its claims as unverified — three were re-checked here (see "corrections" below). It carries three
+things this plan does not: **field measurements from a real 178-snapshot four-phase run**, a
+**17-item fix set** consistency-checked against the codebase (its §3), and a **risk + ordering
+analysis** for those fixes (its §5–§7). Do not re-derive any of that.
+
+Reconciliation (this plan's IDs ↔ audit's `#`):
+
+| Here | Audit | Relationship |
+|------|-------|--------------|
+| F1, F2 | #2 | Same mechanism. The audit rated it **latent** ("no duplicates surfaced in this run"); probe P1 **constructs** the duplicate, upgrading latent → demonstrated. |
+| F4 | #1 | Same finding, and the audit **measured it in the field**: Δt at all three phase boundaries equals exactly one segment of the *next* phase, i.e. every new phase's iter-0 save is silently dropped. Rated High. |
+| F5a, F5d | #5 | Identical (empty arrays into `simplify`). |
+| F5b | #4 | The audit adds the **reverse direction** I did not probe: the `continue` in the r-array branches is unconditional, so if the *derived* partner is missing the r-array is silently dropped (no exception, data just absent). |
+| F7 | #3, #8, #10 | Overlapping but **not** the same. The audit's #3 is the run-path clobber (atexit overwrites `main.py`'s descriptive reason) and #11 the signal re-entrance; my F7 is the **load-only** path — an analysis script that merely reads rewrites the run's `metadata.json`. #8/#10 sharpen it further: a loaded dict carries `flush_count == 0` **and** `path2output` pointing at the source, so any accidental `save_snapshot()`/`flush()` **deletes the source `dictionary.jsonl` + `metadata.json`** (my O1, framed as a destructive footgun). |
+| F10 | #7 | Identical (append-only `_excluded_keys`). |
+| F11 | #6 | The audit adds the **cause and the field incidence**: `reset_keys(COOLING_PHASE_KEYS)` (`main.py`) NaNs ~25 keys that stay in the dict and keep serializing — **112 lines contained `NaN`**, with 8+ cooling keys NaN in 14/14 momentum snapshots. |
+| O1 | #10 | Same fresh-run delete branch. |
+| O2 | #9 | Same (no fsync, no temp+rename; asymmetric to `metadata.json`). Audit also flags the `print`-not-`logger` corruption warning (my battery F.2 note). |
+| O5 | #3, #11 | Same signal→atexit re-entrance. |
+| G.6 | #13 | Same `updateDict` silent-skip. |
+| — | #12, #14, #15, #16, #17 | **Inherited, not probed here** — added below as F14–F18. |
+
+Inherited findings (from the audit; **unverified against current source** except where noted):
+
+| ID | Audit | Finding |
+|----|-------|---------|
+| F14 | #14 | Phase runners' reconciliation blocks catch broad `Exception` and only `logger.warning`. If reconciliation raises, no snapshot fires **and** F4 then drops the next phase's iter-0 → the entire boundary state is missing from the record. Verified present in shape at `run_energy_phase.py:410-421`. |
+| F15 | #15 | Dead code: the `until_flush = 0` reset. **Re-verified present** at `dictionary.py:746-747` — its only reader is the `else` branch at :757, which is reached only when `save_count % interval != 0`, where the reset condition is false by construction. |
+| F16 | #16 | `snapshot_interval = 10` is hardcoded (`dictionary.py:220`) and not a `.param` key. **Re-verified**: no hit in `param/` or `trinity/_input/registry.py`. Contrast `simplify_npoints`, which *is* read from the dict (`dictionary.py:505-507`). Relevant to O4 and to F1 (the boundary effect's period is this constant). |
+| F17 | #12 | `_metadata_version` written but not honoured on read. **Partially stale** — `trinity/_output/cloudy/run_loader.py:106` does gate on `metadata.get("_metadata_version", 1) >= 2`. The gap is narrower than the audit states: no *newer-than-reader* check anywhere. |
+| F18 | #17 | `save_debug_snapshot` re-implements JSON-readying instead of reusing `_to_json_ready_value` (drift risk). Still true by inspection (`dictionary.py:1090-1109` vs `553-575`). |
+
+Consequences for this plan:
+
+1. **Battery H is partly pre-answered.** The audit's boundary Δt table (H.5) and NaN incidence
+   (H.1) are exactly two of the field measurements H asks for. Its numbers predate the current
+   tree by many merges (incl. C3c) so they are **not quotable**, but H should be run as a
+   *comparison* against them, not a from-scratch discovery — and the executing session should
+   report whether the boundary Δt signature still holds.
+2. **Battery D gains a case** (F5b-reverse, audit #4): derived partner missing → r-array silently
+   dropped, no exception. Add it to §3 D.1.
+3. **§6's decisions should start from the audit's fix set**, not a blank page — with the standing
+   caveat that its fixes were never landed, never gated, and were written against the old layout.
 
 ## 2. Robustness invariants (what "outputs are robust" means)
 
@@ -178,7 +235,10 @@ Subprocess-based (real atexit/signals), following the harness's P14 pattern; eac
 ### D. Profile-array special cases (F5)
 
 1. Crash matrix pins: empty-pair `ValueError` (a), missing-companion `KeyError` (b), scalar-NaN
-   `IndexError` (c), empty shell-grav `ValueError` (d).
+   `IndexError` (c), empty shell-grav `ValueError` (d). Plus the **reverse asymmetry** (audit #4,
+   §1b): `bubble_r_arr` present with **no** derived partner → the unconditional `continue`
+   (dictionary.py:639-641) drops the r-array silently, no exception, key simply absent. Assert the
+   silence explicitly — it is the one branch of F5 that fails without a traceback.
 2. `shell_n_arr` guard asymmetry: empty `shell_r_arr` → snapshot succeeds but `log_shell_n_arr` /
    `shell_r_arr` keys absent from the line (schema drift, feeds I4).
 3. `reset_keys(['bubble_r_arr', ...])` then `save_snapshot()` → today IndexError (c). Pin, and
@@ -307,17 +367,42 @@ re-running (💾).
 
 ## 6. Maintainer decisions queued (fix vs. document — do not resolve unilaterally)
 
-1. F1/F2: should the guard compare against the *last written* snapshot (persist `(t_now, R2)` of
-   the last save across flushes — a 2-tuple attribute, no disk read) so dedup is
-   alignment-independent? Changes jsonl content ⇒ risky-ladder.
-2. F4: is `(t_now, R2)` the right duplicate key, given phase handoffs deliberately exploit it?
-   Any change must re-read `run_energy_phase.py:400-419` first.
+**Start from the prior audit's fix set, not a blank page.** Its §3 proposes a fix for each of its
+17 findings, §4 records three fixes it walked back after re-reading the code, §5 maps which fixes
+must land in one patch, §6 tabulates the risks each fix introduces, and §7 gives an implementation
+order. It was never landed or gated, and it is written against the old layout — so it is a
+*proposal to evaluate*, not a plan of record. Its most load-bearing judgement, worth surfacing to
+the maintainer verbatim: fixing the duplicate key (its #1) makes phase boundaries emit **two
+snapshots at the same `t_now`**, and it spot-checked four readers plus `trinity_reader._snapshots`
+for t-monotonicity assumptions (found none) — but did not read every reader. That is precisely the
+kind of content change that needs the risky-change ladder here.
+
+The decisions below are this plan's own framing; where the audit already proposes a fix, its
+number is cited so the two are compared rather than re-derived.
+
+1. F1/F2 (audit #2): should the guard compare against the *last written* snapshot (persist
+   `(t_now, R2)` of the last save across flushes — a 2-tuple attribute, no disk read) so dedup is
+   alignment-independent? The audit proposes exactly this (`_last_save_key`). Changes jsonl
+   content ⇒ risky-ladder.
+2. F4 (audit #1): is `(t_now, R2)` the right duplicate key, given phase handoffs deliberately
+   exploit it? The audit proposes adding `current_phase` to the key, which by its own §6 makes
+   boundaries emit two same-`t_now` records. Any change must re-read
+   `run_energy_phase.py:400-419` first.
 3. F6: make `flush()` serialize all lines *before* opening the file (atomic-ish append), or
-   at least clear the buffer only for lines actually written?
-4. F7: should `load_snapshot`-created dicts skip `_register_crash_handlers` (e.g. a
-   `register_handlers=False` classmethod path)? This is the cheapest high-value fix and does not
-   touch run output — but it changes atexit behavior of analysis scripts.
-5. F5c: `reset_keys`' NaN default vs. the profile-array branches — guard the branches, or forbid
-   resetting profile arrays?
-6. F11: `allow_nan=False` with a sanitize step would make files strict JSON — worth the content
-   change?
+   at least clear the buffer only for lines actually written? Not in the audit — new here.
+4. F7 (audit #8/#10): should `load_snapshot`-created dicts skip `_register_crash_handlers` (e.g. a
+   `register_handlers=False` classmethod path)? Cheapest high-value fix, does not touch run
+   output — but it changes atexit behavior of analysis scripts. The audit's `_readonly` +
+   `_fresh_run` flags attack the same surface from the write side and also close the
+   delete-the-source footgun; the two approaches are complementary, and a decision is needed on
+   whether to take one, both, or neither.
+5. F5c (audit #5/#6): `reset_keys`' NaN default vs. the profile-array branches — guard the
+   branches (audit #5: emit `[]`), or stop serializing reset keys at all (audit #6:
+   `reset_keys(..., exclude=True)`)?
+6. F11 (audit #6): `allow_nan=False` with a sanitize step would make files strict JSON — worth the
+   content change? Note the audit measured 112 NaN-bearing lines in one run, so this is a
+   *large* content diff, not a cosmetic one.
+7. F15/F16/F17/F18 (audit #15/#16/#12/#17): the cleanup tier — dead `until_flush` reset, exposing
+   `snapshot_interval` as a `.param` key, a newer-than-reader metadata-version warning, and
+   de-duplicating the JSON-ready helper. Cheap and independent; the only question is whether they
+   ride along with a substantive fix or land separately.
