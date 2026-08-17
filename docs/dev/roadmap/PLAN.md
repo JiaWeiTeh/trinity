@@ -109,13 +109,15 @@ Owned by `docs/dev/transition/pdv-trigger/` (INDEX.md §3 is the live thread). Q
 2. **Lane A outranks lane B overall** — it is the paper-critical path and A1/A2 are already
    fully specified ([M]) in SOURCE_TERM_DESIGN.md. Physics runs (Helix queue time) and code
    work (local) don't contend, so interleave: submit A runs, do B work while they cook.
-3. **B3/B4 ride B2's fixtures.** Cheap diffs, pre-written gates; do them in one sitting.
+3. **B3/B4 ride B2's fixtures** — which landed 2026-08-06 as `test/test_phase_runner_fixtures.py`,
+   so they are now unblocked. Cheap diffs, pre-written gates; do them in one sitting.
 4. **[J] items (B5, B8, C-lane diagnoses) are strong-model work** — batch them for capable
    sessions; don't let a mechanical session improvise a classification.
 5. Lane C stays behind A and B unless one of its items starts blocking (C7 touches
    correctness — pull it forward if shell-solver work resumes).
 
-**Recommended next five, in order: A1 → B2 → B3+B4 → A2 → B6.**
+**Recommended next five, in order: A1 → B3+B4 → A2 → B6 → B5.** (Updated 2026-08-14: B2 was the
+second item and is ✅ DONE 2026-08-06 — it had been left in the list.)
 
 ## §3 Session ledger (newest first)
 
@@ -128,6 +130,10 @@ Owned by `docs/dev/transition/pdv-trigger/` (INDEX.md §3 is the live thread). Q
   on the *published* config, which is why its form is now **C2b**. **Return path when C2b
   finishes: nothing is left open in C2 itself** — the remaining tails are #5's fallbacks (transition
   workstream), audit F8 tolerances (still under C2), and the C2a mypy ruling.
+  *(Updated 2026-08-14: F8 was resolved later on the same branch — `22992c2`, tolerances measured
+  and justified at the constants, one named sub-question left open; `roadmap/solver-audit.md` §F8 is
+  the record. The C2a mypy ruling came back ACCEPT. So of the three tails listed here, only #5's
+  fallbacks remain.)*
 
 - **2026-07-06** — workstream created. Solver audit ran (`solver-audit.md`); F1 diagnosed
   (scipy-1.10.1 brentq NaN behavior, env below floor) and fixed; sync gate
