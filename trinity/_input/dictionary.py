@@ -243,6 +243,14 @@ class DescribedDict(dict):
         # pass.  Reset to 0 at the top of every snapshot build.
         self._impl_r2_logged: int = 0
 
+        # (t_now, R2) of the last snapshot actually saved, or None before the
+        # first one.  Held here rather than read back out of
+        # ``previous_snapshot`` so that it survives a flush: the buffer is
+        # emptied by every flush, which used to disarm the duplicate guard for
+        # the next save (findings F1/F2 — the guard was skipped at every
+        # snapshot_interval boundary, and after every manual/emergency flush).
+        self._last_save_key: Optional[Tuple[Any, Any]] = None
+
         # Register crash-safe handlers to flush pending snapshots on exit.
         # Loader-built dicts pass register_handlers=False: *reading* a run must
         # not install an atexit hook aimed at that run's directory (it would
@@ -748,12 +756,17 @@ class DescribedDict(dict):
         import logging
         logger = logging.getLogger(__name__)
 
-        if self.save_count >= 1 and self.previous_snapshot:
-            last = self.previous_snapshot.get(str(self.save_count - 1), {})
+        if self._last_save_key is not None:
+            last_t_now, last_r2 = self._last_save_key
             try:
                 t_now = self["t_now"].value
                 r2 = self["R2"].value
-                if ("t_now" in last and t_now == last["t_now"]) and ("R2" in last and r2 == last["R2"]):
+                # Compared element-wise on purpose.  Tuple equality would
+                # short-circuit on element *identity*, so a repeated NaN t_now
+                # (the same float object) would compare equal and be
+                # suppressed — silently changing the separate NaN behaviour of
+                # finding F3, which is out of scope here.
+                if t_now == last_t_now and r2 == last_r2:
                     logger.debug(f"Duplicate detected in save_snapshot at t = {t_now}. Snapshot not saved.")
                     return
             except KeyError:
@@ -769,6 +782,13 @@ class DescribedDict(dict):
         # Store in the "pending" snapshot buffer
         self.previous_snapshot[str(snap_id)] = clean_dict
         self.save_count += 1
+
+        # Remember what was saved so the next call can dedupe against it even
+        # after an intervening flush has emptied the buffer (F1/F2).
+        try:
+            self._last_save_key = (self["t_now"].value, self["R2"].value)
+        except KeyError:
+            self._last_save_key = None
 
         # Calculate progress toward next flush
         pending_count = len(self.previous_snapshot)

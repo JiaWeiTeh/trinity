@@ -1,3 +1,13 @@
+# ⚠️ HASHES ARE SESSION-LOCAL -- do NOT use them as a baseline in a later session.
+# This container's OpenBLAS is built DYNAMIC_ARCH=1 with no thread pinning, so the
+# kernel it selects follows whichever host CPU the container lands on. Byte
+# reproducibility holds WITHIN a container instance but not across restarts: the
+# bubble-structure solver's last digits move (v2 at 1 ulp, amplified to ~1e-7
+# relative in bubble_Tavg / bubble_L1Bubble), which changes the file hash with no
+# code change at all. Measured 2026-08-17: config A hashed 17370033... before a
+# container restart and b0685d4c... after it, from IDENTICAL source.
+# => Every arm of an equivalence comparison must run in the SAME session. A
+# recorded hash proves only what it proved then; re-measure both arms to compare.
 # Verification + equivalence gate for the F6 fix (transactional flush append).
 # Pre-registered in PLAN.md §6.3, recorded in §1f. Arms run in SEPARATE PROCESSES.
 # Full-run config: mCloud 1e5 / sfe 0.3 / stop_t 1e-4 / model_name f20base

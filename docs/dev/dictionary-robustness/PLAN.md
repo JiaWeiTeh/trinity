@@ -36,15 +36,19 @@
 tests (`test/test_dictionary_stress.py` 49 + `test/test_dictionary_stress_process.py` 16, of which
 2 are `stress`), all green, pinning current behavior including the defects — a red one after a
 deliberate fix means re-baseline, not regression. 13 findings probe-verified (§1) + 5
-inherited (§1b) + 3 from execution (§1c). **Three fixes landed, each gated bit-identical on
-`dictionary.jsonl`:** F20's empty-curve guard (§1d, resolves the reachable phase-0 crash
+inherited (§1b) + 3 from execution (§1c). **Four fixes landed:** F20's empty-curve guard (§1d, resolves the reachable phase-0 crash
 F19/F5a/F5d), F7's loader handler-skip (§1e, I6 now holds), and F6's transactional flush append
 (§1f) — whose re-verification **corrected §1's F6 row twice**: the consequence is worse than
 written (production retries 4× and compounds) and the trigger it names is unreachable, while an
-unnamed one (torn I/O write) is live. All three are also verified
-**together** against a pre-everything tree on a config that crosses into the implicit phase, where
-`simplify()` runs on every snapshot — `dictionary.jsonl` bit-identical and `metadata.json` free of
-any real difference (§1g). **Battery H partially executed**: the fast and multi-phase configs are
+unnamed one (torn I/O write) is live; and F1/F2's persisted dedupe key (§1h), which keeps the guard
+armed across flushes so the record no longer depends on `save_count % 10` alignment (F21 resolved
+with it), while F3's NaN behaviour and F4's `(t_now, R2)` key are deliberately untouched. The first
+three are bit-identical by construction and were also verified **together** against a pre-everything
+tree on a config that crosses into the implicit phase (§1g); F1/F2 is *not* neutral by construction
+but measured output-neutral on both configs in matched sessions (§1h). ⚠️ **§1h also carries the
+workstream's most reusable lesson: a recorded hash is session-local** — this container's
+`DYNAMIC_ARCH` OpenBLAS shifts the bubble solver's last digits across restarts, which briefly looked
+exactly like the F1/F2 fix changing output. **Battery H partially executed**: the fast and multi-phase configs are
 scanned and committed (`data/field_scan.csv`); the `f1edge_*` stiff configs are still owed.
 
 ## 0. Scope and object under test
@@ -72,8 +76,8 @@ Every row below was reproduced by the committed harness
 
 | ID | Probe | Finding (current behavior) | Severity |
 |----|-------|----------------------------|----------|
-| F1 | P1 | **Duplicate guard is skipped at every flush boundary.** `flush()` clears `previous_snapshot`; the guard (dictionary.py:721) requires a non-empty buffer, so the first `save_snapshot()` after any flush saves unconditionally. A same-`(t_now, R2)` state straddling the 10-snapshot boundary produces adjacent duplicate lines (verified: lines 9 and 10 identical). In-window dedup works. | Medium |
-| F2 | P2 | Same skip after **any** flush: manual `flush()`, `write_termination_report()`, emergency `_safe_flush()` all clear the buffer and disarm the guard for the next save. | Medium |
+| F1 | P1 | **Duplicate guard is skipped at every flush boundary.** `flush()` clears `previous_snapshot`; the guard (dictionary.py:721) requires a non-empty buffer, so the first `save_snapshot()` after any flush saves unconditionally. A same-`(t_now, R2)` state straddling the 10-snapshot boundary produces adjacent duplicate lines (verified: lines 9 and 10 identical). In-window dedup works. | ✅ **FIXED** 2026-08-17 — §1h |
+| F2 | P2 | Same skip after **any** flush: manual `flush()`, `write_termination_report()`, emergency `_safe_flush()` all clear the buffer and disarm the guard for the next save. | ✅ **FIXED** 2026-08-17 — §1h |
 | F3 | P8 | **NaN `t_now` defeats the guard** (`NaN != NaN`): consecutive identical NaN-time states are all saved. | Medium |
 | F4 | — | Guard compares **only** `(t_now, R2)`: an in-window snapshot differing in any other key (phase label, energy, forces) is silently dropped. Phase code *relies* on this — `run_energy_phase.py:400-419` builds a reconciliation snapshot precisely so the guard blocks the next phase's stale first snapshot. F1 ⇒ whether a phase-handoff snapshot is deduped **depends on `save_count % 10` alignment**: record content is not a pure function of the trajectory. Design-level; battery A pins it. | Medium |
 | F5 | P3a–d | **Profile-array special cases crash `save_snapshot()`**: (a) empty `bubble_r_arr`+`bubble_T_arr` → `ValueError`; (b) `bubble_T_arr` present but companion `bubble_r_arr` missing → `KeyError`; (c) scalar-NaN arrays — exactly what `reset_keys()` writes by default — → `IndexError`; (d) empty `shell_grav_r`+`shell_grav_force_m` → `ValueError`. Only `shell_n_arr` has an empty-guard (dictionary.py:696) — and when it trips, the keys are silently absent from that line (per-line schema varies). The commented-out bubble entries in `COOLING_PHASE_KEYS` (dictionary.py:1217-1222) are the fossil of (c). **Refined by execution**: F19 shows (a)/(d) are reachable from a real `read_param` dict, and F20 locates the crash in the R² diagnostic rather than the downsampler. | **High — reachable (F19)** |
@@ -180,7 +184,7 @@ pytest -m stress test/test_dictionary_stress_process.py                        #
 |----|---------|----------|
 | F19 | **F5 is reachable from a real production dict, not merely latent.** `read_param.read_param()` on a minimal valid `.param` returns all five profile arrays as `np.array([])` with `exclude_from_snapshot=False`, and `save_snapshot()` on that dict raises `ValueError`. Production survives *only* because phase-0 init populates the arrays before the first save fires (confirmed: line 0 of a real run already carries `log_bubble_T_arr`). Consequence: **any `save_snapshot()` placed before phase-0 completes crashes the run**, which is a live constraint on anyone adding an initial-condition snapshot, an early-termination snapshot, or a pre-run validation record. | ✅ **FIXED** (§1d) |
 | F20 | **The empty-array crash is in the R² diagnostic, not the downsampler.** `_simplify` handles empty input fine (`test_simplify.py::test_empty`); the traceback ends in `_simplify_error` → `np.interp` ("array of sample points is empty"), called unconditionally by `DescribedDict.simplify()` (dictionary.py:524) for the R² log line — which is computed regardless of log level. So F5a/F5d are a *diagnostics* bug and the cheapest fix is guarding that one call, independent of the F5b/F5c pair-handling questions. | ✅ **FIXED** (§1d) — gated bit-identical |
-| F21 | **F1 and F4 interact: ~1 phase boundary in 10 will duplicate instead of suppress.** F4's suppression only happens while the guard is armed. A boundary landing at a line index ≡ 0 (mod `snapshot_interval`) has the guard disarmed (F1), so it emits **two** records at the same `t_now` instead of one. Observed boundary in the multi-phase run sat at index 97 (mod 10 = 7 ⇒ suppressed). Neither outcome is wrong-by-design, but which one occurs is decided by flush alignment, not physics — the concrete cost of F1. | Medium |
+| F21 | **F1 and F4 interact: ~1 phase boundary in 10 will duplicate instead of suppress.** F4's suppression only happens while the guard is armed. A boundary landing at a line index ≡ 0 (mod `snapshot_interval`) has the guard disarmed (F1), so it emits **two** records at the same `t_now` instead of one. Observed boundary in the multi-phase run sat at index 97 (mod 10 = 7 ⇒ suppressed). Neither outcome is wrong-by-design, but which one occurs is decided by flush alignment, not physics — the concrete cost of F1. | ✅ **FIXED** 2026-08-17 via F1/F2 — §1h. The guard is now armed at every boundary, so the suppress branch is taken every time; never observed in the field before the fix |
 
 **Resolved open questions:**
 
@@ -422,6 +426,123 @@ Two by-products worth keeping:
   needs a run whose boundary happens to land on a multiple of 10; still owed, along with the
   `f1edge_*` configs.
 
+## 1h. F1/F2 fix — the dedupe guard now survives a flush (2026-08-17)
+
+The fourth `trinity/` change, and **the first one that is not output-neutral by construction** — read
+the coupling subsection before trusting any equivalence claim about it. Taken on the maintainer's
+instruction, with the explicit scope "fix F1/F2, keep F4 as is".
+
+**The change.** The guard read its comparison value back out of `previous_snapshot`, which every
+flush empties — so the first save after any flush was unconditional. The key is now held on the
+instance:
+
+```python
+self._last_save_key: Optional[Tuple[Any, Any]] = None   # __init__
+...
+if self._last_save_key is not None:                      # armed across flushes now
+    last_t_now, last_r2 = self._last_save_key
+    if t_now == last_t_now and r2 == last_r2:
+        return
+...
+self._last_save_key = (self["t_now"].value, self["R2"].value)   # after a real save
+```
+
+**What is deliberately NOT changed:**
+
+- **F4 stays.** The key is still exactly `(t_now, R2)`, so the phase-handoff suppression that
+  `run_energy_phase.py:400-419` deliberately relies on behaves as before. Any snapshot differing
+  only in `current_phase`, `Eb` or the force budget is still dropped in-window.
+- **F3 stays**, and avoiding an accidental fix took care: the key is compared **element-wise, not as
+  a tuple**. Tuple equality short-circuits on element *identity*, so a repeated NaN `t_now` (the same
+  float object) would have compared equal and been suppressed — silently changing F3. Scalar `==`
+  does not do this. `test_nan_t_now_defeats_the_guard` documents the trap.
+- **F16 stays**: `snapshot_interval` is still a hardcoded plain attribute. The fix does remove its
+  role as the *period* of F1's effect, so a wrong value is now merely a buffering choice rather than
+  a correctness one — at `snapshot_interval = 1` the guard used to be permanently dead and now works.
+
+### The coupling — why this one can change a run
+
+Three phase runners gate a counter on **whether the guard let a save through**, e.g.
+`run_energy_implicit_phase.py:1018-1029` (the comment there already names the duplicate guard):
+
+```python
+_save_count_before = params.save_count
+params.save_snapshot()
+if (params['stop_at_rCloud_nSnap'].value is not None
+        and params.save_count > _save_count_before      # only when the save really wrote
+        and R2 > params['rCloud'].value):
+    params['_snapshots_after_rCloud'].value += 1
+```
+
+`_snapshots_after_rCloud` drives `stop_at_rCloud_nSnap` termination. So a save that previously wrote
+(because a flush had just disarmed the guard) and is now suppressed withholds one increment, and the
+run can stop one snapshot later. Conditions for that to bite, all three required:
+
+1. `stop_at_rCloud_nSnap` is not `None` — it **defaults to `None`**, and every tracked `.param`
+   leaves it `None` (checked: `param/*.param`, `docs/dev/performance/*.param`);
+2. the run is past the cloud edge (`R2 > rCloud`);
+3. a duplicate-eligible save lands immediately after a flush.
+
+Both gated configs below had `stop_at_rCloud_nSnap = None` and `_snapshots_after_rCloud = 0`, so they
+cannot exercise it. **A user who sets that parameter is the population at risk**, and
+`test_suppressed_save_leaves_save_count_untouched` pins the mechanism the runners depend on so it
+cannot drift silently.
+
+### Pre-registered gate, and the result
+
+Evidence: `data/f1f2_equivalence.csv`. **The expected diff was declared before editing**, and it was
+*not* bit-identity: this fix removes a line whenever a duplicate-eligible save lands immediately
+after a flush. Neither gated config contains one — the field scan found 0 adjacent duplicates, and
+the 1a→1b boundary sits at line 97 (`97 % 10 = 7`), so the guard was already armed and suppressing
+there. So "no change on these two configs" was the prediction, and it is what was measured.
+
+| Gate | Bar | Result |
+|------|-----|--------|
+| Failing tests first | the F1/F2 expectations red pre-fix | ✅ 5 red (boundary, manual flush, alignment-independence, `interval=1`, save_count delta) |
+| F4 untouched | its pin stays green without edit | ✅ `test_guard_key_ignores_every_other_field` unchanged |
+| F3 untouched | its pin stays green without edit | ✅ and the tuple-identity trap avoided (element-wise compare) |
+| Matched-session A/B, config A | expected: no change | ✅ pre `b0685d4c…` == post `b0685d4c…` |
+| Matched-session A/B, config B (crosses 1a→1b) | expected: no change | ✅ pre `211734c8…` == post `211734c8…` |
+| `save_count` coupling | the runners' delta contract pinned | ✅ `test_suppressed_save_leaves_save_count_untouched` |
+| Suite · lint · mypy | no new failures | ✅ 66/66 in the two stress files; ruff/black clean; mypy 4 → 4 |
+
+### ⚠️ Methodology finding — a recorded hash is SESSION-LOCAL
+
+Found the hard way while gating this fix, and it invalidates a habit the rest of this workstream
+(and `CLAUDE.md` rule 5) encourages: comparing a fresh run against a hash written down earlier.
+
+**What happened.** Config A had hashed `17370033…` four times across four different source versions.
+After the F1/F2 change it hashed `b0685d4c…`, which looked exactly like the fix altering output. It
+was not. Running the **pre-fix** source in the same session also produced `b0685d4c…` — identical to
+post-fix. The container had restarted in between, and `17370033…` is unreachable from *any* source
+version in the new container.
+
+**Mechanism.** This image's OpenBLAS is built `DYNAMIC_ARCH=1` (runtime CPU-kernel selection) with
+no thread pinning and `MAX_THREADS=2`, so the kernel follows whichever host CPU the container lands
+on. The FP reduction order changes, `v2` moves by 1 ulp, and the iterative bubble-structure solve
+amplifies that to ~1e-7 relative in `bubble_Tavg` / `bubble_L1Bubble`. Byte reproducibility holds
+**within** a container instance and not across restarts.
+
+**Three tells that separated this from a real behaviour change** — worth reusing, because they are
+cheap and decisive:
+
+1. **Line counts and the `t_now` sequence were identical** (97 → 97, all 97 values equal). The only
+   thing suppressing a duplicate can do is *remove a line*; nothing was removed.
+2. **Line 0 already differed** — before the guard is ever consulted (the first save has no
+   predecessor to compare against, in either version).
+3. **The deltas were last-digit**, not structural: `v2` `…97178` → `…97173`.
+
+**Protocol consequence.** Both arms of an equivalence comparison must run in the **same session**;
+a hash from an earlier session proves only what it proved then. The committed
+`data/*_equivalence.csv` files now carry this caveat at the top so a future visit does not
+"discover" a phantom regression the way this one did. The §1g cumulative comparison is unaffected —
+both of its arms ran back-to-back in one container — but its stored hashes are equally session-local.
+
+This also means a **no-change gate cannot be discharged by a stored hash**. For a fix whose expected
+diff is "nothing", re-measure both arms; for a fix with an expected diff, compare *shape* (line
+counts, the `t_now` sequence, which lines vanished) rather than only the digest, since FP drift will
+otherwise masquerade as the change you were looking for — or hide it.
+
 ## 2. Robustness invariants (what "outputs are robust" means)
 
 The batteries gate against these. Each is currently TRUE, FALSE, or UNKNOWN — the campaign's job
@@ -434,7 +555,7 @@ record, "pinned" names the battery whose test holds the behavior in place.
 |----|-----------|--------------------|
 | I1 | Every line of `dictionary.jsonl` parses as JSON (Python `json`; strictness caveat F11) | **TRUE** in the field (0 unparsable / 97) — but only under a *permissive* parser; strict RFC-8259 parsers reject 97/97 lines (F11). Pinned: E, H |
 | I2 | Loader ids are contiguous `0..N-1` and equal the writer's `snap_id`s | **FALSE** on corrupt/blank lines (F13) and after an F6 retry; TRUE in the field for an uncorrupted run. Pinned: B, F |
-| I3 | `t_now` is non-decreasing across lines; adjacent duplicate `(t_now, R2)` pairs occur **only** at line indices `≡ 0 (mod snapshot_interval)` | **TRUE** in the field (t non-decreasing; 0 duplicates in 97 snapshots). The mod-10 clause is unfalsified but untested in anger — no boundary has yet landed on a flush boundary (F21). Pinned: A, H |
+| I3 | `t_now` is non-decreasing across lines; adjacent duplicate `(t_now, R2)` pairs occur **only** at line indices `≡ 0 (mod snapshot_interval)` | **RESTATED and now TRUE unconditionally.** The mod-`snapshot_interval` escape clause existed only because of F1; with the guard armed across flushes (§1h) adjacent duplicates cannot occur **anywhere**, so the invariant is simply "no adjacent duplicate `(t_now, R2)` pairs". Field: t non-decreasing, 0 duplicates on both configs. The scanner still reports `adjacent_dups_off_boundary` separately — post-fix, *any* duplicate at all is a finding. Pinned: A, H |
 | I4 | Per-line key-set is stable across a run (modulo documented phase-dependent keys) | **TRUE** in the field (1 distinct key-set / 97 lines). Still breakable via F5's silent shell-guard path. Pinned: D, H |
 | I5 | `save_snapshot()` never raises for states the code itself produces (incl. `reset_keys` output, phase-0 placeholders) | **STILL FALSE, but narrowed.** The phase-0 case (F19, via empty arrays F5a/F5d) is **fixed** (§1d) and now pinned green by `test_freshly_read_params_can_snapshot`. Remaining: F5b (missing companion → `KeyError`), F5c (`reset_keys`' NaN → `IndexError`), F8 (`t_now=None` → `TypeError`). Pinned: D, G |
 | I6 | Loading is side-effect-free on the run directory | ✅ **NOW TRUE** (F7 fixed, §1e) — pinned by a subprocess test that byte-compares *every* file in the run dir across a load, plus one asserting the process's signal handlers survive. Caveat: an **explicit** `save_snapshot()`/`flush()` on a loaded dict still writes, and still deletes the target as a "fresh run" (O1, open at §6.4). Pinned: C |
@@ -670,10 +791,11 @@ kind of content change that needs the risky-change ladder here.
 The decisions below are this plan's own framing; where the audit already proposes a fix, its
 number is cited so the two are compared rather than re-derived.
 
-1. F1/F2 (audit #2): should the guard compare against the *last written* snapshot (persist
-   `(t_now, R2)` of the last save across flushes — a 2-tuple attribute, no disk read) so dedup is
-   alignment-independent? The audit proposes exactly this (`_last_save_key`). Changes jsonl
-   content ⇒ risky-ladder.
+1. ~~F1/F2 (audit #2): persist the last-written key so dedup is alignment-independent?~~
+   **DONE 2026-08-17 (§1h)** — implemented as the audit's `_last_save_key`, with F4's key and F3's
+   NaN behaviour deliberately untouched. Measured output-neutral on both gated configs, but *not*
+   neutral by construction: see §1h's coupling subsection for the `stop_at_rCloud_nSnap` case,
+   which is the one place a user can see a different stop point.
 2. F4 (audit #1): is `(t_now, R2)` the right duplicate key, given phase handoffs deliberately
    exploit it? The audit proposes adding `current_phase` to the key, which by its own §6 makes
    boundaries emit two same-`t_now` records. Any change must re-read

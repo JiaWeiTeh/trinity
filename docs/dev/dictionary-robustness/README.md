@@ -34,21 +34,25 @@
 
 **Status (2026-08-17):** 🟡 partial — 13 findings probe-verified against `030b658`, 5 inherited
 from an earlier off-trunk audit (`PLAN.md` §1b), and 3 more found by executing the plan (F19–F21,
-§1c). **Batteries A–G are landed as green characterization tests.** **Three fixes have shipped**, each
-gated bit-identical on `dictionary.jsonl`: F20's empty-curve guard (`PLAN.md` §1d), resolving the
-reachable phase-0 crash; F7's loader handler-skip (§1e), making a load side-effect-free; and F6's
-transactional flush append (§1f), after re-verification showed that finding was **understated in
-consequence and wrong about its trigger**. Everything else stays characterized-not-fixed and queued
+§1c). **Batteries A–G are landed as green characterization tests.** **Four fixes have shipped**: F20's empty-curve guard
+(`PLAN.md` §1d), resolving the reachable phase-0 crash; F7's loader handler-skip (§1e), making a
+load side-effect-free; F6's transactional flush append (§1f), after re-verification showed that
+finding was **understated in consequence and wrong about its trigger**; and F1/F2's persisted dedupe
+key (§1h), which answers this workstream's motivating question by making the guard survive a flush
+(F21 goes with it). The first three are bit-identical by construction; F1/F2 is not, and was
+measured output-neutral on both gated configs instead. Everything else stays characterized-not-fixed and queued
 for the maintainer (`PLAN.md` §6).
-Battery H is scanned on the fast config only — the stiff/edge configs are owed.
+Battery H is scanned on the fast and phase-crossing configs — the `f1edge_*` stiff configs are owed.
 
 Motivating question (maintainer, 2026-08-17): *"Is it true that the duplicate guard is skipped
-entirely at every 10-snapshot boundary?"* — **Yes** (finding F1, probe P1): `flush()` clears the
-pending buffer, the guard requires a non-empty buffer, so the first `save_snapshot()` after any
-flush saves unconditionally — a same-`(t_now, R2)` state straddling the boundary lands as
-adjacent duplicate lines in `dictionary.jsonl`. And the guard is load-bearing at phase handoffs
-(`run_energy_phase.py:400-419` engineers around it), so record content depends on
-`save_count % 10` alignment.
+entirely at every 10-snapshot boundary?"* — **Yes it was** (finding F1, probe P1): `flush()` clears
+the pending buffer, the guard required a non-empty buffer, so the first `save_snapshot()` after any
+flush saved unconditionally, and a same-`(t_now, R2)` state straddling the boundary landed as
+adjacent duplicate lines. Because the guard is *also* load-bearing at phase handoffs
+(`run_energy_phase.py:400-419` engineers around it), record content depended on `save_count % 10`
+alignment rather than on the trajectory alone (F21). **Fixed 2026-08-17** (§1h): the key persists in
+`_last_save_key`, so the guard survives a flush — while F4's `(t_now, R2)` key is deliberately kept,
+because the phase-handoff suppression depends on it.
 
 Contents:
 
@@ -61,8 +65,11 @@ Contents:
   run's `dictionary.jsonl` (also imported by the test suite, so scanner and artifact never drift);
   see `harness/README.md` for the commands.
 - **`data/field_scan.csv`** — committed battery-H results, one row per (config, commit).
-- **`data/cumulative_equivalence.csv`** — all three fixes vs a pre-everything `git worktree`, on
-  both the fast and the phase-crossing config.
+- **`data/cumulative_equivalence.csv`** — the first three fixes vs a pre-everything `git worktree`,
+  on both the fast and the phase-crossing config.
+- **`data/f1f2_equivalence.csv`** — the F1/F2 arms, and the **case study for the session-local hash
+  trap**: identical source hashed differently across a container restart. Read `PLAN.md` §1h before
+  quoting any hash in this workstream.
 - **`data/f20_equivalence.csv`**, **`data/f7_equivalence.csv`**, **`data/f6_equivalence.csv`** —
   one gate-evidence file per shipped fix: the identical `dictionary.jsonl` hash pre- and post-fix,
   the behaviour arms, and the exact config and commands. F6's also records the two corrections that
@@ -88,9 +95,10 @@ once each (re-verification corrected both the scale and the trigger: see `PLAN.m
 code itself can produce; the two empty-array ones are ✅ *fixed* (F20), while the missing-companion
 `KeyError` and `reset_keys`' NaN `IndexError` remain open.
 
-Still open and worth knowing before you trust a run's record: **F1/F21**'s flush-alignment lottery
-at phase boundaries, **F11**'s bare `NaN` literals (every line of a real run), **O1** — an explicit
-save on a *loaded* dict still deletes the source files — **F13**'s loader id shift on a corrupt or
-blank line, and the half of F6 that is not a file-consistency problem: a failed flush still *loses*
-its buffered snapshots while `main.py` only logs it, so a run can report success with a window of
-snapshots missing.
+Still open and worth knowing before you trust a run's record: **F11**'s bare `NaN` literals (every
+line of a real run, so the file is not strict JSON), **F13**'s loader id shift on a corrupt or blank
+line, **F5b/F5c**'s remaining crash modes, **O1** — an explicit save on a *loaded* dict still deletes
+the source files — and two halves of shipped fixes that were deliberately left: a failed flush still
+*loses* its buffered snapshots while `main.py` only logs it (so a run can report success with a
+window of snapshots missing), and a signal's termination reason is still overwritten by the atexit
+handler that runs after `sys.exit`.

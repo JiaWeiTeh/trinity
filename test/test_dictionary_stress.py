@@ -66,11 +66,14 @@ def _lines(out_dir: Path) -> list[dict]:
 # Battery A — duplicate-guard semantics (F1-F4)
 # =============================================================================
 class TestDuplicateGuard:
-    def test_guard_is_disarmed_at_the_flush_boundary(self, tmp_path, no_handlers):
-        """CANDIDATE-BUG F1 — the motivating question: yes, skipped at every boundary.
+    def test_guard_survives_the_flush_boundary(self, tmp_path, no_handlers):
+        """F1 — **fixed**: the guard is armed across a flush boundary.
 
-        ``flush()`` empties ``previous_snapshot``; the guard requires a
-        non-empty buffer, so the first save after a flush is unconditional.
+        This was the workstream's motivating question ("is the guard skipped
+        entirely at every 10-snapshot boundary?" — it was). ``flush()`` empties
+        ``previous_snapshot``, and the guard used to read its comparison value
+        back out of that buffer, so the first save after any flush was
+        unconditional. The key now persists in ``_last_save_key`` instead.
         """
         d = _params(tmp_path)
         for i in range(10):  # the 10th save flushes and clears the buffer
@@ -81,12 +84,12 @@ class TestDuplicateGuard:
         assert d.previous_snapshot == {}, "flush() should have cleared the buffer"
 
         d.save_snapshot()  # identical (t_now, R2) to snapshot 9
-        assert d.save_count == 11, "duplicate slipped through at the boundary"
+        assert d.save_count == 10, "boundary duplicate should now be suppressed"
 
         d.flush()
         lines = _lines(tmp_path)
-        assert len(lines) == 11
-        assert (lines[9]["t_now"], lines[9]["R2"]) == (lines[10]["t_now"], lines[10]["R2"])
+        assert len(lines) == 10
+        assert (lines[8]["t_now"], lines[8]["R2"]) != (lines[9]["t_now"], lines[9]["R2"])
 
     def test_guard_works_inside_the_window(self, tmp_path, no_handlers):
         """The guard's positive control: in-window duplicates are dropped."""
@@ -95,18 +98,30 @@ class TestDuplicateGuard:
         d.save_snapshot()
         assert d.save_count == 1
 
-    def test_guard_disarmed_after_any_manual_flush(self, tmp_path, no_handlers):
-        """CANDIDATE-BUG F2 — mid-window flushes disarm it too."""
+    def test_guard_survives_a_manual_flush(self, tmp_path, no_handlers):
+        """F2 — **fixed**: mid-window flushes no longer disarm it either.
+
+        Covers the flushes that are not the periodic one:
+        ``write_termination_report()``, the emergency ``_safe_flush()``, and
+        ``main.py``'s explicit ``params.flush()``.
+        """
         d = _params(tmp_path)
         for i in range(3):
             d["t_now"].value = 0.1 * i
             d.save_snapshot()
         d.flush()
         d.save_snapshot()  # identical to snapshot 2
-        assert d.save_count == 4
+        assert d.save_count == 3
 
     def test_nan_t_now_defeats_the_guard(self, tmp_path, no_handlers):
-        """CANDIDATE-BUG F3 — NaN != NaN, so equality never matches."""
+        """CANDIDATE-BUG F3 — NaN != NaN, so equality never matches.
+
+        Deliberately still true after the F1/F2 fix, and a trap worth knowing:
+        storing the key as a tuple and comparing tuples would have *silently
+        fixed* this, because tuple equality short-circuits on element identity,
+        making ``(nan, r2) == (nan, r2)`` True for the same NaN object. The
+        guard compares element-wise to keep F3's behaviour untouched.
+        """
         d = _params(tmp_path)
         d["t_now"].value = float("nan")
         d.save_snapshot()
@@ -127,12 +142,12 @@ class TestDuplicateGuard:
         d.save_snapshot()
         assert d.save_count == 1, "phase change did not survive the guard"
 
-    def test_record_content_depends_on_flush_alignment(self, tmp_path, no_handlers):
-        """CANDIDATE-BUG F1 — the same save sequence yields different records.
+    def test_record_content_is_independent_of_flush_alignment(self, tmp_path, no_handlers):
+        """F1/F21 — **fixed**: the record no longer depends on where the flush lands.
 
-        Two identical-state saves are dropped mid-window but both kept when
-        they straddle a boundary, so the on-disk record is not a pure function
-        of the trajectory.
+        Pre-fix, an identical pair of saves was dropped mid-window but *both*
+        kept when it straddled a boundary (4 vs 11 lines), so the on-disk record
+        was not a pure function of the trajectory. It is now.
         """
 
         def count_lines(offset: int, out: Path) -> int:
@@ -148,16 +163,17 @@ class TestDuplicateGuard:
 
         mid = count_lines(3, tmp_path / "mid")  # pair sits inside a window
         straddle = count_lines(9, tmp_path / "straddle")  # pair straddles the flush
-        assert mid == 4, "in-window duplicate should have been dropped"
-        assert straddle == 11, "boundary duplicate should have been kept"
+        assert mid == 4, "in-window duplicate dropped: one save of the pair survives"
+        assert straddle == 10, "boundary duplicate must now be dropped too (was 11)"
 
-    def test_snapshot_interval_of_one_never_dedupes(self, tmp_path, no_handlers):
-        """CANDIDATE-BUG F1/F16 — interval=1 flushes every save, so the guard is dead."""
+    def test_snapshot_interval_of_one_still_dedupes(self, tmp_path, no_handlers):
+        """F1/F16 — **fixed**: interval=1 flushes every save, which used to make
+        the guard permanently dead. The persisted key keeps it working."""
         d = _params(tmp_path)
         d.snapshot_interval = 1
         d.save_snapshot()
         d.save_snapshot()  # byte-identical state
-        assert d.save_count == 2
+        assert d.save_count == 1
 
     def test_snapshot_interval_of_zero_raises(self, tmp_path, no_handlers):
         """CANDIDATE-BUG F16 — no validation on a plain public attribute."""
@@ -165,6 +181,32 @@ class TestDuplicateGuard:
         d.snapshot_interval = 0
         with pytest.raises(ZeroDivisionError):
             d.save_snapshot()
+
+    def test_suppressed_save_leaves_save_count_untouched(self, tmp_path, no_handlers):
+        """The F1/F2 fix's one real consequence for *run logic*, pinned.
+
+        Three phase runners gate ``_snapshots_after_rCloud`` on
+        ``params.save_count`` actually advancing (e.g.
+        ``run_energy_implicit_phase.py:1018-1029``), and that counter drives
+        ``stop_at_rCloud_nSnap`` termination. So arming the guard at a flush
+        boundary can withhold one increment and move a run's stop point — but
+        only for runs that set ``stop_at_rCloud_nSnap`` (it defaults to None,
+        and every tracked .param leaves it None). This pins the mechanism the
+        runners rely on: a suppressed save must not advance save_count.
+        """
+        d = _params(tmp_path)
+        for i in range(10):
+            d["t_now"].value = 0.1 * i
+            d["R2"].value = 1.0 + i
+            d.save_snapshot()
+
+        before = d.save_count
+        d.save_snapshot()  # duplicate across the boundary: suppressed
+        assert d.save_count == before, "runners read this delta to count real saves"
+
+        d["t_now"].value = 99.0  # a genuinely new state still counts
+        d.save_snapshot()
+        assert d.save_count == before + 1
 
     def test_missing_r2_skips_duplicate_detection(self, tmp_path, no_handlers):
         """The guard's ``except KeyError`` path: no R2 ⇒ no dedup at all."""
