@@ -41,9 +41,11 @@ inherited (§1b) + 3 from execution (§1c). **Three fixes landed, each gated bit
 F19/F5a/F5d), F7's loader handler-skip (§1e, I6 now holds), and F6's transactional flush append
 (§1f) — whose re-verification **corrected §1's F6 row twice**: the consequence is worse than
 written (production retries 4× and compounds) and the trigger it names is unreachable, while an
-unnamed one (torn I/O write) is live. **Battery H partially executed**: the fast config is scanned
-and committed (`data/field_scan.csv`); the stiff/edge configs are still owed, for both the scan and
-the byte-comparisons.
+unnamed one (torn I/O write) is live. All three are also verified
+**together** against a pre-everything tree on a config that crosses into the implicit phase, where
+`simplify()` runs on every snapshot — `dictionary.jsonl` bit-identical and `metadata.json` free of
+any real difference (§1g). **Battery H partially executed**: the fast and multi-phase configs are
+scanned and committed (`data/field_scan.csv`); the `f1edge_*` stiff configs are still owed.
 
 ## 0. Scope and object under test
 
@@ -383,6 +385,42 @@ with a poisoned buffer and swallows every failure, so the *snapshots in that buf
 (rather than a `logger.warning` inside `main.py`) is a separate call, and it belongs with the
 audit's #3 idempotency work at §6. `test_production_retry_chain_does_not_compound` pins the
 current, now-harmless behaviour of that chain.
+
+## 1g. Cumulative equivalence — all three fixes at once, on a phase-crossing config
+
+§1d/§1e/§1f each gated their own fix against the tree as it stood. That leaves two gaps a
+maintainer would rightly worry about: the fixes were never compared **together** against a
+pre-everything tree, and the only byte-compared config (`stop_t = 1e-4`) never leaves phase 1a — so
+it barely exercises `simplify()`, the function F20 actually changes. Both are now closed
+(evidence: `data/cumulative_equivalence.csv`).
+
+**Method.** A pristine `git worktree` at `e3b4692d` (the pre-all-fixes commit), with each fix's
+marker confirmed absent by `grep -c` → `0/0/0` *before* running; each arm run from its own tree in
+its own process on the same `.param`. Deliberately **not** `git stash` — see §1f's method note.
+
+| Config | Snapshots / phases | `sha256(dictionary.jsonl)` | Verdict |
+|--------|--------------------|----------------------------|---------|
+| A — `stop_t 1e-4` | 97, phase 1a only | `17370033…` both arms | bit-identical |
+| B — `stop_t 0.01` | 114, **crosses 1a→1b** | `7d6a0136…` both arms | bit-identical |
+
+Config B is the one that matters: `log_bubble_T_arr` is populated on **114/114** lines at up to 100
+points, so `simplify()` — and therefore F20's guarded call site — runs on every snapshot.
+
+`metadata.json` was compared too, as a recursive leaf diff with `NaN == NaN`: **exactly 3 leaves
+differ, 0 of them real** — two wall-clock timestamps and `final_state.sps_path`, which differs only
+because the pre arm ran from the worktree and so resolved its bundled SPS table to a different
+absolute path. Every physical value in `final_state` and every row of `termination_debug.comparison`
+is equal.
+
+Two by-products worth keeping:
+
+- **Battery H gained its multi-phase row** (`data/field_scan.csv`, `multiphase_stop0.01`): 114
+  snapshots, I1 ✅, I3 ✅ (0 duplicates), I4 ✅, phases `[energy, implicit]`.
+- **F21 remains unobserved but is now bounded.** The 1a→1b boundary landed at line 97 (`97 % 10 =
+  7`), so the guard was armed and suppressed the new phase's iter-0 save — the *suppress* branch of
+  F21's lottery, exactly as at `stop_t 0.01`'s predecessor run. Catching the *duplicate* branch
+  needs a run whose boundary happens to land on a multiple of 10; still owed, along with the
+  `f1edge_*` configs.
 
 ## 2. Robustness invariants (what "outputs are robust" means)
 

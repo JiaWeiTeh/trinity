@@ -61,6 +61,8 @@ Contents:
   run's `dictionary.jsonl` (also imported by the test suite, so scanner and artifact never drift);
   see `harness/README.md` for the commands.
 - **`data/field_scan.csv`** — committed battery-H results, one row per (config, commit).
+- **`data/cumulative_equivalence.csv`** — all three fixes vs a pre-everything `git worktree`, on
+  both the fast and the phase-crossing config.
 - **`data/f20_equivalence.csv`**, **`data/f7_equivalence.csv`**, **`data/f6_equivalence.csv`** —
   one gate-evidence file per shipped fix: the identical `dictionary.jsonl` hash pre- and post-fix,
   the behaviour arms, and the exact config and commands. F6's also records the two corrections that

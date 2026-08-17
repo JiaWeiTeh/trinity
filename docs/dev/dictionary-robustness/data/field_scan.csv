@@ -3,3 +3,4 @@
 # One row per (config, commit). See PLAN.md §2 for invariant IDs.
 label,commit,run_dir,snapshots,unparsable_lines,distinct_keysets,t_non_decreasing,adjacent_dup_indices,adjacent_dups_off_boundary,near_dup_indices,phase_boundary_indices,phases,nan_bearing_lines,inf_bearing_lines
 smoke_stop1e-4,21b363ec,/tmp/claude-0/-home-user-trinity/e4fce0e7-8c82-524d-84a5-d78e4b897eff/scratchpad/smokerun/outputs/smoke,97,0,1,True,[],[],[],[],['energy'],97,0
+multiphase_stop0.01,686fef77,/tmp/claude-0/-home-user-trinity/e4fce0e7-8c82-524d-84a5-d78e4b897eff/scratchpad/ab/post/outputs/abtest,114,0,1,True,[],[],[],[97],"['energy', 'implicit']",97,0
