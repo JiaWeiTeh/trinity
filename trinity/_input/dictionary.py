@@ -41,6 +41,12 @@ Loading
 params = DescribedDict.load_snapshot(path2output, snap_id)
 mCloud = params["mCloud"].value          # rehydrated from metadata.json
 v2     = params["v2"].value              # genuine per-snapshot value
+
+Loading is read-only with respect to the run directory: loader-built dicts
+skip the crash/exit handlers, so analysing a run neither rewrites its
+``metadata.json`` nor takes over the calling process's signal handlers.
+Explicitly calling ``save_snapshot()``/``flush()`` on a loaded dict still
+writes — and still treats the target as a fresh run.
 """
 
 import atexit
@@ -212,7 +218,7 @@ class DescribedDict(dict):
     params["path2output"].value must exist and point to the output directory.
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, register_handlers: bool = True, **kwargs):
         super().__init__(*args, **kwargs)
 
         # Snapshot counters
@@ -236,8 +242,14 @@ class DescribedDict(dict):
         # pass.  Reset to 0 at the top of every snapshot build.
         self._impl_r2_logged: int = 0
 
-        # Register crash-safe handlers to flush pending snapshots on exit
-        self._register_crash_handlers()
+        # Register crash-safe handlers to flush pending snapshots on exit.
+        # Loader-built dicts pass register_handlers=False: *reading* a run must
+        # not install an atexit hook aimed at that run's directory (it would
+        # rewrite the run's termination report, clobbering a real crash reason
+        # with the generic one) nor take over the process's SIGINT/SIGTERM
+        # handlers.  See docs/dev/dictionary-robustness/ (finding F7).
+        if register_handlers:
+            self._register_crash_handlers()
 
     def __setitem__(self, key: str, value: DescribedItem) -> None:
         """
@@ -271,6 +283,9 @@ class DescribedDict(dict):
         Does NOT cover:
         - kill -9 (SIGKILL) - cannot be caught
         - os._exit() - bypasses atexit
+
+        Not called at all for loader-built dicts (``register_handlers=False``);
+        see the class docstring and ``load_snapshot``.
         """
         import logging
         logger = logging.getLogger(__name__)
@@ -962,7 +977,10 @@ class DescribedDict(dict):
             raise KeyError(f"Snapshot {sid} not found. Available: {list(snapshots.keys())[:10]}...")
 
         snap = snapshots[sid]
-        params = cls()
+        # No crash handlers: loading is a read.  A handler here would be aimed
+        # at the loaded run's own directory and would rewrite its termination
+        # report at interpreter exit (finding F7).
+        params = cls(register_handlers=False)
 
         # Put path2output back into the dictionary for downstream code that expects it
         params["path2output"] = DescribedItem(str(path2output), info="Output directory")

@@ -34,10 +34,11 @@
 
 **Status (2026-08-17):** 🟡 partial — 13 findings probe-verified against `030b658`, 5 inherited
 from an earlier off-trunk audit (`PLAN.md` §1b), and 3 more found by executing the plan (F19–F21,
-§1c). **Batteries A–G are landed as 61 green characterization tests.** **One fix has shipped** —
-F20's empty-curve guard (`PLAN.md` §1d), gated **bit-identical** and resolving the reachable
-phase-0 crash; everything else stays characterized-not-fixed and queued for the maintainer
-(`PLAN.md` §6). Battery H is scanned on the fast config only — the stiff/edge configs are owed.
+§1c). **Batteries A–G are landed as green characterization tests.** **Two fixes have shipped**, each
+gated bit-identical on `dictionary.jsonl`: F20's empty-curve guard (`PLAN.md` §1d), resolving the
+reachable phase-0 crash, and F7's loader handler-skip (`PLAN.md` §1e), making a load side-effect-free.
+Everything else stays characterized-not-fixed and queued for the maintainer (`PLAN.md` §6).
+Battery H is scanned on the fast config only — the stiff/edge configs are owed.
 
 Motivating question (maintainer, 2026-08-17): *"Is it true that the duplicate guard is skipped
 entirely at every 10-snapshot boundary?"* — **Yes** (finding F1, probe P1): `flush()` clears the
@@ -73,9 +74,14 @@ reconciles the two ID sets, inherits its five findings that the probes did not c
 its field measurements (phase-boundary Δt signature, 112 NaN-bearing lines in one real run) so
 battery H compares instead of rediscovering. Its fix set is a proposal to evaluate, never landed.
 
-Highest-severity findings (details + probe output in `PLAN.md` §1): **F7** — merely *loading* a
-snapshot rewrites the loaded run's `metadata.json` at interpreter exit, clobbering a recorded
-crash reason with `'Normal exit / atexit'`; **F6** — a non-serializable value makes `flush()`
-fail mid-append, and a retry duplicates already-written lines, silently shifting every later
-snapshot id; **F5** — four `save_snapshot()` crash modes on profile-array states the code itself
-can produce (including `reset_keys`' NaN default).
+Highest-severity findings (details + probe output in `PLAN.md` §1): **F7** ✅ *fixed* — merely
+*loading* a snapshot used to rewrite the loaded run's `metadata.json` at interpreter exit,
+clobbering a recorded crash reason with `'Normal exit / atexit'`; **F6** — a non-serializable value
+makes `flush()` fail mid-append, and a retry duplicates already-written lines, silently shifting
+every later snapshot id; **F5** — four `save_snapshot()` crash modes on profile-array states the
+code itself can produce; the two empty-array ones are ✅ *fixed* (F20), while the missing-companion
+`KeyError` and `reset_keys`' NaN `IndexError` remain open.
+
+Still open and worth knowing before you trust a run's record: **F6**'s id shift, **F1/F21**'s
+flush-alignment lottery at phase boundaries, **F11**'s bare `NaN` literals (every line of a real
+run), and **O1** — an explicit save on a *loaded* dict still deletes the source files.

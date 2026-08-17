@@ -86,32 +86,66 @@ def _reason(out: Path) -> str | None:
 # Battery C — crash handlers and process lifecycle (F7, O5, O6)
 # =============================================================================
 class TestCrashHandlers:
-    def test_loading_a_snapshot_rewrites_the_source_run(self, tmp_path):
-        """CANDIDATE-BUG F7 — the highest-value finding: an analysis script
-        that only *reads* a run clobbers that run's recorded crash reason.
+    def test_loading_a_snapshot_leaves_the_source_run_untouched(self, tmp_path):
+        """F7 — **fixed**: loading is side-effect-free (invariant I6).
 
-        ``load_snapshot`` builds a ``DescribedDict``, which registers an atexit
-        handler pointed at the loaded directory; at interpreter exit
-        ``_safe_flush`` writes a fresh termination report there.
+        Was: ``load_snapshot`` built a dict that registered an atexit handler
+        pointed at the *loaded* directory, so an analysis script that only read
+        a run rewrote its termination report — clobbering a real crash reason
+        with "Normal exit / atexit". Loader-built dicts now skip handler
+        registration.
         """
         _run(_writer_code(tmp_path, reason="ODE solver failed")).check_returncode()
         assert _reason(tmp_path) == "ODE solver failed"
 
-        before = (tmp_path / "metadata.json").read_bytes()
+        before = {p.name: p.read_bytes() for p in sorted(tmp_path.iterdir()) if p.is_file()}
         _run(f"loaded = DescribedDict.load_snapshot({str(tmp_path)!r}, 0)").check_returncode()
+        after = {p.name: p.read_bytes() for p in sorted(tmp_path.iterdir()) if p.is_file()}
 
-        assert (tmp_path / "metadata.json").read_bytes() != before
-        assert _reason(tmp_path) == "Normal exit / atexit", "real reason survived?"
+        assert after == before, "a read-only load mutated the run directory"
+        assert _reason(tmp_path) == "ODE solver failed", "the real reason must survive a load"
 
-    def test_read_only_load_also_writes_the_humanreadable_file(self, tmp_path):
-        """CANDIDATE-BUG F7 — the same handler also (re)writes this artifact
-        into a directory the caller only meant to read."""
+    def test_read_only_load_writes_no_humanreadable_file(self, tmp_path):
+        """F7 — **fixed**: the same handler used to (re)create this artifact in
+        a directory the caller only meant to read."""
         _run(_writer_code(tmp_path)).check_returncode()
         (tmp_path / "metadata_humanreadable.txt").unlink(missing_ok=True)
 
         _run(f"loaded = DescribedDict.load_snapshot({str(tmp_path)!r}, 0)").check_returncode()
 
-        assert (tmp_path / "metadata_humanreadable.txt").exists()
+        assert not (tmp_path / "metadata_humanreadable.txt").exists()
+
+    def test_loading_does_not_hijack_signal_handlers(self, tmp_path):
+        """F7/O5 — a load also used to take over the *process's* SIGINT and
+        SIGTERM handlers, so importing-and-loading inside a larger tool
+        silently changed how that tool responded to Ctrl+C."""
+        _run(_writer_code(tmp_path)).check_returncode()
+        code = f"""
+import signal
+before = (signal.getsignal(signal.SIGINT), signal.getsignal(signal.SIGTERM))
+loaded = DescribedDict.load_snapshot({str(tmp_path)!r}, 0)
+after = (signal.getsignal(signal.SIGINT), signal.getsignal(signal.SIGTERM))
+print("UNCHANGED" if before == after else "HIJACKED")
+"""
+        assert _run(code).stdout.strip() == "UNCHANGED"
+
+    def test_explicit_save_on_a_loaded_dict_still_works(self, tmp_path):
+        """Scope guard for the F7 fix: skipping *handler registration* must not
+        disable the snapshot machinery itself. A caller that deliberately
+        loads, mutates and saves still can — including the destructive
+        fresh-run delete of the source, which is finding O1 and stays open
+        (plan §6.4); this test pins that the fix did not silently change it.
+        """
+        _run(_writer_code(tmp_path, n=3)).check_returncode()
+        out = tmp_path / "resaved"
+        code = f"""
+loaded = DescribedDict.load_snapshot({str(tmp_path)!r}, 0)
+loaded["path2output"].value = {str(out)!r}
+loaded.save_snapshot()
+loaded.flush()
+"""
+        _run(code).check_returncode()
+        assert len((out / "dictionary.jsonl").read_text().splitlines()) == 1
 
     def test_atexit_flushes_pending_snapshots(self, tmp_path):
         """The positive control for the handler's *intended* job: snapshots

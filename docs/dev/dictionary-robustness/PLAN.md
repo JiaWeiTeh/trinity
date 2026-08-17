@@ -32,13 +32,16 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-17):** 🟡 partial — **batteries A–G executed and landed** as 61 characterization
-tests (`test/test_dictionary_stress.py` 49 + `test/test_dictionary_stress_process.py` 12), all
-green, pinning current behavior including the defects. 13 findings probe-verified (§1) + 5
-inherited (§1b) + 3 from execution (§1c). **One fix landed**: F20's empty-curve guard, gated
-bit-identical (§1d), which resolves the reachable phase-0 crash F19/F5a/F5d. **Battery H partially
-executed**: the fast config is scanned and committed (`data/field_scan.csv`); the stiff/edge
-configs are still owed, for both the scan and F20's byte-comparison.
+**Status (2026-08-17):** 🟡 partial — **batteries A–G executed and landed** as 65 characterization
+tests (`test/test_dictionary_stress.py` 49 + `test/test_dictionary_stress_process.py` 16, of which
+2 are `stress`), all green, pinning current behavior including the defects — a red one after a
+deliberate fix means re-baseline, not regression. 13 findings probe-verified (§1) + 5
+inherited (§1b) + 3 from execution (§1c). **Two fixes landed, each gated:** F20's empty-curve guard
+(§1d), which resolves the reachable phase-0 crash F19/F5a/F5d, and F7's loader handler-skip (§1e),
+which makes loading side-effect-free (I6 now holds). Both leave `dictionary.jsonl` **bit-identical**
+on the fast config. **Battery H partially executed**: the fast config is scanned and committed
+(`data/field_scan.csv`); the stiff/edge configs are still owed, for both the scan and the
+byte-comparisons.
 
 ## 0. Scope and object under test
 
@@ -71,7 +74,7 @@ Every row below was reproduced by the committed harness
 | F4 | — | Guard compares **only** `(t_now, R2)`: an in-window snapshot differing in any other key (phase label, energy, forces) is silently dropped. Phase code *relies* on this — `run_energy_phase.py:400-419` builds a reconciliation snapshot precisely so the guard blocks the next phase's stale first snapshot. F1 ⇒ whether a phase-handoff snapshot is deduped **depends on `save_count % 10` alignment**: record content is not a pure function of the trajectory. Design-level; battery A pins it. | Medium |
 | F5 | P3a–d | **Profile-array special cases crash `save_snapshot()`**: (a) empty `bubble_r_arr`+`bubble_T_arr` → `ValueError`; (b) `bubble_T_arr` present but companion `bubble_r_arr` missing → `KeyError`; (c) scalar-NaN arrays — exactly what `reset_keys()` writes by default — → `IndexError`; (d) empty `shell_grav_r`+`shell_grav_force_m` → `ValueError`. Only `shell_n_arr` has an empty-guard (dictionary.py:696) — and when it trips, the keys are silently absent from that line (per-line schema varies). The commented-out bubble entries in `COOLING_PHASE_KEYS` (dictionary.py:1217-1222) are the fossil of (c). **Refined by execution**: F19 shows (a)/(d) are reachable from a real `read_param` dict, and F20 locates the crash in the R² diagnostic rather than the downsampler. | **High — reachable (F19)** |
 | F6 | P4, P11, P13 | **A non-serializable value poisons `flush()` mid-append**: snapshots before the poisoned one are already written, the exception propagates, the buffer stays intact. On the **first** flush a retry self-heals by accident (`flush_count` still 0 → fresh-run delete rewrites). On any **later** flush, a retry appends the already-written lines again: verified file `t = [0.0, 1.0, 1.0, 2.0]` — every subsequent snapshot id shifts by one line. Contrast: the metadata path (dictionary.py:836-849) does a defensive per-key `json.dumps`; the snapshot path does not. | **High** |
-| F7 | P14 | **Merely loading a snapshot rewrites the loaded run's `metadata.json`.** `load_snapshot()` constructs `cls()` → registers atexit → at interpreter exit `_safe_flush()` writes a fresh `termination_debug` block + `metadata_humanreadable.txt` into the *loaded* run's directory. Verified: a recorded crash reason `'ODE solver failed'` is clobbered to `'Normal exit / atexit'` by an analysis script that only reads. | **High** |
+| F7 | P14 | **Merely loading a snapshot rewrites the loaded run's `metadata.json`.** `load_snapshot()` constructs `cls()` → registers atexit → at interpreter exit `_safe_flush()` writes a fresh `termination_debug` block + `metadata_humanreadable.txt` into the *loaded* run's directory. Verified: a recorded crash reason `'ODE solver failed'` is clobbered to `'Normal exit / atexit'` by an analysis script that only reads. | ✅ **FIXED** 2026-08-17 — §1e |
 | F8 | P7 | `t_now=None` passes the guard but crashes `save_snapshot()` with `TypeError` in the debug-log f-string (`:.6e` on None, dictionary.py:759) — only `KeyError` is caught, and the f-string is evaluated regardless of log level. | Low |
 | F9 | P6 | `print(params)` raises `TypeError` when any value is a 0-d `np.ndarray` (`shorten_display` calls `len()`; the `hasattr(__len__)` check passes because the attribute exists). | Low |
 | F10 | P5 | `_excluded_keys` is **sticky**: replacing an excluded key with a fresh `DescribedItem(exclude_from_snapshot=False)` does not un-exclude — the refresh loop (dictionary.py:614-617) only ever adds. The key silently vanishes from all snapshots forever. | Medium |
@@ -271,6 +274,55 @@ defined behavior rather than a crash.
   `..._records_empty_arrays`, same for shell-grav) — the intended workflow when a fix lands, not a
   regression.
 
+## 1e. F7 fix — landed and gated (2026-08-17)
+
+The second `trinity/` change. **Scope: loading a run must not modify it** (invariant I6).
+
+```python
+# DescribedDict.__init__ gains a keyword-only opt-out …
+def __init__(self, *args, register_handlers: bool = True, **kwargs):
+    ...
+    if register_handlers:
+        self._register_crash_handlers()
+
+# … and load_snapshot() uses it, because loading is a read:
+params = cls(register_handlers=False)
+```
+
+Why it was safe to take: **no production code calls the loaders.** `load_snapshot` /
+`load_latest_snapshot` are analysis-only API (grep: callers are tests and user scripts), and the
+only production construction of a `DescribedDict` is `read_param.py:253`, which keeps the default
+and therefore keeps its handlers. So the blast radius is exactly the code path whose behavior was
+wrong.
+
+**Pre-registered gate, and the result** (evidence: `data/f7_equivalence.csv`):
+
+| Gate | Bar | Result |
+|------|-----|--------|
+| Failing tests first | a read-only load mutates the run dir | ✅ three expectations written and confirmed red on the pre-fix tree (dir bytes, humanreadable file, signal handlers) |
+| Behavior change | after a load, **every file** in the run dir is byte-identical and the recorded reason survives | ✅ `'ODE solver failed'` now survives a load (was clobbered to `'Normal exit / atexit'`) |
+| No signal hijack | `signal.getsignal(SIGINT/SIGTERM)` unchanged across a load | ✅ `UNCHANGED` (was `HIJACKED`) |
+| Positive control — writers keep handlers | a real `run.py` still writes `termination`, `termination_debug`, `metadata_humanreadable.txt`; a pending snapshot is still flushed at exit; SIGINT/SIGTERM still exit 130/143 | ✅ all preserved |
+| Writer path untouched | `sha256(dictionary.jsonl)` unchanged on the fast config | ✅ `17370033…`, 97 snapshots — the same hash as both F20 arms |
+| Suite · mypy · lint | no new failures | ✅ suite unchanged bar the three known-red goldens; mypy 4 → 4; ruff/black clean |
+
+**What this fix does and does not resolve:**
+
+- **Resolved**: F7 — loading is now side-effect-free, so I6 holds. Also removes the load-side
+  signal-handler takeover, which was the part of O5 that could surprise a *tool* embedding a load.
+- **NOT resolved — I9 is still false.** The signal-reason clobber inside a *writer* process is
+  untouched: `_signal_handler` writes `"Signal SIGINT"`, then `sys.exit` runs atexit, which
+  overwrites it with the generic reason. That needs the audit's `_termination_report_written`
+  idempotency flag (its #3/#11), still open at §6.
+- **NOT resolved — O1 stays open by design.** A loaded dict still carries `flush_count == 0` and a
+  `path2output` aimed at the source, so an *explicit* `save_snapshot()` + `flush()` on it still
+  deletes the source files. That is the audit's #8/#10 (`_readonly` / `_fresh_run` flags) and a
+  separate decision at §6.4; `test_explicit_save_on_a_loaded_dict_still_works` pins the current
+  behavior so the choice stays visible rather than drifting.
+- Two pins were **re-baselined** (`test_loading_a_snapshot_rewrites_the_source_run` →
+  `..._leaves_the_source_run_untouched`; `test_read_only_load_also_writes_the_humanreadable_file` →
+  `..._writes_no_humanreadable_file`), and two tests were added (signal-handler check, scope guard).
+
 ## 2. Robustness invariants (what "outputs are robust" means)
 
 The batteries gate against these. Each is currently TRUE, FALSE, or UNKNOWN — the campaign's job
@@ -286,10 +338,10 @@ record, "pinned" names the battery whose test holds the behavior in place.
 | I3 | `t_now` is non-decreasing across lines; adjacent duplicate `(t_now, R2)` pairs occur **only** at line indices `≡ 0 (mod snapshot_interval)` | **TRUE** in the field (t non-decreasing; 0 duplicates in 97 snapshots). The mod-10 clause is unfalsified but untested in anger — no boundary has yet landed on a flush boundary (F21). Pinned: A, H |
 | I4 | Per-line key-set is stable across a run (modulo documented phase-dependent keys) | **TRUE** in the field (1 distinct key-set / 97 lines). Still breakable via F5's silent shell-guard path. Pinned: D, H |
 | I5 | `save_snapshot()` never raises for states the code itself produces (incl. `reset_keys` output, phase-0 placeholders) | **STILL FALSE, but narrowed.** The phase-0 case (F19, via empty arrays F5a/F5d) is **fixed** (§1d) and now pinned green by `test_freshly_read_params_can_snapshot`. Remaining: F5b (missing companion → `KeyError`), F5c (`reset_keys`' NaN → `IndexError`), F8 (`t_now=None` → `TypeError`). Pinned: D, G |
-| I6 | Loading is side-effect-free on the run directory | **FALSE** (F7) — verified end-to-end in a subprocess: a read-only load rewrites `metadata.json` *and* `metadata_humanreadable.txt`. Pinned: C |
+| I6 | Loading is side-effect-free on the run directory | ✅ **NOW TRUE** (F7 fixed, §1e) — pinned by a subprocess test that byte-compares *every* file in the run dir across a load, plus one asserting the process's signal handlers survive. Caveat: an **explicit** `save_snapshot()`/`flush()` on a loaded dict still writes, and still deletes the target as a "fresh run" (O1, open at §6.4). Pinned: C |
 | I7 | A failed `flush()` retried after remediation neither loses nor duplicates lines | **FALSE** for flush ≥ 2 (F6); accidentally TRUE for the first flush. Pinned: B |
 | I8 | save→load→save round-trip is value-stable (types per F12's morphing table) | **TRUE** for values (a reloaded state re-serializes to an identical line); **FALSE** for types — lists become ndarrays, so `str`/`tuple` change class (F12). Pinned: E |
-| I9 | The recorded termination reason survives signals, atexit ordering, and later loads | **FALSE** on both counts — clobbered by a later load (F7) *and* by atexit after a signal (O5, now resolved). Pinned: C |
+| I9 | The recorded termination reason survives signals, atexit ordering, and later loads | **STILL FALSE, but half-fixed.** Surviving a later load: ✅ fixed (F7, §1e). Surviving a signal: ❌ still clobbered — `_signal_handler` writes `"Signal SIGINT"`, then `sys.exit` runs atexit, which overwrites it with the generic reason (O5). Needs the audit's `_termination_report_written` idempotency flag (#3/#11), open at §6. Pinned: C |
 
 ## 3. Test batteries
 
@@ -529,12 +581,14 @@ number is cited so the two are compared rather than re-derived.
    `run_energy_phase.py:400-419` first.
 3. F6: make `flush()` serialize all lines *before* opening the file (atomic-ish append), or
    at least clear the buffer only for lines actually written? Not in the audit — new here.
-4. F7 (audit #8/#10): should `load_snapshot`-created dicts skip `_register_crash_handlers` (e.g. a
-   `register_handlers=False` classmethod path)? Cheapest high-value fix, does not touch run
-   output — but it changes atexit behavior of analysis scripts. The audit's `_readonly` +
-   `_fresh_run` flags attack the same surface from the write side and also close the
-   delete-the-source footgun; the two approaches are complementary, and a decision is needed on
-   whether to take one, both, or neither.
+4. ~~F7: should `load_snapshot`-created dicts skip `_register_crash_handlers`?~~ **DONE 2026-08-17
+   (§1e)** — taken as `register_handlers=False` on the loader path; loading no longer writes to the
+   run directory or hijacks the process's signal handlers. **The write-side half is still open**:
+   the audit's `_readonly` + `_fresh_run` flags (its #8/#10) guard against an *explicit*
+   `save_snapshot()`/`flush()` on a loaded dict, which still deletes the source files as a "fresh
+   run" (O1). Those two flags are complementary to what landed, not superseded by it — the
+   decision on whether to take them is unchanged, and
+   `test_explicit_save_on_a_loaded_dict_still_works` keeps the current behavior visible.
 5. F5c (audit #5/#6): `reset_keys`' NaN default vs. the profile-array branches — guard the
    branches (audit #5: emit `[]`), or stop serializing reset keys at all (audit #6:
    `reset_keys(..., exclude=True)`)?
