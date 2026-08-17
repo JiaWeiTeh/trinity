@@ -206,6 +206,17 @@ error. So the remaining momentum-phase question is about **model structure** (`P
 vs `P_ram ∝ R2^{−2}`: does a real momentum-phase cavity stay Strömgren-filled?), **not** about
 C3a's normalisation. Pinned by `test/test_phii_c3c_spitzer.py`.
 
+**Update 2026-08-17 (Batch 9) — the geometry half is now measured, and it is not the answer
+either.** C3a spreads the shell-absorbed photon budget over the whole cavity, `(4/3) pi R2^3`, while
+trinity's own shell solve puts the ionised gas in the shell itself. Correcting the volume gives
+`n_layer/n_cavity = sqrt(R2/(3 dR))`, and on the B3M momentum rows the shell is **thick**
+(`dR/R2` = 0.670–1.308), so the correction **lowers** `P_HII` by 0.51–0.71×. It is not enough:
+`P_HII/P_ram` median 6.165 → **3.594**, with **34/34 momentum rows still HII-dominated**. With both
+the calibration (Batch 8) and geometry (Batch 9) explanations now excluded, what is left is the
+**pressure coupling** — registered as **D5** in `PLAN.md` §7, a physics-intent question. ⛔ Note the
+Batch 9 *scope* first claimed the geometry correction was one-signed and *raised* `P_HII`; that was
+measured before momentum was covered and is retracted in `PLAN.md` §Batch 9.
+
 ## 6. Where the branches agree, and where they read it differently
 
 - **All three agree on the measurement and on the mechanism** (the `n_IF_Str ≤ shell_n0` cap).
