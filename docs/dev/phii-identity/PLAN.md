@@ -1343,6 +1343,49 @@ Artifacts: `data/b9_geometry_scope.csv` (all 4 phases, 10 configs), `harness/geo
 <scratch>/runs/b9/B3M/ --stride 2 --out docs/dev/phii-identity/data/b9_layer_density.csv`
 (~2 s — it replays the shell solve, it does not integrate the ODEs).
 
+### Batch 10 — does the profile form invert on the strong-wind rungs? — Status: ⬜
+
+**Registered 2026-08-17 BEFORE either run of this batch started. Nothing below was written or
+edited after results existed.** Point predictions are stated to 4 dp so they cannot be
+retro-fitted.
+
+Motivation. Batch 9 + G9.4 measured the momentum-phase drive ratio on B3M (`Lw` = 1) under the
+**profile form** — the ionised-layer volume with the real dust-depleted recombination — at
+**median 1.545** (1.322–1.666), against the shipped cavity form's 6.165. Stage 3 independently
+measured `P_C3a/P_ram ∝ Lw^−0.33` on the `B3MW01/1/3/10` ladder. Composing the two puts the
+wind/photoionisation crossover at **`Lw` = 3.74**, i.e. *inside* the ladder that already exists,
+where stage 3's own conclusion was that inversion needs `Lw ≈ 260`. If that holds, the
+wind-dominated momentum branch Lancaster's coevolution work implies is **reachable**, and D5 stops
+being the only route out.
+
+This is the measurement that promotes the Batch 9 lead to a result or kills it.
+
+**What is being tested, stated precisely.** The profile-based ratio is a **diagnostic**, not shipped
+physics. A crossover here would mean *a layer+dust-corrected model* inverts; it would **not** mean
+trinity's momentum phase inverts as shipped. The shipped cavity form is expected to stay
+HII-dominated on both rungs (G10.3 is the control for exactly that).
+
+| gate | prediction | bar |
+|---|---|---|
+| **G10.1** `B3MW3` profile median | `1.545 × 3^−0.33` = **1.0752** | in **[0.85, 1.35]** |
+| **G10.2** `B3MW10` profile median | `1.545 × 10^−0.33` = **0.7227** | **< 1.0**, and in **[0.55, 0.95]** |
+| **G10.3** control: shipped cavity form | HII-dominated on 100% of momentum rows, both rungs | matches stage 3 |
+| **G10.4** monotonicity | profile median falls with `Lw`: B3M > B3MW3 > B3MW10 | strict |
+
+- **G10.2 is the falsifiable one. FALSIFIED IF `B3MW10`'s profile median ≥ 1.0** — that would mean
+  stage 3's `Lw^−0.33` does not carry to the profile form, the `Lw` = 3.74 crossover estimate is
+  **void**, and Batch 9's lead is withdrawn. I expect this to be the likeliest failure mode, because
+  the exponent was fitted to the *cavity* form and the layer form's `dR(Lw)` dependence is unmeasured
+  — stronger winds may thin the shell, which would push the ratio back up.
+- **VOID rule (§3c stage-3 lesson).** If a run terminates before entering the momentum phase, its
+  row is **VOID**, never a confirming null. Both rungs reached momentum in stage 3, so a failure to
+  do so is itself reportable.
+- **G10.5 — `dR/R2` inventory.** Report the momentum-phase `dR_ion/R2` per rung. B3M sits at 0.975,
+  right at the thin-shell idealisation's limit; if the strong-wind rungs sit far from it the
+  comparison across rungs is not like-for-like and must be said so.
+
+Artifacts: `data/b10_wind_profile.csv`, reusing `harness/layer_density_check.py` unchanged.
+
 ## 7. Decisions needed from the maintainer
 
 | id | question | blocks | state |
