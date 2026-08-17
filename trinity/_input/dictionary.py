@@ -494,6 +494,10 @@ class DescribedDict(dict):
           length, with endpoints preserved.  Values come back in the
           caller's original positional order.
         * Raises ``ValueError`` if ``len(x_arr) != len(y_arr)``.
+        * Empty input returns empty output, and the R² check below is
+          skipped (there is no reconstruction to score).  This is the
+          phase-0 state, where the profile arrays are still their empty
+          registry defaults — see ``docs/dev/dictionary-robustness/``.
 
         Intended use: reduce output size for long profile arrays before
         snapshotting.
@@ -512,6 +516,16 @@ class DescribedDict(dict):
                 f"simplify(): x and y must have same length for {keyname}. "
                 f"Instead got {len(x_arr)} and {len(y_arr)}"
             )
+
+        # An empty curve has no reconstruction to score, and scoring it is
+        # fatal: _simplify_error interpolates the simplified curve back onto
+        # the original grid, and np.interp raises on an empty sample set.
+        # Returning early keeps the (empty) result flowing through to the
+        # snapshot instead of taking down the whole save — that state is the
+        # phase-0 one, where every profile array is still its empty registry
+        # default.  Diagnostics-only: a non-empty curve is unaffected.
+        if x_out.size == 0:
+            return x_out, y_out
 
         # Compute reconstruction R² for every simplify() call.  If the
         # simplified curve diverges from the original (R² < 0.9) that's

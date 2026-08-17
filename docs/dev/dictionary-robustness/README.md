@@ -34,9 +34,10 @@
 
 **Status (2026-08-17):** 🟡 partial — 13 findings probe-verified against `030b658`, 5 inherited
 from an earlier off-trunk audit (`PLAN.md` §1b), and 3 more found by executing the plan (F19–F21,
-§1c). **Batteries A–G are landed as 60 green characterization tests**; battery H is scanned on the
-fast config only — the stiff/edge configs are still owed. No `dictionary.py` fix has been made:
-this pass characterizes, the fixes are queued for the maintainer (`PLAN.md` §6).
+§1c). **Batteries A–G are landed as 61 green characterization tests.** **One fix has shipped** —
+F20's empty-curve guard (`PLAN.md` §1d), gated **bit-identical** and resolving the reachable
+phase-0 crash; everything else stays characterized-not-fixed and queued for the maintainer
+(`PLAN.md` §6). Battery H is scanned on the fast config only — the stiff/edge configs are owed.
 
 Motivating question (maintainer, 2026-08-17): *"Is it true that the duplicate guard is skipped
 entirely at every 10-snapshot boundary?"* — **Yes** (finding F1, probe P1): `flush()` clears the
@@ -57,6 +58,8 @@ Contents:
   run's `dictionary.jsonl` (also imported by the test suite, so scanner and artifact never drift);
   see `harness/README.md` for the commands.
 - **`data/field_scan.csv`** — committed battery-H results, one row per (config, commit).
+- **`data/f20_equivalence.csv`** — the F20 fix's gate evidence: identical `dictionary.jsonl` hash
+  pre- and post-fix, with the exact config and commands.
 
 The tests that pin all of this: `test/test_dictionary_stress.py` (48, in-process) and
 `test/test_dictionary_stress_process.py` (12 default + 2 stress, real interpreters). They pin

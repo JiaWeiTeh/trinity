@@ -32,12 +32,13 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-17):** 🟡 partial — **batteries A–G executed and landed** as 60 characterization
-tests (`test/test_dictionary_stress.py` 48 + `test/test_dictionary_stress_process.py` 12), all
+**Status (2026-08-17):** 🟡 partial — **batteries A–G executed and landed** as 61 characterization
+tests (`test/test_dictionary_stress.py` 49 + `test/test_dictionary_stress_process.py` 12), all
 green, pinning current behavior including the defects. 13 findings probe-verified (§1) + 5
-inherited (§1b). **Battery H partially executed**: the fast config is scanned and committed
-(`data/field_scan.csv`); the stiff/edge configs are still owed. Execution results, three new
-findings, and the resolution of O5/O6 are in §1c — read it before touching this code.
+inherited (§1b) + 3 from execution (§1c). **One fix landed**: F20's empty-curve guard, gated
+bit-identical (§1d), which resolves the reachable phase-0 crash F19/F5a/F5d. **Battery H partially
+executed**: the fast config is scanned and committed (`data/field_scan.csv`); the stiff/edge
+configs are still owed, for both the scan and F20's byte-comparison.
 
 ## 0. Scope and object under test
 
@@ -170,8 +171,8 @@ pytest -m stress test/test_dictionary_stress_process.py                        #
 
 | ID | Finding | Severity |
 |----|---------|----------|
-| F19 | **F5 is reachable from a real production dict, not merely latent.** `read_param.read_param()` on a minimal valid `.param` returns all five profile arrays as `np.array([])` with `exclude_from_snapshot=False`, and `save_snapshot()` on that dict raises `ValueError`. Production survives *only* because phase-0 init populates the arrays before the first save fires (confirmed: line 0 of a real run already carries `log_bubble_T_arr`). Consequence: **any `save_snapshot()` placed before phase-0 completes crashes the run**, which is a live constraint on anyone adding an initial-condition snapshot, an early-termination snapshot, or a pre-run validation record. | **High — reachable** |
-| F20 | **The empty-array crash is in the R² diagnostic, not the downsampler.** `_simplify` handles empty input fine (`test_simplify.py::test_empty`); the traceback ends in `_simplify_error` → `np.interp` ("array of sample points is empty"), called unconditionally by `DescribedDict.simplify()` (dictionary.py:524) for the R² log line — which is computed regardless of log level. So F5a/F5d are a *diagnostics* bug and the cheapest fix is guarding that one call, independent of the F5b/F5c pair-handling questions. | High |
+| F19 | **F5 is reachable from a real production dict, not merely latent.** `read_param.read_param()` on a minimal valid `.param` returns all five profile arrays as `np.array([])` with `exclude_from_snapshot=False`, and `save_snapshot()` on that dict raises `ValueError`. Production survives *only* because phase-0 init populates the arrays before the first save fires (confirmed: line 0 of a real run already carries `log_bubble_T_arr`). Consequence: **any `save_snapshot()` placed before phase-0 completes crashes the run**, which is a live constraint on anyone adding an initial-condition snapshot, an early-termination snapshot, or a pre-run validation record. | ✅ **FIXED** (§1d) |
+| F20 | **The empty-array crash is in the R² diagnostic, not the downsampler.** `_simplify` handles empty input fine (`test_simplify.py::test_empty`); the traceback ends in `_simplify_error` → `np.interp` ("array of sample points is empty"), called unconditionally by `DescribedDict.simplify()` (dictionary.py:524) for the R² log line — which is computed regardless of log level. So F5a/F5d are a *diagnostics* bug and the cheapest fix is guarding that one call, independent of the F5b/F5c pair-handling questions. | ✅ **FIXED** (§1d) — gated bit-identical |
 | F21 | **F1 and F4 interact: ~1 phase boundary in 10 will duplicate instead of suppress.** F4's suppression only happens while the guard is armed. A boundary landing at a line index ≡ 0 (mod `snapshot_interval`) has the guard disarmed (F1), so it emits **two** records at the same `t_now` instead of one. Observed boundary in the multi-phase run sat at index 97 (mod 10 = 7 ⇒ suppressed). Neither outcome is wrong-by-design, but which one occurs is decided by flush alignment, not physics — the concrete cost of F1. | Medium |
 
 **Resolved open questions:**
@@ -211,6 +212,65 @@ Two refinements to inherited claims:
 phases, adding a row per config to `data/field_scan.csv`; the multi-phase row above came from a
 truncated run and records only the 1a→1b boundary.
 
+## 1d. F20 fix — landed and gated (2026-08-17)
+
+The first and only `trinity/` change from this workstream. **Scope: one guard, diagnostics-only.**
+
+```python
+# trinity/_input/dictionary.py, in DescribedDict.simplify(), after _simplify()
+if x_out.size == 0:
+    return x_out, y_out
+```
+
+Why this is the right first fix: it is the *only* one of the queued decisions (§6) that removes a
+**High-severity, reachable** crash (F19) without touching a semantic the rest of the code depends
+on. The dedupe key (F1/F4), the pair-handling (F5b/F5c) and the NaN policy (F11) all change what
+lands on disk for healthy runs; this one cannot, because the guarded branch is a path that
+currently *raises*.
+
+**Pre-registered gate, and the result:**
+
+| Gate | Bar | Result |
+|------|-----|--------|
+| Per-call equivalence | `simplify()` returns bit-identical output for non-empty curves | ✅ identical on 5 sizes (5 / 21 / 100 / 137 / 999 — spanning below-floor, at-floor and large), each compared against the pre-fix version (today's `HEAD~1`) by stashing the then-uncommitted diff and re-running in a **separate process** |
+| Full-run byte equivalence | `sha256(dictionary.jsonl)` unchanged on the fast config, separate processes | ✅ `17370033d8e16ac9147291720b2d6425ae4efd7828e3251d23d09db30b65e006`, 97 snapshots, **identical pre- and post-fix** |
+| Behavior change | phase-0 `read_param` dict can snapshot | ✅ was `ValueError`, now succeeds (`test_freshly_read_params_can_snapshot`, written failing-first) |
+| Suite | no new failures | ✅ 3 failed / 1149 passed — the same three known-red post-C3c goldens; `test_run_smoke`'s R2 is `0.25672223355034657` on both sides (§1c) |
+| mypy · ruff F-rules · black | no new complaints | ✅ 4 errors on the file before and after; lint clean |
+
+Evidence artifact: `data/f20_equivalence.csv` (arm, source ref, config, hash, snapshot count + the
+exact commands). Because the hash is unchanged, this qualifies as the "free win" case in
+CLAUDE.md rule 5 — proven bit-identical rather than merely equivalent.
+
+**Method note, worth reusing.** The pre-fix arm of a full-run comparison must materialize the old
+source explicitly — `git show HEAD~1:trinity/_input/dictionary.py > trinity/_input/dictionary.py`,
+with the guard's absence confirmed by `grep` *before* the run, and the file restored by
+`git checkout --` after. A first attempt used `git stash push -- <file>`, which is a **silent
+no-op once the fix is committed** (nothing to stash ⇒ exit 0 ⇒ the "baseline" arm silently runs
+post-fix code and the comparison is vacuous). The per-call arm was run while the fix was still
+uncommitted, where `git stash` does work.
+
+The bit-identical result also holds **by construction**: the guard fires only when
+`x_out.size == 0`, which is exactly the input on which the old code raised — so no run that
+completes on `HEAD~1` can reach it. The measurement confirms the reasoning rather than carrying
+it alone.
+
+The `simplify()` docstring's input/output contract gained the empty-input case, which is now
+defined behavior rather than a crash.
+
+**What the fix does and does not resolve:**
+
+- **Resolved**: F5a, F5d and therefore F19 — the empty-array crashes, which were the reachable
+  ones. An empty pair now records `[]` for both keys.
+- **Not touched**: F5b (missing companion → `KeyError`) and F5c (scalar-NaN → `IndexError`, what
+  `reset_keys` produces) — different exceptions from different code, still open at §6.5.
+- **New inconsistency, deliberately left**: an empty bubble/shell-grav pair now writes `[]`, while
+  `shell_n_arr`'s older guard omits its keys entirely. Both are non-crashing; unifying them is the
+  maintainer's §6.5 call, not part of F20.
+- Two pins were **re-baselined** as predicted by §4.1 (`test_empty_bubble_pair_crashes` →
+  `..._records_empty_arrays`, same for shell-grav) — the intended workflow when a fix lands, not a
+  regression.
+
 ## 2. Robustness invariants (what "outputs are robust" means)
 
 The batteries gate against these. Each is currently TRUE, FALSE, or UNKNOWN — the campaign's job
@@ -225,7 +285,7 @@ record, "pinned" names the battery whose test holds the behavior in place.
 | I2 | Loader ids are contiguous `0..N-1` and equal the writer's `snap_id`s | **FALSE** on corrupt/blank lines (F13) and after an F6 retry; TRUE in the field for an uncorrupted run. Pinned: B, F |
 | I3 | `t_now` is non-decreasing across lines; adjacent duplicate `(t_now, R2)` pairs occur **only** at line indices `≡ 0 (mod snapshot_interval)` | **TRUE** in the field (t non-decreasing; 0 duplicates in 97 snapshots). The mod-10 clause is unfalsified but untested in anger — no boundary has yet landed on a flush boundary (F21). Pinned: A, H |
 | I4 | Per-line key-set is stable across a run (modulo documented phase-dependent keys) | **TRUE** in the field (1 distinct key-set / 97 lines). Still breakable via F5's silent shell-guard path. Pinned: D, H |
-| I5 | `save_snapshot()` never raises for states the code itself produces (incl. `reset_keys` output, phase-0 placeholders) | **FALSE** — and F19 shows it is reachable from a freshly-read production dict, not just latent (F5, F8, F19, F20). Pinned: D, G |
+| I5 | `save_snapshot()` never raises for states the code itself produces (incl. `reset_keys` output, phase-0 placeholders) | **STILL FALSE, but narrowed.** The phase-0 case (F19, via empty arrays F5a/F5d) is **fixed** (§1d) and now pinned green by `test_freshly_read_params_can_snapshot`. Remaining: F5b (missing companion → `KeyError`), F5c (`reset_keys`' NaN → `IndexError`), F8 (`t_now=None` → `TypeError`). Pinned: D, G |
 | I6 | Loading is side-effect-free on the run directory | **FALSE** (F7) — verified end-to-end in a subprocess: a read-only load rewrites `metadata.json` *and* `metadata_humanreadable.txt`. Pinned: C |
 | I7 | A failed `flush()` retried after remediation neither loses nor duplicates lines | **FALSE** for flush ≥ 2 (F6); accidentally TRUE for the first flush. Pinned: B |
 | I8 | save→load→save round-trip is value-stable (types per F12's morphing table) | **TRUE** for values (a reloaded state re-serializes to an identical line); **FALSE** for types — lists become ndarrays, so `str`/`tuple` change class (F12). Pinned: E |
@@ -478,13 +538,12 @@ number is cited so the two are compared rather than re-derived.
 5. F5c (audit #5/#6): `reset_keys`' NaN default vs. the profile-array branches — guard the
    branches (audit #5: emit `[]`), or stop serializing reset keys at all (audit #6:
    `reset_keys(..., exclude=True)`)?
-5b. **F19/F20 (new, and the cheapest of the high-severity set)**: guard the `_simplify_error`
-   call in `DescribedDict.simplify()` (dictionary.py:524) so an empty curve skips the R² metric
-   instead of raising. This is a **diagnostics-only** change — it cannot alter any value written
-   for a non-empty array, so it is a candidate for the bit-identical gate (prove it: `pytest` plus
-   a byte-identical `dictionary.jsonl` on the battery-H configs). It removes the phase-0 crash
-   (F19) without touching the pair-handling or dedupe semantics, so it can land ahead of the
-   contentious decisions above.
+5b. ~~**F19/F20**: guard the `_simplify_error` call so an empty curve skips the R² metric.~~
+   ✅ **DONE and landed** — see §1d. Gated bit-identical (hash unchanged) on the fast config plus
+   per-call identical on five curve sizes vs `HEAD`. The remaining decision it *raises*: an empty
+   pair now writes `[]` while `shell_n_arr` still omits its keys — fold into item 5's pair-handling
+   choice. Still owed for full ladder compliance: the same byte-comparison on the two `f1edge_*`
+   configs (the fast config is the only one measured).
 6. F11 (audit #6): `allow_nan=False` with a sanitize step would make files strict JSON — worth the
    content change? Note the audit measured 112 NaN-bearing lines in one run, so this is a
    *large* content diff, not a cosmetic one.

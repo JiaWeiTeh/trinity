@@ -1,0 +1,20 @@
+# Equivalence gate for the F20 fix (empty-curve R² guard in DescribedDict.simplify()).
+# Pre-registered in PLAN.md §6.5b, recorded in §1d. Arms run in SEPARATE PROCESSES.
+# Config for the full-run arms (identical .param in all three):
+#   mCloud 1e5 / sfe 0.3 / stop_t 1e-4 / model_name f20base
+#   python run.py f20.param   then   sha256sum outputs/f20base/dictionary.jsonl
+# The pre-fix arm was produced by materializing HEAD~1's dictionary.py over the
+# working copy (guard absence verified by grep before the run) and restoring it
+# after -- NOT by `git stash`, which is a silent no-op once the fix is committed.
+# Verdict: bit-identical. Guaranteed by construction as well as by measurement --
+# the guard only fires when x_out.size == 0, which is exactly the case where the
+# pre-fix code raised, so no run that completes at HEAD~1 can reach it.
+arm,source_ref,guard_present,detail,sha256_dictionary_jsonl,snapshots,verdict
+fullrun_prefix,HEAD~1 (e3b4692d),no,full run with HEAD~1 dictionary.py,17370033d8e16ac9147291720b2d6425ae4efd7828e3251d23d09db30b65e006,97,baseline
+fullrun_fixed,HEAD (4d8273d2),yes,full run with the guard,17370033d8e16ac9147291720b2d6425ae4efd7828e3251d23d09db30b65e006,97,bit-identical
+percall_prefix,HEAD~1 via git stash,no,"simplify() on curve sizes 5/21/100/137/999; sum(x_out), sum(y_out), size compared",n/a,n/a,baseline
+percall_fixed,working tree,yes,same five curves,n/a,n/a,identical
+suite_prefix,before this workstream,no,"full pytest: 3 failed / 1088 passed (known-red post-C3c trio)",n/a,n/a,baseline
+suite_fixed,HEAD (4d8273d2),yes,"full pytest: 3 failed / 1149 passed; same trio; test_run_smoke R2 0.25672223355034657 both sides (golden 0.25955975558205835 predates C3c)",n/a,n/a,no new failures
+mypy_prefix,HEAD~1,no,mypy trinity/_input/dictionary.py,n/a,n/a,4 errors
+mypy_fixed,HEAD,yes,mypy trinity/_input/dictionary.py,n/a,n/a,4 errors

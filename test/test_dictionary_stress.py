@@ -292,14 +292,19 @@ class TestFlushAtomicity:
 # Battery D — profile-array special cases (F5)
 # =============================================================================
 class TestProfileArrays:
-    def test_empty_bubble_pair_crashes(self, tmp_path, no_handlers):
-        """CANDIDATE-BUG F5a — and the crash is in the R² *diagnostic*
-        (``_simplify_error`` → ``np.interp``), not the downsampler:
-        ``_simplify`` itself handles empty input (test_simplify.py::test_empty).
+    def test_empty_bubble_pair_records_empty_arrays(self, tmp_path, no_handlers):
+        """F5a/F20 — **fixed**: an empty pair now records empty arrays.
+
+        Was ``ValueError: array of sample points is empty`` from the R²
+        diagnostic (``_simplify_error`` → ``np.interp``) — never from the
+        downsampler, which handles empty input (test_simplify.py::test_empty).
+        Re-baselined when F20's guard landed.
         """
         d = _params(tmp_path, bubble_r_arr=np.array([]), bubble_T_arr=np.array([]))
-        with pytest.raises(ValueError, match="array of sample points is empty"):
-            d.save_snapshot()
+        d.save_snapshot()
+        snap = d.previous_snapshot["0"]
+        assert snap["log_bubble_T_arr"] == []
+        assert snap["bubble_T_arr_r_arr"] == []
 
     def test_missing_companion_r_array_crashes(self, tmp_path, no_handlers):
         """CANDIDATE-BUG F5b — derived array without its x-grid."""
@@ -333,11 +338,19 @@ class TestProfileArrays:
         with pytest.raises(IndexError):
             d.save_snapshot()
 
-    def test_empty_shell_grav_pair_crashes(self, tmp_path, no_handlers):
-        """CANDIDATE-BUG F5d — shell_grav_force_m has no size guard."""
+    def test_empty_shell_grav_pair_records_empty_arrays(self, tmp_path, no_handlers):
+        """F5d/F20 — **fixed** alongside the bubble pair (same code path).
+
+        Note the surviving schema asymmetry (plan §6.5): an empty bubble or
+        shell-grav pair now emits ``[]`` for both keys, while ``shell_n_arr``'s
+        older guard omits its keys from the line entirely. Unifying the two is
+        a maintainer decision, not part of F20.
+        """
         d = _params(tmp_path, shell_grav_r=np.array([]), shell_grav_force_m=np.array([]))
-        with pytest.raises(ValueError, match="array of sample points is empty"):
-            d.save_snapshot()
+        d.save_snapshot()
+        snap = d.previous_snapshot["0"]
+        assert snap["shell_grav_force_m"] == []
+        assert snap["shell_grav_r"] == []
 
     def test_shell_n_arr_guard_drops_keys_instead(self, tmp_path, no_handlers):
         """F5 asymmetry — shell_n_arr is the *only* guarded pair, and when the
@@ -366,6 +379,32 @@ class TestProfileArrays:
         d = _params(tmp_path, bubble_r_arr=np.linspace(0.1, 1.0, 30), bubble_n_arr=n)
         d.save_snapshot()
         assert min(d.previous_snapshot["0"]["log_bubble_n_arr"]) == -300.0
+
+    def test_freshly_read_params_can_snapshot(self, tmp_path, no_handlers, monkeypatch):
+        """F19 — a real ``read_param`` dict must survive ``save_snapshot()``.
+
+        The registry defaults every profile array to ``np.array([])`` with
+        ``exclude_from_snapshot=False``, so this is the genuine phase-0 state.
+        Production only dodges it because phase-0 init populates the arrays
+        before the first save fires; anything that snapshots earlier (an
+        initial-condition record, an early-termination record) lands here.
+        """
+        from trinity._input import read_param
+
+        monkeypatch.chdir(tmp_path)  # read_param resolves path2output under cwd
+        param = tmp_path / "f19.param"
+        param.write_text(
+            "mCloud      1e5\nsfe         0.3\nstop_t      1e-4\nmodel_name  f19probe\n"
+        )
+        params = read_param.read_param(str(param))
+        monkeypatch.setattr(type(params), "_register_crash_handlers", lambda self: None)
+
+        assert np.asarray(params["bubble_r_arr"].value).size == 0, "expected the empty default"
+        assert params["bubble_r_arr"].exclude_from_snapshot is False
+
+        params.save_snapshot()  # F20's guard is what makes this survive
+
+        assert params.save_count == 1
 
     def test_inf_in_profile_suppresses_the_r2_warning(self, tmp_path, no_handlers, caplog):
         """CANDIDATE-BUG — an inf makes R² NaN, and ``NaN < 0.9`` is False, so
