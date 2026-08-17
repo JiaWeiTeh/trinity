@@ -38,6 +38,16 @@ def output():
     ('v2', 'pc/Myr'),
     ('t_now', 'Myr'),
     ('mCloud', 'Msun'),
+    # Momentum injection rates and forces share units; both were undocumented
+    # until the units work, so they are worth pinning.
+    ('pdot_total', 'Msun*pc/Myr^2'),
+    ('F_grav', 'Msun*pc/Myr^2'),
+    ('F_HII', 'Msun*pc/Myr^2'),
+    ('shell_grav_phi', 'pc^2/Myr^2'),
+    # These were documented as cm^-3 while stored in internal pc^-3, which made
+    # quantity() wrong by ~1e56. The unit must name what is stored.
+    ('shell_nMax', 'pc^-3'),
+    ('nCore', 'pc^-3'),
 ])
 def test_units_reports_the_internal_unit(output, key, expected):
     assert output.units(key) == expected
@@ -74,6 +84,49 @@ def test_quantity_converts_through_astropy(output):
     assert v_kms.unit == u.Unit('km/s')
     # 1 pc/Myr is about 0.978 km/s, so the numbers must shrink slightly.
     assert (v_kms.value < output.get('v2')).all()
+
+
+def test_every_documented_unit_is_parseable_by_astropy(output):
+    """A unit string astropy cannot read would make quantity() raise at runtime."""
+    import re
+
+    import astropy.units as u
+
+    from trinity._output.trinity_reader import PARAM_DOCS
+
+    unreadable = []
+    for key, doc in PARAM_DOCS.items():
+        match = re.search(r'\[([^\]]+)\]', doc or '')
+        if not match:
+            continue
+        try:
+            u.Unit(match.group(1).replace('^', '**'))
+        except Exception:
+            unreadable.append(key)
+
+    assert not unreadable, f'astropy cannot parse the units of: {unreadable}'
+
+
+def test_densities_are_documented_in_the_unit_they_are_stored_in(output):
+    """A density in internal units must not claim to be cm^-3.
+
+    TRINITY stores number densities in pc^-3. Documenting them as cm^-3 does not
+    convert anything — it just makes quantity() attach the wrong unit, off by the
+    ~1e56 between the two. Check the magnitude rather than the string. The bound is
+    deliberately loose — a shocked shell in a dense core legitimately reaches 1e9
+    cm^-3 or more — because the error being caught is 56 orders of magnitude, not
+    a factor of a few.
+    """
+    import astropy.units as u
+
+    for key in ('shell_nMax', 'shell_n0'):
+        assert output.units(key) == 'pc^-3', f'{key} should be documented in pc^-3'
+        in_cgs = output.quantity(key).to(1 / u.cm ** 3)
+        biggest = float(in_cgs.value.max())
+        assert 1e-6 < biggest < 1e15, (
+            f'{key} converts to {biggest:.3g} cm^-3, which is not a physical density — '
+            f'its documented unit probably does not match what is stored'
+        )
 
 
 def test_quantity_refuses_a_unitless_key(output):

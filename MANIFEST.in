@@ -10,12 +10,7 @@ include pyproject.toml
 # Include parameter files
 recursive-include param *.param
 
-# Include documentation source
-recursive-include docs/source *.rst *.py *.txt
-include docs/requirements.txt
-
 # Exclude directories not needed for package installation
-prune docs/build
 prune test
 
 # Exclude development and temporary files

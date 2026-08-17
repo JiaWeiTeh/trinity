@@ -1,0 +1,60 @@
+cff-version: 1.2.0
+title: "TRINITY: a feedback-driven bubble evolution code"
+message: >-
+  If you use TRINITY in published work, please cite the method paper below.
+type: software
+authors:
+  - given-names: Jia Wei
+    family-names: Teh
+    affiliation: >-
+      Institut für Theoretische Astrophysik, Zentrum für Astronomie,
+      Universität Heidelberg
+    email: jiaweiteh.astro@gmail.com
+  - given-names: Ralf S.
+    family-names: Klessen
+    affiliation: >-
+      Institut für Theoretische Astrophysik, Zentrum für Astronomie,
+      Universität Heidelberg
+  - given-names: Simon C. O.
+    family-names: Glover
+    affiliation: >-
+      Institut für Theoretische Astrophysik, Zentrum für Astronomie,
+      Universität Heidelberg
+  - given-names: Kathryn
+    family-names: Kreckel
+    affiliation: >-
+      Astronomisches Rechen-Institut, Zentrum für Astronomie,
+      Universität Heidelberg
+repository-code: "https://github.com/JiaWeiTeh/trinity"
+url: "https://jiaweiteh.github.io/trinity-web/"
+license: GPL-3.0-only
+version: 1.0.0
+keywords:
+  - astrophysics
+  - stellar feedback
+  - bubble evolution
+  - star formation
+  - molecular clouds
+  - HII regions
+
+# The paper is what should be cited, not the software record — GitHub's "Cite
+# this repository" button offers this entry first because of it.
+preferred-citation:
+  type: article
+  title: >-
+    TRINITY: A coupled model of winds, radiation, and photoionised gas in
+    molecular clouds. I. Methods and validation
+  authors:
+    - given-names: Jia Wei
+      family-names: Teh
+    - given-names: Ralf S.
+      family-names: Klessen
+    - given-names: Simon C. O.
+      family-names: Glover
+    - given-names: Kathryn
+      family-names: Kreckel
+  year: 2026
+  identifiers:
+    - type: other
+      value: "arXiv:2605.27517"
+      description: arXiv preprint

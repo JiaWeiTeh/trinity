@@ -22,7 +22,7 @@ trinity/       the package: solver, evolution phases, bubble/shell/cloud physics
 param/         .param config files (the tracked ones are worked examples)
 lib/default/   bundled defaults — SB99 SPS table + cooling tables (quickstart runs out of the box)
 paper/         scripts that regenerate published figures (see "Reproducing the figures")
-docs/          Sphinx documentation source
+docs/dev/      internal plan & audit write-ups (not user documentation)
 test/          pytest test suite
 tools/         small CLI utilities (param generation, audits, output comparisons)
 ```
@@ -99,7 +99,8 @@ python paper/methods/make_figures.py teaser     # or one figure by short name
 
 Raw simulation outputs, the full SPS/cooling libraries, and the figure
 run-sets are not committed to the repository because of their size.
-They are available on request. Please contact <jiaweiteh.astro@gmail.com>.
+They are available on request. Please get in touch — the contact address is
+on the [project site](https://jiaweiteh.github.io/trinity-web/#contact).
 
 ## Citation
 
