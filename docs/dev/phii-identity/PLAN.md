@@ -1765,6 +1765,67 @@ equation of motion offline with `shell_mass` debited by `M_cav(t)`, ΔR2 at matc
 Measure, don't guess whether 56% mass matters.
 **B11.D — thin-shell validity bound.** Document as a stated validity limit of the ODE + C3a split
 at `dR/R2 ≳ 1`; no fix proposed this batch.
+
+#### Pre-registered gates for B11.A–D — written 2026-08-18 **before** any of them was run
+
+Registered up front so the numbers cannot be graded after the fact. Each gate names its falsifier.
+A run that never reaches the phase a gate needs is **VOID**, never a confirming null.
+
+**B11.A — photon-conserving fixed point.** Formulation: let `x` be the fraction of `Qi` consumed by
+the cavity, so the shell receives `(1−x)·Qi`. A cavity Strömgren-filled at
+`n(x) = sqrt(3·x·Qi/(4πχ_e α_B R2³))` consumes exactly `x·Qi` **for any `x`** — the cavity balance
+alone is one equation in two unknowns and does not close. The shipped code closes it by fiat with
+`x = f_abs(Qi)`, i.e. the shell's absorbed fraction computed from the *undepleted* flux. The
+photon-conserving closure of the same scheme is the fixed point
+> **`x = f_abs(Qi·(1−x))`**, with `f_abs(Q)` = `shell_structure_pure` re-run with `params['Qi'] = Q`.
+- **G11.A1 — root structure.** Bisect `g(x) = f_abs(Qi·(1−x)) − x` on `x ∈ [0,1]` per driving row;
+  report every root and the shape of `g`. *Prediction:* on rows where `f_abs(Qi)` is already 1.0000
+  (29 of 33), `f_abs` is flat in `Q` near the top, so the unique root is `x = 1` — the cavity takes
+  every photon and the shell is left **neutral**, which is the degenerate outcome §Batch 11
+  pre-registered as "itself the answer". *Falsifier:* an interior root `x* < 0.999` on any driving
+  row means the fixed point is non-trivial and the degeneracy reading is wrong.
+- **G11.A2 — the ratio the PLAN asked for.** Report
+  `P_C3a_fixedpoint / P_C3a_shipped = sqrt(x* / f_abs(Qi))` per phase. *Prediction:* **≥ 1 on every
+  driving row**, because `f_abs` is non-increasing in `Q` so `x* ≥ f_abs(Qi)`. ⚠️ **This gate can
+  embarrass §6b's seam A and is registered so that it can.** Seam A's *existence* is settled (B11.0
+  CONFIRMED the double-spend), but its stated *consequence* — "a photon-conserving accounting has
+  less than `Qi` available to the cavity ⇒ `P_C3a` overstated" — predicts a ratio **< 1**. If the
+  measured ratio is ≥ 1 throughout, that clause is **wrong** and must be struck from §6b and from
+  the "upper bound" list, exactly as seam B's direction was.
+- **G11.A3 — confined-branch null.** Energy/implicit rows must give `P_HII` = 0 under both closures.
+  Any non-zero fails and invalidates the whole of B11.A.
+
+**B11.B — the boundary/drive inconsistency (re-scoped, see above).** Replay `shell_structure_pure`
+on each driving row twice: once at the shipped `params['Pb']`, once with the inner pressure set to
+that row's `P_C3a`.
+- **G11.B1.** `Δf_abs` = 0 exactly on the 29/33 driving rows where `f_abs` is already 1.0000.
+  *Falsifier of B11.0's revision:* any non-zero `Δf_abs` on those rows.
+- **G11.B2.** `ΔP_C3a ≥ 0` on **every** driving row. *Falsifier of B11.0's revision:* any row with
+  `ΔP_C3a < 0`, which would restore seam B to the "upper bound" list.
+- **G11.B3.** Report `Δ dR_ion`, `Δ f_ionised_dust` and `Δ shell_n0` as the size of the
+  inconsistency. Descriptive, no pass/fail — this is what B is actually about after the re-scope.
+
+**B11.C — mass ledger consequence.**
+- **G11.C1 — supply.** Compare the photoevaporative supply off the shell's ionised face,
+  `Ṁ_supply = 4πR2²·n_C3a·mu_convert·c_i` with the **isothermal** `c_i = sqrt(k_B·T_ion/mu_ion_shell)`
+  (stated here so it is not chosen after seeing the answer), against the `dM_cav/dt` the shipped
+  trajectory demands (central difference of the measured `M_cav(t)`). Report
+  `Ṁ_supply / Ṁ_required` per driving row. **Supply is adequate** if the ratio ≥ 1 on ≥95% of
+  driving rows; **supply-limited** otherwise. ⚠️ Adequate *rate* is not sufficiency: B11.0 showed
+  `shell_mass` already equals 100% of the run's gas, so any real supply must debit `shell_mass`.
+  Both must be reported together.
+- **G11.C2 — dynamics.** Re-integrate the momentum-phase equation of motion offline from the first
+  momentum row with the shell mass debited, `M_eff(t) = shell_mass(t) − M_cav(t)`.
+  - **G11.C2a — validity control (blocking).** The *same* integrator run with `M_eff = shell_mass`
+    must reproduce the run's own `R2(t=1.5)` to **≤2%**. If it does not, the offline EOM is not
+    faithful and **G11.C2b is VOID** — not a null, not a small effect. Reported either way.
+  - **G11.C2b.** `ΔR2` at matched `t` = 1.5, debited vs control. *Prediction:* debiting up to 56% of
+    the inertia makes the shell faster, so `ΔR2 > 0`, order 10–30%. No pass/fail — this is a
+    magnitude measurement of how much the double-book matters, which is what "measure, don't guess
+    whether 56% mass matters" asks for.
+
+**B11.D.** Documentation only; the numbers are already in B11.0 (`dR_full/R2` 0.6723–1.3078). The
+deliverable is a stated validity limit, not a gate.
 **B11.E — cleanup (trivial tier, after A–D):** the vestigial `n_IF_Str > 0` gates and the stale
 "from n_IF_Str" comments in the four phase runners; plus B11.0's **S3** (`P_HII` not recomputed on
 the momentum reconciliation snapshot, `run_momentum_phase.py:888-896`) and **S2** (the falsy-zero
