@@ -1,0 +1,34 @@
+# ⚠️ HASHES ARE SESSION-LOCAL -- do NOT use them as a baseline in a later session.
+# This container's OpenBLAS is built DYNAMIC_ARCH=1 with no thread pinning, so the
+# kernel it selects follows whichever host CPU the container lands on. Byte
+# reproducibility holds WITHIN a container instance but not across restarts: the
+# bubble-structure solver's last digits move (v2 at 1 ulp, amplified to ~1e-7
+# relative in bubble_Tavg / bubble_L1Bubble), which changes the file hash with no
+# code change at all. Measured 2026-08-17: config A hashed 17370033... before a
+# container restart and b0685d4c... after it, from IDENTICAL source.
+# => Every arm of an equivalence comparison must run in the SAME session. A
+# recorded hash proves only what it proved then; re-measure both arms to compare.
+# CUMULATIVE equivalence: all three shipped fixes (F20 §1d + F7 §1e + F6 §1f) against
+# the pre-fix tree, rather than one fix at a time.
+#
+# Method (the trustworthy one -- see PLAN.md §1f's method note for the trap):
+#   git worktree add <dir> e3b4692d      # pristine pre-ALL-fixes checkout
+#   grep -c for each fix's marker in the worktree -> 0 / 0 / 0, verified before running
+#   run each arm from its own tree, in its own process, same .param
+# `git stash` was NOT used: it is a silent no-op once a fix is committed, which
+# already invalidated one earlier attempt at a baseline arm.
+#
+# Config A (fast, phase 1a only):        mCloud 1e5 / sfe 0.3 / stop_t 1e-4
+# Config B (crosses 1a->1b, simplify-heavy): mCloud 1e5 / sfe 0.3 / stop_t 0.01
+# Config B is the informative one for F20: it populates log_bubble_T_arr on
+# 114/114 lines at up to 100 points, so simplify() runs on every snapshot --
+# config A barely exercises it.
+#
+# metadata.json was compared as a recursive leaf diff with NaN==NaN: exactly 3
+# leaves differ, all explained (2 wall-clock timestamps + final_state.sps_path,
+# which differs only because the pre arm ran from the worktree). 0 real diffs.
+config,arm,source_ref,snapshots,phases,sha256_dictionary_jsonl,metadata_real_diffs,verdict
+A_stop1e-4,pre,e3b4692d (no fixes),97,energy,17370033d8e16ac9147291720b2d6425ae4efd7828e3251d23d09db30b65e006,n/a,baseline
+A_stop1e-4,post,686fef77 (all 3 fixes),97,energy,17370033d8e16ac9147291720b2d6425ae4efd7828e3251d23d09db30b65e006,n/a,BIT-IDENTICAL
+B_stop0.01,pre,e3b4692d (no fixes),114,energy+implicit,7d6a0136f10b338ca72b1bf1344c4355454a01cc2d59563ec0bc3e8115406f13,n/a,baseline
+B_stop0.01,post,686fef77 (all 3 fixes),114,energy+implicit,7d6a0136f10b338ca72b1bf1344c4355454a01cc2d59563ec0bc3e8115406f13,0,BIT-IDENTICAL

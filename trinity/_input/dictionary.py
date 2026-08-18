@@ -41,12 +41,19 @@ Loading
 params = DescribedDict.load_snapshot(path2output, snap_id)
 mCloud = params["mCloud"].value          # rehydrated from metadata.json
 v2     = params["v2"].value              # genuine per-snapshot value
+
+Loading is read-only with respect to the run directory: loader-built dicts
+skip the crash/exit handlers, so analysing a run neither rewrites its
+``metadata.json`` nor takes over the calling process's signal handlers.
+Explicitly calling ``save_snapshot()``/``flush()`` on a loaded dict still
+writes — and still treats the target as a fresh run.
 """
 
 import atexit
 import collections.abc
 import dataclasses
 import json
+import os
 import signal
 import sys
 from pathlib import Path
@@ -212,7 +219,7 @@ class DescribedDict(dict):
     params["path2output"].value must exist and point to the output directory.
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, register_handlers: bool = True, **kwargs):
         super().__init__(*args, **kwargs)
 
         # Snapshot counters
@@ -236,8 +243,22 @@ class DescribedDict(dict):
         # pass.  Reset to 0 at the top of every snapshot build.
         self._impl_r2_logged: int = 0
 
-        # Register crash-safe handlers to flush pending snapshots on exit
-        self._register_crash_handlers()
+        # (t_now, R2) of the last snapshot actually saved, or None before the
+        # first one.  Held here rather than read back out of
+        # ``previous_snapshot`` so that it survives a flush: the buffer is
+        # emptied by every flush, which used to disarm the duplicate guard for
+        # the next save (findings F1/F2 — the guard was skipped at every
+        # snapshot_interval boundary, and after every manual/emergency flush).
+        self._last_save_key: Optional[Tuple[Any, Any]] = None
+
+        # Register crash-safe handlers to flush pending snapshots on exit.
+        # Loader-built dicts pass register_handlers=False: *reading* a run must
+        # not install an atexit hook aimed at that run's directory (it would
+        # rewrite the run's termination report, clobbering a real crash reason
+        # with the generic one) nor take over the process's SIGINT/SIGTERM
+        # handlers.  See docs/dev/dictionary-robustness/ (finding F7).
+        if register_handlers:
+            self._register_crash_handlers()
 
     def __setitem__(self, key: str, value: DescribedItem) -> None:
         """
@@ -271,6 +292,9 @@ class DescribedDict(dict):
         Does NOT cover:
         - kill -9 (SIGKILL) - cannot be caught
         - os._exit() - bypasses atexit
+
+        Not called at all for loader-built dicts (``register_handlers=False``);
+        see the class docstring and ``load_snapshot``.
         """
         import logging
         logger = logging.getLogger(__name__)
@@ -494,6 +518,10 @@ class DescribedDict(dict):
           length, with endpoints preserved.  Values come back in the
           caller's original positional order.
         * Raises ``ValueError`` if ``len(x_arr) != len(y_arr)``.
+        * Empty input returns empty output, and the R² check below is
+          skipped (there is no reconstruction to score).  This is the
+          phase-0 state, where the profile arrays are still their empty
+          registry defaults — see ``docs/dev/dictionary-robustness/``.
 
         Intended use: reduce output size for long profile arrays before
         snapshotting.
@@ -512,6 +540,16 @@ class DescribedDict(dict):
                 f"simplify(): x and y must have same length for {keyname}. "
                 f"Instead got {len(x_arr)} and {len(y_arr)}"
             )
+
+        # An empty curve has no reconstruction to score, and scoring it is
+        # fatal: _simplify_error interpolates the simplified curve back onto
+        # the original grid, and np.interp raises on an empty sample set.
+        # Returning early keeps the (empty) result flowing through to the
+        # snapshot instead of taking down the whole save — that state is the
+        # phase-0 one, where every profile array is still its empty registry
+        # default.  Diagnostics-only: a non-empty curve is unaffected.
+        if x_out.size == 0:
+            return x_out, y_out
 
         # Compute reconstruction R² for every simplify() call.  If the
         # simplified curve diverges from the original (R² < 0.9) that's
@@ -718,12 +756,17 @@ class DescribedDict(dict):
         import logging
         logger = logging.getLogger(__name__)
 
-        if self.save_count >= 1 and self.previous_snapshot:
-            last = self.previous_snapshot.get(str(self.save_count - 1), {})
+        if self._last_save_key is not None:
+            last_t_now, last_r2 = self._last_save_key
             try:
                 t_now = self["t_now"].value
                 r2 = self["R2"].value
-                if ("t_now" in last and t_now == last["t_now"]) and ("R2" in last and r2 == last["R2"]):
+                # Compared element-wise on purpose.  Tuple equality would
+                # short-circuit on element *identity*, so a repeated NaN t_now
+                # (the same float object) would compare equal and be
+                # suppressed — silently changing the separate NaN behaviour of
+                # finding F3, which is out of scope here.
+                if t_now == last_t_now and r2 == last_r2:
                     logger.debug(f"Duplicate detected in save_snapshot at t = {t_now}. Snapshot not saved.")
                     return
             except KeyError:
@@ -739,6 +782,13 @@ class DescribedDict(dict):
         # Store in the "pending" snapshot buffer
         self.previous_snapshot[str(snap_id)] = clean_dict
         self.save_count += 1
+
+        # Remember what was saved so the next call can dedupe against it even
+        # after an intervening flush has emptied the buffer (F1/F2).
+        try:
+            self._last_save_key = (self["t_now"].value, self["R2"].value)
+        except KeyError:
+            self._last_save_key = None
 
         # Calculate progress toward next flush
         pending_count = len(self.previous_snapshot)
@@ -853,13 +903,38 @@ class DescribedDict(dict):
                 f"{len(metadata) - 1} run-const keys"
             )
 
-        # Append each snapshot as one line
+        # Serialize every pending snapshot BEFORE opening the file, and append
+        # the result in one write.  A failed flush must leave the file exactly
+        # as it was: this method is retried with the *same* buffer up to four
+        # times per run — the periodic flush in save_snapshot(), main.py's
+        # explicit params.flush(), write_termination_report() and the atexit
+        # _safe_flush(), each swallowing the exception — so a partial append
+        # was re-appended once per retry, duplicating lines and shifting every
+        # later snapshot id (finding F6).
+        payload = "".join(
+            json.dumps(self.previous_snapshot[str(snap_id)], cls=NpEncoder) + "\n"
+            for snap_id in snap_ids
+        )
+
         mode = "a" if path2jsonl.exists() else "w"
-        with open(path2jsonl, mode, encoding="utf-8") as f:
-            for snap_id in snap_ids:
-                snap_data = self.previous_snapshot[str(snap_id)]
-                json_line = json.dumps(snap_data, cls=NpEncoder)
-                f.write(json_line + "\n")
+        rollback_to = path2jsonl.stat().st_size if mode == "a" else 0
+        try:
+            with open(path2jsonl, mode, encoding="utf-8") as f:
+                f.write(payload)
+        except Exception:
+            # A torn write (full disk, I/O error) is rolled back to the
+            # pre-flush length so the retries above cannot duplicate it.
+            # Deletes/truncations still succeed when writes fail for lack of
+            # space, so this is worth attempting even then.
+            try:
+                os.truncate(path2jsonl, rollback_to)
+            except OSError as trunc_err:
+                logger.error(
+                    "Could not roll back a partial flush of %s (%s); the file "
+                    "may contain a torn or duplicated line",
+                    path2jsonl, trunc_err,
+                )
+            raise
 
         logger.debug(f"Flushed {len(snap_ids)} snapshot(s) to dictionary.jsonl")
 
@@ -948,7 +1023,10 @@ class DescribedDict(dict):
             raise KeyError(f"Snapshot {sid} not found. Available: {list(snapshots.keys())[:10]}...")
 
         snap = snapshots[sid]
-        params = cls()
+        # No crash handlers: loading is a read.  A handler here would be aimed
+        # at the loaded run's own directory and would rewrite its termination
+        # report at interpreter exit (finding F7).
+        params = cls(register_handlers=False)
 
         # Put path2output back into the dictionary for downstream code that expects it
         params["path2output"] = DescribedItem(str(path2output), info="Output directory")
