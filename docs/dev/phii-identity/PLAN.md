@@ -1487,6 +1487,61 @@ docs/dev/phii-identity/data/b10_wind_profile.csv`.
 
 Artifacts: `data/b10_wind_profile.csv`, `data/b10_walltimes.csv`.
 
+### Self-consistency audit of the C3c/C3a picture — 2026-08-18 (maintainer question)
+
+**Question asked:** is the current implementation idea self-consistent throughout the code, and as
+physics? **Answer: on the confined branch, exactly; on the driving branch, no — four specific seams,
+all pushing the same direction.** Checked against source and committed/derived run data, not asserted.
+
+**Verified consistent (with the receipts):**
+1. **Normalisation/units** — the 2.2 particles-per-H-nucleus prefactor is He-correct and exact to
+   1e-12 (G8.2); the closed form is bit-reproducible from snapshots (2.2e-16, Batches 7/9).
+2. **Limits** — wind-only → Weaver (−0.743 vs −0.74, stage 3); photo-only → Spitzer/HI exact (Batch 8).
+3. **Decoupling** — the value contains no `Pb`, so the original relabelling bug class cannot recur.
+4. **Energy bookkeeping** — the energy ODE charges `press_bubble·dV` only (`energy_phase_ODEs.py:274`),
+   so photoionised work is NOT drawn from `Eb`. Correct: its energy source is the radiation field,
+   continuously resupplied — no reservoir is double-billed.
+5. **The confined branch is exactly self-consistent**, which is the deep argument for the 0.0:
+   the cavity is hot wind gas (transparent), so the shell legitimately receives the full `Qi`
+   (`shell_structure.py:120`, `phi0 = 1`); the skin sits in pressure equilibrium at `Pb`
+   (`nShell0 ∝ Pb`, `:125`); the drive is `Pb` (transmitted); and no cavity gas mass is claimed.
+   Every book balances.
+
+**Driving-branch seams (transition 76% of rows, momentum 100% — and, for weak winds, energy):**
+- **A. Photon double-spend.** The shell solve starts `phi0 = 1` — the full `Qi` arrives at the shell
+  inner edge — while C3a simultaneously spends `Qi·f_abs` on cavity recombinations. The same photons
+  are consumed twice, once per model; and `f_abs` (measured ≈1 in momentum) is itself computed from
+  the shell that saw the un-depleted flux, then fed back into `Qi_abs`. A photon-conserving
+  cavity+shell accounting has less than `Qi` available to the cavity ⇒ `P_C3a` overstated (√ of the
+  budget), on top of G9.4's dust finding.
+- **B. Boundary-pressure mismatch.** The shell structure is integrated with its inner density set by
+  `params['Pb']` (= `P_ram` in momentum) while the dynamics asserts `P_C3a ≈ 6×` that at the same
+  interface. Thickness, dust column, `f_abs` and the gravity sampling are all computed under a
+  pressure the drive says is wrong. Feedback into `P_C3a` is bounded (via `f_abs ≤ 1`) but real.
+- **C. Mass double-book — measured, and it is NOT small.** A Strömgren-filled cavity at `n_C3a`
+  holds `M_cav = (4/3)πR2³·n_C3a·mu_convert`. On B3M's momentum rows (inverting the shipped
+  `P_HII`): `M_cav/M_shell` = **0.095 at t=0.405 growing monotonically to 0.564 at t=1.5**
+  (57,400 vs 101,800 Msun). That gas can only have come off the shell, yet `shell_mass` keeps 100%
+  of the swept material — so the inertia and `F_grav` use one book while the drive premise uses the
+  other. Either the cavity is filled and the shell should be up to ~2× lighter (faster), or it is
+  supply-limited and `P_C3a` is overstated; the code currently asserts both. Grows as `R2^{3/2}`,
+  so it is worst exactly where the momentum question lives. (Derived from the b9 run:
+  `n = P_HII/((mu_convert/mu_ion_shell)·k_B·T)`, `M_cav = (4/3)πR2³·n·mu_convert` per snapshot.)
+- **D. Thin-shell strain.** `dR/R2` = 0.67–1.31 in momentum (Batch 9) — the ODE's thin-shell
+  premise and C3a's sharp cavity/shell split are both at their validity edge there.
+- Also vestigial, cosmetic + edge-behaviour only: the C3c call is gated by the OLD capped quantity
+  (`n_IF_Str > 0`) in every phase runner, and the `F_HII` docstrings still say "from n_IF_Str".
+
+**Direction and consequence.** Every seam pushes the same way: **the shipped driving-branch `P_C3a`
+is an upper bound** (A: photon budget √-overstated; B: `f_abs` from an undepleted shell; C: shell
+too heavy OR pressure too high; plus G9.4's dust, −51–75% of the budget). None of this is *extra*
+work beyond D5 — these seams ARE D5's content: a photon-conserving, mass-conserving,
+boundary-consistent cavity+shell model is exactly "what does the photoevaporative system transmit".
+**For the c3c-vs-c3a-raw key:** the confined branch is the exactly-consistent one, so the more time
+a scheme spends there, the more defensible it is; C3a-raw does not add any new driving-branch seam
+(the branch behaves identically), but it extends exposure into the weak-wind ramp window where the
+phase's own thermodynamics (a Weaver bubble) contradicts the 1e4 K cavity picture.
+
 ## 7. Decisions needed from the maintainer
 
 | id | question | blocks | state |
