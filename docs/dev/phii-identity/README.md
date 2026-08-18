@@ -252,6 +252,25 @@ inversion (both are fitted to the profile form, which never uses that volume); a
 H II Regions are Complicated", close the same wind + photoionisation system in two equations that
 have **all four seams absent by construction** — an external reference model for D5.
 
+**Update 2026-08-18 (B11.A–D) — the seams are quantified, and the "they all push the same way" story
+is down to one of them.** Gates were written and committed before any measurement ran, and two of
+them came back against the audit. **Repairing the photon double-spend RAISES the pressure, not
+lowers it**: the photon-conserving fixed point gives `P_C3a_fixedpoint/P_C3a_shipped` =
+**1.0000–1.1778** with 0 of 33 driving rows below 1, where the audit predicted below 1 — that clause
+is struck. More importantly the fixed point is **degenerate** — its unique root has the cavity
+absorbing 100% of the photons and leaving the shell **neutral**, which trinity's own shell solve
+(99.5% ionised in momentum) contradicts — so **seams A and B cannot be repaired inside C3a at all**
+without a second equation. The boundary inconsistency is large but one-signed upward (`shell_n0`
+×4.7–6.2, ionised layer thins 79–83%, dust-absorbed fraction 0.62→0.46 and 0.61→0.40 — so the dust
+sink is itself pressure-dependent and is **not** independent of that seam). On the mass ledger, the
+cavity turns out **not** to be rate-limited (photoevaporative supply is 1.32–2.13× what is required
+on 100% of rows), which closes the "supply-limited" escape while leaving the harder fact that there
+is no reservoir; and debiting the shell by the cavity mass is worth **+8.6% to +9.2% in R2** at
+t = 1.5 (against a control that reproduces the run to 0.87%) — a real effect, but below the 10–30%
+predicted, which is recorded as a miss. **Net: only the mass ledger and the dust sink bound the
+driving-branch pressure from above.** Evidence: `data/b11_photon_ledger.csv`,
+`data/b11_mass_dynamics.csv`.
+
 So both the calibration (Batch 8) and geometry (Batch 9) explanations are excluded, and what is left
 is the **pressure coupling** — **D5** in `PLAN.md` §7, a physics-intent question. 🔍 Though note:
 an extrapolation from stage 3's `Lw^−0.33` briefly suggested inversion at a physical `Lw ≈ 3.4`.
