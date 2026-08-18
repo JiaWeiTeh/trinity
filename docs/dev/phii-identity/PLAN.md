@@ -287,6 +287,24 @@ decoupling must break the ΔV path; removing the cap alone provably does not.
 
 ### C3 candidates, re-derived against this diagnosis
 
+- **Why C3a carries no cloud term at all (maintainer question, answered 2026-08-18).** The absence
+  is not an omission — it is a property of the classical solution itself. Spitzer's interior density
+  is `n_i = n_0 (R_St/R)^{3/2}`, and substituting `R_St = (3Qi/(4π χ_e α_B n_0²))^{1/3}` makes the
+  ambient density **cancel identically**: `n_i = sqrt(3Qi/(4π χ_e α_B R³))` — exactly C3a (verified
+  numerically over 3 decades of `n_0`; G8.1 pins the boundary case `n_i(R_St) = n_0`). The cloud's
+  entire influence on the *classical* interior is channelled through where the front is, and C3a
+  inherits that structure: in trinity the cloud enters through **`R2(t)`** (the ODEs it feeds —
+  swept-up `shell_mass`, gravity, the density profile all shape the trajectory C3a is evaluated on)
+  and through **`f_abs`** (the shell solve over real swept-up cloud material). The closure is
+  legitimate because ionisation equilibrium is effectively instantaneous: at the measured B3M cavity
+  densities, `t_rec = 1/(χ_e n α_B)` is 1.7e-8–6.7e-6 Myr in energy and 4.7e-4–3.5e-3 Myr in
+  momentum, i.e. 2–5 decades below the simulation time everywhere. Where a cloud term *genuinely*
+  belongs and is idealised away: (a) **mass supply** — C3a assumes photoevaporation off the shell
+  can always fill the cavity to the Strömgren density (the "Strömgren-filled" model-structure
+  question; a supply-limited region is density-bounded and pushes with less); (b) **dust**, a cloud
+  property — G9.4 measured it consuming 61–75% of `Qi_abs`, lowering the real recombination-
+  equivalent density up to 3.2× below the dust-free balance. C3b sat at the opposite pole — all
+  cloud term, no `Qi` — and was rejected for exactly that (no wind-only limit).
 - **C3a — Strömgren over the cavity.** `n_HII = sqrt(3 Q_i,abs / (4π χ_e α_B R2³))`: depends on
   `Qi` and `R2` only, **zero** dependence on `Pb`, `P_ram` or `shell_n0`. Measured offline on B3M's
   momentum rows: n = **235 → 47 cm⁻³** over R2 = 6.6 → 19 pc, i.e.
