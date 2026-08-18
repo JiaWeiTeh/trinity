@@ -284,6 +284,19 @@ sources against C3a's `(4/3)πR2³` — and one claim measurement contradicts (i
 shell-mass adjustment "near-irrelevant"; B11 measured the momentum shell 99.5% ionised and the
 adjustment worth +8.6–9.2% in R2).
 
+**Update 2026-08-18 (assessment revision 2) — the correction landed, withdrew its own headline,
+and its central open question was answered from committed data the same day.** Rev2 replaces rev1
+as the body of `LITERATURE_ASSESSMENT.md` (⛔ do-not-act banner lifted; rev1 in git history at
+`9aedeb45`; a 22-item errata table names everything that fell). Headline reversal: **the α_p knob
+is withdrawn "in full" by its author** — and closed by measurement here: TRINITY's own
+`(R2/R1)²` (its α_p-equivalent, convention identity verified to 1e-12) falls smoothly
+**44.7 → 1.0018** across the transition phase, hitting 1 to 0.2% exactly as `Eb` reaches
+`ENERGY_FLOOR` — so `α_p = 1` in momentum is what the dynamics *delivers*, and the momentum-phase
+question is entirely about `P_HII`. Rev2's "ranked by measured impact" top two are the balance
+volume (K5) and the shell-mass debit (K9) — both already measured by Batch 11. One site-count
+correction propagated back into D5 (`run_transition_phase.py:331` is reporting-only; the live 1c
+drive site is `energy_phase_ODEs.py:253`). See `PLAN.md` §7.1 and the §9 entry.
+
 Two follow-ons registered in `PLAN.md`: **B11.F**, because the layer-density harness used a
 thin-shell volume where the momentum shell is not thin — this withdraws Batch 10's "flat to 1–3%
 within each rung" claim, but every verdict survives and so do the `Lw^−0.1133` fit and `Lw ≈ 46.5`
