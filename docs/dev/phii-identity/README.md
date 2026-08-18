@@ -232,6 +232,26 @@ survivors. On hold behind it: the `phii_scheme` key, any default change, and quo
 momentum-phase `P_HII/P_ram` numbers as physics. The confined branch (energy/implicit) is exactly
 consistent and Batches 7/8 stand.
 
+**Update 2026-08-18 (later) — B11.0 done: the audit survives.** The re-verification tried to kill
+each seam and could not. **Photon double-spend CONFIRMED** — every `Qi` consumer in `trinity/` was
+enumerated and no cavity-absorption factor exists at any of them, while `f_abs` = 1.0000 on 29 of 33
+driving rows, so the claimed photon budget is ≈`2·Qi`. **Mass double-book CONFIRMED to four
+significant figures and understated** — 0.0952 → **0.5638**, reproduced by three independent routes
+(two of them agreeing to 1e-12) with the units cleared by the `units-reviewer` agent; and the shell
+already carries **100.0000%** of the gas the run has while winds inject only **54.8 Msun**, so the
+cavity mass has no source at all and the "filled cavity" limb would need 56% more gas than exists.
+**Thin-shell strain CONFIRMED** (`dR/R2` = 0.658–1.308). **Boundary-pressure mismatch REVISED** —
+the mismatch is real and sized (`P_HII/Pb` median 6.16 in momentum) but its *direction* was wrong:
+the feedback into `P_C3a` is exactly zero on 88% of driving rows and *upward* on the rest, so it is
+not one of the terms making `P_C3a` an upper bound. The hold stands and is firmer.
+Evidence: `data/b11_mass_ledger.csv`, `harness/mass_ledger_check.py`.
+Two follow-ons registered in `PLAN.md`: **B11.F**, because the layer-density harness used a
+thin-shell volume where the momentum shell is not thin — this withdraws Batch 10's "flat to 1–3%
+within each rung" claim, but every verdict survives and so do the `Lw^−0.1133` fit and `Lw ≈ 46.5`
+inversion (both are fitted to the profile form, which never uses that volume); and **B11.G**, because Geen et al., "When
+H II Regions are Complicated", close the same wind + photoionisation system in two equations that
+have **all four seams absent by construction** — an external reference model for D5.
+
 So both the calibration (Batch 8) and geometry (Batch 9) explanations are excluded, and what is left
 is the **pressure coupling** — **D5** in `PLAN.md` §7, a physics-intent question. 🔍 Though note:
 an extrapolation from stage 3's `Lw^−0.33` briefly suggested inversion at a physical `Lw ≈ 3.4`.
