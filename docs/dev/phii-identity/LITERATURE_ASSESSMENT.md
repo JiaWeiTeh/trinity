@@ -37,8 +37,17 @@ five papers, contributed by the maintainer. Its §4 items are candidate work, no
 (`alpha_p`) and §4.2 (the CEM coupled closure) are the two that bear directly on the open D5
 question in `phii-identity/PLAN.md`.
 
+> ⛔ **A CORRECTION IS INBOUND — do not act on §4 (2026-08-18).** The maintainer flagged that this
+> revision "might contain wrong information" and is preparing an updated one. Until it lands, treat
+> every §4 item as **unverified motivation, not a finding**. Nothing in the workstream's ledger
+> depends on it — see the standing rule in `PLAN.md` §0 C-0.5 — and the four PLAN.md lines that cite
+> it (1717, and Batch 12's rationale) are attribution and motivation only, so no measured result
+> moves if §4 turns out wrong.
+>
 > **Provenance and standing.** Written 2026-08-18 by an external reviewer with read-only access to
-> the tree, and handed to this workstream by the maintainer. **It is not this workstream's own
+> the tree, and handed to this workstream by the maintainer. **Retained in this folder under the
+> C-0 external-document carve-out** that `PLAN.md` §0 adds on the same date (maintainer ruling): it
+> is an input we did not author, kept verbatim, never load-bearing. **It is not this workstream's own
 > measurement**, so the ⚠️ banner applies with full force: its verification appendix (§6) is the
 > author's own, and §6 itself states that nothing requiring a TRINITY run was verified. Where its
 > claims have since been checked or contradicted by Batch 11, that is recorded in the
