@@ -2317,8 +2317,8 @@ the maintainer's call.
 | ~~K3~~ | ~~**transmit** — `P_ram + max(P_C3a − P_conf, 0)`~~ | ~~2–5 call sites~~ | **M** | ⛔ **DROPPED 2026-08-18** (maintainer). Collapses to `max(P_C3a, P_ram)` in momentum, i.e. C1 on C3a; fixes additivity (−14.1%) but not dominance |
 | **K4** | **Momentum-flux-limited** — the photoevaporative flow transmits `ρv²`, not static `n k T` | `get_phii_c3c`'s value, all phases | **U** | **Unmeasured, and the only candidate with factor-level leverage on magnitude.** Named in `c43a50e`'s own commit message as the unexplored question. No design, no gate |
 | **K5** | **Layer geometry** — balance recombination over the ionised layer `(R_i³ − R2³)`, not the cavity `R2³` | the denominator in `get_phii_c3c` | **M + S** | **Strongest external support of any row.** Four independent sources use the cavity-subtracted volume — Lancaster `eq:ionreceq2`, Geen 2019 `wind:photoequilibrium`, Geen 2022 `eqn:photoionisation_equilibrium_uniform`, **and trinity's own `shell_structure.py:243`** — so K1/K2 are internally inconsistent with `n_IF_Str`. Measured effect: momentum `P_HII/P_ram` 6.165 → 3.594 (analytic layer) → **1.545** (profile form, the trustworthy one per G9.4). Does **not** reach unity; ⚠️ the analytic-form numbers carry B11.0's S1 thin-shell bias and B11.F re-fits them |
-| **K6** | **Coupled closure** (Geen/Lancaster CEM) — solve one `n_i` and one `r_i` from recombination equilibrium **plus** wind/photoionised pressure balance at `r_w` | replaces the `max`/sum composition in all four phases with a scalar root-find | **S** | **Registered as B11.G, not run.** All four §6b seams are absent from it **by construction** — one photon budget, no cavity mass, and the pressure balance *is* the boundary condition. B11.A's degeneracy result (`x* = 1` on 33/33 rows) is the positive argument for it: C3a cannot be closed photon-conservingly *without* a second equation, which is exactly what this supplies |
-| **K7** | **`alpha_p` on `P_ram`** — a wind momentum-enhancement factor, currently ≡ 1 | `pRam` consumers; a new `.param` key | **A** | ⛔ **Pending the corrected assessment.** Hypothesis that the HII-dominated momentum phase is really a missing `α_p ≈ 5–6`. ⚠️ **Batch 12 bounds it**: at `Lw × 0.1` the momentum phase is still 100% HII-dominated at `P_HII/Pb` = 13.7–14.4, and `α_p·P_ram` is small whatever `α_p` is — so `α_p` **cannot** be the whole explanation. Also note it would raise `P_conf` too, making the branch flip harder, not softer |
+| **K6** | **Coupled closure** (Geen/Lancaster CEM) — solve one `n_i` and one `r_i` from recombination equilibrium **plus** wind/photoionised pressure balance at `r_w` | replaces the `max`/sum composition in all four phases with a scalar root-find | **S + M** | **Its two central identities are now independently verified here** (`harness/cem_closure_check.py`, 2026-08-18): the C3c momentum switch point **is** `R_ch` to 4.3e-15 over 200 random draws, and the shipped branches are the CEM's exact asymptotes with the crossover error reproducing Lancaster's table to the digit (`F_sum/F_CEM` = 1.3421, `F_max/F_CEM` = 0.6710 at `R_i = R_ch`). **Registered as B11.G, not run on trajectories.** All four §6b seams are absent from it **by construction** — one photon budget, no cavity mass, and the pressure balance *is* the boundary condition. B11.A's degeneracy result (`x* = 1` on 33/33 rows) is the positive argument for it: C3a cannot be closed photon-conservingly *without* a second equation, which is exactly what this supplies |
+| **K7** | **`alpha_p` on `P_ram`** — a wind momentum-enhancement factor, currently ≡ 1 | `pRam` consumers; a new `.param` key | **A** | ⛔ **Pending the corrected assessment.** Hypothesis that the HII-dominated momentum phase is really a missing `α_p ≈ 5–6`. ⚠️ **Batch 12 bounds it**: at `Lw × 0.1` the momentum phase is still 100% HII-dominated at `P_HII/Pb` = 13.7–14.4, and `α_p·P_ram` is small whatever `α_p` is — so `α_p` **cannot** be the whole explanation. Also note it would raise `P_conf` too, making the branch flip harder, not softer. **M-tier arithmetic added 2026-08-18**: on B11.0's fresh B3M momentum range (`P_HII/Pb` 5.091–7.156), Paper II's `α_p` = 6.20 gives **0.82–1.15 — straddling parity**, i.e. K7 at the published calibration puts B3M's momentum phase at the co-evolution crossover rather than either side of it |
 | **K8** | **Three-radius model** — `R1 < R_w ≤ R2 ≡ R_i`, with `R_w` algebraic | structural; a follow-up paper | **A** | Pending. K5/K6 are the minimal ways to get `R_w ≠ R2` without this |
 | **K9** | **Shell-mass adjustment** — `M_sh = (4π/3)R_i³(ρ̄ − ρ_i)` | the momentum equation's inertia | **M + S** | **Measured here, and the literature already does it** (Lancaster `eq:pr_spitzer_adj`, with its own "not consistent with the derivation… \[but\] can be more accurate" caveat). B11.C2: **+8.55%/+9.22%** in `R2` at nominal wind, **+0.45%/+0.97%** at `Lw × 0.1`. This is §6b seam C's fix, not a separate idea |
 
@@ -2409,6 +2409,7 @@ the rule being enforced.
 | `data/b12_lowwind_photon_ledger.csv` | `harness/photon_ledger.py` | 12 | c3c arm only |
 | `data/b12_lowwind_mass_dynamics.csv` | `harness/mass_ledger_dynamics.py` | 12 | c3c arm only |
 | `data/b11lowwind_walltimes.csv` | `harness/run_batch.py` | 12 | c3c arm timing (702 s / 205 snapshots) |
+| `data/b11g_cem_closure_check.csv` | `harness/cem_closure_check.py` | 11 (B11.G rung 0) | no run — scale-free numeric verification of the two CEM identities K6 leans on |
 
 Run dirs (not committed — regenerate with `harness/run_batch.py`):
 `outputs/phii/b0__6b55657_dirty/`, `outputs/phii/b1__386df59_dirty/`. The `_dirty` suffix reflects
@@ -2978,3 +2979,41 @@ b0 run and to `bb302e0` for every b1 run (§9 records how that was protected).
   > refinement: the geometry correction's **sign is wind-dependent**, which reconciles Batch 9's
   > scope ("raises") with its verdict ("lowers") — both were partial views of a thickness-dependent
   > sign. This is what left D5 load-bearing on measurement rather than on absence of alternatives.
+
+- **2026-08-18 (maintainer re-sent the three docs; evaluation pass — K6's central identities
+  independently verified, K7 lands at parity on fresh numbers)** — The maintainer uploaded
+  `LITERATURE_ASSESSMENT.md`, `PLAN.md` and `README.md` with "save them into the relevant docs if
+  need be; evaluate". **All three are byte-identical to HEAD (`c50aee70`; diff = 0 lines on each),**
+  so there was nothing to fold in — and, notably, the *corrected* assessment the maintainer said was
+  coming has not yet materialised as a distinct document; the ⛔ pending-correction banner stays
+  until the maintainer either sends a revision or confirms the current text stands.
+  **The evaluation's substantive output: the two claims K6 leans on are no longer author-verified
+  only.** Under C-0.5 an external document is never load-bearing, and until today the assessment's
+  §2.1/§4.2 identities — the C3c switch point being exactly Lancaster's `R_ch`, and the shipped
+  branches being the CEM's exact asymptotes — rested on its author's own SymPy. Both are now
+  re-derived in this workstream (`harness/cem_closure_check.py`, no trinity run, scale-free):
+  crossover/`R_ch` = 1 to **4.3e-15** over 200 random draws spanning ~12 decades; the two `R_ch`
+  forms agree to 2.6e-15; the asymptote ratios are 1.0007/1.0005/1.0000; and the crossover table
+  reproduces Lancaster's to the digit — `F_sum/F_CEM` = **1.3421**, `F_max/F_CEM` = **0.6710** at
+  `R_i = R_ch`, with every other cell matching. K6's tier moves S → **S + M**.
+  ⚠️ One numerics lesson recorded because the first attempt produced a false failure at 2.4e4×:
+  `brentq`'s default `xtol` is **absolute** (2e-12), and `R_ch` reaches 1e-17 in the draws, so the
+  solver "converged" with the bracket still five decades wide — while the identity itself held to
+  1.4e-16 at the same draw. Scale-free root-finds belong in log space. The committed harness says
+  this in its own comments so the mistake is not re-made.
+  **K7 arithmetic on our own numbers.** The assessment's α_p table used the stage-3-derived
+  `P_C3a/P_ram` = 3.8–7.6; B11.0's fresh B3M momentum measurement is tighter, 5.091–7.156. At
+  Paper II's `α_p` = 6.20 that gives **0.82–1.15 — straddling parity**: at the published
+  calibration, B3M's momentum phase sits *at* the co-evolution crossover, neither wind- nor
+  HII-dominated. That is the Lancaster picture arrived at from trinity's own measured range, and it
+  is also why K6 and K7 are not competitors — `R_ch ∝ α_p²ṗ²/Q0`, so α_p is a *parameter of* the
+  coupled closure, and inside K6 its effect is smooth where under the shipped C3c switch it would be
+  a hard branch flip.
+  **Where the value sits, stated for the record** (the maintainer asked): the single most valuable
+  item in the influx is **K6** — it is the only candidate that supplies the second equation B11.A
+  proved C3a is missing, it subsumes K5's four-source volume result, its asymptotes are the shipped
+  branches, and its crossover is where the shipped switch already sits. The most valuable *next
+  action* remains **B11.G on real trajectories** (cheap, offline, no source change), now de-risked
+  by rung 0. K9 (+8.6–9.2% at B3M, literature precedent) is the best cheap orthogonal correction.
+  Artifacts: `harness/cem_closure_check.py`, `data/b11g_cem_closure_check.csv`. No `trinity/`
+  source touched; ship-hold unchanged.

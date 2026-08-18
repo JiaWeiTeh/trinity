@@ -99,6 +99,29 @@ Added by Batch 11 on the day the document arrived. Nothing else in the document 
   `B3MW001` (`Lw × 0.01`) at **78.4% HII-dominated in the energy phase** (ratio 0.487–4.927). The
   claim needs the qualifier.
 
+**Independently re-verified here (✅ 2026-08-18, second pass — `harness/cem_closure_check.py`,
+`data/b11g_cem_closure_check.csv`).** The two §2.1/§4.2 claims the K6 candidate leans on had only
+the author's own SymPy behind them; under C-0.5 that is not load-bearing, so they were re-derived
+in this workstream:
+- **I1 — the C3c momentum-phase switch point IS `R_ch`.** A generic log-space root-find of
+  `P_C3a(R) = α_p·ṗ/(4πR²)` returns `R_eq⁴/R_St³` to **4.3e-15** worst-case over 200 random draws
+  spanning ~12 decades of `R_ch`; `P_C3a(R_ch)/P_w(R_ch) = 1` to **7.8e-16**; and the direct
+  `eq:Rch_def` form agrees with `R_eq⁴/R_St³` to **2.6e-15**.
+- **I2 — the CEM asymptotes and the crossover table.** `F_CEM → α_p·ṗ` at `R_w/R_ch = 1e-3`
+  (ratio 1.0007) and `→ F_Sp` at `1e3/1e4` (1.0005/1.0000); at `R_i = R_ch`,
+  `F_sum/F_CEM` = **1.3421** and `F_max/F_CEM` = **0.6710** — the document's 1.342/0.671 to the
+  digit, and every other cell of its §4.2 table reproduces (+33.7/+31.8/+20.9%, −21.7/−22.8/−8.2%).
+- ⚠️ A numerics note for future replication: the first attempt at I1 "failed" at 2.4e4× because
+  `brentq`'s default `xtol` is **absolute** (2e-12) and swallows any root below it — `R_ch` reaches
+  1e-17 in the draws. The identity held to 1.4e-16 at the very draw that "failed". Root-find
+  scale-free comparisons in log space.
+- **§4.1's arithmetic on this workstream's own fresh range:** B11.0 measured `P_HII/Pb` =
+  5.091–7.156 (median 6.165) on B3M's momentum rows — tighter than the stage-3-derived 3.8–7.6 the
+  document used. At Paper II's `α_p` = 4.66 that is 1.09–1.54; at 6.20 it is **0.82–1.15,
+  straddling parity**. So on current numbers, Paper II's calibration puts B3M's momentum phase at
+  neither wind- nor HII-dominated but *at the crossover* — which is qualitatively Lancaster's
+  co-evolution picture. Still a hypothesis (the branch-flip caveat in §4.1 stands), not a result.
+
 **Open and worth testing (🔵):** §4.1's `alpha_p` hypothesis is the document's own highest-impact
 item and §6 correctly labels it untested. Note what it cannot do: in a **weak-wind** regime
 `alpha_p·P_ram` is small whatever `alpha_p` is, so the low-wind rungs isolate the C3a question from
