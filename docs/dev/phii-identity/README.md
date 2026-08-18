@@ -245,6 +245,28 @@ the mismatch is real and sized (`P_HII/Pb` median 6.16 in momentum) but its *dir
 the feedback into `P_C3a` is exactly zero on 88% of driving rows and *upward* on the rest, so it is
 not one of the terms making `P_C3a` an upper bound. The hold stands and is firmer.
 Evidence: `data/b11_mass_ledger.csv`, `harness/mass_ledger_check.py`.
+**Update 2026-08-18 — the wind ladder in the measured data only ever goes UP.** Asked whether the
+committed data covers a low-wind regime where photoionisation must dominate — the sharpest available
+old-vs-new sanity check, because the OLD `P_HII` was an exact relabelling of the confining pressure
+(identity ≤2.9e-16, cap binding on 100% of rows) and so **could never show HII dominance at any wind
+strength**. The answer is **no, not in a usable form**: the only paired stock-vs-C3c trajectory is
+`B3M` (`Lw = 1`); the replay family is `Lw` ∈ {1, 3, 10}; every Batch 11 diagnostic is `B3M` alone.
+The low-wind material that does exist is either an offline screen on *stock* trajectories
+(`B3MW01` in `data/b5s3_*`) or a run that never reaches the driving phases (`B3MW001`,
+`run_complete = False`). Registered as **Batch 12** with gates pre-registered before the runs
+finished; both arms of `B3MW01` (`Lw × 0.1`) are in flight. See `PLAN.md` §Batch 12 for the full
+inventory and the four reasons this rung is the right check — including that it **isolates C3a from
+the `alpha_p` hypothesis**, since a weak wind is small however `alpha_p` is set.
+
+Also added: **`LITERATURE_ASSESSMENT.md`**, an external review of TRINITY's force budget against
+Lancaster Papers I/II, Geen 2019/2022 and Haid 2018, contributed by the maintainer. It carries a
+B11 cross-check section recording what this workstream verified, what the papers corroborate — most
+importantly that Lancaster `eq:ionreceq2` and Geen `wind:photoequilibrium` **both exclude the wind
+cavity from the recombination balance**, which with `shell_structure.py:243` makes three independent
+sources against C3a's `(4/3)πR2³` — and one claim measurement contradicts (its §4.4 calls the
+shell-mass adjustment "near-irrelevant"; B11 measured the momentum shell 99.5% ionised and the
+adjustment worth +8.6–9.2% in R2).
+
 Two follow-ons registered in `PLAN.md`: **B11.F**, because the layer-density harness used a
 thin-shell volume where the momentum shell is not thin — this withdraws Batch 10's "flat to 1–3%
 within each rung" claim, but every verdict survives and so do the `Lw^−0.1133` fit and `Lw ≈ 46.5`

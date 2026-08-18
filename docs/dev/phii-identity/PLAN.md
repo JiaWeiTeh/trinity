@@ -1966,6 +1966,95 @@ different decision than the one D5 was framed around: seams A and B cannot be re
 C3a-raw" but "C3a at all". **B11.G is the recommended input to that call** and is cheap. B11.F is
 housekeeping.
 
+### Batch 12 — the low-wind rung: old-vs-new where P_HII must dominate — Status: 🟡 gates registered 2026-08-18, runs in flight
+
+**Maintainer question (2026-08-18):** *"does the current data include low wind regimes where P_HII
+are sure to dominate? this helps compare the most current improved implementation against the old
+version, as a sanity check."*
+
+**Answer: no — not in a form that can carry the check.** Inventory of every committed CSV, by config:
+
+| what exists at low wind | file | why it cannot serve |
+|---|---|---|
+| `B3MW01` (`Lw × 0.1`), 4 phases, momentum 100% HII-dominated | `data/b5s3_ladder_regime.csv`, `_screen`, `_lag` | built by `c3_offline_screen.py` — an **offline screen evaluated on STOCK trajectories**. It predicts what C3c *would* give on a stock `R2(t)`; it is not a C3c-arm run, so it cannot be the "new implementation measured" |
+| `B3MW001` (`Lw × 0.01`), 78.4% HII-dominated in **energy** | `data/b7_confinement_screen.csv` | `run_complete = False`, `PARTIAL_in_progress` — reaches energy+implicit only and **never enters transition or momentum**. VOID for any driving-branch claim, per this plan's own rule |
+| `WW` (`FB_thermCoeffWind = 0.1` on `simple_cluster`) | `data/b6_ledger.csv`, `b0_trajectories.csv`, `b5_c3c_regime.csv` | present on both arms, but `b6_ledger` is a matched-`t` ΔR2/fate row, not per-row `P_HII`; and `b0`'s arm is stock-only |
+
+And the two structural gaps behind it:
+- **The only paired stock-vs-C3c full trajectory in the workstream is `data/b7_regime_trajectory.csv`,
+  and it is `B3M` only** (`Lw = 1`).
+- **The entire replay family runs strong-wind-only.** `data/b10_wind_profile.csv` covers
+  `B3M / B3MW3 / B3MW10` — i.e. `Lw` ∈ {1, 3, 10}. Every Batch 11 diagnostic
+  (`b11_mass_ledger`, `b11_photon_ledger`, `b11_mass_dynamics`) is **`B3M` alone**. The wind ladder
+  in the measured data only ever goes *up*.
+
+**Why this is the right sanity check, and not just another rung.** Four independent reasons:
+1. **It is where old and new differ maximally, by construction.** The old `P_HII` was the capped
+   Strömgren density, which Batches 0/1 measured to be an exact algebraic relabelling of the
+   confining pressure — identity to ≤2.9e-16 with the cap binding on **100% of rows in every phase**
+   of 6 configs across 4 decades of `nCore`. So the old code has `P_HII/Pb ≡ 1` and **can never show
+   photoionisation dominating at any wind strength**. The new one carries `Qi` and `R2` and should
+   dominate hardest exactly when the wind is weakest. A weak-wind rung is therefore the cleanest
+   possible discriminator between the two implementations.
+2. **The literature says the answer in advance.** Lancaster Paper I `eq:Rch_def` gives
+   `R_ch ∝ ṗ² α_p² / Q_0`, so weak wind ⇒ **small `R_ch`** ⇒ `R_w/R_ch ≫ 1` ⇒ PIR-dominated, and
+   their coupled force `F_b = α_p ṗ (1 + R_w/R_ch)^{2/3}` → `F_b,Sp`. Geen et al. reach the same
+   ordering via `C_w ∝ ṗ_w^{3/2} Q_H^{-3/4}`. So this is a regime with a **published expected
+   answer**, not just an untested corner.
+3. **It is the regime where C3a's unconfined branch should be asymptotically RIGHT.** Per
+   `LITERATURE_ASSESSMENT.md` §4.2 (verified there numerically), the CEM force tends to the pure
+   photoionised limit as `R_w/R_ch → ∞` to 0.05% — which is C3a's unconfined branch. Batch 11 found
+   the seams at `Lw = 1`, near the crossover; low wind tests whether they persist where the branch is
+   supposed to be exact.
+4. **It isolates C3a from `alpha_p`.** `LITERATURE_ASSESSMENT.md` §4.1 hypothesises that the
+   universally HII-dominated momentum phase is really a missing `α_p ≈ 5–6` on `P_ram`. At `Lw × 0.1`
+   the wind term is small *whatever* `α_p` is, so a low-wind rung cannot be explained away by it.
+   Any HII dominance measured there is a statement about C3a alone.
+
+**Runs launched 2026-08-18 (both arms, `B3MW01` = `Lw × 0.1`, `stop_t` 1.5):**
+```
+# new (C3c, this branch)
+python docs/dev/phii-identity/harness/run_batch.py --arm b11lowwind --configs B3MW01 \
+    --stop-t 1.5 --root <scratch>/runs/b11lw
+# old (pre-C3c): git worktree at fca7d88e, with the CURRENT harness copied in
+#   (fca7d88e's run_batch.py predates --root; the harness is docs/, not trinity/,
+#    so copying it does not change the physics under test)
+python docs/dev/phii-identity/harness/run_batch.py --arm b11lowwind_stock --configs B3MW01 \
+    --stop-t 1.5 --root <scratch>/runs/b11lw_stock
+```
+
+**Pre-registered gates — written before either run finished.** ⚠️ A run that does not reach the
+phase a gate needs is **VOID** for that gate, never a confirming null. `B3MW001` is the cautionary
+precedent: it looks like low-wind coverage and is not.
+
+- **G12.1 — the old identity, re-confirmed off its measured grid.** Stock arm: `P_HII/Pb` = 1 to
+  ≤1e-12 on ≥99% of rows in every phase. Batch 0 established this on 6 configs but **never at
+  `Lw × 0.1` on this cloud**, so it is a genuine out-of-sample test of the identity claim, not a
+  restatement. C3c arm: `P_HII` exactly 0.0 on confined rows, `> Pb` on driving rows.
+  *Falsifier:* any stock row off unity beyond the known stale-`Pb` handoff rows.
+- **G12.2 — does P_HII actually dominate at low wind, in a real run?** C3c arm, `frac_HII_dominated`
+  per phase. The offline screen (`data/b5s3_ladder_regime.csv`) predicts **transition 0.9118,
+  momentum 1.0000, `drive_ratio` 6.68–7.31**. That screen was evaluated on the *stock* trajectory,
+  so a C3c arm — which moves `R2` — can disagree; this is a real test of the screen as a predictor at
+  low wind, where it was only ever validated at nominal wind (Batch 5 stage 2).
+  *Pass:* measured momentum `frac ≥ 0.9`. *Informative failure:* a large miss retires the offline
+  screen as a low-wind predictor.
+- **G12.3 — are the Batch 11 seams a strong-wind artefact?** Re-run all three B11 harnesses on the
+  low-wind C3c arm and report seam C (`M_cav/M_shell`, `(M_cav+M_shell)/M_avail`), seam A (the
+  fixed-point ratio and root structure) and seam D (`dR/R2`) at matched `t`.
+  *Prediction:* **seam C is at least as bad at low wind.** `M_cav ∝ R2^{3/2}·sqrt(Qi f_abs)` and `Qi`
+  is untouched by the wind knob, while a weaker wind hands more of the drive to the HII term.
+  *Falsifier of "the seams generalise":* seam C's `M_cav/M_shell` at t = 1.5 falling below 0.2
+  (vs 0.5638 at nominal wind) would make the mass double-book regime-specific and materially weaken
+  §6b seam C.
+- **G12.4 — trajectory cost, old vs new.** ΔR2 at matched `t`, stock vs C3c, against the nominal-wind
+  range the b6 ledger recorded (7.6–20.5% over 13 configs). *Prediction:* **larger** than nominal,
+  since `P_HII` is a bigger share of the drive when the wind is weak. Magnitude only, no pass/fail.
+
+**What Batch 12 does NOT do.** It changes no `trinity/` source, and it does not test `alpha_p` — that
+is `LITERATURE_ASSESSMENT.md` §4.1's offline screen, which is a separate, cheap piece of work and
+should be run on these same trajectories once they exist.
+
 ### §6b Self-consistency audit of the C3c/C3a picture — 2026-08-18 (maintainer question) — ✅ **RE-VERIFIED by B11.0 (2026-08-18): A/C/D CONFIRMED, B REVISED, none REFUTED**
 
 > **Status of this section after B11.0.** Every claim below was re-derived adversarially against
