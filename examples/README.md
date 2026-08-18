@@ -11,8 +11,8 @@ examples/
 │   ├── powerlaw/          rho ~ r^-2
 │   └── bonnor_ebert/      Bonnor-Ebert sphere
 ├── thin_run.py          de-duplicates, sorts and thins a run before committing it
-├── export_web.sh        builds examples/web/ for the website
-└── web/                 ← derived, gitignored: everything trinity-web needs, in one folder
+├── export_web.sh        renders the notebook into the website
+└── web/                 ← derived, gitignored: mirrors trinity-web's layout
 ```
 
 `test/test_example_run.py` lives in the test suite rather than here, so `pytest` picks it up.
@@ -94,16 +94,21 @@ else — the physics, the units, the profile arrays — is exactly what TRINITY 
 
 ## Handing the notebook to the website
 
-Execute the notebook and save it with its outputs, then:
-
 ```bash
 ./examples/export_web.sh
-cp -R examples/web/. ../trinity-web/public/notebook/
+cp -R examples/web/. ../trinity-web/
 ```
 
-`examples/web/` is the single hand-off folder: the rendered `quickstart.html` and a
-downloadable copy of the notebook. It is gitignored here because it is derived — the
-published copy belongs in trinity-web, not in both repositories.
+The export runs the notebook itself before converting it, and refuses to continue if any
+cell came back empty. Converting an unexecuted notebook produces a page of code with no
+results and no figures — which looks perfectly fine until you read it.
+
+The export writes markdown, not HTML, so the website renders the notebook as one of its
+own documentation pages — the site's typography, its code blocks and copy button, its
+"on this page" rail, its KaTeX. `examples/web/` mirrors trinity-web's own layout
+(`src/docs/` for the page, `public/notebook/` for the figures and the downloadable
+`.ipynb`), so the copy above puts each file where it belongs in one command. It is
+gitignored here because it is derived — the published copy belongs in trinity-web.
 
 The run data deliberately does **not** go to the website. A visitor who downloads the
 notebook needs the `trinity` package to run it anyway, so the site links to this repository
