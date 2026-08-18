@@ -222,6 +222,16 @@ thin: a Strömgren balance assumes every absorbed ionising photon recombines, bu
 6.165 → **1.545** (1.322–1.666, *falling* with time) — still HII-dominated on every row, but by ~50%
 rather than ~500%.
 
+**Update 2026-08-18 — 🔴 SHIP-HOLD.** A self-consistency audit (`PLAN.md` §6b) found four
+driving-branch seams — photon double-spend between the cavity model and the shell solve,
+boundary-pressure mismatch at the shell inner edge, a mass double-book measured at
+`M_cav/M_shell` → 0.56 by t = 1.5 on B3M, and thin-shell strain. Maintainer ruling: these block
+further P_HII shipping and need investigation, **and the audit itself is unverified** — Batch 11
+(`PLAN.md`) starts with an adversarial re-verification of every seam before quantifying the
+survivors. On hold behind it: the `phii_scheme` key, any default change, and quoting the
+momentum-phase `P_HII/P_ram` numbers as physics. The confined branch (energy/implicit) is exactly
+consistent and Batches 7/8 stand.
+
 So both the calibration (Batch 8) and geometry (Batch 9) explanations are excluded, and what is left
 is the **pressure coupling** — **D5** in `PLAN.md` §7, a physics-intent question. 🔍 Though note:
 an extrapolation from stage 3's `Lw^−0.33` briefly suggested inversion at a physical `Lw ≈ 3.4`.

@@ -52,6 +52,16 @@ show in a default `pytest` or in CI.
 D4 granted re-baselining authority for `test_phase_boundary.py`, `test_betadelta_hybr_stress.py` and
 the `test_scheme_screen.py` fixtures conditional on G3.4's before/after table — **`test_run_smoke.py`
 is not on that list and needs its own sign-off.**
+**Status update (2026-08-18):** 🔴 **SHIP-HOLD on all further P_HII work.** The self-consistency
+audit (§6b below) found four driving-branch seams — photon double-spend, boundary-pressure mismatch,
+a mass double-book measured at `M_cav/M_shell` → 0.56, and thin-shell strain. The maintainer's
+ruling: these look like real problems that block shipping and need investigation, **and the audit
+itself must not be assumed correct** — every seam gets an adversarial re-verification before
+anything is built on it. Registered as **Batch 11**. On hold behind it: the `phii_scheme` key
+(D5: C3c-switch vs C3a-raw), any default change, and quoting the driving-branch
+`P_HII/P_ram` ≈ 6 momentum numbers as physics. The confined branch (energy/implicit) is unaffected
+— the audit found it exactly consistent, and Batches 7/8 stand.
+
 (2) **`switchon-successor/` measured `dt_switchon` in the regime C3c has now removed.** Every batch
 there ran with `P_HII == Pb` un-ramped winning the `max`, so the ramp was inert in the momentum
 equation; it now throttles `vd`. Its algebraic results (D1, D4) survive; its ablation and Weaver-N1
@@ -97,9 +107,10 @@ figures do not. Flagged in `docs/dev/DOC_STATUS.md`; that workstream owns the re
 - **Landed 2026-08-14 (`c43a50e`), ahead of Batch 6's full-12 matrix.** The one physics question
   left open is the momentum result above, which is a modelling call (accept photoionisation-dominated
   momentum as the prediction, or revisit the cavity geometry), not something another ladder settles.
-- **Next:** (a) the G3.4 before/after table + golden re-baseline (see the Status block); (b) Batch
-  6's full-12 matrix, now a post-landing validation rather than a gate; (c) hand the
-  `switchon-successor` re-run to that workstream.
+- **Next (re-ordered 2026-08-18):** (a) **Batch 11** — adversarially re-verify the §6b seams
+  (B11.0), then quantify the survivors (B11.A–D); everything else P_HII waits on it; (b) the G3.4
+  before/after table + golden re-baseline; (c) hand the `switchon-successor` re-run to that
+  workstream.
 
 ---
 
@@ -1487,7 +1498,68 @@ docs/dev/phii-identity/data/b10_wind_profile.csv`.
 
 Artifacts: `data/b10_wind_profile.csv`, `data/b10_walltimes.csv`.
 
-### Self-consistency audit of the C3c/C3a picture — 2026-08-18 (maintainer question)
+### Batch 11 — verify, then quantify, the four driving-branch seams — Status: ⬜ registered 2026-08-18, SHIP-BLOCKING
+
+**Maintainer ruling (2026-08-18):** the seams in the audit below "look like real problems that
+prevent code shipping, and we need to investigate further. Do not assume that they are correctly
+evaluated." Both halves are binding: the seams block further P_HII shipping, **and the audit's own
+claims are unverified** — they were produced in one session, from one config's runs, with no
+adversarial pass. B11.0 exists to falsify them before B11.A–D spend anything on them.
+
+**B11.0 — adversarial re-verification of the audit itself (MANDATORY FIRST; do not skip to A–D).**
+Re-derive each seam from current source and data as if trying to kill it. Known weak points of the
+original analysis, per seam:
+- **A (photon double-spend).** Claim rests on `phi0 = 1` at `shell_structure.py:120` and on no
+  upstream depletion of `Qi`. Re-check: grep every consumer of `Qi` between SPS output and the shell
+  solve — is there ANY cavity-absorption factor applied anywhere (e.g. in `update_feedback`,
+  `read_sps`, or the phase runners) that the audit missed? Also confirm the hot cavity really is
+  treated as transparent (no code path attenuates ionising flux across R1→R2).
+- **B (boundary-pressure mismatch).** Claim rests on `nShell0 ∝ params['Pb']` at
+  `shell_structure.py:125`. Re-check which `Pb` that is *at call time* in each phase runner (order
+  of assignment vs the shell call — momentum assigns `params['Pb'] = P_ram` at `:585,669,891`), and
+  whether any runner passes a drive-consistent pressure instead.
+- **C (mass double-book) — highest priority and highest risk of being wrong, because it is a
+  units-sensitive derived number.** The 0.095→0.564 table inverts the shipped `P_HII` back to
+  `n_C3a` via `(mu_convert/mu_ion_shell)·k_B·T` and converts `(4/3)πR2³·n·mu_convert` to Msun in
+  internal units. Units are this repo's declared recurring bug class: **run the `units-reviewer`
+  agent over the derivation**, cross-check `n` against the committed `n_cavity` column in
+  `data/b10_wind_profile.csv`, and sanity-check against an independent route (e.g. cavity mass from
+  `n_cgs · V_cgs · mu_convert · m_H` in cgs). Also verify `shell_mass` on those rows really is the
+  full swept cloud mass (B3M at R2 = 23 pc vs its `rCloud`; `shell_mass` barely grows — confirm why).
+- **D (thin-shell strain).** Twice-derived already (Batch 9 clamped + G9.4 replay agree); lowest
+  risk. Re-confirm `dR_full` vs `dR_ion` on a spot-check row.
+Verdict per seam: **CONFIRMED / REVISED (with the corrected number) / REFUTED**, each with the
+command or line reference that decides it. A REFUTED seam is dropped from A–D and the audit section
+is corrected in place, dated.
+
+**B11.A — photon-conserving cavity+shell accounting (offline, no solver run).** Iterate to a fixed
+point on committed/replayed trajectories: cavity consumes what its Strömgren balance claims, shell
+receives the remainder, `f_abs` recomputed via `shell_structure_pure`, `Qi_abs` updated, repeat.
+Note the possible outcome that the fixed point is degenerate or bistable (cavity consumes
+everything → neutral shell) — that outcome is itself the answer, not a failure. Gate: report
+`P_C3a_fixedpoint / P_C3a_shipped` per phase; pre-register that energy/implicit are unchanged
+(confined branch, `P_HII` = 0 either way).
+**B11.B — drive-consistent shell boundary (offline replay).** Re-run `shell_structure_pure` on
+driving rows with the inner pressure set to the drive's claim instead of `params['Pb']`; measure
+Δ`f_abs`, Δthickness, and the loop back into `P_C3a`. The replay harness pattern exists
+(`harness/layer_density_check.py`).
+**B11.C — mass ledger consequence (only if C survives B11.0).** Two sub-questions: (i) *supply* —
+can photoevaporation off the shell actually deliver `dM_cav/dt` (compare `n_C3a·c_i·4πR2²` against
+the required filling rate)? If not, the cavity is supply-limited and the driving branch overstates
+`P_C3a` for a *fifth* independent reason; (ii) *dynamics* — re-integrate the momentum-phase
+equation of motion offline with `shell_mass` debited by `M_cav(t)`, ΔR2 at matched `t` vs stock.
+Measure, don't guess whether 56% mass matters.
+**B11.D — thin-shell validity bound.** Document as a stated validity limit of the ODE + C3a split
+at `dR/R2 ≳ 1`; no fix proposed this batch.
+**B11.E — cleanup (trivial tier, after A–D):** the vestigial `n_IF_Str > 0` gates and the stale
+"from n_IF_Str" comments in the four phase runners. Any gate change must be shown bit-identical or
+is deferred.
+
+**Hold released only when:** B11.0 verdicts are in for all four seams AND A–C are quantified (or
+their seam REFUTED). Then D5's key design (`phii_scheme`, default, ramp-window handling) resumes
+with those numbers in hand.
+
+### §6b Self-consistency audit of the C3c/C3a picture — 2026-08-18 (maintainer question) — ⚠️ UNVERIFIED, B11.0 re-verifies every claim below
 
 **Question asked:** is the current implementation idea self-consistent throughout the code, and as
 physics? **Answer: on the confined branch, exactly; on the driving branch, no — four specific seams,
