@@ -50,6 +50,10 @@ REPLAY_KEYS = ("bubble_mass", "Pb", "R2", "shell_mass", "Qi", "Li", "Ln", "rShel
 # G11.A1 asks for the shape of g, not just a root, so the grid IS a deliverable.
 X_GRID = (0.0, 0.1, 0.25, 0.5, 0.75, 0.9, 0.99, 0.999)
 
+# Below this, a signed ΔP_C3a is roundoff in the sqrt, not a real sign reversal. Measured
+# worst case on B3MW01: -1.459e-16 = 0.66 ULP, on a row with Δf_abs identically 0.
+_ZERO_TOL = 1e-14
+
 FIELDS = [
     "run", "row_idx", "phase", "t", "status", "R2", "Qi", "Pb", "P_HII",
     # B11.A
@@ -253,9 +257,17 @@ def main():
           f"(any > 0 FALSIFIES B11.0's revision)")
     dp = [r["d_P_C3a_frac"] for r in drive if r.get("d_P_C3a_frac") is not None]
     if dp:
-        neg = sum(1 for x in dp if x < 0)
-        print(f"G11.B2 ΔP_C3a/P_C3a: {min(dp):+.4f}..{max(dp):+.4f}   "
-              f"rows < 0: {neg}/{len(dp)}   (any < 0 FALSIFIES B11.0's revision)")
+        # A row whose f_abs is unchanged still recomputes P_C3a through a sqrt, so it can
+        # land a few ULP either side of zero. That is roundoff, not a sign reversal, and
+        # reporting it as a falsifier trip would be wrong -- so count the two separately.
+        neg = [x for x in dp if x < -_ZERO_TOL]
+        noise = [x for x in dp if -_ZERO_TOL <= x < 0.0]
+        print(f"G11.B2 ΔP_C3a/P_C3a: {min(dp):+.6e}..{max(dp):+.6e}")
+        print(f"   rows < -{_ZERO_TOL:.0e}: {len(neg)}/{len(dp)}   "
+              f"(any FALSIFIES B11.0's revision)")
+        if noise:
+            print(f"   rows in [-{_ZERO_TOL:.0e}, 0): {len(noise)}   "
+                  f"(roundoff on unchanged f_abs, not a sign reversal)")
     print("G11.B3 size of the inconsistency (descriptive):")
     print(f"   {'phase':11s}{'n':>4}{'shell_n0 ratio':>16}{'ΔdR_ion':>11}{'dust Pb→P_C3a':>20}")
     for phase in ("transition", "momentum"):

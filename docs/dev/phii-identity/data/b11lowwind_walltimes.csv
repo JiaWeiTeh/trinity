@@ -1,0 +1,6 @@
+# generated 2026-08-18T11:03:10Z | builder run_batch.py | code 4db49583+dirty
+# arm=b11lowwind stop_t_override=1.5 (last writer)
+# run root: /tmp/claude-0/-home-user-trinity/f91a8188-fd11-5c17-87da-2d9f26a8cf04/scratchpad/runs/b11lw
+# Rows merged across concurrent streams; wall_s reflects a shared 4-core box.
+config,status,wall_s,n_snapshots
+B3MW01,ok,702.2,205

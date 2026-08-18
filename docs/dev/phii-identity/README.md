@@ -258,6 +258,23 @@ finished; both arms of `B3MW01` (`Lw × 0.1`) are in flight. See `PLAN.md` §Bat
 inventory and the four reasons this rung is the right check — including that it **isolates C3a from
 the `alpha_p` hypothesis**, since a weak wind is small however `alpha_p` is set.
 
+**Update 2026-08-18 (Batch 12 DONE) — the sanity check lands, and it is the cleanest old-vs-new
+evidence here.** Both arms of `B3MW01` (`Lw × 0.1`) ran to `t` = 1.5 in momentum. **Cut the wind by
+a decade and the old code still returns the confining pressure to 2.2e-16** — it carries no
+photoionisation information at *any* wind strength — while the new code runs **100% HII-dominated**
+in momentum at `P_HII/Pb` = **13.7–14.4** and reaches `R2` = **7.733 pc** against the old 5.722 pc,
+i.e. **+35.1%** at matched `t`, above B3M's own 20.5% and above the entire 13-config range. G12.1
+also gave the old identity its first **out-of-sample** confirmation, at a wind strength Batch 0 never
+ran. And the offline screen `c3_offline_screen.py` — previously validated only at nominal wind —
+predicted `frac_HII_dom` = 0.9118/1.0000 and the real arm measured **0.9062/1.0000**.
+⛔ **One pre-registered falsifier of mine fired.** Seam C's `M_cav/M_shell` came in at **0.1296**,
+below the 0.2 bar I set, so **the audit's 0.564 is a B3M number, not a universal one**: `M_cav ∝
+R2^{3/2}`, so the mass double-book tracks **bubble size, not the degree of HII dominance**, and the
+low-wind run only reaches 7.7 pc. Its qualitative core survives (still over-subscribed at 1.1296,
+wind supplying 0.24% of `M_cav`) and the dynamical cost falls to ~1%. Seams **A, B and D do not
+follow C** — A generalises exactly, B roughly doubles, D gets worse — so only seam C is
+regime-scoped. See `PLAN.md` §Batch 12.
+
 Also added: **`LITERATURE_ASSESSMENT.md`**, an external review of TRINITY's force budget against
 Lancaster Papers I/II, Geen 2019/2022 and Haid 2018, contributed by the maintainer. It carries a
 B11 cross-check section recording what this workstream verified, what the papers corroborate — most
