@@ -1,6 +1,6 @@
-# generated 2026-08-17T08:55:17Z | builder run_batch.py | code e265416e+dirty
+# generated 2026-08-18T09:49:59Z | builder run_batch.py | code ef624195+dirty
 # arm=b9 stop_t_override=1.5 (last writer)
-# run root: /tmp/claude-0/-home-user-trinity/7bfa3495-35e3-526b-82f0-bbfcc0f20cb8/scratchpad/runs/b9
+# run root: /tmp/claude-0/-home-user-trinity/f91a8188-fd11-5c17-87da-2d9f26a8cf04/scratchpad/runs/b9
 # Rows merged across concurrent streams; wall_s reflects a shared 4-core box.
 config,status,wall_s,n_snapshots
-B3M,skipped,,
+B3M,ok,495.9,231
