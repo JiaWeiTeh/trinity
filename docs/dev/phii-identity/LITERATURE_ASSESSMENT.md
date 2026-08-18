@@ -59,11 +59,19 @@ Added by Batch 11 on the day the document arrived. Nothing else in the document 
 - §4.7.4's "the `n_IF_Str > 0` gate is now vestigial" — same finding as B11.E.
 
 **Corroborated by the papers themselves (✅), and this matters for §6b seam C:**
-- Lancaster Paper I `eq:ionreceq2` is `(4π/3)(R_i³ − R_w³) α_B n_Hi² = Q_0` — the recombination
-  balance **excludes the wind bubble**, and the paper notes "the WBB enhances `ρ_i` relative to the
-  classical solution, due to the presence of `R_w` in the denominator". Geen et al. 2019
-  `wind:photoequilibrium` is the same statement. With `shell_structure.py:243` that makes **three
-  independent sources** against C3a's `(4/3)πR2³`.
+- **Four independent sources say the recombination balance excludes the wind cavity, and C3a is the
+  only outlier.** Lancaster Paper I `eq:ionreceq2`: `(4π/3)(R_i³ − R_w³) α_B n_Hi² = Q_0`, with the
+  paper noting "the WBB enhances `ρ_i` relative to the classical solution, due to the presence of
+  `R_w` in the denominator". Geen et al. 2019 `wind:photoequilibrium`: the same. Geen & de Koter 2022
+  `eqn:photoionisation_equilibrium_uniform`: `Q_H = (4π/3) n_i² (r_i³ − r_w³) α_B`, again the same.
+  And trinity's own `shell_structure.py:243`: `_vol_ion = R_IF**3 - rShell0**3`. `get_phii_c3c`
+  balances over `(4/3)πR2³`, i.e. over the volume all four exclude.
+- **§2.3's claim that the shell inner boundary condition matches Geen 2022 is exact.** Their
+  `eqn:PwPibalance` is `P_w = P_i ≡ (m_H/X) n_i c_i²`, integrated "beginning at `r_w`, where the
+  density `n_i` is set by the pressure balance with the wind bubble" — which is
+  `shell_structure.py:125-126` verbatim. This independently supports **B11.0's revision of §6b seam
+  B**: the shipped `nShell0 ∝ Pb` is the standard closure, so B11.B must measure the inconsistency
+  rather than "correct" the shell.
 - Lancaster Paper I `eq:pr_spitzer_adj` explicitly adopts `M_sh = 4π R_i³(ρ̄ − ρ_i)/3`, "that is, to
   subtract out the mass in ionized gas… Though this reduction is not consistent with the derivation
   of `eq:HIImomentum2`, we will see that it can be more accurate." So §4.4's proposal is one the

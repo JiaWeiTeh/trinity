@@ -1705,11 +1705,16 @@ Beyond `rCloud` only `nISM` = 1 cm⁻³ remains, contributing **1,805 Msun** out
 - **Onset is in transition, not momentum.** Over-subscription begins at the first driving row
   (t = 0.3037, ratio 1.0717), so this is not a momentum-phase-only concern.
 
-*External corroboration:* Geen et al. §4.2 write photoionisation equilibrium with a wind bubble as
-`(4π/3)·n_i²·(r_i³ − r_w³)·α_B = Q_H` — the balance volume **excludes** the wind bubble, and the
-photoionised gas lives between `r_w` and `r_i`. C3a balances over `(4/3)πR2³`, which in trinity's
-geometry is `(4/3)π r_w³` — *exactly the volume the standard treatment excludes*. So the cavity mass
-C3a implies is not merely unfunded in trinity's ledger; on the published picture it should not exist.
+*External corroboration — four sources, and C3a is the only outlier.* Geen et al. 2019
+`wind:photoequilibrium` and Geen & de Koter 2022 `eqn:photoionisation_equilibrium_uniform` both write
+`Q_H = (4π/3)·n_i²·(r_i³ − r_w³)·α_B`; Lancaster Paper I `eq:ionreceq2` writes the identical
+condition and adds that "the WBB enhances `ρ_i` … due to the presence of `R_w` in the denominator";
+and **trinity itself already does it** at `shell_structure.py:243` (`_vol_ion = R_IF**3 -
+rShell0**3`). All four exclude the wind bubble, and the photoionised gas lives between `r_w` and
+`r_i`. C3a balances over `(4/3)πR2³` — in trinity's geometry `(4/3)π r_w³`, *exactly the volume all
+four exclude*. So the cavity mass C3a implies is not merely unfunded in trinity's ledger; on the
+published picture it should not exist — and the inconsistency is **internal to trinity**, not just a
+difference from the literature. (Pointed out independently in `LITERATURE_ASSESSMENT.md` §4.3.)
 
 **D — thin-shell strain: CONFIRMED.** Spot-checked as the PLAN asked, then done over all rows.
 B3M momentum: `dR_full/R2` = **0.6723–1.3078**, `dR_ion/R2` = **0.6579–1.3076** (audit: 0.67–1.31).
