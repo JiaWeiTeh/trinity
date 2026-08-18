@@ -1,0 +1,7 @@
+# generated 2026-08-17T15:03:22Z | builder run_batch.py | code e2af4e40+dirty
+# arm=b10 stop_t_override=1.5 (last writer)
+# run root: /tmp/claude-0/-home-user-trinity/7bfa3495-35e3-526b-82f0-bbfcc0f20cb8/scratchpad/runs/b10
+# Rows merged across concurrent streams; wall_s reflects a shared 4-core box.
+config,status,wall_s,n_snapshots
+B3MW10,ok,400.2,248
+B3MW3,ok,514.4,239

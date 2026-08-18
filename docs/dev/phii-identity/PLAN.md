@@ -52,6 +52,49 @@ show in a default `pytest` or in CI.
 D4 granted re-baselining authority for `test_phase_boundary.py`, `test_betadelta_hybr_stress.py` and
 the `test_scheme_screen.py` fixtures conditional on G3.4's before/after table — **`test_run_smoke.py`
 is not on that list and needs its own sign-off.**
+**Status update (2026-08-18):** 🔴 **SHIP-HOLD on all further P_HII work.** The self-consistency
+audit (§6b below) found four driving-branch seams — photon double-spend, boundary-pressure mismatch,
+a mass double-book measured at `M_cav/M_shell` → 0.56, and thin-shell strain. The maintainer's
+ruling: these look like real problems that block shipping and need investigation, **and the audit
+itself must not be assumed correct** — every seam gets an adversarial re-verification before
+anything is built on it. Registered as **Batch 11**. On hold behind it: the `phii_scheme` key
+(D5: C3c-switch vs C3a-raw), any default change, and quoting the driving-branch
+`P_HII/P_ram` ≈ 6 momentum numbers as physics. The confined branch (energy/implicit) is unaffected
+— the audit found it exactly consistent, and Batches 7/8 stand.
+
+**B11.0 DONE (2026-08-18) — the hold stands, and it got firmer, not softer.** The adversarial
+re-verification could not kill any seam. **A CONFIRMED** (no cavity-absorption factor exists at any
+`Qi` consumer; `f_abs` = 1.0000 on 29/33 driving rows ⇒ the claimed photon budget is ≈`2·Qi`).
+**B REVISED** — the mismatch is real and sized (`P_HII/Pb` median 6.16 momentum / 4.62 transition)
+but its *direction* was wrong: the loop back into `P_C3a` is exactly zero on 88% of driving rows and
+**upward** on the rest, so B is not an upper-bound mechanism and §6b's "every seam pushes the same
+way" is corrected. **C CONFIRMED to 4 s.f. and understated** — 0.0952 → **0.5638**, reproduced by
+three independent routes (two agreeing to 1e-12), units cleared by `units-reviewer`; and the shell
+already carries **100.0000%** of the gas the run has, with winds supplying **54.8 Msun** total, so
+`M_cav` has no source and `(M_cav + M_shell)/M_avail` = **1.5638**. **D CONFIRMED** (`dR/R2`
+0.658–1.308). Evidence: `data/b11_mass_ledger.csv`, `harness/mass_ledger_check.py`.
+Two consequences beyond the seams: B11.B is re-scoped (it would have "fixed" the standard side), and
+**Geen et al.'s two-equation closure has none of the four seams by construction**, giving D5 an
+external reference model instead of a from-scratch design (B11.G). Three side-findings (S1–S4)
+correct committed Batch 9/10 numbers; see B11.0 RESULT.
+
+**B11.A–D DONE (2026-08-18) — the seams are quantified, and the "upper bound" story is down to one
+of them.** ⛔ **G11.A2 refutes §6b seam A's consequence clause**: the photon-conserving fixed point
+gives `P_C3a_fixedpoint/P_C3a_shipped` = **1.0000–1.1778 with 0 of 33 rows below 1**, where §6b
+predicted < 1 — repairing the double-spend *raises* `P_C3a`. And **G11.A1** shows the fixed point is
+**degenerate** (unique root `x = 1` on every driving row: cavity takes all photons, shell left
+neutral), so **C3a cannot be made photon-conserving at all** without a second equation. **G11.B1/B2**:
+both falsifiers of B11.0's seam-B revision failed to fire; the inconsistency is large (`shell_n0`
+×4.70/×6.17, layer thins 79–83%, dust fraction 0.620→0.455 / 0.607→0.395 — so seam B and G9.4's dust
+are not independent). **G11.C1**: the cavity is **not** rate-limited (supply/required 1.32–2.13 on
+100% of rows), which closes §6b's "supply-limited" limb while B11.0's "no reservoir" stands.
+**G11.C2**: control passes at 0.871% (2% bar), and debiting the shell by `M_cav(t)` is worth
+**+8.55%…+9.22%** in `R2` at t=1.5 — ⚠️ *below* my pre-registered 10–30%, recorded as a miss.
+**Net: §6b's "every seam pushes the same way" list loses both A and B; only seam C and G9.4's dust
+bound `P_C3a` from above.** The hold's stated release criteria are met; the release is the
+maintainer's call, and the numbers move D5's question from "C3c-switch vs C3a-raw" to "C3a at all".
+Evidence: `data/b11_photon_ledger.csv`, `data/b11_mass_dynamics.csv`.
+
 (2) **`switchon-successor/` measured `dt_switchon` in the regime C3c has now removed.** Every batch
 there ran with `P_HII == Pb` un-ramped winning the `max`, so the ramp was inert in the momentum
 equation; it now throttles `vd`. Its algebraic results (D1, D4) survive; its ablation and Weaver-N1
@@ -97,9 +140,14 @@ figures do not. Flagged in `docs/dev/DOC_STATUS.md`; that workstream owns the re
 - **Landed 2026-08-14 (`c43a50e`), ahead of Batch 6's full-12 matrix.** The one physics question
   left open is the momentum result above, which is a modelling call (accept photoionisation-dominated
   momentum as the prediction, or revisit the cavity geometry), not something another ladder settles.
-- **Next:** (a) the G3.4 before/after table + golden re-baseline (see the Status block); (b) Batch
-  6's full-12 matrix, now a post-landing validation rather than a gate; (c) hand the
-  `switchon-successor` re-run to that workstream.
+- **Next (re-ordered 2026-08-18, updated after B11.0):** (a) **Batch 11** — B11.0 ✅ done (all four
+  seams survive; B revised); next is **B11.A** (photon-conserving fixed point), **B11.B** (re-scoped:
+  measure the inconsistency, don't "fix" the shell) and **B11.C** (mass-ledger consequence — note
+  its sub-question (i) is now partly answered: there is no supply, so the supply-limited limb is the
+  only available one). Everything else P_HII still waits on it; (b) the G3.4 before/after table +
+  golden re-baseline; (c) hand the `switchon-successor` re-run to that workstream; (d) low-priority
+  but cheap: **B11.F** (re-fit Batch 9/10 on the exact layer volume) and **B11.G** (score against
+  Geen et al.'s closure).
 
 ---
 
@@ -115,6 +163,25 @@ results, verdicts, decisions, the dated log. Do **not** create sibling `FINDINGS
 other files this workstream may grow are committed artifacts (`data/*.csv`, `figures/*.png`) and
 runnable code (`harness/*`), each indexed in §8.3. The sibling `README.md` stays what it is — the
 frozen-ish evidence record; it gets a pointer here and per-visit reconciliation, nothing more.
+
+**C-0 EXTERNAL-DOCUMENT CARVE-OUT (added 2026-08-18, maintainer ruling).** The rule above was
+written against *our own* sprawl and it wrongly caught a different thing: a document we did **not**
+author. A third-party review, a paper summary, or any assessment handed to the workstream from
+outside is an **input**, in the same category as a `data/*.csv` — not a workstream note. Such a file
+may live in the workstream folder, under all of the following conditions, and a file failing any of
+them is a §0 violation and must be folded into this doc or removed:
+1. **Not authored here, and kept verbatim.** We do not rewrite its body into our voice. Corrections
+   go in a clearly separated section, never by editing its claims in place. (If we would need to
+   rewrite it, it is our note and §0 applies — fold it in.)
+2. **Provenance block** naming the author, the date, and its standing, directly under the Status
+   line, stating explicitly that it is not this workstream's own measurement.
+3. **A cross-check section** at the top separating what we independently verified, what the primary
+   sources corroborate, and what our measurements contradict — written by us, dated.
+4. **Indexed in §8.3** like any other artifact.
+5. **Never load-bearing.** No §8 ledger verdict and no gate may cite it as evidence. It can motivate
+   work and supply references; the evidence must be re-derived here. Cite it for attribution only.
+
+Currently exercised by exactly one file: `LITERATURE_ASSESSMENT.md`.
 
 **Self-update protocol.** Every visit, in order:
 1. Re-verify the §2 line references and §4 param paths against current source; fix drift in place.
@@ -287,6 +354,24 @@ decoupling must break the ΔV path; removing the cap alone provably does not.
 
 ### C3 candidates, re-derived against this diagnosis
 
+- **Why C3a carries no cloud term at all (maintainer question, answered 2026-08-18).** The absence
+  is not an omission — it is a property of the classical solution itself. Spitzer's interior density
+  is `n_i = n_0 (R_St/R)^{3/2}`, and substituting `R_St = (3Qi/(4π χ_e α_B n_0²))^{1/3}` makes the
+  ambient density **cancel identically**: `n_i = sqrt(3Qi/(4π χ_e α_B R³))` — exactly C3a (verified
+  numerically over 3 decades of `n_0`; G8.1 pins the boundary case `n_i(R_St) = n_0`). The cloud's
+  entire influence on the *classical* interior is channelled through where the front is, and C3a
+  inherits that structure: in trinity the cloud enters through **`R2(t)`** (the ODEs it feeds —
+  swept-up `shell_mass`, gravity, the density profile all shape the trajectory C3a is evaluated on)
+  and through **`f_abs`** (the shell solve over real swept-up cloud material). The closure is
+  legitimate because ionisation equilibrium is effectively instantaneous: at the measured B3M cavity
+  densities, `t_rec = 1/(χ_e n α_B)` is 1.7e-8–6.7e-6 Myr in energy and 4.7e-4–3.5e-3 Myr in
+  momentum, i.e. 2–5 decades below the simulation time everywhere. Where a cloud term *genuinely*
+  belongs and is idealised away: (a) **mass supply** — C3a assumes photoevaporation off the shell
+  can always fill the cavity to the Strömgren density (the "Strömgren-filled" model-structure
+  question; a supply-limited region is density-bounded and pushes with less); (b) **dust**, a cloud
+  property — G9.4 measured it consuming 61–75% of `Qi_abs`, lowering the real recombination-
+  equivalent density up to 3.2× below the dust-free balance. C3b sat at the opposite pole — all
+  cloud term, no `Qi` — and was rejected for exactly that (no wind-only limit).
 - **C3a — Strömgren over the cavity.** `n_HII = sqrt(3 Q_i,abs / (4π χ_e α_B R2³))`: depends on
   `Qi` and `R2` only, **zero** dependence on `Pb`, `P_ram` or `shell_n0`. Measured offline on B3M's
   momentum rows: n = **235 → 47 cm⁻³** over R2 = 6.6 → 19 pc, i.e.
@@ -1135,6 +1220,1072 @@ normalisation is a dead end. What remains open is what Batch 5 stage 3 already i
 Both halves of §3's limiting-case obligation on C3 are now discharged: wind-only → Weaver-like
 (Batch 5 stage 3, exponent −0.743 vs −0.74) and photo-only → Spitzer-like (here, exact).
 
+### Batch 9 — the geometry question — Status: 🟡 **G9.2 FALSIFIED, G9.3 discharged (2026-08-17)**
+
+> ⛔ **THE SCOPING HEADLINE BELOW WAS WRONG AND IS RETRACTED.** The scope (2026-08-16) concluded
+> "the geometry correction is strictly one-signed — it makes `P_HII` larger, never smaller — so
+> geometry cannot be the escape hatch for the HII-dominated momentum phase." That was measured on
+> energy/implicit/transition rows only, with momentum flagged as uncovered (G9.3). **The B3M
+> momentum run (2026-08-17) falsifies it in the momentum phase**: `ratio > 1` on **0 of 34**
+> momentum rows (0.505–0.705), because the shell there is **thick** (`dR/R2` = 0.670–1.308, i.e.
+> past the `dR = R2/3` break-even where the layer volume exceeds the cavity volume). Geometry
+> *lowers* `P_HII` in momentum by 0.51–0.71×. The surviving part of the conclusion is weaker and
+> stated in the verdict below. Read the verdict, not the scope.
+
+**Scope as originally written (2026-08-16), kept for the record.** The measurement was a screen over
+*already-committed* Batch 7 run output (no new runs), written to motivate and bound the work.
+
+**The question.** C3a takes the density that balances recombination over the **whole cavity**,
+`n_C3a = sqrt(3 Qi_abs / (4 pi chi_e alpha_B R2^3))`. But trinity's own shell solve puts the
+photoionised gas in a **thin layer at the inner edge of the shell** (`shell_structure.py` integrates
+`nShell_arr_ion(r)` up to `shell_ion_idx`); the cavity interior holds hot/wind gas, not photoionised
+gas. And `Qi_abs = Qi * shell_fAbsorbedIon` is the photon budget **absorbed in the shell**. So C3a
+takes the photon budget of the layer and spreads it over the volume of the cavity. Those are
+different volumes holding different gas.
+
+For a layer of thickness `dR` at `R2`, balancing over `4 pi R2^2 dR` instead of `(4/3) pi R2^3`:
+
+```
+n_layer / n_cavity  =  sqrt( R2 / (3 dR) )        > 1  for any  dR < R2/3
+```
+
+and `P` is linear in `n`, so that is also the pressure ratio.
+
+**Measured (`data/b9_geometry_scope.csv`, `harness/geometry_screen.py`, 1085 rows, 9 configs):**
+
+| | energy | implicit | transition |
+|---|---|---|---|
+| `dR/R2` min | 5.7e-06 … 5.5e-04 | 6.2e-05 … 6.9e-02 | 3.1e-03 |
+| ratio median | 6.7 … 100.7 | 1.75 … 40.9 | 10.4 |
+| ratio max | 24.7 … 240.8 | 2.21 … 73.1 | 10.4 |
+
+**The correction is strictly one-signed: `ratio > 1` on 1.0000 of all rows**, in every phase of
+every config, median 1.75–100.7. **So making C3a's geometry agree with trinity's own shell solution
+makes `P_HII` LARGER, by one to two orders of magnitude — never smaller.**
+
+**This reframes the open momentum question.** "Does the momentum-phase cavity really stay
+Strömgren-filled?" is *not* the escape hatch for the universally HII-dominated momentum phase — the
+alternative geometry deepens the dominance. C3a is best read as a **conservative lower bound** on the
+photoionised pressure, which means the resolution must come from the **pressure coupling**, exactly
+as `c43a50e`'s own commit message flagged: *"a photoevaporative flow does not drive at n k T of the
+whole region, which is unexplored."* That is now the load-bearing unknown, and it is a **D-question**
+(D5 below), not a measurement.
+
+⚠️ **Correction made while scoping, recorded because it was reasoned from before being checked.**
+From a single last-row snapshot per config I read `shell_fAbsorbedIon = 1.000` everywhere and
+inferred "no ionising photon is left to maintain a cavity H II region, in any config". **Across full
+trajectories that is false**: `frac_fabs_ge_099` runs from **0.000** (B3MW001/F1LO/LDLS energy)
+to 1.000, so escaping fractions are substantial in the low-density and weak-wind configs. It does
+not change the volume-mismatch result above (escaping photons ionise nothing, and `Qi_abs` already
+carries `f_abs`), but the "all photons absorbed in the shell" premise is withdrawn.
+
+**Pre-registered gates, none discharged.**
+
+- **G9.1 — photon bookkeeping.** Per phase per config, report `frac_fabs_ge_099` and the escaping
+  fraction. No pass/fail: this is the input inventory G9.4 needs, and the scoping run shows it is
+  strongly config-dependent, so it must be measured rather than assumed.
+- **G9.2 — the correction is one-signed.** `n_layer/n_cavity > 1` on every row. **Screened at
+  1.0000 on 1085 rows (energy/implicit/transition)**; registered so momentum can falsify it.
+  FALSIFIED IF any row in any phase returns ≤ 1, which would mean a geometry correction that
+  *lowers* `P_HII` exists and the reframing above is wrong.
+- **G9.3 — momentum coverage (the gap that matters).** ⚠️ **The scoping run does not cover the
+  momentum phase at all** — Batch 7's configs never reached it, and B3M is the only config in the
+  matrix that does. No conclusion about momentum geometry may be drawn until G9.2 is measured on
+  momentum rows. This is the one thing that needs a run, and it needs exactly one.
+- **G9.4 — the layer model, computed not scaled.** The ratios above come from the analytic volume
+  scaling. Before any of this informs a code change, recompute the layer density through the same
+  shell machinery (`nShell_arr_ion`, `shell_ion_idx`) rather than from `sqrt(R2/3dR)`, and confirm
+  the two agree to within a stated tolerance. FALSIFIED IF they disagree by more than 2×, which
+  would mean the thin-layer scaling is not the right idealisation of trinity's own solve.
+
+**Explicitly out of scope.** This does not propose changing C3a's geometry. The measurement's
+purpose is the opposite — to show that the geometry lever moves `P_HII` the wrong way, so effort
+should go to D5 instead of to a volume refactor.
+
+---
+
+**VERDICT (2026-08-17) — G9.2 FALSIFIED in momentum; G9.3 discharged. The mechanism is shell
+thickness, and it breaks the scope's one-signedness claim exactly where the open question lives.**
+
+One B3M run at `stop_t` 1.5 (`--arm b9`, code `2fa8cc9c`, clean tree), 231 rows, all four phases,
+`R2_end` = 23.253 — reproducing the Batch 0 / Batch 5 stage 2 B3M trajectory (231 snapshots,
+`R2_end` 23.25), so provenance is anchored.
+
+| phase | rows | `dR/R2` | ratio `n_layer/n_cavity` | frac ratio > 1 |
+|---|---|---|---|---|
+| energy | 87 | 0.000 … 0.002 | 11.78 … 128.87 | **1.0000** |
+| implicit | 68 | 0.002 … 0.006 | 7.72 … 11.83 | **1.0000** |
+| transition | 42 | 0.007 … **0.668** | 0.707 … 6.853 | **0.3810** |
+| momentum | 34 | **0.670 … 1.308** | **0.505 … 0.705** | **0.0000** |
+
+**Mechanism.** The ratio is `sqrt(R2/(3 dR))`, so it crosses 1 at `dR = R2/3`. The shell is thin
+early (`dR/R2` ~ 1e-3) and **thick** in momentum (`dR/R2` ≥ 0.67, exceeding 1 by late times) — past
+break-even the ionised-layer volume `4 pi R2^2 dR` *exceeds* the cavity volume `(4/3) pi R2^3`, so
+the layer density is **lower** than C3a's cavity density. The crossover happens **inside the
+transition phase** (`dR/R2` runs 0.007 → 0.668 within those 42 rows), which is why transition comes
+out mixed at 38.1%. So the correction is one-signed *per phase*, in opposite directions, not globally.
+
+**What survives, and what does not.**
+
+- ⛔ **Retracted:** "geometry deepens the HII dominance, so it cannot be the escape hatch." False in
+  momentum. Geometry *softens* it there, by 0.51–0.71×.
+- ✅ **Survives, and is the useful result:** the correction **does not flip the regime**. Measured on
+  the same rows, `P_HII/P_ram` has median **6.165** (range 5.083–7.161); layer-corrected it is median
+  **3.594** (range 3.584–3.614), and **34 of 34 momentum rows remain HII-dominated**. So a geometry
+  fix alone cannot produce the wind-dominated momentum branch Lancaster's work implies — it removes
+  about 40% of the excess and leaves a factor ~3.6.
+- 🔍 **Unregistered observation worth keeping:** the layer-corrected ratio is nearly **constant in
+  time** (3.584 → 3.614 over t = 0.405 → 1.5) while the uncorrected one *climbs* 5.08 → 7.16. The
+  cavity form's growing dominance is an artifact of holding `dR` fixed in the geometry while `R2`
+  grows; the layer form predicts a time-independent dominance factor. Flagged, not concluded — one
+  config, and `dR/R2` crossing 1 needs its own physical scrutiny (a shell thicker than its own
+  radius is at the edge of the thin-shell idealisation both C3a and the ODEs assume).
+
+**Consequence for D5.** D5 remains the live question, but for a *weaker* reason than the scope
+claimed: not "geometry pushes the wrong way" but "geometry moves the right way and is not enough."
+The `Lw ~ 260` inversion requirement from Batch 5 stage 3 becomes roughly `Lw ~ 260 x 0.6^(1/0.33)`
+if the layer form is adopted — still far outside physical wind strengths. Pressure coupling is still
+where the resolution has to come from.
+
+**G9.1 (inventory, no pass/fail).** `frac_fabs_ge_099` on B3M: energy 0.241, implicit 1.000,
+transition 1.000, momentum 0.765 — so escape is significant in the energy phase and in ~24% of
+momentum rows. Strongly phase- and config-dependent, as the scope's correction already noted.
+
+**G9.4 — CLOSED 2026-08-17: FALSIFIED at 3.17× against a 2× bar.**
+`harness/layer_density_check.py` replays the shipped `shell_structure_pure` on each snapshot's own
+state, so `shell_ion_idx` and `shell_r_arr` share an index space and the arrays are the original
+un-downsampled ones. Artifact `data/b9_layer_density.csv` (B3M, stride 2, 116 rows replayed, 0
+failures).
+
+| phase | n | `dR_ion/R2` | ion frac of shell | ratio (analytic) | ratio (profile) | **rms/analytic** | recomb/`Qi_abs` |
+|---|---|---|---|---|---|---|---|
+| energy | 44 | 0.0004 | 1.0000 | 31.99 | 15.43 | **0.496** | 0.247 |
+| implicit | 34 | 0.0025 | 0.8741 | 11.50 | 10.27 | **0.906** | 0.823 |
+| transition | 21 | 0.5015 | 0.9653 | 0.815 | 0.402 | **0.493** | 0.385 |
+| momentum | 17 | 0.9751 | 0.9954 | 0.585 | 0.251 | **0.429** | 0.393 |
+
+Range 0.315–0.939, worst disagreement **3.171× > 2×** ⇒ **FALSIFIED**. The analytic thin-layer
+Strömgren scaling is *not* a valid stand-in for the real profile; it **overestimates** the
+recombination-equivalent density everywhere, by up to 3.2×.
+
+**Mechanism, and it is exact where the layer is thin.** A Strömgren balance assumes every absorbed
+ionising photon is consumed by *recombination*; the real shell also absorbs them on **dust**. The
+measured recombination integral takes only `recomb/Qi_abs` = 0.247 / 0.823 / 0.385 / 0.393 of the
+budget, and density scales as its square root:
+
+| | `sqrt(recomb/Qi_abs)` | measured `rms/analytic` |
+|---|---|---|
+| energy | 0.497 | **0.496** |
+| implicit | 0.907 | **0.906** |
+
+— agreement to three decimals, so in the thin-layer phases the entire G9.4 gap **is** the dust
+sink. In transition/momentum (0.620 vs 0.493, 0.627 vs 0.429) a second factor appears: the layer is
+thick, so the `r^2` weighting across a real density gradient no longer reduces to a single uniform
+density. Both are reasons the idealisation fails, not defects in the code.
+
+⚠️ **[B11.0 2026-08-18 — the layer volume itself is a thin-shell approximation, and momentum is not
+thin.]** `layer_density_check.py:140` uses `V_lay = 4πR2²·dR_ion` where the exact spherical shell is
+`(4/3)π((R2+dR)³ − R2³)`; the ratio is `1 + x + x²/3` with `x = dR_ion/R2 ≈ 0.98` in momentum, so
+**V_exact/V_thin = 1.802–2.878 (median 2.292)** and every quantity built on `n_layer_analytic` is
+overstated by **√that = 1.342–1.696**. On the exact volume the momentum `ratio_analytic` becomes
+**0.2976–0.5302** (from 0.5049–0.7118) — G9.2's verdict is unchanged and *strengthened*, but the
+numbers below are the thin-form ones. Re-fit registered as B11.F. Checked, not assumed: Batch 10's
+`Lw^−0.1133` exponent and `Lw ≈ 46.5` inversion were fitted to `pdrive_profile`, which does **not**
+use `V_lay`, so they are unaffected — the bias reaches only `n_layer_analytic`, `ratio_analytic`,
+`pdrive_analytic` and `rms_over_analytic`.
+
+**G9.2's momentum falsification SURVIVES the recheck**, which was the live worry. With the *true*
+ionised thickness: momentum ratio **0.505–0.712, frac > 1 = 0.0000** — statistically identical to the
+0.505–0.705 reported from the clamped value. The reason is now measured rather than assumed: the
+shell is **99.54%** ionised in momentum, so `dR_full ≈ dR_ion` there (and 87.4% in implicit, a 13%
+`dR` error worth ~7% in the ratio). ⚠️ **The Batch 9 screen's `dR` was nevertheless the full shell
+thickness, not the ionised layer** — `shell_ion_idx` (up to 26848) indexes the original arrays while
+the snapshot's `shell_r_arr` is downsampled to ≤100 points, so the index clamped on 100% of rows.
+Benign here, but `geometry_screen.py` now says so in its docstring and reports the metric as
+`frac_index_clamped` rather than the misleading `frac_whole_shell_ionised`.
+
+**⚠️ This supersedes Batch 9's headline number, and moves it a long way.** Batch 9 reported the
+corrected momentum dominance as `P_HII/P_ram` ≈ **3.594** using the analytic layer form. Using the
+**profile** form — the one G9.4 shows is the trustworthy one — the same 17 momentum rows give
+**median 1.545, range 1.322–1.666**, and it **falls monotonically with time** (1.666 at t=0.407 →
+1.322 at t=1.500). Still HII-dominated on 17/17 rows, so no fate or regime claim changes; but the
+excess over unity is ~50%, not ~260%.
+
+**🔍 Lead worth testing, flagged as an extrapolation and NOT a result.** Batch 5 stage 3 measured
+`P_C3a/P_ram ∝ Lw^−0.33` and concluded inversion needs `Lw ≈ 260`. Applying that exponent to the
+⛔ **TESTED AND DEAD — Batch 10 falsified this lead (2026-08-17).** The profile form does *not*
+inherit the cavity form's `Lw^−0.33`: measured on `B3MW3`/`B3MW10` it falls only as `Lw^−0.1133`,
+because stronger winds thin the shell (`dR_ion/R2 ∝ Lw^−0.3375`) and that *raises* the geometry
+correction. Revised inversion `Lw` ≈ **46.5**, still unphysical. The paragraph below is kept as the
+registered reasoning that got tested; read §Batch 10 for the outcome.
+profile-corrected 1.545 gives inversion at **`Lw ≈ 3.4`** — an entirely physical wind strength, and
+`B3MW3` / `B3MW10` already exist in the matrix (`run_batch.py` `b3mladder`). If that survives a real
+test it would **resolve the Lancaster tension** rather than deepen it. Caveats that keep this a lead:
+one config; the −0.33 exponent was fitted to the *uncorrected* form and may not carry; and the
+profile form is a diagnostic, not a shipped prescription. **The honest next measurement is the
+profile-based ratio on the existing `B3MW3`/`B3MW10` rungs, not a code change.**
+
+**Reproduce.** `python docs/dev/phii-identity/harness/run_batch.py --arm b9 --configs B3M
+--stop-t 1.5 --root <scratch>/runs/b9`, then
+`python docs/dev/phii-identity/harness/geometry_screen.py <scratch>/runs/b9/B3M/ <scratch>/runs/b7/*/
+--out docs/dev/phii-identity/data/b9_geometry_scope.csv`.
+
+⚠️ **Wall time is not in `data/b9_walltimes.csv`.** `run_batch.py` crashed on
+`root.relative_to(REPO)` *after* the run finished, because `--root` pointed outside the repo — the
+runs survived, the CSV did not, and the re-invocation that wrote it recorded `status=skipped` with
+blank timing. The bug is fixed in this commit. Wall time derived from launch/last-snapshot mtimes:
+**~590 s (9.8 min)**, consistent with Batch 0's 682 s for the same config.
+
+Artifacts: `data/b9_geometry_scope.csv` (all 4 phases, 10 configs), `harness/geometry_screen.py`,
+`data/b9_layer_density.csv` + `harness/layer_density_check.py` (G9.4),
+`data/b9_walltimes.csv` (timing lost, see above).
+
+**G9.4 reproduce:** `python docs/dev/phii-identity/harness/layer_density_check.py
+<scratch>/runs/b9/B3M/ --stride 2 --out docs/dev/phii-identity/data/b9_layer_density.csv`
+(~2 s — it replays the shell solve, it does not integrate the ODEs).
+
+### Batch 10 — does the profile form invert on the strong-wind rungs? — Status: ⬜
+
+**Registered 2026-08-17 BEFORE either run of this batch started. Nothing below was written or
+edited after results existed.** Point predictions are stated to 4 dp so they cannot be
+retro-fitted.
+
+Motivation. Batch 9 + G9.4 measured the momentum-phase drive ratio on B3M (`Lw` = 1) under the
+**profile form** — the ionised-layer volume with the real dust-depleted recombination — at
+**median 1.545** (1.322–1.666), against the shipped cavity form's 6.165. Stage 3 independently
+measured `P_C3a/P_ram ∝ Lw^−0.33` on the `B3MW01/1/3/10` ladder. Composing the two puts the
+wind/photoionisation crossover at **`Lw` = 3.74**, i.e. *inside* the ladder that already exists,
+where stage 3's own conclusion was that inversion needs `Lw ≈ 260`. If that holds, the
+wind-dominated momentum branch Lancaster's coevolution work implies is **reachable**, and D5 stops
+being the only route out.
+
+This is the measurement that promotes the Batch 9 lead to a result or kills it.
+
+**What is being tested, stated precisely.** The profile-based ratio is a **diagnostic**, not shipped
+physics. A crossover here would mean *a layer+dust-corrected model* inverts; it would **not** mean
+trinity's momentum phase inverts as shipped. The shipped cavity form is expected to stay
+HII-dominated on both rungs (G10.3 is the control for exactly that).
+
+| gate | prediction | bar |
+|---|---|---|
+| **G10.1** `B3MW3` profile median | `1.545 × 3^−0.33` = **1.0752** | in **[0.85, 1.35]** |
+| **G10.2** `B3MW10` profile median | `1.545 × 10^−0.33` = **0.7227** | **< 1.0**, and in **[0.55, 0.95]** |
+| **G10.3** control: shipped cavity form | HII-dominated on 100% of momentum rows, both rungs | matches stage 3 |
+| **G10.4** monotonicity | profile median falls with `Lw`: B3M > B3MW3 > B3MW10 | strict |
+
+- **G10.2 is the falsifiable one. FALSIFIED IF `B3MW10`'s profile median ≥ 1.0** — that would mean
+  stage 3's `Lw^−0.33` does not carry to the profile form, the `Lw` = 3.74 crossover estimate is
+  **void**, and Batch 9's lead is withdrawn. I expect this to be the likeliest failure mode, because
+  the exponent was fitted to the *cavity* form and the layer form's `dR(Lw)` dependence is unmeasured
+  — stronger winds may thin the shell, which would push the ratio back up.
+- **VOID rule (§3c stage-3 lesson).** If a run terminates before entering the momentum phase, its
+  row is **VOID**, never a confirming null. Both rungs reached momentum in stage 3, so a failure to
+  do so is itself reportable.
+- **G10.5 — `dR/R2` inventory.** Report the momentum-phase `dR_ion/R2` per rung. B3M sits at 0.975,
+  right at the thin-shell idealisation's limit; if the strong-wind rungs sit far from it the
+  comparison across rungs is not like-for-like and must be said so.
+
+Artifacts: `data/b10_wind_profile.csv`, reusing `harness/layer_density_check.py` unchanged.
+
+---
+
+**VERDICT (2026-08-17) — G10.2 FALSIFIED. The `Lw` = 3.74 crossover is void, and the registered
+failure mechanism is confirmed quantitatively.** Both rungs ran clean to `stop_t` 1.5 and both
+reached momentum (`B3MW3` 239 rows / 514 s, `B3MW10` 248 rows / 400 s). Their energy row counts,
+**96 and 105**, reproduce stage 3's recorded 96/105 for these rungs exactly, so provenance is
+anchored to the earlier ladder.
+
+| run | `Lw` | `dR_ion/R2` | ratio (analytic) | frac ratio>1 | ratio (profile) | `pdrive_cavity` | **`pdrive_profile`** |
+|---|---|---|---|---|---|---|---|
+| B3M | 1 | 0.9751 | 0.5847 | 0.0000 | 0.2506 | 6.1646 | **1.5451** |
+| B3MW3 | 3 | 0.7370 | 0.6806 | 0.0000 | 0.3313 | 4.0485 | **1.3412** |
+| B3MW10 | 10 | 0.4483 | 0.8785 | **0.1667** | 0.4512 | 2.4773 | **1.1902** |
+
+| gate | predicted | measured | verdict |
+|---|---|---|---|
+| G10.1 `B3MW3` in [0.85, 1.35] | 1.0752 | **1.3412** | ✅ PASS — *by 0.0088*, and 25% above the point prediction |
+| G10.2 `B3MW10` < 1.0, in [0.55, 0.95] | 0.7227 | **1.1902** | ❌ **FALSIFIED** |
+| G10.3 control: cavity form HII-dominated | 100% | **1.0000 both rungs** | ✅ PASS — matches stage 3 |
+| G10.4 monotonic in `Lw` | strict | 1.5451 > 1.3412 > 1.1902 | ✅ PASS |
+| G10.5 `dR_ion/R2` like-for-like? | — | 0.9751 / 0.7370 / 0.4483 | ⚠️ **NOT like-for-like** |
+
+**The pre-registered failure mode is exactly what happened.** G10.2 registered: *"the exponent was
+fitted to the cavity form and the layer form's `dR(Lw)` dependence is unmeasured — stronger winds may
+thin the shell, which would push the ratio back up."* Measured power laws in `Lw` (1 → 10):
+
+```
+pdrive_cavity  ∝ Lw^-0.3959      (stage 3 measured -0.33 on this ladder)
+dR_ion/R2      ∝ Lw^-0.3375      <- stronger winds DO thin the shell, ~ Lw^-1/3
+sqrt(R2/3 dR)  ∝ Lw^+0.169       <- so the geometry correction RISES with wind
+pdrive_profile ∝ Lw^-0.1133      <- net: the correction cancels ~43% of the cavity decline
+```
+
+So the layer+dust correction **flattens the wind dependence** rather than inheriting it. My Batch 9
+extrapolation assumed the profile form would carry the cavity form's −0.33; it carries −0.113.
+
+**Revised crossover, and it kills the lead.** Inversion (`ratio` = 1) on this ladder:
+
+| form | inversion at |
+|---|---|
+| cavity (shipped) | `Lw` ≈ **99** |
+| profile (corrected) | `Lw` ≈ **46.5** |
+| ~~Batch 9 extrapolation~~ | ~~3.74~~ **void** |
+
+The correction helps by ~2×, not the ~26× I projected. **`Lw` ≈ 46 is still unphysical**, so the
+wind-dominated momentum branch is **not** reachable through the geometry/dust correction, and **D5
+(pressure coupling) remains the live route** — the conclusion Batch 9's lead had put in doubt.
+⚠️ Note my cavity exponent (−0.3959) is steeper than stage 3's (−0.33), so my cavity inversion
+estimate (99) sits below stage 3's (260); both are extrapolations one to two decades outside the
+fitted range, which is itself reason to treat either number as an order-of-magnitude statement only.
+
+**🔍 A real refinement of Batch 9's G9.2 verdict — the geometry correction's sign is
+wind-dependent.** `frac(ratio > 1)` in momentum is 0.0000 / 0.0000 / **0.1667**: `B3MW10`'s
+`dR_ion/R2` reaches down to **0.3197**, dipping below the `dR = R2/3` break-even, so 3 of its 18
+momentum rows have the correction *raising* `P_HII` again. **This reconciles the Batch 9 scope with
+the Batch 9 verdict.** The scope said the correction is one-signed and raises `P_HII`; the verdict
+said it lowers it in momentum. Both were partial views of a **thickness-dependent sign**, and shell
+thickness tracks wind strength — so neither statement generalises, and the honest form is: the sign
+is set by `dR_ion` vs `R2/3`, which is a function of `Lw`.
+
+**G10.5 caveat, registered in advance and now binding.** The three rungs sit at substantially
+different shell thicknesses (0.98 → 0.74 → 0.45), so the cross-rung profile trend is **confounded
+with the thickness trend** and the −0.1133 exponent is not a clean wind response. It is the right
+number for "what does the corrected model predict across this ladder", and the wrong number for
+"how does photoionised pressure respond to wind at fixed geometry". The `Lw` ≈ 46.5 figure inherits
+that confound.
+
+**Also holds across rungs:** the near-time-independence of the analytic layer form noted in Batch 9
+generalises — `pdrive_analytic` spans 3.5945–3.6237 (B3M), 2.6946–2.7719 (B3MW3), 2.0385–2.1450
+(B3MW10), i.e. flat to ~1–3% within each rung while the cavity form varies 40% within B3M alone.
+⚠️ **[B11.0 2026-08-18 — this claim does NOT survive the exact layer volume.]** `n_layer_analytic`
+uses the thin-shell `4πR2²·dR` (see B11.0 S1); on the exact spherical-shell volume the same rows give
+**2.1298–2.6993** (B3M, median 2.3807), **1.8315–2.1730** (B3MW3, 1.9942), **1.5917–1.7524**
+(B3MW10, 1.7165) — B3M spans **±12%**, not 1–3%, so the near-time-independence claimed in this
+paragraph is itself an artefact of the thin-shell volume, and is **withdrawn**. **Everything else in
+Batch 10 survives**: G10.1–G10.4, the `Lw^−0.1133` fit and the `Lw ≈ 46.5` inversion are all gated
+on / fitted to `pdrive_profile`, which is built from `n_rms_profile` (the real shell profile) over
+the exact cavity volume and never uses `V_lay` — verified by re-deriving the exponent (0.1133) and
+the inversion (46.5) from the published profile medians. Only `n_layer_analytic`, `ratio_analytic`,
+`pdrive_analytic` and `rms_over_analytic` carry the bias. The one narrative casualty is the
+*mechanism* sentence above: the `sqrt(R2/3dR) ∝ Lw^+0.169` cancellation is stated in the thin-shell
+correction, so its exponent is thin-form; the measured `dR_ion/R2 ∝ Lw^−0.3375` underneath it is
+raw data and stands.
+
+**Reproduce:** `python docs/dev/phii-identity/harness/run_batch.py --arm b10 --configs B3MW3,B3MW10
+--stop-t 1.5 --root <scratch>/runs/b10`, then `layer_density_check.py <scratch>/runs/b9/B3M/
+<scratch>/runs/b10/B3MW3/ <scratch>/runs/b10/B3MW10/ --stride 2 --out
+docs/dev/phii-identity/data/b10_wind_profile.csv`.
+
+Artifacts: `data/b10_wind_profile.csv`, `data/b10_walltimes.csv`.
+
+### Batch 11 — verify, then quantify, the four driving-branch seams — Status: 🟡 **B11.0 + B11.A–D DONE (2026-08-18); B11.E/F/G open**
+
+**Maintainer ruling (2026-08-18):** the seams in the audit below "look like real problems that
+prevent code shipping, and we need to investigate further. Do not assume that they are correctly
+evaluated." Both halves are binding: the seams block further P_HII shipping, **and the audit's own
+claims are unverified** — they were produced in one session, from one config's runs, with no
+adversarial pass. B11.0 exists to falsify them before B11.A–D spend anything on them.
+
+**B11.0 — adversarial re-verification of the audit itself (MANDATORY FIRST; do not skip to A–D).**
+Re-derive each seam from current source and data as if trying to kill it. Known weak points of the
+original analysis, per seam:
+- **A (photon double-spend).** Claim rests on `phi0 = 1` at `shell_structure.py:120` and on no
+  upstream depletion of `Qi`. Re-check: grep every consumer of `Qi` between SPS output and the shell
+  solve — is there ANY cavity-absorption factor applied anywhere (e.g. in `update_feedback`,
+  `read_sps`, or the phase runners) that the audit missed? Also confirm the hot cavity really is
+  treated as transparent (no code path attenuates ionising flux across R1→R2).
+- **B (boundary-pressure mismatch).** Claim rests on `nShell0 ∝ params['Pb']` at
+  `shell_structure.py:125`. Re-check which `Pb` that is *at call time* in each phase runner (order
+  of assignment vs the shell call — momentum assigns `params['Pb'] = P_ram` at `:585,669,891`), and
+  whether any runner passes a drive-consistent pressure instead.
+- **C (mass double-book) — highest priority and highest risk of being wrong, because it is a
+  units-sensitive derived number.** The 0.095→0.564 table inverts the shipped `P_HII` back to
+  `n_C3a` via `(mu_convert/mu_ion_shell)·k_B·T` and converts `(4/3)πR2³·n·mu_convert` to Msun in
+  internal units. Units are this repo's declared recurring bug class: **run the `units-reviewer`
+  agent over the derivation**, cross-check `n` against the committed `n_cavity` column in
+  `data/b10_wind_profile.csv`, and sanity-check against an independent route (e.g. cavity mass from
+  `n_cgs · V_cgs · mu_convert · m_H` in cgs). Also verify `shell_mass` on those rows really is the
+  full swept cloud mass (B3M at R2 = 23 pc vs its `rCloud`; `shell_mass` barely grows — confirm why).
+- **D (thin-shell strain).** Twice-derived already (Batch 9 clamped + G9.4 replay agree); lowest
+  risk. Re-confirm `dR_full` vs `dR_ion` on a spot-check row.
+Verdict per seam: **CONFIRMED / REVISED (with the corrected number) / REFUTED**, each with the
+command or line reference that decides it. A REFUTED seam is dropped from A–D and the audit section
+is corrected in place, dated.
+
+#### B11.0 RESULT — 2026-08-18. Verdicts: A CONFIRMED · B **REVISED** · C CONFIRMED (strengthened) · D CONFIRMED
+
+**Nothing was taken on the audit's word.** Every number below was re-derived from current source, a
+fresh B3M run at `ef624195` (`--arm b9 --configs B3M --stop-t 1.5`, 495.9 s, 231 snapshots, all four
+phases, `R2_end` = 23.253 — reproduces Batch 5/9 exactly), or the committed CSVs. The fresh run
+reproduces `data/b9_layer_density.csv` to **≤3.3e-06 relative on all 116 rows × 15 numeric columns**,
+so the Batch 9/10 baselines are sound and the seams are not a run artefact.
+
+| seam | verdict | what decides it |
+|---|---|---|
+| **A** photon double-spend | **CONFIRMED** | no cavity-absorption factor exists anywhere between SPS and either consumer; total claimed budget = `2·Qi·f_abs` |
+| **B** boundary-pressure mismatch | **REVISED** | the mismatch is real (`P_HII/Pb` median **6.16** momentum, **4.62** transition) but the audit's *direction* is wrong: the loop back into `P_C3a` is **exactly zero on 88% of driving rows** and **upward**, not downward, on the rest |
+| **C** mass double-book | **CONFIRMED, and stronger than claimed** | 0.095 → **0.5638** reproduced to 4 s.f. by two independent routes agreeing to 1e-12; and the shell already holds **100.0000%** of the gas the run has, so `M_cav` has no supply at all |
+| **D** thin-shell strain | **CONFIRMED** | `dR_full/R2` = **0.6723–1.3078**, `dR_ion/R2` = **0.6579–1.3076** on B3M momentum |
+
+**A — photon double-spend: CONFIRMED.** The PLAN asked for a grep of every `Qi` consumer between
+SPS output and the shell solve. Complete list in `trinity/`: `sps/read_sps.py:254` (table load),
+`sps/update_feedback.py:164` (interpolate), `shell_structure/shell_structure.py:108,145,244`,
+`shell_structure/get_shellODE.py:90`, `bubble_structure/get_bubbleParams.py:352`,
+`bubble_structure/bubble_luminosity.py:428,779,812`, `phase1_energy/energy_phase_ODEs.py:146`.
+**No cavity-absorption factor at any of them.** `params['Qi']` is written verbatim by
+`updateDict` (`_input/dictionary.py:1264-1269`) at every driving-branch call site
+(`run_momentum_phase.py:578,890`; `run_transition_phase.py:497,837`) — the dataclass carries the raw
+SPS value and nothing rescales it. The cavity is transparent: the only attenuation in the code is
+`get_shellODE.py:120` (`dphidr`), integrated outward from `rShell_start = R2` with `phi0 = 1`
+(`shell_structure.py:119-120`), so nothing attenuates across R1→R2.
+`bubble_luminosity.py:428,779,812` do use an undepleted `phi = Qi/(4πr²)` *inside* the cavity, but
+only as the radiation-field axis of the cooling/heating tables — no photons are removed, so it is
+not a fourth spend (and it is energy/implicit-phase code, i.e. confined branch).
+Sharper than the audit put it: `f_abs = shell_fAbsorbedIon = 1 − f_esc_ion`
+(`shell_structure.py:401,457`) is by construction the fraction absorbed **by the shell**, and
+`get_bubbleParams.py:358` then spends that identical sub-budget on **cavity** recombinations. It is
+not "the same photons twice" in a loose sense — the cavity is credited with exactly the photons the
+shell already ate. Measured `f_abs` on driving rows: **1.0000 on 16/16 transition and 13/17
+momentum** rows, so the claimed budget is `≈2·Qi` — twice what the star emits.
+*External corroboration (Geen et al., "When H II Regions are Complicated", §4):* "the UV photons
+from the star **are not absorbed by the wind bubble**" — so trinity's transparent cavity is the
+standard picture and is **correct**; what is not standard is the balance volume (see C).
+
+**B — boundary-pressure mismatch: REVISED.** The mismatch itself is confirmed exactly as described.
+`nShell0 ∝ params['Pb']` at `shell_structure.py:125-126`. Call-time ordering checked in every
+driving-branch runner: momentum assigns `params['Pb'] = pRam(...)` at `run_momentum_phase.py:585`,
+**before** `shell_structure_pure(params)` at `:626` and `get_phii_c3c` at `:636`, and re-assigns at
+`:669` and `:891`; transition assigns `params['Pb'] = Pb` (thermal, from `compute_R1_Pb`) at
+`run_transition_phase.py:509` before the shell call at `:558`/`get_phii_c3c` at `:566`, and at
+`:842` before `:843`/`:848`. **No runner passes a drive-consistent pressure.** Magnitude measured on
+the fresh run: `P_HII/Pb` median **6.1646** (5.091–7.156) in momentum, **4.6218** (1.302–5.067) in
+transition — the audit's "≈6×" is right where the momentum question lives.
+**What is wrong is the direction.** §6b's summary lists B under "every seam pushes the same way …
+the shipped `P_C3a` is an upper bound". Measured, `f_abs` = 1.0000 on **100% of transition driving
+rows and 76.5% of momentum driving rows** — already saturated, so raising the inner boundary
+pressure cannot change `Qi_abs`, and the loop back into `P_C3a` is **exactly zero on 29 of 33
+driving rows (88%)**. On the 4 rows where `f_abs` < 1 (0.7208–1.0000, t ≥ 1.29), a higher `nShell0`
+means *more* absorption ⇒ higher `Qi_abs` ⇒ **higher** `P_C3a`. So B is not an upper-bound
+mechanism; its live consequences are thickness, dust column and gravity sampling.
+*And B11.B's premise needs re-aiming.* Geen et al. §4.2 close the same system with
+`P_w = n_i c_i² m_H/X` **at `r_w`** — i.e. the wind pressure *is* the correct inner boundary
+pressure for the photoionised gas, which is exactly `nShell0 ∝ P_ram`. The shipped boundary
+condition is therefore the standard one, and `P_C3a` is a *second, contradictory value for the same
+quantity*. B11.B as registered ("set the inner pressure to the drive's claim") would replace the
+defensible side with the questionable one. Re-scoped below.
+
+**C — mass double-book: CONFIRMED, and stronger than the audit stated.** Highest-risk item, so it
+was attacked four ways.
+1. *Units.* The `units-reviewer` agent was run over the derivation as the PLAN required. Verdict:
+   the inversion is the exact algebraic inverse, `n` comes back as a **hydrogen-nuclei** density in
+   pc⁻³, the 2.2 (`mu_convert/mu_ion_shell`) is on the correct side (dividing by it is required —
+   dividing by `k_B T` alone would return `n_tot` and overstate the mass by exactly 2.2), and
+   `mu_convert` is the right multiplier for `M = V·n·μ` (`mu_ion_shell` would be wrong by 1/2.2).
+   Decisive corroboration: `shell_structure.py:125-126` **is** the shipped inverse of the same map,
+   so the audit used the code's own convention rather than reinventing one.
+2. *Two independent routes.* `harness/mass_ledger_check.py` computes `n` both by inverting the
+   shipped `P_HII` (the audit's route) and by replaying the forward `get_phii_c3c` map through
+   `shell_structure_pure` (independent of `P_HII` entirely).
+   **route P / route Q = 1.000000000000 on all 33 driving rows.** A units or algebra error in the
+   inversion would have shown up here; none did. This also disposes of a live worry that the
+   momentum phase-boundary reconciliation snapshot (`run_momentum_phase.py:888-896`) pairs a stale
+   `P_HII` with a fresh `R2`/`Pb`: it never recomputes `P_HII`, but empirically no driving row in
+   this run carries a stale one.
+3. *Cross-check against the committed `n_cavity` column.* `data/b10_wind_profile.csv`'s `n_cavity`
+   is built from `Qi_abs` by `layer_density_check.py`, never from `P_HII`. Feeding it through
+   `M_cav = (4/3)πR2³·n·mu_convert` gives **57,396.6 Msun at t=1.5** — the audit's 57,400, from a
+   third route, before the new run existed.
+4. *Physical sanity.* n_cavity at t=1.5 is 31.5 cm⁻³ at R2 = 23.25 pc ⇒ `Qi ≈ 4.9e50` s⁻¹, the right
+   order for this 1e4 Msun cluster.
+
+**Reproduced numbers** (`data/b11_mass_ledger.csv`): `M_cav/M_shell` = **0.0952** at t=0.4074 (first
+momentum row) → **0.5638** at t=1.5, i.e. **57,397 vs 101,805 Msun**. Audit claimed 0.095 → 0.564,
+57,400 vs 101,800. Agreement to 4 significant figures on every quoted figure.
+
+The PLAN also asked to confirm `shell_mass` really is the full swept cloud mass, and why it barely
+grows. **Confirmed, with the mechanism:** `rCloud` = 4.999 pc and the cloud's gas is 100,000 Msun
+(`read_param` splits the input `mCloud` 110,000 into `mCloud` 100,000 + `mCluster` 10,000 — note it
+is already post-SF, so `(1−sfe)` must *not* be applied again). All of it is swept by t = 0.3037.
+Beyond `rCloud` only `nISM` = 1 cm⁻³ remains, contributing **1,805 Msun** out to R2 = 23.25 pc — so
+`shell_mass` goes 100,005 → 101,805 (**+1.8%**) while R2 grows **4.65×**.
+
+**Three findings the audit did not have, all pushing the same way:**
+- **The shell already holds 100% of the gas that exists.** `shell_mass / (mCloud + swept ambient)` =
+  **0.999997–1.000000** on every driving row. There is no unbooked reservoir for `M_cav` to come
+  from — it is not that the books disagree, it is that one book is already full.
+- **The model asserts more gas than the simulation has.**
+  `(M_cav + shell_mass) / M_avail` = **1.5638** at t=1.5 (and already 1.0717 at t=0.3037). That is a
+  strictly stronger statement than a double-book: total ionised gas would be 159,202 Msun drawn from
+  a 101,805 Msun supply.
+- **Winds cannot supply it either.** Independent budget from the run's own feedback columns,
+  `∫ 2·Lmech_total/v_mech_total² dt` over 0→1.5 Myr = **54.8 Msun**, i.e. **1/1047 of `M_cav`**.
+  (Do **not** use the snapshot's `bubble_mass` for this: the momentum phase never recomputes it, so
+  it is frozen at 99.643 Msun on all 34 momentum rows. Confirmed by inspection.)
+- **Onset is in transition, not momentum.** Over-subscription begins at the first driving row
+  (t = 0.3037, ratio 1.0717), so this is not a momentum-phase-only concern.
+
+*External corroboration — four sources, and C3a is the only outlier.* Geen et al. 2019
+`wind:photoequilibrium` and Geen & de Koter 2022 `eqn:photoionisation_equilibrium_uniform` both write
+`Q_H = (4π/3)·n_i²·(r_i³ − r_w³)·α_B`; Lancaster Paper I `eq:ionreceq2` writes the identical
+condition and adds that "the WBB enhances `ρ_i` … due to the presence of `R_w` in the denominator";
+and **trinity itself already does it** at `shell_structure.py:243` (`_vol_ion = R_IF**3 -
+rShell0**3`). All four exclude the wind bubble, and the photoionised gas lives between `r_w` and
+`r_i`. C3a balances over `(4/3)πR2³` — in trinity's geometry `(4/3)π r_w³`, *exactly the volume all
+four exclude*. So the cavity mass C3a implies is not merely unfunded in trinity's ledger; on the
+published picture it should not exist — and the inconsistency is **internal to trinity**, not just a
+difference from the literature. (Pointed out independently in `LITERATURE_ASSESSMENT.md` §4.3.)
+
+**D — thin-shell strain: CONFIRMED.** Spot-checked as the PLAN asked, then done over all rows.
+B3M momentum: `dR_full/R2` = **0.6723–1.3078**, `dR_ion/R2` = **0.6579–1.3076** (audit: 0.67–1.31).
+`dR_ion/dR_full` median **0.9954** — the momentum shell is essentially entirely ionised, so the two
+thicknesses are the same number and the seam does not depend on which is meant. Command:
+`python docs/dev/phii-identity/harness/layer_density_check.py <run>/B3M/ --stride 2`.
+
+**Side-findings from B11.0 (outside the four seams — recorded because they change committed numbers).**
+- **S1 — `layer_density_check.py:140` uses a thin-shell layer volume in a regime that is not thin.**
+  `V_lay = 4πR2²·dR_ion` versus the exact `(4/3)π((R2+dR)³ − R2³)`; the ratio is `1 + x + x²/3` with
+  `x = dR_ion/R2`, and momentum runs at `x ≈ 0.98`. Measured **V_exact/V_thin = 1.802–2.878 (median
+  2.292)**, so `n_layer_analytic`, `ratio_analytic` and `pdrive_analytic` are overstated by
+  **√that = 1.342–1.696 (median 1.514)**. Corrected momentum values:
+  `ratio_analytic` (Batch 9 G9.2) 0.5049–0.7118 → **0.2976–0.5302** (verdict unchanged, strengthened);
+  `pdrive_analytic` (Batch 10) B3M 3.5945–3.6237 → **2.1298–2.6993** (median 2.3807),
+  B3MW3 2.6946–2.7719 → **1.8315–2.1730** (1.9942), B3MW10 2.0385–2.1450 → **1.5917–1.7524** (1.7165).
+  Batch 10's "flat to ~1–3% within each rung" does **not** survive — B3M spans ±12% on the exact
+  form — and is withdrawn. Re-fit of the affected columns registered as B11.F below.
+  **Scope of the bias, checked rather than assumed:** only `n_layer_analytic`, `ratio_analytic`,
+  `pdrive_analytic` and `rms_over_analytic` use `V_lay`. `n_cavity`, `n_rms_profile`,
+  `ratio_from_profile` and `pdrive_profile` do not, so **Batch 10's G10.1–G10.4 are untouched**, and
+  so is every seam-C number (which runs through `n_cavity`). **G9.4's verdict also stands**: its
+  worst disagreement (3.171 vs a 2× bar) sits in the *energy* phase where `dR/R2` ≈ 4e-4 and the
+  correction is 1.0004. It does change the momentum picture favourably — `rms_over_analytic` there
+  goes 0.368–0.460 → **0.593–0.679**, i.e. the analytic layer form and the real profile agree far
+  better once the volume is exact.
+- **S2 — `layer_density_check.py:154` drops zeros, not just missing values.**
+  `pd_cav = (pH/pb) if (pH and pb and pb > 0)` treats `P_HII == 0.0` as absent. Rows silently
+  dropped: energy 44/44, implicit 34/34, transition 5/21, **momentum 0/17**. Every `pdrive_*` figure
+  this PLAN quotes is momentum-only, so **no published number is affected** — but any future
+  all-phase use of that column would be biased upward. Not changed here: the harness's outputs are
+  committed baselines, so a fix belongs with a regeneration, in B11.E.
+- **S3 — `run_momentum_phase.py:888-896` never recomputes `P_HII`** on the phase-boundary
+  reconciliation snapshot, though it does recompute `Pb`, `R1` and `shell_props`. No effect on any
+  B11.0 number (see C.2). Folded into B11.E's list; any change must be shown bit-identical.
+- **S4 — `data/b9_walltimes.csv` now carries a real B3M timing.** Batch 9's `--root` bug left
+  `B3M,skipped,,`; the B11.0 reproduction fills it with **495.9 s / 231 snapshots**. Batch 9's
+  mtime-derived "~590 s" estimate was ~19% high.
+
+**What B11.0 changes for A–D.** A, C and D stand and are quantified below as registered. B is
+re-scoped: since the shipped `nShell0 ∝ Pb` is the physically standard closure, B11.B must measure
+the *inconsistency*, not "fix" the shell — see the amended B11.B. And the single most useful
+outcome of B11.0 is that all four seams are **absent by construction** from Geen et al.'s two-equation
+closure (their Eqs. for photoionisation equilibrium with a wind bubble, plus wind/photoionised
+pressure balance at `r_w`), which solves for one `n_i` and one `r_i`. That is a concrete external
+reference model for D5 rather than a from-scratch design, and is registered as **B11.G**.
+
+**B11.A — photon-conserving cavity+shell accounting (offline, no solver run).** Iterate to a fixed
+point on committed/replayed trajectories: cavity consumes what its Strömgren balance claims, shell
+receives the remainder, `f_abs` recomputed via `shell_structure_pure`, `Qi_abs` updated, repeat.
+Note the possible outcome that the fixed point is degenerate or bistable (cavity consumes
+everything → neutral shell) — that outcome is itself the answer, not a failure. Gate: report
+`P_C3a_fixedpoint / P_C3a_shipped` per phase; pre-register that energy/implicit are unchanged
+(confined branch, `P_HII` = 0 either way).
+**B11.B — the boundary/drive inconsistency, measured (offline replay).** ⚠️ **Re-scoped by B11.0.**
+As registered this read "set the inner pressure to the drive's claim instead of `params['Pb']`" —
+but B11.0 found `nShell0 ∝ Pb` is the *standard* closure (Geen et al.'s wind/photoionised pressure
+balance at `r_w`), so that would have replaced the defensible side. What to measure instead: re-run
+`shell_structure_pure` on driving rows at both pressures and report the *spread* — Δ`f_abs`,
+Δthickness, Δdust column, Δgravity sampling — as the size of the inconsistency, not as a correction.
+Pre-register: Δ`f_abs` = 0 on the 29/33 rows where `f_abs` is already 1.0000, and Δ`P_C3a` ≥ 0 (never
+negative) on the remaining 4 — B11.0 predicts the direction, so a negative Δ falsifies B11.0's
+revision. The replay harness pattern exists (`harness/layer_density_check.py`,
+`harness/mass_ledger_check.py`).
+**B11.C — mass ledger consequence (only if C survives B11.0).** Two sub-questions: (i) *supply* —
+can photoevaporation off the shell actually deliver `dM_cav/dt` (compare `n_C3a·c_i·4πR2²` against
+the required filling rate)? If not, the cavity is supply-limited and the driving branch overstates
+`P_C3a` for a *fifth* independent reason; (ii) *dynamics* — re-integrate the momentum-phase
+equation of motion offline with `shell_mass` debited by `M_cav(t)`, ΔR2 at matched `t` vs stock.
+Measure, don't guess whether 56% mass matters.
+**B11.D — thin-shell validity bound.** Document as a stated validity limit of the ODE + C3a split
+at `dR/R2 ≳ 1`; no fix proposed this batch.
+
+#### Pre-registered gates for B11.A–D — written 2026-08-18 **before** any of them was run
+
+Registered up front so the numbers cannot be graded after the fact. Each gate names its falsifier.
+A run that never reaches the phase a gate needs is **VOID**, never a confirming null.
+
+**B11.A — photon-conserving fixed point.** Formulation: let `x` be the fraction of `Qi` consumed by
+the cavity, so the shell receives `(1−x)·Qi`. A cavity Strömgren-filled at
+`n(x) = sqrt(3·x·Qi/(4πχ_e α_B R2³))` consumes exactly `x·Qi` **for any `x`** — the cavity balance
+alone is one equation in two unknowns and does not close. The shipped code closes it by fiat with
+`x = f_abs(Qi)`, i.e. the shell's absorbed fraction computed from the *undepleted* flux. The
+photon-conserving closure of the same scheme is the fixed point
+> **`x = f_abs(Qi·(1−x))`**, with `f_abs(Q)` = `shell_structure_pure` re-run with `params['Qi'] = Q`.
+- **G11.A1 — root structure.** Bisect `g(x) = f_abs(Qi·(1−x)) − x` on `x ∈ [0,1]` per driving row;
+  report every root and the shape of `g`. *Prediction:* on rows where `f_abs(Qi)` is already 1.0000
+  (29 of 33), `f_abs` is flat in `Q` near the top, so the unique root is `x = 1` — the cavity takes
+  every photon and the shell is left **neutral**, which is the degenerate outcome §Batch 11
+  pre-registered as "itself the answer". *Falsifier:* an interior root `x* < 0.999` on any driving
+  row means the fixed point is non-trivial and the degeneracy reading is wrong.
+- **G11.A2 — the ratio the PLAN asked for.** Report
+  `P_C3a_fixedpoint / P_C3a_shipped = sqrt(x* / f_abs(Qi))` per phase. *Prediction:* **≥ 1 on every
+  driving row**, because `f_abs` is non-increasing in `Q` so `x* ≥ f_abs(Qi)`. ⚠️ **This gate can
+  embarrass §6b's seam A and is registered so that it can.** Seam A's *existence* is settled (B11.0
+  CONFIRMED the double-spend), but its stated *consequence* — "a photon-conserving accounting has
+  less than `Qi` available to the cavity ⇒ `P_C3a` overstated" — predicts a ratio **< 1**. If the
+  measured ratio is ≥ 1 throughout, that clause is **wrong** and must be struck from §6b and from
+  the "upper bound" list, exactly as seam B's direction was.
+- **G11.A3 — confined-branch null.** Energy/implicit rows must give `P_HII` = 0 under both closures.
+  Any non-zero fails and invalidates the whole of B11.A.
+
+**B11.B — the boundary/drive inconsistency (re-scoped, see above).** Replay `shell_structure_pure`
+on each driving row twice: once at the shipped `params['Pb']`, once with the inner pressure set to
+that row's `P_C3a`.
+- **G11.B1.** `Δf_abs` = 0 exactly on the 29/33 driving rows where `f_abs` is already 1.0000.
+  *Falsifier of B11.0's revision:* any non-zero `Δf_abs` on those rows.
+- **G11.B2.** `ΔP_C3a ≥ 0` on **every** driving row. *Falsifier of B11.0's revision:* any row with
+  `ΔP_C3a < 0`, which would restore seam B to the "upper bound" list.
+- **G11.B3.** Report `Δ dR_ion`, `Δ f_ionised_dust` and `Δ shell_n0` as the size of the
+  inconsistency. Descriptive, no pass/fail — this is what B is actually about after the re-scope.
+
+**B11.C — mass ledger consequence.**
+- **G11.C1 — supply.** Compare the photoevaporative supply off the shell's ionised face,
+  `Ṁ_supply = 4πR2²·n_C3a·mu_convert·c_i` with the **isothermal** `c_i = sqrt(k_B·T_ion/mu_ion_shell)`
+  (stated here so it is not chosen after seeing the answer), against the `dM_cav/dt` the shipped
+  trajectory demands (central difference of the measured `M_cav(t)`). Report
+  `Ṁ_supply / Ṁ_required` per driving row. **Supply is adequate** if the ratio ≥ 1 on ≥95% of
+  driving rows; **supply-limited** otherwise. ⚠️ Adequate *rate* is not sufficiency: B11.0 showed
+  `shell_mass` already equals 100% of the run's gas, so any real supply must debit `shell_mass`.
+  Both must be reported together.
+- **G11.C2 — dynamics.** Re-integrate the momentum-phase equation of motion offline from the first
+  momentum row with the shell mass debited, `M_eff(t) = shell_mass(t) − M_cav(t)`.
+  - **G11.C2a — validity control (blocking).** The *same* integrator run with `M_eff = shell_mass`
+    must reproduce the run's own `R2(t=1.5)` to **≤2%**. If it does not, the offline EOM is not
+    faithful and **G11.C2b is VOID** — not a null, not a small effect. Reported either way.
+  - **G11.C2b.** `ΔR2` at matched `t` = 1.5, debited vs control. *Prediction:* debiting up to 56% of
+    the inertia makes the shell faster, so `ΔR2 > 0`, order 10–30%. No pass/fail — this is a
+    magnitude measurement of how much the double-book matters, which is what "measure, don't guess
+    whether 56% mass matters" asks for.
+
+**B11.D.** Documentation only; the numbers are already in B11.0 (`dR_full/R2` 0.6723–1.3078). The
+deliverable is a stated validity limit, not a gate.
+
+#### B11.A–D RESULT — 2026-08-18, measured against the gates above
+
+All three measurement batches ran on the same B3M reproduction. **Two pre-registered gates came
+back against what §6b said, and one came back against my own prediction; all three are recorded as
+misses rather than reinterpreted.**
+
+| gate | result | consequence |
+|---|---|---|
+| G11.A1 root structure | **33/33 driving rows resolve to `x* = 1`, zero interior roots** | the photon-conserving fixed point is **degenerate**, as pre-registered |
+| G11.A2 `P_C3a` ratio | **1.0000–1.1778, 0/33 rows below 1** | ⛔ §6b seam A's *consequence* clause **REFUTED** — it predicted < 1 |
+| G11.A3 confined null | 0 violations / 83 confined rows | PASS |
+| G11.B1 `Δf_abs` | 0 non-zero on all 29 saturated rows | B11.0's revision of seam B **holds** |
+| G11.B2 `ΔP_C3a` | **+0.0000…+0.1778, 0/33 negative** | B11.0's revision of seam B **holds** |
+| G11.C1 supply | ratio **1.32–2.13**, frac ≥ 1 on **100%** of rows | **supply adequate by rate** — the "supply-limited" escape is closed |
+| G11.C2a control | **0.871%** against a 2% blocking bar | PASS — G11.C2b is a measurement, not VOID |
+| G11.C2b dynamics | **+8.55%** (inertia) / **+9.22%** (full) in `R2` at t=1.5 | sign as predicted, magnitude **below** my registered 10–30% |
+
+**B11.A — the fixed point is degenerate, and fixing the double-spend RAISES `P_C3a`.**
+A cavity Strömgren-filled at `n(x) = sqrt(3·x·Qi/(4πχ_e α_B R2³))` consumes exactly `x·Qi` for *any*
+`x`: the cavity balance is one equation in two unknowns. The shipped code closes it with
+`x = f_abs(Qi)`; the photon-conserving closure is `x = f_abs(Qi·(1−x))`. Gridding
+`g(x) = f_abs(Qi(1−x)) − x` and bisecting any bracketed root gives **the endpoint `x* = 1` on every
+one of the 33 driving rows, with no interior root anywhere**. So the photon-conserving version of
+C3a's own scheme says **the cavity absorbs 100% of `Qi` and the shell is left neutral** — which
+contradicts trinity's own shell solve (99.5% ionised in momentum) *and* the ionised-shell boundary
+condition that sets `nShell0`. That is the outcome the PLAN pre-registered as "itself the answer":
+the scheme cannot be made photon-conserving without a second equation, which is exactly the equation
+Geen et al. supply (B11.G).
+⛔ **And G11.A2 refutes §6b's seam-A consequence.** `P_C3a_fixedpoint/P_C3a_shipped =
+sqrt(x*/f_abs(Qi))` = **1.0000–1.1778 with 0 of 33 rows below 1**. §6b wrote "a photon-conserving
+cavity+shell accounting has less than `Qi` available to the cavity ⇒ `P_C3a` overstated", i.e. a
+ratio below 1. The opposite is measured: conserving photons *raises* `P_C3a` by up to 17.8%, because
+the cavity ends up with **more** than `Qi·f_abs`, not less. **The double-spend itself is untouched**
+— B11.0 CONFIRMED it and it remains a genuine defect — but the clause "⇒ `P_C3a` overstated" is
+struck, and seam A comes off the "upper bound" list along with seam B.
+
+**B11.B — B11.0's revision survives both of its own falsifiers, and the inconsistency is large.**
+Replaying each driving row at the drive's claimed inner pressure instead of `params['Pb']`:
+`Δf_abs` = 0 on **all 29** saturated rows (G11.B1) and `ΔP_C3a/P_C3a` = **+0.0000…+0.1778 with zero
+negative rows** (G11.B2). Both falsifiers registered against B11.0 failed to fire, so seam B's
+direction is settled: **up or nothing, never down.** Size of the inconsistency (G11.B3, descriptive):
+`shell_n0` rises **4.70×** in transition and **6.17×** in momentum (it is linear in the boundary
+pressure, so this is just `P_HII/Pb` again), the ionised layer **thins by 79–83%**, and the
+dust-absorbed fraction of ionising photons falls **0.620 → 0.455** (transition) and
+**0.607 → 0.395** (momentum). That last one is the interesting number: the shell's dust sink — G9.4's
+−51–75% of the budget — is itself materially different under the two pressures, so seam B and the
+dust finding are not independent.
+
+**B11.C — the rate is fine; the reservoir is not; and it is worth ~9%, not ~2×.**
+*Supply (G11.C1).* Photoevaporation off the shell's ionised face delivers **5.10e4–8.68e4 Msun/Myr**
+against a required `dM_cav/dt` of **2.40e4–6.31e4**, i.e. **supply/required = 1.32–2.13 on 100% of
+rows** (isothermal `c_i` = 11.6445 pc/Myr = 11.4 km/s, fixed in the pre-registration). **The cavity
+is not rate-limited.** This *closes* the "supply-limited" limb of §6b's either/or rather than
+supporting it — but it does not rescue the premise, because B11.0 showed `shell_mass` already equals
+100% of the gas the run has. A real photoevaporative flow at this rate is precisely mass moving
+**out of the shell**, which is the double-book, stated as a flux instead of a total.
+*Dynamics (G11.C2).* The blocking control passed at **0.871%** (offline control 23.0503 pc vs the
+run's 23.2527 pc at t=1.5), so the debited numbers are a measurement. Debiting the shell by `M_cav(t)`
+gives `R2(t=1.5)` = **25.0218 pc (+8.55%)** debiting inertia only, or **25.1764 pc (+9.22%)** debiting
+gravity as well; the two variants bracket how the cavity gas is treated gravitationally.
+⚠️ **My pre-registered prediction of "order 10–30%" missed.** The sign held, the magnitude did not —
+recorded as a miss, not rounded into range. The reason is legible: inertia enters as `1/m`, and
+`M_cav/M_shell` is only 0.10 at the start of the momentum phase, reaching 0.56 only at the very end,
+so the trajectory spends most of its length barely debited. **So "does 56% mass matter?" has a
+number: ~9% in `R2`, comparable to the 4.0% C1 cost and well below the 12.8–20.5% C3c itself moved.**
+
+**B11.D — stated validity limit (no gate, no fix this batch).**
+> The momentum-phase ODE assumes a thin shell, and C3a assumes a sharp cavity/shell split at `R2`.
+> On B3M's momentum rows the shell is **not thin**: `dR_full/R2` = 0.6723–1.3078 and
+> `dR_ion/R2` = 0.6579–1.3076, i.e. the shell is between two-thirds of and larger than the cavity it
+> surrounds, and it is **99.54% ionised**, so "cavity" and "shell" are not distinguishable by
+> ionisation state there. Both premises are outside their validity range in the momentum phase, and
+> quantitatively so from `dR/R2 ≳ 1/3` onward — which the trajectory crosses *inside the transition
+> phase*. This is a stated limit of the current model, not a defect with a proposed fix.
+
+**Where §6b stands after B11.0 + B11.A–D.** Of the four seams, **all four exist**; but the
+"every seam pushes the same way, `P_C3a` is an upper bound" summary has now lost **two** of its
+three members. What remains on the upper-bound list is **seam C** (the filled-cavity limb needs 56%
+more gas than exists, so the drive must be the supply-limited one) and **G9.4's dust** (−51–75% of
+the photon budget). Seams A and B are real inconsistencies whose repair, measured, moves `P_C3a`
+**up** by 0–18%. The honest one-line summary is therefore: *the driving-branch `P_C3a` is bounded
+above by the mass ledger and the dust sink, not by the photon or boundary bookkeeping* — and the
+photon and boundary bookkeeping cannot be repaired within C3a's structure at all, because its
+photon-conserving fixed point is degenerate (G11.A1). That is the strongest argument yet that D5
+needs a different closure rather than a patched C3a, and B11.G names a published one.
+**B11.E — cleanup (trivial tier, after A–D):** the vestigial `n_IF_Str > 0` gates and the stale
+"from n_IF_Str" comments in the four phase runners; plus B11.0's **S3** (`P_HII` not recomputed on
+the momentum reconciliation snapshot, `run_momentum_phase.py:888-896`) and **S2** (the falsy-zero
+filter in `layer_density_check.py:154`, which must be fixed together with regenerating the CSVs it
+produced). Any gate change must be shown bit-identical or is deferred.
+
+**B11.F — re-fit Batch 9/10's geometry numbers on the exact layer volume (offline, no run).**
+Opened by B11.0's **S1**: `n_layer_analytic` used the thin-shell `4πR2²·dR` where `dR/R2 ≈ 1`, so it
+is overstated by 1.34–1.70×. The *verdicts* of G9.2 and G10.2 survive (G9.2 moves further from 1 in
+the direction already reported; G10.2 is gated on `pdrive_profile` and is untouched), and so do the
+`Lw^−0.1133` fit and `Lw ≈ 46.5` inversion — both were fitted to `pdrive_profile`, checked by
+re-deriving them from the published medians. What is withdrawn is the "flat to 1–3% within a rung"
+claim and every `n_layer_analytic`-derived column. Scope of the re-fit: `n_layer_analytic`,
+`ratio_analytic`, `pdrive_analytic`, `rms_over_analytic`, and the thin-form `sqrt(R2/3dR) ∝ Lw^+0.169`
+mechanism sentence in Batch 10. Cheap: the committed `data/b10_wind_profile.csv` already carries
+`R2` and `dR_ion`, so no run is needed.
+
+**B11.G — score the shipped closure against Geen et al.'s (offline, no run).** B11.0's most useful
+by-product: all four seams are absent by construction from the two-equation closure in Geen et al.,
+"When H II Regions are Complicated" (§4.2) — photoionisation equilibrium over `(r_i³ − r_w³)` with a
+wind bubble, closed by wind/photoionised pressure balance `P_w = n_i c_i² m_H/X` at `r_w`. One `n_i`,
+one `r_i`, no double-spend (the ionised gas consumes `Q_H` once), no cavity mass (the wind bubble
+holds no photoionised gas), no boundary mismatch (the pressure balance *is* the boundary condition).
+Solve it on trinity's own trajectory (`r_w := R2`, `Q_H`, `ṗ_w` from the run) and compare `n_i` and
+`r_i − r_w` against the shipped `n_C3a`, `nShell0` and `dR_ion`. This is a **reference-model
+comparison, not a proposal to adopt it**: Geen's algebra assumes `w = 2` in places and B3M is
+uniform (`densPL_alpha = 0`), so only the profile-independent equations transfer. Feeds D5 directly.
+
+**Hold released only when:** ~~B11.0 verdicts are in for all four seams~~ (**DONE 2026-08-18**: A/C/D
+CONFIRMED, B REVISED, none REFUTED) ~~AND A–C are quantified~~ (**DONE 2026-08-18**, see the B11.A–D
+RESULT above). **Both conditions are now met, so the hold's stated release criteria are satisfied —
+but the release is the maintainer's call, not this document's**, and the numbers argue for a
+different decision than the one D5 was framed around: seams A and B cannot be repaired inside C3a
+(its photon-conserving fixed point is degenerate), so D5's question is no longer "C3c-switch vs
+C3a-raw" but "C3a at all". **B11.G is the recommended input to that call** and is cheap. B11.F is
+housekeeping.
+
+### Batch 12 — the low-wind rung: old-vs-new where P_HII must dominate — Status: ✅ **DONE 2026-08-18 — G12.1/G12.2/G12.4 PASS; G12.3 fired my own seam-C falsifier**
+
+**Maintainer question (2026-08-18):** *"does the current data include low wind regimes where P_HII
+are sure to dominate? this helps compare the most current improved implementation against the old
+version, as a sanity check."*
+
+**Answer: no — not in a form that can carry the check.** Inventory of every committed CSV, by config:
+
+| what exists at low wind | file | why it cannot serve |
+|---|---|---|
+| `B3MW01` (`Lw × 0.1`), 4 phases, momentum 100% HII-dominated | `data/b5s3_ladder_regime.csv`, `_screen`, `_lag` | built by `c3_offline_screen.py` — an **offline screen evaluated on STOCK trajectories**. It predicts what C3c *would* give on a stock `R2(t)`; it is not a C3c-arm run, so it cannot be the "new implementation measured" |
+| `B3MW001` (`Lw × 0.01`), 78.4% HII-dominated in **energy** | `data/b7_confinement_screen.csv` | `run_complete = False`, `PARTIAL_in_progress` — reaches energy+implicit only and **never enters transition or momentum**. VOID for any driving-branch claim, per this plan's own rule |
+| `WW` (`FB_thermCoeffWind = 0.1` on `simple_cluster`) | `data/b6_ledger.csv`, `b0_trajectories.csv`, `b5_c3c_regime.csv` | present on both arms, but `b6_ledger` is a matched-`t` ΔR2/fate row, not per-row `P_HII`; and `b0`'s arm is stock-only |
+
+And the two structural gaps behind it:
+- **The only paired stock-vs-C3c full trajectory in the workstream is `data/b7_regime_trajectory.csv`,
+  and it is `B3M` only** (`Lw = 1`).
+- **The entire replay family runs strong-wind-only.** `data/b10_wind_profile.csv` covers
+  `B3M / B3MW3 / B3MW10` — i.e. `Lw` ∈ {1, 3, 10}. Every Batch 11 diagnostic
+  (`b11_mass_ledger`, `b11_photon_ledger`, `b11_mass_dynamics`) is **`B3M` alone**. The wind ladder
+  in the measured data only ever goes *up*.
+
+**Why this is the right sanity check, and not just another rung.** Four independent reasons:
+1. **It is where old and new differ maximally, by construction.** The old `P_HII` was the capped
+   Strömgren density, which Batches 0/1 measured to be an exact algebraic relabelling of the
+   confining pressure — identity to ≤2.9e-16 with the cap binding on **100% of rows in every phase**
+   of 6 configs across 4 decades of `nCore`. So the old code has `P_HII/Pb ≡ 1` and **can never show
+   photoionisation dominating at any wind strength**. The new one carries `Qi` and `R2` and should
+   dominate hardest exactly when the wind is weakest. A weak-wind rung is therefore the cleanest
+   possible discriminator between the two implementations.
+2. **The literature says the answer in advance.** Lancaster Paper I `eq:Rch_def` gives
+   `R_ch ∝ ṗ² α_p² / Q_0`, so weak wind ⇒ **small `R_ch`** ⇒ `R_w/R_ch ≫ 1` ⇒ PIR-dominated, and
+   their coupled force `F_b = α_p ṗ (1 + R_w/R_ch)^{2/3}` → `F_b,Sp`. Geen et al. reach the same
+   ordering via `C_w ∝ ṗ_w^{3/2} Q_H^{-3/4}`. So this is a regime with a **published expected
+   answer**, not just an untested corner.
+3. **It is the regime where C3a's unconfined branch should be asymptotically RIGHT.** Per
+   `LITERATURE_ASSESSMENT.md` §4.2 (verified there numerically), the CEM force tends to the pure
+   photoionised limit as `R_w/R_ch → ∞` to 0.05% — which is C3a's unconfined branch. Batch 11 found
+   the seams at `Lw = 1`, near the crossover; low wind tests whether they persist where the branch is
+   supposed to be exact.
+4. **It isolates C3a from `alpha_p`.** `LITERATURE_ASSESSMENT.md` §4.1 hypothesises that the
+   universally HII-dominated momentum phase is really a missing `α_p ≈ 5–6` on `P_ram`. At `Lw × 0.1`
+   the wind term is small *whatever* `α_p` is, so a low-wind rung cannot be explained away by it.
+   Any HII dominance measured there is a statement about C3a alone.
+
+**Runs launched 2026-08-18 (both arms, `B3MW01` = `Lw × 0.1`, `stop_t` 1.5):**
+```
+# new (C3c, this branch)
+python docs/dev/phii-identity/harness/run_batch.py --arm b11lowwind --configs B3MW01 \
+    --stop-t 1.5 --root <scratch>/runs/b11lw
+# old (pre-C3c): git worktree at fca7d88e, with the CURRENT harness copied in
+#   (fca7d88e's run_batch.py predates --root; the harness is docs/, not trinity/,
+#    so copying it does not change the physics under test)
+python docs/dev/phii-identity/harness/run_batch.py --arm b11lowwind_stock --configs B3MW01 \
+    --stop-t 1.5 --root <scratch>/runs/b11lw_stock
+```
+
+**Pre-registered gates — written before either run finished.** ⚠️ A run that does not reach the
+phase a gate needs is **VOID** for that gate, never a confirming null. `B3MW001` is the cautionary
+precedent: it looks like low-wind coverage and is not.
+
+- **G12.1 — the old identity, re-confirmed off its measured grid.** Stock arm: `P_HII/Pb` = 1 to
+  ≤1e-12 on ≥99% of rows in every phase. Batch 0 established this on 6 configs but **never at
+  `Lw × 0.1` on this cloud**, so it is a genuine out-of-sample test of the identity claim, not a
+  restatement. C3c arm: `P_HII` exactly 0.0 on confined rows, `> Pb` on driving rows.
+  *Falsifier:* any stock row off unity beyond the known stale-`Pb` handoff rows.
+- **G12.2 — does P_HII actually dominate at low wind, in a real run?** C3c arm, `frac_HII_dominated`
+  per phase. The offline screen (`data/b5s3_ladder_regime.csv`) predicts **transition 0.9118,
+  momentum 1.0000, `drive_ratio` 6.68–7.31**. That screen was evaluated on the *stock* trajectory,
+  so a C3c arm — which moves `R2` — can disagree; this is a real test of the screen as a predictor at
+  low wind, where it was only ever validated at nominal wind (Batch 5 stage 2).
+  *Pass:* measured momentum `frac ≥ 0.9`. *Informative failure:* a large miss retires the offline
+  screen as a low-wind predictor.
+- **G12.3 — are the Batch 11 seams a strong-wind artefact?** Re-run all three B11 harnesses on the
+  low-wind C3c arm and report seam C (`M_cav/M_shell`, `(M_cav+M_shell)/M_avail`), seam A (the
+  fixed-point ratio and root structure) and seam D (`dR/R2`) at matched `t`.
+  *Prediction:* **seam C is at least as bad at low wind.** `M_cav ∝ R2^{3/2}·sqrt(Qi f_abs)` and `Qi`
+  is untouched by the wind knob, while a weaker wind hands more of the drive to the HII term.
+  *Falsifier of "the seams generalise":* seam C's `M_cav/M_shell` at t = 1.5 falling below 0.2
+  (vs 0.5638 at nominal wind) would make the mass double-book regime-specific and materially weaken
+  §6b seam C.
+- **G12.4 — trajectory cost, old vs new.** ΔR2 at matched `t`, stock vs C3c, against the nominal-wind
+  range the b6 ledger recorded (7.6–20.5% over 13 configs). *Prediction:* **larger** than nominal,
+  since `P_HII` is a bigger share of the drive when the wind is weak. Magnitude only, no pass/fail.
+
+**What Batch 12 does NOT do.** It changes no `trinity/` source, and it does not test `alpha_p` — that
+is `LITERATURE_ASSESSMENT.md` §4.1's offline screen, which is a separate, cheap piece of work and
+should be run on these same trajectories once they exist.
+
+#### Batch 12 RESULT — 2026-08-18, measured against the gates above
+
+Both arms completed: C3c **702 s / 205 snapshots**, stock **666 s / 222 snapshots**, both reaching
+`t = 1.5` in the **momentum** phase, so **nothing here is VOID**. Fate unchanged on both
+(`stopping_time`). Phase row counts move as expected for a stronger drive — energy 69/69,
+implicit 79/78, transition 32/34, momentum 25/41 (c3c/stock).
+
+| gate | result | verdict |
+|---|---|---|
+| G12.1 old identity, stock arm | `\|P_HII/Pb − 1\|` ≤ **4.44e-16**; frac within 1e-12 = **1.0000** in implicit/transition/momentum | **PASS** |
+| G12.1 new branch behaviour | `P_HII` = 0.0 on **69/69** energy and **79/79** implicit; driving rows `P_HII/Pb` = 1.240–14.369, **0 rows ≤ 1** | **PASS** |
+| G12.2 does P_HII dominate? | transition **0.9062** (screen: 0.9118), momentum **1.0000** (screen: 1.0000) | **PASS** (bar ≥ 0.9) |
+| G12.3 seam A | 27/27 endpoint root `x* = 1`; fixed-point ratio **1.0000–1.0000**; null 0/76 | generalises |
+| G12.3 seam B | Δ`f_abs` = 0 on 27/27; Δ`P_C3a` ∈ [−1.46e-16, +2.37e-16], **0 rows** past the 1e-14 roundoff floor | revision **holds**; inconsistency **bigger** |
+| G12.3 seam C | `M_cav/M_shell` = **0.1296** at t=1.5 | ⛔ **my registered falsifier FIRED** |
+| G12.3 seam D | momentum `dR_ion/R2` = **1.171–1.438** (median 1.213) | **worse** than nominal |
+| G12.4 trajectory cost | ΔR2 = **+35.138%** at matched `t`, fate unchanged | prediction **held** |
+
+**The sanity check itself — this is the cleanest old-vs-new demonstration the workstream has.**
+In the one regime where photoionisation *must* dominate, the two implementations say opposite things
+about the same cloud:
+
+| | old (pre-C3c, `fca7d88e`) | new (C3c, this branch) |
+|---|---|---|
+| momentum `P_HII/Pb` | **1.0** to 2.2e-16 | **13.667–14.369** |
+| what `P_HII` depends on | nothing — it is `Pb` returned | `Qi`, `f_abs`, `R2` |
+| `frac_HII_dominated`, momentum | **0** (it cannot exceed `Pb`; they are equal) | **1.0000** |
+| `R2(t=1.5)` | 5.722 pc | **7.733 pc** |
+
+The old code returns the confining pressure to **2.2e-16** even when the wind has been cut by 10×,
+i.e. it carries **no photoionisation information at any wind strength** — which is the defect this
+workstream exists for, now shown in the regime where it matters most rather than only at nominal
+wind. **G12.1 is also the identity's first out-of-sample confirmation**: Batch 0 measured it on six
+configs but never at `Lw × 0.1` on this cloud, and it reproduces to the same 2e-16.
+(The one exclusion is the **energy** phase, 0.9855 within 1e-12, max deviation 6.33e-02 — the
+documented stale-`Pb` rows at the 1a→1b handoff that Batch 1 already corrected, not cap-slack.)
+
+**The offline screen is validated at low wind.** `data/b5s3_ladder_regime.csv` predicted transition
+0.9118 / momentum 1.0000 from the *stock* trajectory; the real C3c arm gives **0.9062 / 1.0000**,
+i.e. 0.6% relative in transition and exact in momentum — despite the arm's `R2` being 35% larger.
+The screen was only ever validated at nominal wind (Batch 5 stage 2); it now holds a decade below.
+Momentum `P_HII/Pb` = 13.667–14.369 against nominal wind's 5.091–7.156 (median 6.165) is a factor
+**2.2×**, consistent with stage 3's `Lw^−0.33` (which predicts 2.14×; the measured exponent is 0.356).
+
+⛔ **G12.3 seam C — my pre-registered falsifier fired, and §6b's headline number is now regime-scoped.**
+I registered: *"seam C's `M_cav/M_shell` at t = 1.5 falling below 0.2 (vs 0.5638 at nominal wind)
+would make the mass double-book regime-specific and materially weaken §6b seam C."* Measured:
+**0.1296**. It fired, and I am recording it as fired rather than reinterpreting the bar.
+**What is wrong is my reasoning, not the bar.** I predicted the seam would worsen because a weaker
+wind hands more of the drive to the HII term. But `M_cav ∝ R2^{3/2}·sqrt(Qi f_abs)`, so the
+controlling variable is **bubble size, not the degree of HII dominance** — and the low-wind run only
+reaches `R2 = 7.733 pc` against 23.253 pc. The ratio of `R2^{3/2}` is 0.192 and the measured mass
+ratio is 12,966/57,397 = **0.226**; the rest is `f_abs`. So:
+> **The mass double-book is worst in the configs that expand furthest, not in the configs where
+> photoionisation dominates most.** §6b seam C's `M_cav/M_shell → 0.564` is a **B3M number**, not a
+> universal one, and must be quoted with the config.
+
+**What survives the falsifier, and it is the load-bearing half.** The *qualitative* result is
+untouched at low wind: `(M_cav + M_shell)/M_avail` = **1.1296**, so the model still asserts 13% more
+gas than the run has; `M_cav/M_bubble` = **410**, and the wind injects **31.6 Msun** = 0.24% of
+`M_cav`. There is still no supply — there is just less of it to not-supply. The dynamical cost falls
+with the mass: **+0.446%** (inertia) / **+0.965%** (full debit), against a control passing at
+**0.213%**. So at `Lw × 0.1` the double-book is worth ~1% in `R2`, not ~9%.
+
+**Seams A, B and D do NOT follow C.** This is the useful structural result of Batch 12:
+- **A generalises exactly.** 27/27 driving rows give the endpoint root `x* = 1` — the degeneracy is
+  not a nominal-wind artefact — and the fixed-point ratio is **1.0000–1.0000**, because `f_abs` is
+  saturated at 1 on *every* driving row here. Seam A's repair still never lowers `P_C3a`.
+- **B holds and gets bigger.** Both B11.0 falsifiers stayed clear (Δ`f_abs` identically 0 on 27/27;
+  the single negative Δ`P_C3a` is **−1.46e-16 = 0.66 ULP** on a row with Δ`f_abs` exactly 0, i.e.
+  roundoff in the `sqrt`, not a sign reversal — the harness now separates the two rather than
+  printing it as a trip). The inconsistency itself **doubles**: `shell_n0` ratio **11.84**
+  (transition) / **13.77** (momentum) against 4.70/6.17 at nominal wind, the ionised layer thins
+  **88–90%** against 79–83%, and the dust-absorbed fraction moves 0.663→0.467 and 0.658→0.459.
+- **D is worse.** Momentum `dR_ion/R2` = **1.171–1.438** (median 1.213) against 0.658–1.308
+  (median 0.975). The thin-shell premise is *more* violated at low wind, not less.
+
+**Net for §6b.** Three of the four seams are confirmed regime-robust or regime-worsening; **only
+seam C is regime-scoped**, and its qualitative core (no supply, over-subscription) survives anyway.
+Since seam C is the *only* member left on the "upper bound" list after B11.A–D, the practical
+consequence is that **the size of the upper-bound correction is config-dependent and largest in the
+widest-expanding runs** — which is exactly where the momentum question lives, so the conclusion is
+unchanged for the case that motivated it.
+
+
+### §6b Self-consistency audit of the C3c/C3a picture — 2026-08-18 (maintainer question) — ✅ **RE-VERIFIED by B11.0 (2026-08-18): A/C/D CONFIRMED, B REVISED, none REFUTED**
+
+> **Status of this section after B11.0.** Every claim below was re-derived adversarially against
+> current source, a fresh B3M run and the committed CSVs; see §Batch 11 → B11.0 RESULT for the
+> deciding commands and line references. **Corrections made in place below are marked
+> `[B11.0 2026-08-18]`.** Two things changed: seam B's *direction* was wrong (its feedback into
+> `P_C3a` is zero on 88% of driving rows and upward on the rest, so it is not an upper-bound
+> mechanism), which also breaks the "every seam pushes the same way" summary; and seam C is
+> **understated** — the shell already holds 100% of the gas the run has, so the cavity mass has no
+> supply at all. Seams A, C and D reproduce to 4 significant figures on every quoted number.
+
+**Question asked:** is the current implementation idea self-consistent throughout the code, and as
+physics? **Answer: on the confined branch, exactly; on the driving branch, no — four specific seams,
+all pushing the same direction.** Checked against source and committed/derived run data, not asserted.
+
+**Verified consistent (with the receipts):**
+1. **Normalisation/units** — the 2.2 particles-per-H-nucleus prefactor is He-correct and exact to
+   1e-12 (G8.2); the closed form is bit-reproducible from snapshots (2.2e-16, Batches 7/9).
+2. **Limits** — wind-only → Weaver (−0.743 vs −0.74, stage 3); photo-only → Spitzer/HI exact (Batch 8).
+3. **Decoupling** — the value contains no `Pb`, so the original relabelling bug class cannot recur.
+4. **Energy bookkeeping** — the energy ODE charges `press_bubble·dV` only (`energy_phase_ODEs.py:274`),
+   so photoionised work is NOT drawn from `Eb`. Correct: its energy source is the radiation field,
+   continuously resupplied — no reservoir is double-billed.
+5. **The confined branch is exactly self-consistent**, which is the deep argument for the 0.0:
+   the cavity is hot wind gas (transparent), so the shell legitimately receives the full `Qi`
+   (`shell_structure.py:120`, `phi0 = 1`); the skin sits in pressure equilibrium at `Pb`
+   (`nShell0 ∝ Pb`, `:125`); the drive is `Pb` (transmitted); and no cavity gas mass is claimed.
+   Every book balances.
+
+**Driving-branch seams (transition 76% of rows, momentum 100% — and, for weak winds, energy):**
+- **A. Photon double-spend.** The shell solve starts `phi0 = 1` — the full `Qi` arrives at the shell
+  inner edge — while C3a simultaneously spends `Qi·f_abs` on cavity recombinations. The same photons
+  are consumed twice, once per model; and `f_abs` (measured ≈1 in momentum) is itself computed from
+  the shell that saw the un-depleted flux, then fed back into `Qi_abs`. A photon-conserving
+  cavity+shell accounting has less than `Qi` available to the cavity ⇒ `P_C3a` overstated (√ of the
+  budget), on top of G9.4's dust finding.
+  **[B11.0 2026-08-18 — CONFIRMED, and sharper than stated.]** Every `Qi` consumer in `trinity/` was
+  enumerated: **no cavity-absorption factor exists at any of them**, and the only attenuation in the
+  code (`get_shellODE.py:120`) starts at `r = R2` with `phi0 = 1`, so nothing attenuates across
+  R1→R2. `f_abs` = 1.0000 on 16/16 transition and 13/17 momentum driving rows, so the claimed budget
+  is ≈`2·Qi` — twice what the star emits. Sharper: `f_abs` is *by construction* the fraction the
+  **shell** absorbed (`shell_structure.py:401,457`), and `get_bubbleParams.py:358` credits the
+  **cavity** with that identical sub-budget. The transparent cavity itself is correct physics —
+  Geen et al. §4: "the UV photons from the star are not absorbed by the wind bubble" — so the defect
+  is the double-credit and the balance volume (seam C), not the transparency.
+  ⛔ **[B11.A 2026-08-18 — the CONSEQUENCE clause above is REFUTED.]** "A photon-conserving
+  cavity+shell accounting has less than `Qi` available to the cavity ⇒ `P_C3a` overstated (√ of the
+  budget)" predicts `P_C3a_fixedpoint/P_C3a_shipped` < 1. Measured: **1.0000–1.1778, 0 of 33 driving
+  rows below 1** (G11.A2). Conserving photons *raises* `P_C3a` by up to 17.8%. The double-spend
+  stands; "⇒ overstated" is struck, and seam A leaves the upper-bound list. The deeper result is
+  that the fixed point is **degenerate** — `x = f_abs(Qi(1−x))` has the unique root `x = 1` on every
+  driving row, i.e. the cavity takes every photon and the shell is left neutral (G11.A1), so C3a
+  cannot be closed photon-conservingly at all without a second equation.
+- **B. Boundary-pressure mismatch.** The shell structure is integrated with its inner density set by
+  `params['Pb']` (= `P_ram` in momentum) while the dynamics asserts `P_C3a ≈ 6×` that at the same
+  interface. Thickness, dust column, `f_abs` and the gravity sampling are all computed under a
+  pressure the drive says is wrong. ~~Feedback into `P_C3a` is bounded (via `f_abs ≤ 1`) but real.~~
+  **[B11.0 2026-08-18 — REVISED.]** The mismatch is confirmed and sized (`P_HII/Pb` median **6.16**
+  momentum, **4.62** transition; ordering verified in every runner). But the feedback into `P_C3a`
+  is **exactly zero on 29 of 33 driving rows** — `f_abs` is already 1.0000 there, so a higher inner
+  pressure cannot raise `Qi_abs` — and on the other 4 rows it pushes `P_C3a` **up**, not down.
+  B is a real inconsistency in thickness/dust/gravity, **not** an upper-bound mechanism on `P_C3a`.
+  Further: Geen et al. §4.2 close the ionised gas with `P_w = n_i c_i² m_H/X` at `r_w`, i.e.
+  `nShell0 ∝ P_ram` **is** the standard boundary condition — so the questionable value is `P_C3a`,
+  not the shell's.
+- **C. Mass double-book — measured, and it is NOT small.** A Strömgren-filled cavity at `n_C3a`
+  holds `M_cav = (4/3)πR2³·n_C3a·mu_convert`. On B3M's momentum rows (inverting the shipped
+  `P_HII`): `M_cav/M_shell` = **0.095 at t=0.405 growing monotonically to 0.564 at t=1.5**
+  (57,400 vs 101,800 Msun). That gas can only have come off the shell, yet `shell_mass` keeps 100%
+  of the swept material — so the inertia and `F_grav` use one book while the drive premise uses the
+  other. Either the cavity is filled and the shell should be up to ~2× lighter (faster), or it is
+  supply-limited and `P_C3a` is overstated; the code currently asserts both. Grows as `R2^{3/2}`,
+  so it is worst exactly where the momentum question lives. (Derived from the b9 run:
+  `n = P_HII/((mu_convert/mu_ion_shell)·k_B·T)`, `M_cav = (4/3)πR2³·n·mu_convert` per snapshot.)
+  **[B11.0 2026-08-18 — CONFIRMED to 4 s.f., and UNDERSTATED.]** Units cleared by the
+  `units-reviewer` agent; two independent routes (invert `P_HII` / replay the forward
+  `get_phii_c3c` map) agree to **1e-12** on all 33 driving rows; the committed `n_cavity` column
+  gives 57,396.6 Msun by a third route that never touches `P_HII`. Re-measured: **0.0952 → 0.5638,
+  57,397 vs 101,805 Msun.** What the audit missed: `shell_mass` already equals **100.0000%** of the
+  gas that exists (cloud 100,000 + ambient 1,805 Msun), and winds inject only **54.8 Msun** over
+  0→1.5 Myr — so the "either/or" above is not a genuine fork. The filled-cavity limb needs
+  `(M_cav + shell_mass)/M_avail` = **1.5638**, i.e. 56% more gas than the run has, and is
+  unavailable. Onset is at the **first driving row** (t = 0.3037, transition), not in momentum.
+  `data/b11_mass_ledger.csv`, `harness/mass_ledger_check.py`.
+  ⚠️ **[B12 2026-08-18 — REGIME-SCOPED. 0.564 is a B3M number, not a universal one.]** The low-wind
+  rung `B3MW01` (`Lw × 0.1`) gives `M_cav/M_shell` = **0.1296** at t=1.5, tripping the falsifier
+  registered for it (< 0.2). `M_cav ∝ R2^{3/2}·sqrt(Qi f_abs)`, so the controlling variable is
+  **bubble size, not the degree of HII dominance** — that run only reaches `R2` = 7.733 pc against
+  23.253 pc. The seam is worst in the configs that expand furthest. **The qualitative core survives
+  unchanged**: `(M_cav + M_shell)/M_avail` = 1.1296 (still over-subscribed), wind mass 31.6 Msun =
+  0.24% of `M_cav`, and the dynamical cost falls to +0.45%/+0.97%. Always quote this seam with its
+  config. `data/b12_lowwind_mass_ledger.csv`, `data/b12_lowwind_mass_dynamics.csv`.
+- **D. Thin-shell strain.** `dR/R2` = 0.67–1.31 in momentum (Batch 9) — the ODE's thin-shell
+  premise and C3a's sharp cavity/shell split are both at their validity edge there.
+  **[B11.0 2026-08-18 — CONFIRMED.]** `dR_full/R2` = 0.6723–1.3078, `dR_ion/R2` = 0.6579–1.3076;
+  `dR_ion/dR_full` median 0.9954, so the seam does not depend on which thickness is meant.
+  **[B12 2026-08-18 — WORSE at low wind.]** `B3MW01` momentum `dR_ion/R2` = **1.171–1.438**
+  (median 1.213). The thin-shell premise is violated harder when the wind is weak, not less.
+- Also vestigial, cosmetic + edge-behaviour only: the C3c call is gated by the OLD capped quantity
+  (`n_IF_Str > 0`) in every phase runner, and the `F_HII` docstrings still say "from n_IF_Str".
+
+**Direction and consequence.** ~~Every seam pushes the same way:~~ **[B11.0 2026-08-18 — CORRECTED.
+Three of the four push the same way, not all four.]** **[Updated again after B11.A–D, 2026-08-18 — the list is down to one seam plus dust.]**
+**The shipped driving-branch `P_C3a` is an upper bound** because of **C** (the filled-cavity limb
+needs 56% more gas than the run has, so the drive must be the supply-limited limb) **and G9.4's
+dust** (−51–75% of the budget). **Neither A nor B belongs on this list.** A's double-spend is real
+but repairing it *raises* `P_C3a` by 0–17.8% (G11.A2), not lowers it; B's feedback is exactly zero
+on 88% of driving rows and upward on the rest, so it inflates nothing either — it is an
+inconsistency in thickness, dust column and gravity sampling. Both original direction claims were
+measured and struck. None of this is
+*extra* work beyond D5 — these seams ARE D5's content: a photon-conserving, mass-conserving,
+boundary-consistent cavity+shell model is exactly "what does the photoevaporative system transmit".
+**B11.0 adds an external reference for that model**: Geen et al., "When H II Regions are
+Complicated" (§4.2) close exactly this system in two equations — photoionisation equilibrium over
+`(r_i³ − r_w³)` plus wind/photoionised pressure balance at `r_w` — and all four seams are absent
+from it by construction. Registered as B11.G; it turns D5 from a from-scratch design into a
+comparison against published algebra.
+**For the c3c-vs-c3a-raw key:** the confined branch is the exactly-consistent one, so the more time
+a scheme spends there, the more defensible it is; C3a-raw does not add any new driving-branch seam
+(the branch behaves identically), but it extends exposure into the weak-wind ramp window where the
+phase's own thermodynamics (a Weaver bubble) contradicts the 1e4 K cavity picture.
+
 ## 7. Decisions needed from the maintainer
 
 | id | question | blocks | state |
@@ -1143,7 +2294,47 @@ Both halves of §3's limiting-case obligation on C3 are now discharged: wind-onl
 | D2 | ✅ **ANSWERED 2026-08-12** — `P_HII` should be a real, separate pressure, treated as one unless the architecture cannot support it (then the assumption must be explicit). Consequence: the target is **decoupling**, and §3b shows the cap is not the coupling — the ionised volume is. Open sub-question for Batch 5: which decoupled formulation (C3a/C3b/C3c) | Batch 5 | **answered; formulation open** |
 | ~~D2-old~~ | ⛔ superseded by the above. **WAS THE CRUX (Batch 4a).** Removal is proven *safe* — no blow-up materialises in any regime tested, including the compact probe. So the question is no longer "can we?" but "should we?": is the uncapped Strömgren pressure physically trustworthy at these ionized volumes, given it exceeds `Pb` on 100% of rows (up to 7.79×; the 3.36 quoted earlier was PRB's `blowup_max`, not the matrix max) and shifts trajectories 15–28%? No measurement can settle this; it needs the model's intent. Also confirm §2's reading that the cap was pragmatic, not a physics claim. | Batch 4b design; Batch 5; **4a landing** | **open** |
 | D3 | ✅ **ANSWERED 2026-08-13** — acceptable-if-explained. Fate *flips* remain reportable, but a **timing** change under an explained mechanism is not a re-tune trigger. Applied to the standing case: WW's collapse moving 0.2816 → 0.2358 Myr (16% earlier) under C3c is **accepted** — it still collapses, and the mechanism (a stronger photoionised drive reordering the collapse) is documented in §3c stage 2. | Batch 3/4 verdicts | **answered** |
+| D5 | ⬜ **OPEN, and now the load-bearing one (raised 2026-08-16, Batch 9 scope).** **What pressure does a photoevaporative ionised layer transmit to the neutral shell?** C3c drives at the full `n_tot k T` of the ionised gas. `c43a50e`'s own commit message flags this as unexplored: *"a photoevaporative flow does not drive at n k T of the whole region."* Batch 8 removed the calibration explanation (C3a's magnitude **is** the classical D-type pressure, exactly). Batch 9 removed the geometry explanation too, but **not** for the reason its scope first claimed: the correction is *not* one-signed — in the momentum phase the shell is thick (`dR/R2` 0.67–1.31) so the layer form **lowers** `P_HII` 0.51–0.71×. It just is not enough: `P_HII/P_ram` median 6.165 → 3.594 on the analytic layer form, and **→ 1.545 (1.322–1.666, falling with time)** on the profile form that G9.4 shows is the trustworthy one — still HII-dominated on every row, but by ~50% rather than ~500%. So geometry moves the right way and lands close to unity without crossing it, and this is what is left. ✅ **Batch 10 closed the one escape route that remained**: the `Lw ≈ 3.4` inversion extrapolated from stage 3's exponent was tested on `B3MW3`/`B3MW10` and **falsified** — the profile form falls only as `Lw^−0.1133` because stronger winds thin the shell and that raises the geometry correction, so inversion sits at `Lw` ≈ 46.5, still unphysical. **D5 is therefore load-bearing on measurement, not just on absence of alternatives.** Candidate answers, none measured: (i) full `n k T` — the status quo; (ii) a momentum-flux-limited transmission (the flow carries `rho v^2`, not `n k T`); (iii) C3's never-implemented option (c), `P_ram + max(P_C3a − P_conf, 0)` — transmit the confining pressure, add only the excess. **This is a physics-intent call, not a code call**, and it cannot be settled by measurement.<br><br>**Option (iii) analysed 2026-08-17 (maintainer question).** In the momentum phase `P_conf` **is** `P_ram` (`run_momentum_phase.py` assigns `Pb` = ram pressure), so option (iii) collapses to an identity — verified to machine precision on all 34 B3M momentum rows:<br>`P_ram + max(P_C3a − P_ram, 0)` ≡ `max(P_C3a, P_ram)`<br>i.e. **in momentum, option (iii) IS C1 ("transmit, don't add") applied to C3a.** C1 was measured in Batch 3 and judged "safe, but aimed at the wrong target" — but only because `P_HII ≡ P_ram` then made `max(P_HII, P_ram) = P_ram`, which *deleted* the photoionised channel. With C3c's decoupled `P_C3a` it deletes nothing, so **Batch 3's objection to C1 no longer applies**. Outside momentum they differ: transition's `P_conf` is the bubble thermal pressure, so `P_ram + max(P_C3a − Pb, 0)` is not a plain max there.<br><br>**Measured effect (B3M momentum, 34 rows):** shipped `P_drive/P_ram` median **7.095** (6.083–8.161) → option (iii) **6.095** (5.083–7.161) = a **14.1% reduction**, exactly the `+P_ram` double-count and nothing else. ⚠️ **So option (iii) fixes additivity, not dominance** — the drive is still ~6× ram because `P_C3a` dominates alone. Of the three options, **(ii) momentum-flux-limited is the only one with factor-level leverage on magnitude** (a photoevaporative flow carries `rho v^2`, not static `n k T`).<br><br>**Tension with D1, which must be settled to adopt (iii).** D1 ruled the momentum sum *intended*, conditional on `P_HII` being genuinely its own calculation — a condition C3c now satisfies, so by D1's own logic the sum is legitimate and (iii) reverses it. The counter is physical rather than bookkeeping: if the ionised skin is what contacts the shell, the wind pushes the *skin* and the shell feels the *skin*, so adding both double-counts the wind regardless of decoupling. Genuine disagreement between the two framings; needs the maintainer.<br><br>**Maintainer direction 2026-08-17:** "transmit, don't add" is favoured, with the `P_ram + P_HII` form retained as a **selectable key** and the default *possibly* moving to transmit. **No code written — two design decisions are deliberately parked with the maintainer:**<br>**(a) the key's default.** `'sum'` first is provably byte-identical and needs no re-verification, leaving the flip as its own gated change; defaulting straight to `'transmit'` is a **default flip**, which CLAUDE.md's planning protocol classes as risky/outward-facing — pre-registered gate, full-run equivalence on the stiff regimes in separate processes at matched `t`, plus D4 golden re-baselines.<br>**(b) the scope.** Momentum-only is 2 sites (`run_momentum_phase.py:265,445`), matches Batch 3's measured C1 arm, and respects D1's ruling that the transition `max` is a deliberate `Pb → 0` handover. Momentum+transition is 5 sites (adding `run_transition_phase.py:331`, `energy_phase_ODEs.py:253,385`), becoming `max(Pb, P_HII, P_ram)` — the same double-count is arguably the same defect there, but it has no prior measurement and touches a construct D1 called deliberate. The energy/implicit sites (`energy_phase_ODEs.py:388`, `run_energy_implicit_phase.py:532`) are `max(Pb, P_HII)` with no `P_ram` and are **unaffected either way**.<br>⚠️ Whichever lands, this is the case where a `.param` key **is** warranted — unlike the capped-Strömgren prescription (see §2a discussion), `sum` and `transmit` are two defensible physics choices, directly analogous to `betadelta_solver`. <br><br>**Superseded 2026-08-18 — transmit is DROPPED; the candidate is now 'C3a-raw' (maintainer direction).** Two follow-up questions from the maintainer: (1) is the confined branch's exact-0.0 right, or should the helper always return `P_C3a` and let the existing `max`/sum structure decide dominance ("if it's smaller than Pb it should just have subdominant contribution")? (2) momentum should stay *independent Strömgren pressure + `P_ram`* — **which it already is**: the switch is inert in momentum on every measured config (`P_C3a > P_ram` on 100% of momentum rows), so momentum needs no change under either scheme. Measured effect of C3a-raw (always-return) vs shipped C3c, on committed runs — reconstruction validated to 2.2e-16 on B3M's 66 driving rows; ±5% on B3MW001's (value-lag at the rapidly-evolving early steps):<br>• **B3M (nominal wind): drive-identical in energy (0/87 rows), implicit (0/68) and momentum (0/34)**; 1/42 transition rows changes (+7.9%) — and it **removes the `t_cross` kink registered in §3c.1**: stored `P_drive` jumps +6.8% across the switch row, C3a-raw is continuous (−1.0%).<br>• **B3MW001 (weak wind): 11/51 energy rows change, ×2.12 median, ×2.62 max — every one inside the `dt_switchon` ramp window (t ≤ 6.8e-5 Myr)**, where `P_C3a` is below the un-ramped `Pb` (0.49–0.94, genuinely confined) but above the *ramped* `press_bubble`. Always-return therefore re-admits the D-ramp defect class C3c fixed as a side effect — a pressure carrying the un-ramped scale winning the `max` inside the ramp window. Batch 4a showed early-window drive changes can retain double-digit ΔR2 downstream (F1LO 14.4%), so this needs the offline screen + a full-run gate on the weak-wind configs before landing.<br>Design consequences if C3a-raw is adopted: (a) the **D1 tension dissolves** — the momentum sum stays, nothing is reversed; (b) the **scope question dissolves** — C3a-raw is one change in `get_phii_c3c` (return `P_C3a` unconditionally), zero `P_drive` edits, each phase sorts itself via its existing `max`/sum; (c) the pinned exact-0.0 contract (`test_phii_c3c.py`) and Batch 5's pre-registered null (`P_HII`=0 on implicit rows) are deliberately superseded — D4-style before/after bookkeeping required. Remaining decisions: the key's default (`c3c` switch vs `c3a` raw) and how to handle the weak-wind ramp window. | the momentum-phase verdict; any further C3 work | **open — see §7.1 for the candidate register (the single live list); transmit dropped 2026-08-18; K2 (C3a-raw) is the maintainer's candidate; default + ramp-window handling parked** |
 | D4 | ✅ **ANSWERED 2026-08-13** — re-baselining authority **granted** for `test_phase_boundary.py`, `test_betadelta_hybr_stress.py` and `test_scheme_screen.py` fixtures, conditional on G3.4: every re-baseline lands with a committed before/after table and the mechanism named. A golden that moves for an *unexplained* reason is still a stop, not a re-baseline. | Batch 6 | **answered** |
+
+### §7.1 D5 candidate register — added 2026-08-18 (reconcile pass)
+
+**Why this exists.** D5's cell above grew by accretion across ~six sessions, and Batches 9–12 plus
+the external assessment added four more candidates without anyone writing them in one place. This
+table is now the **single list of live options**; D5's prose is the history of how each arrived.
+Any new candidate gets a row here or it does not exist. Nothing below is a decision — D5 is still
+the maintainer's call.
+
+**Evidence tiers**, so the register cannot be read as if every row were equally supported:
+**M** = measured in this workstream · **S** = supported by primary sources (papers read here) ·
+**A** = from `LITERATURE_ASSESSMENT.md`, which is ⛔ **pending correction** and never load-bearing
+(§0 C-0.5) · **U** = unmeasured idea.
+
+| id | candidate | what it changes | tier | status |
+|---|---|---|---|---|
+| **K1** | **C3c switch** — return `0.0` while `P_C3a ≤ P_conf`, `P_C3a` above | nothing; this is production since `c43a50e` | **M** | **SHIPPED.** Confined branch exactly self-consistent (§6b); driving branch carries the four seams |
+| **K2** | **C3a-raw** — always return `P_C3a`, let each phase's existing `max`/sum decide | one return statement in `get_phii_c3c`; zero `P_drive` edits | **M** | **Maintainer's current candidate.** Drive-identical to K1 on B3M energy/implicit/momentum; 1/42 transition rows (+7.9%) and it removes the §3c.1 `t_cross` kink. ⚠️ Re-admits the D-ramp class on weak wind (11/51 `B3MW001` energy rows, ×2.12 median, all inside the `dt_switchon` window) |
+| ~~K3~~ | ~~**transmit** — `P_ram + max(P_C3a − P_conf, 0)`~~ | ~~2–5 call sites~~ | **M** | ⛔ **DROPPED 2026-08-18** (maintainer). Collapses to `max(P_C3a, P_ram)` in momentum, i.e. C1 on C3a; fixes additivity (−14.1%) but not dominance |
+| **K4** | **Momentum-flux-limited** — the photoevaporative flow transmits `ρv²`, not static `n k T` | `get_phii_c3c`'s value, all phases | **U** | **Unmeasured, and the only candidate with factor-level leverage on magnitude.** Named in `c43a50e`'s own commit message as the unexplored question. No design, no gate |
+| **K5** | **Layer geometry** — balance recombination over the ionised layer `(R_i³ − R2³)`, not the cavity `R2³` | the denominator in `get_phii_c3c` | **M + S** | **Strongest external support of any row.** Four independent sources use the cavity-subtracted volume — Lancaster `eq:ionreceq2`, Geen 2019 `wind:photoequilibrium`, Geen 2022 `eqn:photoionisation_equilibrium_uniform`, **and trinity's own `shell_structure.py:243`** — so K1/K2 are internally inconsistent with `n_IF_Str`. Measured effect: momentum `P_HII/P_ram` 6.165 → 3.594 (analytic layer) → **1.545** (profile form, the trustworthy one per G9.4). Does **not** reach unity; ⚠️ the analytic-form numbers carry B11.0's S1 thin-shell bias and B11.F re-fits them |
+| **K6** | **Coupled closure** (Geen/Lancaster CEM) — solve one `n_i` and one `r_i` from recombination equilibrium **plus** wind/photoionised pressure balance at `r_w` | replaces the `max`/sum composition in all four phases with a scalar root-find | **S** | **Registered as B11.G, not run.** All four §6b seams are absent from it **by construction** — one photon budget, no cavity mass, and the pressure balance *is* the boundary condition. B11.A's degeneracy result (`x* = 1` on 33/33 rows) is the positive argument for it: C3a cannot be closed photon-conservingly *without* a second equation, which is exactly what this supplies |
+| **K7** | **`alpha_p` on `P_ram`** — a wind momentum-enhancement factor, currently ≡ 1 | `pRam` consumers; a new `.param` key | **A** | ⛔ **Pending the corrected assessment.** Hypothesis that the HII-dominated momentum phase is really a missing `α_p ≈ 5–6`. ⚠️ **Batch 12 bounds it**: at `Lw × 0.1` the momentum phase is still 100% HII-dominated at `P_HII/Pb` = 13.7–14.4, and `α_p·P_ram` is small whatever `α_p` is — so `α_p` **cannot** be the whole explanation. Also note it would raise `P_conf` too, making the branch flip harder, not softer |
+| **K8** | **Three-radius model** — `R1 < R_w ≤ R2 ≡ R_i`, with `R_w` algebraic | structural; a follow-up paper | **A** | Pending. K5/K6 are the minimal ways to get `R_w ≠ R2` without this |
+| **K9** | **Shell-mass adjustment** — `M_sh = (4π/3)R_i³(ρ̄ − ρ_i)` | the momentum equation's inertia | **M + S** | **Measured here, and the literature already does it** (Lancaster `eq:pr_spitzer_adj`, with its own "not consistent with the derivation… \[but\] can be more accurate" caveat). B11.C2: **+8.55%/+9.22%** in `R2` at nominal wind, **+0.45%/+0.97%** at `Lw × 0.1`. This is §6b seam C's fix, not a separate idea |
+
+**How the rows relate, so they are not treated as nine independent choices.**
+K1/K2/K3 are the same quantity with different *branch logic* — a key, not physics. K4/K5 change the
+*value*. K6 replaces the whole composition and **subsumes K5** (its `r_i³ − r_w³` is K5's volume).
+K7/K8/K9 are about the wind and the shell, not `P_HII`, and are orthogonal to all of the above —
+K9 in particular is already measured and independent of whichever of K1–K6 wins.
+
+**What the workstream's own evidence currently favours, stated as evidence and not as a decision.**
+B11.A's degeneracy result is the sharpest input: `x = f_abs(Qi(1−x))` has the unique root `x = 1` on
+every driving row, so seams A and B **cannot be repaired inside C3a's structure** at all. That is an
+argument about K1/K2 *as a family*, and it points at **K6**. Against that: K6 is the largest change
+on the table, it has no gate and no measurement here yet, and B11.G is the cheap way to find out
+before committing. **Nothing should be built until the corrected assessment lands** and the maintainer
+rules on the register.
 
 ## 8. Ledger (results land here — the one source of truth)
 
@@ -1156,9 +2347,13 @@ Both halves of §3's limiting-case obligation on C3 are now discharged: wind-onl
 | 3 | ✅ | 2026-08-13 | **C1 MEASURED — safe, small, and aimed at the wrong target.** Momentum-only `max(P_HII, P_ram)` (halving `P_drive` from `2·P_ram` to `P_ram` there) on 4 configs spanning weak winds, two masses and two bench radii. **All WITHIN-BAR, no fate changes:** B1M **0.000%**, B2M 1.24%, B3M 4.00%, WW 1.29% ΔR2 at matched `t`. B1M is the pre-registered falsifiable control — it never reaches momentum, so C1 must be inert there, and it is to 0.000%. The effect is small because momentum is only 12–15% of these runs. **Verdict: C1 does not break anything, but it does not do what D2 asks** — with `P_HII ≡ P_ram` in momentum, `max(P_HII, P_ram) = P_ram`, so C1 *deletes* the photoionised channel rather than decoupling it, and D1 says the sum is intended. Superseded as a fix by C3; retained as the measured cost of the double-count | `data/b3_c1_ledger.csv` |
 | 4 | 🟡 | 2026-08-12 | **4a MEASURED — survives, but is not behaviourally neutral.** 4/4 configs (PRB, B3M, F1HI, F1LO) ran to their natural end, **zero** distress lines (no excess-work, overflow, monotonic-guard or convergence warnings), wall times *within* baseline (492–764 s vs 682–832 s). **No fate changed** on any config. Identity destroyed as intended: `frac_PHII_eq_Pb` = **0.0000** in every phase of every config (was ≥0.9697), relΔ now O(1) (0.06–2.55). But **every config breaches the 5% bar**: ΔR2 max 15.3–28.4%, all located inside the `dt_switchon` window (t = 1.3e-7 … 9e-6 Myr); ΔR2 at end-of-overlap 0.95% (PRB, recovers) → 14.4% (F1LO, retained). Mechanism: uncapped `P_HII` exceeds `Pb` on **100%** of rows (max 7.79× across the matrix; 3.36× on PRB) so it wins the `max`, lifting median `P_drive/Pb` from 1.0000 to 1.83 (PRB). **Verdict: C2a is numerically viable and physically consequential — not a free win. Landing it needs D2.** 4b not started | `data/b4a_ledger.csv`, `data/b4a_identity_grid.csv` |
 | 5 | 🟡 | 2026-08-13 | **Stage 1 (offline screen) done — C3b ⛔ REJECTED, C3a advances.** No solver run: both candidates are closed-form in stored quantities, evaluated on the stock trajectory across 5 configs. C3b fails the pre-registered wind-only limit *structurally* — `n = n_cloud(R2)` has **no `Qi` dependence**, so switching the ionizing source off leaves its `P_HII` unchanged; it also steps 4 decades at `rCloud`. C3a is causally decoupled (`Qi`, `R2` only), has the correct `Qi → 0` limit, and gives sensible ionised densities (19–8055 cm⁻³ in momentum) — but sits uniformly **3.5–7.6× above `P_ram`** and never crosses it, i.e. predicts a photoionisation-dominated momentum phase in all five configs. **Stage 1b: C3c designed (§3c) and screened — it supersedes bare C3a.** The confined skin has no independent density (any decoupled-thickness skin is C3a × O(1), *higher*), so C3c is a regime switch: transmit when `P_C3a ≤ P_conf`, drive at `P_C3a` when above. Screened on the same 5 runs: implicit **exactly** untouched (ratio 1..1..1), D-ramp fixed as a side effect (energy ratio down to 0.30 = the ramp honoured), `t_cross` inside transition in all 4 configs that reach it, momentum drive 2.4–4.3× stock. **Stage 2 DONE: C3c runs clean on 5/5** — zero distress, no fate changes, null passed exactly (`P_HII`=0 on 0/330 implicit rows, `P_drive`==`Pb`), all OVER-BAR at 12.8–20.5% as pre-registered. WW collapses 16% earlier but still collapses. The offline screen predicted the self-consistent regime structure to the printed digit on 3/5 configs. Physics verdict still open: needs D3 + stage 3 | `data/b5_c3_screen.csv`, `data/b5_c3c_regime.csv`, `data/b5s2_c3c_ledger.csv`, `data/b5s2_c3c_arm_regime.csv` |
-| 6 | 🟡 | 2026-08-14 | **C3c LANDED (`c43a50e`, PR #738) — verification incomplete.** 13-config matched-`t` ledger complete on both arms, **no fate change on any config**, ΔR2_max 7.6–20.5%. **SDHS changed phase structure** (stock hands over at `t`=0.147/0.791; C3c stays energy-driven to 1.5) — a fate-only check does NOT catch this, and `compare_trajectories.py` cannot see it because it diffs the terminal fate, not the phase sequence. PRB's 5661% is a collapse-floor artifact (C3c *delays* collapse 56%). **Full `pytest` DISCHARGED 2026-08-16** (during Batch 8, which changed no `trinity/` source): **1085 passed, 3 failed**, 16 deselected, 605 s. The 3 red are exactly the ones predicted below and nothing else — `test_run_smoke.py`, `test_phase_boundary.py` (`cool_beta` measured **0.8783952818088819** vs golden 0.888197, matching the recorded 0.878395 to the digit) and `test_mu_audit_drift.py` (site count measured **5** vs 11, matching the recorded 11 → 5). Confirmed pre-existing by re-running the two fast ones **in isolation** from Batch 8's new test file (trinity leaks module-level global state in-process, so this was checked, not assumed). Still owed: D4 goldens with before/after table, fold-back notes; `test_run_smoke` is **not** on D4's list and needs its own sign-off. CHANGELOG landed in `3590c91d`. Both arms ran at a pre-`main` base; Batch 7 re-ran B3M on `main` and reproduced the row exactly, so main's other physics is neutral **for that config only** | `data/b6_ledger.csv`, `data/b6c3c_walltimes.csv`, `data/b6stock_walltimes.csv` |
+| 6 | 🟡 | 2026-08-14 | **C3c LANDED (`c43a50e`, PR #738) — verification incomplete.** 13-config matched-`t` ledger complete on both arms, **no fate change on any config**, ΔR2_max 7.6–20.5%. **SDHS changed phase structure** (stock hands over at `t`=0.147/0.791; C3c stays energy-driven to 1.5) — a fate-only check does NOT catch this, and `compare_trajectories.py` cannot see it because it diffs the terminal fate, not the phase sequence. PRB's 5661% is a collapse-floor artifact (C3c *delays* collapse 56%). **Full `pytest` DISCHARGED 2026-08-16** (during Batch 8, which changed no `trinity/` source): **1085 passed, 3 failed**, 16 deselected, 605 s. The 3 red are exactly the ones predicted below and nothing else — `test_run_smoke.py`, `test_phase_boundary.py` (`cool_beta` measured **0.8783952818088819** vs golden 0.888197, matching the recorded 0.878395 to the digit) and `test_mu_audit_drift.py` (site count measured **5** vs 11, matching the recorded 11 → 5). Confirmed pre-existing by re-running the two fast ones **in isolation** from Batch 8's new test file (trinity leaks module-level global state in-process, so this was checked, not assumed). Still owed: D4 goldens with before/after table, fold-back notes; `test_run_smoke` is **not** on D4's list and needs its own sign-off. CHANGELOG landed in `3590c91d`. Both arms ran at a pre-`main` base; Batch 7 re-ran B3M on `main` and reproduced the row exactly, so main's other physics is neutral **for that config only**. ⚠️ **[B11 2026-08-18] The default suite now has FOUR reds on this branch, not three.** Full `pytest` at `59b51c43`: **1129 passed, 4 failed**, 16 deselected, 370 s. The new one is `test_gen_default_param.py::test_committed_file_is_byte_identical_to_render`, which is **not** P_HII-related and is **pre-existing** — verified by running it in a clean worktree at this branch's base `ef624195`, where it fails identically, i.e. it predates every B11 commit. B11 touched no `trinity/` source at all. Flagged, not fixed: it belongs to whoever owns `default.param` rendering | `data/b6_ledger.csv`, `data/b6c3c_walltimes.csv`, `data/b6stock_walltimes.csv` |
 | 7 | 🟡 | 2026-08-16 | **G7.2 PASSES — the control fires, so the null is evidence.** `B3MW001` (`Lw × 0.01`, `Qi` untouched) breaks confinement in the **energy** phase: 78.4% HII-dominated, `ratio_max` **4.927** against a pre-registered `[1.5, 6.0]` and a point prediction of 3.01 from `Qi^0.5 Lw^−0.7 ρ^−0.3 t^−0.1`. **G7.1 holds on all 8 nominal-wind configs** — 100% confined in the energy phase across **five decades** of core density (1e2–1e6 cm⁻³), worst margin GMC `ratio_max` 0.173, i.e. 2.9× below the registered 0.5 bar. Energy phase *closed* on 6 of 9 (PL2/SDHS/BE still inside it — partial coverage, not a closed null); implicit/transition/momentum coverage still accumulating. Recomputation validated against the delivered branch on 231/231 B3M rows, `mismatch_rows`=0. Verdict: **`P_HII`≡0 in the energy phase is a property of the regime, not a theorem** — it survives ~1.5 decades of wind suppression and breaks at 2 | `data/b7_confinement_screen.csv`, `data/b7_regime_trajectory.csv`, `figures/b7_regime.png`, `figures/b7_feedback_compare.png` |
 | 8 | ✅ | 2026-08-16 | **C3a IS the classical D-type pressure — the photo-only limit is exact.** No solver run; the shipped `get_phii_c3c` driven through the thin-shell momentum equation. Algebra gates exact to machine precision (Strömgren anchor 2.2e-16; the `mu_convert/mu_ion_shell` prefactor **is** the 2.2 particles per H nucleus, so `P_C3a(R_St) = n_tot k T = rho_0 c_i^2` — Spitzer's `2nkT` with He). Dynamics: index → **0.57124** vs 4/7 = 0.571429, and deviation from Hosokawa–Inutsuka **0.0000% over `R/R_St ∈ [2,50]`** on all 5 `(n_0, Qi)` combinations, while sitting **8.56%** above Spitzer against the analytic `(4/3)^{2/7}` = 8.55% — it lands on the momentum-equation closure, not the ram-balance one. ⚠️ **G8.4 FAILED as registered** (9.511% vs a 5% bar): I compared a from-rest integration against a closed form whose `t=0` state is `v = sqrt(4/3) c_i`, so the gate measured the startup transient (−9.51% at `R/R_St`=2 → −0.01% at 150, index converging on 4/7). Recorded as failed and **amended** (G8.4′), not reinterpreted; the amendment was checked not to weaken the gate — the mis-normalised control still misses by −20.14% vs analytic −20.17%, and the pinned tests fail on `P_C3a × 1.001`. ⚠️ **Not independent confirmation** — HI is *derived from* the same momentum equation, so once the algebra gates hold the ODE must return HI. The content is in G8.2 (the prefactor could have been 1, 2, or a `mu` confusion; it is the He-correct 2.2); the dynamics are a propagation + sensitivity check. **Consequence:** the shipped docstring's "NOT an O(1) normalisation error" is now externally anchored and **confirmed** — the universal HII-dominated momentum phase is not a prefactor bug, so re-deriving C3a's normalisation is a dead end; what stays open is the `R2^{−3/2}` vs `R2^{−2}` geometry, a model-structure question. Both halves of §3's limiting-case obligation on C3 are now discharged | `data/b8_spitzer_crosscheck.csv`, `harness/spitzer_crosscheck.py`, `test/test_phii_c3c_spitzer.py` |
+| 9 | 🟡 | 2026-08-17 | **G9.2 FALSIFIED in momentum, G9.3 discharged — and my own scoping headline retracted.** One B3M run (`--arm b9`, code `2fa8cc9c`, clean tree) reproduced the known trajectory exactly (231 rows, 4 phases, `R2_end` 23.253 vs Batch 5's 23.25) and covered the momentum phase the scope could not. The geometry ratio `sqrt(R2/(3 dR))` crosses 1 at `dR = R2/3`, and the shell goes from thin (`dR/R2` ~1e-3, energy) to **thick** (0.670–1.308, momentum), crossing over *inside* transition. So `frac_ratio>1` = 1.0000 / 1.0000 / **0.3810** / **0.0000** across energy/implicit/transition/momentum. ⛔ **The scope's claim that the correction is one-signed and *raises* `P_HII` 1.75–100× is retracted** — in momentum it **lowers** it 0.51–0.71×, i.e. it moves the *helpful* direction, the opposite of what I reported before momentum was covered. ✅ **What survives:** it is not enough — `P_HII/P_ram` median 6.165 → layer-corrected **3.594**, **34/34 momentum rows still HII-dominated**, so a geometry fix cannot produce the wind-dominated branch and D5 (pressure coupling) stays live for a weaker reason than claimed. 🔍 Unregistered but notable: the layer-corrected ratio is nearly **time-independent** (3.584→3.614 over t 0.405→1.5) while the cavity form *climbs* 5.08→7.16 — the growing dominance is a geometry artifact. **G9.4 CLOSED same day: also FALSIFIED (3.171× vs a 2× bar)** — the analytic thin-layer scaling overestimates the real profile's recombination-equivalent density by up to 3.2×, and in the thin-layer phases the gap **is** exactly the dust sink (`sqrt(recomb/Qi_abs)` = 0.497/0.907 vs measured 0.496/0.906, three decimals). G9.2's momentum verdict survives the recheck with the true ionised thickness (0.505–0.712, 0/17 > 1; the shell is 99.54% ionised there, so the clamped `dR` was benign — now measured, not assumed). ⚠️ **But the profile form supersedes this row's 3.594**: the same rows give **median 1.545 (1.322–1.666), falling with time**, so the momentum excess over unity is ~50%, not ~260%. 🔍 Extrapolating stage 3's `Lw^−0.33` puts inversion at **`Lw ≈ 3.4`** rather than 260 — physical, and `B3MW3`/`B3MW10` already exist. Flagged as a lead needing its own measurement, not a result | `data/b9_geometry_scope.csv`, `data/b9_layer_density.csv`, `harness/geometry_screen.py`, `harness/layer_density_check.py` |
+| 10 | ✅ | 2026-08-17 | **G10.2 FALSIFIED — the `Lw` ≈ 3.4 lead is dead, and D5 is back to being the route.** `B3MW3` + `B3MW10` ran clean to `stop_t` 1.5, both reached momentum, and their energy row counts (96/105) reproduce stage 3's exactly. Profile-form momentum medians **1.5451 → 1.3412 → 1.1902** for `Lw` = 1/3/10: G10.1 passes by 0.0088 (1.3412 vs a 1.35 ceiling, 25% above its 1.0752 point prediction), G10.3 (cavity form HII-dominated 100%, both rungs) and G10.4 (monotonic) pass, but **G10.2 fails — 1.1902 against a registered < 1.0**. The failure mechanism was registered in advance and is confirmed: stronger winds **thin the shell** (`dR_ion/R2` ∝ `Lw^−0.3375`), so the geometry correction `sqrt(R2/3dR)` *rises* as `Lw^+0.169` and cancels ~43% of the cavity form's `Lw^−0.3959` decline. Net profile response is only **`Lw^−0.1133`**, not the −0.33 my Batch 9 extrapolation assumed. Revised inversion: cavity ≈ `Lw` 99, profile ≈ `Lw` **46.5** — a ~2× improvement, not the ~26× projected, and **still unphysical**. 🔍 Genuine refinement: `frac(ratio>1)` in momentum is 0.0000/0.0000/**0.1667** because `B3MW10` dips to `dR_ion/R2` = 0.3197, below the `R2/3` break-even — so **the geometry correction's sign is wind-dependent**, which reconciles the Batch 9 scope ("raises") with the Batch 9 verdict ("lowers"): both were partial views of a thickness-dependent sign. ⚠️ G10.5 binds — the rungs sit at 0.98/0.74/0.45 thickness, so the trend is confounded with geometry and −0.1133 is not a clean wind response | `data/b10_wind_profile.csv`, `data/b10_walltimes.csv` |
+| 11 | 🟡 | 2026-08-18 | **B11.0 DONE — the audit survives an adversarial pass: 3 CONFIRMED, 1 REVISED, 0 REFUTED. A–D not started.** One fresh B3M run at `ef624195` (495.9 s, 231 rows, all 4 phases, `R2_end` 23.253) reproduces `data/b9_layer_density.csv` to **≤3.3e-06 rel on 116 rows × 15 numeric columns**, so the Batch 9/10 baselines are sound and the seams are not a run artefact. **A CONFIRMED:** every `Qi` consumer in `trinity/` enumerated — no cavity-absorption factor at any of them, and the only attenuation (`get_shellODE.py:120`) starts at `r = R2` with `phi0 = 1`; `f_abs` = 1.0000 on 16/16 transition + 13/17 momentum driving rows, so the claimed budget is ≈`2·Qi`. Sharper than §6b put it: `f_abs` is *by construction* the shell's absorbed fraction and `get_bubbleParams.py:358` credits the **cavity** with that identical sub-budget. **B REVISED:** mismatch confirmed and sized (`P_HII/Pb` median 6.1646 momentum, 4.6218 transition; call-time ordering checked in all four runners) but the **direction is wrong** — feedback into `P_C3a` is **exactly zero on 29/33 driving rows** (`f_abs` already saturated) and **upward** on the other 4, so B is not an upper-bound mechanism, and §6b's "every seam pushes the same way" is corrected in place. **C CONFIRMED to 4 s.f. and understated:** `units-reviewer` cleared the derivation (`shell_structure.py:125-126` *is* the shipped inverse); route-P (invert `P_HII`) / route-Q (replay the forward map) agree to **1.000000000000** on all 33 driving rows; the committed `n_cavity` column gives 57,396.6 Msun by a third route. Re-measured **0.0952 (t=0.4074) → 0.5638 (t=1.5), 57,397 vs 101,805 Msun** vs the audit's 0.095 → 0.564, 57,400 vs 101,800. **New:** `shell_mass/M_avail` = 0.999997–1.000000 on every driving row — the shell already holds 100% of the gas that exists — and winds inject only **54.8 Msun** (0→1.5 Myr, from the run's own feedback columns; `bubble_mass` is *frozen* at 99.643 through momentum and unusable). So `(M_cav + M_shell)/M_avail` = **1.5638**: the model asserts 56% more gas than the run has, and over-subscription starts at the **first driving row** (t = 0.3037, transition), not in momentum. **D CONFIRMED:** `dR_full/R2` 0.6723–1.3078, `dR_ion/R2` 0.6579–1.3076, `dR_ion/dR_full` median 0.9954. **Side-findings S1–S4** (outside the seams, they change committed numbers): S1 `layer_density_check.py:140`'s thin-shell `V_lay` overstates `n_layer_analytic`/`ratio_analytic`/`pdrive_analytic` by 1.342–1.696× in momentum (`V_exact/V_thin` 1.802–2.878) — G9.2/G9.4/G10.1–4 verdicts all survive, and so do Batch 10's `Lw^−0.1133` fit and `Lw ≈ 46.5` inversion (both fitted to `pdrive_profile`, which never uses `V_lay` — re-derived from the published medians to check), but Batch 10's "flat to 1–3% within each rung" is withdrawn and the affected columns are re-fit in **B11.F**; S2 `layer_density_check.py:154`'s falsy-zero filter drops `P_HII == 0.0` rows (0/17 in momentum, so no published number affected); S3 `run_momentum_phase.py:888-896` never recomputes `P_HII` (no effect here — proved by the route agreement); S4 `b9_walltimes.csv` gains a real B3M timing, 495.9 s vs the mtime-derived ~590 s. **External:** all four seams are absent by construction from Geen et al.'s two-equation closure — registered as **B11.G**. — **B11.A–D DONE the same day, and two pre-registered gates came back against §6b.** **G11.A1:** the photon-conserving fixed point `x = f_abs(Qi(1−x))` has the unique root **`x = 1` on 33/33 driving rows, no interior root** — the cavity takes every photon and the shell is left neutral, so C3a cannot be closed photon-conservingly without a second equation. **G11.A2 REFUTES §6b seam A's consequence clause:** `P_C3a_fixedpoint/P_C3a_shipped` = **1.0000–1.1778, 0/33 below 1**, where "⇒ `P_C3a` overstated" predicted < 1 — conserving photons *raises* it by up to 17.8%. **G11.B1/B2:** both falsifiers of B11.0's seam-B revision failed to fire (0 non-zero Δ`f_abs` on 29 saturated rows; Δ`P_C3a` = +0.0000…+0.1778, 0 negative), and the inconsistency is large — `shell_n0` ×4.70/×6.17, ionised layer thins 79–83%, dust fraction 0.620→0.455 and 0.607→0.395, so seam B and G9.4's dust are **not independent**. **G11.C1:** photoevaporative supply 5.10e4–8.68e4 vs required 2.40e4–6.31e4 Msun/Myr ⇒ ratio **1.32–2.13 on 100% of rows**, so the cavity is **not rate-limited** — which *closes* §6b's "supply-limited" limb rather than supporting it, while B11.0's "no reservoir" result stands. **G11.C2a control PASSES at 0.871%** (2% blocking bar), so **G11.C2b** is a measurement: debiting the shell by `M_cav(t)` gives `R2(t=1.5)` **+8.55%** (inertia) / **+9.22%** (inertia+gravity). ⚠️ My own pre-registered "order 10–30%" **missed** — sign right, magnitude ~9% — recorded as a miss because `M_cav/M_shell` is only 0.10 for most of the momentum phase. **Net: §6b's "upper bound" list loses both A and B and is down to seam C + G9.4's dust** | `data/b11_mass_ledger.csv`, `data/b11_photon_ledger.csv`, `data/b11_mass_dynamics.csv`, `harness/mass_ledger_check.py`, `harness/photon_ledger.py`, `harness/mass_ledger_dynamics.py`, `data/b9_walltimes.csv` |
+| 12 | ✅ | 2026-08-18 | **The low-wind sanity check the workstream was missing — and it fired one of my own falsifiers.** Both arms of `B3MW01` (`Lw × 0.1`) ran to `t` = 1.5 in **momentum** (c3c 702 s/205 snaps, stock 666 s/222 snaps, fate unchanged), so nothing is VOID. **G12.1 PASS both halves:** the OLD identity reproduces out-of-sample at a wind strength Batch 0 never ran — `\|P_HII/Pb − 1\|` ≤ **4.44e-16**, frac within 1e-12 = **1.0000** in implicit/transition/momentum (energy 0.9855, the documented stale-`Pb` handoff rows) — while the NEW code gives `P_HII` = 0.0 on 69/69 energy + 79/79 implicit and `P_HII/Pb` = 1.240–14.369 with **0 rows ≤ 1** on the driving branch. **This is the cleanest old-vs-new demonstration in the workstream:** cut the wind 10× and the old code still returns the confining pressure to 2.2e-16 (it carries no photoionisation information at *any* wind strength) while the new one runs 100% HII-dominated at `P_HII/Pb` ≈ 14 and reaches `R2` = 7.733 pc vs 5.722 pc. **G12.2 PASS + validates the offline screen a decade below where it was tested:** measured `frac_HII_dom` transition **0.9062** / momentum **1.0000** against the screen's 0.9118/1.0000, despite the arm's `R2` being 35% larger; momentum `P_HII/Pb` is **2.2×** the nominal rung, consistent with stage 3's `Lw^−0.33`. **G12.4 prediction held:** ΔR2 = **+35.138%** at matched `t`, against B3M's own 20.517% and the whole 13-config b6 range of 7.6–20.5%. ⛔ **G12.3 fired my registered seam-C falsifier:** `M_cav/M_shell` = **0.1296** < the 0.2 bar, so **§6b's 0.564 is a B3M number, not universal** — `M_cav ∝ R2^{3/2}` makes the seam track **bubble size, not HII dominance**, and the low-wind run only reaches 7.733 pc. My stated reasoning was wrong; the bar stands as written. **The qualitative core survives:** still over-subscribed at `(M_cav+M_shell)/M_avail` = **1.1296**, wind mass 31.6 Msun = 0.24% of `M_cav`, dynamical cost +0.446%/+0.965% (control 0.213%). **Seams A/B/D do NOT follow C:** A generalises exactly (27/27 endpoint `x*`=1, ratio 1.0000–1.0000), B holds *and doubles* (`shell_n0` ratio 11.84/13.77 vs 4.70/6.17; layer thins 88–90%; the lone negative Δ`P_C3a` is **−1.46e-16 = 0.66 ULP** with Δ`f_abs` identically 0 — roundoff, and the harness now says so instead of printing a trip), and D is **worse** (`dR_ion/R2` 1.171–1.438 vs 0.658–1.308) | `data/b12_lowwind_trajectory.csv`, `data/b12_lowwind_mass_ledger.csv`, `data/b12_lowwind_photon_ledger.csv`, `data/b12_lowwind_mass_dynamics.csv` |
 | 5-s3 | ✅ | 2026-08-13 | **Wind ladder DONE — Lancaster resolved in transition, open in momentum.** First ladder (`simple_cluster`: SC/SW3/SW10) **VOID** — all three terminate at `stop_t` still in implicit, so `t_cross = never` is not evidence about winds; the crossover is structurally floored at the transition handover (`ratio@entry` < 1 on every config). Re-run on B3M (`B3MW01/1/3/10`), all four valid. **Transition: (a) PASSES** — confined fraction 8.8% → 23.8% → 28.9% → 38.8%, lag/`t_entry` +1.5% → +37.2%, and `ratio@entry` = 0.7144/0.1227/0.0553/0.0235 vs the **pre-registered** 0.68/0.12/0.054/0.022 (exponent **−0.743** vs −0.74, errors 2–7%) — a Weaver-derived prediction holding out of its fitted regime. **Momentum: OPEN** — 100% HII-dominated on all four; `P_C3a/P_ram ∝ Lw^−0.33` ⇒ inversion needs `Lw ≈ 260`. **Not** an O(1) normalisation error (same normalisation predicts transition to 7%): it is the `R2^−3/2` geometry. Mechanism: energy duration **identical** (0.0030 Myr) and transition duration wind-independent; only implicit moves (`Lw^−0.388`), which is why `t_cross` *falls* with wind. ⚠️ Retracted mid-run claim that energy row counts (69/87/96/105) meant longer energy phases — that is timestep refinement, not duration | `data/b5s3_ladder_lag.csv`, `data/b5s3_ladder_regime.csv`, `data/b5s3_ladder_screen.csv`, `harness/lag_vs_handover.py` |
 
 ### 8.2 Config wall-times (filled by Batch 0)
@@ -1206,6 +2401,14 @@ the rule being enforced.
 | `data/b1_bitidentity.csv` | `harness/compare_bitidentical.py` | 1 | b0 `6b55657` vs b1 `bb302e0` |
 | `data/b1_capmap.csv` | `harness/harvest_identity.py` | 1 | runs @ `bb302e0` |
 | `data/b8_spitzer_crosscheck.csv` | `harness/spitzer_crosscheck.py` | 8 | no run — closed-form on the shipped helper |
+| `data/b11_mass_ledger.csv` | `harness/mass_ledger_check.py` | 11 (B11.0) | B3M re-run @ `ef624195`; replays `shell_structure_pure`, does not integrate |
+| `data/b11_photon_ledger.csv` | `harness/photon_ledger.py` | 11 (B11.A/B) | same run; ~9 shell solves per row, ~2 min |
+| `data/b11_mass_dynamics.csv` | `harness/mass_ledger_dynamics.py` | 11 (B11.C) | same run; offline LSODA re-integration of the momentum EOM |
+| `data/b12_lowwind_trajectory.csv` | `harness/reduce_phii_regime.py` | 12 | **both arms**: stock = worktree @ `fca7d88e` (pre-C3c), c3c = `bac9547e`; `B3MW01`, `stop_t` 1.5 |
+| `data/b12_lowwind_mass_ledger.csv` | `harness/mass_ledger_check.py` | 12 | c3c arm only |
+| `data/b12_lowwind_photon_ledger.csv` | `harness/photon_ledger.py` | 12 | c3c arm only |
+| `data/b12_lowwind_mass_dynamics.csv` | `harness/mass_ledger_dynamics.py` | 12 | c3c arm only |
+| `data/b11lowwind_walltimes.csv` | `harness/run_batch.py` | 12 | c3c arm timing (702 s / 205 snapshots) |
 
 Run dirs (not committed — regenerate with `harness/run_batch.py`):
 `outputs/phii/b0__6b55657_dirty/`, `outputs/phii/b1__386df59_dirty/`. The `_dirty` suffix reflects
@@ -1552,3 +2755,226 @@ b0 run and to `bb302e0` for every b1 run (§9 records how that was protected).
   quotable until re-measured. The 50-line rationale block that Batch 5 wrote into
   `get_bubbleParams.get_effective_bubble_pressure` carries those figures, so it now carries a dated
   pre-C3c provenance note as well.
+
+- **2026-08-18 (Batch 11, B11.0 — the audit was attacked, and it held)** — The maintainer ruled that
+  §6b "must not be assumed correct", so B11.0 tried to kill each seam rather than confirm it.
+  Outcome: **A, C, D CONFIRMED; B REVISED; none REFUTED.** The single most load-bearing check was on
+  seam C, flagged in advance as the highest-risk item because it is a units-sensitive derived number.
+  Four independent attacks, all of which it survived: (1) the `units-reviewer` agent found the
+  inversion exact and, decisively, that `shell_structure.py:125-126` **is** the shipped inverse of
+  the same map — the audit used the code's own convention rather than inventing one; (2) a new
+  harness computes the cavity density both by inverting `P_HII` and by replaying the forward
+  `get_phii_c3c` map through `shell_structure_pure`, and the two agree to **1.000000000000** on all
+  33 driving rows, which a units or algebra error could not have survived; (3) the committed
+  `n_cavity` column — built from `Qi_abs`, never from `P_HII` — reproduces 57,396.6 Msun by a third
+  route; (4) an order-of-magnitude sanity check on the implied `Qi`. The claim reproduced to four
+  significant figures.
+  **Where the audit was wrong: seam B's direction.** §6b listed B under "every seam pushes the same
+  way, `P_C3a` is an upper bound". Measured, `f_abs` is already 1.0000 on 29 of 33 driving rows, so
+  raising the shell's inner boundary pressure cannot change `Qi_abs` at all — the feedback is
+  *exactly zero* there — and on the remaining 4 rows a denser inner edge absorbs *more*, pushing
+  `P_C3a` **up**. B is a real inconsistency (thickness, dust column, gravity sampling) but it
+  inflates nothing. Both §6b's seam-B entry and its summary paragraph are corrected in place.
+  This also re-scoped **B11.B**, which as registered would have replaced the *defensible* side of the
+  mismatch: Geen et al. close the ionised gas with `P_w = n_i c_i² m_H/X` at the wind-bubble edge,
+  which is exactly `nShell0 ∝ P_ram`, so the shipped boundary condition is the standard one.
+  **Where the audit was too kind to itself: seam C is worse than it said.** §6b framed it as an
+  either/or — "either the cavity is filled and the shell should be ~2× lighter, or it is
+  supply-limited". Measured, `shell_mass` equals **100.0000%** of all the gas the run has
+  (0.999997–1.000000 on every driving row: 100,000 Msun of cloud gas plus 1,805 Msun of ambient swept
+  beyond `rCloud` = 4.999 pc), and the wind injects **54.8 Msun** over the whole run — 1/1047 of
+  `M_cav`. The filled-cavity limb needs `(M_cav + M_shell)/M_avail` = **1.5638**, i.e. 56% more gas
+  than exists, so it is not available and the fork collapses to the supply-limited branch.
+  Over-subscription also starts at the **first driving row** (t = 0.3037, transition), not in
+  momentum as §6b implied. ⚠️ Recorded because it was nearly used as evidence: the snapshot's
+  `bubble_mass` looks like the natural wind-mass cross-check, but the momentum phase never
+  recomputes it — it is frozen at 99.643 Msun on all 34 momentum rows — so the feedback-column
+  integral was used instead. The `units-reviewer` pass caught this before it reached a conclusion.
+  **Side-findings that change committed numbers (S1–S4 in §Batch 11).** The one that matters is S1:
+  `layer_density_check.py:140` uses a *thin-shell* layer volume in the momentum phase, where
+  `dR_ion/R2 ≈ 0.98` and the shell is emphatically not thin. `V_exact/V_thin` = 1.802–2.878, so
+  everything built on `n_layer_analytic` is overstated by 1.34–1.70×. Every affected *verdict*
+  survives — G9.2 moves further below 1, G9.4's worst case sits in the thin energy phase and is
+  unchanged at 3.171, and G10.1–G10.4 never used `V_lay` — but Batch 10's "flat to ~1–3% within each
+  rung" is an artefact of the approximation (the exact form spans ±12%) and is withdrawn.
+  ⚠️ Recorded because I got it wrong first: I initially withdrew Batch 10's `Lw^−0.1133` exponent and
+  `Lw ≈ 46.5` inversion along with it, on the assumption they inherited the bias. They do not — both
+  are fitted to `pdrive_profile`, which never touches `V_lay`. Re-deriving them from the published
+  profile medians (1.5451 / 1.3412 / 1.1902) returns 0.1133 and 46.5 exactly, so they stand.
+  **New work registered.** B11.F (re-fit Batch 9/10 on the exact layer volume, no run needed) and
+  **B11.G** — the useful by-product of reading Geen et al., "When H II Regions are Complicated": their
+  two-equation closure (photoionisation equilibrium over `r_i³ − r_w³`, plus wind/photoionised
+  pressure balance at `r_w`) has **all four seams absent by construction**. One `n_i`, one `r_i`; the
+  ionised gas consumes `Q_H` once, the wind bubble holds no photoionised gas, and the pressure
+  balance *is* the boundary condition. That turns D5 from a from-scratch design into a comparison
+  against published algebra. Caveat kept explicit: parts of that paper assume `w = 2` while B3M is
+  uniform, so only the profile-independent equations transfer.
+  Artifacts: `data/b11_mass_ledger.csv`, `harness/mass_ledger_check.py`; `data/b9_walltimes.csv` now
+  carries a real B3M timing (495.9 s / 231 snapshots) in place of the `skipped` row Batch 9's
+  `--root` bug left. No `trinity/` source was touched — B11 is measurement and verification only.
+
+- **2026-08-18 (Batch 11, B11.A–D — the seams are quantified, and two of my own registered
+  predictions lost)** — Ran the three measurement batches against gates written and committed
+  *before* any of them executed. The gates did their job: three of them came back against what was
+  written, and all three are recorded as misses rather than reinterpreted.
+  **B11.A. The fixed point is degenerate, and repairing the double-spend RAISES `P_C3a`.** A cavity
+  Strömgren-filled at `n(x) = sqrt(3 x Qi/(4πχαR2³))` consumes exactly `x·Qi` for *any* `x`, so the
+  cavity balance is one equation in two unknowns; the shipped code closes it by fiat with
+  `x = f_abs(Qi)`. The photon-conserving closure `x = f_abs(Qi(1−x))` has the unique root **`x = 1`
+  on all 33 driving rows, with no interior root anywhere** — the cavity absorbs every photon and the
+  shell is left **neutral**, contradicting trinity's own 99.5%-ionised momentum shell and the
+  boundary condition that sets `nShell0`. ⛔ And `P_C3a_fixedpoint/P_C3a_shipped` = **1.0000–1.1778,
+  0 of 33 rows below 1**, where §6b's seam-A clause ("less than `Qi` available ⇒ `P_C3a` overstated")
+  predicted below 1. **That clause is struck.** The double-spend is still real — B11.0 confirmed it —
+  but it is not a reason the pressure is too high, and seam A leaves the "upper bound" list.
+  **B11.B. B11.0's revision survives its own falsifiers.** Neither registered falsifier fired:
+  `Δf_abs` = 0 on all 29 saturated rows, and `ΔP_C3a/P_C3a` = +0.0000…+0.1778 with zero negative
+  rows. Descriptively the inconsistency is large — `shell_n0` rises 4.70× (transition) / 6.17×
+  (momentum), the ionised layer thins by 79–83%, and the dust-absorbed fraction of ionising photons
+  moves 0.620 → 0.455 and 0.607 → 0.395. That last number matters beyond seam B: G9.4's dust sink is
+  itself pressure-dependent, so **seam B and the dust finding are not independent** and should not be
+  added as if they were.
+  **B11.C. The rate is fine, the reservoir is not, and it is worth ~9%.** Photoevaporation off the
+  shell's ionised face supplies 5.10e4–8.68e4 Msun/Myr against a required `dM_cav/dt` of
+  2.40e4–6.31e4 — ratio **1.32–2.13 on 100% of rows**, so the cavity is **not** rate-limited. That
+  *closes* §6b's "supply-limited" limb rather than supporting it; what remains is B11.0's harder
+  result that there is no reservoir at all, and a real flow at this rate is simply the double-book
+  restated as a flux. The blocking control gate passed at **0.871%** against a 2% bar (offline
+  23.0503 pc vs the run's 23.2527 pc at t=1.5), so the debited integration is a measurement and not
+  VOID: debiting the shell by `M_cav(t)` gives `R2(t=1.5)` **+8.55%** (inertia only) or **+9.22%**
+  (inertia and gravity). ⚠️ **My pre-registered "order 10–30%" missed.** The sign held, the magnitude
+  did not, and it is recorded as a miss. The reason is legible in the data: inertia enters as `1/m`
+  and `M_cav/M_shell` is only 0.10 for most of the momentum phase, reaching 0.56 only at the end.
+  So "does 56% mass matter?" has a number — **~9% in `R2`**, comparable to C1's 4.0% and well below
+  the 12.8–20.5% C3c itself moved.
+  **B11.D.** Stated as a validity limit rather than a defect: the momentum-phase ODE assumes a thin
+  shell and C3a assumes a sharp cavity/shell split, and on B3M's momentum rows `dR/R2` = 0.66–1.31
+  with the shell 99.54% ionised, so neither premise holds and "cavity" and "shell" are not
+  distinguishable by ionisation state there.
+  **Where this leaves §6b.** All four seams exist, but the summary claim that they all push the same
+  way has now lost **two of its three members** — A's repair raises `P_C3a` by up to 17.8%, and B's
+  is zero-or-up. Only **seam C** (the filled-cavity limb needs 56% more gas than exists) and
+  **G9.4's dust** bound the driving-branch pressure from above. Both direction claims were struck by
+  measurement, in the same way seam B's was during B11.0 — which is the argument for having
+  pre-registered them.
+  **Where this leaves D5.** The load-bearing result is G11.A1, not any of the magnitudes: C3a's
+  photon-conserving fixed point is degenerate, so seams A and B **cannot be repaired inside C3a's
+  structure**. D5's question therefore moves from "C3c-switch vs C3a-raw" to "C3a at all", and
+  **B11.G** — scoring the shipped closure against Geen et al.'s two-equation treatment, which has all
+  four seams absent by construction — becomes the cheap next step rather than an optional extra.
+  Artifacts: `data/b11_photon_ledger.csv` + `harness/photon_ledger.py` (B11.A/B),
+  `data/b11_mass_dynamics.csv` + `harness/mass_ledger_dynamics.py` (B11.C). No `trinity/` source
+  touched.
+
+- **2026-08-18 (Batch 12 — the low-wind rung; the sanity check lands, and my own falsifier fires)** —
+  Maintainer asked whether the committed data covered a low-wind regime where `P_HII` must dominate,
+  as an old-vs-new sanity check. It did not: the only paired stock-vs-C3c trajectory was `B3M`
+  (`Lw` = 1), the replay family was `Lw` ∈ {1, 3, 10}, and every Batch 11 diagnostic was `B3M` alone.
+  The low-wind material that existed was either an offline screen on *stock* trajectories (`B3MW01`
+  in `data/b5s3_*`) or a run that never reached the driving phases (`B3MW001`, `run_complete=False`).
+  Ran both arms of `B3MW01` (`Lw × 0.1`), gates registered and pushed before either finished.
+  **The check itself is the cleanest old-vs-new evidence this workstream has.** Cut the wind by a
+  decade and the old code *still* returns the confining pressure to **2.2e-16** — it carries no
+  photoionisation information at any wind strength, which is the whole defect — while the new code
+  runs **100% HII-dominated** in momentum at `P_HII/Pb` = 13.667–14.369 and reaches `R2` = 7.733 pc
+  against the old 5.722 pc, i.e. **+35.138%** at matched `t`, above B3M's own 20.5% and above the
+  entire 13-config b6 range. G12.1 also gave the identity its **first out-of-sample confirmation** —
+  Batch 0 measured it on six configs but never at this wind strength — reproducing to the same 2e-16,
+  with the one exclusion being the already-documented stale-`Pb` rows at the 1a→1b handoff.
+  **The offline screen survived a real test.** `c3_offline_screen.py` predicted `frac_HII_dom`
+  transition 0.9118 / momentum 1.0000 from the *stock* trajectory; the real C3c arm measured
+  **0.9062 / 1.0000** even though its `R2` ends 35% larger. That screen had only ever been validated
+  at nominal wind (Batch 5 stage 2); it now holds a decade below, which materially raises how much
+  weight offline screens can carry in this workstream.
+  ⛔ **And it fired the falsifier I registered against seam C.** I wrote that
+  `M_cav/M_shell < 0.2` at t=1.5 "would make the mass double-book regime-specific and materially
+  weaken §6b seam C". Measured **0.1296**. Recorded as fired, bar unchanged. **My reasoning was the
+  wrong way round**: I argued a weaker wind hands more of the drive to the HII term so the seam must
+  worsen, but `M_cav ∝ R2^{3/2}·sqrt(Qi f_abs)` makes the controlling variable **bubble size**, and
+  the low-wind run only reaches 7.733 pc against 23.253 pc — the `R2^{3/2}` ratio is 0.192 against a
+  measured mass ratio of 0.226. So the mass double-book is worst in the configs that **expand
+  furthest**, not the ones where photoionisation dominates most, and §6b's 0.564 is a **B3M number**
+  that must always be quoted with its config. What survives untouched is the load-bearing half:
+  still over-subscribed at `(M_cav+M_shell)/M_avail` = 1.1296, wind mass 31.6 Msun = 0.24% of
+  `M_cav`, so there is still no supply — just less of it to not-supply. The dynamical cost falls with
+  the mass, to +0.446%/+0.965% against a control passing at 0.213%.
+  **The other three seams do not follow C, which is the structural result.** A generalises exactly
+  (27/27 driving rows give the endpoint root `x*` = 1, and the fixed-point ratio is 1.0000–1.0000
+  because `f_abs` is saturated on every driving row); B holds *and roughly doubles* (`shell_n0` ratio
+  11.84/13.77 against 4.70/6.17, layer thinning 88–90% against 79–83%); and D is **worse**
+  (`dR_ion/R2` = 1.171–1.438 against 0.658–1.308). So only seam C is regime-scoped.
+  ⚠️ **One harness defect found and fixed while grading G11.B2.** The gate printed
+  `rows < 0: 1/27`, which reads as a falsifier trip. The row's Δ`P_C3a` is **−1.459e-16 = 0.66 ULP**
+  on a row whose Δ`f_abs` is identically 0 — roundoff in recomputing `P_C3a` through a `sqrt`, not a
+  sign reversal. `photon_ledger.py` now counts real negatives and roundoff separately against a
+  1e-14 floor and prints both, so a future reader is not misled by its own gate. The CSVs keep the
+  raw signed values either way.
+  Artifacts: `data/b12_lowwind_trajectory.csv` (both arms, per-row), plus the three B11 harnesses
+  re-run on the c3c arm. No `trinity/` source touched.
+
+- **2026-08-18 (reconcile pass — §0 amended, D5 register built, and §9's Batch 7–10 gap backfilled)** —
+  Maintainer asked which document is the source of truth and whether the influx of paper `.tex`
+  files and an external assessment warranted a reconvene. Both concerns were correct.
+  **(1) §0 amended.** The source of truth is this file; `README.md` is the pre-C3c evidence record;
+  `DOC_STATUS.md` tracks workstreams. Adding `LITERATURE_ASSESSMENT.md` on 2026-08-18 **violated
+  §0's "one doc" rule** and I did not flag the conflict at the time. Maintainer ruled it stays, so
+  §0 now carries an explicit **C-0 external-document carve-out** with five conditions — not
+  authored here and kept verbatim, a provenance block, a cross-check section written by us,
+  indexed in §8.3, and **never load-bearing**. The last condition is the important one: no ledger
+  verdict and no gate may cite an external document as evidence. Exercised by exactly one file.
+  **(2) The assessment is marked pending correction.** The maintainer flagged it "might contain
+  wrong information" and is preparing an update, so its §4 is now labelled unverified motivation.
+  Blast radius checked rather than assumed: **no measurement depends on it.** B11.0, B11.A–D and
+  B12 all derive from source read here and runs done here; the four-source cavity-volume result was
+  verified by grepping the `.tex` files directly. Exactly four PLAN.md lines cite it (1717 and Batch
+  12's rationale), all attribution or motivation, so nothing measured moves if §4 is wrong.
+  **(3) §7.1 D5 candidate register added.** D5's cell had grown by accretion over ~six sessions and
+  Batches 9–12 plus the assessment added four more candidates in scattered prose. There is now one
+  table, K1–K9, with evidence tiers (measured / source-supported / from the pending assessment /
+  unmeasured) and an explicit note on how the rows relate — K1/K2 are branch logic, K4/K5 change the
+  value, K6 subsumes K5, K7–K9 are orthogonal. Any new candidate gets a row or it does not exist.
+  Recorded there and repeated here because it is the re-ranking §0 step 4 requires: **B11.A's
+  degeneracy result argues against the K1/K2 family as a whole**, not just against one branch rule,
+  and points at K6 — but K6 is the biggest change on the table and B11.G is the cheap way to test it
+  first. No decision taken; D5 remains the maintainer's.
+  **(4) Batches 7–10 were never logged here.** §9 jumps from 2026-08-14 to 2026-08-18 while four
+  batches ran, so §0's step-3 rule ("no entry, no edit") was not honoured at the time. Rather than
+  insert back-dated entries — which would misrepresent the record — the gap is closed with the
+  reconstruction below, **derived from the §8.1 ledger and the batch sections, not from
+  contemporaneous notes**, and marked as such. Treat it as an index into those rows, not as new
+  evidence.
+  > **Backfill (reconstructed 2026-08-18 from §8.1; not contemporaneous).**
+  > **Batch 7 (2026-08-16) — the confinement null is a regime property, not a theorem.** G7.1 held
+  > on all 8 nominal-wind configs: 100% confined in the energy phase across five decades of `nCore`,
+  > worst margin GMC `ratio_max` 0.173 against a 0.5 bar. G7.2, the control, **fired as designed** —
+  > `B3MW001` (`Lw × 0.01`, `Qi` untouched) broke confinement in the energy phase at 78.4%
+  > HII-dominated, `ratio_max` 4.927 against a pre-registered `[1.5, 6.0]` and a point prediction of
+  > 3.01. Because the control fires, the null is evidence rather than an artefact. Recomputation
+  > validated against the delivered branch on 231/231 B3M rows, `mismatch_rows` = 0.
+  > **Batch 8 (2026-08-16) — the photo-only limit is exact, and it kills the calibration
+  > explanation.** No solver run. C3a driven through the thin-shell momentum equation reproduces
+  > Hosokawa–Inutsuka to **0.0000%** over `R/R_St ∈ [2,50]` on all five `(n_0, Qi)` combinations,
+  > with index 0.57124 against 4/7, and sits 8.56% above Spitzer against an analytic 8.55%. The
+  > `mu_convert/mu_ion_shell` prefactor **is** the He-correct 2.2 particles per H nucleus.
+  > ⚠️ **G8.4 failed as registered** (9.511% against a 5% bar) because it compared a from-rest
+  > integration against a closed form whose `t=0` state is already moving; recorded as failed and
+  > amended to G8.4′ rather than reinterpreted. ⚠️ Not independent confirmation — HI is derived from
+  > the same momentum equation. Consequence: re-deriving C3a's normalisation is a dead end.
+  > **Batch 9 (2026-08-17) — geometry is not the escape hatch either, and the scope's headline was
+  > retracted.** The scope claimed the geometry correction was one-signed and *raised* `P_HII`
+  > 1.75–100×; the B3M momentum run **falsified that in the momentum phase**, where the shell is
+  > thick and the correction *lowers* `P_HII` 0.51–0.71×. `frac_ratio>1` = 1.0000 / 1.0000 / 0.3810 /
+  > 0.0000 across the four phases. G9.4 closed the same day and was **also falsified** (3.171 against
+  > a 2× bar): the analytic thin-layer scaling overestimates the real profile's
+  > recombination-equivalent density, and in the thin-layer phases the gap **is** the dust sink to
+  > three decimals. Net: `P_HII/P_ram` median 6.165 → 1.545 on the profile form — still
+  > HII-dominated on every row, by ~50% rather than ~500%.
+  > **Batch 10 (2026-08-17) — the last cheap escape route died.** Batch 9 left a lead: extrapolating
+  > stage 3's `Lw^−0.33` put inversion at a physical `Lw ≈ 3.4`. Tested on `B3MW3`/`B3MW10` and
+  > **falsified** — the profile form does not inherit the cavity exponent, because stronger winds
+  > thin the shell (`dR_ion/R2 ∝ Lw^−0.3375`) and that *raises* the geometry correction, cancelling
+  > ~43% of the decline. Net response `Lw^−0.1133`, inversion at `Lw ≈ 46.5`, still unphysical.
+  > G10.1/G10.3/G10.4 passed, **G10.2 failed** at 1.1902 against a registered < 1.0. Genuine
+  > refinement: the geometry correction's **sign is wind-dependent**, which reconciles Batch 9's
+  > scope ("raises") with its verdict ("lowers") — both were partial views of a thickness-dependent
+  > sign. This is what left D5 load-bearing on measurement rather than on absence of alternatives.

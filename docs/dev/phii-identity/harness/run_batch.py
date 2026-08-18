@@ -238,7 +238,11 @@ def main():
     with out.open("w") as fh:
         fh.write(stamp(__file__) + "\n")
         fh.write(f"# arm={args.arm} stop_t_override={args.stop_t or 'none'} (last writer)\n")
-        fh.write(f"# run root: {root.relative_to(REPO)}\n")
+        # --root is documented for cross-commit batches and is routinely pointed at a
+        # scratch dir OUTSIDE the repo, where relative_to() raises and loses the whole
+        # CSV *after* the runs have already cost their wall time. Absolute path then.
+        root_note = root.relative_to(REPO) if root.is_relative_to(REPO) else root
+        fh.write(f"# run root: {root_note}\n")
         fh.write("# Rows merged across concurrent streams; wall_s reflects a shared 4-core box.\n")
         fh.write("config,status,wall_s,n_snapshots\n")
         for cfg in sorted(merged):
