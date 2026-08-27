@@ -2164,6 +2164,48 @@ widest-expanding runs** — which is exactly where the momentum question lives, 
 unchanged for the case that motivated it.
 
 
+### Batch 13 — K10 offline screen: the smooth CEM drive on committed trajectories — Status: 🟡 gates registered 2026-08-18, screen not yet run
+
+**Where K10 comes from.** The maintainer asked whether the confined branch's exact 0.0 could be
+replaced by "an approximation much closer to truth" that also removes the sudden `P_HII` influx at
+the switch. The literature supplies exactly that (Lancaster's coupled closure; independently the
+Geen 2022 structure), and B11.G rung 0 already verified its identities. K10 (§7.1) is its trinity
+form. This batch measures it **offline only** — no `trinity/` change, ship-hold intact.
+
+**Inputs (all committed):** `data/b7_regime_trajectory.csv` (B3M, c3c arm) and
+`data/b12_lowwind_trajectory.csv` (B3MW01, c3c arm) — both carry `t_now, current_phase, R2, Qi,
+shell_fAbsorbedIon, Pb, P_ram, P_HII`. Dust variant joins `data/b11_photon_ledger.csv` /
+`data/b12_lowwind_photon_ledger.csv` (`dust_Pb` per driving row) by nearest `t`.
+
+**Pre-registered mapping** (fixed before running): `P_conf` = `P_ram` (momentum), `max(Pb, P_ram)`
+(transition), `Pb` (energy/implicit — the stored, un-ramped value; rows with `t ≤ 1e-3` are
+excluded as the `dt_switchon` window and counted). Shipped comparator from stored columns:
+`P_HII + P_ram` (momentum), `max(Pb, P_HII + P_ram)` (transition), `max(Pb, P_HII)` (energy/
+implicit). Rows missing a needed column are skipped and counted; a config contributing <5 driving
+rows is **VOID** for gates, never a confirming null.
+
+**Pre-registered expectation (disclosed, not a gate):** back-of-envelope in the design discussion
+put the no-dust K10 momentum drive at `(1+x)^{2/3}` ≈ 9.5–14.7 `P_ram` on B3M — **above** the
+shipped sum's 6.1–8.2 — with the dust-corrected variant landing back near it. The screen exists to
+measure this properly; recording the expectation up front keeps the measurement honest.
+
+**Gates:**
+- **G13.1 — continuity (the point of K10).** At every row where the shipped `P_HII` crosses 0 →
+  positive (the C3c switch), the K10 drive's step between adjacent rows is **< 5%**, against the
+  shipped jump (measured 23.4% in transition; exact factor 2 at a momentum-phase switch).
+  *Falsifier:* any K10 step ≥ 5% at a switch row.
+- **G13.2 — the healthy branch stays healthy.** On B3M energy+implicit rows the K10 drive's median
+  excess over the shipped drive is **≤ 15%**. *Falsifier:* median > 15% — K10 would then be
+  re-deciding a branch §6b found exactly consistent, an informative failure.
+- **G13.3 — implementation self-consistency (MD identity).** On momentum rows the `P_conf`-form
+  equals the `(1 + R2/R_ch)^{2/3}`-form to **1e-10** relative. *Falsifier:* any row worse.
+- **G13.4 — dust sensitivity.** Recompute with `Q_eff = Qi_abs·(1 − f_dust,ion)` on rows where the
+  ledger provides dust. Pre-registered rule: if the two variants differ by **> 2×** in the momentum
+  phase, the verdict is **"K10 cannot ship without a dust model"** — that outcome is itself the
+  answer, not a failure of the screen.
+- **G13.5 — magnitude (measurement, no bar).** K10/shipped drive per phase per config, both
+  variants, plus predicted `R_i/R2` vs the measured `R_IF/R2` where layer data exists.
+
 ### §6b Self-consistency audit of the C3c/C3a picture — 2026-08-18 (maintainer question) — ✅ **RE-VERIFIED by B11.0 (2026-08-18): A/C/D CONFIRMED, B REVISED, none REFUTED**
 
 > **Status of this section after B11.0.** Every claim below was re-derived adversarially against
@@ -2321,6 +2363,8 @@ the maintainer's call.
 | ~~**K7**~~ | ~~**`alpha_p` on `P_ram`** — a wind momentum-enhancement factor~~ | — | **M** | ⛔ **DEAD 2026-08-18 — withdrawn by its own author in rev2 ("wrong and is withdrawn in full") and closed by measurement here.** Rev2's four kill-arguments include Batch 12's bound (inversion needs `α_p ≳ 14`, twice Paper II's largest). The decisive measurement: from committed `data/b7_regime_trajectory.csv`, TRINITY's own `(R2/R1)²` — which **is** its α_p-equivalent, per the convention identity verified 2026-08-18 — falls smoothly 44.7 → **1.0018** across the transition phase, landing at 1 to 0.2% exactly when `Eb` hits `ENERGY_FLOOR`. So `α_p = 1` in momentum is what the dynamics *delivers*, not an omission. What survives is a **diagnostic**: emit `(R2/R1)²` (flagged invalid inside `dt_switchon`) plus `ζ`, `R2/R_ch`, `C_w` — rev2 §Diagnostics; registered as part of B11.G. The earlier "straddling parity at α_p = 6.2" arithmetic is superseded: it treated a delivered quantity as a free knob |
 | **K8** | **Three-radius model** — `R1 < R_w ≤ R2 ≡ R_i`, with `R_w` algebraic | structural; a follow-up paper | **A** | Pending. K5/K6 are the minimal ways to get `R_w ≠ R2` without this |
 | **K9** | **Shell-mass adjustment** — `M_sh = (4π/3)R_i³(ρ̄ − ρ_i)` | the momentum equation's inertia | **M + S** | **Measured here, and the literature already does it** (Lancaster `eq:pr_spitzer_adj`, with its own "not consistent with the derivation… \[but\] can be more accurate" caveat). B11.C2: **+8.55%/+9.22%** in `R2` at nominal wind, **+0.45%/+0.97%** at `Lw × 0.1`. This is §6b seam C's fix, not a separate idea. **Rev2 ranks it #2**, with Lancaster's own consistency caveat to be stated on landing |
+
+| **K10** | **CEM-interpolated `P_HII`** — the smooth coupled form, phase-agnostic: `n_H0 = (μ_i/μ_c)·P_conf/(k_B T)` (pressure-equilibrium skin density — `shell_structure.py:125`'s own line), `R_i³ = R2³ + 3·Qi_abs/(4π χ_e α_B n_H0²)` (recombination over the cavity-**excluded** layer volume), `P_drive = P_conf·(R_i/R2)²`; equivalently the helper returns the **excess** `P_HII_eff = P_conf·[(R_i/R2)² − 1]` and the existing momentum sum composes it exactly. In the MD phase this is algebraically Lancaster's `α_p ṗ (1 + R_w/R_ch)^{2/3}` at `α_p = 1` | one helper; zero `P_drive` edits (the excess rides the existing compositions) | **S + M** | **Registered 2026-08-18, Batch 13 screens it offline.** The momentum-phase minimal form of K6, containing K5's volume fix by construction. Exact limits: confined → excess `= (2/3)(R2/R_ch)·P_conf` (Lancaster's own first-order term — the correct "better than 0.0"); unconfined → Spitzer over the layer volume. **Smooth**: kills the factor-2 momentum switch jump, the 23.4% transition jump, and the §3c.1 `t_cross` kink by construction. ⚠️ Known gaps, pre-stated: **no dust** in the closure (illustrative: predicts `R_i/R2` ≈ 3.1–3.9 on B3M momentum where the shell solve measures `R_IF/R2` ≈ 1.7–2.3 — G13.4 sizes it); assumes quasi-static balance (Lancaster *imposes* it: "we now imagine"); ED-phase use maps `P_conf` to the thermal `Pb` (their §ed_jfb structure) and must respect the D-ramp window |
 
 **How the rows relate, so they are not treated as nine independent choices.**
 K1/K2/K3 are the same quantity with different *branch logic* — a key, not physics. K4/K5 change the
@@ -3062,3 +3106,43 @@ b0 run and to `bb302e0` for every b1 run (§9 records how that was protected).
   4.6–6.8 (needs careful θ bookkeeping; B11.G-adjacent). No `trinity/` source touched; ship-hold
   unchanged; hold-release criteria unchanged (met since B11.A–D; the release remains the
   maintainer's call, now with a cleaner register to rule on).
+
+- **2026-08-18 (F_rad double-count checked — CLEAN; confinement geometry clarified; K10 registered
+  with Batch 13 gates)** — Three outcomes of the maintainer's physics discussion, recorded before
+  any measurement runs.
+  **(1) F_rad is NOT double-counted, in either implementation.** Draine's trap — the hydrostatic
+  ionised layer's *outer-edge* pressure already internalises the integrated radiation body force, so
+  driving on that edge pressure AND adding `F_rad` counts it twice — was checked against source.
+  Trinity's `get_shellODE.py` **is** Draine's system (`dndr ∝ n σ_d(L_n e^{−τ} + L_i φ) + …`), but
+  that radiation-loaded profile feeds only the shell *structure* (f_abs, τ, gravity sampling). The
+  drive never comes from it: old code drove on the capped `n_IF_Str` (≡ `Pb`, inner face), new code
+  on the uniform-n Strömgren `P_C3a`. Inner-face surface pressure + `F_rad` as a body force is the
+  *correct* control-volume decomposition. **Verdict: clean.** What the check exposed instead: in the
+  driving branch, `P_C3a + P_ram` applied at `R2` is consistent bookkeeping **only if the ionised
+  gas is interior to `R2`** (cavity gas, mass not in the shell). If it is the shell's own inner
+  layer — which the four-source volume result says — then the shell's inner face sees only `P_ram`
+  and the layer's push on the neutral part is an internal force. §6b seam C and the pressure
+  composition are therefore **one defect seen from two sides** (mass ledger / force ledger), not
+  two. Two small prints: `P_ext` is applied over `4πR2²` rather than the outer radius (matters only
+  where the shell is thick — i.e. momentum), and `F_rad`'s ionised-layer absorption share is a
+  legitimate body force.
+  **(2) Confinement, stated precisely** (correcting a reading the maintainer floated, as asked):
+  `R_i ≥ R_w` always — the cavity is transparent (B11.0: `φ = 1` across it), so the ionisation front
+  cannot sit inside the wind bubble. "Confined" means `R_i − R_w ≪ R_w`: the wind fills essentially
+  all the ionised volume and the photoionised gas is a thin dense skin on the shell's inner face.
+  The shell **is** ionised — in that skin; neutral beyond the I-front; `f_esc = 0`. The photons are
+  not "in equilibrium within the cavity" (nothing there absorbs); the budget is spent in the skin,
+  by recombination **and dust** (61–75% measured). The clean statement of the two branches:
+  **confined — the wind sets the skin's density, Strömgren balance sets its thickness; unconfined —
+  Strömgren balance sets the density, the pressure follows.** Same two equations, opposite
+  causality. A genuinely neutral shell exists only in the full Weaver-trapping limit.
+  **(3) K10 registered** (§7.1) — the "better than exactly 0.0" the maintainer asked for: the
+  coupled closure in trinity variables, returning the smooth excess
+  `P_conf·[(R_i/R2)² − 1]` with `R_i` from recombination over the cavity-excluded layer at the
+  pressure-equilibrium density. Exact first-order confined limit (Lancaster's own
+  `(2/3)(R_w/R_ch)` term), kills the switch discontinuity and the §3c.1 kink by construction,
+  contains K5's volume fix, needs no root-find because trinity's `R2` **is** `R_w`. Batch 13's
+  gates (G13.1–G13.5) are registered above **before** the screen runs, including the disclosed
+  expectation that the no-dust variant will overshoot the shipped momentum drive and the
+  pre-registered rule that a >2× dust sensitivity reads "cannot ship without a dust model".
+  No `trinity/` source touched; ship-hold unchanged.
