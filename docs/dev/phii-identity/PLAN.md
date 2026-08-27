@@ -2164,7 +2164,7 @@ widest-expanding runs** — which is exactly where the momentum question lives, 
 unchanged for the case that motivated it.
 
 
-### Batch 13 — K10 offline screen: the smooth CEM drive on committed trajectories — Status: 🟡 gates registered 2026-08-18, screen not yet run
+### Batch 13 — K10 offline screen: the smooth CEM drive on committed trajectories — Status: ✅ **DONE 2026-08-18 — G13.2 PASS; G13.1/G13.3 FAILED by my own design error (diagnosed); G13.4's dust rule fired**
 
 **Where K10 comes from.** The maintainer asked whether the confined branch's exact 0.0 could be
 replaced by "an approximation much closer to truth" that also removes the sudden `P_HII` influx at
@@ -2205,6 +2205,87 @@ measure this properly; recording the expectation up front keeps the measurement 
   answer, not a failure of the screen.
 - **G13.5 — magnitude (measurement, no bar).** K10/shipped drive per phase per config, both
   variants, plus predicted `R_i/R2` vs the measured `R_IF/R2` where layer data exists.
+
+#### Batch 13 RESULT — 2026-08-18, measured against the gates above
+
+304 rows screened (B3M 156, B3MW01 148; 132 skipped as `dt_switchon` window / missing column /
+`P_conf ≤ 0`). **Two of the five gates FAILED, both by MY OWN design error, and both are recorded
+as failed with the diagnosis rather than re-barred.**
+
+| gate | result |
+|---|---|
+| G13.1 continuity | ⛔ **FAIL as written** (worst K10 row-step 7.97% vs a 5% bar) — **metric was wrong**, see below |
+| G13.2 healthy branch | ✅ **PASS** — B3M energy+implicit median K10 excess **+0.68%** (bar 15%) |
+| G13.3 MD identity | ⛔ **FAIL** (6.53e-2 vs 1e-10) — **a real convention discrepancy**, diagnosed exactly |
+| G13.4 dust sensitivity | ⛔ fired: momentum A/B = **2.05×** > 2× ⇒ **"K10 cannot ship without a dust model"** |
+| G13.5 magnitude | measured, below |
+
+**G13.1 — the gate was mis-specified, and the property it meant to test holds exactly.** I
+registered "the K10 drive's *step between adjacent rows* is < 5% at a switch row". Adjacent
+snapshots are separated by real evolution, so that metric conflates the discontinuity with genuine
+change in `R2`, `Qi` and `Pb` — the *shipped* rule scores only 5.97–6.79% by the same metric, which
+is the tell that the metric is not measuring a jump. Re-measured correctly, as a jump **at fixed
+state** (evaluate the shipped rule with `P_HII = 0` and with `P_HII = P_C3a` at the same row):
+
+| config | t | phase | below | above | shipped JUMP | K10 jump |
+|---|---|---|---|---|---|---|
+| B3M | 0.3012 | transition | 1.3494e3 | 1.8079e3 | **+34.0%** | **0.0%** |
+| B3MW01 | 0.7186 | transition | 1.2907e3 | 1.7189e3 | **+33.2%** | **0.0%** |
+
+K10 is a single-valued smooth function of `(R2, Qi_eff, P_conf)` with no branch, so its state-jump
+is **identically zero** by construction. The claim K10 was registered to support is confirmed; the
+gate that was supposed to test it was badly designed. (Note the shipped state-jump measures **+34%**,
+not the 23.4% `P_ram/Pb` figure quoted earlier — that earlier number was the wrong ratio for this
+quantity, corrected here.)
+
+**G13.3 — a genuine convention discrepancy, and it propagates backwards.** The two K10 forms
+disagree by exactly `chi_e^{2/3}`: my primary form carries trinity's explicit electron factor
+(`chi_e * alpha_B * n_H^2`, as in `shell_structure.py:247` and `get_phii_c3c`), while Lancaster's
+`eq:ionreceq2` writes `alpha_B n_H^2` with **no** separate electron factor. Predicted asymptotic
+relerr `1.1^{2/3} − 1 = 0.0656`; measured **0.0653**. So:
+> **`R_ch`(trinity convention) = `chi_e` × `R_ch`(Lancaster).**
+
+The primary form is the correct one *for trinity*, because it matches the code's own recombination
+convention. ⚠️ **This invalidates a number recorded earlier the same day**: the old-vs-new-vs-CEM
+comparison in the §9 verdict entry used Lancaster's `R_ch` without `chi_e`, so its `F_CEM` is high
+by `1.1^{2/3}` = 6.6%; `new/CEM` = 0.548–0.638 becomes **0.583–0.679**, `old/CEM` = 0.134–0.210
+becomes **0.143–0.223**. **No conclusion changes** — old remains 3–7× low under every mapping — but
+the figures are corrected here. (`harness/cem_closure_check.py` is unaffected: it is explicitly
+scale-free with `chi_e` folded into `alpha_B`.)
+
+**G13.4 — the pre-registered dust rule fired.** Momentum-phase sensitivity between
+`Q_eff = Qi·f_abs` (A) and `Qi·f_abs·(1 − f_dust,ion)` (B) is **2.05×** on B3MW01 and 1.89× on B3M,
+above the 2× bar. **Verdict as registered: K10 cannot ship without a dust model.** This is the
+outcome the rule anticipated, not a failure of the screen — and it is consistent with G9.4, which
+measured the dust sink at 61–75% of the absorbed budget.
+
+**G13.5 — magnitudes, and the disclosed expectation held.** Momentum drive in units of `P_ram`:
+
+| config | shipped | K10 no-dust (A) | K10 dust-corrected (B) |
+|---|---|---|---|
+| B3M | 6.1–8.2 | **9.0–14.0** | **4.9–8.5** |
+| B3MW01 | 14.7–15.4 | **32.8–35.0** | **16.0–17.9** |
+
+The pre-registered expectation ("no-dust K10 ≈ 9.5–14.7 `P_ram` on B3M, above the shipped 6.1–8.2")
+is **confirmed** — 9.0–14.0 measured. Median ratios K10/shipped: B3M momentum 1.605 (A) / **0.851**
+(B); B3MW01 momentum 2.242 (A) / **1.096** (B); transition 1.381/0.794 and 2.074/1.059.
+Predicted `R_i/R2`: 3.39 (A) → 2.39 (B) on B3M momentum, against the shell solve's measured
+`R_IF/R2` ≈ 1.7–2.3 — **the dust-corrected variant lands on the measured layer geometry**, the
+no-dust one does not.
+
+**The substantive finding.** The **dust-corrected** coupled closure sits within **15%** of the
+shipped C3c drive in B3M's momentum phase (0.851) and within **10%** on B3MW01 (1.096), while the
+no-dust form is 1.6–2.2× above it. That is evidence for a **cancellation in the shipped scheme**:
+C3a's cavity-volume error (which inflates, per K5) and its missing dust sink (which deflates) are
+of similar size and opposite sign in this regime. C3c is therefore closer to the coupled answer
+than its individual defects suggest — **for partly compensating reasons**, which is exactly the
+kind of agreement that should not be relied on outside the regime where it was measured.
+
+**What Batch 13 does NOT establish.** It is an offline screen on committed trajectories: every row
+uses the *shipped* run's `R2(t)`, so it cannot say what K10 would do to a trajectory it drove
+itself. The energy/implicit rows are dominated by the confined branch where K10 and shipped agree
+to <1% on B3M (but +22–26% on B3MW01 — the low-wind confined branch is where they diverge most,
+and G13.2's bar was registered for B3M only). No fate, no ΔR2, no `trinity/` change.
 
 ### §6b Self-consistency audit of the C3c/C3a picture — 2026-08-18 (maintainer question) — ✅ **RE-VERIFIED by B11.0 (2026-08-18): A/C/D CONFIRMED, B REVISED, none REFUTED**
 
@@ -2364,7 +2445,7 @@ the maintainer's call.
 | **K8** | **Three-radius model** — `R1 < R_w ≤ R2 ≡ R_i`, with `R_w` algebraic | structural; a follow-up paper | **A** | Pending. K5/K6 are the minimal ways to get `R_w ≠ R2` without this |
 | **K9** | **Shell-mass adjustment** — `M_sh = (4π/3)R_i³(ρ̄ − ρ_i)` | the momentum equation's inertia | **M + S** | **Measured here, and the literature already does it** (Lancaster `eq:pr_spitzer_adj`, with its own "not consistent with the derivation… \[but\] can be more accurate" caveat). B11.C2: **+8.55%/+9.22%** in `R2` at nominal wind, **+0.45%/+0.97%** at `Lw × 0.1`. This is §6b seam C's fix, not a separate idea. **Rev2 ranks it #2**, with Lancaster's own consistency caveat to be stated on landing |
 
-| **K10** | **CEM-interpolated `P_HII`** — the smooth coupled form, phase-agnostic: `n_H0 = (μ_i/μ_c)·P_conf/(k_B T)` (pressure-equilibrium skin density — `shell_structure.py:125`'s own line), `R_i³ = R2³ + 3·Qi_abs/(4π χ_e α_B n_H0²)` (recombination over the cavity-**excluded** layer volume), `P_drive = P_conf·(R_i/R2)²`; equivalently the helper returns the **excess** `P_HII_eff = P_conf·[(R_i/R2)² − 1]` and the existing momentum sum composes it exactly. In the MD phase this is algebraically Lancaster's `α_p ṗ (1 + R_w/R_ch)^{2/3}` at `α_p = 1` | one helper; zero `P_drive` edits (the excess rides the existing compositions) | **S + M** | **Registered 2026-08-18, Batch 13 screens it offline.** The momentum-phase minimal form of K6, containing K5's volume fix by construction. Exact limits: confined → excess `= (2/3)(R2/R_ch)·P_conf` (Lancaster's own first-order term — the correct "better than 0.0"); unconfined → Spitzer over the layer volume. **Smooth**: kills the factor-2 momentum switch jump, the 23.4% transition jump, and the §3c.1 `t_cross` kink by construction. ⚠️ Known gaps, pre-stated: **no dust** in the closure (illustrative: predicts `R_i/R2` ≈ 3.1–3.9 on B3M momentum where the shell solve measures `R_IF/R2` ≈ 1.7–2.3 — G13.4 sizes it); assumes quasi-static balance (Lancaster *imposes* it: "we now imagine"); ED-phase use maps `P_conf` to the thermal `Pb` (their §ed_jfb structure) and must respect the D-ramp window |
+| **K10** | ✅ **screened (Batch 13)** — **CEM-interpolated `P_HII`** — the smooth coupled form, phase-agnostic: `n_H0 = (μ_i/μ_c)·P_conf/(k_B T)` (pressure-equilibrium skin density — `shell_structure.py:125`'s own line), `R_i³ = R2³ + 3·Qi_abs/(4π χ_e α_B n_H0²)` (recombination over the cavity-**excluded** layer volume), `P_drive = P_conf·(R_i/R2)²`; equivalently the helper returns the **excess** `P_HII_eff = P_conf·[(R_i/R2)² − 1]` and the existing momentum sum composes it exactly. In the MD phase this is algebraically Lancaster's `α_p ṗ (1 + R_w/R_ch)^{2/3}` at `α_p = 1` | one helper; zero `P_drive` edits (the excess rides the existing compositions) | **S + M** | **Registered 2026-08-18, Batch 13 screens it offline.** The momentum-phase minimal form of K6, containing K5's volume fix by construction. Exact limits: confined → excess `= (2/3)(R2/R_ch)·P_conf` (Lancaster's own first-order term — the correct "better than 0.0"); unconfined → Spitzer over the layer volume. **Smooth**: kills the factor-2 momentum switch jump, the 23.4% transition jump, and the §3c.1 `t_cross` kink by construction. ⚠️ Known gaps, pre-stated: **no dust** in the closure (illustrative: predicts `R_i/R2` ≈ 3.1–3.9 on B3M momentum where the shell solve measures `R_IF/R2` ≈ 1.7–2.3 — G13.4 sizes it); assumes quasi-static balance (Lancaster *imposes* it: "we now imagine"); ED-phase use maps `P_conf` to the thermal `Pb` (their §ed_jfb structure) and must respect the D-ramp window. **Batch 13 measured it:** state-jump **exactly 0** where the shipped rule jumps **+34%**; healthy branch untouched on B3M (+0.68%); but the **dust rule fired at 2.05×**, so **K10 cannot ship without a dust model** — and with dust it lands **within 10–15% of the shipped drive**, evidence the shipped scheme's cavity-volume and missing-dust errors partly cancel. Note `R_ch`(trinity) = `chi_e`·`R_ch`(Lancaster) |
 
 **How the rows relate, so they are not treated as nine independent choices.**
 K1/K2/K3 are the same quantity with different *branch logic* — a key, not physics. K4/K5 change the
@@ -2454,6 +2535,7 @@ the rule being enforced.
 | `data/b12_lowwind_mass_dynamics.csv` | `harness/mass_ledger_dynamics.py` | 12 | c3c arm only |
 | `data/b11lowwind_walltimes.csv` | `harness/run_batch.py` | 12 | c3c arm timing (702 s / 205 snapshots) |
 | `data/b11g_cem_closure_check.csv` | `harness/cem_closure_check.py` | 11 (B11.G rung 0) | no run — scale-free numeric verification of the two CEM identities K6 leans on |
+| `data/b13_k10_screen.csv` | `harness/k10_cem_drive_screen.py` | 13 | no run — K10 vs shipped drive on committed B3M + B3MW01 trajectories, dust variant joined from the photon ledgers |
 
 Run dirs (not committed — regenerate with `harness/run_batch.py`):
 `outputs/phii/b0__6b55657_dirty/`, `outputs/phii/b1__386df59_dirty/`. The `_dirty` suffix reflects
@@ -3146,3 +3228,38 @@ b0 run and to `bb302e0` for every b1 run (§9 records how that was protected).
   expectation that the no-dust variant will overshoot the shipped momentum drive and the
   pre-registered rule that a >2× dust sensitivity reads "cannot ship without a dust model".
   No `trinity/` source touched; ship-hold unchanged.
+
+- **2026-08-18 (Batch 13 — K10 screened; two of my own gates failed, and the dust rule fired)** —
+  Ran the K10 offline screen against gates committed at `93069d28`, before the harness existed.
+  **Headline: the thing K10 was proposed for works, and the thing that blocks it is dust.**
+  The shipped rule's drive jumps **+34% at fixed state** when the branch flips (B3M 1.3494e3 →
+  1.8079e3; B3MW01 +33.2%); K10's jump is **identically zero**, being a single-valued smooth
+  function with no branch. And on B3M's energy+implicit rows — the branch §6b found exactly
+  consistent — K10 moves the drive by a median **+0.68%**, so it does not re-decide a healthy phase.
+  ⛔ **But G13.4's pre-registered dust rule fired at 2.05×**, and the verdict stands as written:
+  **K10 cannot ship without a dust model.** The no-dust form gives 9.0–14.0 `P_ram` on B3M momentum
+  against the shipped 6.1–8.2 — my **disclosed expectation of 9.5–14.7 was right**, which is the
+  value of writing it down first. With `Q_eff = Qi f_abs (1 − f_dust,ion)` it falls to 4.9–8.5,
+  i.e. **0.851× the shipped drive**, and its predicted `R_i/R2` = 2.39 lands on the shell solve's
+  measured `R_IF/R2` ≈ 1.7–2.3 where the no-dust 3.39 does not. **The substantive finding is a
+  cancellation**: C3a's cavity-volume inflation and its missing dust sink are similar in size and
+  opposite in sign here, so C3c is closer to the coupled answer than its individual defects imply —
+  for compensating reasons, which is precisely the kind of agreement not to extrapolate.
+  ⚠️ **Two of five gates failed, both my fault, both recorded as failed rather than re-barred.**
+  **G13.1** measured the drive's *row-to-row step* at a switch; adjacent snapshots contain real
+  evolution, so the metric conflated a jump with change — the shipped rule scores 5.97–6.79% by the
+  same metric, which is the tell. Re-measured at fixed state it is +34% vs 0%. The registered metric
+  was wrong; the property holds by construction. **G13.3** found the two K10 forms disagreeing by
+  6.53e-2, which is exactly `chi_e^{2/3} − 1` = 0.0656: Lancaster's `eq:ionreceq2` carries **no**
+  electron factor while trinity writes `chi_e·alpha_B·n_H^2`, so **`R_ch`(trinity) = `chi_e` ·
+  `R_ch`(Lancaster)**. That propagates backwards into the same-day verdict entry, whose CEM
+  comparison omitted `chi_e`: `new/CEM` 0.548–0.638 → **0.583–0.679**, `old/CEM` 0.134–0.210 →
+  **0.143–0.223**. **No conclusion changes** (old stays 3–7× low under every mapping) and the
+  figures are corrected in place; `harness/cem_closure_check.py` is unaffected, being explicitly
+  scale-free with `chi_e` folded into `alpha_B`.
+  **Scope, stated so it is not over-read**: an offline screen on committed trajectories — every row
+  uses the shipped run's `R2(t)`, so it cannot say what K10 would do to a trajectory it drove
+  itself. No fate, no ΔR2, no `trinity/` change, ship-hold intact. Next rung for K10 would be a
+  dust-carrying variant plus a shadow-arm run through the full equivalence ladder — **not started,
+  and it needs the maintainer's ruling on the register first.**
+  Artifacts: `harness/k10_cem_drive_screen.py`, `data/b13_k10_screen.csv`.

@@ -297,6 +297,24 @@ volume (K5) and the shell-mass debit (K9) — both already measured by Batch 11.
 correction propagated back into D5 (`run_transition_phase.py:331` is reporting-only; the live 1c
 drive site is `energy_phase_ODEs.py:253`). See `PLAN.md` §7.1 and the §9 entry.
 
+**Update 2026-08-18 (F_rad clean; K10 registered and screened — Batch 13).** Checked Draine's
+radiation double-count trap against source: `get_shellODE.py` **is** Draine's system, but its
+radiation-loaded profile feeds only shell *structure* — the drive never comes from the layer's
+outer-edge pressure, so adding `F_rad` as a body force is the correct control-volume decomposition.
+**No double-count, in either implementation.** What it did expose is that seam C's mass double-book
+and the `P_C3a + P_ram` composition are **one defect seen from two sides**.
+Then the "better than exactly 0.0" question: the coupled closure gives a smooth form
+(`P_HII_eff = P_conf·[(R_i/R2)² − 1]`, `R_i` from recombination over the cavity-**excluded** layer)
+whose confined limit is Lancaster's own first-order term. Screened offline (Batch 13): its
+state-jump at the branch flip is **exactly 0** where the shipped rule jumps **+34%**, and it moves
+B3M's healthy energy/implicit branch by only **+0.68%**. ⛔ But the pre-registered dust rule fired
+at **2.05×** — **K10 cannot ship without a dust model** — and once dust is included it lands within
+**10–15% of the shipped drive**, evidence that C3a's cavity-volume inflation and its missing dust
+sink largely cancel. ⚠️ Two of five gates failed by my own design error (a continuity metric that
+measured evolution rather than a jump; and a `chi_e` convention mismatch showing
+`R_ch`(trinity) = `chi_e`·`R_ch`(Lancaster), which corrects an earlier same-day CEM figure without
+changing its conclusion). See `PLAN.md` §Batch 13.
+
 Two follow-ons registered in `PLAN.md`: **B11.F**, because the layer-density harness used a
 thin-shell volume where the momentum shell is not thin — this withdraws Batch 10's "flat to 1–3%
 within each rung" claim, but every verdict survives and so do the `Lw^−0.1133` fit and `Lw ≈ 46.5`
