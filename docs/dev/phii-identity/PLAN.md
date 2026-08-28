@@ -3652,3 +3652,50 @@ b0 run and to `bb302e0` for every b1 run (§9 records how that was protected).
   joining `f_dust` post-hoc from the photon ledgers as Batch 13 did — G13.4's 2.05× is the blocking
   gap and G9.4 already measured the sink at 61–75% of the absorbed budget; (d) only then an arm,
   on the Batch 14 ladder. No `trinity/` source touched; ship-hold unchanged.
+
+- **2026-08-28 (D5 reframed as one physical question — and a correction to my own claim from
+  earlier today)** — Maintainer: "I honestly don't know what to do with D5." Re-read D5 as posed
+  rather than as accreted, and it is stuck for a structural reason: **the cell now bundles three
+  different questions**, one of which is already answered by measurement and one of which is not a
+  decision at all. Decomposed:
+  **(A) Is the cavity premise right?** Not a preference — measured, three ways, and the answer is
+  no: seam A (photons spent twice, `f_abs` = 1.0000 on 29/33 driving rows ⇒ budget ≈`2·Qi`),
+  seam C (`shell_mass` already holds 100.0000% of the run's gas, so `M_cav` has no source), and
+  B11.A (`x* = 1` on 33/33 — C3a cannot be closed photon-conservingly at all). K1/K2 rest on it.
+  **(B) What does the ionised layer transmit? — this is the real D5, and the code currently answers
+  it BOTH WAYS at once.** `shell_structure.py:125` sets the shell ODE's inner boundary to
+  `nShell0 = (μ_i/μ_c)·Pb/(k_B T)`, which *is* the statement "the ionised skin is in pressure
+  equilibrium with the bubble" (§6b item 5 says so). A layer in equilibrium transmits `P_conf` and
+  adds nothing — C3c's confined branch. But on the driving branch the drive asserts a layer density
+  **1.30–7.16× (median 5.09×)** higher than that same boundary condition
+  (`b11_photon_ledger.csv:shell_n0_ratio`). **So the code assumes equilibrium in the shell solve and
+  non-equilibrium in the drive, for the same gas at the same instant.** That is seam B, and it is
+  the one thing every candidate must resolve. Three coherent resolutions, and only three:
+  **(i) equilibrium everywhere** — trust the shell solve; `P_HII` adds nothing ever; drive is
+  `Pb`(+`P_ram`). Self-consistent, but predicts no photoionisation feedback at all.
+  **(ii) non-equilibrium everywhere** — then `shell_structure.py:125` is wrong too and must change;
+  the honest version of "`P_HII` is real", and a much larger change than any §7.1 row admits.
+  **(iii) coupled/interpolating (K6/K10)** — equilibrium holds *at the inner boundary*, the
+  ionisation front sits further out, and the drive is the equilibrium pressure amplified by
+  geometry, `P_conf·(R_i/R2)²`. The independence moves from the *density* into the *geometry*, which
+  is why it escapes: pressure-slaving becomes physics rather than relabelling, and `Qi` enters
+  through `R_i`. Recovers both limits smoothly, no branch, no contradiction.
+  **(C) Which register row to adopt** — downstream of (B), not a separate decision. Once (B) is
+  ruled, at most two rows survive.
+  ⛔ **Correction to my own framing from earlier today.** I wrote that K1/K2/K4/**K5** all "inherit
+  the photon and mass double-counts no matter what value they compute". **That is too strong for
+  K5** and I retract it. K5 balances over the *layer* — the same region the shell solve already
+  owns — so it does not posit a second photon sink or a second mass reservoir, and seams A and C
+  should largely dissolve under it. What Batch 14 actually measured is a **trade, not a strict
+  loss**: K5 buys geometric consistency and pays for it by becoming `Pb`-slaved (∝`Pb^1.0`, r²
+  0.988/0.993), because the layer's density is set by the `Pb` boundary condition. (That K5 relieves
+  seams A/C is a *derivation from the geometry*, not a measurement — it needs its own gate before
+  anyone leans on it.)
+  **The sharp form of the dilemma, which is what makes D5 hard and is worth stating once:**
+  within an independent-pressure architecture **decoupling and geometric consistency are in direct
+  conflict**. Any balance over the shell's own ionised layer inherits `Pb` (the boundary condition);
+  the only way to get a `Pb`-free `P_HII` is to balance over the cavity, whose ionised gas does not
+  exist. D2's 2026-08-12 instruction ("`P_HII` should be a real, separate pressure") therefore asked
+  for something this architecture cannot deliver consistently — which is not a failure of D2, it is
+  what the last six batches discovered. Resolution (iii) dissolves the conflict rather than picking
+  a side. No `trinity/` source touched; ship-hold unchanged; D5 remains the maintainer's ruling.
