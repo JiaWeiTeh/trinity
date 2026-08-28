@@ -2696,6 +2696,64 @@ offline on committed rows, so it says nothing about a trajectory K10 drives itse
 
 ---
 
+### Batch 18 — the K10 arm — Status: 🟡 gates registered 2026-08-28, ship-hold lifted for THIS ARM ONLY
+
+**Authorisation.** Maintainer, 2026-08-28: **ship-hold lifted for the K10 arm only.** Scope, as
+granted: implement K10 and measure what it does to a trajectory it drives itself. **NOT** granted: a
+default flip, D5 adoption, or any claim that K10 ships. D5 stays **open** by the maintainer's
+explicit ruling the same day ("not yet — wait for the arm"), so §7.1 is unchanged.
+
+⛔ **G16.3's "signature change" consequence is RETRACTED (2026-08-28).** Batch 16 concluded K10 would
+need `get_phii_c3c(params, shell_props, P_conf=None)` because `params` carries `current_phase` but
+not `press_bubble`. That inference was wrong: **`get_effective_bubble_pressure` lives in the same
+module** (`get_bubbleParams.py`) and every one of its inputs — `current_phase`, `Eb`, `R2`, `R1`,
+`gamma_adia`, `Lmech_total`, `v_mech_total`, `t_now`, `tSF` — **is in `params`**. The helper can
+therefore compute the ramped confining pressure itself. **No signature change; no call-site edits.**
+The G16.3 *measurement* (ramped/un-ramped 0.3302–0.9952 inside `dt_switchon`) stands and is why the
+ramped value must be used; only the implementation consequence was wrong.
+
+**What the arm implements** — `get_phii_k10`, self-contained, one function:
+1. `P_conf = get_effective_bubble_pressure(...)` from `params` — the **ramped** value (G16.3).
+2. `n₀ = (μ_i/μ_c)·P_conf/(k_B T)` — identically `shell_structure.py:125`'s `nShell0`.
+3. `R_i` from the **dusty** front (Batch 17): the closed-form solution of
+   `dφ/dr = −4πr²χ_e α_B n₀²/Qi − n₀σ_d φ`, `φ(R2) = 1`, root-found on the guaranteed bracket
+   `[R2, R_i_nodust]`.
+4. Return **Batch 16's mapping**: `P_conf·ρ − (P_ram if this phase's composition adds it)`, with
+   `P_ram` computed directly via `pRam(R2, Lmech_total, v_mech_total)` rather than read from
+   `params['P_ram']`, so the helper carries no call-ordering dependence.
+
+**Gates.**
+- **G18.0 — per-call equivalence to the screened closure (BLOCKING, runs first).** The implemented
+  helper, driven on the committed rows, must reproduce `data/b17_dust_closure.csv`'s
+  `drive_selfconsistent` and `composed_selfconsistent` to **1e-10** relative. *Falsifier:* any row
+  worse ⇒ the production code is not the thing Batches 16/17 validated, and the arm is void. This is
+  CLAUDE.md rule 5's "per-call first, necessary but not sufficient".
+- **G18.1 — confined-branch contract change is EXPLICIT.** C3c returns exactly 0.0 while confined and
+  `test/test_phii_c3c.py` pins it; K10 deliberately returns a small positive excess there (Batch 16
+  measured +0.96% median). The arm therefore **breaks those pins by design**. *Deliverable:* a
+  before/after table in the D4 style, and the pinning tests are NOT re-baselined in this arm — a
+  broken pin is recorded, not silenced.
+- **G18.2 — numerical health.** Zero excess-work / overflow / monotonic-guard / convergence warnings
+  across the ladder; wall times within 2× of the shipped baseline. *Falsifier:* distress lines ⇒
+  report the regime and stop.
+- **G18.3 — full-run equivalence (CLAUDE.md rule 5).** Separate processes, matched `t`, on
+  `SC + F1LO + F1HI + B3M + B3MW01` against a shipped baseline at the same SHA. Fate table
+  before/after; ΔR2 reported, **no bar** — K10 is expected to move the trajectory (Batch 17 put the
+  drive within ~25%), so this is a measurement, and a *fate flip* is the reportable event (D3).
+- **G18.4 — the continuity claim, on a trajectory K10 drove.** The shipped rule jumps **+34.0%** at
+  the branch switch (Batch 13, at fixed state). K10 has no branch, so its state-jump is 0 by
+  construction — but on its OWN trajectory the test is whether the `t_cross` kink and the
+  §3c.1 seam ratios are smoother than the shipped arm's. Report both arms' adjacent-row drive ratios
+  at the seams. *No bar* — the shipped comparator is the reference.
+- **G18.5 — does the ED-phase dust gap bite?** Batch 17 validated ED dust on **one row**. The arm
+  drives the energy phase with that unvalidated fraction. Report the run's own
+  `shell_fIonisedDust` against the closure's predicted `f_dust` on ED rows — this **closes G17.0's
+  coverage gap using the arm's own output**, at no extra cost.
+
+**Out of scope:** default flip, D5 adoption, `phii_scheme` key, golden re-baselining.
+
+---
+
 ### §6b Self-consistency audit of the C3c/C3a picture — 2026-08-18 (maintainer question) — ✅ **RE-VERIFIED by B11.0 (2026-08-18): A/C/D CONFIRMED, B REVISED, none REFUTED**
 
 > **Status of this section after B11.0.** Every claim below was re-derived adversarially against
