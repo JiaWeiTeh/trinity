@@ -2479,6 +2479,63 @@ Three consequences, all of which reshape K9:
 its admissible phase scope is narrow, its magnitude is unmeasured for the right quantity, and G15.3
 may couple it to K5. K5 is the cleaner first move.
 
+### Batch 16 — K10 composition mapping — Status: 🟡 gates registered 2026-08-28, not yet run
+
+**Why this batch exists.** Maintainer ruled 2026-08-28: **keep ONE radius.** That drops K8 to a
+future paper, leaves `shell_structure.py` untouched (its quasi-hydrostatic BC is Rahner+2017's own
+and is not the defect), and makes **K10 the live candidate** — it is the one-radius reduction of
+Lancaster+2025, computing `R_i` algebraically rather than tracking it as state. Batch 14's §9 entry
+found that K10's advertised "one helper, zero `P_drive` edits" is true in **momentum only**, and
+that Batch 13 could not have caught it because its screen computed `P_conf·(R_i/R2)²` directly
+instead of routing a helper return through each phase's real `P_drive` expression. **This batch
+fixes the mapping and gates it through the real expressions. Composition only — dust is Batch 17.**
+
+**The mapping under test** (derived 2026-08-28; `ρ ≡ (R_i/R2)² ≥ 1`). The helper must return the
+CEM drive minus whatever the phase's own composition already contributes:
+
+| phase | live composition | required return |
+|---|---|---|
+| energy / implicit | `max(P_conf, P_HII)` | `P_conf·ρ` (**full**) |
+| transition | `max(P_conf, P_HII + P_ram)` | `P_conf·ρ − P_ram` |
+| momentum | `P_HII + P_ram` (`P_conf = P_ram`) | `P_ram·(ρ − 1)` (**excess**) |
+
+One rule: `return = P_conf·ρ − (P_ram if this phase's composition adds it else 0)`. The momentum row
+is that rule's `P_conf = P_ram` limit, so transition → momentum stays continuous by construction.
+
+**Conventions pinned** (a convention mismatch is how G13.3 failed): `n_H0 = (μ_i/μ_c)·P_conf/(k_B T)`;
+`R_i³ = R2³ + 3·Q_eff/(4π χ_e α_B n_H0²)` with `χ_e` explicit (`R_ch`(trinity) = `χ_e`·`R_ch`(Lancaster));
+exact spherical volumes; `Q_eff` run for BOTH Batch 13 variants (A = `Qi·f_abs`, B = with dust) —
+the mapping algebra is independent of `Q_eff`, so a gate that passes for only one variant is a bug
+in the gate.
+
+**Gates.**
+- **G16.0 — the mapping reproduces the CEM drive THROUGH the real expressions (BLOCKING).** For
+  every committed driving row, evaluate that phase's actual `P_drive` expression with the mapped
+  return and require `|P_drive/(P_conf·ρ) − 1| ≤ 1e-12`. *Falsifier:* any row worse. This is
+  precisely the check Batch 13 skipped.
+- **G16.1 — admissibility.** The mapped return must be `≥ 0` on every row; a negative `P_HII` would
+  silently subtract force. Report the minimum per phase. *Falsifier:* any negative ⇒ that phase's
+  mapping is inadmissible and needs a floor **decision**, which is physics, not a code fix.
+- **G16.2 — the confined limit survives the composition.** The defect Batch 14 found was the `max`
+  swallowing a small excess. Require that on rows with `ρ > 1` the composed drive is strictly
+  greater than `P_conf` (i.e. Lancaster's first-order term is *delivered*, not discarded).
+  *Falsifier:* any row where composed drive `== P_conf` while `ρ > 1`.
+- **G16.3 — D-ramp respected (BLOCKING).** In energy/implicit, `P_conf` MUST be the **ramped**
+  `press_bubble`, not the un-ramped `Pb`; using the un-ramped value re-admits the defect class C3c
+  removed. `press_bubble` is recoverable from committed data on confined energy rows, where
+  `P_drive = max(press_bubble, 0) = press_bubble`. Report `P_conf·ρ` under both choices and the
+  divergence inside the ramp window. **Pre-registered design consequence:** `params` carries
+  `current_phase` but **not** `press_bubble` (verified 2026-08-28), so K10 cannot read the ramped
+  pressure through the existing signature — expect this gate to establish that K10 needs
+  `press_bubble` passed in. Recording that as a **signature change**, not a failure.
+- **G16.4 — magnitude (measurement, no bar).** Composed drive vs shipped, per phase per config.
+
+**Out of scope, stated so it is not read as covered:** dust (Batch 13's G13.4 fired at 2.05× and is
+Batch 17), any `trinity/` edit (ship-hold), and any claim about trajectories — this is offline on
+committed rows, so it cannot say what K10 does to a run it drives itself.
+
+---
+
 ### §6b Self-consistency audit of the C3c/C3a picture — 2026-08-18 (maintainer question) — ✅ **RE-VERIFIED by B11.0 (2026-08-18): A/C/D CONFIRMED, B REVISED, none REFUTED**
 
 > **Status of this section after B11.0.** Every claim below was re-derived adversarially against
