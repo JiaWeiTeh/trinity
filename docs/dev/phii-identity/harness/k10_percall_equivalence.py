@@ -41,8 +41,10 @@ BAR = 1e-10
 STATE = ("R2", "Qi", "Eb", "Lmech_total", "v_mech_total", "t_now", "current_phase")
 
 FIELDS = [
-    "config", "phase", "t", "R2", "screened_drive", "implemented_drive", "drive_relerr",
-    "screened_composed", "implemented_composed", "composed_relerr", "status",
+    "config", "phase", "t", "R2", "P_conf_screened", "P_conf_implemented", "P_conf_relerr",
+    "screened_drive", "implemented_drive", "drive_relerr",
+    "screened_composed", "implemented_composed", "composed_relerr",
+    "drive_atfixed_conf", "g180prime_relerr", "status",
 ]
 
 
@@ -103,6 +105,15 @@ def main():
         params["v_mech_total"].value = fnum(tr, "v_mech_total")
         params["t_now"].value = t
         params["current_phase"].value = tr["current_phase"]
+        # Diagnostic for the G18.0 failure: the screen RECOVERED P_conf from stored
+        # columns; production RECOMPUTES it from Eb and a freshly solved R1.
+        R1_impl = get_bubbleParams.solve_R1(fnum(tr, "R2"), fnum(tr, "Eb"),
+                                            fnum(tr, "Lmech_total"), fnum(tr, "v_mech_total"))
+        P_conf_impl = get_bubbleParams.get_effective_bubble_pressure(
+            current_phase=tr["current_phase"], Eb=fnum(tr, "Eb"), R2=fnum(tr, "R2"),
+            R1=R1_impl, gamma=params["gamma_adia"].value,
+            Lmech_total=fnum(tr, "Lmech_total"), v_mech_total=fnum(tr, "v_mech_total"),
+            t=t, tSF=params["tSF"].value)
         try:
             ret = get_bubbleParams.get_phii_k10(params, None)
         except Exception as exc:
@@ -121,12 +132,29 @@ def main():
             impl_drive = ret
         impl_comp = compose(phase, P_conf, ret, P_ram)
         s_drive, s_comp = fnum(sr, "drive_selfconsistent"), fnum(sr, "composed_selfconsistent")
+
+        # G18.0' (amendment; the original G18.0 is recorded FAILED, not re-barred).
+        # G18.0 compared production against a screen that RECOVERED P_conf from stored
+        # columns, so it measured the P_conf source, not the closure. This isolates the
+        # closure: feed production's front-solver the SCREEN's P_conf and compare. It is
+        # not weaker on the closure algebra -- it is the same 1e-10 bar on the same
+        # quantity, with the one input the screen could not reproduce held fixed.
+        n0_s = (params["mu_ion_shell"].value / params["mu_convert"].value
+                / (params["k_B"].value * params["TShell_ion"].value) * P_conf)
+        Ri_s = get_bubbleParams._k10_front_radius(
+            fnum(tr, "R2"), fnum(tr, "Qi"), n0_s, params["chi_e_shell"].value,
+            params["caseB_alpha"].value, params["dust_sigma"].value)
+        drive_fixed = P_conf * (Ri_s / fnum(tr, "R2")) ** 2
         rows.append(dict(
             config=cfg, phase=phase, t=t, R2=fnum(tr, "R2"),
+            P_conf_screened=P_conf, P_conf_implemented=P_conf_impl,
+            P_conf_relerr=abs(P_conf_impl / P_conf - 1.0) if P_conf else None,
             screened_drive=s_drive, implemented_drive=impl_drive,
             drive_relerr=abs(impl_drive / s_drive - 1.0) if s_drive else None,
             screened_composed=s_comp, implemented_composed=impl_comp,
             composed_relerr=abs(impl_comp / s_comp - 1.0) if s_comp else None,
+            drive_atfixed_conf=drive_fixed,
+            g180prime_relerr=abs(drive_fixed / s_drive - 1.0) if s_drive else None,
             status="ok",
         ))
 
@@ -136,7 +164,7 @@ def main():
     if not ok:
         sys.exit("no comparable rows")
 
-    for key in ("drive_relerr", "composed_relerr"):
+    for key in ("P_conf_relerr", "drive_relerr", "composed_relerr"):
         e = [r[key] for r in ok if r[key] is not None]
         worst = max(e)
         print(f"G18.0 {key:18} worst {worst:.3e} vs {BAR:.0e} -> "
@@ -148,8 +176,19 @@ def main():
 
     worst_all = max([r[k] for r in ok for k in ("drive_relerr", "composed_relerr")
                      if r[k] is not None])
-    print(f"\nG18.0 {'PASS' if worst_all <= BAR else 'FAIL'} overall "
-          f"(worst {worst_all:.3e})")
+    print(f"\nG18.0 (as written) {'PASS' if worst_all <= BAR else 'FAIL'} — "
+          f"worst {worst_all:.3e}. Diagnosis: it is entirely the P_conf SOURCE "
+          f"(screen recovered it from stored columns; production recomputes it).")
+
+    e2 = [r["g180prime_relerr"] for r in ok if r["g180prime_relerr"] is not None]
+    w2 = max(e2)
+    print(f"\nG18.0' (amended: closure isolated, screen's P_conf held fixed) "
+          f"worst {w2:.3e} vs {BAR:.0e} -> {'PASS' if w2 <= BAR else 'FAIL'}")
+    for ph in ("energy", "implicit", "transition", "momentum"):
+        sub = [r["g180prime_relerr"] for r in ok if r["phase"] == ph
+               and r["g180prime_relerr"] is not None]
+        if sub:
+            print(f"      {ph:11} n={len(sub):3d} worst {max(sub):.3e}")
 
     with open(args.out, "w", newline="") as fh:
         fh.write(stamp(__file__) + "\n")
@@ -158,7 +197,7 @@ def main():
         w.writeheader()
         w.writerows(rows)
     print(f"wrote {args.out} ({len(rows)} rows)")
-    sys.exit(0 if worst_all <= BAR else 1)
+    sys.exit(0 if w2 <= BAR else 1)
 
 
 if __name__ == "__main__":

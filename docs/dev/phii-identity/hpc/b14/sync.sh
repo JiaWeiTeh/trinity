@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Laptop-side helper for the Batch 14 (K5) G14.4 arm ladder on Helix.
+# Laptop-side helper for the phii-identity arm ladders on Helix.
+# Batch 18 (K10) by default; Batch 14 (K5) via ARMS="baseline k5a_swap k5a_driving".
 # Mirrors paper/II-survey/sync.sh and paper/shellSSC6/sync.sh — but unlike the
 # gitignored paper/ folders this bundle is COMMITTED, so `up` is git push +
 # cluster git pull, not rsync.
@@ -27,7 +28,7 @@ HOST=${HELIX:-helix}
 BRANCH=${BRANCH:-bugfix/phii-pt3}
 CREPO=/home/hd/hd_hd/hd_cq295/trinity                # trinity repo on Helix (/home)
 WS=/gpfs/bwfor/work/ws/hd_cq295-trinity              # writable workspace (/gpfs)
-ARMS=${ARMS:-"baseline k5a_swap k5a_driving"}
+ARMS=${ARMS:-"baseline k10"}   # Batch 18 default; K5 arms are baseline k5a_swap k5a_driving
 BUNDLE=docs/dev/phii-identity/hpc/b14
 
 LOCAL=$(cd "$(dirname "$0")" && pwd)

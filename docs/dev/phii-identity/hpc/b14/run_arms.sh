@@ -6,7 +6,7 @@
 #
 #   bash run_arms.sh prep <SWEEP_DIR> <ARM>   # LOGIN node: worktree + patch
 #   bash run_arms.sh run  <SWEEP_DIR> <ARM>   # compute job: the actual runs
-#   ARM ∈ baseline | k5a_swap | k5a_driving
+#   ARM ∈ baseline | k5a_swap | k5a_driving | k10
 #
 # Contamination rules honoured:
 #   C-1/C-7  every arm runs in a detached worktree at the PINNED BASE_SHA, so
@@ -42,7 +42,8 @@ case "$STEP" in
       baseline)     ;;
       k5a_swap)     git -C "$WT" apply "$HERE/k5a_swap.patch" ;;
       k5a_driving)  git -C "$WT" apply "$HERE/k5a_driving.patch" ;;
-      *) echo "unknown arm: $ARM (baseline|k5a_swap|k5a_driving)"; exit 1 ;;
+      k10)          git -C "$WT" apply "$HERE/k10_arm.patch" ;;
+      *) echo "unknown arm: $ARM (baseline|k5a_swap|k5a_driving|k10)"; exit 1 ;;
     esac
     git -C "$WT" diff > "$SWEEP/${ARM}_applied.diff"   # exact code delta, recorded
     echo "prep: $ARM worktree ready at $WT (base $BASE_SHA)"
