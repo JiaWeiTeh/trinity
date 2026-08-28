@@ -2582,7 +2582,7 @@ therefore still behind the ship-hold.
 
 ---
 
-### Batch 17 — dust inside the K10 closure — Status: 🟡 gates registered 2026-08-28, not yet run
+### Batch 17 — dust inside the K10 closure — Status: ✅ **DONE 2026-08-28 — G17.0/G17.1/G17.2 PASS; G17.3's pre-registered expectation MISSED (recorded, diagnosed). G13.4's blocker is discharged: K10 now has a dust model validated against the code's own**
 
 **Why this batch exists.** Batch 13's **G13.4 fired at 2.05×** — the drive's sensitivity to whether
 dust is in the photon budget exceeded the pre-registered 2× bar — and the verdict as registered was
@@ -2635,6 +2635,64 @@ both [1/pc]; `P_conf` is the **ramped** `press_bubble` in energy/implicit per **
 
 **Out of scope:** any `trinity/` edit (ship-hold); trajectories (offline on committed rows only);
 the `f_esc > 0` regime is reported, not modelled.
+
+---
+
+#### Batch 17 RESULT — 2026-08-28, measured against the gates above
+
+Reproduce: `python docs/dev/phii-identity/harness/k10_dust_closure.py --out
+docs/dev/phii-identity/data/b17_dust_closure.csv`. No solver run; 436 rows over both configs.
+`σ_d` = 1.5754e-58 pc² (the code's own `dust_sigma`).
+
+- **G17.0 ✅ PASS, and not marginally — the closure's dust IS trinity's dust.** Predicted/measured
+  `f_dust`: **median 1.056** (range 0.534–1.120) against a [0.5, 2.0] bar, with **97.3% of rows
+  within 25%**, and the two configs agreeing independently (B3M 1.064 over 61 rows, B3MW01 1.052
+  over 52). Absolute values: closure median **0.6629** vs measured **0.6215**.
+  ⚠️ **The disclosed prior risk did not materialise, and it is worth saying why.** G9.4 measured the
+  uniform analytic form overstating the profile's *recombination*-equivalent density by up to 3.17×,
+  so this gate was registered as genuinely at risk. It passes because dust absorption depends on
+  `∫ n σ_d φ dr` — **linear** in `n` — while recombination goes as `n²`, so the dust fraction is far
+  less sensitive to the profile shape than the recombination integral that G9.4 was measuring. The
+  uniform-density reduction is a poor model of the *density* and a good model of the *dust*.
+- **G17.1 ✅ PASS — 436/436 fronts converged**, no `no_front` rows.
+- **G17.2 ✅ PASS — worst rel err 9.26e-13** against a 1e-10 bar: with `σ_d = 0` the integration
+  recovers `R_i³ = R2³ + 3Qi/(4π χ_e α_B n₀²)` exactly, so the algebra and the code-unit chain are
+  verified end to end.
+- **⛔ G17.3 — MY PRE-REGISTERED EXPECTATION MISSED. Recorded as a miss, not reinterpreted.** I
+  registered that the self-consistent drive **(c)** would "land between (a) no-dust and (b) Batch
+  13's post-hoc, nearer (b)". It does **not**: on 4 of 5 phase×config groups **c < b < a**, i.e. c
+  sits just *outside* the bracket, below the post-hoc value (`c/b` = 0.92–0.95). Only B3MW01's
+  single implicit row is contained. **The direction was right and the containment claim was wrong.**
+  Diagnosed: the post-hoc form applies `(1 − f_dust)` **once** to the photon budget, whereas the
+  closure removes photons **continuously along the layer**, where dust competes with recombination
+  at every radius — so it limits `R_i` slightly more than a single up-front debit.
+  **G13.4 re-run with (c) in place of the join:** no-dust/self-consistent = **1.938 / 1.886**
+  (B3M transition / momentum) and **2.214 / 2.184** (B3MW01). So the sensitivity is **still ≈2× and
+  still above the old bar on B3MW01** — dust genuinely matters this much. That does **not** revive
+  the blocker: G13.4's verdict was *"K10 cannot ship without a dust model"*, and the deliverable was
+  a model, not a smaller number. The dust fraction is now **computed inside the closure and
+  validated against the code's own shell solve to 5.6%** (G17.0), so it is no longer a free choice.
+- **G17.4 — end-to-end magnitude** (dust closure + Batch 16 mapping, composed through the real
+  `P_drive` expressions), median composed/shipped:
+
+| config | energy | implicit | transition | momentum |
+|---|---|---|---|---|
+| B3M | 1.006 | 1.005 | 0.746 | 0.884 |
+| B3MW01 | 1.059 | 1.099 | 0.982 | 1.034 |
+
+  The healthy branch is essentially untouched on B3M (1.005–1.006), and the whole candidate sits
+  within ~25% of the shipped drive everywhere and within ~10% on B3MW01. Dust optical depth across
+  the closure layer is **0.246–4.521 (median 1.591)**, i.e. the layer is marginally optically thick
+  to LyC on dust — consistent with dust mattering at the measured ~2×.
+
+**⚠️ Coverage gap, stated because G17.4 quotes numbers that depend on it.** G17.0's comparison rows
+are **transition 70 / momentum 42 / implicit 1** — the photon ledgers replayed the driving branch,
+so **the ED-phase dust fraction is validated on a single row.** G17.4's energy/implicit columns
+therefore rest on an *unvalidated* dust fraction in those phases. Extending the ledgers to confined
+rows is the cheap fix and is the natural first step of any follow-up. Two smaller conventions to
+note: the ledger's `dust_Pb` is solved at `nShell0(Pb)` while the closure uses `P_conf`, which are
+identical in momentum (`Pb := P_ram`) and can differ in transition when `P_ram > Pb`; and this is
+offline on committed rows, so it says nothing about a trajectory K10 drives itself.
 
 ---
 
@@ -2832,6 +2890,7 @@ rules on the register.
 | 12 | ✅ | 2026-08-18 | **The low-wind sanity check the workstream was missing — and it fired one of my own falsifiers.** Both arms of `B3MW01` (`Lw × 0.1`) ran to `t` = 1.5 in **momentum** (c3c 702 s/205 snaps, stock 666 s/222 snaps, fate unchanged), so nothing is VOID. **G12.1 PASS both halves:** the OLD identity reproduces out-of-sample at a wind strength Batch 0 never ran — `\|P_HII/Pb − 1\|` ≤ **4.44e-16**, frac within 1e-12 = **1.0000** in implicit/transition/momentum (energy 0.9855, the documented stale-`Pb` handoff rows) — while the NEW code gives `P_HII` = 0.0 on 69/69 energy + 79/79 implicit and `P_HII/Pb` = 1.240–14.369 with **0 rows ≤ 1** on the driving branch. **This is the cleanest old-vs-new demonstration in the workstream:** cut the wind 10× and the old code still returns the confining pressure to 2.2e-16 (it carries no photoionisation information at *any* wind strength) while the new one runs 100% HII-dominated at `P_HII/Pb` ≈ 14 and reaches `R2` = 7.733 pc vs 5.722 pc. **G12.2 PASS + validates the offline screen a decade below where it was tested:** measured `frac_HII_dom` transition **0.9062** / momentum **1.0000** against the screen's 0.9118/1.0000, despite the arm's `R2` being 35% larger; momentum `P_HII/Pb` is **2.2×** the nominal rung, consistent with stage 3's `Lw^−0.33`. **G12.4 prediction held:** ΔR2 = **+35.138%** at matched `t`, against B3M's own 20.517% and the whole 13-config b6 range of 7.6–20.5%. ⛔ **G12.3 fired my registered seam-C falsifier:** `M_cav/M_shell` = **0.1296** < the 0.2 bar, so **§6b's 0.564 is a B3M number, not universal** — `M_cav ∝ R2^{3/2}` makes the seam track **bubble size, not HII dominance**, and the low-wind run only reaches 7.733 pc. My stated reasoning was wrong; the bar stands as written. **The qualitative core survives:** still over-subscribed at `(M_cav+M_shell)/M_avail` = **1.1296**, wind mass 31.6 Msun = 0.24% of `M_cav`, dynamical cost +0.446%/+0.965% (control 0.213%). **Seams A/B/D do NOT follow C:** A generalises exactly (27/27 endpoint `x*`=1, ratio 1.0000–1.0000), B holds *and doubles* (`shell_n0` ratio 11.84/13.77 vs 4.70/6.17; layer thins 88–90%; the lone negative Δ`P_C3a` is **−1.46e-16 = 0.66 ULP** with Δ`f_abs` identically 0 — roundoff, and the harness now says so instead of printing a trip), and D is **worse** (`dR_ion/R2` 1.171–1.438 vs 0.658–1.308) | `data/b12_lowwind_trajectory.csv`, `data/b12_lowwind_mass_ledger.csv`, `data/b12_lowwind_photon_ledger.csv`, `data/b12_lowwind_mass_dynamics.csv` |
 | 14 | 🟡 | 2026-08-28 | **Offline screen DONE; no arm (SHIP-HOLD).** G14.0 passes by the letter (no linear slope in [0.95,1.05] with r²>0.99) but the disclosed log-log diagnostic shows both variants ∝`Pb^1.0` on driving rows (K5a r² 0.988 gain ≈2.4, K5b r² 0.993 gain ≈1.5) — the identity with an O(1) gain. K5a identified as the code's own uncapped `n_IF_Str_raw`; Batch 3b had already measured that coupling at r ≥ 0.997 on 788 pre-C3c rows, and Batch 4a its full-run cost (ΔR2 15.3–28.4%, ramp-window concentrated). Branch census: 83/83 confined B3M rows flip driving under both variants (K5b = 1.073×`Pb` in energy — the old identity to 7%), first flip inside `dt_switchon`. G14.3: momentum `P_HII/P_ram` 6.165 → 2.381 (K5a) → 1.545 (K5b), B3MW01 13.766 → 4.388; both gate-text priors hit. Verdict: the cavity volume IS the decoupling; the layer volume belongs in the coupled closure (K10/K6). Arm scope (bare swap / driving-only / defer to K10) is the maintainer's call | `data/b14_k5_screen.csv`, `harness/k5_offline_screen.py` |
 | 16 | ✅ | 2026-08-28 | **K10's composition mapping SOLVED and gated through the real `P_drive` expressions.** G16.0 PASS (worst 2.22e-16 vs 1e-12, all four phases, both `Q_eff` variants): `return = P_conf·ρ − (P_ram if the composition adds it)` yields the CEM drive exactly. G16.1 PASS (853/853 non-negative). G16.2 PASS — the confined-limit term is delivered at **+0.96%** median over `P_conf` instead of being swallowed by the `max`, which was Batch 14's specific finding. G16.3 established the predicted signature change: inside `dt_switchon` the ramped/un-ramped `P_conf` ratio is 0.33–0.995 (median 0.711), so K10 must receive the **ramped** `press_bubble`, which `params` does not carry. G16.4 reproduces Batch 13's magnitudes exactly by a different code path (momentum 1.605/0.851 B3M, 2.242/1.096 B3MW01) — an independent cross-check. Remaining K10 blockers: dust (Batch 17) and a full-run arm | `data/b16_composition.csv`, `harness/k10_composition_check.py` |
+| 17 | ✅ | 2026-08-28 | **Dust is now INSIDE the closure and validated against trinity's own shell solve — G13.4's blocker discharged.** The closure is `get_shellODE.py:120`'s own photon equation at uniform `n₀`, so it is a reduction of the code's dust treatment, not a new model. **G17.0 PASS**: predicted/measured `f_dust` median **1.056**, 97.3% of rows within 25%, both configs agreeing (1.064 / 1.052) — the G9.4 risk did not materialise because dust is linear in `n` where recombination is quadratic. G17.1 PASS (436/436 fronts). G17.2 PASS (σ_d→0 recovers the closed form to 9.3e-13). ⛔ **G17.3's pre-registered expectation MISSED**: the self-consistent drive is not between the no-dust and post-hoc values but just below both (`c/b` 0.92–0.95) — the closure debits photons continuously rather than once. Re-run sensitivity is still ≈2× (1.886–2.214), which is dust genuinely mattering, not a revived blocker. G17.4 end-to-end: composed/shipped 1.006/1.005/0.746/0.884 (B3M) and 1.059/1.099/0.982/1.034 (B3MW01). ⚠️ ED-phase dust validated on **1 row** — the ledgers only replayed driving rows | `data/b17_dust_closure.csv`, `harness/k10_dust_closure.py` |
 | 5-s3 | ✅ | 2026-08-13 | **Wind ladder DONE — Lancaster resolved in transition, open in momentum.** First ladder (`simple_cluster`: SC/SW3/SW10) **VOID** — all three terminate at `stop_t` still in implicit, so `t_cross = never` is not evidence about winds; the crossover is structurally floored at the transition handover (`ratio@entry` < 1 on every config). Re-run on B3M (`B3MW01/1/3/10`), all four valid. **Transition: (a) PASSES** — confined fraction 8.8% → 23.8% → 28.9% → 38.8%, lag/`t_entry` +1.5% → +37.2%, and `ratio@entry` = 0.7144/0.1227/0.0553/0.0235 vs the **pre-registered** 0.68/0.12/0.054/0.022 (exponent **−0.743** vs −0.74, errors 2–7%) — a Weaver-derived prediction holding out of its fitted regime. **Momentum: OPEN** — 100% HII-dominated on all four; `P_C3a/P_ram ∝ Lw^−0.33` ⇒ inversion needs `Lw ≈ 260`. **Not** an O(1) normalisation error (same normalisation predicts transition to 7%): it is the `R2^−3/2` geometry. Mechanism: energy duration **identical** (0.0030 Myr) and transition duration wind-independent; only implicit moves (`Lw^−0.388`), which is why `t_cross` *falls* with wind. ⚠️ Retracted mid-run claim that energy row counts (69/87/96/105) meant longer energy phases — that is timestep refinement, not duration | `data/b5s3_ladder_lag.csv`, `data/b5s3_ladder_regime.csv`, `data/b5s3_ladder_screen.csv`, `harness/lag_vs_handover.py` |
 
 ### 8.2 Config wall-times (filled by Batch 0)
@@ -2894,6 +2953,7 @@ the rule being enforced.
 | `data/b14_identity_census.csv` | `harness/identity_census.py` | 14 (maintainer Q) | no run — per-phase identity + drive-composition census, stock vs c3c, from the committed both-arm trajectories (b7 B3M, b12 B3MW01) |
 | `data/b14_cavity_gas.csv` | `harness/cavity_gas_check.py` | 14 (maintainer Q) | no run — cavity gas content vs C3a's asserted photon sink, from the B3M/B3MW01 mass ledgers |
 | `data/b16_composition.csv` | `harness/k10_composition_check.py` | 16 | no run — K10 mapping routed through the real `P_drive` expressions on committed c3c trajectories, both `Q_eff` variants |
+| `data/b17_dust_closure.csv` | `harness/k10_dust_closure.py` | 17 | no run — dust inside the K10 closure (uniform-`n₀` reduction of `get_shellODE.py:120`), validated against the ledgers' measured `dust_Pb` |
 
 Run dirs (not committed — regenerate with `harness/run_batch.py`):
 `outputs/phii/b0__6b55657_dirty/`, `outputs/phii/b1__386df59_dirty/`. The `_dirty` suffix reflects
