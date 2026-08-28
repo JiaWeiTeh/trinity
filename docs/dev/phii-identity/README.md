@@ -284,6 +284,49 @@ sources against C3a's `(4/3)πR2³` — and one claim measurement contradicts (i
 shell-mass adjustment "near-irrelevant"; B11 measured the momentum shell 99.5% ionised and the
 adjustment worth +8.6–9.2% in R2).
 
+**Update 2026-08-18 (assessment revision 2) — the correction landed, withdrew its own headline,
+and its central open question was answered from committed data the same day.** Rev2 replaces rev1
+as the body of `LITERATURE_ASSESSMENT.md` (⛔ do-not-act banner lifted; rev1 in git history at
+`9aedeb45`; a 22-item errata table names everything that fell). Headline reversal: **the α_p knob
+is withdrawn "in full" by its author** — and closed by measurement here: TRINITY's own
+`(R2/R1)²` (its α_p-equivalent, convention identity verified to 1e-12) falls smoothly
+**44.7 → 1.0018** across the transition phase, hitting 1 to 0.2% exactly as `Eb` reaches
+`ENERGY_FLOOR` — so `α_p = 1` in momentum is what the dynamics *delivers*, and the momentum-phase
+question is entirely about `P_HII`. Rev2's "ranked by measured impact" top two are the balance
+volume (K5) and the shell-mass debit (K9) — both already measured by Batch 11. One site-count
+correction propagated back into D5 (`run_transition_phase.py:331` is reporting-only; the live 1c
+drive site is `energy_phase_ODEs.py:253`). See `PLAN.md` §7.1 and the §9 entry.
+
+**Update 2026-08-18 (F_rad clean; K10 registered and screened — Batch 13).** Checked Draine's
+radiation double-count trap against source: `get_shellODE.py` **is** Draine's system, but its
+radiation-loaded profile feeds only shell *structure* — the drive never comes from the layer's
+outer-edge pressure, so adding `F_rad` as a body force is the correct control-volume decomposition.
+**No double-count, in either implementation.** What it did expose is that seam C's mass double-book
+and the `P_C3a + P_ram` composition are **one defect seen from two sides**.
+Then the "better than exactly 0.0" question: the coupled closure gives a smooth form
+(`P_HII_eff = P_conf·[(R_i/R2)² − 1]`, `R_i` from recombination over the cavity-**excluded** layer)
+whose confined limit is Lancaster's own first-order term. Screened offline (Batch 13): its
+state-jump at the branch flip is **exactly 0** where the shipped rule jumps **+34%**, and it moves
+B3M's healthy energy/implicit branch by only **+0.68%**. ⛔ But the pre-registered dust rule fired
+at **2.05×** — **K10 cannot ship without a dust model** — and once dust is included it lands within
+**10–15% of the shipped drive**, evidence that C3a's cavity-volume inflation and its missing dust
+sink largely cancel. ⚠️ Two of five gates failed by my own design error (a continuity metric that
+measured evolution rather than a jump; and a `chi_e` convention mismatch showing
+`R_ch`(trinity) = `chi_e`·`R_ch`(Lancaster), which corrects an earlier same-day CEM figure without
+changing its conclusion). See `PLAN.md` §Batch 13.
+
+**Update 2026-08-27 (K5/K9 gated as Batches 14/15; K9 demoted by its own pre-gate).** Gates drafted
+for the two candidates rev2 ranks highest. **K5** (swap `get_phii_c3c`'s denominator from the wind
+cavity to the cavity-excluded layer `shell_structure.py:243` already uses) carries a **blocking
+decoupling gate** — K5's profile variant reads a shell whose *inner boundary* is `nShell0 ∝ Pb`, so
+the original `P_HII ≡ P_conf` circularity could return through the fix for it. **K9** (debit the
+ionised mass from the shell's inertia) was **demoted before implementation**: B11.C2's +8.55/+9.22%
+debited `M_cav`, which is *not* the K9 quantity. Measured properly
+(`harness/ionised_mass_fraction.py`), the shell's own ionised **mass** fraction is median **0.461**
+(B3M momentum) and **0.149** (B3MW01 momentum) — nothing like the 0.9954 *thickness* fraction — and
+**31 of 72 rows reach ≥0.95**, i.e. a near-massless shell. K5 goes first, alone. See `PLAN.md`
+§Batch 14 / §Batch 15.
+
 Two follow-ons registered in `PLAN.md`: **B11.F**, because the layer-density harness used a
 thin-shell volume where the momentum shell is not thin — this withdraws Batch 10's "flat to 1–3%
 within each rung" claim, but every verdict survives and so do the `Lw^−0.1133` fit and `Lw ≈ 46.5`
