@@ -3699,3 +3699,52 @@ b0 run and to `bb302e0` for every b1 run (§9 records how that was protected).
   for something this architecture cannot deliver consistently — which is not a failure of D2, it is
   what the last six batches discovered. Resolution (iii) dissolves the conflict rather than picking
   a side. No `trinity/` source touched; ship-hold unchanged; D5 remains the maintainer's ruling.
+
+- **2026-08-28 (maintainer challenge to seam C's wording — upheld; and the first PRIMARY-source
+  check of the closure literature, which changes the evidence tier)** — Maintainer: *"the shell
+  should not hold 100%, because the bubble cavity has density and also has mass `mBubble` … I think
+  it's just that we assume the gas in the cavity is invisible to ionising photons because they are
+  already all excited due to T~1e7."* **Both halves land, and the second one is sharper than what
+  the record said.** Measured: `harness/cavity_gas_check.py` → `data/b14_cavity_gas.csv`.
+  ⛔ **Seam C's "`M_cav` has no source" is CORRECTED as loose.** The run does carry cavity gas —
+  `bubble_mass` = **99.643 Msun** (B3M) / **31.639 Msun** (B3MW01), frozen across driving rows as
+  B11.0 found. It is ~0.1% of `M_avail`, which is why `shell_mass/M_avail` rounds to 1.0000; the
+  shell holding "100%" is a rounding statement, not a claim that the cavity is empty. The accurate
+  statement is a **density overstatement of 71.9–576× (B3M, median 95.5) and 215.8–409.8 (B3MW01)**.
+  ✅ **And the maintainer's physical reading is right, with a stronger consequence than "invisible".**
+  Recombination goes as `n²α_B(T)V`, so over the same cavity volume the sink C3a *assumes* is
+  available only to the fraction `(n_actual/n_implied)²` = **3.0e-06–1.9e-04 (B3M)** and
+  **6.0e-06–2.2e-05 (B3MW01)** — **4–5 orders of magnitude, on the `n²` term ALONE, with no
+  temperature model at all.** Temperature only deepens it. So **seam A is not "two models split one
+  photon budget"; C3a posits a recombination sink that is physically unavailable**, and
+  `shell_structure.py:120`'s `phi0 = 1` is *right* — which is what §6b item 5 already argued for the
+  confined branch, now quantified. ⚠️ The bubble temperature implied by the run's own `Pb` and
+  `bubble_mass` is **1.8e5–1.3e6 K**, below the ~1e7 the maintainer assumed; but `bubble_mass` is
+  the frozen/unusable column, and if it is overstated then `n_actual` falls, `T` rises toward 1e7
+  **and the sink ratio shrinks further** — the verdict is robust to that column in both directions.
+  📚 **Primary-source check (first in this workstream; C-0 §5 bars `LITERATURE_ASSESSMENT.md` from
+  being load-bearing, so these were read directly).** **Rahner, Pellegrini, Glover & Klessen 2017**,
+  *"Winds and radiation in unison"*, MNRAS **470**, 4453, arXiv:**1704.04240**,
+  doi:10.1093/mnras/stx1532 — WARPFIELD, trinity's direct ancestor; the shell is modelled as
+  **quasi-hydrostatic**, i.e. trinity's `nShell0 ∝ Pb` inner boundary is that lineage's standard
+  assumption and is **not** an error. **Lancaster et al. 2025**, *"The Co-Evolution of Stellar
+  Wind-blown Bubbles and Photoionized Gas I"*, arXiv:**2505.22730**, ApJ **989**,
+  doi:10.3847/1538-4357/ade66b (Paper II: arXiv:**2505.22733**) — the CEM source. Verified from the
+  paper itself: it **explicitly assumes pressure equilibrium** ("the WBB has come into equilibrium
+  with the PIR with no net force being applied across its outer edges"); its recombination balance
+  `(4π/3)(R_i³ − R_w³) α_B n_H,i² = Q₀` is over the **cavity-excluded layer** (K5's premise, inside
+  the coupled closure); and — the part no §7.1 row states — **the two forces are applied at two
+  DIFFERENT radii**: the wind at `R_w`, the photoionized gas at `R_i`, a distinction the paper calls
+  central to its framework. ⚠️ Author lists here are from the preprint landing pages and are **not
+  yet ADS-verified**; verify before any `.bib`.
+  🔑 **The synthesis this forces, and it reframes §7.1 again.** Trinity collapses `R_w` and `R_i`
+  onto the **single radius `R2`**. That one fact generates both defects the workstream has been
+  chasing separately: with one radius the wind pressure and the photoionized pressure are applied at
+  the same place, so composing them *additively* double-counts (the `P_HII + P_ram` seam); and the
+  ionised gas must simultaneously satisfy the equilibrium boundary condition at `R2` and supply a
+  drive exceeding it, which is seam B's 1.30–7.16× contradiction. **Equilibrium is not the problem —
+  one radius doing two jobs is.** Lancaster keeps equilibrium *and* obtains a driving pressure by
+  separating the radii and letting `(R_i/R_w)` carry the amplification. This raises **K8
+  (three-radius)** from tier **A** (assessment-only, "pending") to **S** — it is the primary
+  source's own structure, not a speculative row — and it means K6/K10 are the *reduced* forms of
+  K8, not alternatives to it. No `trinity/` source touched; ship-hold unchanged.

@@ -79,8 +79,10 @@ def run(config, path, consts):
     mu_c, mu_i, kB, T_ion = consts
     rows = [r for r in csv.DictReader(l for l in open(DATA / path) if not l.startswith("#"))
             if r.get("status") == "ok"]
-    bms = {fnum(r, "bubble_mass") for r in rows if fnum(r, "bubble_mass")}
-    frozen = len(bms) == 1
+    # B11.0's "frozen" claim is about the DRIVING rows this harness reports, so the flag
+    # must be computed over those, not over every phase in the ledger.
+    drv = [r for r in rows if fnum(r, "n_from_PHII") and fnum(r, "bubble_mass")]
+    frozen = len({fnum(r, "bubble_mass") for r in drv}) == 1
     out = []
     for r in rows:
         n_imp = fnum(r, "n_from_PHII")
