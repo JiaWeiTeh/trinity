@@ -4005,3 +4005,47 @@ b0 run and to `bb302e0` for every b1 run (§9 records how that was protected).
   and a full-run arm.** No `trinity/` source touched; ship-hold unchanged; D5's family question is
   effectively resolved toward the coupled closure by this ruling, and should be marked as such in
   §7 when the maintainer confirms that reading.
+
+- **2026-08-28 (Batch 17 — dust put inside the closure; G13.4's blocker is discharged, and one of
+  my own pre-registered expectations missed)** — Maintainer: "do batch 17". Gates registered and
+  committed before any measurement, per §0. The design choice that made this cheap: **do not invent
+  a dust model.** `get_shellODE.py:120` already carries the code's ionised-region photon equation
+  with both sinks (`dφ/dr = −4πr²χ_e α_B n²/Qi − n σ_d φ`), so K10's dusty closure is that same ODE
+  integrated at the closure's uniform `n₀` — a *reduction* of trinity's own treatment, which is also
+  what makes G17.0 a meaningful validation rather than a self-consistency tautology. `Qi` is used
+  whole, not `Qi·f_abs`, because the shell solve starts at `φ = 1` and the
+  recombination/dust/escape split is an output.
+  **The headline: the closure's dust fraction reproduces the shell solve's own to 5.6%** (median
+  predicted/measured **1.056**, 97.3% of rows within 25%, B3M and B3MW01 agreeing independently at
+  1.064 and 1.052). I had disclosed this gate as genuinely at risk, because G9.4 measured the
+  uniform analytic form overstating the profile's recombination-equivalent density by up to 3.17×.
+  It passed, and the reason is structural rather than lucky: **dust absorption is linear in `n`
+  (`∫ n σ_d φ dr`) where recombination is quadratic**, so the dust fraction is far less sensitive to
+  profile shape than the quantity G9.4 was measuring. The uniform reduction is a poor density model
+  and a good dust model, and that asymmetry is exactly what K10 needs.
+  ⛔ **G17.3's pre-registered expectation MISSED and is recorded as such.** I predicted the
+  self-consistent drive would land *between* the no-dust and post-hoc values, nearer the post-hoc.
+  It lands just **below both** on 4 of 5 phase×config groups (`c/b` = 0.92–0.95). Direction right,
+  containment wrong. Diagnosis: the post-hoc form debits `(1 − f_dust)` once up front, while the
+  closure removes photons continuously along the layer where dust competes with recombination at
+  every radius, so it limits `R_i` slightly more. Re-running G13.4's sensitivity with the closure in
+  place of the join still gives **1.886–2.214**, above the old 2× bar on B3MW01 — but that bar was
+  never "make dust matter less"; G13.4's verdict was *"K10 cannot ship without a dust model"*, and
+  the deliverable was a model. Dust is now computed inside the closure and validated against the
+  code's own solve, so it is no longer a free knob. **Blocker discharged.**
+  **End-to-end, the complete candidate** (dust closure + Batch 16's mapping, composed through the
+  real `P_drive` expressions) sits within ~25% of the shipped drive everywhere and within ~10% on
+  B3MW01, with B3M's healthy branch essentially untouched (1.005–1.006). Layer dust optical depth is
+  0.246–4.521 (median 1.591), so the layer is marginally optically thick to LyC — consistent with
+  dust mattering at ~2×.
+  ⚠️ **One honest coverage gap, flagged rather than buried:** G17.0's comparison rows are transition
+  70 / momentum 42 / implicit **1**, because the photon ledgers only ever replayed the driving
+  branch. **ED-phase dust is validated on a single row**, so G17.4's energy/implicit columns rest on
+  an unvalidated dust fraction there. Extending `harness/photon_ledger.py` to confined rows is cheap
+  and is the obvious first step of any follow-up.
+  **Where K10 now stands: both offline blockers are cleared.** Batch 16 solved the composition,
+  Batch 17 the dust. What remains is (i) the `get_phii_c3c(params, shell_props, P_conf=None)`
+  signature change G16.3 established as mandatory, and (ii) a **full-run arm** — both `trinity/`
+  work, both behind the ship-hold, and the arm ladder is already staged in
+  `docs/dev/phii-identity/hpc/b14/`. Nothing further can be settled offline. No `trinity/` source
+  touched; ship-hold unchanged.
