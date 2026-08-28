@@ -3854,3 +3854,38 @@ b0 run and to `bb302e0` for every b1 run (§9 records how that was protected).
   (three-radius)** from tier **A** (assessment-only, "pending") to **S** — it is the primary
   source's own structure, not a speculative row — and it means K6/K10 are the *reduced* forms of
   K8, not alternatives to it. No `trinity/` source touched; ship-hold unchanged.
+
+- **2026-08-28 (maintainer ruling: KEEP ONE RADIUS — and Batch 16 closes the composition question
+  the same day)** — Maintainer, on the two-radius question raised by the Lancaster+2025
+  primary-source check: *"so lets just keep one radius now."* Recorded as a scope ruling, and it
+  settles more than it looks:
+  **(a) K8 is deferred**, not killed — the primary source's two-radius structure stands as the
+  physically fuller picture (tier **S** as of today) and remains the natural follow-up paper, but it
+  is out of scope for this workstream.
+  **(b) `shell_structure.py` is NOT touched.** Its quasi-hydrostatic inner boundary is Rahner+2017's
+  own modelling assumption (arXiv:1704.04240) and Lancaster+2025 assumes pressure equilibrium too,
+  so the shell solver is the part of this system behaving correctly. A shell-solver workstream was
+  considered and **declined on the evidence** — sizing, for the record: `shell_structure.py` 478
+  lines + `get_shellODE.py` 153, 5 phase-runner callers, ~34 attribute reads, ~10 test files. Cheap
+  as a module, but a two-radius change would move `R_w` into tracked state, relocate the force sites
+  in four runners and move essentially every trajectory golden — paper-scale, which is what K8's own
+  row said.
+  **(c) K10 is the live candidate**, being the one-radius reduction of Lancaster: `R_i` is computed
+  algebraically and never tracked.
+  **Batch 16 registered and run the same day, gates committed first.** The composition defect Batch
+  14 found is **solved**: one rule — `return = P_conf·ρ − (P_ram if this phase's composition adds
+  it)` — reproduces the CEM drive through **all three real `P_drive` expressions** to **2.22e-16**
+  (G16.0, both `Q_eff` variants), every return is non-negative (G16.1, 853/853), and Lancaster's
+  confined-branch first-order term is now **delivered at +0.96% over `P_conf`** rather than being
+  swallowed by the `max` (G16.2) — the precise failure Batch 14 identified. G16.4 reproduced Batch
+  13's magnitudes exactly through a different code path, which is the strongest cross-check either
+  batch has.
+  ⚠️ **One thing got harder, as pre-registered.** G16.3: inside `dt_switchon` the ramped/un-ramped
+  `P_conf` ratio is **0.3302–0.9952 (median 0.7112)**, so K10 must receive the **ramped**
+  `press_bubble` — and `params` carries `current_phase` but not `press_bubble`. **K10 therefore
+  needs a signature change** (`get_phii_c3c(params, shell_props, P_conf=None)`), small and additive
+  but still a `trinity/` edit, so still behind the ship-hold.
+  **Remaining K10 blockers are now exactly two: the dust model (Batch 17 — G13.4 fired at 2.05×)
+  and a full-run arm.** No `trinity/` source touched; ship-hold unchanged; D5's family question is
+  effectively resolved toward the coupled closure by this ruling, and should be marked as such in
+  §7 when the maintainer confirms that reading.
