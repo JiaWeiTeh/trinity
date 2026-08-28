@@ -4162,3 +4162,43 @@ b0 run and to `bb302e0` for every b1 run (§9 records how that was protected).
   work, both behind the ship-hold, and the arm ladder is already staged in
   `docs/dev/phii-identity/hpc/b14/`. Nothing further can be settled offline. No `trinity/` source
   touched; ship-hold unchanged.
+
+- **2026-08-28 (ship-hold lifted for the K10 arm only; K10 implemented and per-call gated — and my
+  own BLOCKING gate failed, which is the useful part)** — Maintainer lifted the ship-hold **scoped to
+  this arm**, left D5 **open** ("not yet — wait for the arm"), and told me to leave the unrelated
+  uncommitted `trinity/` documentation edits alone. All three honoured: `§7.1` is untouched, the arm
+  is a **patch** (`hpc/b14/k10_arm.patch`) rather than a change to `main`, and I committed nothing
+  from `trinity/`.
+  **Implementation, and it got smaller than Batch 16 predicted.** `get_phii_k10` +
+  `_k10_front_radius`, with `get_phii_c3c` aliased to the new helper so **not one call site changes**
+  and reverting the arm is deleting a single line. `scipy.optimize` was already imported, so no new
+  dependency. As registered, G16.3's "signature change" consequence is **retracted**: every input to
+  `get_effective_bubble_pressure` is in `params` and that function lives in the same module, so the
+  helper computes the ramped `P_conf` itself.
+  ⛔ **G18.0 (BLOCKING) FAILED as written — 6.761e-02 against a 1e-10 bar — and is recorded failed.**
+  The diagnosis is the finding: the error is **entirely the `P_conf` source**, proven by the
+  per-phase split — `P_conf` rel err is **exactly 0.000e+00 in implicit and momentum** and
+  6.817e-02 / 5.877e-03 in energy / transition. Batches 16 and 17 *recovered* `P_conf` from stored
+  columns; production *recomputes* it from `Eb` and a freshly solved `R1`. They agree exactly where
+  recomputation is trivial and diverge inside the `dt_switchon` ramp window and through the
+  `Eb → Pb` reconstruction. **Production is right and my screens were the approximation** — Batch 17
+  had already flagged this qualitatively, and G18.0 turned it into a number. This is precisely what a
+  per-call gate is for: without it the arm would have been measured against a comparator nobody had
+  checked.
+  ✅ **G18.0′ (amended, on the G8.4′ precedent) PASSES at 1.005e-12** — same bar, same quantity, with
+  the one input the screen could not reproduce held fixed. So the **production closure is the object
+  Batches 16/17 validated**; the amendment isolates the closure rather than weakening it.
+  ✅ **The arm runs.** `SC` to `stop_t` 0.01: 114 snapshots, 338 s, **zero distress lines**. And
+  G18.1's contract change is live and correct — `P_HII > 0` on **97/97 energy** and **17/17
+  implicit** rows where C3c returns exactly 0.0, with median `P_HII/Pb` = 0.8392 in energy (the
+  ramped `P_conf` below the un-ramped `Pb`: the D-ramp being honoured) and 1.0008 in implicit.
+  `test/test_phii_c3c.py` fails under the arm **by design**; recorded broken, not re-baselined.
+  ⚠️ **Two things worth carrying forward.** (1) G18.0's diagnostic **bounds Batch 17's offline
+  error**: momentum/implicit exact, transition ≤0.59%, **energy ≤6.8%** — so §Batch 17's G17.4 energy
+  column reads ±7% and is corrected in place. (2) The local interpreter is **Python 3.8.8**, below
+  trinity's stated ≥3.9, so `run_batch.py`'s post-run reporting raises on `Path.is_relative_to` and
+  the walltimes CSV is skipped; run outputs are written before the raise and are unaffected. Helix
+  activates the `trinity` env so it should not bite there, but it is a real wart on this machine.
+  **Next is the ladder and nothing else** — G18.2/18.3/18.4/18.5 all need runs.
+  `hpc/b14/sync.sh` now defaults to `ARMS="baseline k10"`; G18.5 closes Batch 17's ED-phase dust
+  coverage gap for free from the arm's own output. D5 stays open until G18.3 reports.
