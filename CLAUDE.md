@@ -17,7 +17,6 @@ This file holds the project facts to load every session, then the behavioral rul
     - `python run.py param/sweep_example.param --emit-jobs jobs/`  then `sbatch` for SLURM/HPC
 - Tests: `pytest`  (single: `pytest test/test_unit_conversions.py`; slow set: `pytest -m stress`)
 - Lint/format: `pre-commit run --all-files` (ruff bug-class) · `black .` (line length 100) · `mypy trinity`
-- Docs: `cd docs && make html`
 - Paper figures: `python paper/methods/make_figures.py [name]`  (needs LaTeX — plots use `text.usetex`)
 
 ## Layout
@@ -34,8 +33,7 @@ param/            .param config files (the tracked ones are worked examples)
 lib/default/      bundled SB99 SPS + cooling tables (quickstart runs out of the box)
 test/             pytest suite (test_*.py)
 tools/            small CLI utilities (param generation, audits, output comparisons)
-docs/             Sphinx source (docs/source) built into docs/build
-  dev/            internal plan & audit write-ups (incl. CODEBASE_REVIEW.md) — not built, may be stale
+docs/dev/         internal plan & audit write-ups (incl. CODEBASE_REVIEW.md) — point-in-time, may be stale
 paper/            scripts + committed .npz data that regenerate published figures
 ```
 

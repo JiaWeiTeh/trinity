@@ -21,6 +21,7 @@ WARN, LIVING, PERSIST, CROSSCHECK, FROZEN = "⚠️", "\U0001f504", "\U0001f4be"
 EXEMPT = {
     "CLAUDE.md",
     "data/README.md",
+    "dictionary-robustness/harness/README.md",
     "failed-large-clouds/harness/README.md",
     "magic-numbers/harness/README.md",
     "performance/harness/README.md",

@@ -200,14 +200,14 @@ PARAM_DOCS = {
     'shell_mass': 'Shell mass [Msun]',
     'shell_massDot': 'Shell mass accretion rate [Msun/Myr]',
     'shell_thickness': 'Shell thickness [pc]',
-    'shell_n0': 'Shell number density at inner edge [cm^-3]',
-    'shell_nMax': 'Maximum shell number density [cm^-3]',
-    'nEdge': 'Number density at shell edge [cm^-3]',
+    'shell_n0': 'Shell number density at inner edge [pc^-3] (internal; × INV_CONV.ndens_au2cgs → cm^-3)',
+    'shell_nMax': 'Maximum shell number density [pc^-3] (internal; × INV_CONV.ndens_au2cgs → cm^-3)',
+    'nEdge': 'Number density at shell edge [pc^-3] (internal; × INV_CONV.ndens_au2cgs → cm^-3)',
     'rShell': 'Shell radius [pc]',
 
     # Cloud profile parameters (constants, saved for radial profile reconstruction)
-    'nCore': 'Core number density [cm^-3]',
-    'nISM': 'ISM number density [cm^-3]',
+    'nCore': 'Core number density [pc^-3] (internal; × INV_CONV.ndens_au2cgs → cm^-3)',
+    'nISM': 'ISM number density [pc^-3] (internal; × INV_CONV.ndens_au2cgs → cm^-3)',
     'rCore': 'Core radius [pc]',
     'dens_profile': 'Density profile type (densPL or densBE)',
     'densPL_alpha': 'Power-law density exponent',
@@ -218,7 +218,7 @@ PARAM_DOCS = {
     # from the run-constant scalars (nCore, nISM, rCore, rCloud,
     # dens_profile, densPL_alpha, mu_convert).
     'initial_cloud_r_arr': 'Initial cloud radius array [pc] — v1 only',
-    'initial_cloud_n_arr': 'Initial cloud density array [cm^-3] — v1 only',
+    'initial_cloud_n_arr': 'Initial cloud density array [pc^-3] (internal; × INV_CONV.ndens_au2cgs → cm^-3) — v1 only',
     'initial_cloud_m_arr': 'Initial cloud enclosed mass array [Msun] — v1 only',
 
     # Shell absorption

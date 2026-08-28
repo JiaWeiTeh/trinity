@@ -1,89 +1,132 @@
 #!/usr/bin/env bash
-# Build everything trinity-web needs from the example notebook, into one folder.
+# Render the example notebook into the website, as a native page.
 #
 #   ./examples/export_web.sh
-#   cp -R examples/web/. ../trinity-web/public/notebook/
+#   cp -R examples/web/. ../trinity-web/
 #
-# Run it from the repository root, after the notebook has been executed and
-# saved with its outputs. Everything it writes is derived — safe to delete and
-# rebuild at any time, which is why examples/web/ is gitignored here: the
-# published copy lives in trinity-web, not twice.
+# The output mirrors trinity-web's own layout, so the copy above drops each file
+# where it belongs in one go. Everything it writes is derived — safe to delete
+# and rebuild — which is why examples/web/ is gitignored here.
+#
+# Markdown rather than HTML on purpose: rendered by the site's own Markdown
+# component, the notebook becomes a real docs page. Headings feed the "on this
+# page" rail, code blocks inherit the site's styling and copy button, and the
+# maths goes through the KaTeX already in that pipeline. An exported HTML page
+# needed a stylesheet and a copy-button script injected into it just to look
+# like it belonged; none of that is needed now.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 OUT=examples/web
+SITE_PATH=/trinity-web/notebook          # vite `base` + where the figures land
 
 python3 -c "import nbconvert" 2>/dev/null || {
     echo "nbconvert not found — pip install nbconvert"; exit 1; }
 
 rm -rf "$OUT"
-mkdir -p "$OUT"
+mkdir -p "$OUT/src/docs" "$OUT/public/notebook"
 
-# The rendered page: one self-contained file, images inlined, no input prompts
-# or execution counts, so it reads as a document rather than as an editor.
+# Run the notebook first. Converting an unexecuted notebook silently produces a
+# page of code with no results and no figures, which looks fine until you read
+# it — so this is not left to be remembered. MPLBACKEND is deliberately unset:
+# forcing Agg overrides the inline backend and the figures are never captured.
+echo "Executing the notebook..."
 python3 -m jupyter nbconvert \
-    --to html \
-    --embed-images \
-    --no-prompt \
-    --output-dir "$OUT" \
-    --output quickstart.html \
+    --to notebook \
+    --execute \
+    --inplace \
+    --ExecutePreprocessor.timeout=300 \
     examples/quickstart.ipynb
 
-# Restyle it to match trinity-web: the site's serif for prose, Inter for UI,
-# a readable measure, and its ink colours. Without this the page arrives in
-# Jupyter's own theme and reads as a foreign object embedded in the site.
-python3 - "$OUT/quickstart.html" <<'PY'
+python3 - <<'CHECK'
+import json
+import sys
+
+cells = json.load(open('examples/quickstart.ipynb'))['cells']
+code = [c for c in cells if c['cell_type'] == 'code']
+without = [i for i, c in enumerate(code, 1) if not c.get('outputs')]
+if without:
+    sys.exit(f"  code cells {without} produced no output — refusing to publish "
+             f"a notebook page with nothing in it")
+figures = sum('image/png' in o.get('data', {}) for c in code for o in c['outputs'])
+print(f"  {len(code)} code cells ran, {figures} figures captured")
+CHECK
+
+python3 -m jupyter nbconvert \
+    --to markdown \
+    --output-dir "$OUT/public/notebook" \
+    --output quickstart \
+    examples/quickstart.ipynb
+
+# The notebook itself, so the page can offer a download.
+cp examples/quickstart.ipynb "$OUT/public/notebook/quickstart.ipynb"
+
+python3 - "$OUT" "$SITE_PATH" <<'PY'
+import re
+import shutil
 import sys
 from pathlib import Path
 
-page = Path(sys.argv[1])
-html = page.read_text()
+out, site_path = Path(sys.argv[1]), sys.argv[2]
+generated = out / 'public' / 'notebook' / 'quickstart.md'
+body = generated.read_text()
 
-style = """
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
-<style>
-  /* Match trinity-web's typography so the notebook reads as part of the site. */
-  :root {
-    --jp-content-font-family: 'Source Serif 4', Georgia, serif;
-    --jp-ui-font-family: 'Inter', sans-serif;
-    --jp-content-font-size1: 16px;
-    --jp-content-line-height: 1.65;
-  }
-  body { background: #FFFEFA; color: #1E2430; }
-  .jp-Notebook { max-width: 820px; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
-  .jp-RenderedHTMLCommon { font-family: 'Source Serif 4', Georgia, serif; color: #1E2430; }
-  .jp-RenderedHTMLCommon h1,
-  .jp-RenderedHTMLCommon h2,
-  .jp-RenderedHTMLCommon h3 { font-weight: 600; letter-spacing: -0.01em; margin-top: 2.2em; }
-  .jp-RenderedHTMLCommon h1 { font-size: 2rem; margin-top: 0; }
-  .jp-RenderedHTMLCommon h2 { font-size: 1.35rem; }
-  .jp-RenderedHTMLCommon a { color: #0EA5C8; }
-  .jp-RenderedHTMLCommon table { font-family: 'Inter', sans-serif; font-size: 0.85rem; }
-  .jp-RenderedHTMLCommon blockquote {
-    border-left: 3px solid #D8D2C6; color: #5E6776; padding-left: 1rem; font-style: normal;
-  }
-  /* Code: quieter chrome than Jupyter's default, closer to the site's blocks. */
-  .jp-CodeCell .jp-Editor, .jp-InputArea-editor {
-    background: #F7F4EE; border: 1px solid #E7E1D7; border-radius: 6px;
-  }
-  .jp-OutputArea-output pre { font-size: 0.82rem; line-height: 1.5; }
-  .jp-OutputArea-output img { max-width: 100%; height: auto; }
-</style>
+# nbconvert writes figures beside the markdown and links them relatively. The
+# page is served by a single-page app from a different route, so the links have
+# to be absolute.
+body = body.replace('](quickstart_files/', f']({site_path}/quickstart_files/')
+
+# Drop the notebook's own H1: the page supplies its own title, and two would
+# read as a mistake.
+body = re.sub(r'\A#\s+[^\n]*\n+', '', body)
+
+# nbconvert writes a cell's printed output as a 4-space indented block, which
+# markdown renders as an unlabelled code block — and the site styles those like
+# a terminal. Relabel them so they can be styled as what they are: the result
+# under a notebook cell. Fenced regions are skipped so code is never touched.
+rendered, inside_fence, indented = [], False, []
+
+
+def flush_output_block():
+    if indented:
+        while indented and not indented[-1].strip():
+            indented.pop()                       # do not fence trailing blanks
+        rendered.extend(['```output'] + [ln[4:] for ln in indented] + ['```'])
+        indented.clear()
+
+
+for line in body.split('\n'):
+    if line.startswith('```'):
+        flush_output_block()
+        inside_fence = not inside_fence
+        rendered.append(line)
+    elif inside_fence:
+        rendered.append(line)
+    elif line.startswith('    ') and line.strip():
+        indented.append(line)
+    elif not line.strip() and indented:
+        indented.append(line)                    # blank lines within one block
+    else:
+        flush_output_block()
+        rendered.append(line)
+flush_output_block()
+
+body = '\n'.join(rendered)
+
+header = f"""# Tutorial notebook
+
+[Download this notebook]({site_path}/quickstart.ipynb) to run it yourself, or read it
+here. It works on a fresh clone — the runs it opens ship with the repository.
+
 """
 
-if '</head>' in html:
-    html = html.replace('</head>', style + '</head>', 1)
-    page.write_text(html)
-    print('  restyled to match trinity-web')
-else:
-    print('  WARNING: no </head> found, page left in the default theme')
+(out / 'src' / 'docs' / '03-notebook.md').write_text(header + body)
+generated.unlink()          # the markdown belongs in src/docs, not in public/
+
+figures = out / 'public' / 'notebook' / 'quickstart_files'
+n_figures = len(list(figures.glob('*'))) if figures.is_dir() else 0
+print(f"\n  page: src/docs/03-notebook.md ({len(header + body) // 1024} KB)")
+print(f"  assets: public/notebook/ ({n_figures} figures + the .ipynb)")
 PY
 
-# The notebook itself, so the site can offer a download alongside the render.
-cp examples/quickstart.ipynb "$OUT/quickstart.ipynb"
-
-printf '\n%s\n' "$OUT contains:"
-ls -lh "$OUT" | tail -n +2 | awk '{printf "  %-22s %s\n", $9, $5}'
-printf '\nMove it across with:\n  cp -R %s/. ../trinity-web/public/notebook/\n' "$OUT"
+printf '\nMove it across with:\n  cp -R %s/. ../trinity-web/\n' "$OUT"

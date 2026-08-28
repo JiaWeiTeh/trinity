@@ -53,7 +53,7 @@ _HEADER = """\
 #
 # To configure a run, create a .param file under param/ and override only the
 # keys you need. Human-facing parameter docs (units, allowed values, physics):
-# see docs/source/parameters.rst.
+# see https://jiaweiteh.github.io/trinity-web/?view=docs&page=parameters
 # ==============================================================================
 """
 
