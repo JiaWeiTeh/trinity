@@ -2731,6 +2731,7 @@ the rule being enforced.
 | `data/b15_ionised_mass_fraction.csv` | `harness/ionised_mass_fraction.py` | 15 (G15.0) | replays `shell_structure_pure` and integrates the profile; B3M + B3MW01 |
 | `data/b13_k10_screen.csv` | `harness/k10_cem_drive_screen.py` | 13 | no run — K10 vs shipped drive on committed B3M + B3MW01 trajectories, dust variant joined from the photon ledgers |
 | `data/b14_k5_screen.csv` | `harness/k5_offline_screen.py` | 14 (offline) | no run — K5a/K5b vs shipped on committed CSVs; B3M = b9_layer × b11_ledger row_idx join, B3MW01 = b12 photon-ledger driving rows (K5a only) |
+| `data/b14_identity_census.csv` | `harness/identity_census.py` | 14 (maintainer Q) | no run — per-phase identity + drive-composition census, stock vs c3c, from the committed both-arm trajectories (b7 B3M, b12 B3MW01) |
 
 Run dirs (not committed — regenerate with `harness/run_batch.py`):
 `outputs/phii/b0__6b55657_dirty/`, `outputs/phii/b1__386df59_dirty/`. The `_dirty` suffix reflects
@@ -3558,3 +3559,51 @@ b0 run and to `bb302e0` for every b1 run (§9 records how that was protected).
   driving-only rescope / defer the volume to K10) is D5-adjacent and the maintainer's.
   Siblings reconciled (README.md, DOC_STATUS.md). No `trinity/` source touched; ship-hold
   unchanged. Artifacts: `harness/k5_offline_screen.py`, `data/b14_k5_screen.csv`.
+
+- **2026-08-28 (maintainer question: "if `P_HII == P_conf`, are we just double counting?" — measured
+  per phase, and the answer splits three ways)** — Asked whether the identity holds in
+  energy/implicit/momentum/transition and whether that makes the system a double-count. Measured
+  rather than recalled: `harness/identity_census.py` → `data/b14_identity_census.csv`, over the
+  committed both-arm trajectories (B3M `b7_regime_trajectory.csv`, B3MW01
+  `b12_lowwind_trajectory.csv`). The key structural point, verified at source (`cce8c924`) and then
+  **checked against the runs' own stored `P_drive` rather than asserted**: a pressure double-count
+  needs BOTH the identity AND an additive composition, and the composition differs by phase —
+  `max(Pb_eff, P_HII)` in energy/implicit (`energy_phase_ODEs.py:256`), `max(Pb_eff, P_HII + P_ram)`
+  in transition (`:253`), `P_HII + P_ram` in momentum (`run_momentum_phase.py:445`). Recomputing the
+  drive from stored components reproduces the stored `P_drive` **bit-exactly (0.00e+00)** in
+  implicit/transition/momentum on both arms and both configs.
+  **(1) Pre-C3c the identity WAS universal:** `frac_identity` = **1.0000** in implicit, transition
+  and momentum on both configs (relΔ ≤3.6e-16 per Batch 0), 0.9855–0.9885 in energy (the documented
+  stale-`Pb` 1a→1b handoff rows).
+  **(2) But the double-count was NOT uniform, because the max phases absorb it.**
+  `max(Pb, Pb)` = `Pb`, so energy/implicit drove at `P_drive/Pb` = **1.000** — no double-count there
+  ever. Transition drove at **1.824** (B3M) / **1.741** (B3MW01) — a phantom `Pb` added to `P_ram`.
+  Momentum drove at **exactly 2.000** on both configs, with `frac_Pb_eq_Pram` = **1.0000**
+  confirming the momentum convention (`Pb` := `P_ram`) from the data instead of assuming it. So the
+  literal "drive on twice the ram pressure" was real, and it was **momentum + transition only**.
+  **(3) In production today the identity is GONE:** `frac_identity` = **0.0000** in every phase of
+  both configs. `P_HII` is either exactly 0.0 (energy 100%, implicit 100%, transition 23.8%/9.4%)
+  or the decoupled `P_C3a`, whose value contains no `Pb` (§6b verified item 3). **The
+  pressure-relabelling double-count C3c was built to remove is measured removed.**
+  ⚠️ **What is NOT resolved, and is what SHIP-HOLD is actually about:** the *additive* composition
+  survives, and `P_HII` is now much larger than what it is added to — momentum `P_drive/P_ram` is
+  **7.165** (B3M) / **14.766** (B3MW01) against the old code's 2.000. Whether adding a decoupled
+  `P_HII` to `P_ram` is right is D1-vs-physics (K3 priced removing the `+P_ram` at −14.1%) and is
+  open. And two **non-pressure** double-counts are CONFIRMED live: §6b seam A (photons — shell
+  starts `phi0 = 1` while C3a spends `Qi·f_abs` on cavity recombinations, `f_abs` = 1.0000 on 29/33
+  driving rows ⇒ budget ≈`2·Qi`) and seam C (mass — `shell_mass` already holds 100.0000% of the
+  run's gas, so `M_cav` has no source; `(M_cav+M_shell)/M_avail` = 1.5638). Those are the standing
+  reasons not to ship, and neither is fixed by any K-row that only changes `P_HII`'s value.
+  🔗 **Consequence for Batch 14, worth stating plainly:** momentum composes additively, so a K5
+  variant that is ∝`Pb^1.0` with gain ≈1.5 (K5b, this batch's finding) would drive at
+  ≈`(1.545 + 1)·P_ram` = **~2.5×`P_ram`** — numerically near the old code's 2.000, and with a
+  `Pb`-proportional term back in the sum. That is the pre-C3c *structure* returning at a different
+  constant, which is the sharpest single argument against the bare swap.
+  **Method note (a failed check, recorded):** the same recompute is **VOID in the energy phase** —
+  the live drive there uses the *ramped* `press_bubble`, which is not a stored column, while the
+  census uses the stored un-ramped `Pb`. On stock the two coincide (`P_HII ≡ Pb` won the max, err
+  2.2e-16); on c3c the drive is the ramp alone at **0.817/0.708 × stored `Pb`** and the recompute
+  overstates by up to 2.03×. That gap **is** the D-ramp mechanism (§3 item 3) reproducing
+  independently, not a composition error; the harness marks the energy rows
+  `recompute_check=void` rather than reporting a spurious failure. No `trinity/` source touched;
+  ship-hold unchanged.

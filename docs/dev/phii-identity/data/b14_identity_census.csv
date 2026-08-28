@@ -1,0 +1,20 @@
+# generated 2026-08-28T07:57:48Z | builder identity_census.py | code edb638a6+dirty
+# Per-phase P_HII identity + drive-composition census, stock (pre-C3c) vs c3c (production), from committed both-arm trajectories.
+# Answers the maintainer's 2026-08-28 double-counting question; see PLAN.md SBatch-14 / S9.
+config,arm,phase,n_rows,composition,frac_identity,frac_PHII_zero,med_PHII_over_Pb,med_Pdrive_over_Pb,frac_Pb_eq_Pram,drive_recompute_max_relerr,recompute_check
+B3M,c3c,energy,87,"max(Pb, P_HII) (MAX)",0.0,1.0,nan,0.8167221140106902,0.0,2.0079611493770666,void:ramped_press_bubble_not_stored
+B3M,c3c,implicit,68,"max(Pb, P_HII) (MAX)",0.0,1.0,nan,1.0,0.0,0.0,binding
+B3M,c3c,transition,42,"max(Pb, P_HII + P_ram) (sum in max)",0.0,0.23809523809523808,4.620551743451477,4.768444600551507,0.0,0.0,binding
+B3M,c3c,momentum,34,P_HII + P_ram (SUM),0.0,0.0,6.164582095250964,7.164582095250964,1.0,0.0,binding
+B3M,stock,energy,87,"max(Pb, P_HII) (MAX)",0.9885057471264368,0.0,1.0000000000000002,1.0000000000000002,0.0,2.220446049250313e-16,void:ramped_press_bubble_not_stored
+B3M,stock,implicit,68,"max(Pb, P_HII) (MAX)",1.0,0.0,1.0000000000000002,1.0000000000000002,0.0,0.0,binding
+B3M,stock,transition,42,"max(Pb, P_HII + P_ram) (sum in max)",1.0,0.0,1.0000000000000002,1.8242974931219902,0.0,0.0,binding
+B3M,stock,momentum,34,P_HII + P_ram (SUM),1.0,0.0,1.0000000000000002,2.0,1.0,0.0,binding
+B3MW01,c3c,energy,69,"max(Pb, P_HII) (MAX)",0.0,1.0,nan,0.7079761941502105,0.0,2.0282476098644358,void:ramped_press_bubble_not_stored
+B3MW01,c3c,implicit,79,"max(Pb, P_HII) (MAX)",0.0,1.0,nan,1.0,0.0,0.0,binding
+B3MW01,c3c,transition,32,"max(Pb, P_HII + P_ram) (sum in max)",0.0,0.09375,11.333890486066673,11.651454553029705,0.0,0.0,binding
+B3MW01,c3c,momentum,25,P_HII + P_ram (SUM),0.0,0.0,13.766054876131767,14.766054876131767,1.0,0.0,binding
+B3MW01,stock,energy,69,"max(Pb, P_HII) (MAX)",0.9855072463768116,0.0,1.0000000000000002,1.0000000000000002,0.0,2.220446049250313e-16,void:ramped_press_bubble_not_stored
+B3MW01,stock,implicit,78,"max(Pb, P_HII) (MAX)",1.0,0.0,1.0000000000000002,1.0000000000000002,0.0,0.0,binding
+B3MW01,stock,transition,34,"max(Pb, P_HII + P_ram) (sum in max)",1.0,0.0,1.0000000000000002,1.7413779731824028,0.0,0.0,binding
+B3MW01,stock,momentum,41,P_HII + P_ram (SUM),1.0,0.0,1.0000000000000002,2.0,1.0,0.0,binding

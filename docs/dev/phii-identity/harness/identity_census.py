@@ -54,7 +54,18 @@ FIELDS = [
     "config", "arm", "phase", "n_rows", "composition",
     "frac_identity", "frac_PHII_zero", "med_PHII_over_Pb",
     "med_Pdrive_over_Pb", "frac_Pb_eq_Pram", "drive_recompute_max_relerr",
+    "recompute_check",
 ]
+
+# The recompute uses the STORED Pb, but the energy phase's live drive uses the RAMPED
+# effective pressure (get_effective_bubble_pressure, the dt_switchon ramp), which is not
+# a stored column. So the energy check is VOID by construction, not a failure:
+#   stock  -- P_HII == Pb (un-ramped) wins the max, so recompute matches to roundoff;
+#   c3c    -- P_HII == 0, drive is the ramped pressure ALONE and sits BELOW stored Pb
+#             (median 0.82/0.71), so the recompute overstates it by up to ~2x.
+# That gap IS the D-ramp mechanism (PLAN S3 item 3) reproducing independently here.
+# The check is binding in implicit/transition/momentum, where it is bit-exact.
+VOID_CHECK_PHASES = {"energy"}
 
 
 def fnum(row, key):
@@ -124,6 +135,8 @@ def census(config, path):
                 med_Pdrive_over_Pb=med(drives),
                 frac_Pb_eq_Pram=(pb_eq_pram / n_pb) if n_pb else float("nan"),
                 drive_recompute_max_relerr=(max(errs) if errs else float("nan")),
+                recompute_check=("void:ramped_press_bubble_not_stored"
+                                 if phase in VOID_CHECK_PHASES else "binding"),
             ))
     return out
 
@@ -145,13 +158,21 @@ def main():
               f"{r['med_PHII_over_Pb']:>9.3f}{r['med_Pdrive_over_Pb']:>9.3f}"
               f"{r['frac_Pb_eq_Pram']:>9.4f}  {r['composition']}")
 
-    worst = max((r["drive_recompute_max_relerr"] for r in rows
-                 if not math.isnan(r["drive_recompute_max_relerr"])), default=float("nan"))
-    print(f"\ncomposition check: recomputed P_drive vs the runs' own stored P_drive, "
-          f"worst rel err {worst:.2e}")
+    binding = [r for r in rows if r["recompute_check"] == "binding"
+               and not math.isnan(r["drive_recompute_max_relerr"])]
+    worst = max((r["drive_recompute_max_relerr"] for r in binding), default=float("nan"))
+    print(f"\ncomposition check (implicit/transition/momentum — binding): recomputed "
+          f"P_drive vs the runs' own stored P_drive, worst rel err {worst:.2e}")
     if not math.isnan(worst) and worst > 1e-9:
         print("  ^ the composition read from source does NOT reproduce the stored drive "
-              "on some phase — treat the composition column as unverified until diagnosed")
+              "on a binding phase — treat the composition column as unverified")
+    void = [r for r in rows if r["recompute_check"] != "binding"
+            and not math.isnan(r["drive_recompute_max_relerr"])]
+    if void:
+        print(f"  energy VOID by construction (drive uses the ramped press_bubble, not the "
+              f"stored Pb): stock {max(r['drive_recompute_max_relerr'] for r in void if r['arm']=='stock'):.1e}"
+              f" / c3c {max(r['drive_recompute_max_relerr'] for r in void if r['arm']=='c3c'):.2f}"
+              f" — the c3c gap IS the D-ramp, not a composition error")
 
     if args.out:
         with open(args.out, "w", newline="") as fh:
