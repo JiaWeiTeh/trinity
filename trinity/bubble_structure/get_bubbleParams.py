@@ -423,6 +423,19 @@ def get_effective_bubble_pressure(current_phase, Eb, R2, R1, gamma,
         # Energy/implicit phases: thermal pressure from hot bubble.
         # Include the early-phase R1 ramp-up if timing info provided.
         #
+        # POST-MERGE NOTE (2026-08-14): the C3c photoionised regime switch
+        # (`get_phii_c3c`, merged in c43a50e) changed what this ramp controls.
+        # Phase 1a drives the shell with max(press_bubble, P_HII). Before C3c,
+        # P_HII equalled the UNRAMPED Pb exactly, so the drive was the unramped
+        # pressure and this ramp acted only on the energy equation's PdV drain.
+        # After C3c, P_HII = 0 in the energy phase (measured 0.0000 on
+        # simple_cluster), so the drive is the ramped pressure too -- the ramp
+        # is now strictly MORE load-bearing than the numbers below were measured
+        # under. The algebra is unaffected (re-verified on merged main: R1/R2 =
+        # 0.869167, PdV/Lmech = 2.647425 on all five configs); the trajectory and
+        # fate percentages below predate C3c and should be re-measured before
+        # being quoted as current.
+        #
         # LOAD-BEARING — do not delete as "inert" (magic-number audit #2), and
         # do not "improve" it without reading why four replacements failed.
         #
