@@ -327,6 +327,18 @@ debited `M_cav`, which is *not* the K9 quantity. Measured properly
 **31 of 72 rows reach ≥0.95**, i.e. a near-massless shell. K5 goes first, alone. See `PLAN.md`
 §Batch 14 / §Batch 15.
 
+**Update 2026-08-28 (Batch 14 offline screen — the decoupling gate's diagnostics fire on both K5
+variants).** On committed data alone (`harness/k5_offline_screen.py`), G14.0 passes by the letter
+but both variants come out **∝ `Pb^1.0`** on driving rows (log-log r² 0.988/0.993, gain ≈2.4/≈1.5)
+— the old identity with an O(1) gain. K5a is algebraically the uncapped `n_IF_Str_raw` the code
+already computes, whose coupling Batch 3b measured (r ≥ 0.997, 788 rows) and whose full-run cost
+Batch 4a priced (ΔR2 15.3–28.4%, ramp-window concentrated); a bare swap also flips **83/83
+confined B3M rows to driving** (K5b there = 1.073×`Pb`), re-admitting the D-ramp class. If scoped
+to the driving branch only, momentum `P_HII/P_ram` falls 6.165 → 2.381 (K5a) / 1.545 (K5b), still
+HII-dominated everywhere. **The batch's premise inverted: the cavity volume is the decoupling; the
+layer volume belongs in the coupled closure (K10/K6).** Arm scope is now a maintainer (D5-adjacent)
+decision. See `PLAN.md` §Batch 14 RESULT.
+
 Two follow-ons registered in `PLAN.md`: **B11.F**, because the layer-density harness used a
 thin-shell volume where the momentum shell is not thin — this withdraws Batch 10's "flat to 1–3%
 within each rung" claim, but every verdict survives and so do the `Lw^−0.1133` fit and `Lw ≈ 46.5`
