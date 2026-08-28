@@ -701,7 +701,7 @@ which is breached everywhere:
 - **Open, and it is now the crux:** the larger uncapped `P_HII` is only trustworthy if the Strömgren
   balance is trustworthy at these ionized volumes. Nothing measured here settles that — it is D2.
 
-### Batch 5 — C3: the advanced method — Status: 🟡 **stage 1 (offline screen) DONE — C3b rejected, C3a advances**
+### Batch 5 — C3: the advanced method — Status: ✅ **ALL STAGES DONE** — 1 (offline screen: C3b rejected, C3a advances), 1b (C3c designed), 2 (run arm clean on 5/5), 3 (wind ladder: transition passes, momentum open). C3c then landed in `c43a50e`; see the Status block at the top of this file.
 
 **Stage-1 screen (2026-08-13).** `harness/c3_offline_screen.py` → `data/b5_c3_screen.csv`, over the
 five complete b1 runs (B3M, PRB, WW, B1M, B2M). **No solver was run**: both candidates are
@@ -1015,10 +1015,29 @@ emits `phases_base`/`phases_new` and a `PHASE-CHANGE` verdict (which also gates 
 plus a `floor_grid_pct` column that labels the PRB-style collapse-floor artifact instead of
 reporting it as a divergence. Pinned by `test/test_phii_comparator.py`.
 
-**Still owed:** full `pytest` on merged `main`; goldens re-baselined under D4 with the before/after
-table (`test_phase_boundary`, `test_betadelta_hybr_stress`, `test_scheme_screen`; note
-`test_run_smoke` is **not** on D4's list and needs its own sign-off); CHANGELOG entry; fold-back
-notes to `feature/threeway-pt2` and `feature/low-winds-regime`.
+**Owed items now discharged (2026-08-14, on `hotfix/CI-check`).** Goldens re-baselined under D4
+with the G3.4 before/after table committed at `data/g34_golden_rebaseline.csv` — mechanism named in
+its header, reproduce commands included, every `rel_change` recomputed from its own two columns:
+
+| test | before | after |
+|---|---|---|
+| `test_run_smoke.py` | `R2`/`v2`/`Eb` 0.25955976 / 49.226112 / 662533.97 | 0.25672223 / 48.944359 / 657558.38 |
+| `test_phase_boundary.py` | (0.888197, −0.046294) ×2 | (0.878396, −0.038973) ×2 |
+| `test_betadelta_hybr_stress.py` | + (0.845829, −0.145668) ×2 | + (0.842071, −0.151456) ×2 |
+
+`test_scheme_screen` needed no change. `test_mu_audit_drift` was **fixed, not re-baselined**: its 11
+refined sites are now 5 inline + 6 reached through `get_phii_c3c`, and it asserts that accounting.
+Full `pytest` on the merged tree: **green**. Two measurements worth keeping — the `stop_t=0.004` and
+`stop_t=0.008` runs agree to all printed digits on the rows they share (so `test_phase_boundary` and
+`test_betadelta_hybr_stress` may legitimately carry one pair), and the headroom was checked rather
+than assumed (`cool_beta` spans 3.4e-7 across CI's four Pythons against `abs=2e-3`; smoke `R2` spans
+1.6e-9 relative against `rel=1e-6`).
+
+⚠️ **This block's own caveat held:** `test_run_smoke` was **not** on D4's list. It was re-baselined
+on the maintainer's direct instruction, 2026-08-14 — recorded rather than left to look covered.
+
+**Still owed:** CHANGELOG entry; fold-back notes to `feature/threeway-pt2` and
+`feature/low-winds-regime`; the twelve non-B3M configs remain unretested against `main` (below).
 
 **Scope caveat:** both b6 arms ran on `bugfix/phii-pt1` code (`fca7d88` stock, `2199699` C3c), so
 the ledger is a clean stock-vs-C3c comparison at a fixed base but is **not** a statement about
@@ -1031,7 +1050,7 @@ Original scope for this batch: chosen candidate (D1 decides between C1, C1⊕C2b
 re-verify; CHANGELOG entry; reconcile the evidence README (§7 answers), DOC_STATUS, and — when
 the sibling branches merge — fold-back notes for momentum-pdrive (its §2 "inferred" caveat, its
 CSV column rename) and weak-winds (quantitative collapse times now clean). Goldens re-baselined
-under D4 with a table of before/after.
+under D4 with a table of before/after — **done, see above**.
 
 ### Batch 7 — confinement coverage + the weak-wind flip — Status: ⬜
 

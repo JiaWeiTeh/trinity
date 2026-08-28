@@ -21,7 +21,17 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 _FINAL_GOLDENS = {
-    # Re-baselined 2026-08-05 for the phase-1a segment schedule
+    # Re-baselined 2026-08-14 for C3c (`c43a50e`): the capped-Strömgren `P_HII` was
+    # `Pb` un-ramped, and `P_drive = max(press_bubble, P_HII)` selected it over the
+    # dt_switchon-ramped pressure, so the ramp never reached the momentum equation.
+    # C3c returns exactly 0.0 on the confined branch (every energy/implicit row), so
+    # the early drive is the ramped pressure alone and this exit state moves down:
+    # R2 -1.09%, v2 -0.57%, Eb -0.75%.  Before/after table with the reproduce
+    # commands: docs/dev/phii-identity/data/g34_golden_rebaseline.csv (the G3.4
+    # condition D4 attaches to re-baselining).  Previous values, pre-C3c, were
+    # R2 0.25955975558205835, v2 49.226111525136076, Eb 662533.9662741426.
+    #
+    # Earlier re-baseline 2026-08-05 for the phase-1a segment schedule
     # (docs/dev/phase1a-init/, phase1a_segFrac=0.1 + the vd=-1e8 override
     # deleted).  stop_t=1e-4 Myr is below TFINAL_ENERGY_PHASE=3e-3, and phase
     # 1a integrates in whole segments, so this triple IS the phase-1a exit
@@ -30,9 +40,9 @@ _FINAL_GOLDENS = {
     # Eb 778236.3470566473, captured 2026-07-10 on Python 3.9.6, numpy 1.26.4,
     # scipy 1.13.1) are the pre-fix exit state; the equivalence evidence that
     # the trajectories reconverge afterwards is data/gate_results.csv there.
-    "R2": 0.25955975558205835,
-    "v2": 49.226111525136076,
-    "Eb": 662533.9662741426,
+    "R2": 0.2567222331253797,
+    "v2": 48.944358738549326,
+    "Eb": 657558.3776158141,
 }
 
 

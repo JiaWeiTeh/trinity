@@ -44,7 +44,9 @@ Helix (HPC) is down, so the 72-run Rosette Cf scan for the application paper run
 container — the same playbook as the theta5s (81/81) and bench5 (60/60) in-container campaigns
 (`docs/dev/transition/pdv-trigger/REPRODUCE.md` rows 41/43). Scan:
 **2 mass-pairs × 3 nCore × 3 Cf {0.70, 0.85, 1.0} × 2 cooling_boost_fmix {1, 4} × 2 P_HII = 72
-runs** at PISM=1e5, stop_t=3 Myr. The param file (maintainer-supplied 2026-07-13) is committed at
+runs** at PISM=1e5, stop_t=3 Myr. *(2026-08-14: the committed 72 ran pre-C3c, so the `P_HII` axis
+was live in all four phases. On a re-run it no longer is — `c43a50e` makes `P_HII` exactly `0.0`
+while confined, so the axis only separates arms that reach transition or momentum.)* The param file (maintainer-supplied 2026-07-13) is committed at
 **`docs/dev/rosette-cf/rosette_cf_survey_PISM1e5_fmix.param`** — mass-pairs (1e5, 1%) / (1e4, 10%)
 bracketing NGC 2244's ~1000 Msun cluster, nCore ∈ {50, 1e2, 5e2}, `cooling_boost_mode multiplier`
 so fmix bites. Deliverable: the covering fraction Cf best matching the Rosette observables, per

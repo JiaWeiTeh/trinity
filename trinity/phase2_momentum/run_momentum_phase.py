@@ -255,7 +255,7 @@ def compute_forces_momentum_pure(
 
     # ==========================================================================
     # WARM IONIZED GAS PRESSURE (momentum phase)
-    # P_HII from Strömgren ionization balance in shell (n_IF_Str)
+    # P_HII: photoionised pressure (get_bubbleParams.get_phii_c3c) -- exactly 0.0 while confined
     # ==========================================================================
     n_IF = shell_props.n_IF
     R_IF = shell_props.R_IF
@@ -314,7 +314,7 @@ class MomentumODESnapshot:
     TShell_ion: float  # Ionized shell temperature [K]
     n_IF: float  # Density at ionization front (from shell structure ODE)
     include_PHII: bool  # Gate all HII pressure
-    P_HII: float  # HII pressure from Strömgren ionization balance in shell
+    P_HII: float  # photoionised pressure (get_phii_c3c); 0.0 while confined
     F_rad: float
     mShell: float
     mShell_dot: float
@@ -439,7 +439,7 @@ def get_ODE_momentum_pure(t: float, y: np.ndarray, snapshot: MomentumODESnapshot
 
     # ==========================================================================
     # WARM IONIZED GAS PRESSURE (momentum phase)
-    # P_HII from Strömgren ionization balance in shell (n_IF_Str)
+    # P_HII: photoionised pressure (get_bubbleParams.get_phii_c3c) -- exactly 0.0 while confined
     # Pre-computed in phase runner and stored in snapshot.
     # ==========================================================================
     P_drive = snapshot.P_HII + P_ram
@@ -628,7 +628,7 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
         shell_props = shell_structure_pure(params)
         updateDict(params, shell_props)
 
-        # Compute P_HII from Strömgren ionization balance in shell (n_IF_Str)
+        # Compute P_HII: photoionised pressure (get_bubbleParams.get_phii_c3c) -- exactly 0.0 while confined
         n_IF_Str = shell_props.n_IF_Str
         if params['include_PHII'].value and n_IF_Str > 0:
             # Photoionised pressure is a regime switch, not the capped Stromgren

@@ -32,9 +32,13 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-05):** 🔵 actionable — harness written and smoke-tested; **no screen has been run
-in anger yet**, so it has no committed baseline ledger. Built from `docs/dev/phase1a-init/PLAN.md`
-§9, which is where the gap it fills was diagnosed.
+**Status (2026-08-14):** 🔵 actionable — harness written, smoke-tested, and **first run in anger
+2026-08-06** as the gate for magic-number finding #3 (the exact `pdotdot` spline derivative); that
+run found and fixed a vacuous fate check — the end record lives in `metadata.json[termination]`, not
+the `dictionary.jsonl` tail. Built from `docs/dev/phase1a-init/PLAN.md` §9, which is where the gap
+it fills was diagnosed. *(Corrected 2026-08-14: this line still read "no screen has been run in
+anger yet" a week after the run — `DOC_STATUS.md` had been updated and this file, which the
+conventions make the source of truth, had not.)*
 
 ## Why this exists
 

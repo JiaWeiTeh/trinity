@@ -74,6 +74,10 @@ stop_at_rCloud_nSnap    None
 log_level    INFO
 
 # P_HII
+# NOTE (2026-08-14): since C3c, P_HII is exactly 0.0 while the ionised gas is confined, which is
+# every energy- and implicit-phase row measured so far. This axis therefore only separates arms
+# that reach the transition or momentum phase; for any cell that terminates earlier, True and
+# False produce the same run. Check that before paying for 2x the grid.
 include_PHII    [True, False]
 
 # Output (each run writes a subfolder under this directory)

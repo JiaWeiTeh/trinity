@@ -144,6 +144,17 @@ harness to re-run: see §6 (a ~1-second script, no full sim).
 
 ## 2. Fix concept — trigger on the pressure crossover, route into the existing 1c→2 chain
 
+> ⚠️ **`P_HII` changed underneath this section — re-derive before implementing (2026-08-14).**
+> Every expression below treats `P_HII` as the capped-Strömgren pressure, which was an algebraic
+> relabelling of the confining pressure (`P_HII == Pb`). C3c (`c43a50e`) replaced it with a
+> confinement regime switch returning **exactly `0.0`** while the ionised gas is confined — which is
+> every energy and implicit row measured. Two consequences for this design, neither adjudicated
+> here: (a) the proposed 1a event `g = press_bubble − (P_HII + P_ram)` no longer has `P_HII ≈ Pb` on
+> its right-hand side, so the crossover it locates is a different one — arguably a *better*-posed
+> one, since the old right-hand side exceeded `press_bubble` by construction; (b) the continuity
+> argument — "`P_drive = max(Pb, P_HII+P_ram)` is continuous by construction" — was resting on that
+> identity and has to be re-made. See `docs/dev/phii-identity/PLAN.md`.
+
 The handoff machinery **already exists** and is exactly what the physics wants:
 - **Phase 1c (transition):** decays `Eb` using `P_drive = max(Pb, P_HII + P_ram)`
   (`run_transition_phase.py:331`), with a terminal event at `Eb < ENERGY_FLOOR = 1e3` (`:766`).
