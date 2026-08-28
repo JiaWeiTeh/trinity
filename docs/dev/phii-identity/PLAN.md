@@ -2582,6 +2582,62 @@ therefore still behind the ship-hold.
 
 ---
 
+### Batch 17 — dust inside the K10 closure — Status: 🟡 gates registered 2026-08-28, not yet run
+
+**Why this batch exists.** Batch 13's **G13.4 fired at 2.05×** — the drive's sensitivity to whether
+dust is in the photon budget exceeded the pre-registered 2× bar — and the verdict as registered was
+**"K10 cannot ship without a dust model."** Batch 13's dust was a *post-hoc join*: `f_dust` read from
+the photon ledgers at nearest `t`, which is a table lookup, not a closure. Batch 16 closed the
+composition question, so dust is the last piece that can be settled offline. Batch 16's mapping is
+used end-to-end here, so this batch measures the **complete** candidate.
+
+**The closure under test — a reduction of trinity's OWN dust physics, not a new model.**
+`get_shellODE.py:120` is the code's ionised-region photon equation:
+
+> `dφ/dr = − 4π r² χ_e α_B n² / Qi − n σ_d φ`
+
+with `σ_d = params['dust_sigma']`. Two sinks: recombination and dust. K10's approximation is a
+**uniform** layer density `n₀ = (μ_i/μ_c)·P_conf/(k_B T)` (identically `shell_structure.py:125`'s
+`nShell0`), so the closure is that same ODE integrated at constant `n₀` from `R2` with `φ(R2) = 1`,
+and the ionisation front is `R_i := r` where `φ = 0`. The drive is `P_conf·(R_i/R2)²`, composed via
+Batch 16's mapping. **`Qi` is used whole, not `Qi·f_abs`** — the shell solve starts at `φ = 1` with
+the full budget (§6b item 5, B11.0 seam A), and the recombination/dust/escape split is an *output*
+of the solve rather than an input. This deliberately differs from Batch 13's `Q_eff` and is the
+point of the batch.
+
+**Conventions pinned:** `χ_e` explicit; exact spherical volumes; code units throughout
+(`σ_d` [pc²], `n` [pc⁻³], `α_B` [pc³/Myr], `Qi` [1/Myr]) so `nσ_d` and the recombination term are
+both [1/pc]; `P_conf` is the **ramped** `press_bubble` in energy/implicit per **G16.3**.
+
+**Gates.**
+- **G17.0 — the closure's dust fraction reproduces the shell solve's own (BLOCKING).** The closure
+  predicts `f_dust` = the fraction of `Qi` absorbed by dust, `= ∫ n₀ σ_d φ dr` over the layer.
+  Compare against the run's own measured value (`f_ionised_dust` in `data/b9_layer_density.csv`;
+  `dust_Pb` in the photon ledgers) on matched rows. **Bar: median predicted/measured ∈ [0.5, 2.0]**
+  (factor 2), and additionally report the fraction of rows within 25%. *Falsifier:* median outside
+  that band ⇒ the uniform-density reduction does **not** capture trinity's dust, and K10 needs the
+  real profile rather than a closure. ⚠️ Disclosed prior: G9.4 measured the analytic uniform form
+  overstating the profile's recombination-equivalent density by up to **3.17×**, so this gate is
+  genuinely at risk and a failure is a real possible outcome, not a formality.
+- **G17.1 — convergence.** The front solve must find a bracketed `φ = 0` root on 100% of rows
+  attempted. *Falsifier:* any non-convergent row ⇒ report it and its cause; a row where `φ` never
+  reaches 0 means no front exists at uniform density (the shell is photon-leaking there) and is
+  reported as `no_front`, **not** silently dropped.
+- **G17.2 — the `σ_d → 0` limit recovers Batch 13's variant A exactly.** With `σ_d = 0` the closure
+  must reproduce `R_i³ = R2³ + 3·Qi/(4π χ_e α_B n₀²)` to **1e-10** relative. *Falsifier:* worse ⇒
+  algebra or units bug, and nothing else in the batch is trustworthy.
+- **G17.3 — G13.4's sensitivity is now internal.** Report the drive under (a) no dust, (b) Batch
+  13's post-hoc `Q_eff = Qi·f_abs·(1−f_dust)`, (c) this self-consistent closure. **Pre-registered
+  expectation, disclosed: (c) lands between (a) and (b), nearer (b).** Re-run G13.4's ratio with (c)
+  in place of the join and report whether it still exceeds 2×.
+- **G17.4 — end-to-end magnitude (measurement, no bar).** Composed drive (Batch 16 mapping) over
+  shipped drive, per phase per config, using the self-consistent closure.
+
+**Out of scope:** any `trinity/` edit (ship-hold); trajectories (offline on committed rows only);
+the `f_esc > 0` regime is reported, not modelled.
+
+---
+
 ### §6b Self-consistency audit of the C3c/C3a picture — 2026-08-18 (maintainer question) — ✅ **RE-VERIFIED by B11.0 (2026-08-18): A/C/D CONFIRMED, B REVISED, none REFUTED**
 
 > **Status of this section after B11.0.** Every claim below was re-derived adversarially against
