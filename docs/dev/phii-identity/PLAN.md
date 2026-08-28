@@ -2696,7 +2696,7 @@ offline on committed rows, so it says nothing about a trajectory K10 drives itse
 
 ---
 
-### Batch 18 — the K10 arm — Status: 🟡 gates registered 2026-08-28, ship-hold lifted for THIS ARM ONLY
+### Batch 18 — the K10 arm — Status: 🟡 **implemented + per-call gated 2026-08-28. G18.0 FAILED as written (diagnosed; amended G18.0′ PASSES at 1.005e-12). Arm RUNS clean. G18.2–G18.5 need the ladder.**
 
 **Authorisation.** Maintainer, 2026-08-28: **ship-hold lifted for the K10 arm only.** Scope, as
 granted: implement K10 and measure what it does to a trajectory it drives itself. **NOT** granted: a
@@ -2751,6 +2751,58 @@ ramped value must be used; only the implementation consequence was wrong.
   coverage gap using the arm's own output**, at no extra cost.
 
 **Out of scope:** default flip, D5 adoption, `phii_scheme` key, golden re-baselining.
+
+---
+
+#### Batch 18 RESULT (per-call half) — 2026-08-28, measured against the gates above
+
+Implemented as an **arm patch**, never on `main`: `docs/dev/phii-identity/hpc/b14/k10_arm.patch`
+adds `get_phii_k10` + `_k10_front_radius` and aliases `get_phii_c3c` to it, so **zero call sites
+change** and reverting is deleting one line. `scipy.optimize` was already imported; no new
+dependency. Reproduce by applying the patch in a detached worktree (`run_arms.sh prep <sweep> k10`).
+
+- **⛔ G18.0 — FAILED AS WRITTEN. Recorded, not re-barred.** Worst rel err **6.761e-02** against a
+  1e-10 bar. The failure is *entirely* the `P_conf` **source**, and the per-phase pattern proves it:
+  `P_conf` rel err is **0.000e+00 in implicit and momentum** and **6.817e-02 (energy) / 5.877e-03
+  (transition)**. Batches 16/17 *recovered* `P_conf` from stored columns (`P_drive` on confined rows,
+  stored `Pb` elsewhere); production *recomputes* it from `Eb` and a freshly solved `R1`. The two
+  agree exactly wherever recomputation is trivial and diverge where it is not — inside the
+  `dt_switchon` ramp window (energy) and through the `Eb → Pb` reconstruction (transition).
+  **Production is the correct side; the offline screen was the approximation** — which Batch 17's
+  caveat had already flagged qualitatively ("the recovered `press_bubble` is not exact on those
+  rows"). The gate did its job: it caught a real screen-vs-production difference that would
+  otherwise have been carried into the arm silently.
+- **✅ G18.0′ (amendment, following this workstream's own G8.4′ precedent) — PASSES at 1.005e-12.**
+  Same 1e-10 bar on the same quantity, with the one input the screen could not reproduce held fixed:
+  feed production's `_k10_front_radius` the screen's `P_conf` and compare drives. Per phase: energy
+  1.005e-12, implicit 3.708e-14, transition 2.511e-13, momentum 3.095e-13. **So the production
+  closure IS the object Batches 16 and 17 validated**; only the confining-pressure source differed.
+  The amendment does not weaken the closure test — it isolates it.
+- **✅ Arm runs clean (partial G18.2).** `SC` to `stop_t` = 0.01: **ok, 114 snapshots, 338 s, zero
+  distress lines** (no excess-work / overflow / monotonic-guard / convergence warnings).
+- **✅ G18.1's contract change is confirmed live and is exactly as designed.** On that run
+  `P_HII > 0` on **97/97 energy rows** and **17/17 implicit rows**, where C3c returns exactly 0.0 on
+  100% of them. Median `P_HII/Pb` = 0.8392 (energy — the ramped `P_conf` sits below the stored
+  un-ramped `Pb`, so this is the D-ramp being honoured) and 1.0008 (implicit, i.e. the excess is
+  +0.08% there). `test/test_phii_c3c.py` fails under the arm **by design**; the pins are recorded
+  broken, not re-baselined.
+
+⚠️ **Consequence for Batch 17, quantified and limited.** G18.0's `P_conf` diagnostic bounds the
+error in Batch 17's offline magnitudes: **momentum and implicit are exact (0.0)**, **transition
+carries ≤0.59%**, and **energy carries ≤6.8%**. So §Batch 17's G17.4 table is sound except its
+**energy** column, which should be read as ±7%. G17.0's dust validation is unaffected — its
+comparison rows are transition/momentum/implicit only.
+
+⚠️ **Environment note (not an arm defect).** The local interpreter is **Python 3.8.8**, below
+trinity's stated **≥3.9** minimum, and `harness/run_batch.py` uses `Path.is_relative_to` (3.9+), so
+its post-run *reporting* raises after the run completes and the walltimes CSV is skipped. Run
+outputs are unaffected (written before the raise). On Helix `sync.sh` activates the `trinity` conda
+env, so this should not bite there — but it is worth fixing or noting before the ladder.
+
+**Still owed for this batch:** G18.2 (full ladder health), **G18.3 (full-run equivalence, the
+sufficient half of CLAUDE.md rule 5)**, G18.4 (continuity on K10's own trajectory), G18.5 (ED-phase
+dust, which the arm's own output closes for free). All need the ladder:
+`docs/dev/phii-identity/hpc/b14/sync.sh` now defaults to `ARMS="baseline k10"`.
 
 ---
 
@@ -2949,6 +3001,7 @@ rules on the register.
 | 14 | 🟡 | 2026-08-28 | **Offline screen DONE; no arm (SHIP-HOLD).** G14.0 passes by the letter (no linear slope in [0.95,1.05] with r²>0.99) but the disclosed log-log diagnostic shows both variants ∝`Pb^1.0` on driving rows (K5a r² 0.988 gain ≈2.4, K5b r² 0.993 gain ≈1.5) — the identity with an O(1) gain. K5a identified as the code's own uncapped `n_IF_Str_raw`; Batch 3b had already measured that coupling at r ≥ 0.997 on 788 pre-C3c rows, and Batch 4a its full-run cost (ΔR2 15.3–28.4%, ramp-window concentrated). Branch census: 83/83 confined B3M rows flip driving under both variants (K5b = 1.073×`Pb` in energy — the old identity to 7%), first flip inside `dt_switchon`. G14.3: momentum `P_HII/P_ram` 6.165 → 2.381 (K5a) → 1.545 (K5b), B3MW01 13.766 → 4.388; both gate-text priors hit. Verdict: the cavity volume IS the decoupling; the layer volume belongs in the coupled closure (K10/K6). Arm scope (bare swap / driving-only / defer to K10) is the maintainer's call | `data/b14_k5_screen.csv`, `harness/k5_offline_screen.py` |
 | 16 | ✅ | 2026-08-28 | **K10's composition mapping SOLVED and gated through the real `P_drive` expressions.** G16.0 PASS (worst 2.22e-16 vs 1e-12, all four phases, both `Q_eff` variants): `return = P_conf·ρ − (P_ram if the composition adds it)` yields the CEM drive exactly. G16.1 PASS (853/853 non-negative). G16.2 PASS — the confined-limit term is delivered at **+0.96%** median over `P_conf` instead of being swallowed by the `max`, which was Batch 14's specific finding. G16.3 established the predicted signature change: inside `dt_switchon` the ramped/un-ramped `P_conf` ratio is 0.33–0.995 (median 0.711), so K10 must receive the **ramped** `press_bubble`, which `params` does not carry. G16.4 reproduces Batch 13's magnitudes exactly by a different code path (momentum 1.605/0.851 B3M, 2.242/1.096 B3MW01) — an independent cross-check. Remaining K10 blockers: dust (Batch 17) and a full-run arm | `data/b16_composition.csv`, `harness/k10_composition_check.py` |
 | 17 | ✅ | 2026-08-28 | **Dust is now INSIDE the closure and validated against trinity's own shell solve — G13.4's blocker discharged.** The closure is `get_shellODE.py:120`'s own photon equation at uniform `n₀`, so it is a reduction of the code's dust treatment, not a new model. **G17.0 PASS**: predicted/measured `f_dust` median **1.056**, 97.3% of rows within 25%, both configs agreeing (1.064 / 1.052) — the G9.4 risk did not materialise because dust is linear in `n` where recombination is quadratic. G17.1 PASS (436/436 fronts). G17.2 PASS (σ_d→0 recovers the closed form to 9.3e-13). ⛔ **G17.3's pre-registered expectation MISSED**: the self-consistent drive is not between the no-dust and post-hoc values but just below both (`c/b` 0.92–0.95) — the closure debits photons continuously rather than once. Re-run sensitivity is still ≈2× (1.886–2.214), which is dust genuinely mattering, not a revived blocker. G17.4 end-to-end: composed/shipped 1.006/1.005/0.746/0.884 (B3M) and 1.059/1.099/0.982/1.034 (B3MW01). ⚠️ ED-phase dust validated on **1 row** — the ledgers only replayed driving rows | `data/b17_dust_closure.csv`, `harness/k10_dust_closure.py` |
+| 18 | 🟡 | 2026-08-28 | **K10 implemented as an arm and per-call gated; the ladder is owed.** Patch adds `get_phii_k10` + `_k10_front_radius`, aliases `get_phii_c3c` to it, **zero call-site edits**, no new dependency. ⛔ **G18.0 FAILED as written (6.761e-02 vs 1e-10)** — recorded, not re-barred; diagnosed as *entirely* the `P_conf` source (`P_conf` rel err **0.0 in implicit and momentum**, 6.8e-2 energy / 5.9e-3 transition): the screens recovered it from stored columns, production recomputes it from `Eb` and a solved `R1`, and **production is correct**. ✅ **G18.0′ amendment PASSES at 1.005e-12** with `P_conf` held fixed, so the production closure IS what Batches 16/17 validated. ✅ Arm runs clean (SC, 114 snapshots, 338 s, zero distress). ✅ G18.1's contract change live: `P_HII > 0` on 97/97 energy and 17/17 implicit rows where C3c gives exactly 0.0. ⚠️ Bounds Batch 17's offline error: momentum/implicit exact, transition ≤0.59%, **energy ≤6.8%** | `data/b18_percall.csv`, `harness/k10_percall_equivalence.py`, `hpc/b14/k10_arm.patch` |
 | 5-s3 | ✅ | 2026-08-13 | **Wind ladder DONE — Lancaster resolved in transition, open in momentum.** First ladder (`simple_cluster`: SC/SW3/SW10) **VOID** — all three terminate at `stop_t` still in implicit, so `t_cross = never` is not evidence about winds; the crossover is structurally floored at the transition handover (`ratio@entry` < 1 on every config). Re-run on B3M (`B3MW01/1/3/10`), all four valid. **Transition: (a) PASSES** — confined fraction 8.8% → 23.8% → 28.9% → 38.8%, lag/`t_entry` +1.5% → +37.2%, and `ratio@entry` = 0.7144/0.1227/0.0553/0.0235 vs the **pre-registered** 0.68/0.12/0.054/0.022 (exponent **−0.743** vs −0.74, errors 2–7%) — a Weaver-derived prediction holding out of its fitted regime. **Momentum: OPEN** — 100% HII-dominated on all four; `P_C3a/P_ram ∝ Lw^−0.33` ⇒ inversion needs `Lw ≈ 260`. **Not** an O(1) normalisation error (same normalisation predicts transition to 7%): it is the `R2^−3/2` geometry. Mechanism: energy duration **identical** (0.0030 Myr) and transition duration wind-independent; only implicit moves (`Lw^−0.388`), which is why `t_cross` *falls* with wind. ⚠️ Retracted mid-run claim that energy row counts (69/87/96/105) meant longer energy phases — that is timestep refinement, not duration | `data/b5s3_ladder_lag.csv`, `data/b5s3_ladder_regime.csv`, `data/b5s3_ladder_screen.csv`, `harness/lag_vs_handover.py` |
 
 ### 8.2 Config wall-times (filled by Batch 0)
@@ -3012,6 +3065,8 @@ the rule being enforced.
 | `data/b14_cavity_gas.csv` | `harness/cavity_gas_check.py` | 14 (maintainer Q) | no run — cavity gas content vs C3a's asserted photon sink, from the B3M/B3MW01 mass ledgers |
 | `data/b16_composition.csv` | `harness/k10_composition_check.py` | 16 | no run — K10 mapping routed through the real `P_drive` expressions on committed c3c trajectories, both `Q_eff` variants |
 | `data/b17_dust_closure.csv` | `harness/k10_dust_closure.py` | 17 | no run — dust inside the K10 closure (uniform-`n₀` reduction of `get_shellODE.py:120`), validated against the ledgers' measured `dust_Pb` |
+| `data/b18_percall.csv` | `harness/k10_percall_equivalence.py` | 18 | no run — implemented `get_phii_k10` vs the Batch 17 screened closure; carries the `P_conf` diagnostic that explains G18.0's failure |
+| `hpc/b14/k10_arm.patch` | the exact Batch 18 arm diff (apply in a detached worktree) | 18 | arm code; never merged — D5 open |
 
 Run dirs (not committed — regenerate with `harness/run_batch.py`):
 `outputs/phii/b0__6b55657_dirty/`, `outputs/phii/b1__386df59_dirty/`. The `_dirty` suffix reflects
