@@ -339,6 +339,24 @@ HII-dominated everywhere. **The batch's premise inverted: the cavity volume is t
 layer volume belongs in the coupled closure (K10/K6).** Arm scope is now a maintainer (D5-adjacent)
 decision. See `PLAN.md` §Batch 14 RESULT.
 
+**Update 2026-08-28 (one-radius ruling; Batches 16 and 17 clear K10's two offline blockers).**
+Maintainer ruled **keep one radius**, which defers K8 to a follow-up paper, leaves
+`shell_structure.py` untouched (its quasi-hydrostatic inner boundary is Rahner+2017's own
+assumption, arXiv:1704.04240, and Lancaster+2025 assumes pressure equilibrium too), and makes **K10**
+— the one-radius reduction of the Lancaster closure — the live candidate. **Batch 16** solved the
+composition defect: `return = P_conf·ρ − (P_ram if the phase's composition adds it)` reproduces the
+CEM drive through all three real `P_drive` expressions to **2.22e-16**, every return is
+non-negative, and Lancaster's confined-branch first-order term is now **delivered at +0.96%** rather
+than swallowed by the `max`. **Batch 17** put dust inside the closure as a uniform-density reduction
+of `get_shellODE.py:120` — the code's own photon equation — and it reproduces the shell solve's
+measured dust fraction to **5.6%** (median 1.056, 97.3% of rows within 25%, both configs). End to
+end the candidate sits within ~25% of the shipped drive everywhere. ⛔ Two gates of mine are
+recorded as misses (Batch 14's G14.0 passing only by the letter; Batch 17's G17.3 containment
+prediction). ⚠️ ED-phase dust is validated on **one row** — the photon ledgers only replayed driving
+rows. **Both offline blockers are now cleared**; what remains is a `get_phii_c3c` signature change
+(G16.3: it must receive the *ramped* `press_bubble`) and a full-run arm, both behind the ship-hold.
+See `PLAN.md` §Batch 16 / §Batch 17.
+
 Two follow-ons registered in `PLAN.md`: **B11.F**, because the layer-density harness used a
 thin-shell volume where the momentum shell is not thin — this withdraws Batch 10's "flat to 1–3%
 within each rung" claim, but every verdict survives and so do the `Lw^−0.1133` fit and `Lw ≈ 46.5`
