@@ -2637,7 +2637,7 @@ the maintainer's call.
 | **K8** | **Three-radius model** — `R1 < R_w ≤ R2 ≡ R_i`, with `R_w` algebraic | structural; a follow-up paper | **A** | Pending. K5/K6 are the minimal ways to get `R_w ≠ R2` without this |
 | **K9** | **Shell-mass adjustment** — `M_sh = (4π/3)R_i³(ρ̄ − ρ_i)` | the momentum equation's inertia | **M + S** | **Measured here, and the literature already does it** (Lancaster `eq:pr_spitzer_adj`, with its own "not consistent with the derivation… \[but\] can be more accurate" caveat). B11.C2: **+8.55%/+9.22%** in `R2` at nominal wind, **+0.45%/+0.97%** at `Lw × 0.1`. This is §6b seam C's fix, not a separate idea. **Rev2 ranks it #2.** ⚠️ **Downgraded 2026-08-27 by Batch 15's pre-gate**: B11.C2's +8.55/+9.22% debited **`M_cav`**, which is NOT the K9 quantity — in trinity's geometry K9 debits the shell's own **ionised layer**, measured at `m_ion/m_shell` median **0.461** in momentum (range 0.109–**1.000**), 1.0000 throughout energy. It **reaches a massless shell on real rows**, its admissible phase scope is narrow, and G15.3 may make it inseparable from K5. **Not the cheap independent win it appeared to be** |
 
-| **K10** | ✅ **screened (Batch 13)** — **CEM-interpolated `P_HII`** — the smooth coupled form, phase-agnostic: `n_H0 = (μ_i/μ_c)·P_conf/(k_B T)` (pressure-equilibrium skin density — `shell_structure.py:125`'s own line), `R_i³ = R2³ + 3·Qi_abs/(4π χ_e α_B n_H0²)` (recombination over the cavity-**excluded** layer volume), `P_drive = P_conf·(R_i/R2)²`; equivalently the helper returns the **excess** `P_HII_eff = P_conf·[(R_i/R2)² − 1]` and the existing momentum sum composes it exactly. In the MD phase this is algebraically Lancaster's `α_p ṗ (1 + R_w/R_ch)^{2/3}` at `α_p = 1` | one helper; zero `P_drive` edits (the excess rides the existing compositions) | **S + M** | **Registered 2026-08-18, Batch 13 screens it offline.** The momentum-phase minimal form of K6, containing K5's volume fix by construction. Exact limits: confined → excess `= (2/3)(R2/R_ch)·P_conf` (Lancaster's own first-order term — the correct "better than 0.0"); unconfined → Spitzer over the layer volume. **Smooth**: kills the factor-2 momentum switch jump, the 23.4% transition jump, and the §3c.1 `t_cross` kink by construction. ⚠️ Known gaps, pre-stated: **no dust** in the closure (illustrative: predicts `R_i/R2` ≈ 3.1–3.9 on B3M momentum where the shell solve measures `R_IF/R2` ≈ 1.7–2.3 — G13.4 sizes it); assumes quasi-static balance (Lancaster *imposes* it: "we now imagine"); ED-phase use maps `P_conf` to the thermal `Pb` (their §ed_jfb structure) and must respect the D-ramp window. **Batch 13 measured it (2026-08-27):** state-jump **exactly 0** where the shipped rule jumps **+34%**; healthy branch untouched on B3M (+0.68%); but the **dust rule fired at 2.05×**, so **K10 cannot ship without a dust model** — and with dust it lands **within 10–15% of the shipped drive**, evidence the shipped scheme's cavity-volume and missing-dust errors partly cancel. Note `R_ch`(trinity) = `chi_e`·`R_ch`(Lancaster) |
+| **K10** | ✅ **screened (Batch 13)** — **CEM-interpolated `P_HII`** — the smooth coupled form, phase-agnostic: `n_H0 = (μ_i/μ_c)·P_conf/(k_B T)` (pressure-equilibrium skin density — `shell_structure.py:125`'s own line), `R_i³ = R2³ + 3·Qi_abs/(4π χ_e α_B n_H0²)` (recombination over the cavity-**excluded** layer volume), `P_drive = P_conf·(R_i/R2)²`; equivalently the helper returns the **excess** `P_HII_eff = P_conf·[(R_i/R2)² − 1]` and the existing momentum sum composes it exactly. In the MD phase this is algebraically Lancaster's `α_p ṗ (1 + R_w/R_ch)^{2/3}` at `α_p = 1` | one helper; ⛔ **"zero `P_drive` edits" CORRECTED 2026-08-28 — true in momentum ONLY** (see the composition note in the status cell) | **S + M** | **Registered 2026-08-18, Batch 13 screens it offline.** The momentum-phase minimal form of K6, containing K5's volume fix by construction. Exact limits: confined → excess `= (2/3)(R2/R_ch)·P_conf` (Lancaster's own first-order term — the correct "better than 0.0"); unconfined → Spitzer over the layer volume. **Smooth**: kills the factor-2 momentum switch jump, the 23.4% transition jump, and the §3c.1 `t_cross` kink by construction. ⚠️ Known gaps, pre-stated: **no dust** in the closure (illustrative: predicts `R_i/R2` ≈ 3.1–3.9 on B3M momentum where the shell solve measures `R_IF/R2` ≈ 1.7–2.3 — G13.4 sizes it); assumes quasi-static balance (Lancaster *imposes* it: "we now imagine"); ED-phase use maps `P_conf` to the thermal `Pb` (their §ed_jfb structure) and must respect the D-ramp window. **Batch 13 measured it (2026-08-27):** state-jump **exactly 0** where the shipped rule jumps **+34%**; healthy branch untouched on B3M (+0.68%); but the **dust rule fired at 2.05×**, so **K10 cannot ship without a dust model** — and with dust it lands **within 10–15% of the shipped drive**, evidence the shipped scheme's cavity-volume and missing-dust errors partly cancel. Note `R_ch`(trinity) = `chi_e`·`R_ch`(Lancaster). ⛔ **COMPOSITION CORRECTION 2026-08-28 (algebra, not yet gated).** "The excess rides the existing compositions" holds **in momentum only**, and Batch 13 could not have caught it because its screen computed the total drive `P_conf·(R_i/R2)²` directly instead of routing a helper return through each phase's `P_drive` expression. With `ρ ≡ (R_i/R2)² ≥ 1`: momentum (`P_HII + P_ram`, `P_conf = P_ram`) composes the **excess** exactly (`P_ram(ρ−1) + P_ram = P_ram·ρ`) but the full value over-counts by `P_ram`; energy/implicit (`max(Pb, P_HII)`) is the **opposite** — the **full value** composes exactly (`max(Pb, Pb·ρ) = Pb·ρ`) while the excess is **swallowed by the `max` whenever `ρ < 2`**; transition (`max(Pb, P_HII + P_ram)`) is exact under neither. ⚠️ **This destroys K10's headline confined-branch virtue as specified**: the "correct better-than-0.0" first-order term `(2/3)(R2/R_ch)·P_conf` is *small* by construction, so under `max(Pb, excess)` it is discarded exactly where it was meant to improve on the 0.0. K10 therefore needs a phase-aware helper **or** real edits at the live `P_drive` sites (`energy_phase_ODEs.py:253,256`, `run_momentum_phase.py:445`) — it is **not** a one-helper zero-edit change, and its risk class rises accordingly. Needs its own gate before any K10 arm |
 
 **How the rows relate, so they are not treated as nine independent choices.**
 K1/K2/K3 are the same quantity with different *branch logic* — a key, not physics. K4/K5 change the
@@ -3607,3 +3607,48 @@ b0 run and to `bb302e0` for every b1 run (§9 records how that was protected).
   independently, not a composition error; the harness marks the energy rows
   `recompute_check=void` rather than reporting a spurious failure. No `trinity/` source touched;
   ship-hold unchanged.
+
+- **2026-08-28 (maintainer question: what is the physically correct next step, and does K10 carry
+  Lancaster's discontinuity fix? — plus a composition defect found while answering)** — Two
+  questions, one answer: the discontinuity fix and the seam fix are the same construction.
+  **(1) Where the jump actually is.** §3c.1's "the `max` is C0, only the derivative kinks" is
+  correct *for the max phases* and does not generalise — and the reason is the same sum-vs-max
+  split the identity census measured today. In `max(Pb, P_HII)` the branches are equal at the
+  crossover, so nothing jumps. In the **summing** compositions the switch is a genuine
+  discontinuity in value, because `P_HII` enters additively: Batch 13 measured it at fixed state
+  as **+34.0%** (B3M, transition, t = 0.3012) and **+33.2%** (B3MW01, t = 0.7186). So the
+  discontinuity is a property of `sum` + `branch`, not of `max`.
+  **(2) Yes, K10 is the Lancaster construction, and its smoothness is structural.** `P_drive =
+  P_conf·(R_i/R2)²` is a single-valued smooth function of `(R2, Qi_eff, P_conf)` with **no branch**,
+  algebraically Lancaster's `α_p ṗ (1 + R_w/R_ch)^{2/3}` at `α_p = 1` in the MD phase; its measured
+  state-jump is **identically 0.0%** against the shipped rule's +34%. It interpolates between the
+  wind- and photoionisation-dominated limits instead of selecting between them, which is why it also
+  removes the §3c.1 `t_cross` kink and the transition-entry step.
+  **(3) The strategic argument, stated as evidence.** B11.A's degeneracy result (`x* = 1` on 33/33
+  driving rows) says seams A and C **cannot be repaired inside C3a's structure at all** — so every
+  candidate that computes an independent `P_HII` on top of an unmodified shell solve (K1, K2, K4,
+  **K5**) inherits the photon and mass double-counts regardless of what value it computes. Batch
+  14 sharpened this from the other side: the layer volume the literature uses is *coupled*, and it
+  only stops being a relabelling when the coupling is structural — which is exactly what K10/K6
+  are. K10 also contains K5's volume fix by construction, and its dust-corrected `R_i/R2` = 2.39
+  lands on the shell solve's own measured `R_IF/R2` ≈ 1.7–2.3 where the no-dust form (3.39) does
+  not. **The coupled closure is where the evidence points; D5 remains the maintainer's ruling.**
+  **(4) ⛔ A composition defect in K10's own specification, found while answering and corrected in
+  the §7.1 row.** "One helper, zero `P_drive` edits — the excess rides the existing compositions"
+  is true **in momentum only**. Momentum (`P_HII + P_ram`) composes the excess exactly;
+  energy/implicit (`max(Pb, P_HII)`) needs the **full value** instead and **swallows the excess
+  whenever `(R_i/R2)² < 2`**; transition (`max(Pb, P_HII + P_ram)`) is exact under neither. That
+  discards K10's advertised confined-branch improvement — the first-order term
+  `(2/3)(R2/R_ch)·P_conf` is small by construction, so `max(Pb, small)` throws it away precisely
+  where it was supposed to beat the 0.0. Batch 13 could not have caught this: its screen computed
+  the total drive directly rather than routing a helper return through each phase's `P_drive`
+  expression. **Consequence: K10 needs a phase-aware helper or real edits at the live `P_drive`
+  sites, so it is not a one-helper zero-edit change and its risk class rises.** This is algebra,
+  not a measurement — it needs its own pre-registered gate before any K10 work, and that gate
+  should compose through the real expressions, not around them.
+  **Recommended ordering (evidence-based; not a decision):** (a) rule D5 on the *family* question —
+  independent-value (K1/K2/K4/K5) vs coupled-closure (K6/K10); (b) if coupled, fix the composition
+  mapping above and pre-register it; (c) build the dust term **inside** the closure rather than
+  joining `f_dust` post-hoc from the photon ledgers as Batch 13 did — G13.4's 2.05× is the blocking
+  gap and G9.4 already measured the sink at 61–75% of the absorbed budget; (d) only then an arm,
+  on the Batch 14 ladder. No `trinity/` source touched; ship-hold unchanged.
