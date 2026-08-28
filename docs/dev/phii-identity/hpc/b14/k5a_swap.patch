@@ -1,0 +1,38 @@
+Batch 14 arm: K5a BARE SWAP (the registered one-line-denominator change).
+Apply to BASE_SHA cce8c924 (main @ the Batch 14 offline screen) in a clean
+worktree -- run_arms.sh does this; never apply to a working main checkout
+(SHIP-HOLD). The switch logic is unchanged and now tests the NEW value, so the
+offline screen predicts the confined branch flips on 83/83 B3M rows
+(Batch-4a-class early-window shifts). That prediction is what G14.4 measures.
+
+NOTE test/test_phii_c3c.py fails 6/11 under this arm because its _Shell mock
+lacks n_IF_Str_raw (reads 0.0) -- a mock artifact, not the arm's physics.
+Arms are measured by full runs only; never re-baseline pins from an arm.
+
+--- a/trinity/bubble_structure/get_bubbleParams.py
++++ b/trinity/bubble_structure/get_bubbleParams.py
+@@ -351,15 +351,16 @@ def get_phii_c3c(params, shell_props):
+     R2 = params['R2'].value
+     Qi = params['Qi'].value
+     if not (R2 > 0 and Qi > 0):
+         return 0.0
+-    f_abs = getattr(shell_props, 'shell_fAbsorbedIon', 1.0)
+-    if not (isinstance(f_abs, float) and 0.0 <= f_abs <= 1.0):
+-        f_abs = 1.0
+-    Qi_abs = Qi * f_abs
+-    denom = 4.0 * np.pi * params['chi_e_shell'].value * params['caseB_alpha'].value * R2**3
+-    if not (denom > 0.0 and Qi_abs > 0.0):
+-        return 0.0
+-    n_c3a = np.sqrt(3.0 * Qi_abs / denom)
++    # K5a ARM (Batch 14, the registered bare swap): balance recombination over
++    # the cavity-EXCLUDED ionised layer, not the wind cavity. The layer-volume
++    # balance already exists as shell_structure's n_IF_Str_raw -- numerator
++    # (1 - f_esc_ion)*Qi, denominator 4 pi chi_e alpha_B (R_IF^3 - rShell0^3) --
++    # so G14.1 (denominator == _vol_ion to 1e-12) holds by construction. Branch
++    # logic unchanged: the switch now tests the NEW value.
++    n_c3a = float(getattr(shell_props, 'n_IF_Str_raw', 0.0) or 0.0)
++    if not (n_c3a > 0.0):
++        return 0.0
+     P_c3a = ((params['mu_convert'].value / params['mu_ion_shell'].value)
+              * n_c3a * params['k_B'].value * params['TShell_ion'].value)
+     return float(P_c3a) if P_c3a > params['Pb'].value else 0.0
