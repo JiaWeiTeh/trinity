@@ -466,7 +466,8 @@ the Eb-peak oracle across all six configs (`harvest_h0.py`; figure
 - **No force family fires** — F3 `never` (thermal force stays > radiation). And a
   structural finding: **`Pb ≡ P_HII` to machine precision** (bubble–shell pressure
   continuity by construction; `P_ram=0`, `F_ISM=0`), so any pressure-balance F3 is
-  degenerate.
+  degenerate. ⚠️ *2026-08-14: superseded by C3c (`c43a50e`) — the identity came from the Strömgren
+  cap, which no longer sets `P_HII`. See `FINDINGS.md` for the same note.*
 - **F2 (instantaneous timescale) fires at t≈0** — artifact: `t_cool=Eb/Lloss` ignores
   that `Lgain` continuously replenishes, so a short instantaneous `t_cool` ≠ the
   bubble actually cooling.

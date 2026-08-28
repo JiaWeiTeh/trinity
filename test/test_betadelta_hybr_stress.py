@@ -54,17 +54,26 @@ _PARAM = (
 
 # Golden accepted (beta, delta) at the first implicit-phase segments, recorded
 # on the pinned numpy<2 / scipy<2 stack. FILLED FROM A RECORDING RUN.
-# Re-baselined 2026-08-05 with the phase-1a segment schedule
-# (docs/dev/phase1a-init/); the pre-fix values were (0.759260, -0.035387) x2 at
-# t=0.00341/0.00381 and (0.757865, -0.122600) x2 at t=0.00412/0.00437.
 # cool_alpha = t*v2/R2 is set from the phase-1a exit state and consumed inside
 # the bubble solve, so this pair moves with that exit state -- the solver logic
 # itself is unchanged and is pinned separately by test_betadelta_hybr.py.
+#
+# Re-baselined 2026-08-14 for C3c (`c43a50e`), which moves that exit state: the
+# capped-Strömgren `P_HII` was `Pb` un-ramped and won `max(press_bubble, P_HII)`,
+# so the dt_switchon ramp never reached the momentum equation; C3c returns exactly
+# 0.0 while the ionised gas is confined, so it does.  Before/after table and
+# reproduce commands (the G3.4 condition on D4's re-baselining authority):
+# docs/dev/phii-identity/data/g34_golden_rebaseline.csv.  Previous values were
+# (0.888197, -0.046294) x2 and (0.845829, -0.145668) x2 at the same four times.
+#
+# Earlier re-baseline 2026-08-05 with the phase-1a segment schedule
+# (docs/dev/phase1a-init/); the pre-fix values were (0.759260, -0.035387) x2 at
+# t=0.00341/0.00381 and (0.757865, -0.122600) x2 at t=0.00412/0.00437.
 _GOLDEN: list = [
-    (0.888197, -0.046294),  # t=0.00350 Myr
-    (0.888197, -0.046294),  # t=0.00390
-    (0.845829, -0.145668),  # t=0.00421
-    (0.845829, -0.145668),  # t=0.00446
+    (0.878396, -0.038973),  # t=0.00350 Myr
+    (0.878396, -0.038973),  # t=0.00390
+    (0.842071, -0.151456),  # t=0.00421
+    (0.842071, -0.151456),  # t=0.00446
 ]
 _TOL = 2e-3
 

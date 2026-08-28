@@ -32,7 +32,11 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-14):** ✅ **CONCLUDED — S0, the constant stays; all five batches done.** ⚠️ **Post-merge:** the C3c photoionised regime switch (`c43a50e`) means the ramp now governs the phase-1a shell *drive* as well as the energy drain — before C3c, `P_HII` equalled the unramped `Pb` and the drive ignored the ramp entirely. The algebra is re-verified unchanged on merged `main`; the trajectory/fate percentages predate C3c. See `PLAN.md` §0.3. The drain
+**Status (2026-08-14):** ✅ **CONCLUDED — S0, the constant stays; all five batches done.** ⚠️ **Every
+measurement here predates C3c** (`c43a50e`, 2026-08-14), which changed how `dt_switchon` couples to
+the shell: the ablation and Weaver-N1 figures are not quotable as current, while the algebraic
+results are unaffected. The split, the mechanism and the one open item are in
+[`PLAN.md`](PLAN.md)'s Status block — read it before quoting a number from this file. The drain
 is **PdV work**, not cooling, and the seed violates Weaver's work partition by 4.85× while
 satisfying its energy exactly (D1). Two candidates are dead: the physical clock **S1** (fails the
 fate bar on 3 of 5, and not in order of window length — the whole "better clock" family is retired,

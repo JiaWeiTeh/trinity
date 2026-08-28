@@ -51,11 +51,6 @@ dev = [
     "mypy>=1.0",
     "ruff>=0.8.4",
 ]
-docs = [
-    "sphinx>=7.1,<7.2",
-    "sphinx_rtd_theme==2.0.0",
-    "sphinx_copybutton",
-]
 plots = [
     "cmasher",
     "Pillow",

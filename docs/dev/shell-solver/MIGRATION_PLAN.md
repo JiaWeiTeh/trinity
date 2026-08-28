@@ -258,7 +258,10 @@ Call sites `:156` / `:315` become `sol_ODE, ok, info = _solve_shell_ode(...)`. *
 - **(e)** Slice loop / truncation (`massCondition`, `phiCondition≤1e-9`, first-crossing `idx`, `[:idx]` + final-append, re-seed) unchanged.
 - **(f)** I-front handoff (density jump `×μ_atom/μ_ion·T_ion/T_neu`, `tau0_neu=tau0_ion`) at `:298-300`.
 - **(g)** Endpoints preserved to `rel_tol=1e-12` (`shell_r_arr[0]==R2`, `[-1]==rShell`) — enforced downstream at `_output/cloudy/snapshot_to_deck.py:155-164`.
-- **(h)** Consumed scalars within tolerance: `n_IF_Str` (sole P_HII source, `run_energy_phase.py:188-193`), `shell_fAbsorbedWeightedTotal`/`shell_tauKappaRatio` (F_rad), `isDissolved`, `rShell`, `n_IF`, `R_IF`.
+- **(h)** Consumed scalars within tolerance: `n_IF_Str` (was the sole P_HII source at
+  `run_energy_phase.py:188-193`; since C3c / `c43a50e`, 2026-08-14, it only *gates* the call and
+  `get_bubbleParams.get_phii_c3c` sets the value — the tolerance argument still stands, the
+  consumer changed), `shell_fAbsorbedWeightedTotal`/`shell_tauKappaRatio` (F_rad), `isDissolved`, `rShell`, `n_IF`, `R_IF`.
 
 ---
 

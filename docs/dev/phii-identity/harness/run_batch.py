@@ -23,6 +23,7 @@ resumes without redoing work.
 """
 
 import argparse
+import json
 import subprocess
 import sys
 import time
@@ -82,6 +83,13 @@ MATRIX = {
               {"FB_thermCoeffWind": "3"}),
     "B3MW10": ("b3mladder", f"{P_BENCH}/bench3_m1e5_r5__none_diag.param",
                {"FB_thermCoeffWind": "10"}),
+    # Batch 7 / G7.2: one rung BELOW the stage-3 ladder. Decoupling the wind from
+    # the ionising output is the only lever that moves P_C3a/Pb appreciably -- a
+    # mass or sfe change carries Qi and Lw together, giving only M^-0.2. At
+    # Lw x 0.01 the Weaver scaling predicts the ENERGY phase breaks confinement
+    # (ratio x25.1), which is the control proving Batch 7's null can be non-null.
+    "B3MW001": ("b7", f"{P_BENCH}/bench3_m1e5_r5__none_diag.param",
+                {"FB_thermCoeffWind": "0.01"}),
     # Late-time Qi fade: past SN onset (~3.6 Myr in the bundled SB99 table) the
     # ionizing output collapses while winds+SNe keep Lmech up, so C3c predicts a
     # possible SECOND crossover back to confinement. Stock cannot express this.
@@ -130,15 +138,32 @@ def materialise(cfg, out_dir, extra):
 
 
 def done(run_dir):
+    """True only for a run that reached a terminal state.
+
+    NOT merely "metadata.json exists": DescribedDict.flush() writes that file on the
+    FIRST flush, i.e. seconds into the run (see trinity/_output/_metadata_io.py, which
+    names all three writers). The `termination` block is added by write_simulation_end()
+    at run end, so it is the only honest completion marker. The earlier existence test
+    reported a still-running or crashed run as complete, which made --skip silently
+    accept partial output.
+    """
     d = run_dir / "dictionary.jsonl"
-    return d.exists() and d.stat().st_size > 0 and (run_dir / "metadata.json").exists()
+    if not (d.exists() and d.stat().st_size > 0):
+        return False
+    meta = run_dir / "metadata.json"
+    if not meta.exists():
+        return False
+    try:
+        return "termination" in json.loads(meta.read_text())
+    except (OSError, ValueError):
+        return False
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--arm", required=True, help="label for the code state, e.g. b0 / b1")
     ap.add_argument(
-        "--tier", default="core", choices=["core", "full", "stage3", "b3mladder", "all"]
+        "--tier", default="core", choices=["core", "full", "stage3", "b3mladder", "b7", "all"]
     )
     ap.add_argument("--configs", help="comma-separated ids, overrides --tier")
     ap.add_argument("--stop-t", help="override stop_t on every config (documented in the CSV)")
@@ -213,7 +238,11 @@ def main():
     with out.open("w") as fh:
         fh.write(stamp(__file__) + "\n")
         fh.write(f"# arm={args.arm} stop_t_override={args.stop_t or 'none'} (last writer)\n")
-        fh.write(f"# run root: {root.relative_to(REPO)}\n")
+        # --root is documented for cross-commit batches and is routinely pointed at a
+        # scratch dir OUTSIDE the repo, where relative_to() raises and loses the whole
+        # CSV *after* the runs have already cost their wall time. Absolute path then.
+        root_note = root.relative_to(REPO) if root.is_relative_to(REPO) else root
+        fh.write(f"# run root: {root_note}\n")
         fh.write("# Rows merged across concurrent streams; wall_s reflects a shared 4-core box.\n")
         fh.write("config,status,wall_s,n_snapshots\n")
         for cfg in sorted(merged):

@@ -32,7 +32,7 @@
 > sibling has gone stale — fix it (or flag it, dated) so no two docs in the workstream disagree. Never
 > update one in isolation.
 
-**Status (2026-08-05):** 🔵 actionable — artifact diagnosed and quantified; the fix is implemented, gated and **ready to land** on this branch (`0df441f` + `a944727`). The maintainer decision this doc was waiting on is made: the pre-registered G2 bar compared against stock at the instant phase 1a hands off — which this document's own finding says is the wrong reference — so it was re-sited to `|ΔR2| < 5%` at 1 Myr / end of run plus fate unchanged (`PLAN.md` §4), and every config passes it.
+**Status (2026-08-14):** ✅ shipped — artifact diagnosed and quantified; the fix (`0df441f` + `a944727`) is implemented, gated and **merged to `main` 2026-08-06**. The maintainer decision this doc was waiting on is made: the pre-registered G2 bar compared against stock at the instant phase 1a hands off — which this document's own finding says is the wrong reference — so it was re-sited to `|ΔR2| < 5%` at 1 Myr / end of run plus fate unchanged (`PLAN.md` §4), and every config passes it.
 
 Investigation of why a TRINITY run at sub-GMC scale (`mCloud=300`, `sfe=0.01`,
 `nCore=8.7e3 cm^-3`; a 0.15 pc / 2.1e4 yr H II region) crosses the observed radius
@@ -428,11 +428,13 @@ full-run gate.
 Not part of the minimal change, but required before TRINITY output at the compact probe
 scale is *quantitatively* trustworthy (see Extra findings): the
 `n_IF_Str`/P_HII min-cap (P_HII == Pb identically) and phase 1b's absolute
-DT floors.
+DT floors. *(2026-08-14: the first of those two is done — C3c (`c43a50e`) took P_HII off the
+capped Strömgren density entirely. Phase 1b's DT floors are still open.)*
 
 ## Extra findings (not in the brief's list)
 
-1. **The stale-pressure ratchet.** `P_drive = max(Pb_live, P_HII_frozen)` with
+1. **The stale-pressure ratchet.** ✅ **RESOLVED 2026-08-14 by C3c (`c43a50e`) — see the note
+   below before using this finding.** `P_drive = max(Pb_live, P_HII_frozen)` with
    P_HII == Pb (min-cap) means every segment's driving pressure cannot fall
    below its segment-start Pb. In any segment where Pb declines (all early
    segments), the shell is driven by the *stale* pressure for the whole
@@ -441,6 +443,14 @@ DT floors.
    min-cap is a separate known issue, but its *interaction with per-segment
    freezing* is what makes the no-hack ablation blow up — worth knowing before
    anyone "fixes" the -1e8 branch by deletion.
+
+   **Resolution.** `phii-identity`'s C3c replaced the capped-Strömgren `P_HII` with a confinement
+   regime switch that returns exactly `0.0` on the confined branch, and the confined branch is the
+   one that fires on 100% of energy and implicit rows. `P_HII_frozen` is therefore `0.0` and
+   `max(Pb_live, 0) == Pb_live`: the driving pressure follows `Pb` down within a segment and the
+   ratchet is gone in phases 1a/1b. Per-segment freezing of the *shell structure* is unchanged —
+   only the pressure term that made freezing ratchet is. The same C3c change is why two of this
+   workstream's goldens moved; `docs/dev/phii-identity/PLAN.md` carries the mechanism.
 2. **The SPS cubic-interpolation worry is a non-issue.** Feedback interpolants
    are flat to <1% over 0-0.1 Myr despite the duplicated t=0 row (checked for
    fLmech_W, fpdot_W, fQi, fLbol at compact-probe mass scaling).

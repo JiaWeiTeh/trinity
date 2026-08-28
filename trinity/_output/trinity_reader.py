@@ -123,6 +123,7 @@ See Also
 """
 
 import json
+import re
 import logging
 import sys
 import numpy as np
@@ -181,32 +182,32 @@ PARAM_DOCS = {
     'Qi': 'Ionizing photon rate [1/Myr] (× s2Myr → photons/s)',
 
     # Momentum injection
-    'pdot_W': 'Momentum injection rate from winds',
-    'pdot_SN': 'Momentum injection rate from supernovae',
-    'pdot_total': 'Total momentum injection rate',
-    'pdotdot_total': 'Second derivative of momentum injection',
+    'pdot_W': 'Momentum injection rate from winds [Msun*pc/Myr^2]',
+    'pdot_SN': 'Momentum injection rate from supernovae [Msun*pc/Myr^2]',
+    'pdot_total': 'Total momentum injection rate [Msun*pc/Myr^2]',
+    'pdotdot_total': 'Rate of change of momentum injection [Msun*pc/Myr^3]',
     'v_mech_total': 'Effective total mechanical velocity [pc/Myr] (internal)',
 
     # Forces
-    'F_grav': 'Gravitational force',
-    'F_ram': 'Ram pressure force',
-    'F_ion_in': 'Ionization force (inward)',
-    'F_HII': 'HII pressure force (outward)',
-    'F_rad': 'Radiation pressure force',
-    'F_ISM': 'ISM pressure force',
+    'F_grav': 'Gravitational force (inward) [Msun*pc/Myr^2]',
+    'F_ram': 'Ram pressure force [Msun*pc/Myr^2]',
+    'F_ion_in': 'Ionization force (inward) [Msun*pc/Myr^2]',
+    'F_HII': 'HII pressure force (outward) [Msun*pc/Myr^2]',
+    'F_rad': 'Radiation pressure force [Msun*pc/Myr^2]',
+    'F_ISM': 'ISM pressure force [Msun*pc/Myr^2]',
 
     # Shell properties
     'shell_mass': 'Shell mass [Msun]',
     'shell_massDot': 'Shell mass accretion rate [Msun/Myr]',
     'shell_thickness': 'Shell thickness [pc]',
-    'shell_n0': 'Shell number density at inner edge [cm^-3]',
-    'shell_nMax': 'Maximum shell number density [cm^-3]',
-    'nEdge': 'Number density at shell edge [cm^-3]',
+    'shell_n0': 'Shell number density at inner edge [pc^-3] (internal; × INV_CONV.ndens_au2cgs → cm^-3)',
+    'shell_nMax': 'Maximum shell number density [pc^-3] (internal; × INV_CONV.ndens_au2cgs → cm^-3)',
+    'nEdge': 'Number density at shell edge [pc^-3] (internal; × INV_CONV.ndens_au2cgs → cm^-3)',
     'rShell': 'Shell radius [pc]',
 
     # Cloud profile parameters (constants, saved for radial profile reconstruction)
-    'nCore': 'Core number density [cm^-3]',
-    'nISM': 'ISM number density [cm^-3]',
+    'nCore': 'Core number density [pc^-3] (internal; × INV_CONV.ndens_au2cgs → cm^-3)',
+    'nISM': 'ISM number density [pc^-3] (internal; × INV_CONV.ndens_au2cgs → cm^-3)',
     'rCore': 'Core radius [pc]',
     'dens_profile': 'Density profile type (densPL or densBE)',
     'densPL_alpha': 'Power-law density exponent',
@@ -217,7 +218,7 @@ PARAM_DOCS = {
     # from the run-constant scalars (nCore, nISM, rCore, rCloud,
     # dens_profile, densPL_alpha, mu_convert).
     'initial_cloud_r_arr': 'Initial cloud radius array [pc] — v1 only',
-    'initial_cloud_n_arr': 'Initial cloud density array [cm^-3] — v1 only',
+    'initial_cloud_n_arr': 'Initial cloud density array [pc^-3] (internal; × INV_CONV.ndens_au2cgs → cm^-3) — v1 only',
     'initial_cloud_m_arr': 'Initial cloud enclosed mass array [Msun] — v1 only',
 
     # Shell absorption
@@ -243,7 +244,7 @@ PARAM_DOCS = {
     'bubble_T_r_Tb': 'Bubble temperature at measurement radius [K]',
     'bubble_r_Tb': 'Radius for temperature measurement [pc]',
     'bubble_dMdt': 'Bubble mass flow rate [Msun/Myr]',
-    'bubble_dMdtGuess': 'Initial guess for bubble mass flow rate',
+    'bubble_dMdtGuess': 'Initial guess for bubble mass flow rate [Msun/Myr]',
 
     # Bubble arrays (radial profiles)
     'bubble_v_arr': 'Bubble velocity profile array',
@@ -265,7 +266,7 @@ PARAM_DOCS = {
 
     # Gravitational potential arrays
     'shell_grav_r': 'Radii for gravitational potential [pc]',
-    'shell_grav_phi': 'Gravitational potential values',
+    'shell_grav_phi': 'Gravitational potential at the shell [pc^2/Myr^2]',
     'shell_grav_force_m': 'Gravitational force per unit mass',
 
     # Cooling update
@@ -649,10 +650,16 @@ class TrinityOutput:
         """All available parameter keys."""
         return self._keys
 
+    #: The order phases actually occur in, used wherever they are listed.
+    #: Sorting alphabetically would print 'transition' after 'momentum'.
+    PHASE_ORDER = ('energy', 'implicit', 'transition', 'momentum')
+
     @property
     def phases(self) -> List[str]:
-        """List of unique phases in the output."""
-        return list(set(s.get('current_phase', 'unknown') for s in self._snapshots))
+        """Unique phases in the output, in the order the simulation runs them."""
+        found = {s.get('current_phase', 'unknown') for s in self._snapshots}
+        ordered = [p for p in self.PHASE_ORDER if p in found]
+        return ordered + sorted(found - set(ordered))
 
     @property
     def t_min(self) -> float:
@@ -663,6 +670,43 @@ class TrinityOutput:
     def t_max(self) -> float:
         """Maximum time in output."""
         return max(s.get('t_now', 0) for s in self._snapshots)
+
+    def units(self, key: str) -> Optional[str]:
+        """The units ``key`` is stored in, or None if it has none recorded.
+
+        TRINITY works internally in ``[Msun, pc, Myr]``, so this is what
+        :meth:`get` hands back — ``'pc'`` for ``R2``, ``'pc/Myr'`` for ``v2``.
+        Unitless quantities (flags, strings, dimensionless parameters) return
+        None. See ``trinity._functions.unit_conversions`` for converting to cgs.
+
+        >>> output.units('v2')
+        'pc/Myr'
+        """
+        match = re.search(r'\[([^\]]+)\]', PARAM_DOCS.get(key, ''))
+        return match.group(1).strip() if match else None
+
+    def quantity(self, key: str) -> Any:
+        """``key`` across every snapshot as an astropy ``Quantity``.
+
+        Same numbers as :meth:`get`, with the units attached, so astropy can
+        convert them for you:
+
+        >>> output.quantity('v2').to('km/s')
+        >>> output.quantity('R2').to('lyr')
+
+        Raises ``ValueError`` for a quantity with no recorded units rather than
+        silently handing back something dimensionless.
+        """
+        import astropy.units as u
+
+        unit = self.units(key)
+        if unit is None:
+            raise ValueError(
+                f"no units recorded for {key!r} — it is either dimensionless or "
+                f"not in the reader's parameter documentation. Use get() instead."
+            )
+        # PARAM_DOCS writes powers as '^', astropy wants '**'.
+        return self.get(key) * u.Unit(unit.replace('^', '**'))
 
     def get(self, key: str, as_array: bool = True) -> Union[np.ndarray, List[Any]]:
         """
@@ -964,17 +1008,67 @@ class TrinityOutput:
         print(f"  Parameters:    {len(self.keys)}")
         print()
 
-        # Phase breakdown
+        # Phase breakdown, in the order the simulation runs them
         print("  Phases:")
-        for phase in sorted(self.phases):
+        for phase in self.phases:
             phase_snaps = [s for s in self._snapshots if s.get('current_phase') == phase]
             t_vals = [s.get('t_now', 0) for s in phase_snaps]
             print(f"    {phase:12s}: {len(phase_snaps):4d} snapshots, "
                   f"t=[{min(t_vals):.4e}, {max(t_vals):.4e}]")
         print()
 
+        self._print_final_state()
+
         if verbose:
             self._print_parameters()
+
+    def _print_final_state(self) -> None:
+        """Print how the run ended and the state of the bubble when it did.
+
+        Reads ``metadata.json``; silently does nothing for a run that has no
+        final-state block (an interrupted run, or a bare .jsonl with no
+        metadata alongside it).
+        """
+        final = self.final_state or {}
+        if not final:
+            return
+
+        # Local import: this is a display convenience, not a hard dependency
+        # of reading a file.
+        from trinity._functions.unit_conversions import INV_CONV, Pb_au2_KcmInv
+
+        end = self.termination or {}
+        if end:
+            print(f"  Ended:         {end.get('outcome', 'unknown')}"
+                  f" — {end.get('detail', '')}".rstrip(' —'))
+
+        def line(label, value, unit='', fmt='.3f', conv=1.0):
+            if value is None:
+                return
+            print(f"    {label:22s} {value * conv:{fmt}} {unit}".rstrip())
+
+        print("  Final state:")
+        line('age', final.get('t_now'), 'Myr')
+        line('shell radius R2', final.get('R2'), 'pc')
+        line('expansion velocity', final.get('v2'), 'km/s',
+             conv=INV_CONV.v_au2kms)
+        line('shell mass swept', final.get('shell_mass'), 'Msun', fmt='.3e')
+        line('shell thickness', final.get('shell_thickness'), 'pc')
+        line('peak shell density', final.get('shell_nMax'), 'cm^-3', fmt='.3e',
+             conv=INV_CONV.ndens_au2cgs)
+        line('bubble energy', final.get('Eb'), 'erg', fmt='.3e',
+             conv=INV_CONV.E_au2cgs)
+        line('bubble pressure', final.get('Pb'), 'K cm^-3 (P/k_B)', fmt='.3e',
+             conv=Pb_au2_KcmInv)
+        line('bubble temperature', final.get('T0'), 'K', fmt='.3e')
+
+        fate = []
+        if final.get('isCollapse'):
+            fate.append('collapsed')
+        if final.get('isDissolved'):
+            fate.append('shell dissolved')
+        print(f"    {'fate':22s} {', '.join(fate) if fate else 'still expanding'}")
+        print()
 
     def _print_parameters(self) -> None:
         """Print all parameters with documentation."""

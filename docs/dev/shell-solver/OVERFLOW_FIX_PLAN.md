@@ -392,7 +392,8 @@ untouched) across a regime sweep, measuring **end accuracy AND efficiency** — 
   `:248` (`n_IF_Str` Strömgren), `:282` (`phi_hydrogen`).
 - Truncation/front: `trinity/shell_structure/shell_structure.py:180-218`; odeint calls `:165-168`
   (ion), `:324-327` (neu); `mxstep` const `:35`.
-- Consumed-scalar clamps: `shell_structure.py:229,242-251,395`; P_HII from `n_IF_Str` not raw n:
+- Consumed-scalar clamps: `shell_structure.py:229,242-251,395`; P_HII from `n_IF_Str` not raw n
+  (true when written; C3c / `c43a50e` took P_HII off `n_IF_Str` altogether on 2026-08-14):
   `phase1_energy/run_energy_phase.py:188-190`, `phase2_momentum/run_momentum_phase.py:627-636`;
   `n_IF` diagnostic-only `registry.py:445`.
 - Units: `trinity/_functions/unit_conversions.py:88` (`ndens_cgs2au`); blanket AU conversion at load
