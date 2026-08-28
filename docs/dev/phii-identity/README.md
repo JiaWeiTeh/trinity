@@ -315,6 +315,18 @@ measured evolution rather than a jump; and a `chi_e` convention mismatch showing
 `R_ch`(trinity) = `chi_e`·`R_ch`(Lancaster), which corrects an earlier same-day CEM figure without
 changing its conclusion). See `PLAN.md` §Batch 13.
 
+**Update 2026-08-27 (K5/K9 gated as Batches 14/15; K9 demoted by its own pre-gate).** Gates drafted
+for the two candidates rev2 ranks highest. **K5** (swap `get_phii_c3c`'s denominator from the wind
+cavity to the cavity-excluded layer `shell_structure.py:243` already uses) carries a **blocking
+decoupling gate** — K5's profile variant reads a shell whose *inner boundary* is `nShell0 ∝ Pb`, so
+the original `P_HII ≡ P_conf` circularity could return through the fix for it. **K9** (debit the
+ionised mass from the shell's inertia) was **demoted before implementation**: B11.C2's +8.55/+9.22%
+debited `M_cav`, which is *not* the K9 quantity. Measured properly
+(`harness/ionised_mass_fraction.py`), the shell's own ionised **mass** fraction is median **0.461**
+(B3M momentum) and **0.149** (B3MW01 momentum) — nothing like the 0.9954 *thickness* fraction — and
+**31 of 72 rows reach ≥0.95**, i.e. a near-massless shell. K5 goes first, alone. See `PLAN.md`
+§Batch 14 / §Batch 15.
+
 Two follow-ons registered in `PLAN.md`: **B11.F**, because the layer-density harness used a
 thin-shell volume where the momentum shell is not thin — this withdraws Batch 10's "flat to 1–3%
 within each rung" claim, but every verdict survives and so do the `Lw^−0.1133` fit and `Lw ≈ 46.5`
