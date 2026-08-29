@@ -308,6 +308,27 @@ def pRam(r, Lmech, v_mech):
     return Lmech / (2 * np.pi * r**2 * v_mech)
 
 
+def mass_freeWind(r, Lmech, v_mech):
+    """Mass of freely streaming wind in transit inside radius r [Msun].
+
+    Companion to pRam and deliberately shares its convention: Lmech = 0.5 Mdot v**2,
+    so Mdot = 2 Lmech / v**2, rho(r) = Mdot / (4 pi r**2 v), and the enclosed mass is
+
+        M = integral_0^r rho 4 pi r'**2 dr' = Mdot r / v = 2 Lmech r / v**3
+
+    WHY THIS EXISTS. In the MOMENTUM phase the shocked-wind bubble has vanished --
+    R1 == R2 and Eb == 0 exactly on every row -- so there is no bubble whose mass to
+    carry, and the only mass enclosed within R2 is the free wind in flight. That is
+    what shell_structure.py:268 wants when it adds params['bubble_mass'] to the shell's
+    cumulative gravity mass. Before this, bubble_mass was a stale carry-over from the
+    last implicit step (99.64 Msun on B3M, ~860x too large); see
+    docs/dev/phii-identity/PLAN.md, 2026-08-29.
+    """
+    if not (r > 0 and Lmech > 0 and v_mech > 0):
+        return 0.0
+    return 2.0 * Lmech * r / v_mech**3
+
+
 def get_phii_c3c(params, shell_props):
     """Photoionised pressure as a regime switch (the C3c scheme).
 

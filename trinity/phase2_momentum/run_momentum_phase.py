@@ -625,6 +625,13 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
         # ---------------------------------------------------------------------
         # Calculate shell structure (now with current Pb and shell_mass)
         # ---------------------------------------------------------------------
+        # The shocked-wind bubble does not exist in this phase (R1 == R2, Eb == 0), so
+        # the mass enclosed within R2 -- which shell_structure adds to its cumulative
+        # gravity mass at :268 -- is the free wind in transit, NOT the stale bubble_mass
+        # carried over from the last implicit step. See PLAN.md 2026-08-29 (gate GB.0).
+        params['bubble_mass'].value = get_bubbleParams.mass_freeWind(
+            params['R2'].value, params['Lmech_total'].value, params['v_mech_total'].value)
+
         shell_props = shell_structure_pure(params)
         updateDict(params, shell_props)
 
@@ -891,6 +898,13 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
         params['Pb'].value = get_bubbleParams.pRam(
             R2, feedback_final.Lmech_total, feedback_final.v_mech_total)
         params['R1'].value = R2
+        # The shocked-wind bubble does not exist in this phase (R1 == R2, Eb == 0), so
+        # the mass enclosed within R2 -- which shell_structure adds to its cumulative
+        # gravity mass at :268 -- is the free wind in transit, NOT the stale bubble_mass
+        # carried over from the last implicit step. See PLAN.md 2026-08-29 (gate GB.0).
+        params['bubble_mass'].value = get_bubbleParams.mass_freeWind(
+            params['R2'].value, params['Lmech_total'].value, params['v_mech_total'].value)
+
         shell_props_f = shell_structure_pure(params)
         updateDict(params, shell_props_f)
         params.save_snapshot()
