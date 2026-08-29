@@ -76,13 +76,26 @@ def main():
     src = [r for r in csv.DictReader(
         l for l in open(DATA / "b9_layer_density.csv") if not l.startswith("#"))
         if r.get("status") == "ok"]
+    # b9_layer_density.csv predates layer_density_check.py's pdrive_* columns, so the
+    # shipped P_HII/Pb is joined from the mass ledger on row_idx -- the same join Batch
+    # 14 validated (worst |dt| 7.97e-08, |dR2| 1.45e-07 across the two B3M realisations).
+    led = {int(r["row_idx"]): r for r in csv.DictReader(
+        l for l in open(DATA / "b11_mass_ledger.csv") if not l.startswith("#"))
+        if r.get("status") == "ok"}
 
     rows = []
     for r in src:
         R2, dR = fnum(r, "R2"), fnum(r, "dR_ion")
         rec = fnum(r, "recomb_over_Qiabs")
         n_cav, n_rms = fnum(r, "n_cavity"), fnum(r, "n_rms_profile")
-        pd_cav = fnum(r, "pdrive_cavity")
+        lr = led.get(int(r["row_idx"]))
+        pd_cav = None
+        if lr:
+            _ph, _pb = fnum(lr, "P_HII"), fnum(lr, "Pb")
+            if _ph and _pb and _pb > 0 and _ph > 0:
+                # sanity: the joined row must be the same instant
+                if abs(fnum(lr, "t") / fnum(r, "t") - 1.0) < 1e-4:
+                    pd_cav = _ph / _pb
         if None in (R2, dR, rec) or not (R2 > 0 and dR > 0 and rec > 0):
             continue
         R_IF = R2 + dR
