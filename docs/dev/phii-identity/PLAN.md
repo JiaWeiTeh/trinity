@@ -5179,3 +5179,51 @@ b0 run and to `bb302e0` for every b1 run (§9 records how that was protected).
   coverage** are untouched by this and remain blocking. What would reverse it: evidence that a
   science case needs the weak-wind corner quantitatively, or a measured trajectory where the
   under-drive changes a fate.
+
+- **2026-08-29 (Batch 21 ARM RUN — G18.2/G18.3 measured on Helix; the prediction holds on BOTH
+  branches, and one config changes phase structure)** — Ladder run on Helix, sweep
+  `phii_arm_20260829_112826Z`, both arms at the pinned `cce8c924`, 10 runs, `stop_t` 1.5.
+  **C-7 provenance ✓** — `k10_o1_applied.diff` is byte-identical to the committed
+  `k10_o1_arm.patch` apart from the `index` metadata line, which is stale in the committed copy
+  because a `+` line was hand-edited during the housekeeping pass without regenerating it;
+  `git apply` matches by context, so the code that ran **is** the committed content. The baseline's
+  applied diff is 0 bytes, i.e. genuinely unpatched.
+  **G18.2 ✅ PASS.** All 10 runs `ok`. Wall times `k10_o1`/baseline = **1.04–1.56×** against a 2× bar
+  (B3M 563.4 vs 463.5 s; B3MW01 746.6 vs 695.7; F1HI 704.6 vs 453.1; F1LO 714.9 vs 688.4).
+  **G18.3 — no fate changed on any config**, and the signed ΔR2 is the headline:
+
+| config | phases reached (arm) | `R2_end` base → new | signed ΔR2 | verdict |
+|---|---|---|---|---|
+| B3M | energy>implicit>transition>momentum | 23.2527 → **20.8475** | **−10.34%** | OVER-BAR |
+| B3MW01 | energy>implicit>transition>momentum | 7.7331 → **6.7112** | **−13.22%** | OVER-BAR |
+| F1HI | …>transition>**momentum** (base stops at transition) | 0.5410 → 0.5561 | +2.79% | **PHASE-CHANGE** |
+| F1LO | energy>implicit | 185.519 → 189.370 | +2.08% | WITHIN-BAR |
+| SC | energy>implicit | 87.8889 → **92.5292** | **+5.28%** | OVER-BAR |
+
+  🔑 **The two-sided sign is the result, and it is exactly what Batch 21 predicted, for the predicted
+  reasons.** The configs that reach the **driving** branch shrink (B3M, B3MW01), because O1 cuts that
+  drive (×0.494 and ×0.325 measured offline) — and the larger drive cut gives the larger radius cut,
+  in the right order. The configs that never leave the **confined** branch grow (F1LO, SC), because
+  O1 returns a small positive excess where C3c returns exactly 0.0. Both directions, both
+  magnitudes, from one prediction.
+  ⚠️ **New finding, and it corrects how G21.4 was read: the confined-branch excess is NOT dynamically
+  negligible.** G21.4 measured it at **+0.475%** of `P_conf` and the batch treated that as a small
+  term. Compounded over a full run it moves **SC's `R2` by +5.28%** — over the 5% bar, on a config
+  that never reaches the driving branch at all. This is Batch 4a's lesson repeating ("early-window
+  drive changes can retain double-digit ΔR2 downstream", F1LO 14.4%), and it means **O1 is not
+  "essentially untouched" on the healthy branch** the way §Batch 21's `O1/shipped` 1.001/1.005 made
+  it look. A ~0.1–0.5% drive change is a several-percent trajectory change.
+  ⚠️ **F1HI changed phase structure: `energy>implicit>transition` → `…>transition>momentum`.** O1
+  pushes it into a phase the shipped scheme never reaches (144 snapshots vs 135), while both arms
+  still end `shell_collapsed`. This is the defect class §Batch 6 recorded slipping past on SDHS —
+  *"a fate-only check does NOT catch this"* — and here the comparator **did** catch it, because
+  `phases_base`/`phases_new` are now enumerated. Note it came with one of the **smallest** ΔR2 values
+  (+2.79%): a magnitude bar alone would have missed the largest structural change in the ladder.
+  ⚠️ **Two provenance gaps in the run artifacts, neither affecting the result.** The wall-time CSVs
+  carry **`code unknown`** instead of a SHA (C-6: `code_version()` returned nothing inside the
+  detached worktree), and **SC is absent from both** wall-time CSVs though it ran in both arms and
+  appears in the ledger — the "rows merged across concurrent streams / last writer" merge dropped it.
+  **Still owed for this batch:** G18.4 (continuity on O1's own trajectory — needs the seam ratios from
+  the run dirs, which stayed on `/gpfs`) and G18.5 (ED-phase dust, which would close Batch 17's
+  one-row coverage gap for free). **Still blocking regardless of this result:** the per-segment freeze
+  ratchet and the two-config-of-13 coverage. D5 remains open.
