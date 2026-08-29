@@ -135,5 +135,25 @@ case "${1:-}" in
           done
           echo ">> review, then commit the keepers (💾): git add docs/dev/phii-identity/data/hpc/phii_arm_$STAMP" ;;
 
-  *)      echo "usage: $0 up|submit|banner|watch|reduce|down   (HELIX= BRANCH= ARMS= CONFIGS= STOP_T= BASE_SHA= STAMP=)"; exit 1 ;;
+  down-all) need_stamp
+          DEST=$REPO/docs/dev/phii-identity/data/hpc/phii_arm_$STAMP
+          echo ">> FULL run outputs (dictionary.jsonl etc). Needed for G18.4 (seam continuity)"
+          echo "   and G18.5 (ED-phase dust) -- both are per-snapshot and cannot be computed"
+          echo "   from the reduced ledger. Size first:"
+          ssh "$HOST" "bash -lc 'du -sh $SWEEP/baseline $SWEEP/$( echo $ARMS | tr \" \" \"\\n\" | grep -v baseline | head -1 ) 2>/dev/null; echo; du -ch \$(find $SWEEP -name dictionary.jsonl) 2>/dev/null | tail -1'"
+          read -rp ">> pull them to $DEST ? [y/N] " ans || ans=""
+          case "$ans" in
+            y|Y|yes|YES)
+              mkdir -p "$DEST"
+              for arm in $ARMS; do
+                rsync -av --include '*/' --include 'dictionary.jsonl' --include '*.param' \
+                          --include 'metadata.json' --include 'trinity.log' --exclude '*' \
+                          "$HOST:$SWEEP/$arm/" "$DEST/$arm/"
+              done
+              echo ">> pulled. NOTE these are run outputs, not reduced artifacts: the 💾 rule wants"
+              echo "   the small derived CSVs committed, not these. Reduce locally, commit the CSV." ;;
+            *) echo ">> skipped" ;;
+          esac ;;
+
+  *)      echo "usage: $0 up|submit|banner|watch|reduce|down|down-all   (HELIX= BRANCH= ARMS= CONFIGS= STOP_T= BASE_SHA= STAMP=)"; exit 1 ;;
 esac
