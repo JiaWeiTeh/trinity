@@ -939,7 +939,18 @@ def _print_defects() -> None:
         print(_wrap(why, indent=" " * 2))
 
 
-def _check(path: str, limit: int = 0) -> int:
+# The stochastic-IMF validity floor [Msun]. Mirrors
+# paper/II-survey/_survey_io.py:imf_stochastic (_OBS.IMF_MSTAR_FLOOR): below ~1e3
+# Msun the IMF-averaged SB99 input describes a cluster that cannot exist, and
+# ``load_summary`` drops those runs for EVERY figure. A census that keeps them
+# therefore prints percentages nothing else in the tree agrees with -- on the v2
+# grid (2026-08-29) that was recollapsed 22.39% here against 21.43% in every
+# figure, from 1440 runs. Duplicated rather than imported because this module is
+# the fate SSOT and deliberately imports nothing from the survey tree.
+IMF_MSTAR_FLOOR = 1e3
+
+
+def _check(path: str, limit: int = 0, keep_imf_invalid: bool = False) -> int:
     import collections
     import csv
 
@@ -947,8 +958,18 @@ def _check(path: str, limit: int = 0) -> int:
     clouds: "collections.Counter[str]" = collections.Counter()
     axes = {k: collections.Counter() for k in ("motion", "cleared", "shell", "stop")}
     n = 0
+    skipped = 0
     with open(path, newline="") as fh:
         for row in csv.DictReader(fh):
+            if not keep_imf_invalid:
+                try:
+                    # NaN compares False, so an unparsable Mstar is KEPT --
+                    # same behaviour as pandas `df.Mstar < floor`.
+                    if float(row.get("Mstar") or "nan") < IMF_MSTAR_FLOOR:
+                        skipped += 1
+                        continue
+                except ValueError:
+                    pass
             v = classify(row)
             counts[v["report"]] += 1
             clouds[v["cloud_outcome"]] += 1
@@ -960,7 +981,12 @@ def _check(path: str, limit: int = 0) -> int:
     if not n:
         print("no rows in %s" % path)
         return 1
-    print("%d runs from %s\n" % (n, path))
+    print("%d runs from %s" % (n, path))
+    if skipped:
+        print("  (%d run(s) below the stochastic-IMF floor Mstar < %g excluded, "
+              "matching S.load_summary; --keep-imf-invalid to include them)"
+              % (skipped, IMF_MSTAR_FLOOR))
+    print()
     for k, c in axes.items():
         print(
             "%-9s %s" % (k, "  ".join("%s=%.1f%%" % (a, 100 * v / n) for a, v in c.most_common()))
@@ -973,6 +999,13 @@ def _check(path: str, limit: int = 0) -> int:
         flag = " (censored)" if REPORT_BY_NAME[name].censored else ""
         print("%-16s %8d %6.2f%%%s" % (name, v, 100 * v / n, flag))
     print("%-16s %8d %6.2f%%" % ("--- TOTAL", n - unaccounted, 100 * (n - unaccounted) / n))
+    # The per-row "(censored)" flags are useless unadded: on the v2 grid they sum
+    # to 67.8%, so every survival statistic in the paper is conditioned on a
+    # two-thirds-censored sample. Say it once, in the census, in the same place
+    # anyone reads the headline number.
+    cens = sum(v for name, v in counts.items() if REPORT_BY_NAME[name].censored)
+    print("%-16s %8d %6.2f%%   <- right-censored; only %.2f%% reach a completed fate"
+          % ("--- CENSORED", cens, 100 * cens / n, 100 * (n - cens) / n))
     print("\n%-24s %8s %7s" % ("cloud_outcome", "runs", "%"))
     for k in CLOUD_OUTCOMES:
         v = clouds.get(k, 0)
@@ -993,10 +1026,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     ap.add_argument("--defects", action="store_true", help="print the upstream traps")
     ap.add_argument("--check", metavar="SUMMARY_CSV", help="classify a real grid and census it")
     ap.add_argument("--limit", type=int, default=0, help="with --check, stop after N rows")
+    ap.add_argument("--keep-imf-invalid", action="store_true",
+                    help="with --check, keep runs below the stochastic-IMF floor "
+                         "(default: drop them, as S.load_summary does)")
     args = ap.parse_args(argv)
 
     if args.check:
-        return _check(args.check, args.limit)
+        return _check(args.check, args.limit, args.keep_imf_invalid)
     if not (args.table or args.reports or args.matrix or args.defects):
         args.table = args.reports = args.matrix = args.defects = True
     if args.reports:
