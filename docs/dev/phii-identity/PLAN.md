@@ -3233,6 +3233,58 @@ right ratio for the continuity question and the wrong one for the question Batch
 
 ---
 
+### Batch 21 — K10-O1: use the shell solve's own ionisation front — Status: 🟡 gates registered 2026-08-29, not yet measured
+
+**Maintainer decision 2026-08-29**, after Batch 20 priced the four remedies for K10's unbounded
+front: **take O1.** Stop solving a second front; read the one trinity already computes.
+
+**The change.** `rho = (shell_props.R_IF / R2)**2`, and **`_k10_front_radius` is deleted**.
+`R_IF` is a first-class field on `ShellProperties` (`shell_structure.py:39`, returned at `:471`,
+set at `:227` as `rShell_arr_ion[-1]`), so this is a read, not a re-derivation. Everything else —
+`P_conf` from the ramped `get_effective_bubble_pressure`, and Batch 16's composition mapping — is
+unchanged.
+
+**Why this is more than a cap.** Deleting the front solve removes, *by construction rather than by
+patching*: slice 1's **F1** (the guard tests `k·(hi−R2)` when cancellation is governed by `k·R2`, so
+it never fires), **F2** (`φ(hi) ≥ 0` in float64 → unhandled `ValueError`, or a silently 8.9%-wrong
+root), **F4** (`ZeroDivisionError`/`OverflowError` on extreme `Eb`), slice 2's **new seam 1** (two
+models solving two different fronts from the same `Qi` and the same ODE), and Batch 20's **domain
+violation** (`R_i` beyond the shell on 18/18 momentum rows, beyond `rCloud` on 100% of driving rows).
+It also makes **`shell_props` load-bearing again**, which retires slice 1's F7 dead-coupling finding
+and gives the vestigial `n_IF_Str > 0` call-site gate something real to gate (**B11.E**).
+⚠️ **And it makes Batch 17 moot as machinery**: the shell solve's `R_IF` already carries dust
+(`get_shellODE.py:120`), so the closure's own dust model is no longer needed. Batch 17's value is
+retroactively **validation** — it showed the closure's dust matched the shell solve's to 5.6%, which
+is now an argument that the shell solve's front is the right thing to read, not a component we ship.
+
+**Gates.**
+- **G21.0 — it IS the code's own front (BLOCKING).** The value used must be `shell_props.R_IF`
+  verbatim, with no rescaling, clipping or re-derivation, and `_k10_front_radius` must be gone.
+  *Falsifier:* any transformation applied to `R_IF` before use.
+- **G21.1 — the domain violation is gone (BLOCKING).** `R_i ≤ R2 + shell_thickness` on **100%** of
+  rows. Batch 20's D1 measured the current form violating this on 18/18 B3M momentum and 43/44
+  energy rows; O1 must take that to 0/0. *Falsifier:* any row beyond the shell.
+- **G21.2 — seam C.** The implied ionised-layer mass must now be a *sub-part of the shell's own
+  mass*, so `m_implied/shell_mass ≤ 1` on every row. Slice 2 measured the current form at median
+  0.4835 / max **2.4892** in B3M momentum and median **6.39** in energy. *Falsifier:* any row > 1 ⇒
+  the mass argument is still broken and O1 has not fixed what it was chosen to fix.
+- **G21.3 — magnitude (measurement, no bar).** `drive/P_conf` and composed/shipped per phase per
+  config. Disclosed prior from Batch 20's pricing: B3M momentum **3.901** (`R_IF/R2` 1.975), i.e. a
+  ×1.62 cut from K10's 6.333 and ×1.82 below shipped C3c's 7.095.
+- **G21.4 — what happens to the confined branch.** In the ED phases the shell is thin, so
+  `R_IF/R2 → 1` and the excess → ~0. **Pre-registered expectation: O1 largely restores C3c's
+  confined behaviour**, which would mean Batch 16's "Lancaster's first-order term is now delivered
+  at +0.96%" argument **evaporates under O1**. Report the ED excess; no bar, but if it is ≈0 then
+  the case for K10 over C3c on the confined branch is gone and must be re-stated honestly.
+- **G21.5 — what O1 does NOT fix, stated so nobody reads it as a general repair.** (a) The
+  **photo-only limit is still broken** — the drive is still ∝ `P_conf`, so `P_conf = 0` still
+  returns 0.0 and `test_phii_c3c_spitzer.py` still fails. (b) The **per-segment freeze ratchet** is
+  untouched and independent. (c) Coverage is still two configs of one cloud. Report all three.
+
+**Out of scope:** the freeze ratchet (needs a live-call decision), coverage, default flip, D5.
+
+---
+
 ### §6b Self-consistency audit of the C3c/C3a picture — 2026-08-18 (maintainer question) — ✅ **RE-VERIFIED by B11.0 (2026-08-18): A/C/D CONFIRMED, B REVISED, none REFUTED**
 
 > **Status of this section after B11.0.** Every claim below was re-derived adversarially against
