@@ -29,6 +29,11 @@ HOST=${HELIX:-helix}
 BRANCH=${BRANCH:-bugfix/phii-pt3}
 CREPO=/home/hd/hd_hd/hd_cq295/trinity                # trinity repo on Helix (/home)
 WS=/gpfs/bwfor/work/ws/hd_cq295-trinity              # writable workspace (/gpfs)
+# -lc gives a LOGIN shell so `module`/`conda` exist; ENV_SETUP then puts trinity's
+# python on PATH. WITHOUT THIS the login node runs the system python (3.6), which
+# has no `dataclasses` -- the same trap paper/II-survey/sync.sh documents. The
+# sbatch jobs do their own activation inside b14.sbatch; this is for login-node work.
+ENV_SETUP=${ENV_SETUP:-"module load devel/miniforge && conda activate trinity"}
 ARMS=${ARMS:-"baseline k10_o1"}   # Batch 21 default; k10 = the superseded Batch 18 form; K5 arms are k5a_swap k5a_driving
 BUNDLE=docs/dev/phii-identity/hpc/b14
 
@@ -98,13 +103,24 @@ case "${1:-}" in
           echo ">> matched-t ledgers vs baseline on $HOST (bar + fate table per config)"
           for arm in $ARMS; do
             [ "$arm" = baseline ] && continue
-            # compare_trajectories exits 1 on a >5% breach or fate change — for
-            # these arms that is the EXPECTED measurement, not an error.
-            ssh "$HOST" "bash -lc 'cd $CREPO && mkdir -p $SWEEP/_reduced && \
+            led=$SWEEP/_reduced/phii_${arm}_ledger.csv
+            # compare_trajectories exits 1 on a >5% breach or fate change -- for these
+            # arms that is the EXPECTED measurement. But a CRASH also exits 1, so the
+            # two are told apart by whether the ledger was actually written, never by
+            # the exit code alone.
+            ssh "$HOST" "bash -lc '$ENV_SETUP && cd $CREPO && mkdir -p $SWEEP/_reduced && \
               python $BUNDLE/../../harness/compare_trajectories.py \
                 --base $SWEEP/baseline --new $SWEEP/$arm --label phii_$arm \
-                --out $SWEEP/_reduced/phii_${arm}_ledger.csv'" \
-              || echo ">> $arm: bar breached or fate changed (recorded in the ledger — expected for these arms)"
+                --out $led'" || true
+            if ssh "$HOST" "test -s $led"; then
+              echo ">> $arm: ledger written -> $led"
+              echo "   (a non-zero exit here means the 5% bar was breached or a fate changed;"
+              echo "    for these arms that is the measurement, not a failure)"
+            else
+              echo ">> $arm: ⛔ NO LEDGER WRITTEN — the reducer FAILED. Do not treat this as a result."
+              echo "   Check the traceback above. Common cause: the conda env did not activate"
+              echo "   (system python on Helix is 3.6 and has no 'dataclasses')."
+            fi
           done ;;
 
   down)   need_stamp
