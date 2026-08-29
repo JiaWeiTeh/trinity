@@ -2885,6 +2885,37 @@ explicit statement of the evidence gap against C3c's 13-config clean record.
 **Bar.** Any CRITICAL or MAJOR finding blocks the arm until dispositioned. Findings that merely
 correct the *record* (as Batch 13's did) do not block, but must land in the doc dated.
 
+#### Slice 0 (run by me while the four were in flight) — the +34% state-jump reproduces, but it is measuring the wrong thing for the continuity argument
+
+The `+34.0%` shipped state-jump is the headline number behind "K10 is smoother", so I re-derived it
+from `data/b7_regime_trajectory.csv` independently. **It reproduces to the digit**: switch row
+`t = 0.3012` (transition), below `1.3494e3`, above `1.8079e3`, **+33.98%**. Batch 13's arithmetic is
+sound.
+
+⚠️ **But the number answers a different question than the continuity claim asks, and Batch 13's own
+correction of it looks wrong.** Batch 13 wrote: *"the shipped state-jump measures +34%, not the 23.4%
+`P_ram/Pb` figure quoted earlier — that earlier number was the wrong ratio for this quantity."*
+Measured at that row, `P_ram/Pb` = **0.2339**, i.e. the discarded figure was **23.4%** exactly. Both
+numbers are real; they measure different things:
+
+- **The scheme's intrinsic discontinuity, at the crossing.** As `P_C3a → Pb` from below, the
+  transition drive goes `max(Pb, 0 + P_ram) = Pb` → `max(Pb, Pb + P_ram) = Pb + P_ram`. The jump is
+  therefore **exactly `P_ram/Pb` = +23.4%**, analytically, with no sampling involved.
+- **The +34%** is that same jump evaluated at the first *sampled* row after the crossing, where
+  `P_C3a` has already overshot `Pb` by a factor **1.106**. So it is the intrinsic discontinuity
+  **plus one sampling interval of real evolution** — which is the *same* defect that got G13.1's
+  original metric thrown out ("adjacent snapshots are separated by real evolution, so that metric
+  conflates the discontinuity with genuine change"). Evaluating both branches at one fixed state
+  removed only half of that problem: the state chosen is still post-crossing.
+
+**Disposition: record-correcting, not arm-blocking.** K10's jump is 0 by construction either way, so
+the qualitative claim ("K10 removes a discontinuity the shipped scheme has") stands. What changes is
+its **size**: the discontinuity K10 removes is **+23.4%** at the crossing, not +34%, and the +34%
+figure should be quoted as "the branch's effect at the first post-switch snapshot" rather than as the
+scheme's discontinuity. Batch 13's dismissal of 23.4% as "the wrong ratio" is withdrawn — it was the
+right ratio for the continuity question and the wrong one for the question Batch 13 was then asking.
+
+
 ---
 
 ### §6b Self-consistency audit of the C3c/C3a picture — 2026-08-18 (maintainer question) — ✅ **RE-VERIFIED by B11.0 (2026-08-18): A/C/D CONFIRMED, B REVISED, none REFUTED**
