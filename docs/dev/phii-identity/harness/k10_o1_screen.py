@@ -95,21 +95,31 @@ def main():
     k10 = {(r["config"], round(fnum(r, "t"), 9)): r for r in read("b17_dust_closure.csv")
            if r.get("status") == "ok"}
 
-    # the shell solve's front
-    fronts = {}
+    # The shell solve's front. b9_layer_density is a STRIDE-2 replay while b17 carries
+    # every row, so an exact-t join drops ~half the momentum rows (it gave n=1). Nearest-t
+    # with a relative tolerance, matching harness/k10_domain_check.py's join.
+    fl = {"B3M": [], "B3MW01": []}
     for r in read("b9_layer_density.csv"):
         if r.get("status") == "ok" and fnum(r, "dR_ion"):
-            fronts[("B3M", round(fnum(r, "t"), 9))] = (
-                fnum(r, "R2") + fnum(r, "dR_ion"),
-                fnum(r, "R2") + fnum(r, "dR_full") if fnum(r, "dR_full") else None)
+            fl["B3M"].append((fnum(r, "t"), fnum(r, "R2") + fnum(r, "dR_ion"),
+                              fnum(r, "R2") + fnum(r, "dR_full") if fnum(r, "dR_full") else None))
     for r in read("b12_lowwind_photon_ledger.csv"):
         d = fnum(r, "dR_ion_Pb")
         if d and fnum(r, "R2"):
-            fronts[("B3MW01", round(fnum(r, "t"), 9))] = (fnum(r, "R2") + d, None)
+            fl["B3MW01"].append((fnum(r, "t"), fnum(r, "R2") + d, None))
+    for k in fl:
+        fl[k].sort()
+
+    def nearest_front(cfg, t, rel=2e-2):
+        pts = fl.get(cfg) or []
+        if not pts:
+            return None
+        b = min(pts, key=lambda q: abs(q[0] - t))
+        return (b[1], b[2]) if abs(b[0] - t) <= rel * max(t, 1e-12) else None
 
     rows = []
     for key, kr in k10.items():
-        f = fronts.get(key)
+        f = nearest_front(key[0], key[1])
         if not f:
             continue
         R_IF, outer = f
