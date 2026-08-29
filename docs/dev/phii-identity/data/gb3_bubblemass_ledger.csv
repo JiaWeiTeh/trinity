@@ -1,0 +1,10 @@
+# generated 2026-08-29T08:18:56Z | builder compare_trajectories.py | code 4e5c7069+dirty
+# arm=gb3_bubblemass  base=/private/tmp/claude-501/gb3_base  new=/private/tmp/claude-501/gb3_fix
+# Matched-t comparison on the overlap window; bar |dR2| > 5.0%.
+# Fate changes are enumerated, never silently passed (PLAN D3).
+# phases_base/phases_new: the ordered phase sequence. Two runs can share a
+# fate and still differ structurally -- verdict PHASE-CHANGE catches that.
+# floor_grid_pct: share of grid points where an arm sits within 1.5x the 0.01 pc collapse floor. Where that is non-zero a
+# dR2 percentage measures the floor, not a divergence: compare collapse TIMES.
+config,verdict,dR2_max_pct,dR2_end_pct,t_at_max,t_overlap_lo,t_overlap_hi,n_base,n_new,R2_end_base,R2_end_new,fate_base,fate_new,phases_base,phases_new,floor_grid_pct,note
+B3M,WITHIN-BAR,0.000,0.000,8.32603e-07,8.32603e-07,1,220,220,14.0584,14.0584,stopping_time,stopping_time,energy>implicit>transition>momentum,energy>implicit>transition>momentum,0.0,

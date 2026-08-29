@@ -5031,3 +5031,38 @@ b0 run and to `bb302e0` for every b1 run (§9 records how that was protected).
     the term matters more than the sizing implies and the fix needs re-thinking, not just re-running.
   - **GB.4 — goldens.** Any test movement reported with the before/after value, per D4's discipline.
     Momentum-reaching goldens may shift.
+
+- **2026-08-29 (bubble_mass fix RESULT — all gates pass, and the equivalence run explains why)** —
+  Two B3M arms to `stop_t` = 1.0, separate processes in parallel (C-3), pre-fix worktree `cc53a656`
+  vs the fix. Both reached all four phases (87 energy / 68 implicit / 42 transition / 23 momentum),
+  so nothing is VOID. Ledger: `data/gb3_bubblemass_ledger.csv`.
+  - **GB.0 ✅ PASS — momentum only.** From the runs' own output: implicit `bubble_mass` 1.2952…99.6429
+    in **both** arms, transition 99.6429 in **both** (still stale, as designed). Only momentum moves.
+  - **GB.1 ✅ PASS.** `mass_freeWind` = `Mdot·r/v` exactly, with `Mdot = 2L/v²` — `pRam`'s own
+    convention, verified numerically against `ρv²` to machine precision. No second convention.
+  - **GB.2 ✅ measured.** Momentum `bubble_mass` **99.642929 → 0.0580–0.1603 Msun**, bracketing the
+    0.116 predicted from committed data.
+  - **GB.3 ✅ PASS, and stronger than the bar.** Pre-registered expectation was ΔR2 ≤ 0.1%. Measured:
+    **bit-identical.** `compare_trajectories.py` gives `dR2_max` = **0.000%**, `dR2_end` = 0.000%,
+    fate `stopping_time → stopping_time`; direct row comparison finds **0 of 220 rows** with any `R2`
+    difference at all, `R2_end` = 14.0584340349 in both.
+  - **GB.4 ✅ PASS trivially** — bit-identical trajectories cannot move a golden, and the full suite
+    already showed 1098 passed with the 5 failures verified pre-existing against clean code.
+  🔑 **Why it is bit-identical, traced rather than assumed.** `bubble_mass` reaches the dynamics
+  through nothing: `shell_structure.py:268`'s `grav_ion_m_cum` feeds only `shell_grav_r` /
+  `shell_grav_phi` / `shell_grav_force_m`, and the only consumers of those outside
+  `shell_structure.py` are `registry.py` (schema) and `dictionary.py` (snapshot serialisation). The
+  equation of motion's gravity is the separate `F_grav = G·mShell/R2²·(mCluster + 0.5·mShell)`
+  (`energy_phase_ODEs.py:218`). **So `shell_grav_*` is diagnostic-only and the fix is pure hygiene
+  with zero dynamics risk.**
+  ✏️ **Which means my own risk framing was over-cautious.** I called this "a dynamics change needing
+  a full-run equivalence under rule 5". It is not a dynamics change. Running the gate was still the
+  right call — the point of rule 5 is that this is now **proven** rather than assumed, and the
+  proof cost one 8-minute parallel pair. But the caution should be recorded as having been
+  unnecessary, not quietly dropped.
+  **What the fix actually buys:** the *reported* `bubble_mass` in momentum is now the true enclosed
+  mass instead of a value 860× too large. That matters for anything reading the output — including
+  two of this workstream's own diagnostics, which it corrupted.
+  ⚠️ **Transition remains stale by design** (99.6429 throughout) and is documented, not fixed:
+  the bubble is real at transition entry (`R1/R2` = 0.18) and gone by exit, so the free-wind formula
+  would under-count there. Option (b) remains open if the maintainer wants it.
