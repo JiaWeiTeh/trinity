@@ -67,8 +67,21 @@ case "${1:-}" in
           echo "   then ./sync.sh watch" ;;
 
   banner) need_stamp
-          echo ">> first 12 lines of each arm log for $STAMP (check SWEEP and ARM before waiting)"
-          ssh "$HOST" "bash -lc 'for f in $SWEEP/logs/*.log; do echo \"== \$f\"; head -12 \"\$f\"; echo; done'" ;;
+          echo ">> banner for $STAMP (check SWEEP and ARM before waiting)"
+          # SLURM creates the --output file when the job STARTS, not when it is
+          # submitted, so an empty glob here means "still queued", not "broken".
+          ssh "$HOST" "bash -lc '
+            shopt -s nullglob
+            logs=($SWEEP/logs/*.log)
+            if [ \${#logs[@]} -eq 0 ]; then
+              echo \"no logs yet -- the jobs have not STARTED (SLURM writes --output at start).\"
+              echo \"queue:\"
+              squeue --me -o \"%.12i %.16j %.2t %.10M %.20R\" 2>/dev/null || true
+              echo
+              echo \"ST=PD means pending; re-run ./sync.sh banner once ST=R.\"
+            else
+              for f in \"\${logs[@]}\"; do echo \"== \$f\"; head -14 \"\$f\"; echo; done
+            fi'" ;;
 
   watch)  need_stamp
           echo ">> $SWEEP"
