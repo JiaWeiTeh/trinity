@@ -147,6 +147,38 @@ def main():
         print(f"      drive/P_conf ~ {b*10**(2/3):.1f},  R_i/R2 ~ {(b*10**(2/3))**0.5:.2f}, "
               f"i.e. R_i ~ {(b*10**(2/3))**0.5 * 7.7:.0f} pc against rCloud {rCloud:.1f} pc")
 
+    # ---- What would each candidate FIX cost? All on B3M momentum, committed data. ----
+    # The unbounded front comes from integrating outward at a fixed low n0 with no
+    # knowledge of where gas ends. Four distinct remedies, priced here so the choice is
+    # made on numbers rather than on adjectives.
+    print("\nOPTIONS — drive/P_conf on B3M momentum under each candidate remedy:")
+    lay_m = [r for r in lay if r["phase"] == "momentum"]
+    k10_m = [r for r in rows if r["config"] == "B3M" and r["phase"] == "momentum"]
+    if lay_m and k10_m:
+        rif = med([1.0 + fnum(r, "dR_ion") / fnum(r, "R2") for r in lay_m])       # shell's own front
+        rsh = med([1.0 + fnum(r, "dR_full") / fnum(r, "R2") for r in lay_m])      # shell outer edge
+        nrat = med([fnum(r, "n_rms_profile") / fnum(r, "n_cavity") for r in lay_m
+                    if fnum(r, "n_rms_profile") and fnum(r, "n_cavity")])
+        k10rho = med([r["drive_over_Pconf"] for r in k10_m])
+        shipped = 7.095   # C3c composed drive / P_ram, momentum median (b14_identity_census)
+        print(f"    shipped C3c (for reference)                      {shipped:7.3f}")
+        print(f"    K10 as implemented                               {k10rho:7.3f}"
+              f"   (R_i/R2 {k10rho**0.5:.3f})")
+        print(f"    O1  use the shell solve's OWN front R_IF         {rif**2:7.3f}"
+              f"   (R_IF/R2 {rif:.3f})  cut x{k10rho/rif**2:.2f}")
+        print(f"    O2  clip at the shell's outer edge               {rsh**2:7.3f}"
+              f"   (edge/R2 {rsh:.3f})  cut x{k10rho/rsh**2:.2f}")
+        print(f"    O3  cap by available mass (slice 2)                 5.490"
+              f"   (R_i/R2 2.343)  cut x{k10rho/5.490:.2f} at the median,"
+              f" x1.78 at t=1.5")
+        print(f"    O4  keep the solve, fix the DENSITY               (no separate number)")
+        print(f"        K10's uniform n0 sits at n0/n_rms = 0.611 (slice 2), and R_i shrinks")
+        print(f"        as n^(-2/3), so using the real profile IS O1 computed exactly.")
+        print(f"        O4 is the MECHANISM behind O1, not an independent option.")
+        print(f"\n    O1 and O2 agree to 0.5% because the momentum shell is 99.5% ionised")
+        print(f"    (B11.0: dR_ion/dR_full = 0.9954), so 'the front' and 'the shell edge'")
+        print(f"    are nearly the same place. The O1/O2 choice is principle, not magnitude.")
+
     with open(args.out, "w", newline="") as fh:
         fh.write(stamp(__file__) + "\n")
         fh.write("# Batch 20 follow-up: is K10 outside its own domain of validity INSIDE\n")
