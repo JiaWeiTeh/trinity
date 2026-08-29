@@ -4888,3 +4888,38 @@ b0 run and to `bb302e0` for every b1 run (§9 records how that was protected).
   reading `R_IF` rather than a component of the code. `hpc/b14/sync.sh` now defaults to
   `ARMS="baseline k10_o1"`. Batch 18's `k10_arm.patch` is **superseded** but kept for provenance.
   No `trinity/` source touched on `main`.
+
+- **2026-08-29 (maintainer's diagnosis of C3c, and a revisit of Batch 14's verdict on K5 that I owe)**
+  — Maintainer: *"the current version produces that but it uses cavity volume without the real cavity
+  density. But is there a way to meet in the middle?"* The diagnosis is sharper than the one in this
+  doc: C3c's defect is not "wrong volume" or "wrong density" separately — it is a **fictitious
+  density evaluated over a real region that physically cannot host it.** Batch 20's cavity check
+  measured the actual cavity gas as **4–5 orders of magnitude too thin to absorb the photons C3a
+  spends there**, on the `n²` term alone.
+  **The middle the maintainer is reaching for exists, and it is K5b.** Replacing the fictitious
+  density with the code's own profile density over the code's own layer volume gives exactly C3c's
+  *structure* (a thermal pressure that composes additively) with none of its fiction. Batch 19 already
+  proved this is not a new candidate: `n_rms/n_cav = f_dust · f_volume` **identically**, so **K5b IS
+  C3c corrected for both volume and dust**. B3M momentum: **1.545×`P_ram`**.
+  ⚠️ **But K5b and O1 are NOT two points on one axis, and averaging them would be picking a number
+  rather than a model.** Measured on the same B3M momentum rows, both expressed against `P_conf`:
+  K5b amplifies by the **density** ratio (`n_rms/n₀` ≈ 1.64), O1 by the **area** ratio
+  (`(R_IF/R2)²` = 3.901). They differ by **2.38×**, and that gap **is D5** — "what does the ionised
+  layer transmit?" — not a numerical discrepancy to be split.
+  ✏️ **Revisit I owe on Batch 14.** Batch 14 rejected K5 on two grounds: (a) it is `Pb`-slaved
+  (∝`Pb^{1.0}`, gain ≈1.5), and (b) the additive composition then gives ≈2.5×`P_ram`, structurally
+  reminiscent of the pre-C3c double count. **Ground (a) no longer stands as written**: the same-day
+  D5 reframe established that pressure-slaving is *physics* when it is structural — the ionised
+  layer's density genuinely is set by the `nShell0 ∝ Pb` boundary condition, which Rahner+2017 models
+  as quasi-hydrostatic and Lancaster+2025 assumes explicitly. K5b's `Pb`-dependence is that same
+  statement, not a relabelling. **Ground (b) survives, but it is D5's additivity question, not a
+  verdict against K5.** Net: **K5b should be treated as live again**, not closed, and Batch 14's §7.1
+  row is corrected accordingly.
+  🔑 **A con of O1 that belongs on the record.** O1 borrows *half* of Lancaster's geometry: it applies
+  the `(R_i/R2)²` force amplification, which in Lancaster exists because the neutral shell sits **at**
+  `R_i` (his eq. 28 drives `R_i` with `M_sh = (4π/3)ρ̄R_i³`), while trinity tracks its shell at `R2`
+  with the ionised layer **inside** `shell_mass`. Slice 3 sized that mismatch at a factor 13.7 in the
+  CEM's own inertia bookkeeping. So O1 is geometrically self-consistent about *where the gas is* and
+  not about *where the inertia is* — the second half is K8/K9, which the maintainer deferred.
+  **The honest range, B3M momentum, all ×`P_ram`:** transmit-only **1.0** (K3/C1) · K5b **1.55** ·
+  O1 **3.27** · K10 **6.33** · shipped C3c **7.10**. No `trinity/` source touched.
