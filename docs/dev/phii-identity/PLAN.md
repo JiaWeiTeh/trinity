@@ -5227,3 +5227,64 @@ b0 run and to `bb302e0` for every b1 run (§9 records how that was protected).
   the run dirs, which stayed on `/gpfs`) and G18.5 (ED-phase dust, which would close Batch 17's
   one-row coverage gap for free). **Still blocking regardless of this result:** the per-segment freeze
   ratchet and the two-config-of-13 coverage. D5 remains open.
+
+- **2026-08-29 (Batch 21 arm — INDEPENDENT verification from the raw runs, on the maintainer's
+  instruction to assume nothing; it caught two of my own errors)** — Maintainer: *"double check your
+  inference with no assumption … independent without contamination."* So `harness/b21_arm_verify.py`
+  reads only each run's own `dictionary.jsonl`, uses its **own** matched-`t` interpolation, and does
+  **not** read the reduced ledger or import `compare_trajectories.py`. The ledger is used only as an
+  after-the-fact cross-check.
+  ✅ **V1 phase sequence — CONFIRMED.** F1HI really does gain a momentum phase under the arm
+  (`energy>implicit>transition` → `…>momentum`); the other four sequences are identical.
+  ✅ **V2 matched-`t` ΔR2 — reproduces the ledger** on an independent interpolation: SC 8.719/+5.280,
+  F1LO 2.076/+2.076, F1HI 2.788/+2.788, B3M 10.344/**−10.344**, B3MW01 13.215/**−13.215** (ledger
+  gave 8.718 / 2.076 / 2.790 / 10.344 / 13.215). The signs stand.
+  ⛔ **V4 — MY EARLIER DISTRESS FINDING WAS A FALSE POSITIVE, and it was my own bug.** I reported
+  "F1HI arm has MORE distress (68 vs 62)". The regex included `inf`, which matches the word **INFO**;
+  the six "extra" lines were ordinary INFO records from running an additional momentum phase. Re-run
+  against WARNING/ERROR lines only: **0 distress lines on all 10 runs, both arms.** **G18.2 passes
+  cleanly** and the earlier concern is withdrawn.
+  🔑 **V3 — the load-bearing check, and it needed care to read.** Batch 21's `O1/shipped` figures were
+  computed offline *at the same state*; a matched-`t` comparison of two **different trajectories**
+  measures something else, and taken raw it looks like a contradiction (confined branch reads
+  0.977–0.991, i.e. the arm driving **less**, where the prediction was 1.001–1.005, i.e. **more**).
+  Resolved by measurement, not argument: on the confined branch the arm's `R2` is **larger**
+  (1.0047–1.0085) and its `Pb` correspondingly **lower** (0.9764–0.9871) — a bigger bubble at lower
+  pressure. Dividing the state divergence out leaves the scheme's own effect:
+
+| | predicted offline (Batch 21) | measured on the arm's own trajectory |
+|---|---|---|
+| B3M energy | 1.001 | **1.0015** |
+| B3M implicit | 1.005 | **1.0052** |
+| B3M momentum | 0.494 | **0.5391** |
+| B3MW01 momentum | 0.325 | **0.3241** |
+| B3MW01 transition | 0.340 | **0.3085** |
+
+  **The offline screening predicted the arm's own behaviour on both branches**, the confined side to
+  four significant figures once the trajectory divergence is factored out. That is the strongest
+  evidence in this workstream that the screens model what the code does. It also explains why a
+  +0.5% instantaneous excess does not run away: the response is **negatively fed back** — more drive
+  → bigger bubble → lower `Pb` → less drive.
+  ✅ **V5 / G18.4 — the branch discontinuity is genuinely gone, and a THIRD jump figure appears.**
+  The baseline has **exactly one** `P_HII` 0→positive crossing per driving config (B3M at
+  `t` = 0.2980, B3MW01 at 0.7146) with an **observed** adjacent-snapshot drive step of **+6.79%** and
+  **+5.97%**. The arm has `P_HII` > 0 on **every row of every config** and therefore **zero
+  crossings**. ⚠️ Note this is a *third* distinct number for "the jump", and all three are correct
+  answers to different questions: **+23.4%** the analytic discontinuity at the exact crossing;
+  **+34%** the branch's effect evaluated at a fixed post-crossing state; **+6.79%/+5.97%** what the
+  integrator actually experienced, i.e. the branch jump net of the `Pb` decline between snapshots.
+  The last is the operationally real kink and is the one to quote for trajectory effects.
+  ⚠️ **What O1 does NOT improve: the phase seams.** Adjacent-row `P_drive` steps across
+  `energy>implicit`, `implicit>transition` and `transition>momentum` are **essentially identical**
+  between arms (B3M 17.60/17.63, 15.91/15.62, 0.52/0.47; B3MW01 17.18/17.09, 11.07/9.35, 0.15/0.29;
+  F1HI 17.44/17.57, 91.94/91.38). Those steps are driven by the phase machinery — `Eb`
+  re-initialisation and the `max(P_thermal, P_ram)` handover — not by `P_HII`, so removing the
+  `P_HII` branch cannot and does not touch them. **The continuity claim for O1 is about the branch
+  switch only**, and should be stated that way rather than as smoothness in general.
+  **G18.5 is MOOT under O1**, not owed: it asked whether the closure's own dust model bites in the ED
+  phases, and O1 does not carry a closure dust model — it reads `R_IF` from the shell solve, which
+  already integrates dust. Recorded closed rather than outstanding.
+  ⚠️ **Artifacts:** `harness/b21_arm_verify.py` and `data/b21_arm_verify.csv` are written but
+  **NOT committed** — the uncommitted `.gitignore` change ignores `docs/dev`, so new files there need
+  `git add -f`. The 40 MB of raw run outputs under `data/hpc/` are likewise untracked, which is
+  correct: the 💾 rule wants the derived CSV committed, not the run dirs.
