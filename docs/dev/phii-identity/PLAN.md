@@ -2995,6 +2995,66 @@ disposition the freeze ratchet, which may require calling the helper live inside
 freezing it per segment. **The cheapest real progress is not the arm**: re-point the existing offline
 screeners at the other core-6 trajectories, which needs no new physics and no `trinity/` change.
 
+#### Batch 20 follow-up — the maintainer's challenge to the CRITICAL finding, and the REFRAME it forces
+
+**The challenge (2026-08-29):** *"what if a photoionised limit cannot be reached in our Weaver-like
+wind-driven bubble?"* — i.e. `P_conf` is strictly positive in every trinity phase (thermal `Pb`,
+`max(P_thermal,P_ram)`, `P_ram`), so a fixture that switches the wind off is artificial and the
+broken Spitzer limit may be irrelevant.
+
+**On the literal question the maintainer is RIGHT, and the CRITICAL finding is reframed, not
+withdrawn.** `P_conf = 0` is unreachable in a real run, so `test_phii_c3c_spitzer.py`'s 5 failures
+are **not** a runtime hazard. As a *runtime* severity that finding drops. What it was really
+detecting is a **domain-of-validity** problem, and the right question is not "what happens at the
+singularity" but "how far into the divergence do trinity's own runs already sit". Measured
+(`harness/k10_domain_check.py` → `data/b20_domain.csv`; `rCloud` = **4.9990 pc**, derived from the
+code's unit-converted `mCloud`/`nCore` with a coefficient of 800.465 that reproduces slice 2's
+independently measured 800.5):
+
+**D1 — K10's ionisation front sits beyond the shell the ODE actually produced:**
+
+| B3M phase | rows beyond the shell's outer edge | median `R_i`/shell_outer |
+|---|---|---|
+| energy | **43/44** | 1.002 |
+| implicit | 8/34 | 1.000 |
+| transition | **17/21** | 1.217 |
+| momentum | **18/18** | **1.281** |
+
+**D2 — and beyond the cloud itself, on every single driving row:**
+
+| config | phase | beyond `rCloud` | median `R_i`/`rCloud` | max `R_i` |
+|---|---|---|---|---|
+| B3M | transition | **42/42** | 2.11 | 13.8 pc |
+| B3M | momentum | **34/34** | **5.55** | **72.7 pc** |
+| B3MW01 | transition | **32/32** | 3.53 | 21.3 pc |
+| B3MW01 | momentum | **25/25** | 4.58 | 32.0 pc |
+
+**A 72.7 pc ionisation front in a 5.0 pc cloud — 14.5× the cloud radius**, on a model whose whole
+premise is an ionised layer confined between the wind cavity and the neutral shell.
+
+**D3 — and the runs are marching toward the singularity, not away from it.** `drive/P_conf` = 6.333
+(B3M) → **15.265** (B3MW01, `Lw`×0.1), ratio **2.410** against the `P_conf^{−1/3}` prediction of
+2.154. Extrapolating one more decade to **`B3MW001` — a registered config in the matrix that has
+never been run for K10** — gives `drive/P_conf` ≈ 29.4 and `R_i` ≈ **42 pc**, i.e. 8× the cloud.
+
+**Net: the finding is stronger, not weaker.** The old framing ("K10 fails an artificial photo-only
+fixture") was dismissible exactly as the maintainer suspected. The measured statement is not: **K10
+places its ionisation front outside the neutral shell on 18/18 momentum rows and outside the cloud on
+100% of driving rows in both screened configs.** The broken Spitzer test is the *symptom*; the
+disease is that the CEM's geometric amplification `(R_i/R2)²` is unbounded and trinity's runs are
+already deep in the regime where it produces fronts with no gas to be a front in. Severity
+**re-labelled: not CRITICAL-runtime, but MAJOR-domain**, and it is now the same finding as slice 2's
+mass over-subscription and slice 1's `R_i > rShell` — three slices converging on one defect from
+three directions. Slice 2 already priced the fix: capping the front at the mass that exists takes
+`drive/P_conf` from 9.770 to **5.49**, a 1.78× cut.
+
+⚠️ **Consequence for the "re-point the screeners at core-6" recommendation: DOWNGRADED.** I proposed
+it when the picture was "K10 looks sound, coverage is thin". The picture is now "K10 is outside its
+domain on 100% of driving rows in both configs screened". Running four more configs would measure the
+same hole in more places at a cost of hours of wall-clock, and would not change any decision on the
+table. **It is no longer the cheapest useful next step.** What is: decide whether the front should be
+capped (at the shell edge, at `rCloud`, or by available mass) — a modelling decision that changes K10
+fundamentally and whose cost slice 2 has already measured.
 #### Slice 1 RESULT — implementation numerics. Baseline is CLEAN; two one-line defects; and my own suspicion was WRONG
 
 **Baseline first, because it matters:** on shipped settings the function is correct. **436/436**
@@ -4648,3 +4708,29 @@ b0 run and to `bb302e0` for every b1 run (§9 records how that was protected).
   `brentq`) are prerequisites but not sufficient. **Cheapest real progress is not the arm** — re-point
   the existing offline screeners at the other core-6 trajectories: no new physics, no `trinity/`
   change, and it closes the density/mass/sfe axes. No `trinity/` source touched this visit.
+
+- **2026-08-29 (maintainer challenges the CRITICAL finding — half right, and the half that is right
+  makes the finding stronger)** — Maintainer, on being told K10 breaks the photo-only limit: *"what
+  if a photoionised limit cannot be reached in our Weaver-like wind-driven bubble?"* Correct on the
+  literal point: `P_conf` is strictly positive in all four phases, so `P_conf = 0` is unreachable and
+  `test_phii_c3c_spitzer.py`'s failures are **not a runtime hazard**. As a runtime severity, that
+  finding is **downgraded**. But the challenge asks the better question — how far into the
+  `P_conf^{−1/3}` divergence do the runs already sit — and the answer, measured on committed data
+  (`harness/k10_domain_check.py`, `data/b20_domain.csv`), is: **all the way in.** K10's ionisation
+  front lies beyond the shell the ODE produced on **18/18** B3M momentum and **43/44** energy rows,
+  and beyond `rCloud` (4.999 pc) on **100% of driving rows in both configs** — median `R_i` = 5.55×
+  the cloud radius in B3M momentum, **max 72.7 pc in a 5.0 pc cloud (14.5×)**. The wind ladder is
+  moving toward the singularity, not away: `drive/P_conf` 6.333 → 15.265 across one decade (ratio
+  2.410 vs the predicted 2.154), extrapolating to ≈29.4 and `R_i` ≈ 42 pc at the **registered but
+  never-run** `B3MW001`. **Re-labelled MAJOR-domain rather than CRITICAL-runtime**, and it is now
+  visibly the *same* defect slice 2 found as mass over-subscription and slice 1 found as
+  `R_i > rShell` — three independent slices converging on one thing: the CEM's geometric
+  amplification is unbounded and trinity is already outside its domain. **The old framing was
+  dismissible and the maintainer was right to push on it; the measured one is not.**
+  ⚠️ **I also downgrade my own "re-point the screeners at the core-6" recommendation.** It was the
+  right advice when the picture was "sound scheme, thin coverage". It is the wrong advice now: four
+  more configs would measure the same hole in more places, cost hours of wall-clock, and change no
+  decision on the table. The maintainer's question caught that before the compute was spent. The
+  live decision is instead **whether K10's front should be capped** — at the shell edge, at `rCloud`,
+  or by available mass — which slice 2 has already priced at a **1.78× cut to the drive**
+  (`drive/P_conf` 9.770 → 5.49). No `trinity/` source touched.
