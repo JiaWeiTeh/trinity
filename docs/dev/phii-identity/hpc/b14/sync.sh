@@ -50,13 +50,25 @@ case "${1:-}" in
           for arm in $ARMS; do
             # prep (worktree + patch) on the LOGIN node — compute nodes cannot
             # write /home, and `git worktree add` touches $CREPO/.git.
+            # prep (worktree + patch) on the LOGIN node -- compute nodes cannot write
+            # /home, and `git worktree add` touches $CREPO/.git.
+            # SWEEP/ARM/CREPO go to sbatch as POSITIONAL ARGUMENTS, never --export:
+            # b14.sbatch sets --export=NONE, so an exported variable would be silently
+            # dropped and the job would run against a default. See paper/II-survey's
+            # RUNBOOK ("Sweep as an ARGUMENT, never --export=SWEEP=").
             ssh "$HOST" "bash -lc 'mkdir -p $SWEEP/logs && cd $CREPO && \
-              ${BASE_SHA:+BASE_SHA=$BASE_SHA }bash $BUNDLE/run_arms.sh prep $SWEEP $arm && \
-              sbatch --job-name=b14_$arm --output=$SWEEP/logs/${arm}_%j.log \
-                --export=ALL,SWEEP=$SWEEP,ARM=$arm,CREPO_DIR=$CREPO${CONFIGS:+,CONFIGS=$CONFIGS}${STOP_T:+,STOP_T=$STOP_T}${BASE_SHA:+,BASE_SHA=$BASE_SHA} \
-                $BUNDLE/b14.sbatch'"
+              ${BASE_SHA:+BASE_SHA=$BASE_SHA }${CONFIGS:+CONFIGS=$CONFIGS }${STOP_T:+STOP_T=$STOP_T }bash $BUNDLE/run_arms.sh prep $SWEEP $arm && \
+              sbatch --job-name=phii_$arm --output=$SWEEP/logs/${arm}_%j.log \
+                $BUNDLE/b14.sbatch $CREPO $SWEEP $arm'"
           done
-          echo ">> stamp $STAMP saved to .last_stamp — watch with ./sync.sh watch" ;;
+          echo ">> stamp $STAMP saved to .last_stamp"
+          echo ">> CONFIRM BEFORE WALKING AWAY (the runbook rule):"
+          echo "     ./sync.sh banner     # first lines of each log: CREPO / SWEEP / ARM / WT / python"
+          echo "   then ./sync.sh watch" ;;
+
+  banner) need_stamp
+          echo ">> first 12 lines of each arm log for $STAMP (check SWEEP and ARM before waiting)"
+          ssh "$HOST" "bash -lc 'for f in $SWEEP/logs/*.log; do echo \"== \$f\"; head -12 \"\$f\"; echo; done'" ;;
 
   watch)  need_stamp
           echo ">> $SWEEP"
@@ -94,5 +106,5 @@ case "${1:-}" in
           done
           echo ">> review, then commit the keepers (💾): git add docs/dev/phii-identity/data/hpc/phii_arm_$STAMP" ;;
 
-  *)      echo "usage: $0 up|submit|watch|reduce|down   (HELIX= BRANCH= ARMS= CONFIGS= STOP_T= BASE_SHA= STAMP=)"; exit 1 ;;
+  *)      echo "usage: $0 up|submit|banner|watch|reduce|down   (HELIX= BRANCH= ARMS= CONFIGS= STOP_T= BASE_SHA= STAMP=)"; exit 1 ;;
 esac
