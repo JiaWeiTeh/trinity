@@ -357,6 +357,22 @@ rows. **Both offline blockers are now cleared**; what remains is a `get_phii_c3c
 (G16.3: it must receive the *ramped* `press_bubble`) and a full-run arm, both behind the ship-hold.
 See `PLAN.md` §Batch 16 / §Batch 17.
 
+**Update 2026-08-29 (Batch 20 — K10 safety audit: UNSAFE as implemented; arm HELD).** Four
+adversarial slices, registered before any reported. ⛔ **CRITICAL: K10 has no photoionisation-only
+limit** — `test_phii_c3c_spitzer.py` goes 6 passed → 5 failed under the arm, because
+`drive ∝ P_conf^{−1/3}` is singular and the guard turns the divergence into exactly 0.0. Batch 8
+called that limit the family's one exact external anchor, and Batch 18 had no limits gate (a
+gate-design failure — Batch 14's G14.2 protected it for K5). ⛔ **MAJOR:** seam C is present and
+**worse** than C3c's (implied layer mass 2.49× the shell), and since the drive *is* the geometry the
+mass book cannot be fixed without cutting the drive 1.78×; the **per-segment freeze ratchet** that
+C3c disarmed is re-armed (~8% median, 17% max staircase vs the 0.55% term K10 delivers), a class
+`PLAN.md` §3 rates *"catastrophic at compact scale"*; coverage is **two trajectories of one cloud**
+against C3c's 13 configs; and `test_mu_audit_drift.py` now passes **vacuously**. ✅ Seam A genuinely
+absent; composition mapping settled with non-negativity **proven**; dust closure validated where
+checked; G13.3's `χ_e` diagnosis confirmed and strengthened; cost invisible. ✏️ **Two of my own
+claims were refuted** — the `n_IF_Str` gate (0/3490 rows, MINOR not critical) and my thin-dust guard
+(tests the wrong quantity; never fires). See `PLAN.md` §Batch 20.
+
 Two follow-ons registered in `PLAN.md`: **B11.F**, because the layer-density harness used a
 thin-shell volume where the momentum shell is not thin — this withdraws Batch 10's "flat to 1–3%
 within each rung" claim, but every verdict survives and so do the `Lw^−0.1133` fit and `Lw ≈ 46.5`
