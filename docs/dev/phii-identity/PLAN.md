@@ -2833,7 +2833,7 @@ dust, which the arm's own output closes for free). All need the ladder:
 
 ---
 
-### Batch 20 — K10 safety audit — Status: 🟡 registered 2026-08-29, four slices running, results not yet in
+### Batch 20 — K10 safety audit — Status: ⛔ **VERDICT 2026-08-29: K10 is UNSAFE as implemented — 1 CRITICAL (photo-only limit broken, verified by running the suite) + 3 MAJOR (seam C worse than C3c; per-segment freeze ratchet re-armed; coverage 2 configs of 20). Arm HELD.** Slices 2/3/4 in; slice 1 (implementation numerics) still running.
 
 **Why.** Maintainer asked, after Batch 13's cancellation claim was found false: *"can you check other
 claims too so i know K10 is safe or unsafe?"* The cancellation claim was checkable by algebra and had
@@ -2884,6 +2884,116 @@ explicit statement of the evidence gap against C3c's 13-config clean record.
 
 **Bar.** Any CRITICAL or MAJOR finding blocks the arm until dispositioned. Findings that merely
 correct the *record* (as Batch 13's did) do not block, but must land in the doc dated.
+
+#### Batch 20 VERDICT — 2026-08-29: **K10 is UNSAFE as implemented.** 1 CRITICAL + 3 MAJOR, arm stays HELD
+
+Three of four slices reported (slice 1, implementation numerics, still running). Every finding below
+that I could check independently, I did — those are marked ✔ verified.
+
+**⛔ CRITICAL — K10 breaks the photo-only (Spitzer / D-type) limit, silently.** ✔ **Verified by me
+directly**, applying `hpc/b14/k10_arm.patch` in a clean worktree and running the real suite:
+`test/test_phii_c3c_spitzer.py` goes **6 passed (shipped) → 5 failed, 1 passed (K10)**. Mechanism:
+Batch 8's fixture turns the wind off (`Pb = 0, Eb = 0, Lmech = 0`), so `P_conf = 0`, the guard
+`if not (P_conf > 0.0): return 0.0` fires, and K10 returns **exactly 0.0 photoionised pressure at
+every radius** where C3a returns the classical D-type pressure. The measured expansion index is
+`−1.65e-16` instead of 4/7. **This is structural, not a bug:** `drive = P_conf·(R_i/R2)²` with
+`R_i ∝ n₀^{−2/3} ∝ P_conf^{−2/3}` gives `drive ∝ P_conf^{−1/3}` — the limit is **singular**, and the
+guard converts a divergence into zero. ✔ **The divergence is already visible in the committed data**:
+momentum `drive/P_conf` is 6.213 (B3M) vs 15.265 (B3MW01, `Lw`×0.1), a ratio of **2.457** against the
+`10^{1/3} = 2.154` the scaling predicts — 14% agreement over one decade of wind. **So K10's drive
+grows without bound as the wind weakens, and it has no photoionisation-only limit at all.** Batch 8
+established that limit as *the one exact external anchor* this scheme family has. ⚠️ **And this is my
+own gate-design failure**: Batch 14's **G14.2** explicitly protected exactly this for K5 ("the
+photo-only limit is the one anchor C3a has"); I did not carry a limits gate into Batch 18, so
+G18.0–G18.5 could never have caught it.
+
+**⛔ MAJOR — seam C is present and WORSE than C3c's; see §Slice 2 RESULT below.** ✔ Headline verified
+(253,412 vs 101,805 Msun, ratio 2.4892). The blanket "all four seams absent by construction" is
+withdrawn for K10-as-implemented.
+
+**⛔ MAJOR — K10 re-arms the per-segment freeze ratchet that C3c disarmed.** ✔ **Verified in source.**
+`run_energy_phase.py:230` writes `params['P_HII']` once per outer step and it is frozen into the ODE
+snapshot; `energy_phase_ODEs.py:249` reads `snapshot.P_HII` — **constant across the whole `solve_ivp`
+segment** — while `press_bubble` at `:224` is recomputed **live** from the integrating `(Eb, R2, R1,
+t)`. The composition is `max(press_bubble_live, P_HII_frozen)`. Under C3c `P_HII ≡ 0.0` on every
+confined row, so the frozen term is inert. Under K10 it is `P_conf(t_k)·ρ > press_bubble` for the
+rest of the segment whenever `Pb` falls by more than `ρ−1`:
+
+| config | phase | within-segment `Pb` decline | K10's `ρ−1` |
+|---|---|---|---|
+| B3M | energy | median **8.03%**, max **16.75%** | median **0.554%** |
+| B3M | implicit | median 5.34%, max 8.42% | 0.527% |
+| B3MW01 | energy | median 8.74%, max 17.02% | 5.86% |
+
+So a smoothly declining drive becomes a **piecewise-constant staircase with ~8% median and up to 17%
+steps — 15× larger than the +0.55% Lancaster term K10 exists to deliver.** This workstream already
+condemned this defect class: **§3's C2a row rates it "catastrophic at compact scale"** (phase1a-init
+Extra finding #1), and it is the *same* freeze the pre-C3c `P_HII` had. K10 respects the ramp (G16.3)
+and re-introduces the freeze. Momentum is not a regression (C3c's `P_HII` is equally frozen there);
+this is ED-phase-specific. **The compact config PRB is exactly the "catastrophic at compact scale"
+case and has never been run.**
+
+**⛔ MAJOR — coverage is far narrower than the case implies.** Every K10 artifact derives from **two
+trajectories of the SAME cloud** (`bench3_m1e5_r5`) at two wind strengths, to 1.5 Myr. Never
+screened: **`F1LO, F1HI, PRB, WW, B1M, B2M, GMC, BE, PL2, LDLS, SDHS, B3MW3, B3MW10, B3MW001,
+B3ML`** — 4 decades of density, 4.5 of mass, both non-power-law profiles, **all three collapse-fate
+configs**, and everything past 1.5 Myr (B3M's own `stop_t` is 5; the default is 15). C3c landed on 13
+configs with a full fate table. K10 has one config for 0.01 Myr.
+
+**⚠️ MODERATE — a reachable crash band in `_k10_front_radius`.** The patch docstring claims "the root
+always exists — there is no non-convergence branch". True in exact arithmetic, **false in float64**:
+`P(s) = s²/k − 2s/k² + 2/k³` cancels catastrophically for small `τ = k(hi−R2)`. Measured against
+60-digit reference: τ=1e-4 → root degrading; τ=1e-5 → root wrong; **τ ≤ 1e-7 → `brentq` raises
+`ValueError`, unhandled, taking the run out.** The guard is at 1e-8, four orders too low. Measured τ
+on the two screened configs is 0.246–4.521, which is exactly why the screen could not see it — but it
+is **reachable by two matrix-legal levers**: `dust_sigma ∝ ZCloud` (a `ZCloud = 1e-3` dwarf puts B3M's
+implicit τ at 2.5e-4), and late-time `Qi` fade (`Qi(15 Myr)/Qi(1.5 Myr) = 5.1e-4` from the bundled
+SB99 table, putting τ ≈ 1.3e-4 at the *default* `stop_t`). **Fix is one line: raise the guard to
+~1e-3**, plus a `try/except` fallback to `hi`.
+
+**⚠️ MODERATE — K10 manufactures an ionisation front where the code says photons escape.** `f_abs < 1`
+on **145/462 (31%)** of B3M rows and 127/427 of B3MW01; on the *median* B3M energy row **67% of
+ionising photons escape and no front exists**. K10 uses `Qi` whole and its bracket is guaranteed, so
+**it can never report "no front"** — G17.1's 436/436 convergence is not reassurance, it is proof the
+`no_front` path can never fire. On B3M energy rows K10's layer is **7.9× thicker** than the shell
+solve's measured `dR_ion`. Drive error there is bounded (~0.5–4%) but ungated.
+
+**⚠️ MINOR, but fix before any arm run.** (a) `F_HII` semantics: the Batch 16 mapping makes the
+return phase-dependent, so in energy/implicit the reported `F_HII = 4πR2²·P_HII` is the **entire**
+drive force — any force-budget figure would read "photoionisation supplies 100% of the drive". It is
+diagnostic-only (`vd` uses `P_drive`, verified), so not a dynamics defect, but it is exactly the
+honesty problem §3's C4 exists to fix. (b) The patch docstring's "+0.96%" confined excess is Batch
+16's **no-dust** variant number; the dusty closure the code actually runs gives **0.672%**, and the
+live SC run measured +0.08%. (c) Cost is unmeasured: K10 adds **two** root-finds per call
+(`solve_R1`, which C3c never calls, plus the front solve) at six sites, with no same-SHA comparator.
+
+**✅ What survived scrutiny — and should not be re-litigated.** Seam A **is** absent as claimed (the
+closure integrates literally `get_shellODE.py:120`; `f_abs` appears zero times in the patch; there is
+no cavity term, so it is a reduced model *of* the shell solve's sink, not a second one). The
+composition mapping is settled (**2.22e-16**, 853 evaluations, both `Q_eff` variants) and
+non-negativity is not merely empirical but **provable** (`P_conf = max(P_thermal, P_ram) ≥ P_ram` and
+`ρ ≥ 1`). The dust closure is genuinely validated where it was checked (median 1.056, 97.3% within
+25%, two configs agreeing independently) and `σ_d → 0` recovers the analytic form to 9.26e-13.
+G13.3's `R_ch(trinity) = χ_e·R_ch(Lancaster)` diagnosis is **confirmed and strengthened** — the exact
+per-row form is `[(1+χ_e x)/(1+x)]^{2/3} − 1`, reproducing `b13_k10_screen.csv`'s
+`md_identity_relerr` to **1.04e-14 on all 59 momentum rows**, with `χ_e^{2/3}−1` being only its
+`x → ∞` asymptote. Units are consistent throughout. And the transition→momentum handover carries **no
+K10-specific jump** (`P_ram/Pb` climbs smoothly to exactly 1.0000; worst step 0.24% B3M / 1.18%
+B3MW01) — a registered worry that did not materialise.
+
+**✏️ Corrections to my own record, from the audit.** (1) The G18.0 `P_conf` discrepancy is narrower
+than §Batch 18 states: it is confined to **2 of 156 energy rows** (both the known `t` = 3.0e-3
+stale-`Pb` 1a→1b handoff) plus one B3MW01 transition duplicate at `t` = 0.844617 — not a blanket
+"energy carries ≤6.8%". (2) "K10 contains K5's volume fix by construction" is true of the *equation*
+and false of the *value*: with dust the balance is over `Q(1−f_dust)`, and the plan's own 2026-08-29
+retraction already shows corrected-C3a/K5b (1.545) sitting 4.10× below K10 (6.333).
+
+**Disposition.** Batch 18 stays **⛔ HELD**. Before any ladder: fix the guard band, add a **limits
+gate** to Batch 18 (the G14.2 analogue I omitted), decide whether the CEM form's missing photo-only
+limit is acceptable **as physics** — it is a scope statement about the model, not a code defect — and
+disposition the freeze ratchet, which may require calling the helper live inside the ODE rather than
+freezing it per segment. **The cheapest real progress is not the arm**: re-point the existing offline
+screeners at the other core-6 trajectories, which needs no new physics and no `trinity/` change.
 
 #### Slice 2 RESULT — "all four seams absent by construction" is FALSE for K10 as implemented. ⛔ **ARM-BLOCKING.**
 
