@@ -4961,3 +4961,45 @@ b0 run and to `bb302e0` for every b1 run (§9 records how that was protected).
   Recorded as **exploratory and closed**, with its two by-products kept: the transparency
   confirmation, and the `bubble_mass` freeze localised to the transition entry. No `trinity/` source
   touched.
+
+- **2026-08-29 (the `bubble_mass` freeze: mechanism found, consumer found, impact sized — and it is
+  NOT a dynamics bug)** — Maintainer: *"let's fix the bubble_mass freeze first. but im not sure what
+  to set it to."* Diagnosed before proposing a value.
+  **Mechanism.** `bubble_mass` is produced only by `bubble_luminosity.get_bubbleproperties_pure`,
+  which is called from `run_energy_phase.py:181` and (via `get_betadelta.py:471,573`) from the
+  implicit phase. **`run_transition_phase.py` and `run_momentum_phase.py` import only
+  `get_bubbleParams`, never `bubble_luminosity`** — so the bubble structure is never solved there and
+  `bubble_mass` is a stale carry-over from the last implicit step. (The `ADAPTIVE_MONITOR_KEYS` lists
+  that also mention it are adaptive-stepping monitors and are unrelated.)
+  **Consumer.** Exactly one, `shell_structure.py:268`:
+  `grav_ion_m_cum = np.cumsum(grav_ion_m) + mBubble` — the mass enclosed inside `R2`, used for the
+  shell's own gravity profile. So the semantically correct quantity is **"mass enclosed within
+  `R2`"**, not "mass of the shocked bubble".
+  **Impact, measured (B3M):**
+
+| phase | `bubble_mass`/`shell_mass` | frozen value | physical free-wind mass `2·L_mech·R2/v³` | ratio |
+|---|---|---|---|---|
+| energy | **35.89%** | 0.0106 | 0.0003 | 0.024 |
+| implicit | 0.49% | 13.31 | 0.0117 | 0.0009 |
+| transition | **0.0996%** | 99.6429 | 0.0496 | 0.0005 |
+| momentum | **0.0995%** | 99.6429 | 0.1156 | 0.0012 |
+
+  **Two things follow.** (1) In momentum `R1/R2 = 1.0000` and `Eb = 0.0` exactly, so there is
+  **provably no shocked-wind region**; the only mass inside `R2` is free wind in transit,
+  **0.116 Msun**, and the frozen 99.64 is **860× too large**. (2) But `bubble_mass` is only **0.1% of
+  `shell_mass`** in both affected phases, so the error in the gravity term is ~0.1%. **The freeze is a
+  correctness and hygiene defect, not a dynamics bug** — and it is *large* only in the energy phase
+  (35.9% of the shell), which is precisely where it is computed correctly.
+  ⚠️ **It did corrupt two of this workstream's own diagnostics** — Batch 20's cavity check and the
+  2026-08-29 bubble-density probe both read `bubble_mass`, so their transition/momentum numbers
+  inherit the stale value. Both already carry that caveat.
+  **Candidate fixes, for the maintainer:** (a) **momentum only** — set the enclosed mass to the
+  free-wind mass `2·L_mech·R2/v³` (all inputs in `params`, one line, provably correct there since
+  `R1 = R2`); (b) **transition too** — same formula, principled in the `R1 → R2` limit but
+  under-counting at transition entry where `R1/R2 = 0.18` and a real bubble still exists; (c) **run
+  the bubble solve in transition** — the "right" fix, but expensive and of uncertain convergence as
+  `R1 → R2`; (d) **rename the field to what its consumer wants** (`mass_enclosed_R2`) — clearest, but
+  touches the registry, snapshots and readers. ⚠️ Any of (a)-(c) changes the shell gravity by ~0.1%
+  and is therefore a **dynamics change**: under CLAUDE.md rule 5 it needs its own gate and a full-run
+  equivalence, and it is **outside** the K10-arm-only ship-hold lift. Not implemented; awaiting the
+  maintainer's choice of value and scope. No `trinity/` source touched.
