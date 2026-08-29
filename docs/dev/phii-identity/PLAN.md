@@ -5288,3 +5288,35 @@ b0 run and to `bb302e0` for every b1 run (§9 records how that was protected).
   **NOT committed** — the uncommitted `.gitignore` change ignores `docs/dev`, so new files there need
   `git add -f`. The 40 MB of raw run outputs under `data/hpc/` are likewise untracked, which is
   correct: the 💾 rule wants the derived CSV committed, not the run dirs.
+
+- **2026-08-29 (two corrections to my own standing claims, from the arm data)** —
+  ✏️ **(1) "Coverage is 2 configs of one cloud" is STALE and I kept repeating it after it stopped
+  being true.** That was correct for the *offline* screening (B3M + B3MW01, one cloud, two wind
+  strengths). The **arm ladder ran five configs spanning four distinct clouds**, and the axes Batch
+  20 slice 4 flagged as untouched are now largely covered:
+
+| | span covered by the arm ladder |
+|---|---|
+| `nCore` | 2.94e57 → 2.94e61 — **4 decades** |
+| `mCloud` | 7e4 → 9.9e6 — **2.2 decades** |
+| `sfe` | 0.01 → 0.5 — **the full registered range** |
+
+  What remains genuinely untested: **PRB** (the compact probe), **WW** (weak wind / collapse), the
+  non-power-law profiles (`BE`, `PL2`), the other wind rungs, and late times (`B3ML`). So the
+  coverage blocker should be restated as **"the compact and collapse corners are untested"**, not as
+  "two configs".
+  ⚠️ **(2) The freeze ratchet is STRUCTURAL under O1, not incidental — and harder to fix than I
+  implied.** Measured on the arm's own output: `P_drive == P_HII` on **481 of 481** confined-branch
+  rows (SC, F1LO, B3M × energy+implicit), and `P_drive == Pb` on **zero**. That is by construction —
+  O1 returns `P_conf·ρ` with `ρ ≥ 1`, so it always wins `max(press_bubble, P_HII)`. **Every
+  confined-branch step is therefore driven by a value frozen at the start of its ODE segment.**
+  Two consequences I had not stated. **(a)** The ratchet's effect is **already inside the measured
+  ΔR2** for these five configs — it is not a hidden risk there; the runs were clean (0 distress) and
+  the trajectories are smooth and predictable. The open worry is the **compact** regime, where §3's
+  C2a row rates this class *"catastrophic at compact scale"* and **PRB has never been run**.
+  **(b) The obvious fix does not work for O1.** Calling the helper live inside the ODE RHS would
+  require a **shell solve per ODE evaluation**, because O1 reads `shell_props.R_IF` — prohibitive.
+  So the options are to interpolate `R_IF` across the segment, to bound the freeze error and accept
+  it, or to accept a scheme whose confined branch is piecewise-constant by construction. **This is a
+  design decision, not a bug fix**, and it is the last substantive thing between O1 and a
+  recommendation.
