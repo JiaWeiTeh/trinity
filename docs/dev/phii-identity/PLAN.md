@@ -2294,11 +2294,38 @@ no-dust one does not.
 
 **The substantive finding.** The **dust-corrected** coupled closure sits within **15%** of the
 shipped C3c drive in B3M's momentum phase (0.851) and within **10%** on B3MW01 (1.096), while the
-no-dust form is 1.6–2.2× above it. That is evidence for a **cancellation in the shipped scheme**:
-C3a's cavity-volume error (which inflates, per K5) and its missing dust sink (which deflates) are
-of similar size and opposite sign in this regime. C3c is therefore closer to the coupled answer
-than its individual defects suggest — **for partly compensating reasons**, which is exactly the
-kind of agreement that should not be relied on outside the regime where it was measured.
+no-dust form is 1.6–2.2× above it.
+
+⛔ **The "cancellation" explanation offered here is WRONG and is retracted (2026-08-29, maintainer
+asked it be checked; `harness/cancellation_check.py`, `data/b19_cancellation.csv`).** It read: *"C3a's
+cavity-volume error (which inflates, per K5) and its missing dust sink (which deflates) are of
+similar size and opposite sign in this regime."* Both clauses fail, and in different phases:
+- **In momentum — the regime the claim named — the two corrections push the SAME way on 17/17
+  rows.** `f_volume` = **0.3862**, `f_dust` = **0.6269**; they **compound** to ×0.2506. They cannot
+  cancel. Transition likewise compounds on 14/21 rows (0.6475 × 0.6202 = 0.4016).
+- **Where the signs ARE opposite — energy and implicit — the magnitudes are nothing like
+  "similar":** `f_volume` = **31.98** / **11.49** against `f_dust` = 0.497 / 0.907, netting ×15.4
+  and ×10.3. That is a 10–15× inflation, not a cancellation.
+- **Mechanism, which the claim missed:** the volume correction changes sign at
+  `R_IF/R2 = 2^{1/3} ≈ 1.26`, where the cavity-excluded layer volume equals the cavity volume.
+  Measured `R_IF/R2` = 1.000 (energy), 1.003 (implicit), 1.502 (transition), 1.975 (momentum) — so
+  the thin-layer phases sit below break-even and invert. This is the same thickness-dependent sign
+  Batch 10 found for the geometry correction, and it was already on record.
+- **And the explanation does not even connect to what it was explaining.** C3a corrected for BOTH
+  errors gives momentum `P_HII/Pb` = **1.545**, against K10's **6.333** — a factor **4.10** apart.
+  K10's proximity to the shipped drive is therefore *not* a story about C3a's errors cancelling;
+  **K10 is a structurally different closure** whose density comes from pressure equilibrium and
+  whose drive carries the `(R_i/R2)²` area amplification, not a corrected C3a.
+
+🔑 **Identity found while checking (not an independent confirmation — algebra).** Corrected-C3a and
+the K5b **profile form** agree to the printed digit (1.545 vs 1.545) because they are the *same
+quantity*: `n_rms/n_cav = sqrt[(recomb/Qi_abs)·(V_cav/V_layer)] = f_dust · f_volume` exactly. So
+**K5b IS C3a corrected for volume and dust**, which unifies G9.4's profile form with this factorial
+decomposition and explains why both land on 1.545.
+
+What survives from the original paragraph is only the empirical part: C3c and dust-corrected K10
+land within 10–15% of each other in this regime, and that agreement should not be relied on outside
+it — but the reason is unexplained, not "compensating errors".
 
 **What Batch 13 does NOT establish.** It is an offline screen on committed trajectories: every row
 uses the *shipped* run's `R2(t)`, so it cannot say what K10 would do to a trajectory it drove
@@ -2964,7 +2991,7 @@ the maintainer's call.
 | **K8** | **Three-radius model** — `R1 < R_w ≤ R2 ≡ R_i`, with `R_w` algebraic | structural; a follow-up paper | **A** | Pending. K5/K6 are the minimal ways to get `R_w ≠ R2` without this |
 | **K9** | **Shell-mass adjustment** — `M_sh = (4π/3)R_i³(ρ̄ − ρ_i)` | the momentum equation's inertia | **M + S** | **Measured here, and the literature already does it** (Lancaster `eq:pr_spitzer_adj`, with its own "not consistent with the derivation… \[but\] can be more accurate" caveat). B11.C2: **+8.55%/+9.22%** in `R2` at nominal wind, **+0.45%/+0.97%** at `Lw × 0.1`. This is §6b seam C's fix, not a separate idea. **Rev2 ranks it #2.** ⚠️ **Downgraded 2026-08-27 by Batch 15's pre-gate**: B11.C2's +8.55/+9.22% debited **`M_cav`**, which is NOT the K9 quantity — in trinity's geometry K9 debits the shell's own **ionised layer**, measured at `m_ion/m_shell` median **0.461** in momentum (range 0.109–**1.000**), 1.0000 throughout energy. It **reaches a massless shell on real rows**, its admissible phase scope is narrow, and G15.3 may make it inseparable from K5. **Not the cheap independent win it appeared to be** |
 
-| **K10** | ✅ **screened (Batch 13)** — **CEM-interpolated `P_HII`** — the smooth coupled form, phase-agnostic: `n_H0 = (μ_i/μ_c)·P_conf/(k_B T)` (pressure-equilibrium skin density — `shell_structure.py:125`'s own line), `R_i³ = R2³ + 3·Qi_abs/(4π χ_e α_B n_H0²)` (recombination over the cavity-**excluded** layer volume), `P_drive = P_conf·(R_i/R2)²`; equivalently the helper returns the **excess** `P_HII_eff = P_conf·[(R_i/R2)² − 1]` and the existing momentum sum composes it exactly. In the MD phase this is algebraically Lancaster's `α_p ṗ (1 + R_w/R_ch)^{2/3}` at `α_p = 1` | one helper; ⛔ **"zero `P_drive` edits" CORRECTED 2026-08-28 — true in momentum ONLY** (see the composition note in the status cell) | **S + M** | **Registered 2026-08-18, Batch 13 screens it offline.** The momentum-phase minimal form of K6, containing K5's volume fix by construction. Exact limits: confined → excess `= (2/3)(R2/R_ch)·P_conf` (Lancaster's own first-order term — the correct "better than 0.0"); unconfined → Spitzer over the layer volume. **Smooth**: kills the factor-2 momentum switch jump, the 23.4% transition jump, and the §3c.1 `t_cross` kink by construction. ⚠️ Known gaps, pre-stated: **no dust** in the closure (illustrative: predicts `R_i/R2` ≈ 3.1–3.9 on B3M momentum where the shell solve measures `R_IF/R2` ≈ 1.7–2.3 — G13.4 sizes it); assumes quasi-static balance (Lancaster *imposes* it: "we now imagine"); ED-phase use maps `P_conf` to the thermal `Pb` (their §ed_jfb structure) and must respect the D-ramp window. **Batch 13 measured it (2026-08-27):** state-jump **exactly 0** where the shipped rule jumps **+34%**; healthy branch untouched on B3M (+0.68%); but the **dust rule fired at 2.05×**, so **K10 cannot ship without a dust model** — and with dust it lands **within 10–15% of the shipped drive**, evidence the shipped scheme's cavity-volume and missing-dust errors partly cancel. Note `R_ch`(trinity) = `chi_e`·`R_ch`(Lancaster). ⛔ **COMPOSITION CORRECTION 2026-08-28 (algebra, not yet gated).** "The excess rides the existing compositions" holds **in momentum only**, and Batch 13 could not have caught it because its screen computed the total drive `P_conf·(R_i/R2)²` directly instead of routing a helper return through each phase's `P_drive` expression. With `ρ ≡ (R_i/R2)² ≥ 1`: momentum (`P_HII + P_ram`, `P_conf = P_ram`) composes the **excess** exactly (`P_ram(ρ−1) + P_ram = P_ram·ρ`) but the full value over-counts by `P_ram`; energy/implicit (`max(Pb, P_HII)`) is the **opposite** — the **full value** composes exactly (`max(Pb, Pb·ρ) = Pb·ρ`) while the excess is **swallowed by the `max` whenever `ρ < 2`**; transition (`max(Pb, P_HII + P_ram)`) is exact under neither. ⚠️ **This destroys K10's headline confined-branch virtue as specified**: the "correct better-than-0.0" first-order term `(2/3)(R2/R_ch)·P_conf` is *small* by construction, so under `max(Pb, excess)` it is discarded exactly where it was meant to improve on the 0.0. K10 therefore needs a phase-aware helper **or** real edits at the live `P_drive` sites (`energy_phase_ODEs.py:253,256`, `run_momentum_phase.py:445`) — it is **not** a one-helper zero-edit change, and its risk class rises accordingly. Needs its own gate before any K10 arm |
+| **K10** | ✅ **screened (Batch 13)** — **CEM-interpolated `P_HII`** — the smooth coupled form, phase-agnostic: `n_H0 = (μ_i/μ_c)·P_conf/(k_B T)` (pressure-equilibrium skin density — `shell_structure.py:125`'s own line), `R_i³ = R2³ + 3·Qi_abs/(4π χ_e α_B n_H0²)` (recombination over the cavity-**excluded** layer volume), `P_drive = P_conf·(R_i/R2)²`; equivalently the helper returns the **excess** `P_HII_eff = P_conf·[(R_i/R2)² − 1]` and the existing momentum sum composes it exactly. In the MD phase this is algebraically Lancaster's `α_p ṗ (1 + R_w/R_ch)^{2/3}` at `α_p = 1` | one helper; ⛔ **"zero `P_drive` edits" CORRECTED 2026-08-28 — true in momentum ONLY** (see the composition note in the status cell) | **S + M** | **Registered 2026-08-18, Batch 13 screens it offline.** The momentum-phase minimal form of K6, containing K5's volume fix by construction. Exact limits: confined → excess `= (2/3)(R2/R_ch)·P_conf` (Lancaster's own first-order term — the correct "better than 0.0"); unconfined → Spitzer over the layer volume. **Smooth**: kills the factor-2 momentum switch jump, the 23.4% transition jump, and the §3c.1 `t_cross` kink by construction. ⚠️ Known gaps, pre-stated: **no dust** in the closure (illustrative: predicts `R_i/R2` ≈ 3.1–3.9 on B3M momentum where the shell solve measures `R_IF/R2` ≈ 1.7–2.3 — G13.4 sizes it); assumes quasi-static balance (Lancaster *imposes* it: "we now imagine"); ED-phase use maps `P_conf` to the thermal `Pb` (their §ed_jfb structure) and must respect the D-ramp window. **Batch 13 measured it (2026-08-27):** state-jump **exactly 0** where the shipped rule jumps **+34%**; healthy branch untouched on B3M (+0.68%); but the **dust rule fired at 2.05×**, so **K10 cannot ship without a dust model** — and with dust it lands **within 10–15% of the shipped drive** — ⛔ the "cavity-volume and missing-dust errors partly cancel" gloss on that agreement is **RETRACTED 2026-08-29**: in momentum both corrections deflate on 17/17 rows and compound to ×0.2506, and corrected-C3a (1.545) is 4.10× below K10 (6.333), so K10 is not a corrected C3a at all (see §Batch 13 RESULT). Note `R_ch`(trinity) = `chi_e`·`R_ch`(Lancaster). ⛔ **COMPOSITION CORRECTION 2026-08-28 (algebra, not yet gated).** "The excess rides the existing compositions" holds **in momentum only**, and Batch 13 could not have caught it because its screen computed the total drive `P_conf·(R_i/R2)²` directly instead of routing a helper return through each phase's `P_drive` expression. With `ρ ≡ (R_i/R2)² ≥ 1`: momentum (`P_HII + P_ram`, `P_conf = P_ram`) composes the **excess** exactly (`P_ram(ρ−1) + P_ram = P_ram·ρ`) but the full value over-counts by `P_ram`; energy/implicit (`max(Pb, P_HII)`) is the **opposite** — the **full value** composes exactly (`max(Pb, Pb·ρ) = Pb·ρ`) while the excess is **swallowed by the `max` whenever `ρ < 2`**; transition (`max(Pb, P_HII + P_ram)`) is exact under neither. ⚠️ **This destroys K10's headline confined-branch virtue as specified**: the "correct better-than-0.0" first-order term `(2/3)(R2/R_ch)·P_conf` is *small* by construction, so under `max(Pb, excess)` it is discarded exactly where it was meant to improve on the 0.0. K10 therefore needs a phase-aware helper **or** real edits at the live `P_drive` sites (`energy_phase_ODEs.py:253,256`, `run_momentum_phase.py:445`) — it is **not** a one-helper zero-edit change, and its risk class rises accordingly. Needs its own gate before any K10 arm |
 
 **How the rows relate, so they are not treated as nine independent choices.**
 K1/K2/K3 are the same quantity with different *branch logic* — a key, not physics. K4/K5 change the
@@ -3067,6 +3094,7 @@ the rule being enforced.
 | `data/b17_dust_closure.csv` | `harness/k10_dust_closure.py` | 17 | no run — dust inside the K10 closure (uniform-`n₀` reduction of `get_shellODE.py:120`), validated against the ledgers' measured `dust_Pb` |
 | `data/b18_percall.csv` | `harness/k10_percall_equivalence.py` | 18 | no run — implemented `get_phii_k10` vs the Batch 17 screened closure; carries the `P_conf` diagnostic that explains G18.0's failure |
 | `hpc/b14/k10_arm.patch` | the exact Batch 18 arm diff (apply in a detached worktree) | 18 | arm code; never merged — D5 open |
+| `data/b19_cancellation.csv` | `harness/cancellation_check.py` | 13 (correction) | no run — factorial test of the volume/dust corrections to C3a on committed B3M rows; retracts the cancellation claim |
 
 Run dirs (not committed — regenerate with `harness/run_batch.py`):
 `outputs/phii/b0__6b55657_dirty/`, `outputs/phii/b1__386df59_dirty/`. The `_dirty` suffix reflects
@@ -4202,3 +4230,39 @@ b0 run and to `bb302e0` for every b1 run (§9 records how that was protected).
   **Next is the ladder and nothing else** — G18.2/18.3/18.4/18.5 all need runs.
   `hpc/b14/sync.sh` now defaults to `ARMS="baseline k10"`; G18.5 closes Batch 17's ED-phase dust
   coverage gap for free from the arm's own output. D5 stays open until G18.3 reports.
+
+- **2026-08-29 (maintainer asked me to check Batch 13's "cancellation" claim — it is WRONG, and
+  retracted)** — I had flagged the wording as loose while explaining K10 vs C3c; the maintainer
+  asked for it to be checked rather than left as a hunch. Correct instinct: it is checkable by
+  algebra on committed data and should never have stood on plausibility. `P_HII` is linear in the
+  density and C3a's density is `sqrt(Qi_abs/(χ_e α_B V))`, so each correction is a clean
+  multiplicative factor — `f_volume = sqrt(V_cav/V_layer)` and `f_dust = sqrt(recomb/Qi_abs)` —
+  and "opposite sign" is just whether one exceeds 1 while the other does not.
+  **Verdict: both clauses fail, in different phases.** In **momentum, the regime the claim
+  explicitly named, the corrections push the same way on 17/17 rows** (0.3862 × 0.6269 = **0.2506**)
+  and therefore compound; transition compounds on 14/21. In **energy and implicit the signs ARE
+  opposite** — so the claim is directionally right there — but `f_volume` is **31.98** and **11.49**
+  against `f_dust` 0.497 and 0.907, netting ×15.4 and ×10.3, which is a 10–15× inflation rather than
+  anything "of similar size".
+  **The mechanism the claim missed** is one this workstream had already found: the volume correction
+  changes sign at `R_IF/R2 = 2^{1/3} ≈ 1.26`, where the cavity-excluded layer volume equals the
+  cavity volume. Measured `R_IF/R2` is 1.000 / 1.003 / 1.502 / 1.975 across the four phases, so the
+  thin-layer phases sit below break-even and invert — the same thickness-dependent sign Batch 10
+  recorded for the geometry correction. A claim about signs was made without checking the one
+  quantity that sets them.
+  **And it does not explain what it was invoked to explain.** C3a corrected for *both* errors gives
+  momentum `P_HII/Pb` = **1.545**, while K10 gives **6.333** — **4.10× apart**. So K10 landing near
+  the shipped drive is not a cancellation story; **K10 is a different closure** (pressure-equilibrium
+  density, plus the `(R_i/R2)²` area amplification), not C3a with two fixes. The empirical
+  observation survives — C3c and dust-corrected K10 agree to 10–15% here — but it is now recorded as
+  **unexplained**, which is the honest state.
+  🔑 **One genuine identity fell out**, and it is worth keeping: corrected-C3a and the **K5b profile
+  form** both give 1.545 because they are algebraically the same quantity —
+  `n_rms/n_cav = sqrt[(recomb/Qi_abs)(V_cav/V_layer)] = f_dust · f_volume`. **K5b IS C3a corrected
+  for volume and dust.** That unifies G9.4's profile form with this decomposition and explains a
+  number that has been quoted since Batch 9 without a mechanism. ⚠️ Stated as an identity, NOT as
+  independent corroboration — the two routes agreeing to the printed digit is what the algebra
+  requires, not evidence.
+  ⚠️ Also noted: `data/b9_layer_density.csv` predates `layer_density_check.py`'s `pdrive_*` columns,
+  so pressures here are joined from `b11_mass_ledger.csv` on `row_idx` (the Batch 14 join, with a
+  per-row `|Δt| < 1e-4` guard). No `trinity/` source touched.
