@@ -2833,7 +2833,7 @@ dust, which the arm's own output closes for free). All need the ladder:
 
 ---
 
-### Batch 20 — K10 safety audit — Status: ⛔ **VERDICT 2026-08-29: K10 is UNSAFE as implemented — 1 CRITICAL (photo-only limit broken, verified by running the suite) + 3 MAJOR (seam C worse than C3c; per-segment freeze ratchet re-armed; coverage 2 configs of 20). Arm HELD.** Slices 2/3/4 in; slice 1 (implementation numerics) still running.
+### Batch 20 — K10 safety audit — Status: ⛔ **VERDICT 2026-08-29: K10 is UNSAFE as implemented — 1 CRITICAL (photo-only limit broken, verified by running the suite) + 3 MAJOR (seam C worse than C3c; per-segment freeze ratchet re-armed; coverage 2 configs of 20). Arm HELD.** All four slices in. Slice 1 additionally found a float64 bracket failure reachable at low metallicity, and a test (`test_mu_audit_drift.py`) that now passes vacuously; it also **refuted my own registered suspicion** about the `n_IF_Str` gate (0/3490 rows).
 
 **Why.** Maintainer asked, after Batch 13's cancellation claim was found false: *"can you check other
 claims too so i know K10 is safe or unsafe?"* The cancellation claim was checkable by algebra and had
@@ -2994,6 +2994,80 @@ limit is acceptable **as physics** — it is a scope statement about the model, 
 disposition the freeze ratchet, which may require calling the helper live inside the ODE rather than
 freezing it per segment. **The cheapest real progress is not the arm**: re-point the existing offline
 screeners at the other core-6 trajectories, which needs no new physics and no `trinity/` change.
+
+#### Slice 1 RESULT — implementation numerics. Baseline is CLEAN; two one-line defects; and my own suspicion was WRONG
+
+**Baseline first, because it matters:** on shipped settings the function is correct. **436/436**
+`b17` rows and **3490/3490** real states harvested from the nine committed runs under `outputs/`
+solve, worst error **5.0e-13** against 60-digit `mpmath` and **5.0e-13** against Batch 17's
+independent `solve_ivp`. The closure's arithmetic is sound where trinity actually runs.
+
+**F1 — MAJOR (latent): my guard tests the wrong quantity, and is therefore unreachable.** I wrote
+`if k*(hi−R2) < 1e-8: return hi`, i.e. a test on `τ`. The cancellation is governed by **`x = k·R2`**:
+the error behaves as `eps/τ · (1 + 2/x + 2/x²)`, and the guard never sees the `2/x²` blow-up.
+Measured by rescaling `dust_sigma` across the 3490-state corpus, **the guard fired 0 times at every
+scale from 1× down to 1e-20×** — it only ever engages when `read_param.py:369` sets `dust_sigma = 0`
+exactly. The function degrades roughly **five decades before** the guard would trigger. ⚠️ This
+supersedes slice 3's suggested remedy ("raise the threshold to ~1e-3"): raising a threshold on the
+wrong variable does not fix it.
+
+**F2 — CRITICAL where reachable: `φ(hi) ≥ 0` in float64, so the "guaranteed bracket" is not
+guaranteed.** My docstring claims *"the no-dust radius is a GUARANTEED upper bracket … there is no
+non-convergence branch"*. True in exact arithmetic, **false in floating point**. At `x ≲ 1e-5` the
+computed `φ(hi)` is `+1.0` — the dust term has vanished into rounding — and `brentq` raises
+`ValueError`. Worse, at `x = 7.4e-7` it returns `−34` (should be `O(−1e-6)`) and brentq **converges
+successfully on a root 8.9% wrong, silently**. Reachability is via metallicity: `dust_sigma =
+1.5e-21·ZCloud`, safe at the `dust_noZ = 0.05` default, but lowering `dust_noZ` to keep dust on in a
+metal-poor cloud walks in — **14 rows raise at `ZCloud` = 0.005, 102 at 0.001, 164 at 0.0005**.
+**Blast radius is asymmetric and bad:** four of the six call sites are unwrapped
+(`run_energy_phase.py:227`, `run_momentum_phase.py:636`, `run_energy_implicit_phase.py:983`,
+`run_transition_phase.py:566`) so the `ValueError` kills the run — while the other two
+(`run_energy_implicit_phase.py:1382`, `run_transition_phase.py:848`) sit inside `except Exception`
+blocks that **swallow it** and silently skip the phase-boundary reconciliation snapshot. A crash is
+better than that.
+**Both F1 and F2 close with one algebraically identical line**, factoring the cancellation out with
+`expm1` (`P(s) = (x²−2x+2)/k³` has no internal cancellation, so the entire error is one subtraction):
+`bracket = −expm1(−u)·P(R2) + (2·R2·d + d²)/k − 2d/k²`. Zero failures at every scale tested.
+
+**F4 — MINOR: two unguarded exceptions C3c did guard.** `Eb = 1e-300` → `n0**2` **underflows to
+exactly 0.0** → `3.0/A` → `ZeroDivisionError`; `Eb = 1e120` → `OverflowError` at `n0**2`. `get_phii_c3c`
+guards the analogous divide (`if not (denom > 0.0 …): return 0.0`); K10 does not. Physically
+unreachable (89 decades of margin, F5) but one `and A > 0.0` from closed.
+
+**✅ NON-ISSUES, checked hard.** **Negative returns are impossible** — not merely unobserved but
+*proven*: the `P_ram` inside `get_effective_bubble_pressure` is the bit-identical expression that
+gets subtracted, and IEEE rounding is monotone, so `fl(P_conf·ρ) ≥ P_conf ≥ P_ram`; 7k random states
+gave 0 negatives. **Magnitudes are fine** — `n0**2` peaks at 1.79e130 against a 1.798e308 ceiling,
+89 decades of margin. **Cost is invisible** — 23.9 µs/call against ≥4.1 ms for a single shell
+`odeint` slice, i.e. **0.6%**, with brentq at median 9 / max 15 iterations. (Minor brittleness: my
+`rtol=1e-15` sits only 1.13× above scipy's hard floor of `4·eps`.)
+
+**✏️ F7 — MY OWN SUSPICION WAS WRONG, and I am recording that.** In this batch's registration I
+flagged the unused `shell_props` + the `n_IF_Str > 0` call-site gate as "a REAL suspected defect".
+Measured: **`n_IF_Str == 0` on 0 of 3490 rows across all nine committed runs.** Its only live route is
+shell dissolution, which is run-terminating, so exposure is at most the final step. **The gate is
+MINOR, not the critical issue I implied** — real dead coupling worth deleting, but not a hazard.
+⚠️ **The genuine cost of the discarded argument is different and was not in my docstring:** K10 drops
+C3c's `Qi_abs = Qi·shell_fAbsorbedIon` and assumes the full budget in a medium of unbounded extent,
+so **`R_i` lands outside the run's own `rShell` on 14–100% of rows depending on config** (100% on
+`orionM43_exC` and `log_eyeball`, 56% on `cloud_example_homogeneous`). That independently corroborates
+slices 2 and 4 from a third direction.
+
+**⛔ F8 — MAJOR review hygiene: a second broken pin, and a test that now passes VACUOUSLY.** The patch
+header discloses only `test_phii_c3c.py`. Also broken: `test_phii_c3c_spitzer.py` (already confirmed
+in the CRITICAL finding above). **And `test_mu_audit_drift.py` still passes without testing anything
+live** — its assertion matches the now-dead `def get_phii_c3c` body, since the patch is purely
+additive and only rebinds the module attribute; the live path uses the reciprocal
+`mu_ion_shell/mu_convert` and matches nothing, while `assert calls == 6` counts call sites that no
+longer reach the audited function. The factor itself is correct (it is exactly
+`shell_structure.py:125`'s `nShell0`), but **the audit no longer audits the code that runs** — a green
+test giving false assurance, which is worse than a red one.
+
+**Two things I would not run the arm without**, both one-liners: the `expm1` refactor (kills F1+F2
+across five decades of `ZCloud`) and a `try/except (ValueError, RuntimeError): return hi` around the
+`brentq` call — because two call sites currently turn the failure into a swallowed warning. And the
+docstring's "there is no non-convergence branch" must be struck: it is an exact-arithmetic claim
+presented as a floating-point guarantee.
 
 #### Slice 2 RESULT — "all four seams absent by construction" is FALSE for K10 as implemented. ⛔ **ARM-BLOCKING.**
 
@@ -4532,3 +4606,45 @@ b0 run and to `bb302e0` for every b1 run (§9 records how that was protected).
   ⚠️ Also noted: `data/b9_layer_density.csv` predates `layer_density_check.py`'s `pdrive_*` columns,
   so pressures here are joined from `b11_mass_ledger.csv` on `row_idx` (the Batch 14 join, with a
   per-row `|Δt| < 1e-4` guard). No `trinity/` source touched.
+
+- **2026-08-29 (Batch 20 — K10 safety audit complete: UNSAFE as implemented, 1 CRITICAL + 4 MAJOR,
+  and two of my own claims refuted)** — Maintainer, after the cancellation retraction: *"can you
+  check other claims too so i know K10 is safe or unsafe?"* Four adversarial read-only slices, all
+  registered in this doc **before any reported**. Every finding I could re-derive myself, I did.
+  **CRITICAL — K10 has no photoionisation-only limit.** ✔ Verified by applying the arm patch in a
+  clean worktree and running the suite: `test_phii_c3c_spitzer.py` **6 passed → 5 failed**. With the
+  wind off `P_conf = 0`, the guard fires, and K10 returns **exactly 0.0 at every radius** where C3a
+  gives the classical D-type pressure. Structural, not a bug: `drive ∝ P_conf^{−1/3}`, so the limit
+  is **singular** and the guard converts a divergence into zero. ✔ The divergence is **already in the
+  committed data** — momentum `drive/P_conf` 6.213 (B3M) vs 15.265 (B3MW01, `Lw`×0.1), ratio 2.457
+  against the predicted `10^{1/3}` = 2.154. Batch 8 called that limit the one exact external anchor
+  this family has. **This was my gate-design failure**: Batch 14's G14.2 protected exactly this for
+  K5 and I did not carry a limits gate into Batch 18.
+  **MAJOR — seam C present and worse than C3c's** (implied layer mass 2.4892× the shell at `t` = 1.5;
+  1.628 vs C3c's 1.5638 against all available gas), **and the drive IS the geometry**, so the mass
+  book cannot be fixed without cutting the drive 1.78×. **MAJOR — the per-segment freeze ratchet is
+  re-armed** (✔ verified in source: frozen `snapshot.P_HII` vs live `press_bubble` in a `max`;
+  ~8% median, 17% max staircase against the 0.55% term K10 exists to deliver) — a class §3 rates
+  *"catastrophic at compact scale"*, with the compact config PRB untested. **MAJOR — coverage**: two
+  trajectories of one cloud, to 1.5 Myr, against C3c's 13 configs with a fate table. **MAJOR (review
+  hygiene) — `test_mu_audit_drift.py` now passes VACUOUSLY**: the patch is additive, so the assertion
+  matches the dead `def` body while the live path matches nothing. A green test giving false
+  assurance.
+  ✏️ **Two of my own claims were refuted by the audit, and both are recorded as such.** (1) The
+  `n_IF_Str` gate I registered as "a REAL suspected defect" is **MINOR** — `n_IF_Str == 0` on **0 of
+  3490** rows across nine committed runs. (2) My `k·(hi−R2) < 1e-8` guard **tests the wrong
+  quantity** — cancellation is governed by `k·R2`, and the guard **never fires for any nonzero dust**
+  (0 times, 1× down to 1e-20×). Slice 3's proposed remedy (raise the threshold) would not have worked
+  either; the fix is an `expm1` refactor. Also corrected: the G18.0 `P_conf` discrepancy is confined
+  to **2 of 156 energy rows**, narrower than §Batch 18's "energy ≤6.8%" caveat.
+  ✅ **What survived:** seam A genuinely absent; the composition mapping settled (2.22e-16) with
+  non-negativity now **proven** rather than sampled; the dust closure validated where checked; G13.3's
+  `χ_e` diagnosis confirmed **and strengthened** to an exact per-row form (1.04e-14 on 59 rows); units
+  clean; cost invisible (0.6% of one shell slice); and **no K10-specific jump at the
+  transition→momentum handover** — a registered worry that did not materialise.
+  **Disposition: Batch 18 stays ⛔ HELD.** The blocking items are physics, not typos: whether a
+  closure with **no photo-only limit** is acceptable for trinity, and whether the freeze ratchet
+  forces calling the helper live inside the ODE. Two one-line code fixes (`expm1`; `try/except` around
+  `brentq`) are prerequisites but not sufficient. **Cheapest real progress is not the arm** — re-point
+  the existing offline screeners at the other core-6 trajectories: no new physics, no `trinity/`
+  change, and it closes the density/mass/sfe axes. No `trinity/` source touched this visit.
