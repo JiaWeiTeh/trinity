@@ -160,7 +160,13 @@ def main():
         nrat = med([fnum(r, "n_rms_profile") / fnum(r, "n_cavity") for r in lay_m
                     if fnum(r, "n_rms_profile") and fnum(r, "n_cavity")])
         k10rho = med([r["drive_over_Pconf"] for r in k10_m])
-        shipped = 7.095   # C3c composed drive / P_ram, momentum median (b14_identity_census)
+        # 7.0953 is the TRUE median of C3c's composed drive / P_ram over B3M's 34 momentum
+        # rows in b7_regime_trajectory.csv. NOTE b14_identity_census.csv reports 7.164582 for
+        # the same quantity, because every harness here uses med(v) = sorted(v)[len(v)//2] --
+        # an upper order statistic, not a statistical median. On even-length row sets the two
+        # differ by ~1%. Both numbers circulate in PLAN.md for this quantity; see the
+        # 2026-08-29 housekeeping entry.
+        shipped = 7.095
         print(f"    shipped C3c (for reference)                      {shipped:7.3f}")
         print(f"    K10 as implemented                               {k10rho:7.3f}"
               f"   (R_i/R2 {k10rho**0.5:.3f})")

@@ -1,24 +1,25 @@
 #!/usr/bin/env bash
 # Laptop-side helper for the phii-identity arm ladders on Helix.
-# Batch 18 (K10) by default; Batch 14 (K5) via ARMS="baseline k5a_swap k5a_driving".
+# Batch 21 (k10_o1) by default. Other arms: k10 (Batch 18, SUPERSEDED+HELD -- do not
+# run), k5a_swap / k5a_driving (Batch 14). Set ARMS="baseline <arm>" to choose.
 # Mirrors paper/II-survey/sync.sh and paper/shellSSC6/sync.sh — but unlike the
 # gitignored paper/ folders this bundle is COMMITTED, so `up` is git push +
 # cluster git pull, not rsync.
 #
 # Version discipline (the point of the stamps): every `submit` mints
 #   STAMP = UTC yyyymmdd_hhmmssZ
-# and everything from that submission lives under $WS/phii_b14_$STAMP/ on the
+# and everything from that submission lives under $WS/phii_arm_$STAMP/ on the
 # cluster — worktrees, per-arm outputs, applied-diff records, logs, reduced
 # CSVs. The stamp is saved locally in .last_stamp; `watch`/`reduce`/`down`
 # operate on it (override with STAMP=... for an older sweep). `down` lands the
-# reduced CSVs in docs/dev/phii-identity/data/hpc/phii_b14_$STAMP/ for review —
+# reduced CSVs in docs/dev/phii-identity/data/hpc/phii_arm_$STAMP/ for review —
 # COMMIT them after review (💾 rule); nothing is auto-committed.
 #
 #   ./sync.sh up       # push $BRANCH; cluster fetches + checks it out
-#   ./sync.sh submit   # mint STAMP; sbatch one job per arm (baseline k5a_swap k5a_driving)
+#   ./sync.sh submit   # mint STAMP; sbatch one job per arm (default: baseline k10_o1)
 #   ./sync.sh watch    # queue + per-arm finished-run count for $STAMP
 #   ./sync.sh reduce   # matched-t ledgers vs baseline, ON the cluster (compare_trajectories.py)
-#   ./sync.sh down     # pull _reduced/ + applied diffs + walltimes to data/hpc/phii_b14_$STAMP/
+#   ./sync.sh down     # pull _reduced/ + applied diffs + walltimes to data/hpc/phii_arm_$STAMP/
 #
 # Knobs: HELIX=alias  BRANCH=...  ARMS="baseline k5a_swap"  CONFIGS=SC,B3M
 #        STOP_T=1.5  BASE_SHA=...  STAMP=... (rewind to an older sweep)
@@ -34,7 +35,7 @@ BUNDLE=docs/dev/phii-identity/hpc/b14
 LOCAL=$(cd "$(dirname "$0")" && pwd)
 REPO=$(cd "$LOCAL/../../../../.." && pwd)
 STAMP=${STAMP:-$(cat "$LOCAL/.last_stamp" 2>/dev/null || true)}
-SWEEP=$WS/phii_b14_$STAMP
+SWEEP=$WS/phii_arm_$STAMP
 
 need_stamp() { [ -n "$STAMP" ] || { echo "no stamp — run ./sync.sh submit first (or pass STAMP=...)"; exit 1; }; }
 
@@ -43,7 +44,7 @@ case "${1:-}" in
           git -C "$REPO" push origin "$BRANCH"
           ssh "$HOST" "bash -lc 'cd $CREPO && git fetch origin && git checkout $BRANCH && git pull --ff-only origin $BRANCH'" ;;
 
-  submit) STAMP=$(date -u +%Y%m%d_%H%M%SZ); SWEEP=$WS/phii_b14_$STAMP
+  submit) STAMP=$(date -u +%Y%m%d_%H%M%SZ); SWEEP=$WS/phii_arm_$STAMP
           echo "$STAMP" > "$LOCAL/.last_stamp"
           echo ">> sweep $SWEEP  (arms: $ARMS)"
           for arm in $ARMS; do
@@ -76,22 +77,22 @@ case "${1:-}" in
             # these arms that is the EXPECTED measurement, not an error.
             ssh "$HOST" "bash -lc 'cd $CREPO && mkdir -p $SWEEP/_reduced && \
               python $BUNDLE/../../harness/compare_trajectories.py \
-                --base $SWEEP/baseline --new $SWEEP/$arm --label b14_$arm \
-                --out $SWEEP/_reduced/b14_${arm}_ledger.csv'" \
-              || echo ">> $arm: bar breached or fate changed (recorded in the ledger — expected for K5 arms)"
+                --base $SWEEP/baseline --new $SWEEP/$arm --label phii_$arm \
+                --out $SWEEP/_reduced/phii_${arm}_ledger.csv'" \
+              || echo ">> $arm: bar breached or fate changed (recorded in the ledger — expected for these arms)"
           done ;;
 
   down)   need_stamp
-          DEST=$REPO/docs/dev/phii-identity/data/hpc/phii_b14_$STAMP
+          DEST=$REPO/docs/dev/phii-identity/data/hpc/phii_arm_$STAMP
           echo ">> pull reduced CSVs + provenance -> $DEST"
           mkdir -p "$DEST"
           rsync -av "$HOST:$SWEEP/_reduced/" "$DEST/" 2>/dev/null || echo "   (no _reduced/ yet — run ./sync.sh reduce)"
           rsync -av "$HOST:$SWEEP/"*_applied.diff "$DEST/" 2>/dev/null || true
           for arm in $ARMS; do
-            rsync -av "$HOST:$SWEEP/wt_$arm/docs/dev/phii-identity/data/b14_${arm}_walltimes.csv" \
+            rsync -av "$HOST:$SWEEP/wt_$arm/docs/dev/phii-identity/data/phii_${arm}_walltimes.csv" \
               "$DEST/" 2>/dev/null || true
           done
-          echo ">> review, then commit the keepers (💾): git add docs/dev/phii-identity/data/hpc/phii_b14_$STAMP" ;;
+          echo ">> review, then commit the keepers (💾): git add docs/dev/phii-identity/data/hpc/phii_arm_$STAMP" ;;
 
   *)      echo "usage: $0 up|submit|watch|reduce|down   (HELIX= BRANCH= ARMS= CONFIGS= STOP_T= BASE_SHA= STAMP=)"; exit 1 ;;
 esac

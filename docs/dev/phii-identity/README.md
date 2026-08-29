@@ -297,7 +297,7 @@ volume (K5) and the shell-mass debit (K9) — both already measured by Batch 11.
 correction propagated back into D5 (`run_transition_phase.py:331` is reporting-only; the live 1c
 drive site is `energy_phase_ODEs.py:253`). See `PLAN.md` §7.1 and the §9 entry.
 
-**Update 2026-08-18 (F_rad clean; K10 registered and screened — Batch 13).** Checked Draine's
+**Update 2026-08-18 (F_rad clean; K10 registered and screened — Batch 13).** Checked Draine's ⚠️ *(misdated: PLAN dates these 2026-08-27)*
 radiation double-count trap against source: `get_shellODE.py` **is** Draine's system, but its
 radiation-loaded profile feeds only shell *structure* — the drive never comes from the layer's
 outer-edge pressure, so adding `F_rad` as a body force is the correct control-volume decomposition.
@@ -306,11 +306,14 @@ and the `P_C3a + P_ram` composition are **one defect seen from two sides**.
 Then the "better than exactly 0.0" question: the coupled closure gives a smooth form
 (`P_HII_eff = P_conf·[(R_i/R2)² − 1]`, `R_i` from recombination over the cavity-**excluded** layer)
 whose confined limit is Lancaster's own first-order term. Screened offline (Batch 13): its
-state-jump at the branch flip is **exactly 0** where the shipped rule jumps **+34%**, and it moves
+state-jump at the branch flip is **exactly 0** where the shipped rule jumps **+34%** *(at the first
+post-crossing snapshot; the scheme's intrinsic discontinuity is `P_ram/Pb` = **23.4%**, corrected
+2026-08-29)*, and it moves
 B3M's healthy energy/implicit branch by only **+0.68%**. ⛔ But the pre-registered dust rule fired
 at **2.05×** — **K10 cannot ship without a dust model** — and once dust is included it lands within
-**10–15% of the shipped drive**, evidence that C3a's cavity-volume inflation and its missing dust
-sink largely cancel. ⚠️ Two of five gates failed by my own design error (a continuity metric that
+**10–15% of the shipped drive**, ⛔ *the "cavity-volume inflation and missing dust sink largely cancel" gloss on that
+agreement was RETRACTED 2026-08-29 — in momentum the two corrections push the SAME way on 17/17 rows
+and compound to ×0.2506; the 10–15% agreement is now recorded as unexplained*. ⚠️ Two of five gates failed by my own design error (a continuity metric that
 measured evolution rather than a jump; and a `chi_e` convention mismatch showing
 `R_ch`(trinity) = `chi_e`·`R_ch`(Lancaster), which corrects an earlier same-day CEM figure without
 changing its conclusion). See `PLAN.md` §Batch 13.
@@ -353,12 +356,13 @@ measured dust fraction to **5.6%** (median 1.056, 97.3% of rows within 25%, both
 end the candidate sits within ~25% of the shipped drive everywhere. ⛔ Two gates of mine are
 recorded as misses (Batch 14's G14.0 passing only by the letter; Batch 17's G17.3 containment
 prediction). ⚠️ ED-phase dust is validated on **one row** — the photon ledgers only replayed driving
-rows. **Both offline blockers are now cleared**; what remains is a `get_phii_c3c` signature change
-(G16.3: it must receive the *ramped* `press_bubble`) and a full-run arm, both behind the ship-hold.
+rows. **Both offline blockers are now cleared**; ⛔ *the "signature change" consequence was RETRACTED 2026-08-28 — every input to
+`get_effective_bubble_pressure` is already in `params`, so the arm shipped with **zero call-site
+edits**. Only the G16.3 measurement stands.* What remains is a full-run arm.
 See `PLAN.md` §Batch 16 / §Batch 17.
 
 **Update 2026-08-29 (Batch 20 — K10 safety audit: UNSAFE as implemented; arm HELD).** Four
-adversarial slices, registered before any reported. ⛔ **CRITICAL: K10 has no photoionisation-only
+adversarial slices, registered before any reported. ⛔ **MAJOR-domain (re-labelled 2026-08-29 from CRITICAL-runtime): K10 has no photoionisation-only
 limit** — `test_phii_c3c_spitzer.py` goes 6 passed → 5 failed under the arm, because
 `drive ∝ P_conf^{−1/3}` is singular and the guard turns the divergence into exactly 0.0. Batch 8
 called that limit the family's one exact external anchor, and Batch 18 had no limits gate (a
@@ -495,3 +499,24 @@ data/phii_identity_evidence.csv  every sighting, one row each, with branch + SHA
 data/roundtrip_ulp.csv         the float round-trip model output
 harness/roundtrip_ulp.py       reproduces the ULP signature (pure arithmetic, ~1 s)
 ```
+
+
+**Update 2026-08-29 (Batches 18 and 21 — K10 implemented, audited unsafe, then rebuilt on the shell
+solve's own front).** Both were missing from this record until the 2026-08-29 housekeeping scan.
+**Batch 18** implemented K10 as an arm patch (`get_phii_k10` + `_k10_front_radius`, aliased so **no
+call site changes**): G18.0 **FAILED as written** (6.761e-02 vs a 1e-10 bar) and was diagnosed as
+entirely the `P_conf` *source* — the offline screens recovered it from stored columns while production
+recomputes it — with the amended **G18.0′ passing at 1.005e-12**; the arm ran clean (SC, 114
+snapshots, 338 s, zero distress) and broke `test_phii_c3c.py` by design. **Batch 20 then held it.**
+**Batch 21** took the maintainer's O1 decision: read the shell solve's own `R_IF` and **delete** the
+front solver. G21.1 **PASS** — front inside the shell on **140/140** rows, against 18/18 momentum and
+43/44 energy violating before; G21.2 **PASS** — **seam C closed**, implied layer mass ≤ shell mass on
+every row screened (max 0.9407 vs 2.4892). The confined branch is left essentially untouched
+(O1/shipped 1.001 energy, 1.005 implicit) while the **driving branch is roughly halved** against
+shipped C3c (×0.494 B3M momentum, ×0.325 B3MW01). Deleting the solver also closed three numerics
+defects by construction. ⛔ **Not fixed by O1, verified under the patch:** still no photo-only limit
+(`test_phii_c3c_spitzer.py` 5 failed), the freeze ratchet is untouched, coverage is unchanged, and
+D5's magnitude question survives — 3.274×`P_ram` is still photoionisation-dominated. **The honest
+range, B3M momentum ×`P_ram`:** transmit-only 1.0 · K5b 1.55 · O1 3.27 · K10 6.33 · shipped C3c 7.10.
+Separately, a production `bubble_mass` fix landed (momentum only, bit-identical, pure hygiene). See
+`PLAN.md` §Batch 18 / §Batch 20 / §Batch 21.

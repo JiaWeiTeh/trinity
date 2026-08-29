@@ -70,7 +70,12 @@ def main():
     args = ap.parse_args()
 
     if get_bubbleParams.get_phii_c3c is not getattr(get_bubbleParams, "get_phii_k10", None):
-        sys.exit("this worktree does not have the Batch 18 arm applied — nothing to check")
+        sys.exit("this worktree does not have a K10 arm applied — nothing to check")
+    # This script is specific to the BATCH 18 arm: G18.0' calls _k10_front_radius directly.
+    # Batch 21's O1 arm DELETES that function, so the alias check above is not sufficient --
+    # without this the script would pass the guard and then die with AttributeError.
+    if not hasattr(get_bubbleParams, "_k10_front_radius"):
+        sys.exit("this is the Batch 21 O1 arm (no _k10_front_radius); use k10_o1_screen.py instead")
 
     screened = [r for r in csv.DictReader(
         l for l in open(DATA / "b17_dust_closure.csv") if not l.startswith("#"))

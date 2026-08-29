@@ -316,6 +316,11 @@ def mass_freeWind(r, Lmech, v_mech):
 
         M = integral_0^r rho 4 pi r'**2 dr' = Mdot r / v = 2 Lmech r / v**3
 
+    This applies the INSTANTANEOUS Mdot over the whole flight time r/v, i.e. it assumes
+    the wind has been steady for that long. At B3M scales the flight time is ~7e-3 Myr,
+    so the approximation is benign; it would need revisiting if Mdot ever varied on that
+    timescale.
+
     WHY THIS EXISTS. In the MOMENTUM phase the shocked-wind bubble has vanished --
     R1 == R2 and Eb == 0 exactly on every row -- so there is no bubble whose mass to
     carry, and the only mass enclosed within R2 is the free wind in flight. That is

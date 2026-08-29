@@ -24,6 +24,13 @@ KNOWN NOT FIXED, verified under this patch (G21.5):
     never silenced.
   - The per-segment freeze ratchet (P_HII frozen into the ODE snapshot while
     press_bubble is live) is untouched and independent.
+  - test/test_mu_audit_drift.py still PASSES, but VACUOUSLY: it is a static
+    source-text check that matches the now-dead get_phii_c3c body, while the live
+    get_phii_k10 under O1 never reads mu_ion_shell/mu_convert at all. A green test
+    giving false assurance (Batch 20 slice 1, F8). Do not read it as coverage.
+  - G21.3's "shipped 7.095" below is a ratio-of-medians from PLAN SS7.1, while the
+    O1/shipped 0.494 in the same batch is a median-of-ratios; the two do not divide
+    into each other. Quote them separately, not as a single arithmetic chain.
 
 diff --git a/trinity/bubble_structure/get_bubbleParams.py b/trinity/bubble_structure/get_bubbleParams.py
 index df694d6a..c20a3a8c 100644
@@ -56,7 +63,7 @@ index df694d6a..c20a3a8c 100644
 +    defects along with it.
 +
 +    P_conf is the RAMPED effective pressure, not params['Pb']: inside dt_switchon the two
-+    differ by 0.33-1.07x (Batch 16 G16.3), and the un-ramped value would re-admit the
++    differ by 0.330-0.995x (Batch 16 G16.3), and the un-ramped value would re-admit the
 +    D-ramp defect class C3c removed.
 +
 +    RETURN CONVENTION (Batch 16, verified to 2.22e-16 through the real P_drive

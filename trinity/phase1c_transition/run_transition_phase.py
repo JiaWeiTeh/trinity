@@ -109,6 +109,17 @@ DT_SEGMENT_COLLAPSE = 5e-4           # Myr - segment duration during collapse (0
 
 # Parameters to monitor for adaptive stepping (keys in params dict)
 # Based on analysis of the top 30 most variable parameters
+# KNOWN, DELIBERATE: params['bubble_mass'] is STALE throughout this phase. The bubble
+# structure solve (bubble_luminosity.get_bubbleproperties_pure) runs only in the energy
+# and implicit phases, so bubble_mass here is the last implicit value carried forward.
+# The momentum phase now corrects it (get_bubbleParams.mass_freeWind, since R1 == R2 and
+# Eb == 0 make the enclosed mass unambiguous there); transition is deliberately NOT
+# corrected, because the bubble is real at transition entry (R1/R2 ~ 0.18) and gone by
+# exit, so a free-wind formula would under-count. Its only consumer is the shell's
+# diagnostic gravity profile (shell_structure.py:268 -> shell_grav_*), which never
+# reaches the equation of motion, so the effect is reporting-only. See
+# docs/dev/phii-identity/PLAN.md, 2026-08-29.
+
 ADAPTIVE_MONITOR_KEYS = [
     # Core state variables
     'R2', 'v2', 'Eb', 'T0', 'Pb', 'R1',

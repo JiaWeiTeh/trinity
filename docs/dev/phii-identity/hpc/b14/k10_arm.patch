@@ -1,3 +1,14 @@
+*** SUPERSEDED AND HELD -- DO NOT RUN. Use k10_o1_arm.patch (Batch 21). ***
+This arm solves its OWN ionisation front and was measured outside the neutral shell
+on 18/18 B3M momentum rows and outside the cloud on 100% of driving rows; Batch 20
+holds it (seam C present and worse than shipped). Kept only for provenance.
+Known-wrong text below, left verbatim rather than rewritten (it is a historical
+artifact): the "GUARANTEED upper bracket ... no non-convergence branch" claim is
+FALSE in float64 (slice 1 F2); the "+0.96%" confined excess is the NO-DUST variant
+(the dusty closure this arm runs gives 0.672%); the "layer optically thin to dust"
+guard provably never fires (slice 1 F1); and "+34.0%" is the post-crossing sampled
+jump, not the scheme's discontinuity, which is P_ram/Pb = 23.4% (slice 0).
+
 Batch 18 arm: K10 — the coupled (CEM) closure as the P_HII scheme.
 Apply to BASE_SHA (main @ the Batch 18 registration) in a clean worktree via
 run_arms.sh; never on a working main checkout. Ship-hold was lifted 2026-08-28 for
