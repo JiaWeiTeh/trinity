@@ -5133,3 +5133,49 @@ b0 run and to `bb302e0` for every b1 run (§9 records how that was protected).
   `harness/make_manifest.py` that does not exist and still carries a placeholder "Cut commit";
   `g34_golden_rebaseline.csv`'s stamp is prose rather than machine-parseable; three harness docstrings
   have cosmetic inaccuracies; and this doc's H1 still says branch `bugfix/phii-pt1`.
+
+- **2026-08-29 (DECISION, delegated by the maintainer: is a closure with no photoionisation-only
+  limit acceptable? — YES for O1, conditionally; and the reason is a measurement, not a preference)**
+  — Asked to decide rather than defer. The answer turns on a distinction the earlier framing missed,
+  so I measured it first: **O1 does not inherit K10's divergence.**
+
+| | growth in `drive/P_conf` per wind decade (B3M → B3MW01) |
+|---|---|
+| Batch 18 K10 (own analytic front) | **×2.784** momentum, ×3.056 transition |
+| `P_conf^{−1/3}` divergence predicts | **×2.154** |
+| **Batch 21 O1 (shell solve's front)** | **×1.461** momentum, ×1.700 transition |
+
+  K10 grows **faster** than the divergence law — it is running into the singularity. **O1 grows
+  markedly slower**, because its front is the shell solve's and is bounded by the shell's own mass
+  (G21.1: inside the shell on 140/140 rows). So under O1 the drive is `P_conf × (bounded ρ)`, which
+  as `P_conf → 0` goes **gracefully to zero rather than diverging**. The pathology that made Batch
+  18's form dangerous is gone; what remains is a *different and much better-posed* defect.
+  🔑 **Restating the defect correctly: O1 is not missing a limit, it is missing a FLOOR.** Physically
+  the photoionised gas cannot push less than its own thermal pressure, so as the wind weakens the
+  drive should approach the Spitzer value — a finite, non-zero floor — instead of following `P_conf`
+  to zero. That floor is a quantity this workstream has already measured: it is **K5b**, the real
+  profile's layer pressure, **1.545×`P_ram`** on B3M momentum. A composite
+  `max(P_conf·ρ, P_layer)` would hold both limits, and is the principled version of the "meet in the
+  middle" the maintainer asked about — not an average of two schemes but a floor under one.
+  **DECISION: acceptable, conditionally.** Grounds: (1) `P_conf = 0` is **unreachable** in trinity —
+  every phase carries a strictly positive confining pressure, so the failing fixture is artificial;
+  (2) trinity is a **wind-driven bubble code by construction**, and both Rahner+2017 and
+  Lancaster+2025 assume confinement explicitly, so a confinement-requiring closure is in keeping with
+  the lineage rather than a departure from it; (3) Batch 8's Spitzer anchor existed to validate
+  **C3a's free normalisation** — O1 has no free normalisation to anchor, inheriting the shell solve's
+  boundary condition and front, so there is nothing for that anchor to check; (4) the measurement
+  above shows the approach to the singularity is **suppressed, not merely unreached**.
+  **The condition, and it is not optional: the domain must be declared AND guarded, because the
+  failure is silent.** O1 progressively **under-drives** as the wind weakens, and **`B3MW001`
+  (`Lw`×0.01) is in the registered matrix** — a run there would quietly receive too little
+  photoionised drive with nothing in the output saying so. Cheapest sufficient guard: emit a
+  diagnostic whenever `P_conf·ρ` falls below the ionised layer's own thermal pressure, i.e. whenever
+  the model is below its own physical floor. That is one comparison against a quantity the shell
+  solve already computes.
+  ⚠️ **Scope of this decision, stated so it is not over-read.** It says the missing limit is
+  acceptable *as an approximation inside trinity's declared domain*. It is **not** a claim that the
+  physics is right in general, **not** an adoption of O1 (D5 stays open — the maintainer ruled "wait
+  for the arm"), and **not** a release of the arm: the **freeze ratchet** and the **two-config
+  coverage** are untouched by this and remain blocking. What would reverse it: evidence that a
+  science case needs the weak-wind corner quantitatively, or a measured trajectory where the
+  under-drive changes a fate.
