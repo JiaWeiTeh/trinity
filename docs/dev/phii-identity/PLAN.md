@@ -5003,3 +5003,31 @@ b0 run and to `bb302e0` for every b1 run (§9 records how that was protected).
   and is therefore a **dynamics change**: under CLAUDE.md rule 5 it needs its own gate and a full-run
   equivalence, and it is **outside** the K10-arm-only ship-hold lift. Not implemented; awaiting the
   maintainer's choice of value and scope. No `trinity/` source touched.
+
+- **2026-08-29 (bubble_mass fix — option (a), momentum only: gates registered BEFORE implementing)** —
+  Maintainer chose option (a). ⚠️ **Scope note:** this is a **production `trinity/` change and is NOT
+  part of the K10 arm**, so it sits outside the 2026-08-28 arm-only ship-hold lift; it proceeds on the
+  maintainer's explicit 2026-08-29 instruction. ⚠️ **Housekeeping:** this is a *bubble-solver* defect,
+  not a `P_HII` one — it is recorded here because it was found here, and §0's one-doc rule is about
+  not sprawling the `P_HII` effort. If it grows beyond this fix it should get its own workstream.
+  **The change.** In the momentum phase `R1 == R2` and `Eb == 0` exactly, so no shocked-wind region
+  exists and the only mass inside `R2` is free wind in transit. Set `bubble_mass` to
+  `M_fw = 2·L_mech·R2 / v_mech³`, which is `Mdot·R2/v` under **`pRam`'s own convention**
+  (`Mdot = 2 L/v²`, `get_bubbleParams.py:286`) — so the fix inherits the code's existing wind
+  convention rather than introducing a second one. Both momentum shell-solve sites are covered
+  (`run_momentum_phase.py:628` and `:894`); `params['Lmech_total']`/`['v_mech_total']` are current at
+  both, refreshed by `updateDict(params, feedback)` at `:578` and `:890` (verified: `SPSFeedback`
+  carries both fields).
+  **Gates.**
+  - **GB.0 — momentum only (BLOCKING).** `bubble_mass` in energy / implicit / transition must be
+    **bit-identical** to the current code. *Falsifier:* any change outside momentum.
+  - **GB.1 — the value uses the code's own convention.** The helper lives beside `pRam` and its
+    `Mdot` is `pRam`'s. *Falsifier:* any second wind convention introduced.
+  - **GB.2 — magnitude (measurement).** Momentum `bubble_mass` 99.6429 → ~0.116 Msun on B3M, i.e.
+    the enclosed-mass term drops from 0.0995% of `shell_mass` to ~0.0001%.
+  - **GB.3 — full-run equivalence (CLAUDE.md rule 5, BLOCKING before adoption).** Matched-`t` ΔR2 on
+    B3M (the only core config reaching momentum) and B3MW01, separate processes. **Pre-registered
+    expectation: ≤0.1%**, since the corrected term is ~0.1% of the enclosed mass. *Falsifier:* >1% ⇒
+    the term matters more than the sizing implies and the fix needs re-thinking, not just re-running.
+  - **GB.4 — goldens.** Any test movement reported with the before/after value, per D4's discipline.
+    Momentum-reaching goldens may shift.
