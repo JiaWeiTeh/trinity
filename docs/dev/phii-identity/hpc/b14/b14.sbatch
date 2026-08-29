@@ -22,7 +22,11 @@ set -euo pipefail
 
 CREPO=${1:?usage: sbatch b14.sbatch CREPO SWEEP ARM}
 SWEEP=${2:?usage: sbatch b14.sbatch CREPO SWEEP ARM}
-ARM=${3:?usage: sbatch b14.sbatch CREPO SWEEP ARM}
+ARM=${3:?usage: sbatch b14.sbatch CREPO SWEEP ARM [CONFIGS] [STOP_T]}
+# Optional, and POSITIONAL for the same reason as the three above: an exported
+# CONFIGS silently vanished under --export=NONE and the job ran the default ladder.
+CONFIGS_IN=${4:-}
+STOP_T_IN=${5:-}
 
 module load devel/miniforge
 source "$(conda info --base)/etc/profile.d/conda.sh" 2>/dev/null || true
@@ -36,6 +40,8 @@ echo "=============================================================="
 echo " CREPO  : $CREPO"
 echo " SWEEP  : $SWEEP"
 echo " ARM    : $ARM"
+echo " CONFIGS: ${CONFIGS_IN:-<default: SC,F1LO,F1HI,B3M,B3MW01>}"
+echo " STOP_T : ${STOP_T_IN:-<default: 1.5>}"
 echo " WT     : $SWEEP/wt_$ARM"
 echo " python : $(command -v python)  ($(python -V 2>&1))"
 echo "=============================================================="
@@ -46,4 +52,4 @@ python -c 'import sys; sys.exit(0 if sys.version_info[:2] >= (3, 9) else 1)' \
   || { echo "ABORT: python < 3.9; run_batch.py uses Path.is_relative_to and will crash after the runs"; exit 1; }
 
 cd "$CREPO"
-bash docs/dev/phii-identity/hpc/b14/run_arms.sh run "$SWEEP" "$ARM"
+bash docs/dev/phii-identity/hpc/b14/run_arms.sh run "$SWEEP" "$ARM" "$CONFIGS_IN" "$STOP_T_IN"

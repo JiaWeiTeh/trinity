@@ -64,7 +64,7 @@ case "${1:-}" in
             ssh "$HOST" "bash -lc 'mkdir -p $SWEEP/logs && cd $CREPO && \
               ${BASE_SHA:+BASE_SHA=$BASE_SHA }${CONFIGS:+CONFIGS=$CONFIGS }${STOP_T:+STOP_T=$STOP_T }bash $BUNDLE/run_arms.sh prep $SWEEP $arm && \
               sbatch --job-name=phii_$arm --output=$SWEEP/logs/${arm}_%j.log \
-                $BUNDLE/b14.sbatch $CREPO $SWEEP $arm'"
+                $BUNDLE/b14.sbatch $CREPO $SWEEP $arm \"${CONFIGS:-}\" \"${STOP_T:-}\"'"
           done
           echo ">> stamp $STAMP saved to .last_stamp"
           echo ">> CONFIRM BEFORE WALKING AWAY (the runbook rule):"

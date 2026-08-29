@@ -26,7 +26,12 @@ STEP=${1:?usage: run_arms.sh prep|run SWEEP_DIR ARM}
 SWEEP=${2:?usage: run_arms.sh prep|run SWEEP_DIR ARM}
 ARM=${3:?usage: run_arms.sh prep|run SWEEP_DIR ARM}
 BASE_SHA=${BASE_SHA:-cce8c924}            # pinned base for ALL arms in this bundle
-CONFIGS=${CONFIGS:-SC,F1LO,F1HI,B3M,B3MW01}
+# $4/$5 win when non-empty; env is the fallback for login-node use. The compute job
+# runs with --export=NONE, so it MUST get these positionally or it silently
+# defaults -- which is exactly what happened to sweep 20260829_143834Z.
+CONFIGS=${4:-}
+CONFIGS=${CONFIGS:-${CONFIGS_ENV:-SC,F1LO,F1HI,B3M,B3MW01}}
+STOP_T=${5:-}
 STOP_T=${STOP_T:-1.5}
 
 HERE=$(cd "$(dirname "$0")" && pwd)
