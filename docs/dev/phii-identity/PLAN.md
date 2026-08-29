@@ -2833,6 +2833,60 @@ dust, which the arm's own output closes for free). All need the ladder:
 
 ---
 
+### Batch 20 — K10 safety audit — Status: 🟡 registered 2026-08-29, four slices running, results not yet in
+
+**Why.** Maintainer asked, after Batch 13's cancellation claim was found false: *"can you check other
+claims too so i know K10 is safe or unsafe?"* The cancellation claim was checkable by algebra and had
+stood for two days on plausibility alone. That is a reason to distrust the **other** load-bearing
+claims in the K10 case rather than only the one that broke. This section is written and committed
+**before any slice reports**, so no finding can be retro-fitted to the questions.
+
+**Method.** Four independent read-only audits, run in parallel, each told to try to REFUTE rather
+than confirm, and each restricted to committed artifacts + source (no `trinity/` edits, no commits).
+The K10 case as it stands rests on the claims below; each slice owns one group.
+
+**Slice 1 — implementation safety** (the arm patch's numerics). Pre-registered targets: the
+`k·(hi−R2) < 1e-8` thin-dust guard and whether the closed form suffers catastrophic cancellation
+just above it (`P(s) = s²/k − 2s/k² + 2/k³` is a cancellation-prone form for small `k`); whether
+`φ(hi) < 0` is genuinely guaranteed so `brentq` always brackets; whether the **transition** mapping
+`P_conf·ρ − P_ram` can return a NEGATIVE pressure (which would subtract force); degenerate inputs
+(`Qi→0`, `P_conf→0`, `R2→0`, `Eb→0`); float64 headroom given `n₀ ~ 1e64` and `A ∝ n₀² ~ 1e128`;
+per-call cost in the hot loop. **Plus one specific suspected defect I want checked, stated here so
+the answer is on the record either way:** `get_phii_k10` ignores `shell_props` entirely, but all six
+call sites are guarded by `if params['include_PHII'].value and n_IF_Str > 0:` — so K10's value is
+**discarded whenever `n_IF_Str == 0`**, a gate it neither sets nor controls.
+
+**Slice 2 — are seams A and C really "absent by construction"?** The phrase appears throughout §7.1
+and §Batch 13 and has never been checked. Seam A: K10 uses the **full `Qi`** with `φ(R2) = 1`, and so
+does the shell solve — is that the same photons counted once in two consistent ways, or a second
+sink? Seam C: compute the gas mass K10's own `n₀` implies over its layer `(4/3)π(R_i³ − R2³)` and
+compare with the run's `shell_mass`. **If the implied layer mass exceeds the shell's own mass, seam C
+is NOT absent and the claim is false.** Also asked: does K10 introduce a *new* seam of the §6b seam-B
+type, since its uniform `n₀` and the shell solve's real profile describe the same gas?
+
+**Slice 3 — the limits and the Lancaster mapping**, each to be re-derived independently rather than
+restated: (a) the confined limit really giving Lancaster's first-order `(2/3)(R2/R_ch)·P_conf`;
+(b) whether K10 recovers the **Spitzer / D-type** limit — load-bearing, because Batch 8 established
+that limit as *the one exact external anchor* the scheme family has, and if K10 loses it the
+strongest external validation goes with it; (c) re-verification of G13.3's `R_ch`(trinity) =
+`χ_e`·`R_ch`(Lancaster) diagnosis and its `χ_e^{2/3} − 1` error prediction; (d) whether K10 literally
+contains K5's volume fix; (e) a full code-unit dimensional check of the photon ODE.
+
+**Slice 4 — regime coverage and failure modes.** All K10 screening used **two configs**, B3M and
+B3MW01. Registered questions: which of the workstream's matrix regimes have never been screened;
+outliers in `ρ` and `τ_dust` in the committed screens; the **photon-leaking regime** (`f_esc > 0`,
+where no ionisation front exists and K10's bracket premise may fail); whether `P_conf` itself injects
+a discontinuity at the transition→momentum handover even though K10 has no internal branch; and an
+explicit statement of the evidence gap against C3c's 13-config clean record.
+
+**What this batch cannot do.** It is offline and adversarial only. It cannot establish that K10 is
+*correct* — only whether the stated case for it survives scrutiny. Correctness needs G18.3.
+
+**Bar.** Any CRITICAL or MAJOR finding blocks the arm until dispositioned. Findings that merely
+correct the *record* (as Batch 13's did) do not block, but must land in the doc dated.
+
+---
+
 ### §6b Self-consistency audit of the C3c/C3a picture — 2026-08-18 (maintainer question) — ✅ **RE-VERIFIED by B11.0 (2026-08-18): A/C/D CONFIRMED, B REVISED, none REFUTED**
 
 > **Status of this section after B11.0.** Every claim below was re-derived adversarially against
@@ -3094,7 +3148,7 @@ the rule being enforced.
 | `data/b17_dust_closure.csv` | `harness/k10_dust_closure.py` | 17 | no run — dust inside the K10 closure (uniform-`n₀` reduction of `get_shellODE.py:120`), validated against the ledgers' measured `dust_Pb` |
 | `data/b18_percall.csv` | `harness/k10_percall_equivalence.py` | 18 | no run — implemented `get_phii_k10` vs the Batch 17 screened closure; carries the `P_conf` diagnostic that explains G18.0's failure |
 | `hpc/b14/k10_arm.patch` | the exact Batch 18 arm diff (apply in a detached worktree) | 18 | arm code; never merged — D5 open |
-| `data/b19_cancellation.csv` | `harness/cancellation_check.py` | 13 (correction) | no run — factorial test of the volume/dust corrections to C3a on committed B3M rows; retracts the cancellation claim |
+| `data/b19_cancellation.csv` | `harness/cancellation_check.py` | 13 (correction; the `b19_` prefix is a naming wart — it belongs to the Batch 13 retraction, not to a Batch 19) | no run — factorial test of the volume/dust corrections to C3a on committed B3M rows; retracts the cancellation claim |
 
 Run dirs (not committed — regenerate with `harness/run_batch.py`):
 `outputs/phii/b0__6b55657_dirty/`, `outputs/phii/b1__386df59_dirty/`. The `_dirty` suffix reflects
