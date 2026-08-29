@@ -4923,3 +4923,41 @@ b0 run and to `bb302e0` for every b1 run (§9 records how that was protected).
   not about *where the inertia is* — the second half is K8/K9, which the maintainer deferred.
   **The honest range, B3M momentum, all ×`P_ram`:** transmit-only **1.0** (K3/C1) · K5b **1.55** ·
   O1 **3.27** · K10 **6.33** · shipped C3c **7.10**. No `trinity/` source touched.
+
+- **2026-08-29 (exploratory: can the bubble's real density inform `P_HII`? — the maintainer's own
+  prediction confirmed, a `bubble_mass` defect localised, and a temperature I got wrong)** —
+  Maintainer: *"can we try out the bubble profile method (since we have bubble mass and volume we can
+  easily get density)… keep in mind that in transition and momentum phase there will be no bubble
+  since it slowly gets compressed into R2 because Pb → 0."* Measured before designing anything
+  (`harness/bubble_density_probe.py`, `data/b22_bubble_density.csv`), using the **shocked-wind
+  volume** `(4/3)π(R2³ − R1³)` rather than the full sphere.
+  ✅ **The prediction is exactly right, and quantified.** `R1/R2` runs 0.286–0.874 (energy),
+  0.150–0.273 (implicit), then climbs to **0.9991** in transition — the bubble volume falls to
+  **0.26% of the sphere** — and in momentum `R1/R2 = 1.0000` with `Eb = 0.0` exactly, so
+  **`V_bub = 0` and the density is UNDEFINED on 17/17 momentum rows**. Any scheme built on bubble
+  density has a hard singularity precisely where the maintainer said it would.
+  ⛔ **And there is a worse problem, which localises a defect B11.0 only named.** `bubble_mass`
+  evolves properly in energy (44 distinct values) and implicit (34 distinct), then **FREEZES at
+  99.6429 for the whole of transition and momentum** (1 distinct value across 38 rows). So it is not
+  merely that the volume vanishes in momentum — from the **transition entry onward the mass is stale
+  too**, and a frozen mass inside a collapsing volume gives a density that is wrong in both factors.
+  This is a **trinity defect independent of any `P_HII` scheme** and belongs to whoever owns the
+  bubble solver.
+  ✏️ **CORRECTION I OWE: the maintainer's `T ~ 1e7` was right and my earlier number was wrong.** In
+  Batch 20's cavity check I reported the implied bubble temperature as **1.8e5–1.3e6 K** and said it
+  sat below the ~1e7 the maintainer assumed. That used the **full sphere** `(4/3)πR2³`, which is the
+  correct volume for the question that check was asking (C3a's own cavity premise) but the **wrong**
+  one for the physical bubble, which occupies only `R1 < r < R2`. With the correct volume:
+  **T_implied = 2.157e7 K (energy), 8.0e6 K (implicit)** — the maintainer's intuition, to the order.
+  (Transition falls to 5.2e4 K, but that is the frozen-mass artefact above, not physics.)
+  ✅ **What the probe DOES deliver, and it is worth keeping.** With the right volume, the cavity's
+  own recombination consumes only **1.19e-5 (energy) / 1.66e-4 (implicit) / 6.18e-4 (transition)** of
+  `Qi`. That is an *independent, correctly-volumed* confirmation that the wind cavity is transparent
+  to ionising photons — so `shell_structure.py:120`'s `phi0 = 1` is right, and Batch 20 slice 2's
+  "seam A is absent" verdict is strengthened from a second direction.
+  **Verdict on the method: it cannot carry `P_HII`.** It is well-defined and physically sensible only
+  in energy/implicit, degrades through transition on a stale mass, and is undefined in momentum. Using
+  it would require a phase branch — reintroducing exactly the discontinuity O1 was chosen to remove.
+  Recorded as **exploratory and closed**, with its two by-products kept: the transparency
+  confirmation, and the `bubble_mass` freeze localised to the transition entry. No `trinity/` source
+  touched.
