@@ -68,8 +68,15 @@ def main():
     args = ap.parse_args()
 
     params = read_param(str(BENCH))
-    rCloud = params["rCloud"].value
-    print(f"rCloud (bench3_m1e5_r5, shared by B3M and B3MW01) = {rCloud:.4f} pc\n")
+    # rCloud is a derived_init quantity and is 0 in the raw param, so derive it from the
+    # code's own unit-converted values. densPL_alpha = 0 => uniform cloud, so
+    # mCloud = (4/3) pi rCloud^3 nCore mu_convert. The coefficient reproduces the
+    # shell_mass(R2) slope Batch 20 slice 2 measured independently (800.465 vs 800.5).
+    import math as _m
+    coef = 4.0 / 3.0 * _m.pi * params["nCore"].value * params["mu_convert"].value
+    rCloud = (params["mCloud"].value / coef) ** (1.0 / 3.0)
+    print(f"rCloud (bench3_m1e5_r5, shared by B3M and B3MW01) = {rCloud:.4f} pc "
+          f"[derived; coef {coef:.3f} vs slice 2's independently measured 800.5]\n")
 
     # B3M shell thickness, joined on t (nearest, tight tol) from the layer-density replay
     lay = [r for r in csv.DictReader(l for l in open(DATA / "b9_layer_density.csv")
