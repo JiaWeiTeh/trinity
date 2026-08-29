@@ -1,0 +1,122 @@
+Batch 21 arm: K10-O1 — the CEM force formula on trinity's OWN ionisation front.
+Apply to BASE_SHA in a clean worktree via run_arms.sh; never on a working main
+checkout. Supersedes k10_arm.patch (Batch 18), which solved its own front and was
+measured OUTSIDE the neutral shell on 18/18 B3M momentum rows and outside the cloud
+on 100% of driving rows. Maintainer chose O1 on 2026-08-29.
+
+  drive = P_conf * (R_IF/R2)^2,  R_IF read verbatim from ShellProperties.R_IF
+
+`_k10_front_radius` is DELETED, which removes by construction: the thin-dust guard that
+tested the wrong quantity and never fired, the float64 bracket failure (unhandled
+ValueError / silently 8.9%-wrong root at low metallicity), and the ZeroDivisionError /
+OverflowError paths on extreme Eb. Dust is inherited from the shell solve's own ODE.
+
+Measured offline before this patch existed (PLAN.md Batch 21 RESULT):
+  G21.1 PASS  front inside the shell on 140/140 rows (was 18/18 + 43/44 outside)
+  G21.2 PASS  implied layer mass <= shell mass on every row, max 0.94 (was max 2.49)
+  G21.3       B3M momentum drive/P_conf 3.274 (K10 5.415, shipped 7.095)
+
+KNOWN NOT FIXED, verified under this patch (G21.5):
+  - test_phii_c3c_spitzer.py still 5 failed / 1 passed: the drive is still
+    proportional to P_conf, so there is still NO photoionisation-only limit.
+  - test_phii_c3c.py 6 failed / 5 passed: C3c's exact-0.0 confined contract is
+    replaced by a small positive excess (median +0.475%). Broken BY DESIGN; recorded,
+    never silenced.
+  - The per-segment freeze ratchet (P_HII frozen into the ODE snapshot while
+    press_bubble is live) is untouched and independent.
+
+diff --git a/trinity/bubble_structure/get_bubbleParams.py b/trinity/bubble_structure/get_bubbleParams.py
+index df694d6a..c20a3a8c 100644
+--- a/trinity/bubble_structure/get_bubbleParams.py
++++ b/trinity/bubble_structure/get_bubbleParams.py
+@@ -365,6 +365,90 @@ def get_phii_c3c(params, shell_props):
+     return float(P_c3a) if P_c3a > params['Pb'].value else 0.0
+ 
+ 
++
++def get_phii_k10(params, shell_props):
++    """Photoionised pressure from the coupled (CEM) closure on trinity's OWN geometry.
++
++    ARM CODE (docs/dev/phii-identity/PLAN.md Batch 21, variant O1). NOT the shipped
++    scheme; adopting it is a maintainer decision (D5, still open).
++
++        drive = P_conf * (R_IF/R2)**2
++
++    R_IF is read verbatim from the shell solve (ShellProperties.R_IF,
++    shell_structure.py:227 = rShell_arr_ion[-1]) -- the ionisation front trinity already
++    computes with the REAL density profile, the REAL dust term (get_shellODE.py:120) and
++    the real termination conditions (photon depletion OR shell mass exhaustion). Nothing
++    is re-derived, rescaled or clipped.
++
++    WHY READ IT RATHER THAN SOLVE IT (Batch 20). The earlier variant solved its own front
++    from a uniform pressure-equilibrium density; that front was measured OUTSIDE the
++    neutral shell on 18/18 B3M momentum rows and outside the cloud on 100% of driving
++    rows (R_i up to 72.7 pc in a 5.0 pc cloud). Reading R_IF makes the front physical by
++    construction, and deletes the closed-form/brentq machinery with its guard and bracket
++    defects along with it.
++
++    P_conf is the RAMPED effective pressure, not params['Pb']: inside dt_switchon the two
++    differ by 0.33-1.07x (Batch 16 G16.3), and the un-ramped value would re-admit the
++    D-ramp defect class C3c removed.
++
++    RETURN CONVENTION (Batch 16, verified to 2.22e-16 through the real P_drive
++    expressions): the CEM drive MINUS whatever the phase's own composition contributes --
++
++        energy/implicit   max(P_conf, P_HII)            <- return P_conf*rho
++        transition        max(P_conf, P_HII + P_ram)    <- return P_conf*rho - P_ram
++        momentum          P_HII + P_ram                 <- return P_ram*(rho - 1)
++
++    KNOWN, NOT FIXED BY THIS VARIANT (Batch 21 G21.5): the drive is still proportional to
++    P_conf, so the photo-only limit is still absent and test_phii_c3c_spitzer.py still
++    fails; and P_HII is still frozen per ODE segment by the phase runners while
++    press_bubble is recomputed live, which is the freeze ratchet Batch 20 slice 4
++    measured.
++    """
++    R2 = params['R2'].value
++    Qi = params['Qi'].value
++    if not (R2 > 0 and Qi > 0):
++        return 0.0
++
++    R_IF = getattr(shell_props, 'R_IF', None)
++    if not (isinstance(R_IF, float) and R_IF >= R2):
++        return 0.0
++
++    phase = params['current_phase'].value
++    Lmech_total = params['Lmech_total'].value
++    v_mech_total = params['v_mech_total'].value
++    Eb = params['Eb'].value
++    # R1 via solve_R1 rather than params['R1'], matching the ODE's own canonical call
++    # (energy_phase_ODEs.py:221) so this cannot read a stale radius.
++    R1 = solve_R1(R2, Eb, Lmech_total, v_mech_total)
++    P_conf = get_effective_bubble_pressure(
++        current_phase=phase,
++        Eb=Eb, R2=R2, R1=R1, gamma=params['gamma_adia'].value,
++        Lmech_total=Lmech_total, v_mech_total=v_mech_total,
++        t=params['t_now'].value, tSF=params['tSF'].value,
++    )
++    if not (P_conf > 0.0):
++        return 0.0
++
++    rho = (R_IF / R2) ** 2
++
++    # P_ram computed directly, never read from params['P_ram'], so this helper carries
++    # no dependence on call ordering within the phase runners.
++    if phase == 'momentum':
++        return float(pRam(R2, Lmech_total, v_mech_total) * (rho - 1.0))
++    if phase == 'transition':
++        return float(P_conf * rho - pRam(R2, Lmech_total, v_mech_total))
++    return float(P_conf * rho)
++
++
++# --- BATCH 21 ARM SWITCH (O1) -------------------------------------------------------
++# The six call sites all go through get_phii_c3c, so the arm redirects here rather
++# than editing them: zero call-site diff, and reverting the arm is deleting one line.
++# Must come AFTER get_phii_k10's definition. NOT a default flip -- this file is
++# applied as an arm patch and never merged (D5 is deliberately open).
++get_phii_c3c = get_phii_k10
++# -------------------------------------------------------------------------------
++
++
+ def get_effective_bubble_pressure(current_phase, Eb, R2, R1, gamma,
+                                    Lmech_total=None, v_mech_total=None,
+                                    t=None, tSF=None):

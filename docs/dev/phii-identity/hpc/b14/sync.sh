@@ -28,7 +28,7 @@ HOST=${HELIX:-helix}
 BRANCH=${BRANCH:-bugfix/phii-pt3}
 CREPO=/home/hd/hd_hd/hd_cq295/trinity                # trinity repo on Helix (/home)
 WS=/gpfs/bwfor/work/ws/hd_cq295-trinity              # writable workspace (/gpfs)
-ARMS=${ARMS:-"baseline k10"}   # Batch 18 default; K5 arms are baseline k5a_swap k5a_driving
+ARMS=${ARMS:-"baseline k10_o1"}   # Batch 21 default; k10 = the superseded Batch 18 form; K5 arms are k5a_swap k5a_driving
 BUNDLE=docs/dev/phii-identity/hpc/b14
 
 LOCAL=$(cd "$(dirname "$0")" && pwd)

@@ -3233,7 +3233,7 @@ right ratio for the continuity question and the wrong one for the question Batch
 
 ---
 
-### Batch 21 — K10-O1: use the shell solve's own ionisation front — Status: 🟡 gates registered 2026-08-29, not yet measured
+### Batch 21 — K10-O1: use the shell solve's own ionisation front — Status: ✅ **screened 2026-08-29 — G21.0/G21.1/G21.2 PASS; G21.3's disclosed prior MISSED by 16%; G21.4 the confined excess survives at half; G21.5 confirms what O1 does NOT fix**
 
 **Maintainer decision 2026-08-29**, after Batch 20 priced the four remedies for K10's unbounded
 front: **take O1.** Stop solving a second front; read the one trinity already computes.
@@ -3282,6 +3282,66 @@ is now an argument that the shell solve's front is the right thing to read, not 
   untouched and independent. (c) Coverage is still two configs of one cloud. Report all three.
 
 **Out of scope:** the freeze ratchet (needs a live-call decision), coverage, default flip, D5.
+
+---
+
+#### Batch 21 RESULT — 2026-08-29, measured against the gates above
+
+Reproduce: `python docs/dev/phii-identity/harness/k10_o1_screen.py`. Arm patch:
+`hpc/b14/k10_o1_arm.patch` (applies clean; supersedes `k10_arm.patch`). 189 rows.
+
+- **G21.0 ✅ PASS.** `R_IF` is read verbatim from `ShellProperties.R_IF` with no rescaling or
+  clipping, and `_k10_front_radius` is **deleted** — verified in the built module: the attribute is
+  gone and no `brentq`/`scipy.optimize` call survives in the code path (the word appears only in the
+  docstring). Slice 1's F1/F2/F4 are therefore closed **by deletion**, not by patching.
+- **G21.1 ✅ PASS — the domain violation is gone.** Front inside the shell on **140/140** rows
+  (B3M energy 0/44, implicit 0/34, transition 0/41, momentum 0/21 beyond). The Batch 18 form
+  violated this on **18/18** momentum and **43/44** energy rows.
+- **G21.2 ✅ PASS — seam C is closed.** Implied layer mass ≤ shell mass on **every row of every
+  phase and both configs**; worst case 0.9407 (B3M energy), B3M momentum median 0.1261 / max 0.7724.
+  The Batch 18 form gave momentum median 0.4835 / **max 2.4892** and energy median **6.39**.
+- **⚠️ G21.3 — measured, and my disclosed prior MISSED.** I pre-registered "B3M momentum 3.901" from
+  Batch 20's pricing; measured **3.274**, a 16% miss. Recorded as a miss. Cause is not an error but a
+  row-set difference: Batch 20 took the median over `b9`'s own 17 momentum rows, while this screen
+  joins `b17`'s 21 momentum rows to the nearest `b9` front, and the two span different `t`.
+
+| config | phase | O1 `ρ` | K10 `ρ` | O1/K10 | **O1/shipped** |
+|---|---|---|---|---|---|
+| B3M | energy | 1.001 | 1.006 | 0.995 | **1.001** |
+| B3M | implicit | 1.005 | 1.005 | 1.000 | **1.005** |
+| B3M | transition | 2.228 | 3.420 | 0.645 | **0.462** |
+| B3M | momentum | 3.274 | 5.415 | 0.600 | **0.494** |
+| B3MW01 | transition | 3.947 | 10.915 | 0.363 | **0.340** |
+| B3MW01 | momentum | 4.782 | 15.075 | 0.318 | **0.325** |
+
+  **Two things stand out.** The **confined branch is left essentially alone** (O1/shipped 1.001 and
+  1.005), so unlike the Batch 18 form O1 does not disturb the branch §6b found exactly
+  self-consistent. And the **driving branch is roughly halved against shipped C3c** — ×0.49 in B3M
+  momentum, ×0.33 in B3MW01. That is a large, measurable change and it is the thing an arm run
+  would show.
+- **G21.4 — the confined excess SURVIVES, at about half.** ED median **+0.4751%** over `P_conf`
+  (max 0.6130%), against the Batch 18 form's +0.96% no-dust / +0.67% dusty. My pre-registered
+  expectation was that it might collapse to ≈0 and take Batch 16's "Lancaster's first-order term is
+  delivered" argument with it. **It does not** — the term is smaller but real, so that argument
+  stands in reduced form.
+- **G21.5 — what O1 does NOT fix, verified under the patch rather than asserted.**
+  (a) `test_phii_c3c_spitzer.py` is **still 5 failed / 1 passed** — the drive remains ∝ `P_conf`, so
+  there is still **no photoionisation-only limit**. O1 fixes the *geometry*, not the *singularity*.
+  (b) `test_phii_c3c.py` **6 failed / 5 passed** — C3c's exact-0.0 confined contract is replaced by
+  the +0.475% excess. Broken by design, recorded, not re-baselined. (c) The **per-segment freeze
+  ratchet** is untouched and independent.
+
+**Where this leaves K10.** Of Batch 20's five blocking findings, O1 closes **three** outright
+(domain violation, seam C, and the numerics defects F1/F2/F4 by deletion) and **retires slice 1's F7**
+by making `shell_props` load-bearing again — which also gives the vestigial `n_IF_Str > 0` call-site
+gate something real to gate (**B11.E**). It closes **none** of: the missing photo-only limit, the
+freeze ratchet, or coverage. ⚠️ And it does **not** resolve D5's magnitude question — at 3.274×`P_ram`
+the momentum phase is still photoionisation-dominated, just by ~3× instead of ~7×.
+
+🔑 **A simplification worth stating: Batch 17 is now moot as machinery.** The shell solve's `R_IF`
+already carries dust, so the closure's own dust model is not shipped under O1. Batch 17's value is
+retroactively **validation** — it showed the closure's dust matched the shell solve's to 5.6%, which
+is now an argument for reading `R_IF` rather than a component of the code.
 
 ---
 
@@ -3481,6 +3541,7 @@ rules on the register.
 | 16 | ✅ | 2026-08-28 | **K10's composition mapping SOLVED and gated through the real `P_drive` expressions.** G16.0 PASS (worst 2.22e-16 vs 1e-12, all four phases, both `Q_eff` variants): `return = P_conf·ρ − (P_ram if the composition adds it)` yields the CEM drive exactly. G16.1 PASS (853/853 non-negative). G16.2 PASS — the confined-limit term is delivered at **+0.96%** median over `P_conf` instead of being swallowed by the `max`, which was Batch 14's specific finding. G16.3 established the predicted signature change: inside `dt_switchon` the ramped/un-ramped `P_conf` ratio is 0.33–0.995 (median 0.711), so K10 must receive the **ramped** `press_bubble`, which `params` does not carry. G16.4 reproduces Batch 13's magnitudes exactly by a different code path (momentum 1.605/0.851 B3M, 2.242/1.096 B3MW01) — an independent cross-check. Remaining K10 blockers: dust (Batch 17) and a full-run arm | `data/b16_composition.csv`, `harness/k10_composition_check.py` |
 | 17 | ✅ | 2026-08-28 | **Dust is now INSIDE the closure and validated against trinity's own shell solve — G13.4's blocker discharged.** The closure is `get_shellODE.py:120`'s own photon equation at uniform `n₀`, so it is a reduction of the code's dust treatment, not a new model. **G17.0 PASS**: predicted/measured `f_dust` median **1.056**, 97.3% of rows within 25%, both configs agreeing (1.064 / 1.052) — the G9.4 risk did not materialise because dust is linear in `n` where recombination is quadratic. G17.1 PASS (436/436 fronts). G17.2 PASS (σ_d→0 recovers the closed form to 9.3e-13). ⛔ **G17.3's pre-registered expectation MISSED**: the self-consistent drive is not between the no-dust and post-hoc values but just below both (`c/b` 0.92–0.95) — the closure debits photons continuously rather than once. Re-run sensitivity is still ≈2× (1.886–2.214), which is dust genuinely mattering, not a revived blocker. G17.4 end-to-end: composed/shipped 1.006/1.005/0.746/0.884 (B3M) and 1.059/1.099/0.982/1.034 (B3MW01). ⚠️ ED-phase dust validated on **1 row** — the ledgers only replayed driving rows | `data/b17_dust_closure.csv`, `harness/k10_dust_closure.py` |
 | 18 | 🟡 | 2026-08-28 | **K10 implemented as an arm and per-call gated; the ladder is owed.** Patch adds `get_phii_k10` + `_k10_front_radius`, aliases `get_phii_c3c` to it, **zero call-site edits**, no new dependency. ⛔ **G18.0 FAILED as written (6.761e-02 vs 1e-10)** — recorded, not re-barred; diagnosed as *entirely* the `P_conf` source (`P_conf` rel err **0.0 in implicit and momentum**, 6.8e-2 energy / 5.9e-3 transition): the screens recovered it from stored columns, production recomputes it from `Eb` and a solved `R1`, and **production is correct**. ✅ **G18.0′ amendment PASSES at 1.005e-12** with `P_conf` held fixed, so the production closure IS what Batches 16/17 validated. ✅ Arm runs clean (SC, 114 snapshots, 338 s, zero distress). ✅ G18.1's contract change live: `P_HII > 0` on 97/97 energy and 17/17 implicit rows where C3c gives exactly 0.0. ⚠️ Bounds Batch 17's offline error: momentum/implicit exact, transition ≤0.59%, **energy ≤6.8%** | `data/b18_percall.csv`, `harness/k10_percall_equivalence.py`, `hpc/b14/k10_arm.patch` |
+| 21 | ✅ | 2026-08-29 | **K10-O1: read the shell solve's own front instead of solving one — three of Batch 20's five blockers closed.** G21.0 PASS (`R_IF` read verbatim; `_k10_front_radius` **deleted**, so slice 1's F1/F2/F4 close by deletion). G21.1 PASS — front inside the shell on **140/140** rows, against 18/18 momentum + 43/44 energy violating before. G21.2 PASS — implied layer mass ≤ shell mass on every row (max 0.94 vs 2.49 before), so **seam C is closed**. ⚠️ G21.3's disclosed prior missed by 16% (3.274 measured vs 3.901 registered; row-set difference, recorded). Confined branch left alone (O1/shipped 1.001/1.005); driving branch **halved** vs shipped (×0.494 B3M momentum, ×0.325 B3MW01). G21.4 — the confined excess survives at **+0.475%**, about half the Batch 18 form, so Batch 16's first-order-term argument stands reduced. G21.5 verified under the patch: **still no photo-only limit** (spitzer 5 failed), freeze ratchet untouched, coverage unchanged | `data/b21_o1_screen.csv`, `harness/k10_o1_screen.py`, `hpc/b14/k10_o1_arm.patch` |
 | 5-s3 | ✅ | 2026-08-13 | **Wind ladder DONE — Lancaster resolved in transition, open in momentum.** First ladder (`simple_cluster`: SC/SW3/SW10) **VOID** — all three terminate at `stop_t` still in implicit, so `t_cross = never` is not evidence about winds; the crossover is structurally floored at the transition handover (`ratio@entry` < 1 on every config). Re-run on B3M (`B3MW01/1/3/10`), all four valid. **Transition: (a) PASSES** — confined fraction 8.8% → 23.8% → 28.9% → 38.8%, lag/`t_entry` +1.5% → +37.2%, and `ratio@entry` = 0.7144/0.1227/0.0553/0.0235 vs the **pre-registered** 0.68/0.12/0.054/0.022 (exponent **−0.743** vs −0.74, errors 2–7%) — a Weaver-derived prediction holding out of its fitted regime. **Momentum: OPEN** — 100% HII-dominated on all four; `P_C3a/P_ram ∝ Lw^−0.33` ⇒ inversion needs `Lw ≈ 260`. **Not** an O(1) normalisation error (same normalisation predicts transition to 7%): it is the `R2^−3/2` geometry. Mechanism: energy duration **identical** (0.0030 Myr) and transition duration wind-independent; only implicit moves (`Lw^−0.388`), which is why `t_cross` *falls* with wind. ⚠️ Retracted mid-run claim that energy row counts (69/87/96/105) meant longer energy phases — that is timestep refinement, not duration | `data/b5s3_ladder_lag.csv`, `data/b5s3_ladder_regime.csv`, `data/b5s3_ladder_screen.csv`, `harness/lag_vs_handover.py` |
 
 ### 8.2 Config wall-times (filled by Batch 0)
@@ -3546,6 +3607,8 @@ the rule being enforced.
 | `data/b17_dust_closure.csv` | `harness/k10_dust_closure.py` | 17 | no run — dust inside the K10 closure (uniform-`n₀` reduction of `get_shellODE.py:120`), validated against the ledgers' measured `dust_Pb` |
 | `data/b18_percall.csv` | `harness/k10_percall_equivalence.py` | 18 | no run — implemented `get_phii_k10` vs the Batch 17 screened closure; carries the `P_conf` diagnostic that explains G18.0's failure |
 | `hpc/b14/k10_arm.patch` | the exact Batch 18 arm diff (apply in a detached worktree) | 18 | arm code; never merged — D5 open |
+| `data/b21_o1_screen.csv` | `harness/k10_o1_screen.py` | 21 | no run — O1 (`ρ` from the shell solve's `R_IF`) vs the Batch 18 form on the same committed rows |
+| `hpc/b14/k10_o1_arm.patch` | the Batch 21 O1 arm diff; **supersedes `k10_arm.patch`** | 21 | arm code; never merged — D5 open |
 | `data/b19_cancellation.csv` | `harness/cancellation_check.py` | 13 (correction; the `b19_` prefix is a naming wart — it belongs to the Batch 13 retraction, not to a Batch 19) | no run — factorial test of the volume/dust corrections to C3a on committed B3M rows; retracts the cancellation claim |
 
 Run dirs (not committed — regenerate with `harness/run_batch.py`):
@@ -4786,3 +4849,42 @@ b0 run and to `bb302e0` for every b1 run (§9 records how that was protected).
   live decision is instead **whether K10's front should be capped** — at the shell edge, at `rCloud`,
   or by available mass — which slice 2 has already priced at a **1.78× cut to the drive**
   (`drive/P_conf` 9.770 → 5.49). No `trinity/` source touched.
+
+- **2026-08-29 (maintainer picks O1; three of Batch 20's five blockers close, two do not)** —
+  Maintainer, after Batch 20 priced the four candidate remedies: *"let's do O1, use the shell solve's
+  own front."* Gates registered and committed before implementation, per §0.
+  **The change is a deletion, not an addition.** `rho = (shell_props.R_IF / R2)**2`, and
+  `_k10_front_radius` **goes away entirely**. `R_IF` is a first-class field on `ShellProperties`
+  (`shell_structure.py:39`, set at `:227`), so this is a read. Removing the front solve closes slice
+  1's **F1** (guard tested `k·(hi−R2)` when cancellation is governed by `k·R2`, so it never fired),
+  **F2** (float64 bracket failure → unhandled `ValueError`, or a silently 8.9%-wrong root at low
+  metallicity) and **F4** (`ZeroDivisionError`/`OverflowError`) *by construction* — there is no
+  solver left to be fragile. It also makes `shell_props` load-bearing again, retiring slice 1's F7
+  and giving the vestigial `n_IF_Str > 0` gate something real to gate (**B11.E**).
+  **Measured (189 rows).** **G21.1 PASS**: front inside the shell on **140/140** rows, where the
+  Batch 18 form was outside on 18/18 momentum and 43/44 energy. **G21.2 PASS**: implied layer mass
+  ≤ shell mass on **every row**, worst 0.9407, against the old max of **2.4892** — **seam C is
+  closed**. **G21.4**: the confined excess **survives at +0.475%** (about half the old +0.67%), so
+  my pre-registered worry that Batch 16's first-order-term argument would evaporate did **not**
+  materialise; it stands in reduced form.
+  ⚠️ **G21.3's disclosed prior missed by 16%** — I registered 3.274… no: I registered **3.901** from
+  Batch 20's pricing and measured **3.274**. Recorded as a miss. Not an error: Batch 20 took the
+  median over `b9`'s own 17 momentum rows while the screen joins `b17`'s 21 rows to the nearest
+  front, and the two span different `t`.
+  **The magnitude story is the headline for an arm.** The confined branch is left essentially
+  untouched (O1/shipped **1.001** energy, **1.005** implicit — unlike the Batch 18 form, O1 does not
+  disturb the branch §6b found exactly self-consistent), while the driving branch is **roughly
+  halved against shipped C3c**: ×0.494 in B3M momentum, ×0.325 in B3MW01. That is a large and
+  measurable change.
+  ⛔ **What O1 does NOT fix, verified under the patch rather than asserted (G21.5):**
+  `test_phii_c3c_spitzer.py` is **still 5 failed / 1 passed** — the drive is still ∝ `P_conf`, so
+  there is still **no photoionisation-only limit**; O1 fixes the geometry, not the singularity. The
+  **freeze ratchet** is untouched. Coverage is still two configs of one cloud. And D5's magnitude
+  question is **not** resolved — 3.274×`P_ram` is still photoionisation-dominated, by ~3× instead of
+  ~7×.
+  🔑 **Batch 17 is now moot as machinery**: the shell solve's `R_IF` already carries dust, so the
+  closure's own dust model is not shipped under O1. Batch 17's value is retroactively *validation* —
+  it showed the closure's dust matched the shell solve's to 5.6%, which is now an argument for
+  reading `R_IF` rather than a component of the code. `hpc/b14/sync.sh` now defaults to
+  `ARMS="baseline k10_o1"`. Batch 18's `k10_arm.patch` is **superseded** but kept for provenance.
+  No `trinity/` source touched on `main`.
