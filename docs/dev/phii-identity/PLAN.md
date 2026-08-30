@@ -5491,3 +5491,30 @@ WARNING | run_energy_implicit_phase | beta-delta solver unconverged for 11 conse
   touches — into non-convergence, and that coupling was not anticipated by any gate in this
   workstream. Worth a registered health check on any future arm: **βδ unconverged-segment counts**,
   which no gate currently reads.
+
+- **2026-08-30 (CLOSING STATE — read this first on a fresh session)** — Where the workstream stands
+  after the O1 arm ladder.
+  **C3c (shipped) vs O1 (arm, `hpc/b14/k10_o1_arm.patch`), B3M momentum unless noted:**
+
+| | C3c | O1 |
+|---|---|---|
+| density | Strömgren over the **wind cavity** — a fictitious density in gas **4–5 orders too thin** to host it | pressure-equilibrium skin density = `shell_structure.py:125`'s own `nShell0` |
+| geometry | cavity `R2³` | the shell solve's **own** front `R_IF` |
+| dust | absent from the closure | inherited from `get_shellODE.py:120` |
+| branch | yes — `0.0` or `P_C3a` | **none** |
+| observed branch jump | **+6.79%** (B3M) / +5.97% (B3MW01) | **zero crossings on every row of every config** |
+| seam A (photons) | present, budget ≈`2·Qi` | absent by construction |
+| seam C (mass) | present, 1.5638× over-subscribed | **closed** — layer mass ≤ shell mass on every row (max 0.94) |
+| drive | **7.10**×`P_ram` | **3.27**×`P_ram` |
+| confined branch | exactly 0.0 | **+0.475%** excess |
+| ΔR2 vs C3c | — | **−10.3%** B3M, **−13.2%** B3MW01; **+2…+14%** on confined-only configs |
+| fates | — | **no genuine change** in 12 valid runs |
+| health | — | **0 warnings in 12 of 14 runs**; the 2 exceptions are PRB over-extended 15× by my ladder |
+
+  **What O1 does NOT fix:** the photo-only limit (see below); the per-segment freeze (structural — it
+  wins the `max` on 100% of confined rows, and a live call is barred because it needs a shell solve
+  per ODE evaluation); and D5's magnitude question — 3.27×`P_ram` is still photoionisation-dominated.
+  **NEXT, in order:** (1) `CONFIGS=PRB STOP_T=0.1 ./sync.sh submit` — the one decisive open
+  measurement, separating "PRB is compact" from "I over-extended it"; (2) add βδ unconverged-segment
+  counts to G18.2 (free, sitting in `trinity.log`, would have caught the PRB issue instantly);
+  (3) the floor guard the photo-limit decision made a condition; (4) **D5**.
