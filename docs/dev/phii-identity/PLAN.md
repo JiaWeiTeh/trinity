@@ -5320,3 +5320,64 @@ b0 run and to `bb302e0` for every b1 run (§9 records how that was protected).
   it, or to accept a scheme whose confined branch is piecewise-constant by construction. **This is a
   design decision, not a bug fix**, and it is the last substantive thing between O1 and a
   recommendation.
+
+- **2026-08-30 (trigger/fate/P_drive census lands — `trigger-fate-pdrive-audit.md`)** — On the
+  maintainer's three questions (are the transition/momentum/collapse triggers physically sound;
+  is the bubble fate reflected; does `P_drive` make sense, incl. the b14 `R_IF/R2` scheme), a
+  full census of the working tree at `b8f77276` was gathered by two independent read-only source
+  passes and written up as `docs/dev/phii-identity/trigger-fate-pdrive-audit.md`. Headlines, in
+  this workstream's terms: **(1)** every *phase-advance* trigger (velocity-sign, cooling_balance,
+  energy_to_momentum, no-root streak, energy_floor, ram_dominated) is recorded **nowhere** in
+  `metadata.json` — `main.py` discards the runners' `termination_reason`; only the log-scraped
+  `transition_channel` survives. **(2)** 1b/1c solver deaths hand off silently instead of ending
+  the run; `ev:694`'s substring test sets `isCollapse=True` on `large_radius_event`; the collapse
+  fate has two radii (event `1.5·coll_r` vs inline `coll_r`). **(3)** the P_drive findings here
+  (freeze ratchet both sides, two-Strömgren-volumes gate/value split, un-ramped predicate,
+  momentum factor-~2 branch jump) were re-verified independently and none contradicts the ledger;
+  K10-O1 applies cleanly at `b8f77276` (`get_phii_c3c` byte-identical to the patch base, +26-line
+  offset from `mass_freeWind`). New, unmeasured observation for any O1 gate: the EOM debits
+  `P_ext` at `R2` while O1 amplifies the drive to the `R_IF` surface — negligible while
+  `P_ext ≪ P_drive`, unexamined near stall. Maintainer-decision queue is §6 of the audit doc;
+  it adds nothing to D5 but sequences the segment-freeze call first.
+
+- **2026-08-30 (PRB + WW arm ladder — ⛔ O1 FAILS ON THE COMPACT CONFIG. The §3 prediction lands.)**
+  — Sweep `phii_arm_20260829_144118Z`, `CONFIGS=PRB,WW`, both arms at `cce8c924`. The config
+  override reached the job this time (only PRB and WW ran), so the positional-argument fix works.
+
+| config | baseline | k10_o1 | slowdown |
+|---|---|---|---|
+| **PRB** | **ok**, 672 s, 234 snaps, `energy>implicit>transition>momentum`, `shell_collapsed` | ⛔ **timeout > 7200 s**, 210 snaps, **only `energy>implicit`** | **> 10.7×** |
+| WW | ok, 533 s, 164 snaps | ok, 574 s, 173 snaps | 1.1× |
+
+  ⛔ **PRB does not complete under O1.** The baseline finishes in 11 minutes and reaches all four
+  phases; the arm was **killed at the 2-hour wall limit having never left the implicit phase**.
+  ⚠️ **The ledger's `FATE-CHANGE shell_collapsed → NA` must NOT be read as a fate change.** `NA` is
+  the absence of a terminal state because the run was *killed*, and the `+44.5%` ΔR2 compares a
+  completed baseline against a trajectory frozen mid-implicit. By this workstream's standing rule —
+  *"a run that never reaches the phase a gate needs is VOID, never a confirming null"* — **the PRB
+  comparison is VOID as a fate/ΔR2 measurement**. What it *is* is a hard performance/stiffness
+  failure, and that is the finding.
+  ✅ **WW passes**: 1.1× wall time, no fate change (`shell_collapsed → shell_collapsed`), OVER-BAR at
+  **+14.15%** — the same magnitude class as the other confined-branch configs (SC +5.28%, F1LO
+  +2.08%), and the same sign, since WW never reaches the driving branch either.
+  🔑 **This is §3's C2a prediction, arriving where it said it would.** That row rates the
+  per-segment freeze ratchet *"**catastrophic at compact scale**"* (citing phase1a-init Extra finding
+  #1), and **PRB is the compact probe** — the one config the ladder had never covered. O1 activates
+  that ratchet on **100% of confined rows** (`P_drive == P_HII` on 481/481, measured 2026-08-29), and
+  PRB is precisely where the class was predicted to bite. The slowdown is *not* per-call cost — under
+  O1 the helper only reads `shell_props.R_IF` and is cheap — so it is **more ODE steps**, i.e.
+  stiffness, which is the signature a piecewise-constant drive would produce.
+  ⚠️ **Stated as the strong hypothesis it is, not as a conclusion.** The freeze ratchet is the
+  predicted and most likely cause, but it is **not yet demonstrated** for this run: diagnosing it
+  needs PRB's own `dictionary.jsonl` and `trinity.log` (step sizes, where it stalls in implicit),
+  which stayed on `/gpfs` — `./sync.sh down-all` for stamp `20260829_144118Z`. Competing
+  explanations not yet excluded: PRB-specific stiffness independent of the freeze, or an interaction
+  with the `dt_switchon` ramp at compact radii.
+  **Consequence for the recommendation, stated plainly: O1 cannot be adopted as it stands.** Its
+  record is otherwise strong — five configs over four decades of density, zero distress, no fate
+  changes, offline screens predicting reality to four significant figures — but it **fails to
+  complete a registered core config**, and that is disqualifying regardless of how good the rest
+  looks. The freeze is structural under O1 (it wins the `max` by construction) and the obvious fix
+  is barred (a live call needs a shell solve per ODE evaluation), so this is now the **central**
+  design problem, not one of three blockers. My 2026-08-29 line that "the only thing that could
+  still overturn this is PRB" is hereby cashed: it did.
