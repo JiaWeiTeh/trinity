@@ -5381,3 +5381,43 @@ b0 run and to `bb302e0` for every b1 run (§9 records how that was protected).
   is barred (a live call needs a shell solve per ODE evaluation), so this is now the **central**
   design problem, not one of three blockers. My 2026-08-29 line that "the only thing that could
   still overturn this is PRB" is hereby cashed: it did.
+
+- **2026-08-30 (PRB diagnosed from the raw run — my freeze-ratchet hypothesis is REFUTED, and the
+  real finding is bigger: O1 UNBINDS the compact config)** — Pulled PRB's own snapshots rather than
+  reasoning from the wall time.
+  ⛔ **The stiffness/ratchet explanation I recorded yesterday is not supported.** `P_HII` repeats
+  exactly on **0 of 78** adjacent implicit rows in the arm — no staircase is visible at snapshot
+  resolution (the freeze is *within* a `solve_ivp` segment, i.e. between snapshots, so snapshot data
+  cannot see it either way). It is **not evidence for** the ratchet; it is the absence of the
+  evidence I claimed. Withdrawn as the explanation.
+  🔑 **What actually happens: the two arms are on qualitatively different trajectories.**
+
+| | baseline (C3c) | k10_o1 |
+|---|---|---|
+| t = 0.055 / 0.017 | R2 0.331, v2 **+3.30** | R2 0.182, v2 **+6.06** |
+| t ≈ 0.30 | R2 0.779, **momentum**, v2 **+1.10** | R2 **1.134**, **implicit**, v2 **+4.67** |
+| t = 0.443 | R2 0.864, v2 **−0.025** ← turning around | — |
+| end | R2 **0.01000** (the collapse floor), v2 −11.5, `shell_collapsed` | still expanding when killed |
+
+  **The baseline decelerates, turns over and collapses to the 0.01 pc floor. The arm never turns
+  over** — `v2` is +4.67 and *rising* at the point it was killed. O1's confined-branch excess is
+  enough to **unbind a shell that C3c collapses**.
+  🔑 **So the timeout is a SYMPTOM, not the disease.** Collapse terminates a run early; without it
+  the arm must integrate the full `stop_t`, and it does so entirely inside the **implicit** phase,
+  which is the expensive one (the βδ solver calls `get_bubbleproperties_pure`). The baseline spends
+  most of its wall time in the cheap momentum phase. That, plus ~3× smaller steps (median snapshot
+  `dt` 2.32e-5 vs 7.27e-5), accounts for the 10.7×.
+  ⚠️ **This is the first substantive FATE CHANGE in the whole ladder** — `shell_collapsed` → not
+  collapsing — and it is a **D3-level finding**, far more consequential than a performance problem.
+  D3 ruled that a *timing* change under an explained mechanism is acceptable but that **fate flips
+  remain reportable**. This is a flip, on a **registered core config**.
+  🔑 **And it sharpens what the confined-branch excess means.** That excess measures **+0.475%** of
+  `P_conf` (G21.4) and moves `R2` by +2–5% on SC/F1LO/WW. On PRB — compact, marginal, and sitting
+  near the collapse boundary — **the same ~0.5% flips the outcome**. So the excess is not merely
+  "not negligible" (2026-08-29's correction); on a marginal config it is **decisive**. Anything that
+  adopts O1 must confront that a sub-percent drive change reverses a fate.
+  **Open, and needed before any verdict:** whether PRB *should* collapse is a physics question this
+  ladder cannot settle — C3c says yes, O1 says no, and neither is self-evidently right. The
+  cheapest next measurement is to re-run PRB under the arm with a **longer wall limit** (the 2 h cap
+  was mine, not physics) to see what fate it actually reaches; `--time` in `b14.sbatch`. Until then
+  PRB's arm fate is **unknown**, not "no collapse".
