@@ -3624,6 +3624,7 @@ the rule being enforced.
 | `data/b20_domain.csv` | `harness/k10_domain_check.py` | 20 | no run — is K10 outside its own domain inside trinity's regime? |
 | `data/b22_bubble_density.csv` | `harness/bubble_density_probe.py` | 20 (exploratory) | no run — bubble real density from mass/volume; closed as unusable for `P_HII` |
 | `data/gb3_bubblemass_ledger.csv` | `harness/compare_trajectories.py` | GB | matched-`t` ledger for the `bubble_mass` fix; bit-identical |
+| `articles/{geen2019,geen2022,lancaster2025,lancaster2025b}.tex` | external primary sources (verbatim, not authored here) | — | the four closure papers; read in full 2026-08-30, quotes verified. ⚠️ *"When H II Regions are Complicated" = Geen **2019**; Geen 2022 = "Bottling the Champagne"* |
 | `LITERATURE_ASSESSMENT.md` | external input (not authored here) | — | **C-0 carve-out**, rev2 2026-08-18. Never load-bearing: cite for attribution only. *Indexed here 2026-08-29 — C-0 condition 4 had been unmet since the carve-out was written* |
 | `data/b19_cancellation.csv` | `harness/cancellation_check.py` | 13 (correction; the `b19_` prefix is a naming wart — it belongs to the Batch 13 retraction, not to a Batch 19) | no run — factorial test of the volume/dust corrections to C3a on committed B3M rows; retracts the cancellation claim |
 
@@ -5518,3 +5519,62 @@ WARNING | run_energy_implicit_phase | beta-delta solver unconverged for 11 conse
   measurement, separating "PRB is compact" from "I over-extended it"; (2) add βδ unconverged-segment
   counts to G18.2 (free, sitting in `trinity.log`, would have caught the PRB issue instantly);
   (3) the floor guard the photo-limit decision made a condition; (4) **D5**.
+
+- **2026-08-30 (PRIMARY-SOURCE READ of `articles/` — all four closure papers read in full; the
+  confined branch now has a literature verdict, and it favours O1's retained excess over C3c's
+  exact 0.0)** — Maintainer supplied the four LaTeX sources
+  (`articles/{geen2019,geen2022,lancaster2025,lancaster2025b}.tex`) and asked for inspiration on the
+  confined pressure. Two parallel read-only passes, quotes verified against the sources.
+  ✏️ **Title-attribution fix to our own record first:** *"When H II Regions are Complicated"* is
+  **Geen 2019** (its title line), not Geen 2022; **Geen 2022 is "Bottling the Champagne"**. The
+  §7.1/B11.G prose that cites the "Complicated" title should be read as Geen 2019. The equation
+  labels we cite (`wind:photoequilibrium` → 2019, `eqn:photoionisation_equilibrium_uniform` → 2022)
+  were already correct.
+  🔑 **Finding 1 — no source supports an exactly-zero confined contribution as general physics.**
+  (a) **Geen 2019** composes wind and photoionisation as *source terms inside one quartic*
+  (`wind:dynamics`: `(ṙ_i+v_0)⁴ = A_w(ṙ_i+v_0) + A_i r_i`, coupled through the shared skin density)
+  — the photoionisation term is **retained** when the wind confines the gas, and the paper
+  explicitly rejects naive independent pressure addition (Murray 2010 called out). (b) **Lancaster
+  Paper I eq. 36**: confined limit `F ≈ α_p ṗ_w (1 + (2/3)R_w/R_ch)` — *"just slightly above the
+  momentum-driven solution"*: small, **nonzero**, and it IS trinity's O1 form (their eq. 28 is
+  literally `P_conf·(R_i/R_w)²` applied at `R_i`). (c) **Paper II's simulations never show a
+  zero-PIR regime** — the only true-zero regime in either paper is radiation trapping at
+  `n̄ ≳ 3.8e8 cm⁻³` (Paper I eq. 20), far outside our configs. (d) Sharpest of all, **Paper I §5.1
+  criticises WARPFIELD by name** for using the photoionised pressure in the shell hydrostatics while
+  omitting its force from the momentum equation — the exact-0.0 defect class — calling it inaccurate
+  for typical massive GMCs in the ζ ≲ 1 regime. **Consequence: the O1 arm's +2–14% growth on
+  confined configs is the physics the sources predict, not an artifact**, and C3c's exact 0.0 is
+  **Geen 2022's scoped approximation** ("Bottling the Champagne": skin transmits `P_w`, adds
+  nothing) — published, but explicitly valid only deep in confinement, bounded by an overflow
+  condition, never claimed as general.
+  🔑 **Finding 2 — the Spitzer-floor problem has a published structural solution: Geen 2019's
+  additive closure.** As `ṗ_w → 0`, `A_w → 0` and the quartic degenerates to their generalised
+  Spitzer automatically — the photoionisation term *is* the floor, with no branch, no `max`, no
+  kink. Lancaster's photo-dominated limit (eq. 35, `F ≈ F_Sp + (α_p ṗ_w/2)(R_w/R_i)`) lands on the
+  same floor from the other side. **This supersedes my earlier `max(P_conf·ρ, P_layer)` suggestion**
+  — a `max` reintroduces a kink; the sources' structure is *additive at the closure level*.
+  🔑 **Finding 3 — Geen 2022's overflow condition is a ready-made validity/fate diagnostic, and we
+  have ALREADY MEASURED it firing.** Overflow (`M_i ≥ M(<r_i)`, their `eqn:overflowcondition`) marks
+  where the confined framework itself ends (champagne flow; "mostly beyond the scope of this
+  paper"). That is **G15.0's own finding from the other direction**: `m_ion/m_prof ≥ 0.95` on 31 of
+  72 replayed rows was recorded as K9's "near-massless shell" hazard — the sources say those rows
+  are at/past overflow, where *neither* C3c nor O1 is the right physics. Free to implement: the
+  `ionised_mass_fraction.py` machinery already computes the ledger.
+  **Supporting context worth keeping:** Lancaster sanctions the single-radius collapse as a useful
+  approximation (~35% worst error at `R_i/R_ch ≈ 1`) — relevant to the K8 deferral; their own model
+  transitions **discontinuously by construction** at `t_switch` (`R_i` jumps), so O1 is *smoother
+  than the source model*; Paper II measures **α_p = 4.66–6.20** with LyC on (vs trinity's delivered
+  1.0 — flagged as a tension with K7's closure, not reopened: their α_p comes from interface physics
+  trinity does not model, and `R_ch ∝ α_p²` shrinks the confined excess as α_p⁻²); Geen 2022 puts
+  radiation-pressure corrections in the confined skin at **1–13%** — same order as O1's +0.475%
+  excess, i.e. a ±few-percent confined-branch ambiguity is **within the sources' own error budget**;
+  and ⚠️ Geen 2019's appendix carries a `(r_i−r_w)³` typo for `(r_i³−r_w³)` — never transcribe the
+  appendix form. ⚠️ Coverage caveat: **Paper II's sims sit at ζ ≈ 0.7–1; the deep-confinement
+  ζ ≫ 1 branch is not directly simulated in either paper** — the confined-excess support is
+  analytic + indirect there.
+  **§8.3**: `articles/` registered as external primary sources (verbatim `.tex`, not authored here;
+  cite for physics with quotes verified; the folder is currently untracked under the maintainer's
+  `.gitignore` change). **Candidate implication, for the maintainer, not decided:** the natural
+  successor to O1's missing floor is an **additive Geen-2019-style composition** of the wind and
+  photoionisation source terms inside one closure — smooth in both limits, Spitzer floor automatic —
+  rather than a floor bolted on with `max`. Needs its own registration and gates if pursued.
