@@ -5460,3 +5460,34 @@ b0 run and to `bb302e0` for every b1 run (§9 records how that was protected).
   explaining why. The ladder should respect a config's own `stop_t` unless there is a reason not to,
   or state per-config overrides explicitly. Every ΔR2 I have quoted for PRB from this sweep is
   affected; the other four configs have `stop_t` ≥ 1.5 and are not.
+
+- **2026-08-30 (the 8× implicit cost DIAGNOSED from `trinity.log` — it is βδ non-convergence, and it
+  begins only PAST PRB's design horizon)** — Cause identified, not inferred. The arm's log carries
+  **4 warnings to the baseline's 1**, and the baseline's single one is cosmetic
+  (`simplify[bubble_dTdr_arr]: R²=0.7895`, a snapshot-downsampling notice). The arm's four are not:
+
+```
+WARNING | get_betadelta | Bubble properties calculation failed: MonotonicError at operations.py:159
+WARNING | run_energy_implicit_phase | beta-delta: no physical (dMdt>0) root at segment 63 (t=2.1178e-01)
+WARNING | run_energy_implicit_phase | beta-delta solver unconverged for 3 consecutive segments  (t=2.4425e-01)
+WARNING | run_energy_implicit_phase | beta-delta solver unconverged for 11 consecutive segments (t=2.8506e-01)
+```
+
+  🔑 **That is the 8×.** The βδ root-find is failing — first with **no physical (`dMdt > 0`) root**,
+  then unconverged for **3 consecutive segments**, then **11**. It is burning iterations searching
+  for a root that is not there, and the failure is **progressive**. The wall-clock stamps show it:
+  between the 3-segment and 11-segment warnings it spent **~6 minutes advancing t by 0.041**
+  (0.2442 → 0.2851). The baseline never enters this state at all — it runs to `t` = 1.125 clean.
+  ⚠️ **But note WHERE it starts: `t` ≈ 0.212, which is already 2× past PRB's own `stop_t` = 0.1.**
+  All three βδ warnings carry `t` values beyond the design horizon; **within PRB's designed range the
+  arm ran clean.** So this is a real O1 consequence — O1's larger, faster shell drives the bubble
+  structure into a regime where the βδ solver has no physical root, and C3c does not — but it
+  manifests **only outside the config's intended range**, in the same over-extended run my blanket
+  `STOP_T=1.5` created.
+  **Net reading, stated carefully.** (i) The 11.9× per-step cost is **explained**: βδ
+  non-convergence, not phase mix alone. (ii) It is **not** a reason to reject O1 on PRB, because PRB
+  at its own `stop_t` = 0.1 is clean and unremarkable (+5.81%). (iii) It **is** a genuine warning
+  about O1's reach: a scheme that drives harder can push the *bubble* solver — a component O1 never
+  touches — into non-convergence, and that coupling was not anticipated by any gate in this
+  workstream. Worth a registered health check on any future arm: **βδ unconverged-segment counts**,
+  which no gate currently reads.
