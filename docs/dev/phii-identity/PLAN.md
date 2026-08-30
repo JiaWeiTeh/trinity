@@ -5421,3 +5421,42 @@ b0 run and to `bb302e0` for every b1 run (§9 records how that was protected).
   cheapest next measurement is to re-run PRB under the arm with a **longer wall limit** (the 2 h cap
   was mine, not physics) to see what fate it actually reaches; `--time` in `b14.sbatch`. Until then
   PRB's arm fate is **unknown**, not "no collapse".
+
+- **2026-08-30 (PRB, corrected AGAIN: my ladder ran it 15× past its own design horizon. The
+  "fate change" is largely an artefact of MY misconfiguration.)** — Maintainer asked what PRB even
+  is. Reading its param answers the whole thing.
+  **PRB is a sub-parsec probe of a real compact object** (`docs/dev/phase1a-init/harness/probe.param`):
+  `mCloud` = **297 Msun**, `sfe` = 0.01 → **Mstar = 3.0 Msun** (a single B star, Q-matched to
+  `N_LyC` = 1.6e47), `nCore` = 8.7e3 cm⁻³, `rCore` = 0.05 pc, derived **`rCloud` = 0.6175 pc** — and
+  **`stop_t` = 0.1 Myr, in the file, commented *"~5x the observed age"***.
+  ⛔ **My ladder forced `STOP_T=1.5` on every config, including this one — 15× past its design
+  horizon.** Confirmed in both wall-time headers (`stop_t_override=1.5`). §8.2 records that Batch 0
+  ran PRB at **"0.1 (as committed)"**; everyone before me respected its own stop time. Both arms also
+  ran far outside the cloud (baseline `R2_max` ≈ 0.86 pc, arm 1.134 pc, against `rCloud` = 0.6175),
+  i.e. into `nISM` = 100 cm⁻³ — a regime this probe was never built to explore.
+  ✅ **The VALID comparison needs no re-run — both runs pass through t = 0.1:**
+
+| t | baseline `R2` | arm `R2` | ΔR2 |
+|---|---|---|---|
+| 0.05 | 0.30708 (implicit) | 0.32563 (implicit) | **+6.04%** |
+| **0.10** (PRB's own `stop_t`) | 0.45746 (implicit) | 0.48402 (implicit) | **+5.81%** |
+
+  **At its designed horizon PRB is entirely unremarkable** — +5.8%, the same sign and magnitude class
+  as SC (+5.28%), F1LO (+2.08%) and WW (+14.15%), all confined-branch configs. **No anomaly.**
+  ⛔ **So yesterday's "first substantive fate change in the ladder" is substantially WITHDRAWN.** The
+  non-collapse happens at `t` > 1.0, **ten times past** the config's design horizon and well outside
+  its cloud. It is a real difference *in that run*, but its physical meaning is doubtful and it
+  should **not** be quoted as a fate flip on a registered core config. The right statement: at PRB's
+  own stop time the two schemes differ by +5.8% and neither collapses.
+  ⚠️ **What is NOT explained, and is worth keeping open: the per-step cost.** Baseline **2.9 s** per
+  snapshot vs arm **34.3 s** — **11.9×**. Some is phase mix (arm: 132 energy + 78 implicit, **no
+  momentum**; baseline: 132 + 58 + 1 transition + **43 momentum**, and implicit is the expensive
+  phase because of the βδ root-find). But that alone does not cover it: the arm's implicit steps are
+  themselves roughly **8× more expensive** than the baseline's (~92 s vs ~11 s). **That is a genuine
+  unexplained signal** — plausibly the βδ solve taking more iterations in the regime O1's larger,
+  faster shell puts it in — and it needs the run's `trinity.log` to settle. Flagged, not diagnosed.
+  **Lesson for the ladder itself, and it is mine:** `run_batch.py --stop-t` applies a **blanket
+  override**, and at least one core config carries a deliberately short `stop_t` with a comment
+  explaining why. The ladder should respect a config's own `stop_t` unless there is a reason not to,
+  or state per-config overrides explicitly. Every ΔR2 I have quoted for PRB from this sweep is
+  affected; the other four configs have `stop_t` ≥ 1.5 and are not.
