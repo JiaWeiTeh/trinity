@@ -3353,6 +3353,109 @@ is now an argument for reading `R_IF` rather than a component of the code.
 
 ---
 
+### Batch 22 — K11, the additive closure — Status: 🟡 registered 2026-08-30; stage 0 (derivation) ✅ DONE; stages 1–4 not started
+
+**Provenance discipline for this batch, stated first because the maintainer demanded it:** *"do not
+assume what you find is correct. always double check first before asserting."* Every claim below is
+tagged **[V]** (verified against source or by computation this session), **[D]** (derived here,
+verified numerically in stage 0), or **[E]** (expectation — a guess to be measured, never quoted as
+fact). Anything untagged is prose.
+
+**The candidate.** Geen 2019's coupled system, translated to trinity coordinates
+(`r_w` → implied, `r_i` → `R_IF` from the shell solve, `P_w` → trinity's `P_conf`):
+
+    recombination [V, eq wind:photoequilibrium]:  (4π/3)·χ_e·α_B·n²·(r_i³ − r_w³) = Q_eff
+    pressure balance [V, eq wind:windpressurebalance]:  P_w(r_w) = pref·n,  P_w = ṗ_w/(4π r_w²)
+    eliminate r_w [V, eq wind:density; re-derived, matches line 565 exactly]:
+        f(n) = n²·R_IF³ − C_W·n^{1/2} − C_Q = 0
+        C_W = (ṗ_w/(4π·pref))^{3/2}     C_Q = 3·Q_eff/(4π·χ_e·α_B)
+    drive at R2 (Lancaster force-at-front convention, our O1 convention):
+        P_K11 = pref·n·(R_IF/R2)²
+
+**Stage 0 — derivation verification: ✅ DONE 2026-08-30, before this registration was committed.**
+- **[D] Unique positive root, proved and measured.** `f(0) = −C_Q < 0`, `f'` has one sign change,
+  `f(∞) = ∞` ⇒ exactly one positive root. Numerically: **2000/2000 random draws** over 9 decades of
+  each input give exactly one sign change; the root reproduces **both** source equations to 1e-8
+  (34/2000 draws are `r_w ≥ r_i` — wind fills the HII region — flagged out-of-domain, not errors).
+- **[D] Wind→0 limit: the full-sphere Strömgren density, exactly** (ratio 1.000000000000). This is
+  the Spitzer floor O1 lacks, delivered additively — no branch, no `max`, no kink.
+- **[D] Wind-dominant limit: `r_w → r_i` (thin skin at the front), balance holds by construction.**
+- ⛔ **[D] REFUTATION OF MY OWN FRAMING, recorded prominently:** I introduced this candidate as
+  "O1 + the floor". **False.** In the strong-wind limit `pref·n → ṗ_w/(4π R_IF²)`, so the drive at
+  R2 is `ṗ_w/(4π R2²)` = **`P_ram`, with NO area amplification** — whereas O1 gives
+  `P_ram·(R_IF/R2)²` ≈ 3.3–3.9× on measured momentum rows. The two sources are each self-consistent
+  (both give `F = ṗ_w·(r_i/r_w)²` in their own geometry); the disagreement appears **only under
+  trinity's one-radius pin**, because trinity's `Pb`-set skin (`n0`) is dilute and thick where
+  Geen's self-consistent `n_K11` is dense and thin. `n_K11/n0` **is the seam**, measurable per row.
+  **Which limit is right for trinity is D5. Batch 22 measures both; the maintainer decides.**
+
+**Design decisions pre-made (so execution needs no judgment):**
+- `ṗ_w` mapping: momentum phase → `4π R2²·P_ram` [V: pRam convention]; energy/implicit/transition →
+  `4π R2²·P_conf` with the **ramped** `P_conf` (G16.3 [V]). Geen 2019 itself sanctions both wind
+  branches (momentum- vs energy-conserving, `wind:pressure:momentum`/`:energy`, with cooling-time
+  guidance quoted at its line 448) [V].
+- `Q_eff`: run BOTH `Qi` and `Qi·(1−f_ionised_dust)` (shell's own measured dust) — Geen's balance is
+  dust-free [V], trinity's `R_IF` carries dust [V]; the mismatch is disclosed, not resolved silently.
+- `pref`, `χ_e`: trinity's own (`(μ_c/μ_i)k_B T`, explicit `χ_e`) — the G13.3 lesson [V].
+- Root-find: Brent on `[n_lo, n_hi]` with `n_hi` from the pure-Strömgren + pure-wind envelopes
+  (each analytic); cost ~µs, no shell solve inside ⇒ **no new freeze-ratchet exposure beyond O1's**
+  (it still reads `R_IF` per outer step — same caveat as O1, unchanged, stated).
+- Median convention: **`statistics.median`**, declared — not the `med()` order statistic (the
+  2026-08-29 housekeeping finding).
+
+**Stage 1 — offline screen on committed data** (`harness/k11_screen.py`, committed before first
+run; inputs `b9_layer_density` × `b11_mass_ledger` join [V: validated ≤1.5e-7], `b12` photon
+ledger, consts via `read_param`):
+- **G22.1 — limits (BLOCKING, the gate Batch 18 omitted).** With the wind term zeroed, `P_K11`
+  must reproduce the closed-form Strömgren value to **1e-10** on every row; with the photon term
+  zeroed, `P_K11·(R2/R_IF)²` must equal `P_ram` to **1e-10**. *Falsifier:* any row worse ⇒ the
+  translation is wrong; stop.
+- **G22.2 — decoupling regression (G14.0's bars verbatim).** OLS of `P_K11` on `Pb` over driving
+  rows; FAIL if slope ∈ [0.95, 1.05] with r² > 0.99; log-log slope disclosed alongside. **[E]**
+  strong coupling expected on confined rows (the balance is `Pb`-fed by construction — the D5
+  reframe says that can be physics; the gate measures, the register argues).
+- **G22.3 — magnitude + the seam, no bar.** Per phase per config: `P_K11/P_conf`,
+  `P_K11/P_O1`, **`n_K11/n0`** (the implied-`r_w` seam) and implied `r_w/R2`. **[E]** momentum
+  `P_K11/P_ram` ∈ (1, 3.3) — nearer 1 where `C_W` dominates; **[E]** confined branch: small smooth
+  excess → this is where K11 sits between C3c and O1 and the numbers decide nothing by themselves.
+- **G22.4 — domain + overflow.** Layer mass ≤ shell mass on every row (the G21.2 bar); rows with
+  `r_w ≥ r_i` or `m_ion/m_swept ≥ 1` (Geen 2022's overflow [V]) flagged out-of-domain, reported,
+  never silently dropped.
+- **G22.5 — branch census.** Flips vs C3c's driving set, both directions, both `Q_eff` variants.
+
+**Stage 2 — arm** (only after the maintainer reviews stage 1): patch in `hpc/b14/` style at a
+pinned SHA; per-call equivalence vs the stage-1 screen **with `P_conf` held fixed included from the
+start** (the G18.0/G18.0′ lesson); pins disclosed up front — `test_phii_c3c.py` breaks by design,
+and **G22.7 [E]: `test_phii_c3c_spitzer.py` should now PASS** — the first candidate in this
+workstream for which that would be true. If it does not pass, that is a stage-2 stop, not a
+re-baseline.
+
+**Stage 3 — ladder** (Helix, `sync.sh`, both arms at one SHA): SC, F1LO, F1HI, B3M, B3MW01 at
+`stop_t` 1.5; **PRB at its OWN `stop_t` = 0.1** (the 2026-08-30 lesson); WW; **B3MW001 as the
+floor's stress config** (the config the photo-limit decision flagged). Gates: βδ
+**unconverged-segment count == baseline** (the PRB lesson — free from `trinity.log`, no gate read
+it before); wall time ≤ 2× per config; matched-`t` ledger with **phase sequences enumerated**; the
+floor guard diagnostic (drive < layer's own thermal pressure ⇒ log) carried in the arm.
+
+**Stage 4 — verdict criteria, pre-registered so "better" is not decided after seeing the data.**
+K11 is *safer than O1* iff: G22.1 exact, G22.7 passes, G22.4 clean everywhere O1 was clean, βδ and
+wall-time gates pass, and no fate change within any config's design horizon. K11 is *better than
+C3c* iff additionally: no branch discontinuity (state-jump 0 [E: by construction — verify]), seams
+A/C absent at the G21.2 bar, and the B3MW001 run shows the floor engaging (drive → Spitzer, not →
+0) where C3c's behaviour is untested. **What stage 4 CANNOT decide, stated in advance:** the
+K11-vs-O1 confined-regime disagreement (`P_ram` vs `P_ram·(R_IF/R2)²`) — that is **D5**, needs the
+maintainer, and no gate in this batch converts into it.
+
+**Risks, disclosed:** (1) the one-radius pin makes the closure's implied `r_w` ≠ R2 in general —
+the seam is *quantified* (G22.3), not removed; (2) `c_i²` ↔ `pref` unit mapping is stage-0-checked
+but the `TShell_ion` = `T(c_i)` identification is an assumption [E]; (3) the freeze ratchet is
+**unchanged** — K11 does not touch it; (4) Geen 2019's appendix `(r_i−r_w)³` typo must never be
+transcribed [V]; (5) Paper II never simulated ζ ≫ 1, so deep confinement has analytic support only
+[V]; (6) all stage-1 numbers ride on the b9/b11/b12 committed replays and inherit their ≤6.8%
+energy-row `P_conf` caveat on 2 rows [V].
+
+---
+
 ### §6b Self-consistency audit of the C3c/C3a picture — 2026-08-18 (maintainer question) — ✅ **RE-VERIFIED by B11.0 (2026-08-18): A/C/D CONFIRMED, B REVISED, none REFUTED**
 
 > **Status of this section after B11.0.** Every claim below was re-derived adversarially against
@@ -3511,6 +3614,7 @@ the maintainer's call.
 | **K8** | **Three-radius model** — `R1 < R_w ≤ R2 ≡ R_i`, with `R_w` algebraic | structural; a follow-up paper | **S** | ⬆️ **Raised A → S 2026-08-28** on a primary-source read: Lancaster+2025 (arXiv:2505.22730) applies the wind at `R_w` and the photoionised gas at `R_i` and calls the distinction central, so this is the source's own structure rather than a speculative row. **Deferred by the maintainer 2026-08-29** ("keep one radius") — a follow-up paper, and the reason O1 borrows Lancaster's force amplification without his inertia placement. Pending. K5/K6 are the minimal ways to get `R_w ≠ R2` without this |
 | **K9** | **Shell-mass adjustment** — `M_sh = (4π/3)R_i³(ρ̄ − ρ_i)` | the momentum equation's inertia | **M + S** | **Measured here, and the literature already does it** (Lancaster `eq:pr_spitzer_adj`, with its own "not consistent with the derivation… \[but\] can be more accurate" caveat). B11.C2: **+8.55%/+9.22%** in `R2` at nominal wind, **+0.45%/+0.97%** at `Lw × 0.1`. This is §6b seam C's fix, not a separate idea. **Rev2 ranks it #2.** ⚠️ **Downgraded 2026-08-27 by Batch 15's pre-gate**: B11.C2's +8.55/+9.22% debited **`M_cav`**, which is NOT the K9 quantity — in trinity's geometry K9 debits the shell's own **ionised layer**, measured at `m_ion/m_shell` median **0.461** in momentum (range 0.109–**1.000**), 1.0000 throughout energy. It **reaches a massless shell on real rows**, its admissible phase scope is narrow, and G15.3 may make it inseparable from K5. **Not the cheap independent win it appeared to be** |
 
+| **K11** | **Additive closure (Geen 2019)** — solve the skin density `n` from `n²·R_IF³ = C_W·n^{1/2} + C_Q`, where `C_W = (ṗ_w/(4π·pref))^{3/2}` is the wind term (pref = `(μ_c/μ_i)k_B T`, trinity's P(n)), `C_Q = 3·Q_eff/(4π·χ_e·α_B)` the photon term; drive `= pref·n·(R_IF/R2)²` | one helper + a scalar Brent (provably unique positive root); reads `shell_props.R_IF` like O1 | **S** (Geen 2019 eqs. `wind:photoequilibrium`/`wind:windpressurebalance`/`wind:density`, all verified from source 2026-08-30; derivation re-verified numerically on 2000 draws, both source equations recovered from the root) | **Registered 2026-08-30, Batch 22. The candidate with BOTH exact limits**: wind→0 recovers the full-sphere Strömgren density **exactly** (the Spitzer floor O1 lacks — verified to 1e-12), wind-dominant recovers the thin-skin-at-front limit. ⚠️ **NOT "O1 + a floor"** — my first framing, refuted by my own stage-0 check: in the strong-wind limit K11's drive at R2 is **`P_ram` (no area amplification)** where O1 gives `P_ram·(R_IF/R2)²` ≈ 3.3–3.9×. The disagreement traces to `n_K11` vs `n0(Pb)`: Geen's self-consistent skin is dense+thin, trinity's `Pb`-set skin is dilute+thick, and the two coincide only when the closure's implied `r_w` = R2. **K11-vs-O1 in the confined regime IS a D5-shaped question; Batch 22 measures it, does not decide it** |
 | **K10** | ✅ **screened (Batch 13)** — **CEM-interpolated `P_HII`** — the smooth coupled form, phase-agnostic: `n_H0 = (μ_i/μ_c)·P_conf/(k_B T)` (pressure-equilibrium skin density — `shell_structure.py:125`'s own line), `R_i³ = R2³ + 3·Qi_abs/(4π χ_e α_B n_H0²)` (recombination over the cavity-**excluded** layer volume), `P_drive = P_conf·(R_i/R2)²`; equivalently the helper returns the **excess** `P_HII_eff = P_conf·[(R_i/R2)² − 1]` and the existing momentum sum composes it exactly. In the MD phase this is algebraically Lancaster's `α_p ṗ (1 + R_w/R_ch)^{2/3}` at `α_p = 1` | one helper; ⛔ **"zero `P_drive` edits" CORRECTED 2026-08-28 — true in momentum ONLY** (see the composition note in the status cell) | **S + M** | **Registered 2026-08-18, Batch 13 screens it offline.** The momentum-phase minimal form of K6, containing K5's volume fix by construction. Exact limits: confined → excess `= (2/3)(R2/R_ch)·P_conf` (Lancaster's own first-order term — the correct "better than 0.0"); unconfined → Spitzer over the layer volume. **Smooth**: kills the factor-2 momentum switch jump, the 23.4% transition jump, and the §3c.1 `t_cross` kink by construction. ⚠️ Known gaps, pre-stated: **no dust** in the closure (illustrative: predicts `R_i/R2` ≈ 3.1–3.9 on B3M momentum where the shell solve measures `R_IF/R2` ≈ 1.7–2.3 — G13.4 sizes it); assumes quasi-static balance (Lancaster *imposes* it: "we now imagine"); ED-phase use maps `P_conf` to the thermal `Pb` (their §ed_jfb structure) and must respect the D-ramp window. **Batch 13 measured it (2026-08-27):** state-jump **exactly 0** where the shipped rule jumps **+34%**; healthy branch untouched on B3M (+0.68%); but the **dust rule fired at 2.05×**, so **K10 cannot ship without a dust model** — and with dust it lands **within 10–15% of the shipped drive** — ⛔ the "cavity-volume and missing-dust errors partly cancel" gloss on that agreement is **RETRACTED 2026-08-29**: in momentum both corrections deflate on 17/17 rows and compound to ×0.2506, and corrected-C3a (1.545) is 4.10× below K10 (6.333), so K10 is not a corrected C3a at all (see §Batch 13 RESULT). Note `R_ch`(trinity) = `chi_e`·`R_ch`(Lancaster). ⛔ **COMPOSITION CORRECTION 2026-08-28 (algebra, not yet gated).** "The excess rides the existing compositions" holds **in momentum only**, and Batch 13 could not have caught it because its screen computed the total drive `P_conf·(R_i/R2)²` directly instead of routing a helper return through each phase's `P_drive` expression. With `ρ ≡ (R_i/R2)² ≥ 1`: momentum (`P_HII + P_ram`, `P_conf = P_ram`) composes the **excess** exactly (`P_ram(ρ−1) + P_ram = P_ram·ρ`) but the full value over-counts by `P_ram`; energy/implicit (`max(Pb, P_HII)`) is the **opposite** — the **full value** composes exactly (`max(Pb, Pb·ρ) = Pb·ρ`) while the excess is **swallowed by the `max` whenever `ρ < 2`**; transition (`max(Pb, P_HII + P_ram)`) is exact under neither. ⚠️ **This destroys K10's headline confined-branch virtue as specified**: the "correct better-than-0.0" first-order term `(2/3)(R2/R_ch)·P_conf` is *small* by construction, so under `max(Pb, excess)` it is discarded exactly where it was meant to improve on the 0.0. K10 therefore needs a phase-aware helper **or** real edits at the live `P_drive` sites (`energy_phase_ODEs.py:253,256`, `run_momentum_phase.py:445`) — it is **not** a one-helper zero-edit change, and its risk class rises accordingly. Needs its own gate before any K10 arm |
 
 **How the rows relate, so they are not treated as nine independent choices.**
@@ -5578,3 +5682,32 @@ WARNING | run_energy_implicit_phase | beta-delta solver unconverged for 11 conse
   successor to O1's missing floor is an **additive Geen-2019-style composition** of the wind and
   photoionisation source terms inside one closure — smooth in both limits, Spitzer floor automatic —
   rather than a floor bolted on with `max`. Needs its own registration and gates if pursued.
+
+- **2026-08-30 (K11 registered as Batch 22 — the additive closure, with its derivation verified
+  BEFORE registration, and my own framing refuted by my own check)** — Maintainer asked for a
+  comprehensive plan for the additive-closure candidate, with the standing instruction to double
+  check everything before asserting. Method followed: the three source equations were re-read from
+  `articles/geen2019.tex` directly (not from the reader-agent summaries), the substitution to
+  `wind:density` re-derived by hand and **verified numerically on 2000 random draws** (unique
+  positive root 2000/2000; both source equations recovered from the root to 1e-8; wind→0 limit =
+  full-sphere Strömgren to 1e-12; wind-dominant limit = thin skin at the front), all **before** the
+  batch was registered.
+  ⛔ **The check refuted the framing I had recorded earlier the same day.** I had presented the
+  additive closure as "O1 + the Spitzer floor". The verified strong-wind limit gives the drive at
+  R2 as **`P_ram` with no area amplification**, where O1 gives `P_ram·(R_IF/R2)²` — the candidates
+  **disagree by the full amplification factor exactly in the confined/strong-wind regime**, and the
+  disagreement traces to `n_K11` (Geen's dense thin self-consistent skin) vs `n0(Pb)` (trinity's
+  dilute thick one). Both sources are internally consistent; the conflict exists only under the
+  one-radius pin. **That makes K11-vs-O1 a D5-shaped question, and Batch 22 is registered to
+  measure it, not decide it.** Had I written the plan from my own summary instead of re-deriving,
+  the central premise would have been wrong.
+  **Batch 22 as registered:** stage 0 done (above); stage 1 offline screen with the limits gate
+  Batch 18 fatally omitted now **BLOCKING and first** (G22.1); G14.0's decoupling bars verbatim;
+  the `n_K11/n0` seam quantified per row; domain + Geen-2022 overflow flags; both `Q_eff` dust
+  variants disclosed. Stage 2 arm only after maintainer review, with the pre-registered headline
+  **G22.7: `test_phii_c3c_spitzer.py` should PASS under K11** — the first candidate for which that
+  would be true, and a stage-2 STOP if it does not. Stage 3 ladder includes **PRB at its own
+  `stop_t`**, **B3MW001 as the floor's stress config**, and the **βδ unconverged-segment gate** the
+  PRB incident showed no gate was reading. Stage 4 verdict criteria pre-registered, including the
+  explicit statement of what the batch cannot decide. Expectations are tagged [E] and never quoted
+  as fact; verified items [V]/[D] carry their provenance. No `trinity/` source touched.
