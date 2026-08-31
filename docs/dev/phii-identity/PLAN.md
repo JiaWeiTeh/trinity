@@ -3454,6 +3454,61 @@ transcribed [V]; (5) Paper II never simulated ζ ≫ 1, so deep confinement has 
 [V]; (6) all stage-1 numbers ride on the b9/b11/b12 committed replays and inherit their ≤6.8%
 energy-row `P_conf` caveat on 2 rows [V].
 
+#### Batch 22 STAGE 2 GATES — registered 2026-08-31, committed BEFORE any run
+
+Maintainer: *"if they are less than 4 runs, run locally. analyse also why it crashes if it did.
+make sure that things are correct with no assumptions."* Three runs (B3MW001 × baseline/O1/K11),
+so local. Arms are **worktrees at the current pinned SHA**, never edits to `main`, and the
+maintainer's uncommitted `trinity/` files are excluded by construction (a worktree carries only
+committed state).
+
+- **G22.6 — per-call equivalence (BLOCKING; the G18.0/G18.0′ lesson).** The implemented
+  `get_phii_k11` must reproduce `harness/k11_screen.py`'s drive on the stage-1 rows to **1e-10**
+  relative **with `P_conf` and `R_IF` held fixed from the start** — G18.0 failed because the screen's
+  `P_conf` was an approximation of production's, and the amendment isolates the closure rather than
+  weakening the bar. *Falsifier:* worse than 1e-10 ⇒ the thing implemented is not the thing stage 1
+  screened, and nothing downstream is trustworthy.
+- **G22.7 — the photo-only limit, AS REGISTERED. ⛔ My expectation is CORRECTED, before running, to
+  predict FAIL — for a structural reason I did not check when I registered it.**
+  `test/test_phii_c3c_spitzer.py`'s `_Shell` stub sets **only** `shell_fAbsorbedIon` and supplies no
+  `R_IF`; any scheme that reads `shell_props.R_IF` — O1 **and** K11 alike — hits its guard and
+  returns `0.0`. So the registered [E] *"`test_phii_c3c_spitzer.py` should now PASS — the first
+  candidate in this workstream for which that would be true"* was wrong on **inspection of the
+  fixture**, not on physics, and it is recorded as a failed gate of my own design, the same class as
+  G13.1/G13.3/G18.0. Run anyway, report the count.
+- **G22.7′ — the amended limit test (the G8.4′/G18.0′ precedent: isolate, do not weaken).** Supply
+  the fixture's own thin-front idealisation, `R_IF = R2`, and require **(a)** K11's drive equals
+  shipped `P_C3a` to **1e-12** at every radius the test probes and **(b)** the full suite passes
+  under K11. *Derivation, stated before running:* with the wind term zeroed the closure gives
+  `n = sqrt(3·Q_eff/(4π χ_e α_B R_IF³))`, so at `R_IF = R2` the drive is `pref·n`, algebraically
+  identical to `get_phii_c3c`'s `P_C3a`. *Falsifier:* any deviation ⇒ K11 does not contain the
+  classical limit and the floor claim collapses.
+- **G22.8 — the runs exist (artifact check, NOT exit code).** Each arm must produce a
+  `dictionary.jsonl` with ≥1 snapshot and a recorded terminal state; a run that never reaches the
+  phase a gate needs is **VOID, never a confirming null**. ⚠️ The local interpreter is **3.8.8**,
+  below trinity's stated ≥3.9, so `run_batch.py`'s post-run reporting is *expected* to raise on
+  `Path.is_relative_to` **after** the run outputs are written (Batch 18 recorded this). **A traceback
+  there is not a run failure, and exit 0 is not evidence a run happened** — both directions checked
+  against the artifact.
+- **G22.9 — matched-`t` ΔR2 + phase sequences ENUMERATED**, all three pairings (O1/base, K11/base,
+  K11/O1), with a fate table. No bar: this is a measurement, and fate flips are enumerated, never
+  silently passed (D3). The F1HI lesson applies — a magnitude bar alone missed the largest structural
+  change in the O1 ladder.
+- **G22.10 — βδ unconverged-segment count** from each run's own `trinity.log` — the free gate the PRB
+  incident showed **no gate was reading**. Bar: **arm count == baseline count**. *Falsifier:* any arm
+  entering βδ non-convergence the baseline does not.
+- **G22.11 — the floor question, which is the point of the run.** `B3MW001` = `Lw × 0.01`, the
+  registered weak-wind stress config, never run in any batch. Report per arm: `P_drive` against the
+  ionised layer's own thermal pressure (the floor guard the 2026-08-29 photo-limit decision made a
+  *condition* of accepting O1), and `drive_K11/drive_O1` on matched rows. **[E], disclosed and
+  falsifiable:** stage 1 measured the closure photon-dominated by 10–92× on driving rows, so I expect
+  K11 > O1 here too, i.e. the "floor" sits **above** O1 rather than under it. **If instead the wind
+  term dominates at `Lw×0.01` and K11 ≈ O1, my stage-1 reading is wrong and I will say so.**
+
+`stop_t`: bench3's own is **5**; the O1 ladder ran this family at **1.5** and these runs use 1.5 for
+like-for-like comparability. That is a *shortening*, inside the design horizon — not the PRB error,
+which was running a config 15× **past** a deliberately short one.
+
 #### Batch 22 STAGE 1 RESULT — 2026-08-31, measured against the gates above
 
 `harness/k11_screen.py` (committed at `9372897f`, **before** its first run) → `data/b22_k11_screen.csv`,
