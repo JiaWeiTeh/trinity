@@ -66,11 +66,12 @@ def load(run_dir):
     if meta:
         try:
             m = json.load(open(meta))
-            terminal = (m.get("stopping_reason") or m.get("fate")
-                        or m.get("termination_reason") or m.get("simulation_end_reason"))
-            if terminal is None:
-                terminal = next((str(v) for k, v in m.items()
-                                 if "stop" in k.lower() or "fate" in k.lower()), None)
+            # trinity records the fate under termination.outcome. The earlier fallback
+            # scan for any key containing "stop" grabbed `stop_t_diss` (1.0) and reported
+            # it as the fate -- a real defect, caught 2026-08-31 by checking metadata.json
+            # by hand instead of trusting this function's output.
+            t = m.get("termination") or {}
+            terminal = t.get("outcome") or t.get("detail")
         except (ValueError, OSError):
             terminal = None
     return rows, terminal, next(run_dir.rglob("trinity.log"), None)
@@ -202,6 +203,23 @@ def main():
         nb = sum(1 for r in sel if r["below_floor"])
         print(f"  {a:5} n={len(sel):4d}  drive/floor median {statistics.median(vals):9.4f}"
               f"  min {min(vals):9.4f}  rows BELOW the floor: {nb} ({100.0*nb/len(sel):.1f}%)")
+
+    # SENSITIVITY, added 2026-08-31 AFTER seeing the data and labelled as such: the gate
+    # says "the ionised layer's own thermal pressure" without naming the density. The
+    # committed choice above is n_IF (at the front). n0 (shell_structure.py:125's inner
+    # boundary, the density O1 and K11 actually drive with) gives a LOWER floor and so a
+    # kinder verdict -- it is reported because picking the flattering convention silently
+    # would be exactly the failure this workstream keeps catching. Lead with n_IF.
+    print("\n  sensitivity — same gate with floor = pref*n0 instead of pref*n_IF:")
+    for a in ARMS:
+        sel = [r for r in out_rows if r["arm"] == a and r["drive_over_floor"] is not None
+               and r["shell_n0"] and r["n_IF"]]
+        if not sel:
+            continue
+        v = [r["P_drive"] / (r["P_layer_thermal"] * r["shell_n0"] / r["n_IF"]) for r in sel]
+        nb = sum(1 for x in v if x < 1.0)
+        print(f"    {a:5} n={len(sel):4d}  median {statistics.median(v):9.4f}"
+              f"  rows below: {nb} ({100.0*nb/len(sel):.1f}%)")
 
     # K11 vs O1 on matched t — the D5 number this run exists to produce
     if "o1" in data and "k11" in data:
