@@ -28,9 +28,18 @@ bracket collapses onto the analytic answer).
 
 IDENTITY WORTH KNOWING (used by G22.4). At the root, C_W n^(-3/2) = R_IF^3 - C_Q/n^2, i.e.
     r_w^3 = R_IF^3 - C_Q / n^2 ,
-so r_w < R_IF *identically* whenever Q_eff > 0. The G22.4 "r_w >= r_i" flag is therefore
-unreachable on any row with photons; it is still computed and reported, and the report says
-so rather than passing it off as a clean measurement.
+so r_w < R_IF *identically* whenever Q_eff > 0, and the closure's own layer mass is
+    m_layer = (4 pi/3)(R_IF^3 - r_w^3) n mu  ==  mu Q_eff / (chi_e alpha_B n)   [exact]
+i.e. the recombination-balanced mass. The right-hand form is what this harness uses, because
+the left-hand one CANCELS CATASTROPHICALLY exactly where G22.4 is barred: measured this
+session, `(R_IF^3 - r_w^3)` computed directly is wrong by up to 7.2e-4 relative on 2000
+random draws (worst at r_w/R_IF = 1.000000000000, layer volume 5.5e-13 of R_IF^3) while the
+root itself is exact there (scaled |f(n)| = 2.1e-16). The same cancellation makes the
+"r_w >= r_i" flag FLOAT-REACHABLE in the wind-dominated corner -- 377 of 2000 draws with
+pdot_w in [1e0,1e6] and Q_eff in [1e-12,1e-6] -- which is almost certainly what stage 0's
+"34/2000 draws are r_w >= r_i" was measuring. It is a floating-point artefact, not a
+physical out-of-domain condition, and the report says so rather than passing a zero (or a
+non-zero) count off as a clean measurement.
 
 INPUTS (all committed; C-6 stamps checked by eye, no run performed)
   b17_dust_closure.csv    anchor: config/phase/t/R2 + the RAMPED P_conf and P_ram (G16.3).
@@ -297,12 +306,16 @@ def screen(consts):
                 Q_eff = Qi * (1.0 - fd)
             else:
                 Q_eff = Qi
-            n, r_w, _, cq_v = k11_solve(R_IF, pdw, Q_eff, pref, chi, aB)
+            n, r_w, cw_v, cq_v = k11_solve(R_IF, pdw, Q_eff, pref, chi, aB)
             drive = pref * n * amp
-            # both source equations, recovered from the root (stage 0's check, on real rows)
-            resid = abs(n * n * (R_IF ** 3 - r_w ** 3) / (cq_v) - 1.0) if cq_v > 0 else None
-            m_layer = (FOUR_PI / 3.0) * (R_IF ** 3 - r_w ** 3) * n * mu
-            m_fromR2 = (FOUR_PI / 3.0) * max(R_IF ** 3 - R2 ** 3, 0.0) * n * mu
+            # residual of the eliminated equation, SCALED -- the well-conditioned check.
+            # (n^2 (R_IF^3 - r_w^3)/C_Q - 1 is the same statement but cancels; see docstring.)
+            resid = (abs(n * n * R_IF ** 3 - cw_v * math.sqrt(n) - cq_v)
+                     / (n * n * R_IF ** 3))
+            # exact, cancellation-free: (4pi/3)(R_IF^3 - r_w^3) n mu == mu Q_eff/(chi aB n)
+            m_layer = mu * Q_eff / (chi * aB * n)
+            dR = R_IF - R2
+            m_fromR2 = ((FOUR_PI / 3.0) * dR * (R_IF ** 2 + R_IF * R2 + R2 ** 2) * n * mu)
             oob = []
             if r_w >= R_IF:
                 oob.append("rw>=ri")
@@ -454,10 +467,11 @@ def report(rows):
           f"  -> {'PASS' if not nover else 'FAIL'}")
     print("  ⚠ `r_w >= r_i` is UNREACHABLE by construction: at the root r_w^3 = R_IF^3 - C_Q/n^2,")
     print("    so Q_eff > 0 forces r_w < R_IF. A zero count here is an identity, not evidence.")
-    print("    (Stage 0 reported 34/2000 draws with r_w >= r_i; that figure needs re-checking.)")
+    print("    It IS float-reachable when the wind dominates (377/2000 draws at pdot_w 1e0-1e6,")
+    print("    Q_eff 1e-12..1e-6) — the likely source of stage 0's reported 34/2000, which is")
+    print("    therefore a cancellation artefact rather than a physical out-of-domain count.")
     rr = [r["recomb_resid_q"] for r in rows if r["recomb_resid_q"] is not None]
-    print(f"  source-equation recovery from the root (recombination residual): worst "
-          f"{max(rr):.3e}")
+    print(f"  root quality (scaled residual of the eliminated equation): worst {max(rr):.3e}")
 
     print("\n" + "=" * 78)
     print("G22.5 — BRANCH CENSUS vs C3c's driving set (driving := shipped P_HII > 0;")
@@ -492,10 +506,11 @@ def selfcheck(draws=2000, seed=20260831):
         Q = 10 ** rnd.uniform(-6, 3)
         pref, chi, aB = 10 ** rnd.uniform(-3, 1), rnd.uniform(1.0, 1.2), 10 ** rnd.uniform(-6, -2)
         n, r_w, C_W, C_Q = k11_solve(R, pdw, Q, pref, chi, aB)
-        # both source equations must come back out of the root
+        # the pressure balance, and the eliminated equation scaled (see the docstring on why
+        # the direct (R^3 - r_w^3) form of the recombination check is not usable here)
         worst_bal = max(worst_bal, abs(pdw / (FOUR_PI * r_w ** 2) / (pref * n) - 1.0))
         worst_rec = max(worst_rec,
-                        abs((FOUR_PI / 3.0) * chi * aB * n ** 2 * (R ** 3 - r_w ** 3) / Q - 1.0))
+                        abs(n * n * R ** 3 - C_W * math.sqrt(n) - C_Q) / (n * n * R ** 3))
         if r_w >= R:
             rw_ge_ri += 1
         # limits
@@ -505,11 +520,11 @@ def selfcheck(draws=2000, seed=20260831):
         worst_wind = max(worst_wind, abs(pref * n_p / (pdw / (FOUR_PI * R ** 2)) - 1.0))
     print(f"selfcheck on {draws} draws (seed {seed}):")
     print(f"  pressure balance recovered   worst {worst_bal:.3e}")
-    print(f"  recombination recovered      worst {worst_rec:.3e}")
+    print(f"  eliminated eq (scaled) resid worst {worst_rec:.3e}")
     print(f"  wind->0  == Stromgren(R_IF)  worst {worst_str:.3e}")
     print(f"  photons->0 == pdot/(4 pi R^2) worst {worst_wind:.3e}")
     print(f"  draws with r_w >= r_i        {rw_ge_ri}/{draws}   "
-          "(must be 0: r_w^3 = R^3 - C_Q/n^2)")
+          "(0 in this range; float-reachable when the wind dominates — see the docstring)")
     assert max(worst_bal, worst_rec, worst_str, worst_wind) < 1e-10
     assert rw_ge_ri == 0
     print("  selfcheck OK")
