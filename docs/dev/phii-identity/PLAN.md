@@ -3509,6 +3509,46 @@ committed state).
 like-for-like comparability. That is a *shortening*, inside the design horizon — not the PRB error,
 which was running a config 15× **past** a deliberately short one.
 
+#### Batch 22 STAGE 3 GATES — registered 2026-09-01, committed BEFORE any run
+
+Maintainer: *"run PRB and B3MW001 to their own stop_t."* Two configs × three arms = **6 runs**,
+executed as **two sequential batches of 3** to respect the standing cap. `--stop-t` is **omitted**
+so each config uses its own value (verified in `run_batch.py`: `extra = {"stop_t": args.stop_t} if
+args.stop_t else {}`).
+
+| config | its OWN `stop_t` | provenance |
+|---|---|---|
+| **PRB** | **0.1** | `probe.param:15`, commented *"Myr = 1e5 yr, ~5x the observed age"* |
+| **B3MW001** | **5** | bench3's own `stop_t`; `Lw × 0.01` is the only override |
+
+⚠️ **Cost disclosed up front:** B3MW001 to `t = 5` is expensive — O1 took **4623 s to reach only
+`t = 1.5`** in stage 2, and it was already in βδ non-convergence. It may also terminate *early* if
+it collapses, which is itself the measurement. PRB to 0.1 is cheap.
+
+- **G22.12 — each config at its OWN `stop_t` (the PRB lesson, made a gate).** No blanket override.
+  *Falsifier:* any run whose artifacts show a `stop_t` override ⇒ void and re-run. This exists
+  because my own 2026-08-30 ladder ran PRB **15× past** its design horizon and produced a
+  "fate change" that had to be withdrawn.
+- **G22.13 — the fate table, now MEANINGFUL.** Stage 2's fate table was uninformative because my
+  `stop_t = 1.5` override cut every arm before its fate resolved. At each config's own horizon,
+  reaching `stopping_time` is a *designed* endpoint and collapse is the alternative, so the
+  comparison carries information. Enumerate all outcomes; a fate difference is **reportable, not
+  silently passed** (D3).
+  **[E1], registered before running and falsifiable:** from stage 2's endgame — O1's `v2` was
+  **−2.02 and falling**, `R2` contracting since `t = 1.1785`, 84/442 rows negative — I predict
+  **O1 reaches `shell_collapsed` before `t = 5` on B3MW001, while baseline and K11 do not.**
+  *Falsifier:* O1 does not collapse, or baseline/K11 also collapse.
+- **G22.14 — βδ unconverged-segment counts**, as G22.10. **[E4]:** baseline clean on both configs;
+  O1's B3MW001 count exceeds baseline's (it already did by `t = 1.5`).
+- **G22.15 — matched-`t` ΔR2 + the `v2` endgame**, all three pairings, per config.
+  **[E2]:** the 2026-08-30 correction read **+5.81%** for O1-vs-baseline at `t = 0.1` *from the
+  over-extended run*. A clean run **to** 0.1 should reproduce that within a few tenths of a point.
+  *Falsifier:* materially different ⇒ reading a truncated trajectory at `t` is not equivalent to
+  integrating to `t`, which would be a finding about every ΔR2 in this workstream.
+  **[E3]:** PRB at `t = 0.1` never leaves the confined branch, where stage 1 measured K11 and O1
+  within +1.5%/+0.7% of `P_conf`, so I predict **|ΔR2(K11) − ΔR2(O1)| < 3 percentage points**.
+  *Falsifier:* a wider split ⇒ the closures differ on the confined branch more than stage 1 implies.
+
 #### Batch 22 STAGE 2 RESULT, part 1 — the limit gates, 2026-08-31
 
 Arms are three `git worktree`s at `1c46410c`, so each runs **only committed state** and the
