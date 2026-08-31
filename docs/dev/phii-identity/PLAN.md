@@ -3559,8 +3559,11 @@ photoionisation-only limit is now confirmed **structural**: its drive *is* `P_co
 so `P_conf → 0` forces the drive to zero, and **supplying `R_IF` does not help it** — no
 implementation choice can. K11 genuinely contains the limit, reproducing classical
 Spitzer/Hosokawa–Inutsuka D-type expansion including `test_mis_normalisation_is_caught`, the
-control that makes the other four passes evidence rather than decoration. **This is the first
-candidate in §7.1 to pass Batch 8's anchor**, and the registered stage-2 headline [E] is
+control that makes the other four passes evidence rather than decoration. **Among the front-reading closure
+candidates (K10 / O1 / K11), K11 is the only one that passes Batch 8's anchor.** ⛔ **NOT "the
+first candidate in §7.1" — that was an overstatement and is withdrawn: the SHIPPED scheme C3c
+passes it 6/6, on both the committed fixture and the amended one. The test was written for C3a.**
+The registered stage-2 headline [E] is
 therefore *right in substance and wrong as written* — it does not pass the test as committed,
 because that test cannot supply a front; it passes the moment the front is supplied.
 
@@ -3595,7 +3598,13 @@ code was evidence either way, and the artifact was.
 
 O1's own log: *"no physical (dMdt>0) root at segment 83 (t=9.29e-01)"*, then *"unconverged for
 3 consecutive segments"*, then *"11 consecutive"*, ending **"120/143 segments converged (84%),
-22"** unconverged. That is the 3.9× wall time, and it is the **PRB mechanism reproduced on a
+22"** unconverged.
+⚠️ **Mechanism, stated so this is not read as an intrinsic property of the scheme.** O1 spends
+**286 of 442 snapshots (64.7%) in the implicit phase** against baseline 166/330 and K11 162/322
+(both **50.3%**). The βδ solver lives in that phase, so O1 meets the no-root regime because its
+under-driving keeps it there ~1.7× longer — the non-convergence is **downstream of the
+trajectory**, not an independent defect of the closure. K11's clean sheet is likewise a property
+of *its* trajectory on *this* config, not proof that K11 is gentler on the bubble solver. That is the 3.9× wall time, and it is the **PRB mechanism reproduced on a
 second, independent config** — but this time it **cannot be dismissed as my over-extension**:
 PRB's onset was at `t ≈ 0.212`, already 2× past its own `stop_t = 0.1`, whereas this begins at
 `t = 0.929` and bench3's own `stop_t` is **5**. **Well inside the design horizon.** The
@@ -3605,9 +3614,25 @@ any gate"*; the gate now exists, and on its first outing it fired on O1 and not 
 slowness is not the PRB mechanism". Wrong — the warnings appeared later in the run. It **is**
 the PRB mechanism.
 
-**✅ G22.9 — matched-`t` ΔR2, phase sequences enumerated, fate table.** All 330 matched points,
-**phase sequences IDENTICAL across all three arms**, and **no fate change** — every arm
-`stopping_time`.
+**🟡 G22.9 — matched-`t` ΔR2, phase sequences enumerated, fate table.** All 330 matched points,
+**phase sequences IDENTICAL across all three arms**, every arm `stopping_time`.
+⛔ **"No fate change" is TRUE AND MISLEADING, and reporting it flat was an error.** All three runs
+were **cut by the clock** at `stop_t = 1.5` — my override; bench3's own `stop_t` is **5** — so no
+arm had the opportunity to reach a natural fate, and a fate table on a clock-truncated run carries
+no information. It also hides that the three trajectories were **visibly diverging toward
+different fates** at the cut:
+
+| arm | `v2` over the last six snapshots | rows with `v2 < 0` | reading |
+|---|---|---|---|
+| baseline | +0.79 → **+0.61**, decaying | 0/330 | coasting outward |
+| **O1** | −1.08 → **−2.02**, accelerating inward, `R2` **falling** 4.372 → 4.158 | **84/442, first at `t` = 1.1785** | **turned over — contracting** |
+| **K11** | +4.11 → **+6.05**, rising, `R2` accelerating outward | 0/322 | accelerating outward |
+
+**O1's shell has turned around and is collapsing; K11's is accelerating away; the baseline sits
+between them.** That is the PRB pattern inverted, and it is also the natural reading of O1's βδ
+trouble — a decelerating, energy-losing bubble is exactly where a `dMdt > 0` root stops existing.
+**The fate question on this config is OPEN, not answered**, and settling it needs the runs carried
+to bench3's own `stop_t` = 5.
 
 | pairing | ΔR2 (max == end) |
 |---|---|
@@ -3638,7 +3663,15 @@ ionised layer's own thermal pressure" without naming the density; `n_IF` is what
 committed *before* the run and is what this table leads with. The `n0` variant was added
 **after** seeing the data, is labelled as such in the harness, and is **kinder to K11** — it is
 reported precisely because silently adopting the flattering convention is the failure mode this
-workstream keeps catching. **What is robust under BOTH conventions, and in every phase
+workstream keeps catching.
+⛔ **And it is worse than merely kinder: for K11 the `n0` column is a TAUTOLOGY and must not be
+cited as evidence.** `n_K11 ≥ n_wind = n0·(R2/R_IF)²` ⇒ `drive = pref·n·(R_IF/R2)² ≥ pref·n0`,
+identically. K11's **0/322** is that inequality restated, and the measured minimum (**1.6789**)
+sits above 1 exactly as the algebra requires. The same applies to any floor defined as *the
+photoionisation-only value*: `drive_K11 ≥ pref·n_Str` by construction, so **K11 cannot fail such
+a gate at all.** The non-circular content of G22.11 is confined to whether **O1 and baseline**
+fall below — which they do — and to the `n_IF` column, where K11 is *not* protected by
+construction and does fall below on 100/322 rows. **What is robust under BOTH conventions, and in every phase
 separately: the ordering K11 > baseline > O1.** O1 is the only arm whose median drive sits
 *below* its own layer's thermal pressure on the committed convention.
 
@@ -4039,7 +4072,7 @@ maintainer's ruling on the register, i.e. D5.
 | GB | ✅ | 2026-08-29 | **`bubble_mass` freeze FIXED in production (momentum only) — the session's only `trinity/` behaviour change.** The bubble solve runs only in energy/implicit, so `bubble_mass` was a stale carry-over: 99.6429 Msun against a true enclosed mass of 0.116 (**860× too large**). Fixed with `mass_freeWind` = `2·L_mech·R2/v³`, reusing `pRam`'s convention. **All five gates pass**; GB.3 is **bit-identical** (`dR2_max` 0.000%, **0 of 220 rows** differ, `R2_end` 14.0584340349 both arms), because `bubble_mass` reaches only `shell_grav_*`, which is diagnostic-only and never enters the EOM. Transition deliberately left stale and marked in-source | `data/gb3_bubblemass_ledger.csv` |
 | 5-s3 | ✅ | 2026-08-13 | **Wind ladder DONE — Lancaster resolved in transition, open in momentum.** First ladder (`simple_cluster`: SC/SW3/SW10) **VOID** — all three terminate at `stop_t` still in implicit, so `t_cross = never` is not evidence about winds; the crossover is structurally floored at the transition handover (`ratio@entry` < 1 on every config). Re-run on B3M (`B3MW01/1/3/10`), all four valid. **Transition: (a) PASSES** — confined fraction 8.8% → 23.8% → 28.9% → 38.8%, lag/`t_entry` +1.5% → +37.2%, and `ratio@entry` = 0.7144/0.1227/0.0553/0.0235 vs the **pre-registered** 0.68/0.12/0.054/0.022 (exponent **−0.743** vs −0.74, errors 2–7%) — a Weaver-derived prediction holding out of its fitted regime. **Momentum: OPEN** — 100% HII-dominated on all four; `P_C3a/P_ram ∝ Lw^−0.33` ⇒ inversion needs `Lw ≈ 260`. **Not** an O(1) normalisation error (same normalisation predicts transition to 7%): it is the `R2^−3/2` geometry. Mechanism: energy duration **identical** (0.0030 Myr) and transition duration wind-independent; only implicit moves (`Lw^−0.388`), which is why `t_cross` *falls* with wind. ⚠️ Retracted mid-run claim that energy row counts (69/87/96/105) meant longer energy phases — that is timestep refinement, not duration | `data/b5s3_ladder_lag.csv`, `data/b5s3_ladder_regime.csv`, `data/b5s3_ladder_screen.csv`, `harness/lag_vs_handover.py` |
 | 22-s1 | 🟡 | 2026-08-31 | **K11 (Geen 2019 additive closure) screened offline — the blocking limits gate PASSES and two registered expectations are REFUTED.** ✅ **G22.1 PASS** (the gate Batch 18 omitted): wind→0 reproduces closed-form Strömgren to **2.220e-16**, photons→0 reproduces `ṗ_w/(4π R2²)` to **5.551e-16**, 0/143 rows over the 1e-10 bar — ⚠️ but the clause **as typed** in the gate (`P_K11·(R2/R_IF)² == P_ram`) contradicts the batch's own stage-0 [D] result and fails at 2.94e+01; the text needs correcting, the physics passes. ✅ G22.2 passes on all four legs, ⚠️ with the confined-row log-log at **+0.931, r² 0.998** — the Batch 14 pass-by-the-letter pattern, flagged not re-barred. ⛔ **G22.3's [E] MISSED IN BOTH DIRECTIONS**: momentum `P_K11/P_ram` = **8.833** (B3M) / **20.591** (B3MW01) against a registered (1, 3.3); and K11 does **not** sit between C3c and O1 — it is the **largest of the three** (O1 3.901 < C3c 7.165 < K11 8.833). 🔑 `P_K11/P_O1 ≡ n_K11/n0` **exactly** (0.0e+00) — the whole difference is the density. 🔑 The registered confined-regime disagreement is **0.1–1.5%, not 3.3–3.9×**, because `R_IF/R2` ≈ 1.0004–1.0025 exactly where the wind dominates; the real disagreement is **2.25–4.20× on the DRIVING branch, K11 higher**. ⛔ **G22.4 FAILS** under both readings of its bar (43/143 rows on the closure's own layer, 6/143 on the G21.2 form) against O1's clean 140/140 — mechanism measured: implied `r_w/R2` = **0.65 / 0.49** in momentum, so K11 puts the wind contact at half of trinity's `R2`, and on confined rows its layer sits **inside `R2`**. ✅ G22.5: 0/33 driving flip confined, 46/83 confined flip driving — **O1 flips 45/83 on the same test**, i.e. the two are indistinguishable on the confined branch. ⛔ Stage 0's *"34/2000 draws are `r_w ≥ r_i`"* is a **cancellation artefact** — `r_w < R_IF` is an identity for `Q_eff > 0`; the harness's own self-check caught the same cancellation feeding G22.4's bar and it was fixed algebraically | `data/b22_k11_screen.csv`, `harness/k11_screen.py` |
-| 22-s2 | 🟡 | 2026-08-31 | **K11 implemented and run against O1 on the weak-wind stress config; the limits question is SETTLED and O1 fails two gates K11 passes.** ✅ G22.6 per-call **0.000e+00**. ⛔ G22.7 FAIL (5/1, same as O1) with **two** causes — the fixture supplies no `R_IF` (predicted), and **my own** inherited `P_conf > 0` guard + `P_conf·rho` form, which divides by the quantity that vanishes in the photo-only limit (not predicted; fixed; G22.6 still 0.000e+00 after). ✅ **G22.7′: K11 6 passed, O1 5 failed EVEN WITH `R_IF` supplied**, K11 vs shipped `P_C3a` worst **2.220e-16** over 400 radii — **O1's missing photo-only limit is STRUCTURAL, K11 is the first candidate in §7.1 to pass Batch 8's anchor.** Three local B3MW001 runs: ✅ G22.8 all reached `stop_t`, phases identical, **no fate change**; ⛔ **G22.10 O1 FAIL (4 βδ lines, 22/143 segments unconverged, 3.9× wall) / K11 PASS (0)** — the PRB mechanism reproduced **inside** the design horizon this time; ✅ G22.9 ΔR2 **O1 −25.42%, K11 +34.97%, K11-vs-O1 +80.99%**; ✅ G22.11 `drive_K11/drive_O1` median **3.857** ([E] confirmed), and O1 is the only arm whose median drive sits **below** its own layer's thermal pressure (54.3% of rows). ⚠️ Floor fractions are convention-sensitive; the ORDERING K11 > base > O1 is not | `data/b22_b3mw001_arms.csv`, `harness/b22_arm_reduce.py`, `hpc/b14/k11_arm.patch`, `harness/test_phii_k11_spitzer.py` |
+| 22-s2 | 🟡 | 2026-08-31 | **K11 implemented and run against O1 on the weak-wind stress config; the limits question is SETTLED and O1 fails two gates K11 passes.** ✅ G22.6 per-call **0.000e+00**. ⛔ G22.7 FAIL (5/1, same as O1) with **two** causes — the fixture supplies no `R_IF` (predicted), and **my own** inherited `P_conf > 0` guard + `P_conf·rho` form, which divides by the quantity that vanishes in the photo-only limit (not predicted; fixed; G22.6 still 0.000e+00 after). ✅ **G22.7′: K11 6 passed, O1 5 failed EVEN WITH `R_IF` supplied**, K11 vs shipped `P_C3a` worst **2.220e-16** over 400 radii — **O1's missing photo-only limit is STRUCTURAL, K11 is the only FRONT-READING candidate (K10/O1/K11) that passes Batch 8's anchor -- "first in §7.1" is WITHDRAWN, the shipped C3c passes it 6/6 too.** Three local B3MW001 runs: ✅ G22.8 all reached `stop_t`, phases identical, **no fate change**; ⛔ **G22.10 O1 FAIL (4 βδ lines, 22/143 segments unconverged, 3.9× wall) / K11 PASS (0)** — the PRB mechanism reproduced **inside** the design horizon this time; ✅ G22.9 ΔR2 **O1 −25.42%, K11 +34.97%, K11-vs-O1 +80.99%**; ✅ G22.11 `drive_K11/drive_O1` median **3.857** ([E] confirmed), and O1 is the only arm whose median drive sits **below** its own layer's thermal pressure (54.3% of rows). ⚠️ Floor fractions are convention-sensitive; the ORDERING K11 > base > O1 is not | `data/b22_b3mw001_arms.csv`, `harness/b22_arm_reduce.py`, `hpc/b14/k11_arm.patch`, `harness/test_phii_k11_spitzer.py` |
 
 ### 8.2 Config wall-times (filled by Batch 0)
 Shared 4-core box, 3–4 concurrent runs, so these are contention-inflated upper bounds.
@@ -6211,8 +6244,10 @@ WARNING | run_energy_implicit_phase | beta-delta solver unconverged for 11 conse
   one.** With the Spitzer fixture's own thin-front geometry supplied (`R_IF = R2`, the only edit
   — every assertion is the committed one): **K11 6 passed, O1 5 failed, baseline 6 passed**, and
   K11 vs shipped `P_C3a` agrees to **2.220e-16** over 400 radii spanning `R/R_St` = 1–50.
-  Supplying `R_IF` does **not** rescue O1, because its drive *is* `P_conf·(R_IF/R2)²`. **This is
-  the first candidate in §7.1 to pass Batch 8's anchor.**
+  Supplying `R_IF` does **not** rescue O1, because its drive *is* `P_conf·(R_IF/R2)²`. **K11 is the
+  only FRONT-READING candidate (K10/O1/K11) that passes Batch 8's anchor.** ⛔ I first wrote "the
+  first candidate in §7.1" — **withdrawn**: the shipped C3c passes it 6/6 as well, on both the
+  committed and the amended fixture. The test was written for C3a.
   ⛔ **G22.7 as registered FAILED, and one of its two causes was mine.** Cause (1), predicted in
   the registered gates: the fixture's `_Shell` supplies no `R_IF`. Cause (2), **not** predicted:
   with `R_IF` supplied it *still* returned 0.0, because I had copied O1's `if not (P_conf > 0.0)`
@@ -6255,3 +6290,43 @@ WARNING | run_energy_implicit_phase | beta-delta solver unconverged for 11 conse
   **What this does NOT settle:** D5; G22.4's domain failure (43/143 on the closure's own layer,
   6/143 on the G21.2 form); and the freeze ratchet, which K11 re-arms exactly as O1 does. One
   config. No `trinity/` source touched on `main` — both arms are patches.
+
+- **2026-08-31 (maintainer: "double check your results and make sure they are not wrongly
+  interpreting again." Four adversarial re-checks of my own stage-2 report — FOUR CORRECTIONS,
+  one of which reverses a headline)** — Re-derived from the committed CSV rather than re-reading
+  my own summary.
+  ⛔ **(1) "The first candidate in §7.1 to pass Batch 8's anchor" is WITHDRAWN — an overstatement.**
+  The **shipped** scheme C3c passes `test_phii_c3c_spitzer.py` **6/6**, on both the committed
+  fixture and the amended one; the test was written *for* C3a. The defensible claim is scoped:
+  **among the front-reading closure candidates (K10/O1/K11), K11 is the only one that passes.**
+  Corrected in all three places it appeared.
+  ⛔ **(2) The `n0` floor column is a TAUTOLOGY for K11 and must not be cited.** `n_K11 ≥ n_wind =
+  n0·(R2/R_IF)²` ⇒ `drive ≥ pref·n0` identically; the measured minimum is **1.6789**, above 1
+  exactly as the algebra requires, so K11's "0/322" is that inequality restated. More generally
+  **any floor defined as the photoionisation-only value cannot be failed by K11 by construction**,
+  which bounds what G22.11 can ever show. The non-circular content is the `n_IF` column (where K11
+  is *not* protected and does fall below on 100/322) and the O1/baseline results.
+  ⛔ **(3) "No fate change" was true and MISLEADING, and I reported it flat.** All three arms were
+  cut by the clock at my `stop_t = 1.5` override — bench3's own is **5** — so none had the chance
+  to reach a natural fate, and a fate table on a truncated run carries no information. Worse, it
+  hid a large qualitative divergence: **O1's shell has TURNED OVER and is contracting** (`v2` −1.08
+  → −2.02 over the last six snapshots, `R2` falling 4.372 → 4.158, **84/442 rows with `v2 < 0`,
+  first at `t` = 1.1785**), while **K11 accelerates outward** (`v2` +4.11 → +6.05, 0/322 negative)
+  and the baseline coasts (+0.61, 0/330). Three arms heading to three different fates, reported by
+  me as "no fate change". This is the PRB lesson repeating in my own write-up.
+  ✏️ **(4) O1's βδ non-convergence is DOWNSTREAM of its trajectory, not an independent defect.**
+  O1 spends **286/442 snapshots (64.7%)** in the implicit phase vs baseline 166/330 and K11 162/322
+  (both 50.3%) — the βδ solver lives there, so O1 meets the no-root regime by lingering ~1.7×
+  longer, and a decelerating, energy-losing bubble is precisely where a `dMdt > 0` root ceases to
+  exist. The 3.9× wall time and the 22/143 unconverged segments stand as measured; the *causal*
+  framing ("O1 drives the solver into non-convergence") overstated it, and K11's clean sheet is
+  equally a property of its own trajectory on this one config.
+  ✅ **What survived the re-check unchanged:** G22.6 at 0.000e+00; G22.7′ (K11 6 passed / O1 5
+  failed *with* `R_IF` supplied / 2.220e-16 over 400 radii) and the conclusion that **O1's missing
+  photo-only limit is structural**; the ΔR2 figures (−25.42% / +34.97% / +80.99%, re-derived by
+  hand from raw end states, with the |max| genuinely at `t` = 1.5 rather than an artefact of
+  reporting the last point); identical phase *sequences*; and `drive_K11/drive_O1` median 3.857.
+  **Net effect on the O1-vs-K11 reading:** the limits result stands and is the strongest thing K11
+  has. Everything else from this run is one clock-truncated config whose fates had not resolved,
+  so it ranks the two schemes far less than my previous message implied. No `trinity/` source
+  touched.
