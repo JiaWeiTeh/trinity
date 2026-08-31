@@ -3539,6 +3539,17 @@ batch's central framing does not survive its own measurement.**
   On the **driving** rows the closure is photon-dominated by 10–92×, `n_K11` sits within 0.5–4.7% of
   the pure Strömgren density over `R_IF³`, and K11 exceeds O1 by **2.25–4.20×** — the disagreement is
   real, large, and **the opposite sign** from the registered one.
+- ⚠️ **My O1 comparator is 3.901, NOT Batch 21's published 3.274, and the difference is the join
+  direction — disclosed rather than quoted past.** This screen anchors on `b9`'s **17** B3M momentum
+  front rows and joins `b17` state; `b21_o1_screen.csv` anchors on `b17`'s **21** rows and joins the
+  nearest front. Re-measured both ways this session: 3.9010 (mine) vs 3.2739 (b21's own file). That
+  is **exactly the row-set effect G21.3 recorded when its disclosed prior "missed by 16%"**, arriving
+  again from the other side. The ordering claim is unaffected (O1 < C3c < K11 on either number), the
+  *size* of the K11-vs-O1 gap is 2.25–4.20× on my rows and would be larger on b21's.
+- ✅ **Cross-validation that the pipeline is sound:** recomputing O1's implied layer mass at `n0` over
+  `R2→R_IF` on these rows gives a B3M energy max of **0.9407** — **Batch 21's published G21.2 max, to
+  the digit**, from a different join. So the G22.4 machinery reproduces the batch it is being
+  compared against.
 - Dust variant `Qi(1−f_dust)` roughly halves the driving-branch excess (K11/O1 2.367 → 1.514 in B3M
   momentum, 4.203 → 2.475 in B3MW01) and is nearly inert on the confined branch (+1.558% → +0.426%
   energy, +0.670% → +0.530% implicit).
@@ -3555,8 +3566,13 @@ mass ≤ shell mass (the G21.2 bar)" without saying which layer; both are report
 | B3MW01 | transition | 0.205 / 0.240 / 0 | 0.183 / 0.218 / 0 |
 | B3MW01 | momentum | 0.272 / 0.491 / 0 | 0.250 / 0.461 / 0 |
 
-**Overall 43/143 rows over the bar on the closure's own layer, 6/143 on the G21.2 form.** Against
-O1's G21.2 result (**every** row inside the shell, worst 0.9407) this is a regression.
+**Overall 43/143 rows over the bar on the closure's own layer, 6/143 on the G21.2 form.** The
+**apples-to-apples number against O1 is the second one**: on identical rows and the identical volume
+convention, O1's implied layer is inside the shell everywhere (energy max 0.9407 — Batch 21's own
+published figure, reproduced here — momentum max 0.7587) while K11 breaches on **6 of 17 B3M momentum
+rows, max 1.9142**. The breach is attributable entirely to the denser skin (`n_K11/n0` = 2.37 there),
+which is the same quantity G22.3 measures. The 43/143 figure is the *closure's own layer* reading and
+is a different statement, not a bigger version of the same one.
 🔑 **The mechanism is the one-radius pin, now quantified rather than described.** The closure's
 implied wind radius is `r_w/R2` = **0.993–0.999** on confined rows and **0.65 (B3M) / 0.49
 (B3MW01)** on momentum rows — so K11 wants the wind contact discontinuity at **half of trinity's
@@ -3571,9 +3587,12 @@ physics.
 ⛔ **`r_w ≥ r_i` is UNREACHABLE by construction and stage 0's count of it is an artefact.** At the
 root `r_w³ = R_IF³ − C_Q/n²`, so `Q_eff > 0` forces `r_w < R_IF` identically; 0/143 rows is an
 algebraic identity, not evidence. It *is* float-reachable when the wind dominates — **377 of 2000
-draws** at `ṗ_w ∈ [1e0,1e6]`, `Q_eff ∈ [1e-12,1e-6]` — so **stage 0's "34/2000 draws are `r_w ≥ r_i`
-— wind fills the HII region" is a catastrophic-cancellation artefact, not a physical out-of-domain
-count, and that line of the registration should be struck.**
+draws** at `ṗ_w ∈ [1e0,1e6]`, `Q_eff ∈ [1e-12,1e-6]`. **What is proved: stage 0's "34/2000 draws are
+`r_w ≥ r_i` — wind fills the HII region" cannot be a physical out-of-domain count, because no such
+count can be nonzero.** That cancellation is the likeliest cause, but stage 0's code was never
+committed, so *which* numerical route produced its 34 is **not** verified here — the claim is that
+the count is an artefact, not that I reproduced it. That line of the registration should be struck
+either way.
 
 **✅ G22.5 — BRANCH CENSUS.** Driving := shipped `P_HII > 0`; K11 "drives" when its value exceeds
 `Pb` (`k5_offline_screen`'s convention). B3M: **0/33 driving rows flip confined**, **46/83 confined
@@ -3582,6 +3601,15 @@ census is **structurally empty**.
 🔑 **Disclosed alongside (not a gate): under the same test O1 flips 45/83.** So on the confined
 branch **K11 and O1 are indistinguishable to one row in 83** — the direct measured answer to "is K11
 O1 plus a floor on the confined branch": on these rows, yes.
+⛔ **CORRECTION to that census's emphasis, made on re-checking it.** The `> Pb` test above is the
+`k5_offline_screen` convention, but it is **not** the operationally relevant one: the live composition
+is `max(press_bubble_ramped, P_HII)`, i.e. the comparison is against the **ramped** `P_conf`. Measured
+there, `drive_K11 ≥ P_conf` on **78/78** confined rows — and so does O1, on **78/78**. It is also
+*provable*: `n_K11 ≥ n_wind = n0·(R2/R_IF)²`, so `drive ≥ P_conf` always, with equality only at
+`Q_eff = 0`. **Consequence: K11 wins the `max` on 100% of confined rows exactly as O1 does, so it
+re-arms the per-segment freeze ratchet in full.** The 2026-08-30 record calls that ratchet "the
+central design problem" and "the last substantive thing between O1 and a recommendation" — **K11 does
+not improve it, and no gate in this batch was pointed at it.**
 
 **Coverage caps, stated rather than buried.** (1) B3MW01 commits a front (`dR_ion_Pb`) on **driving
 rows only** — 27 of 103 — so its confined branch cannot be screened at all; this is the same cap
@@ -5939,3 +5967,36 @@ WARNING | run_energy_implicit_phase | beta-delta solver unconverged for 11 conse
   expectations go to the maintainer first. What K11 still has that nothing else in §7.1 does is the
   stage-2 headline **G22.7** (`test_phii_c3c_spitzer.py` should PASS), untouched by stage 1. No
   `trinity/` source touched; D5 remains open and the maintainer's.
+
+- **2026-08-31 (re-check of the stage-1 report on the maintainer's challenge — "double check if you
+  are saying the right things". Four claims verified, TWO corrected)** — Five independent re-checks,
+  written against the committed CSV rather than re-reading the report.
+  ✅ **G22.1 clause 1 is not circular** (my own worry): the bracket is built from the closed forms, so
+  I re-tested it against the **source equation** `(4π/3)χ_e α_B n² R_IF³ = Q_eff` at `r_w = 0`, which
+  does not go through `C_Q` — worst **5.551e-16**. The gate has real content.
+  ✅ **`drive_k11` IS the composed drive**, so the O1/C3c/K11 comparison is apples-to-apples: routing
+  the Batch 16 mapping through the real `P_drive` expressions reproduces it to **2.220e-16**.
+  ✅ **The pipeline reproduces the batch it is judged against**: O1's implied layer mass at `n0` over
+  `R2→R_IF` gives a B3M energy max of **0.9407** — Batch 21's published G21.2 max, to the digit, from
+  a different join.
+  ✏️ **CORRECTION 1 — my O1 comparator is not Batch 21's.** I quoted O1 momentum at **3.901**; Batch
+  21's own file gives **3.274**. Re-measured both ways: the difference is the **join direction** (my
+  17 `b9`-anchored front rows vs `b21`'s 21 `b17`-anchored rows), i.e. **exactly the row-set effect
+  G21.3 already recorded** when its disclosed prior "missed by 16%". Ordering is unaffected; the size
+  of the K11–O1 gap is row-set dependent and is now disclosed as such.
+  ⛔ **CORRECTION 2, and it is the more important one — I reported the wrong census as the relevant
+  one, and it hides that K11 does not fix O1's blocker.** G22.5's `> Pb` test (46/83 vs O1's 45/83) is
+  `k5_offline_screen`'s convention, but the live composition is `max(press_bubble_ramped, P_HII)`.
+  Measured against the **ramped** `P_conf`: `drive ≥ P_conf` on **78/78** confined rows for K11 **and**
+  **78/78** for O1 — and it is provable, since `n_K11 ≥ n_wind = n0·(R2/R_IF)²`. **So K11 wins the
+  `max` on 100% of confined rows exactly as O1 does and re-arms the per-segment freeze ratchet in
+  full.** The 2026-08-30 record calls that ratchet "the central design problem" and "the last
+  substantive thing between O1 and a recommendation"; **K11 does not improve it, no gate in Batch 22
+  was pointed at it, and my stage-1 report did not say so.**
+  ✏️ **Also softened:** I wrote that stage 0's "34/2000 draws are `r_w ≥ r_i`" was a cancellation
+  artefact "reproduced" at 377/2000. What is *proved* is that no such count can be physical (`r_w <
+  R_IF` is an identity for `Q_eff > 0`); stage 0's code was never committed, so which numerical route
+  produced its 34 is not verified here. And the G22.4 verdict now leads with the **comparable** number
+  (6/143 on the G21.2 form, all B3M momentum) rather than the closure's-own-layer 43/143, which is a
+  different statement rather than a bigger version of the same one.
+  No `trinity/` source touched.
