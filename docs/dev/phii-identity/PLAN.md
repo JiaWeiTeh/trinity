@@ -3599,15 +3599,26 @@ via `run_energy_implicit_phase.py:699`'s `n_estimate = min(int(200·log10(tmax/t
 — **but that variable is DEAD CODE**, assigned and never read; `dt_segment` is chosen adaptively by
 `next_dt_segment`, and `tmax` only clips the final segment (`:1058`). So the tidy explanation is
 **refuted by source**, and I have no verified mechanism.
-**What the comparison actually is: confounded three ways.** The 2026-08-30 figure came from a
-different **machine** (Helix vs this laptop, different BLAS/LSODA rounding on a stiff system), a
-different **SHA** (`cce8c924` vs `24d9fd27`), *and* a different **`stop_t`**. Nothing in this batch
-isolates any of the three, so the honest verdict is that **[E2] was not a discriminating test**, not
-that trajectories are stop_t-dependent. ⚠️ **Consequence, stated because it is the useful part:
-the +5.81% and the +6.913% are not the same measurement and should never be quoted as if they
-were.** The one-run test that would settle it: baseline PRB at `stop_t` 1.5 **on this machine**,
-read at `t` = 0.1 — if it returns ≈0.45746 the cause is `stop_t`, if ≈0.45865 it is platform/SHA.
-Not run; it is outside what was asked.
+**The comparison was confounded three ways — machine, SHA and `stop_t` — and 2026-09-01's batch 2
+DISENTANGLED ALL THREE at zero extra compute.**
+🔑 **(a) `stop_t` does NOT change the integration path — REFUTED as a candidate, and this is good
+news for the whole workstream.** Stage 2 ran B3MW001 at `stop_t` 1.5 and stage 3 at `stop_t` 5, on
+the **same machine** with **`trinity/` byte-identical** (`git diff 1c46410c 24d9fd27 -- trinity/` is
+empty). Comparing `R2(t)` across the two at t = 0.01/0.1/0.35/0.8/1.2/1.45 for **both** the baseline
+and K11 arms gives **rel = 0.000e+00 at every point** — bit-identical. So a trajectory read at time
+`t` is independent of where the run was told to stop, and **ΔR2 values taken from runs with
+different `stop_t` are directly comparable after all.** My "every ΔR2 in this workstream may be
+confounded" worry is withdrawn.
+🔑 **(b) The SHA cannot explain it either.** `cce8c924 → 24d9fd27` touches `trinity/` in exactly
+three files, **purely additive (+26/+11/+14, zero deletions)**: a new `mass_freeWind` helper, called
+**only** from `run_momentum_phase.py:632,905`, plus a transition-phase comment. **PRB at `t ≤ 0.1`
+never leaves `energy > implicit`**, so it cannot reach a single changed line.
+🔑 **(c) By elimination the cause is the PLATFORM** — Helix vs this laptop, i.e. different
+BLAS/LSODA arithmetic on a stiff system. ⚠️ **The consequence worth carrying: cross-machine ΔR2
+comparisons in this workstream carry ≈1 percentage point of scatter on a ≈6% effect for stiff
+configs** (baseline moved +0.26%, O1 +1.31%). The +5.81% and the +6.913% are the same physics on two
+machines, not two different measurements — but they must not be quoted to three significant figures
+across a machine boundary.
 
 **G22.11 on PRB — and the shipped scheme is the worst offender here.** Drive against the layer's own
 thermal pressure (`pref·n_IF`, the committed convention): **baseline below the floor on 184/185 rows
