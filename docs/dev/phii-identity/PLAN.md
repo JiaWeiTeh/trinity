@@ -3628,6 +3628,56 @@ and sits below the ionised layer's own pressure essentially everywhere. ⚠️ T
 stage 2 still applies to any floor defined as the photo-only value; `n_IF` is not that, and K11 does
 fall below on 15 rows.
 
+#### Batch 22 STAGE 3 RESULT, batch 2 of 2 — B3MW001 at its OWN `stop_t` = 5, 2026-09-01
+
+⛔ **O1 DID NOT COMPLETE. Its ΔR2 and fate are VOID, and are reported as such.** Stopped on the
+maintainer's instruction at `t` = **1.0598 of 5.0 (21.2%)**, 147 snapshots, `termination: None` —
+no terminal state was ever written, so there is nothing to put in a fate column. By the standing
+rule (*"a run that never reaches the phase a gate needs is VOID, never a confirming null"*) the
+O1 row below is a **performance/robustness finding, not a trajectory measurement.**
+
+| arm | fate | reached | `R2_end` | phases | wall |
+|---|---|---|---|---|---|
+| baseline | **`stopping_time`** | `t` = 5.0 | 30.464 | `energy>implicit>transition>momentum` | 874 s |
+| **K11** | **`shell_dissolved`** | `t` = **3.636** | **62.476** | `energy>implicit>transition>momentum` | 751 s |
+| **O1** | ⛔ **VOID — killed** | `t` = **1.060 (21.2%)** | 4.434 | `energy>implicit` **only** | >2100 s, stalled |
+
+**⛔ [E1] — MISSED, and I am scoring it against what I wrote, not against what is convenient.**
+I registered: *"O1 reaches `shell_collapsed` before `t` = 5, while baseline and K11 do not."*
+- **O1 did NOT reach `shell_collapsed`.** It reached nothing — killed at 21.2%. The prediction is
+  **not confirmed**; "it was heading that way" is not a measurement, and stage 2's contracting `v2`
+  is what generated the prediction, so citing it as support would be circular.
+- **Baseline and K11 did not collapse** — that half holds, but K11's actual fate was
+  **`shell_dissolved`**, an outcome I did not name at all. Predicting "not X" and scoring a hit when
+  the answer is an unlisted Y is weak evidence, and it is recorded as weak.
+**Net: [E1] fails.** What replaced it is stronger and was not predicted: **on this config the three
+schemes reach three qualitatively different outcomes** — the shell survives to the horizon
+(baseline), blows out and dissolves at 62 pc ≈ 12× `rCloud` (K11), or cannot be integrated at all
+(O1).
+
+**⛔ G22.10 — O1 FAILS again, reproducing stage 2 exactly.** 3 βδ lines vs baseline 0 and K11 0.
+Onset at **`t` = 0.929**, *the same `t` as stage 2's* — a clean reproduction on an independent run.
+The escalation is on the record: *"no physical (dMdt>0) root at segment 83"* → *"unconverged for 3
+consecutive segments (residual=inf)"* → *"unconverged for 11 consecutive segments: **dt mitigation
+disengaged — root apparently unreachable**"*, plus `ValueError: ts must be strictly increasing` and
+`MonotonicError` from the bubble solve. ✅ Checked rather than assumed: that `ValueError` is **not
+new** — stage 2's O1 log carries it once as well, so this is the same failure mode with 3.3× further
+to integrate, not a fresh one.
+⚠️ **The mechanism caveat from stage 2 still stands and is not withdrawn:** O1 meets this wall
+because its trajectory keeps it in the implicit phase, where the βδ solver lives. This is a
+consequence of the drive, not an independent defect of the closure — but the *consequence* is that
+**O1 cannot integrate a registered core config to its own design horizon**, which is the same
+disqualifying class as the original PRB timeout.
+**G22.9, on the window where all three exist (to `t` = 1.0598):** O1 vs baseline **−14.96%**. Valid
+only on that window; the O1 comparison beyond it does not exist.
+
+🔑 **What batch 2 adds that no earlier batch could.** Stage 2's three arms were all cut by my
+`stop_t` = 1.5 override, so its fate table was uninformative. At the config's **own** horizon the
+fates separate: `stopping_time` / `shell_dissolved` / **cannot complete**. ⚠️ **Whether K11's
+blowout to 62 pc is right physics is NOT settled here** — `rCloud` ≈ 5 pc, so the shell dissolves far
+outside the cloud, in `nISM`; that it dissolves rather than stalls is a prediction of the scheme, not
+a validation of it.
+
 #### Batch 22 STAGE 2 RESULT, part 1 — the limit gates, 2026-08-31
 
 Arms are three `git worktree`s at `1c46410c`, so each runs **only committed state** and the
