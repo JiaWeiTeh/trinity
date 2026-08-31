@@ -3353,7 +3353,7 @@ is now an argument for reading `R_IF` rather than a component of the code.
 
 ---
 
-### Batch 22 — K11, the additive closure — Status: 🟡 registered 2026-08-30; stage 0 (derivation) ✅ DONE; stages 1–4 not started
+### Batch 22 — K11, the additive closure — Status: 🟡 **stage 1 DONE 2026-08-31 — G22.1 (BLOCKING) PASS at 2.2e-16/5.6e-16; G22.2 passes by the letter with the same log-log coupling Batch 14 recorded; ⛔ G22.4 FAILS under both readings of its own bar; and G22.3's registered [E] is MISSED IN THE OPPOSITE DIRECTION — K11 is the LARGEST drive of the three, not an intermediate.** Stage 0 ✅; stages 2–4 not started, and stage 2 is not automatic
 
 **Provenance discipline for this batch, stated first because the maintainer demanded it:** *"do not
 assume what you find is correct. always double check first before asserting."* Every claim below is
@@ -3453,6 +3453,162 @@ but the `TShell_ion` = `T(c_i)` identification is an assumption [E]; (3) the fre
 transcribed [V]; (5) Paper II never simulated ζ ≫ 1, so deep confinement has analytic support only
 [V]; (6) all stage-1 numbers ride on the b9/b11/b12 committed replays and inherit their ≤6.8%
 energy-row `P_conf` caveat on 2 rows [V].
+
+#### Batch 22 STAGE 1 RESULT — 2026-08-31, measured against the gates above
+
+`harness/k11_screen.py` (committed at `9372897f`, **before** its first run) → `data/b22_k11_screen.csv`,
+143 rows: B3M 116 (energy 44 / implicit 34 / transition 21 / momentum 17) and B3MW01 27
+(transition 14 / momentum 13). Joins guarded and reported: the B3M b9 × b11-mass × b11-photon
+`row_idx` join drifts ≤7.97e-08 in `t` and ≤1.45e-07 in `R2`; `b9:f_ionised_dust` and
+`b11:dust_Pb` agree to 2.33e-07, i.e. **the same quantity under two names**. Medians are
+`statistics.median`, as registered.
+
+**⚠️ Deviation from the registered input list, disclosed:** neither `b9` nor `b11` carries the
+**ramped** `P_conf` the ṗ_w mapping needs, so state (`P_conf`, `P_ram`, `shipped_drive`, `n0`) is
+anchored on `b17_dust_closure.csv` by nearest-`t` — Batch 21's own anchor, which is what makes the
+G22.3 O1 comparator come from *the same rows*. It inherits G18.0's caveat (`P_conf` recovered, exact
+in implicit/momentum, ≤0.59% transition, ≤6.8% on 2 of 156 energy rows).
+
+**✅ G22.1 — LIMITS (BLOCKING, run first) — PASS.** Wind term zeroed → closed-form Strömgren:
+worst **2.220e-16**, 0/143 rows over the 1e-10 bar. Photon term zeroed → `ṗ_w/(4π R2²)`: worst
+**5.551e-16**, 0/143 over. The gate Batch 18 fatally omitted is clean, on the same root-finder the
+value uses.
+⛔ **But the gate's own second clause is WRONG AS TYPED, and this is a plan defect not a
+measurement.** It reads *"`P_K11·(R2/R_IF)²` must equal `P_ram`"*. The batch's own stage-0 [D]
+result says the wind-only drive **at R2** is `ṗ_w/(4π R2²)`, i.e. `P_K11` **itself** equals `P_ram`
+with no ratio applied. Measured the literal way: worst **2.94e+01**, median 0.765 — it fails, and it
+must. The harness bars the physics test and reports the literal form alongside. **The gate text
+should be corrected to `P_K11 == ṗ_w/(4π R2²)`** (= `P_ram` in momentum, `P_conf` in the other three
+phases, since that is where the registered ṗ_w mapping puts it).
+
+**✅ G22.2 — DECOUPLING — passes on all four legs, and the pass is the Batch 14 pattern again.**
+Driving rows, FAIL bar = slope ∈ [0.95, 1.05] **and** r² > 0.99:
+
+| leg | N | slope | r² | log-log slope | log-log r² | verdict |
+|---|---|---|---|---|---|---|
+| B3M `Qi` | 33 | +1.8089 | 0.5714 | +0.605 | 0.928 | pass |
+| B3M `Qi(1−f_dust)` | 33 | +1.4393 | 0.7367 | +0.631 | 0.957 | pass |
+| B3MW01 `Qi` | 27 | +0.1795 | 0.0254 | +0.068 | 0.131 | pass |
+| B3MW01 `Qi(1−f_dust)` | 27 | +0.5210 | 0.4538 | +0.148 | 0.526 | pass |
+
+⚠️ The **confined**-row regression, disclosed outside the gate's driving-row bar as the [E]
+required: B3M **slope +0.3856, r² 0.9669, log-log +0.931 at r² 0.998**. That is `P_K11 ∝ Pb^{0.93}`
+— the coupling the gate was hunting, invisible to a linear-slope bar centred on gain 1, exactly as
+Batch 14 recorded for K5. **Recorded pass-by-the-letter with the finding flagged, not re-barred.**
+The [E] that predicted it was correct; per the D5 reframe this is structural pressure-slaving
+(physics), not relabelling — but it is not a clean decoupling result and must not be quoted as one.
+
+**⛔ G22.3 — MAGNITUDE + SEAM — the registered [E] is MISSED, in the OPPOSITE DIRECTION, and the
+batch's central framing does not survive its own measurement.**
+
+| cfg | phase | N | K11/`P_conf` | K11/`P_O1` | `n_K11/n0` | `r_w/R2` | K11/`P_ram` |
+|---|---|---|---|---|---|---|---|
+| B3M | energy | 44 | 1.0156 | 1.0149 | 1.0149 | 0.9926 | — |
+| B3M | implicit | 34 | 1.0067 | 1.0014 | 1.0014 | 0.9993 | — |
+| B3M | transition | 21 | 5.0702 | 2.2489 | 2.2489 | 0.6668 | **6.564** |
+| B3M | momentum | 17 | 8.8335 | 2.3667 | 2.3667 | 0.6500 | **8.833** |
+| B3MW01 | transition | 14 | 16.2585 | 3.9770 | 3.9770 | 0.5015 | **19.473** |
+| B3MW01 | momentum | 13 | 20.5906 | 4.2032 | 4.2032 | 0.4878 | **20.591** |
+
+- ⛔ **[E] "momentum `P_K11/P_ram` ∈ (1, 3.3)" — MISSED.** Measured **8.833** (B3M) and **20.591**
+  (B3MW01), above the range rather than inside it.
+- ⛔ **[E] "K11 sits between C3c and O1" — REFUTED.** B3M momentum ×`P_ram`: O1 **3.901** < shipped
+  C3c **7.165** < **K11 8.833**. B3MW01 momentum: O1 **4.899** < C3c **14.766** < **K11 20.591**.
+  K11 is the **largest** drive of the three, +23.3% / +39.4% above shipped C3c.
+- 🔑 **Structural identity, exact on every row: `P_K11/P_O1 ≡ n_K11/n0`** (agreement 0.0e+00). Both
+  schemes apply the *same* `(R_IF/R2)²` to a density, because this translation pins `r_i = R_IF` for
+  both. **The entire K11-vs-O1 difference is the skin density, nothing else.**
+- 🔑 **And the reason the registered refutation does not bite: no real row is wind-dominated where
+  it needed to be.** Measured term ratio `C_Q/(C_W·√n)` — photon term over wind term:
+
+| cfg | phase | `C_Q/(C_W√n)` | `n_K11/n_Str(R_IF)` | `R_IF/R2` |
+|---|---|---|---|---|
+| B3M | energy | **0.023** | 6.605 | 1.0004 |
+| B3M | implicit | **0.010** | 10.015 | 1.0025 |
+| B3M | transition | **10.42** | 1.047 | 1.5015 |
+| B3M | momentum | **25.25** | 1.020 | 1.9751 |
+| B3MW01 | transition | **64.62** | 1.008 | 2.0211 |
+| B3MW01 | momentum | **92.43** | 1.005 | 2.2133 |
+
+  The **confined** rows *are* the strong-wind limit (wind term 40–100× the photon term) — so the
+  stage-0 prediction "drive → `P_ram` with no area amplification" **holds there**. But it costs
+  nothing, because `R_IF/R2` = 1.0004–1.0025 there: **the amplification factor the two candidates
+  were supposed to disagree by is itself ≈1 exactly where they disagree.** Measured confined excess
+  over `P_conf`: O1 **+0.070%** (energy) / **+0.507%** (implicit) against K11 **+1.558%** / **+0.670%**
+  — a real difference, but 0.1–1.5%, **not the 3.3–3.9× the registration predicted**.
+  On the **driving** rows the closure is photon-dominated by 10–92×, `n_K11` sits within 0.5–4.7% of
+  the pure Strömgren density over `R_IF³`, and K11 exceeds O1 by **2.25–4.20×** — the disagreement is
+  real, large, and **the opposite sign** from the registered one.
+- Dust variant `Qi(1−f_dust)` roughly halves the driving-branch excess (K11/O1 2.367 → 1.514 in B3M
+  momentum, 4.203 → 2.475 in B3MW01) and is nearly inert on the confined branch (+1.558% → +0.426%
+  energy, +0.670% → +0.530% implicit).
+
+**⛔ G22.4 — DOMAIN + OVERFLOW — FAIL, under both readings of its own bar.** The gate says "layer
+mass ≤ shell mass (the G21.2 bar)" without saying which layer; both are reported, and both fail:
+
+| cfg | phase | closure's own layer `r_w→R_IF`: med / max / rows ≥1 | G21.2 form `R2→R_IF` at `n_K11`: med / max / rows ≥1 |
+|---|---|---|---|
+| B3M | energy | **17.81 / 1025.8 / 37 of 44** | 0.774 / 0.982 / 0 |
+| B3M | implicit | 0.038 / 0.253 / 0 | 0.030 / 0.164 / 0 |
+| B3M | transition | 0.137 / 0.194 / 0 | 0.106 / 0.160 / 0 |
+| B3M | momentum | 0.579 / 2.074 / **6 of 17** | 0.524 / 1.914 / **6 of 17** |
+| B3MW01 | transition | 0.205 / 0.240 / 0 | 0.183 / 0.218 / 0 |
+| B3MW01 | momentum | 0.272 / 0.491 / 0 | 0.250 / 0.461 / 0 |
+
+**Overall 43/143 rows over the bar on the closure's own layer, 6/143 on the G21.2 form.** Against
+O1's G21.2 result (**every** row inside the shell, worst 0.9407) this is a regression.
+🔑 **The mechanism is the one-radius pin, now quantified rather than described.** The closure's
+implied wind radius is `r_w/R2` = **0.993–0.999** on confined rows and **0.65 (B3M) / 0.49
+(B3MW01)** on momentum rows — so K11 wants the wind contact discontinuity at **half of trinity's
+`R2`**, and on confined rows it places essentially its whole ionised layer **inside `R2`**, in the
+wind cavity. At the worst energy row its layer volume is **1044×** the shell solve's own `R2→R_IF`
+layer. This is registered risk (1) ("the implied `r_w` ≠ R2 in general — the seam is *quantified*,
+not removed") arriving **as a broken bar rather than a seam**.
+✅ **Geen 2022's overflow condition fires on the driving branch under both conventions** (6/17 B3M
+momentum rows), which corroborates the 2026-08-30 primary-source read's Finding 3 — those are
+G15.0's near-massless-shell rows, where the sources say *neither* C3c nor O1 nor K11 is the right
+physics.
+⛔ **`r_w ≥ r_i` is UNREACHABLE by construction and stage 0's count of it is an artefact.** At the
+root `r_w³ = R_IF³ − C_Q/n²`, so `Q_eff > 0` forces `r_w < R_IF` identically; 0/143 rows is an
+algebraic identity, not evidence. It *is* float-reachable when the wind dominates — **377 of 2000
+draws** at `ṗ_w ∈ [1e0,1e6]`, `Q_eff ∈ [1e-12,1e-6]` — so **stage 0's "34/2000 draws are `r_w ≥ r_i`
+— wind fills the HII region" is a catastrophic-cancellation artefact, not a physical out-of-domain
+count, and that line of the registration should be struck.**
+
+**✅ G22.5 — BRANCH CENSUS.** Driving := shipped `P_HII > 0`; K11 "drives" when its value exceeds
+`Pb` (`k5_offline_screen`'s convention). B3M: **0/33 driving rows flip confined**, **46/83 confined
+rows flip DRIVING**, identical under both `Q_eff` variants. B3MW01: 0/27 driving flip; its confined
+census is **structurally empty**.
+🔑 **Disclosed alongside (not a gate): under the same test O1 flips 45/83.** So on the confined
+branch **K11 and O1 are indistinguishable to one row in 83** — the direct measured answer to "is K11
+O1 plus a floor on the confined branch": on these rows, yes.
+
+**Coverage caps, stated rather than buried.** (1) B3MW01 commits a front (`dR_ion_Pb`) on **driving
+rows only** — 27 of 103 — so its confined branch cannot be screened at all; this is the same cap
+Batch 21 hit. (2) Everything here is two configs of one cloud, the offline coverage the ladder
+already outgrew. (3) All numbers ride the b9/b11/b12/b17 committed replays and inherit their
+caveats.
+
+**A numerical defect the harness's own self-check caught on its first run, recorded as a failure.**
+`--selfcheck` asserted at **7.216e-04** against a 1e-10 bar. The root was exact there (scaled
+`|f(n)|` = 2.135e-16); the error was **catastrophic cancellation in `R_IF³ − r_w³`**, worst at
+`r_w/R_IF` = 1.000000000000 where the layer volume is 5.5e-13 of `R_IF³` — and that subtraction was
+feeding **G22.4's bar directly**. Fixed algebraically, not by widening a tolerance: the closure's
+layer mass is `μ·Q_eff/(χ_e α_B n)` **exactly** (it is the recombination-balanced mass), and the
+`R2→R_IF` form goes through `dR·(R_IF² + R_IF·R2 + R2²)`. Fix committed at `7bf9becf`; **no gate or
+bar was changed.**
+
+**What stage 1 says about stage 2, stated without proposing it.** G22.1 is clean and G22.5 shows the
+confined branch behaving as advertised, but **G22.4 fails and G22.3's two registered expectations are
+both missed** — and the stage-4 criterion *"K11 is safer than O1 iff … G22.4 clean everywhere O1 was
+clean"* is already contradicted, since O1 was clean on 140/140 and K11 is not. The stage-2 headline
+[E] (**G22.7**: `test_phii_c3c_spitzer.py` should PASS) is untouched by this and remains the one
+thing K11 has that nothing else in the register does. **D5 is where this lands and the maintainer
+decides: the K11-vs-O1 disagreement is measured at 2.25–4.20× on the driving branch (K11 higher) and
+0.1–1.5% on the confined branch — the opposite shape from the registration's, and the batch measured
+it rather than deciding it, as designed.**
+
+---
 
 ---
 
@@ -3614,7 +3770,7 @@ the maintainer's call.
 | **K8** | **Three-radius model** — `R1 < R_w ≤ R2 ≡ R_i`, with `R_w` algebraic | structural; a follow-up paper | **S** | ⬆️ **Raised A → S 2026-08-28** on a primary-source read: Lancaster+2025 (arXiv:2505.22730) applies the wind at `R_w` and the photoionised gas at `R_i` and calls the distinction central, so this is the source's own structure rather than a speculative row. **Deferred by the maintainer 2026-08-29** ("keep one radius") — a follow-up paper, and the reason O1 borrows Lancaster's force amplification without his inertia placement. Pending. K5/K6 are the minimal ways to get `R_w ≠ R2` without this |
 | **K9** | **Shell-mass adjustment** — `M_sh = (4π/3)R_i³(ρ̄ − ρ_i)` | the momentum equation's inertia | **M + S** | **Measured here, and the literature already does it** (Lancaster `eq:pr_spitzer_adj`, with its own "not consistent with the derivation… \[but\] can be more accurate" caveat). B11.C2: **+8.55%/+9.22%** in `R2` at nominal wind, **+0.45%/+0.97%** at `Lw × 0.1`. This is §6b seam C's fix, not a separate idea. **Rev2 ranks it #2.** ⚠️ **Downgraded 2026-08-27 by Batch 15's pre-gate**: B11.C2's +8.55/+9.22% debited **`M_cav`**, which is NOT the K9 quantity — in trinity's geometry K9 debits the shell's own **ionised layer**, measured at `m_ion/m_shell` median **0.461** in momentum (range 0.109–**1.000**), 1.0000 throughout energy. It **reaches a massless shell on real rows**, its admissible phase scope is narrow, and G15.3 may make it inseparable from K5. **Not the cheap independent win it appeared to be** |
 
-| **K11** | **Additive closure (Geen 2019)** — solve the skin density `n` from `n²·R_IF³ = C_W·n^{1/2} + C_Q`, where `C_W = (ṗ_w/(4π·pref))^{3/2}` is the wind term (pref = `(μ_c/μ_i)k_B T`, trinity's P(n)), `C_Q = 3·Q_eff/(4π·χ_e·α_B)` the photon term; drive `= pref·n·(R_IF/R2)²` | one helper + a scalar Brent (provably unique positive root); reads `shell_props.R_IF` like O1 | **S** (Geen 2019 eqs. `wind:photoequilibrium`/`wind:windpressurebalance`/`wind:density`, all verified from source 2026-08-30; derivation re-verified numerically on 2000 draws, both source equations recovered from the root) | **Registered 2026-08-30, Batch 22. The candidate with BOTH exact limits**: wind→0 recovers the full-sphere Strömgren density **exactly** (the Spitzer floor O1 lacks — verified to 1e-12), wind-dominant recovers the thin-skin-at-front limit. ⚠️ **NOT "O1 + a floor"** — my first framing, refuted by my own stage-0 check: in the strong-wind limit K11's drive at R2 is **`P_ram` (no area amplification)** where O1 gives `P_ram·(R_IF/R2)²` ≈ 3.3–3.9×. The disagreement traces to `n_K11` vs `n0(Pb)`: Geen's self-consistent skin is dense+thin, trinity's `Pb`-set skin is dilute+thick, and the two coincide only when the closure's implied `r_w` = R2. **K11-vs-O1 in the confined regime IS a D5-shaped question; Batch 22 measures it, does not decide it** |
+| **K11** | **Additive closure (Geen 2019)** — solve the skin density `n` from `n²·R_IF³ = C_W·n^{1/2} + C_Q`, where `C_W = (ṗ_w/(4π·pref))^{3/2}` is the wind term (pref = `(μ_c/μ_i)k_B T`, trinity's P(n)), `C_Q = 3·Q_eff/(4π·χ_e·α_B)` the photon term; drive `= pref·n·(R_IF/R2)²` | one helper + a scalar Brent (provably unique positive root); reads `shell_props.R_IF` like O1 | **S** (Geen 2019 eqs. `wind:photoequilibrium`/`wind:windpressurebalance`/`wind:density`, all verified from source 2026-08-30; derivation re-verified numerically on 2000 draws, both source equations recovered from the root) | **Registered 2026-08-30, Batch 22. The candidate with BOTH exact limits**: wind→0 recovers the full-sphere Strömgren density **exactly** (the Spitzer floor O1 lacks — verified to 1e-12), wind-dominant recovers the thin-skin-at-front limit. ⚠️ **NOT "O1 + a floor"** — my first framing, refuted by my own stage-0 check: in the strong-wind limit K11's drive at R2 is **`P_ram` (no area amplification)** where O1 gives `P_ram·(R_IF/R2)²` ≈ 3.3–3.9×. The disagreement traces to `n_K11` vs `n0(Pb)`: Geen's self-consistent skin is dense+thin, trinity's `Pb`-set skin is dilute+thick, and the two coincide only when the closure's implied `r_w` = R2. **K11-vs-O1 in the confined regime IS a D5-shaped question; Batch 22 measures it, does not decide it**. ⛔ **CORRECTED 2026-08-31 by Batch 22 stage 1 — the "disagree by the full amplification factor in the confined regime" claim above is REFUTED by measurement.** `P_K11/P_O1 ≡ n_K11/n0` **exactly on every row** (0.0e+00): this translation pins `r_i = R_IF` for both, so the `(R_IF/R2)²` is *shared* and the entire difference is the skin density. The confined rows are indeed the strong-wind limit (photon/wind term ratio 0.010–0.023), but `R_IF/R2` = **1.0004–1.0025** there, so the disputed factor is itself ≈1 and the measured confined disagreement is **0.1–1.5%** (O1 +0.070%/+0.507% vs K11 +1.558%/+0.670% over `P_conf`) — **not** 3.3–3.9×. The real disagreement is on the **driving** branch, photon-dominated by 10–92×, where K11 is **2.25–4.20× ABOVE O1** and the ordering ×`P_ram` is **O1 3.901 < shipped C3c 7.165 < K11 8.833** — so "K11 sits between C3c and O1" is refuted too: it is the largest of the three. ⛔ And **G22.4 FAILS** (43/143 rows over its bar on the closure's own layer; 6/143 on the G21.2 form) against O1's clean 140/140, because the closure's implied `r_w/R2` is **0.65/0.49** in momentum and its confined layer sits **inside `R2`**. D5 is still the question; its shape is not the one this row originally recorded |
 | **K10** | ✅ **screened (Batch 13)** — **CEM-interpolated `P_HII`** — the smooth coupled form, phase-agnostic: `n_H0 = (μ_i/μ_c)·P_conf/(k_B T)` (pressure-equilibrium skin density — `shell_structure.py:125`'s own line), `R_i³ = R2³ + 3·Qi_abs/(4π χ_e α_B n_H0²)` (recombination over the cavity-**excluded** layer volume), `P_drive = P_conf·(R_i/R2)²`; equivalently the helper returns the **excess** `P_HII_eff = P_conf·[(R_i/R2)² − 1]` and the existing momentum sum composes it exactly. In the MD phase this is algebraically Lancaster's `α_p ṗ (1 + R_w/R_ch)^{2/3}` at `α_p = 1` | one helper; ⛔ **"zero `P_drive` edits" CORRECTED 2026-08-28 — true in momentum ONLY** (see the composition note in the status cell) | **S + M** | **Registered 2026-08-18, Batch 13 screens it offline.** The momentum-phase minimal form of K6, containing K5's volume fix by construction. Exact limits: confined → excess `= (2/3)(R2/R_ch)·P_conf` (Lancaster's own first-order term — the correct "better than 0.0"); unconfined → Spitzer over the layer volume. **Smooth**: kills the factor-2 momentum switch jump, the 23.4% transition jump, and the §3c.1 `t_cross` kink by construction. ⚠️ Known gaps, pre-stated: **no dust** in the closure (illustrative: predicts `R_i/R2` ≈ 3.1–3.9 on B3M momentum where the shell solve measures `R_IF/R2` ≈ 1.7–2.3 — G13.4 sizes it); assumes quasi-static balance (Lancaster *imposes* it: "we now imagine"); ED-phase use maps `P_conf` to the thermal `Pb` (their §ed_jfb structure) and must respect the D-ramp window. **Batch 13 measured it (2026-08-27):** state-jump **exactly 0** where the shipped rule jumps **+34%**; healthy branch untouched on B3M (+0.68%); but the **dust rule fired at 2.05×**, so **K10 cannot ship without a dust model** — and with dust it lands **within 10–15% of the shipped drive** — ⛔ the "cavity-volume and missing-dust errors partly cancel" gloss on that agreement is **RETRACTED 2026-08-29**: in momentum both corrections deflate on 17/17 rows and compound to ×0.2506, and corrected-C3a (1.545) is 4.10× below K10 (6.333), so K10 is not a corrected C3a at all (see §Batch 13 RESULT). Note `R_ch`(trinity) = `chi_e`·`R_ch`(Lancaster). ⛔ **COMPOSITION CORRECTION 2026-08-28 (algebra, not yet gated).** "The excess rides the existing compositions" holds **in momentum only**, and Batch 13 could not have caught it because its screen computed the total drive `P_conf·(R_i/R2)²` directly instead of routing a helper return through each phase's `P_drive` expression. With `ρ ≡ (R_i/R2)² ≥ 1`: momentum (`P_HII + P_ram`, `P_conf = P_ram`) composes the **excess** exactly (`P_ram(ρ−1) + P_ram = P_ram·ρ`) but the full value over-counts by `P_ram`; energy/implicit (`max(Pb, P_HII)`) is the **opposite** — the **full value** composes exactly (`max(Pb, Pb·ρ) = Pb·ρ`) while the excess is **swallowed by the `max` whenever `ρ < 2`**; transition (`max(Pb, P_HII + P_ram)`) is exact under neither. ⚠️ **This destroys K10's headline confined-branch virtue as specified**: the "correct better-than-0.0" first-order term `(2/3)(R2/R_ch)·P_conf` is *small* by construction, so under `max(Pb, excess)` it is discarded exactly where it was meant to improve on the 0.0. K10 therefore needs a phase-aware helper **or** real edits at the live `P_drive` sites (`energy_phase_ODEs.py:253,256`, `run_momentum_phase.py:445`) — it is **not** a one-helper zero-edit change, and its risk class rises accordingly. Needs its own gate before any K10 arm |
 
 **How the rows relate, so they are not treated as nine independent choices.**
@@ -3659,6 +3815,7 @@ maintainer's ruling on the register, i.e. D5.
 | 20 | ⛔ | 2026-08-29 | **K10 safety audit — UNSAFE as implemented; the arm was HELD on this.** Four adversarial slices, registered before any reported. **4 MAJOR + 1 MODERATE**: no photo-only limit (`test_phii_c3c_spitzer.py` 6 passed → 5 failed; re-labelled from CRITICAL-runtime to MAJOR-domain on the maintainer's challenge, then measured stronger — front outside the cloud on **100% of driving rows**, max 72.7 pc in a 5.0 pc cloud); **seam C present and worse than shipped** (2.4892× the shell); the **per-segment freeze ratchet** re-armed (~8% median, 17% max staircase vs the 0.55% term it delivers); coverage 2 configs of 13; and `test_mu_audit_drift.py` passing **vacuously**. ✅ Survived: seam A absent, composition mapping (2.22e-16) with non-negativity **proven**, dust closure validated, G13.3's `χ_e` diagnosis confirmed and strengthened, no jump at the transition→momentum handover. ✏️ Two of the auditor's own claims refuted (the `n_IF_Str` gate: 0/3490 rows; the thin-dust guard: tests the wrong quantity, never fires) | `data/b20_domain.csv`, `harness/k10_domain_check.py`, `data/b22_bubble_density.csv`, `harness/bubble_density_probe.py` |
 | GB | ✅ | 2026-08-29 | **`bubble_mass` freeze FIXED in production (momentum only) — the session's only `trinity/` behaviour change.** The bubble solve runs only in energy/implicit, so `bubble_mass` was a stale carry-over: 99.6429 Msun against a true enclosed mass of 0.116 (**860× too large**). Fixed with `mass_freeWind` = `2·L_mech·R2/v³`, reusing `pRam`'s convention. **All five gates pass**; GB.3 is **bit-identical** (`dR2_max` 0.000%, **0 of 220 rows** differ, `R2_end` 14.0584340349 both arms), because `bubble_mass` reaches only `shell_grav_*`, which is diagnostic-only and never enters the EOM. Transition deliberately left stale and marked in-source | `data/gb3_bubblemass_ledger.csv` |
 | 5-s3 | ✅ | 2026-08-13 | **Wind ladder DONE — Lancaster resolved in transition, open in momentum.** First ladder (`simple_cluster`: SC/SW3/SW10) **VOID** — all three terminate at `stop_t` still in implicit, so `t_cross = never` is not evidence about winds; the crossover is structurally floored at the transition handover (`ratio@entry` < 1 on every config). Re-run on B3M (`B3MW01/1/3/10`), all four valid. **Transition: (a) PASSES** — confined fraction 8.8% → 23.8% → 28.9% → 38.8%, lag/`t_entry` +1.5% → +37.2%, and `ratio@entry` = 0.7144/0.1227/0.0553/0.0235 vs the **pre-registered** 0.68/0.12/0.054/0.022 (exponent **−0.743** vs −0.74, errors 2–7%) — a Weaver-derived prediction holding out of its fitted regime. **Momentum: OPEN** — 100% HII-dominated on all four; `P_C3a/P_ram ∝ Lw^−0.33` ⇒ inversion needs `Lw ≈ 260`. **Not** an O(1) normalisation error (same normalisation predicts transition to 7%): it is the `R2^−3/2` geometry. Mechanism: energy duration **identical** (0.0030 Myr) and transition duration wind-independent; only implicit moves (`Lw^−0.388`), which is why `t_cross` *falls* with wind. ⚠️ Retracted mid-run claim that energy row counts (69/87/96/105) meant longer energy phases — that is timestep refinement, not duration | `data/b5s3_ladder_lag.csv`, `data/b5s3_ladder_regime.csv`, `data/b5s3_ladder_screen.csv`, `harness/lag_vs_handover.py` |
+| 22-s1 | 🟡 | 2026-08-31 | **K11 (Geen 2019 additive closure) screened offline — the blocking limits gate PASSES and two registered expectations are REFUTED.** ✅ **G22.1 PASS** (the gate Batch 18 omitted): wind→0 reproduces closed-form Strömgren to **2.220e-16**, photons→0 reproduces `ṗ_w/(4π R2²)` to **5.551e-16**, 0/143 rows over the 1e-10 bar — ⚠️ but the clause **as typed** in the gate (`P_K11·(R2/R_IF)² == P_ram`) contradicts the batch's own stage-0 [D] result and fails at 2.94e+01; the text needs correcting, the physics passes. ✅ G22.2 passes on all four legs, ⚠️ with the confined-row log-log at **+0.931, r² 0.998** — the Batch 14 pass-by-the-letter pattern, flagged not re-barred. ⛔ **G22.3's [E] MISSED IN BOTH DIRECTIONS**: momentum `P_K11/P_ram` = **8.833** (B3M) / **20.591** (B3MW01) against a registered (1, 3.3); and K11 does **not** sit between C3c and O1 — it is the **largest of the three** (O1 3.901 < C3c 7.165 < K11 8.833). 🔑 `P_K11/P_O1 ≡ n_K11/n0` **exactly** (0.0e+00) — the whole difference is the density. 🔑 The registered confined-regime disagreement is **0.1–1.5%, not 3.3–3.9×**, because `R_IF/R2` ≈ 1.0004–1.0025 exactly where the wind dominates; the real disagreement is **2.25–4.20× on the DRIVING branch, K11 higher**. ⛔ **G22.4 FAILS** under both readings of its bar (43/143 rows on the closure's own layer, 6/143 on the G21.2 form) against O1's clean 140/140 — mechanism measured: implied `r_w/R2` = **0.65 / 0.49** in momentum, so K11 puts the wind contact at half of trinity's `R2`, and on confined rows its layer sits **inside `R2`**. ✅ G22.5: 0/33 driving flip confined, 46/83 confined flip driving — **O1 flips 45/83 on the same test**, i.e. the two are indistinguishable on the confined branch. ⛔ Stage 0's *"34/2000 draws are `r_w ≥ r_i`"* is a **cancellation artefact** — `r_w < R_IF` is an identity for `Q_eff > 0`; the harness's own self-check caught the same cancellation feeding G22.4's bar and it was fixed algebraically | `data/b22_k11_screen.csv`, `harness/k11_screen.py` |
 
 ### 8.2 Config wall-times (filled by Batch 0)
 Shared 4-core box, 3–4 concurrent runs, so these are contention-inflated upper bounds.
@@ -3730,6 +3887,7 @@ the rule being enforced.
 | `data/gb3_bubblemass_ledger.csv` | `harness/compare_trajectories.py` | GB | matched-`t` ledger for the `bubble_mass` fix; bit-identical |
 | `articles/{geen2019,geen2022,lancaster2025,lancaster2025b}.tex` | external primary sources (verbatim, not authored here) | — | the four closure papers; read in full 2026-08-30, quotes verified. ⚠️ *"When H II Regions are Complicated" = Geen **2019**; Geen 2022 = "Bottling the Champagne"* |
 | `LITERATURE_ASSESSMENT.md` | external input (not authored here) | — | **C-0 carve-out**, rev2 2026-08-18. Never load-bearing: cite for attribution only. *Indexed here 2026-08-29 — C-0 condition 4 had been unmet since the carve-out was written* |
+| `data/b22_k11_screen.csv` | `harness/k11_screen.py` | 22 (stage 1) | no run — K11 vs O1 vs shipped on committed rows; B3M b9 × b11-mass × b11-photon `row_idx` join (≤1.45e-07) + B3MW01 b12 ledgers (driving rows only), state anchored on `b17_dust_closure.csv` for the **ramped** `P_conf`. `--selfcheck` re-runs stage 0's derivation verification independently |
 | `data/b19_cancellation.csv` | `harness/cancellation_check.py` | 13 (correction; the `b19_` prefix is a naming wart — it belongs to the Batch 13 retraction, not to a Batch 19) | no run — factorial test of the volume/dust corrections to C3a on committed B3M rows; retracts the cancellation claim |
 
 Run dirs (not committed — regenerate with `harness/run_batch.py`):
@@ -5711,3 +5869,73 @@ WARNING | run_energy_implicit_phase | beta-delta solver unconverged for 11 conse
   PRB incident showed no gate was reading. Stage 4 verdict criteria pre-registered, including the
   explicit statement of what the batch cannot decide. Expectations are tagged [E] and never quoted
   as fact; verified items [V]/[D] carry their provenance. No `trinity/` source touched.
+
+- **2026-08-31 (Batch 22 stage 1 — the blocking limits gate PASSES, and the batch's own central
+  framing is refuted by its own screen)** — `harness/k11_screen.py` committed at `9372897f`
+  **before its first run**, per §0; measured into `data/b22_k11_screen.csv` (143 rows, B3M all four
+  phases, B3MW01 driving only). Full gate-by-gate record in §Batch 22 STAGE 1 RESULT; the four
+  things that change the picture:
+  ✅ **G22.1, the gate Batch 18 fatally omitted, is clean** — 2.220e-16 and 5.551e-16 against a
+  1e-10 bar, 0/143 rows over, on the same root-finder the value uses. The elimination to Geen 2019's
+  `wind:density` was re-derived **symbolically this session** (sympy, exact zero) rather than taken
+  from the stage-0 note, and the Brent bracket is *proved* in the harness docstring rather than
+  tuned.
+  ⛔ **But the gate's second clause is wrong as typed, and it is my own text.** It reads
+  `P_K11·(R2/R_IF)² == P_ram`; the batch's own stage-0 [D] result says the wind-only drive **at R2**
+  is `ṗ_w/(4π R2²)`, i.e. `P_K11` itself. Measured literally it fails at 2.94e+01, and it must. The
+  harness bars the physics test and reports the literal form alongside so the record carries both.
+  **The registered text should be corrected to `P_K11 == ṗ_w/(4π R2²)`.**
+  ⛔ **G22.3's registered [E] is MISSED IN BOTH DIRECTIONS, and this is the finding.** I registered
+  momentum `P_K11/P_ram` ∈ (1, 3.3) and "K11 sits between C3c and O1". Measured: **8.833** (B3M) and
+  **20.591** (B3MW01), and the ordering ×`P_ram` is **O1 3.901 < shipped C3c 7.165 < K11 8.833**
+  (B3MW01: 4.899 < 14.766 < 20.591). **K11 is the largest drive of the three, not an intermediate.**
+  🔑 **Why my 2026-08-30 refutation did not survive contact with real rows.** I claimed K11 and O1
+  disagree "by the full `(R_IF/R2)²` factor exactly in the confined/strong-wind regime". Both halves
+  are measured wrong. (a) `P_K11/P_O1 ≡ n_K11/n0` **exactly, on every row** (0.0e+00) — this
+  translation pins `r_i = R_IF` for both, so the amplification is *shared* and the entire difference
+  is the skin density. (b) The confined rows **are** the strong-wind limit (photon/wind term ratio
+  0.010–0.023, so the stage-0 limit is the right one there) — but `R_IF/R2` = **1.0004–1.0025**
+  there, so the factor they were supposed to disagree by is itself ≈1: measured confined excess over
+  `P_conf` is O1 **+0.070%/+0.507%** vs K11 **+1.558%/+0.670%**, i.e. **0.1–1.5%, not 3.3–3.9×**.
+  The disagreement that *is* real sits on the **driving** branch, where the closure is
+  photon-dominated by 10–92× and `n_K11` is within 0.5–4.7% of pure Strömgren over `R_IF³`: K11 is
+  **2.25–4.20× ABOVE O1**. **So D5's K11-vs-O1 question is real, large, and the opposite shape from
+  the one I registered.** Batch 22 measured it and does not decide it, as designed.
+  ⛔ **G22.4 FAILS, under both readings of its own bar** — 43/143 rows over on the closure's own
+  layer (`r_w→R_IF`), 6/143 on the G21.2-comparable `R2→R_IF` form — against O1's clean **140/140**.
+  Mechanism measured, not described: implied `r_w/R2` = **0.6500 (B3M) / 0.4878 (B3MW01)** in
+  momentum, so K11 wants the wind contact discontinuity at half of trinity's `R2`; on confined rows
+  `r_w/R2` = 0.993–0.999 with `R_IF/R2` ≈ 1.000, so it places essentially its whole ionised layer
+  **inside `R2`, in the wind cavity** — at the worst energy row a layer volume **1044×** the shell
+  solve's own. **This is registered risk (1) arriving as a broken bar rather than a quantified
+  seam**, and it contradicts the stage-4 criterion "G22.4 clean everywhere O1 was clean" in advance.
+  ✅ Geen 2022's overflow fires on 6/17 B3M momentum rows under both conventions — corroborating the
+  2026-08-30 primary-source read's Finding 3 (G15.0's near-massless-shell rows are overflow rows).
+  ✅ **G22.2 passes on all four legs**, with the confined-row log-log at **+0.931, r² 0.998**
+  disclosed as the [E] required — the Batch 14 "passes by the letter, the coupling is in the log-log"
+  pattern, recorded and flagged, not re-barred.
+  ✅ **G22.5**: 0/33 driving rows flip confined; 46/83 confined rows flip driving, identical under
+  both `Q_eff` variants. Disclosed alongside: **O1 flips 45/83 on the same test** — on the confined
+  branch the two candidates are indistinguishable to one row in 83, which is the direct measured
+  answer to "is K11 O1 plus a floor there?".
+  ⛔ **Two corrections to my own stage-0 record, both found by checking rather than by reading it.**
+  (1) *"34/2000 draws are `r_w ≥ r_i` — wind fills the HII region"* is a **floating-point artefact**:
+  at the root `r_w³ = R_IF³ − C_Q/n²`, so `Q_eff > 0` forces `r_w < R_IF` **identically**. It is
+  float-reachable only through cancellation — reproduced at **377/2000** draws in the wind-dominated
+  corner. The G22.4 flag it motivated can never fire physically and a zero count there is an
+  identity, not evidence. (2) The same cancellation was **feeding G22.4's bar**: the harness's own
+  `--selfcheck` asserted at 7.216e-04 on its **first run** while the root was exact (scaled `|f(n)|`
+  = 2.135e-16). Fixed algebraically at `7bf9becf` — the closure's layer mass is
+  `μ·Q_eff/(χ_e α_B n)` exactly, being the recombination-balanced mass — **no bar or tolerance was
+  moved.**
+  ⚠️ **Input deviation, disclosed:** neither `b9` nor `b11` carries the **ramped** `P_conf` the ṗ_w
+  mapping needs, so state is anchored on `b17_dust_closure.csv` by nearest-`t` (Batch 21's own
+  anchor, which is what makes the O1 comparator come from the same rows), inheriting G18.0's
+  recovered-`P_conf` caveat. ⚠️ **Coverage:** B3MW01 commits a front on **driving rows only** (27 of
+  103), so its confined branch is unscreenable — the same cap Batch 21 hit; and this is still two
+  configs of one cloud. Also verified in passing: `b9:f_ionised_dust` and `b11:dust_Pb` are the same
+  quantity to 2.33e-07.
+  **Stage 2 is not automatic and is not proposed here** — G22.4's failure and G22.3's two missed
+  expectations go to the maintainer first. What K11 still has that nothing else in §7.1 does is the
+  stage-2 headline **G22.7** (`test_phii_c3c_spitzer.py` should PASS), untouched by stage 1. No
+  `trinity/` source touched; D5 remains open and the maintainer's.
