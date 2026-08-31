@@ -3509,6 +3509,61 @@ committed state).
 like-for-like comparability. That is a *shortening*, inside the design horizon — not the PRB error,
 which was running a config 15× **past** a deliberately short one.
 
+#### Batch 22 STAGE 2 RESULT, part 1 — the limit gates, 2026-08-31
+
+Arms are three `git worktree`s at `1c46410c`, so each runs **only committed state** and the
+maintainer's uncommitted `trinity/` files are excluded by construction. Verified before use:
+each worktree imports **its own** `trinity` (`trinity.__file__` checked per arm — an editable
+install pointing at the main repo would have silently made all three arms identical). The O1
+patch applied with **offset 26 lines**, exactly as the 2026-08-30 audit predicted.
+
+**✅ G22.6 — per-call equivalence (BLOCKING) — PASS at 0.000e+00.** The implemented
+`get_phii_k11` reproduces `harness/k11_screen.py`'s drive on all **143** stage-1 rows *bit-
+identically*, with `P_conf` and `R_IF` held fixed (the G18.0′ precedent). So the thing
+implemented is the thing stage 1 screened, and stage 1's numbers carry over unchanged.
+
+**⛔ G22.7 — as registered — FAIL: `5 failed, 1 passed`, identical to O1, against baseline
+C3c's `6 passed`. TWO causes, separated by isolating them rather than assuming.**
+1. **Predicted before running** (and registered as such): the fixture's `_Shell` stub supplies
+   no `R_IF`, so any scheme reading the shell solve's front returns `0.0`.
+2. ⛔ **NOT predicted, and mine.** Supplying `R_IF` **still** returned `0.0`. The fixture has
+   `Eb = 0`, `Lmech = 0` ⇒ `P_conf = 0`, and I had copied O1's `if not (P_conf > 0.0): return
+   0.0` guard together with its `drive = P_conf·rho` form — **which divides by the very
+   quantity that goes to zero in the photoionisation-only limit.** I had thrown away the one
+   property K11 exists for, and no gate before this one would have caught it. The closure
+   itself was correct the whole time: at `ṗ_w = 0` it returned **9.033929e+02** against shipped
+   C3a's **9.033929e+02**.
+
+**The fix, and why it is not a weakening.** Batch 16's mapping is now written on `drive`
+directly instead of on `P_conf·rho`: return `drive − pRam` in transition/momentum, `drive`
+otherwise. That is *algebraically identical* wherever `P_conf > 0` — in momentum
+`get_effective_bubble_pressure` returns `pRam` by construction, so `pRam·(ρ−1) ≡ drive − pRam`
+— but it is defined where `P_conf` is not. **G22.6 re-run after the fix: still 0.000e+00 on all
+143 rows**, so production behaviour is unchanged and only the singular limit moves.
+
+**✅ G22.7′ — the amended limit test — PASS, and it is the sharpest single result of the batch.**
+Supplying the fixture's **own** thin-front geometry `R_IF = R2` (the only edit; every assertion
+in the committed test file is untouched):
+
+| arm | `test_phii_c3c_spitzer.py` as committed | with `R_IF = R2` supplied |
+|---|---|---|
+| baseline C3c | **6 passed** | **6 passed** |
+| O1 | 5 failed, 1 passed | **5 failed, 1 passed — UNCHANGED** |
+| **K11** | 5 failed, 1 passed | ✅ **6 passed** |
+
+and part (a), K11's drive against shipped `P_C3a` over **400 radii spanning `R/R_St` = 1–50**:
+worst **2.220e-16** against a 1e-12 bar.
+
+🔑 **What this establishes, and it changes the O1-vs-K11 comparison.** O1's missing
+photoionisation-only limit is now confirmed **structural**: its drive *is* `P_conf·(R_IF/R2)²`,
+so `P_conf → 0` forces the drive to zero, and **supplying `R_IF` does not help it** — no
+implementation choice can. K11 genuinely contains the limit, reproducing classical
+Spitzer/Hosokawa–Inutsuka D-type expansion including `test_mis_normalisation_is_caught`, the
+control that makes the other four passes evidence rather than decoration. **This is the first
+candidate in §7.1 to pass Batch 8's anchor**, and the registered stage-2 headline [E] is
+therefore *right in substance and wrong as written* — it does not pass the test as committed,
+because that test cannot supply a front; it passes the moment the front is supplied.
+
 #### Batch 22 STAGE 1 RESULT — 2026-08-31, measured against the gates above
 
 `harness/k11_screen.py` (committed at `9372897f`, **before** its first run) → `data/b22_k11_screen.csv`,
