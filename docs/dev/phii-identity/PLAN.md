@@ -3549,6 +3549,74 @@ it collapses, which is itself the measurement. PRB to 0.1 is cheap.
   within +1.5%/+0.7% of `P_conf`, so I predict **|ΔR2(K11) − ΔR2(O1)| < 3 percentage points**.
   *Falsifier:* a wider split ⇒ the closures differ on the confined branch more than stage 1 implies.
 
+#### Batch 22 STAGE 3 RESULT, batch 1 of 2 — PRB at its OWN `stop_t` = 0.1, 2026-09-01
+
+Three local runs, worktrees at `24d9fd27`, `--stop-t` omitted.
+
+**✅ G22.12 — PASS, verified from the artifacts rather than assumed.** All three `_overrides.txt`
+read `overrides: {}` and the materialized `PRB.param` carries `stop_t 0.1`. This is the first time
+this config has been compared at its own horizon; my 2026-08-30 ladder ran it at 1.5.
+
+| arm | wall | snaps | `R2_end` | phases | fate |
+|---|---|---|---|---|---|
+| baseline | 704 s | 185 | 0.45865 | `energy > implicit` | `stopping_time` |
+| O1 | 768 s | 185 | 0.49036 | `energy > implicit` | `stopping_time` |
+| K11 | 623 s | 185 | 0.49223 | `energy > implicit` | `stopping_time` |
+
+**✅ G22.13 — no fate difference, and this time the statement means something.** All three reach
+`stopping_time` at the config's *designed* endpoint, none collapses, and none leaves the confined
+branch (`energy > implicit` only). **This confirms the 2026-08-30 correction**: at its own horizon
+PRB is unremarkable, and the "first substantive fate change in the ladder" I withdrew was indeed an
+artefact of running it 15× too long.
+**✅ G22.14 — PASS, 0 βδ lines in ALL THREE arms.** This independently confirms the 2026-08-30
+diagnosis that O1's βδ trouble on PRB began at `t ≈ 0.212`, i.e. **only past** the design horizon —
+inside it, O1 is clean. [E4] holds for this config.
+
+**G22.15 — ΔR2 and the ramp-window excursion.**
+
+| pairing | ΔR2 at `t` = 0.1 | \|max\| over the run | where the max sits |
+|---|---|---|---|
+| O1 vs baseline | **+6.913%** | +6.913% | at the end |
+| K11 vs baseline | **+7.321%** | **+13.945%** | `t` = 1.5e-07, energy phase |
+| K11 vs O1 | **+0.382%** | +13.358% | `t` = 1.4e-07, energy phase |
+
+✅ **[E3] CONFIRMED:** |ΔR2(K11) − ΔR2(O1)| = **0.408 points** against a registered bar of 3. On a
+config that never leaves the confined branch the two closures are nearly indistinguishable, exactly
+as stage 1's +1.5%/+0.7% implied. `drive_K11/drive_O1` median **1.0626** — K11 6% above O1 here,
+against 3.857 on B3MW001, which is the confined-vs-driving split doing what it should.
+⚠️ **But the |max| column must not be quoted bare.** The +13.9% sits at **`R2` ≈ 1e-4 pc**, in the
+first handful of snapshots, where K11 drives from step one and C3c returns exactly 0.0 — four
+orders of magnitude below the final 0.46 pc. It is a real difference in the ramp window (Batch 4a's
+class) and it does partly persist (+7.3% at the end), but the 13.9% itself is at negligible radius.
+
+⛔ **[E2] MISSED — and the gate as I designed it CANNOT attribute the miss. Recorded as a
+gate-design error of mine, the G13.1/G13.3/G18.0 class.** I predicted O1-vs-baseline at `t` = 0.1
+would reproduce the **+5.81%** that the 2026-08-30 entry read off the *over-extended* run.
+Measured: **+6.913%** — 1.10 points high, ~19% relative. Per-arm: baseline 0.45865 here vs 0.45746
+there (+0.26%); O1 0.49036 vs 0.48402 (**+1.31%**).
+⛔ **I nearly asserted a mechanism and it was wrong.** I hypothesised stop_t-dependent segmentation
+via `run_energy_implicit_phase.py:699`'s `n_estimate = min(int(200·log10(tmax/tmin)), MAX_SEGMENTS)`
+— **but that variable is DEAD CODE**, assigned and never read; `dt_segment` is chosen adaptively by
+`next_dt_segment`, and `tmax` only clips the final segment (`:1058`). So the tidy explanation is
+**refuted by source**, and I have no verified mechanism.
+**What the comparison actually is: confounded three ways.** The 2026-08-30 figure came from a
+different **machine** (Helix vs this laptop, different BLAS/LSODA rounding on a stiff system), a
+different **SHA** (`cce8c924` vs `24d9fd27`), *and* a different **`stop_t`**. Nothing in this batch
+isolates any of the three, so the honest verdict is that **[E2] was not a discriminating test**, not
+that trajectories are stop_t-dependent. ⚠️ **Consequence, stated because it is the useful part:
+the +5.81% and the +6.913% are not the same measurement and should never be quoted as if they
+were.** The one-run test that would settle it: baseline PRB at `stop_t` 1.5 **on this machine**,
+read at `t` = 0.1 — if it returns ≈0.45746 the cause is `stop_t`, if ≈0.45865 it is platform/SHA.
+Not run; it is outside what was asked.
+
+**G22.11 on PRB — and the shipped scheme is the worst offender here.** Drive against the layer's own
+thermal pressure (`pref·n_IF`, the committed convention): **baseline below the floor on 184/185 rows
+(99.5%, median 0.967)**, O1 on 92/185 (49.7%, median 1.002), K11 on 15/185 (8.1%, median 1.241).
+PRB never leaves the confined branch, where C3c returns exactly **0.0**, so the drive is `Pb` alone
+and sits below the ionised layer's own pressure essentially everywhere. ⚠️ The tautology caveat from
+stage 2 still applies to any floor defined as the photo-only value; `n_IF` is not that, and K11 does
+fall below on 15 rows.
+
 #### Batch 22 STAGE 2 RESULT, part 1 — the limit gates, 2026-08-31
 
 Arms are three `git worktree`s at `1c46410c`, so each runs **only committed state** and the
