@@ -1,0 +1,183 @@
+diff --git a/trinity/bubble_structure/get_bubbleParams.py b/trinity/bubble_structure/get_bubbleParams.py
+index 2d3cf953..273c7985 100644
+--- a/trinity/bubble_structure/get_bubbleParams.py
++++ b/trinity/bubble_structure/get_bubbleParams.py
+@@ -391,6 +391,178 @@ def get_phii_c3c(params, shell_props):
+     return float(P_c3a) if P_c3a > params['Pb'].value else 0.0
+ 
+ 
++def _k11_skin_density(R_IF, pdot_w, Q_eff, pref, chi_e, alpha_B):
++    """Geen 2019's coupled skin density: the unique positive root of
++
++        f(n) = n**2 R_IF**3 - C_W sqrt(n) - C_Q = 0
++        C_W  = (pdot_w / (4 pi pref))**1.5      C_Q = 3 Q_eff / (4 pi chi_e alpha_B)
++
++    obtained by eliminating the wind radius r_w between the paper's two conditions,
++    recombination equilibrium over the cavity-excluded layer (wind:photoequilibrium) and
++    wind/photoionised pressure balance at r_w (wind:windpressurebalance). The elimination
++    is exact -- re-derived symbolically, not transcribed. Never use the appendix form:
++    Geen 2019's appendix carries a (r_i - r_w)**3 typo for (r_i**3 - r_w**3).
++
++    UNIQUENESS AND BRACKET, both proved rather than tuned. f(0) = -C_Q <= 0 and f has a
++    single stationary point on n > 0, so there is exactly one positive root. With
++    n_St = sqrt(C_Q/R_IF**3) (the photon-only root) and n_w = (C_W/R_IF**3)**(2/3) (the
++    wind-only root):
++        f(n_St) = -C_W sqrt(n_St) <= 0  and  f(n_w) = -C_Q <= 0   => max(n_St, n_w) <= n*
++        f(n_St + n_w) >= 0, since with sqrt(a+b) <= sqrt(a) + sqrt(b) the residual reduces
++        to n_w + 2 n_St >= sqrt(n_w) sqrt(n_St + n_w), whose squares differ by
++        3 n_St n_w + 4 n_St**2 >= 0.
++    So the bracket always contains the root; the pad keeps the sign change strict in the
++    degenerate limits (one term exactly zero), where the bracket collapses onto the
++    analytic answer.
++
++    LIMITS, which are the point of the scheme:
++        wind -> 0     n -> sqrt(3 Q_eff / (4 pi chi_e alpha_B R_IF**3)), the Stromgren
++                      density over R_IF -- the photoionisation-only floor, delivered
++                      additively with no branch and no max().
++        photons -> 0  pref n -> pdot_w / (4 pi R_IF**2), i.e. r_w -> R_IF, a thin skin at
++                      the front, and the drive at R2 becomes pdot_w/(4 pi R2**2).
++
++    Returns 0.0 rather than raising if the root-find cannot be set up or converged.
++    ponytail: silent zero on failure matches this module's other guards; the bracket is
++    provable so the only reachable failures are float overflow at absurd inputs. If a run
++    ever needs to distinguish "confined" from "solver gave up", this is the line to
++    instrument -- the arm's own P_HII > 0 diagnostic is what currently covers it.
++    """
++    try:
++        C_W = (pdot_w / (4.0 * np.pi * pref)) ** 1.5 if pdot_w > 0.0 else 0.0
++        C_Q = 3.0 * Q_eff / (4.0 * np.pi * chi_e * alpha_B) if Q_eff > 0.0 else 0.0
++        R3 = R_IF ** 3
++        n_st = np.sqrt(C_Q / R3) if C_Q > 0.0 else 0.0
++        n_w = (C_W / R3) ** (2.0 / 3.0) if C_W > 0.0 else 0.0
++        if not (n_st > 0.0 or n_w > 0.0):
++            return 0.0
++
++        def f(n):
++            return n * n * R3 - C_W * np.sqrt(n) - C_Q
++
++        lo = max(n_st, n_w) * (1.0 - 1e-9)
++        hi = (n_st + n_w) * (1.0 + 1e-9)
++        return float(scipy.optimize.brentq(f, lo, hi, xtol=1e-300, rtol=8.9e-16,
++                                           maxiter=300))
++    except (ValueError, OverflowError, ZeroDivisionError, FloatingPointError):
++        return 0.0
++
++
++def get_phii_k11(params, shell_props):
++    """Photoionised pressure from Geen 2019's ADDITIVE closure on trinity's own geometry.
++
++    ARM CODE (docs/dev/phii-identity/PLAN.md Batch 22, stage 2). NOT the shipped scheme;
++    adopting it is a maintainer decision (D5, still open).
++
++        n     = _k11_skin_density(R_IF, pdot_w, Qi, ...)      <- one scalar Brent
++        drive = pref * n * (R_IF/R2)**2 ,   pref = (mu_c/mu_i) k_B T
++
++    RELATION TO O1, which is the whole comparison. O1 uses the shell solver's own inner
++    boundary density n0 = P_conf/pref and amplifies it by the same (R_IF/R2)**2, so
++
++        drive_K11 / drive_O1  ==  n / n0        exactly, on every row.
++
++    Both pin r_i = R_IF, so the area amplification is SHARED and the entire difference
++    between the two candidates is the skin density. What K11 adds is that n solves the
++    wind and photon conditions together, so the photoionisation-only limit exists instead
++    of the drive following P_conf to zero as the wind weakens.
++
++    R_IF is read verbatim from the shell solve (ShellProperties.R_IF,
++    shell_structure.py:227 = rShell_arr_ion[-1]) -- the front trinity already computes
++    with the real density profile, the real dust term and the real termination conditions.
++    Nothing is re-derived, rescaled or clipped, and no second front solve is introduced.
++
++    Qi is used WHOLE, not Qi*f_abs: the shell solve starts at phi = 1 and the
++    recombination/dust/escape split is an OUTPUT of that solve, not an input to this one
++    (the Batch 17 convention). The dusty variant is Q_eff = Qi*(1 - shell_fIonisedDust),
++    a one-line change measured in stage 1 at roughly half the driving-branch excess.
++
++    P_conf is the RAMPED effective pressure, not params['Pb'] -- inside dt_switchon the
++    two differ by 0.330-0.995x (G16.3), and the un-ramped value would re-admit the D-ramp
++    defect class C3c removed.
++
++    RETURN CONVENTION (Batch 16, verified to 2.22e-16 through the real P_drive
++    expressions): the closure's drive MINUS whatever the phase's own composition adds --
++
++        energy/implicit   max(P_conf, P_HII)            <- return P_conf*rho
++        transition        max(P_conf, P_HII + P_ram)    <- return P_conf*rho - P_ram
++        momentum          P_HII + P_ram                 <- return P_ram*(rho - 1)
++
++    with rho := drive/P_conf. In the momentum phase get_effective_bubble_pressure returns
++    pRam by construction, so P_conf == P_ram there and the momentum form composes exactly.
++
++    KNOWN, NOT FIXED BY THIS VARIANT (Batch 22 stage 1, measured):
++      * G22.4 FAILS -- the implied ionised layer exceeds the shell's own mass on 6 of 17
++        B3M momentum rows (max 1.91) where O1 is inside the shell on 140/140, and the
++        closure's implied r_w sits at 0.65 R2 (B3M) / 0.49 R2 (B3MW01).
++      * the per-segment freeze ratchet is UNTOUCHED: drive >= P_conf always (provably,
++        since n >= n_w = n0 (R2/R_IF)**2), so this wins max(press_bubble, P_HII) on 100%
++        of confined rows exactly as O1 does.
++      * on trinity's driving rows the closure is photon-dominated by 10-92x, so the
++        promised floor sits ABOVE O1 (2.25-4.20x), not underneath it.
++    """
++    R2 = params['R2'].value
++    Qi = params['Qi'].value
++    if not (R2 > 0 and Qi > 0):
++        return 0.0
++
++    R_IF = getattr(shell_props, 'R_IF', None)
++    if not (isinstance(R_IF, float) and R_IF >= R2):
++        return 0.0
++
++    phase = params['current_phase'].value
++    Lmech_total = params['Lmech_total'].value
++    v_mech_total = params['v_mech_total'].value
++    Eb = params['Eb'].value
++    # R1 via solve_R1 rather than params['R1'], matching the ODE's own canonical call
++    # (energy_phase_ODEs.py:221) so this cannot read a stale radius.
++    R1 = solve_R1(R2, Eb, Lmech_total, v_mech_total)
++    P_conf = get_effective_bubble_pressure(
++        current_phase=phase,
++        Eb=Eb, R2=R2, R1=R1, gamma=params['gamma_adia'].value,
++        Lmech_total=Lmech_total, v_mech_total=v_mech_total,
++        t=params['t_now'].value, tSF=params['tSF'].value,
++    )
++    # NOTE the bar is >= 0, not > 0, and this is the whole point of the scheme. O1 must
++    # guard P_conf > 0 because its drive IS P_conf*(R_IF/R2)**2, so P_conf -> 0 forces the
++    # drive to 0 -- that is O1's missing photoionisation-only limit, structural and
++    # unfixable by any implementation choice. K11's drive does not contain P_conf as a
++    # factor: at pdot_w -> 0 the closure returns the Stromgren density over R_IF and the
++    # drive stays finite. Copying O1's guard (and its P_conf*rho form, which divides by
++    # P_conf) threw that limit away -- caught by G22.7 and fixed here, 2026-08-31.
++    if not (P_conf >= 0.0):
++        return 0.0
++
++    pref = (params['mu_convert'].value / params['mu_ion_shell'].value
++            * params['k_B'].value * params['TShell_ion'].value)
++    # pdot_w: the wind momentum flux the closure balances against. Momentum phase uses
++    # pRam directly (the registered mapping); elsewhere the ramped confining pressure.
++    P_w = pRam(R2, Lmech_total, v_mech_total) if phase == 'momentum' else P_conf
++    pdot_w = 4.0 * np.pi * R2 * R2 * P_w
++
++    n = _k11_skin_density(R_IF, pdot_w, Qi, pref,
++                          params['chi_e_shell'].value, params['caseB_alpha'].value)
++    if not (n > 0.0):
++        return 0.0
++
++    drive = pref * n * (R_IF / R2) ** 2
++
++    # Batch 16's mapping written on `drive` DIRECTLY rather than on P_conf*rho. The two
++    # are algebraically identical wherever P_conf > 0 (in momentum P_conf == pRam by
++    # get_effective_bubble_pressure's own construction, so pRam*(rho-1) == drive - pRam),
++    # but this form has no division by P_conf and so survives P_conf -> 0.
++    # P_ram computed directly, never read from params['P_ram'], so this helper carries
++    # no dependence on call ordering within the phase runners.
++    if phase in ('momentum', 'transition'):
++        return float(drive - pRam(R2, Lmech_total, v_mech_total))
++    return float(drive)
++
++
++# Arm alias: every call site reaches the closure through this one line, so reverting the
++# arm is deleting it. Mirrors hpc/b14/k10_o1_arm.patch's mechanism exactly.
++get_phii_c3c = get_phii_k11
++
++
+ def get_effective_bubble_pressure(current_phase, Eb, R2, R1, gamma,
+                                    Lmech_total=None, v_mech_total=None,
+                                    t=None, tSF=None):
