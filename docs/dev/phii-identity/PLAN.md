@@ -4213,6 +4213,124 @@ before committing. ⛔ **Superseded 2026-08-29:** the corrected assessment (rev2
 do-not-act banner is lifted; Batches 13–21 were built after it. What remains open is the
 maintainer's ruling on the register, i.e. D5.
 
+## 7b. PUBLICATION ASSESSMENT — 2026-09-01: what is defensible, what is not, and the mass-location argument
+
+Written on the maintainer's request (*"what is your thought, if you were to publish the result… I
+need to know the pros and cons and the code, and what they actually do or will do"*), with the
+standing instruction not to trust any claim unless re-verified against data or source. **Everything
+in this section was re-derived this session; nothing is carried over from prose.** Kept here rather
+than in a sibling doc because §0's one-doc rule is normative.
+
+### 7b.1 What the three schemes actually compute (verbatim from source)
+
+```python
+# C3c (SHIPPED)  get_bubbleParams.py:337
+n_c3a = sqrt(3·Qi·f_abs / (4π·χ_e·α_B·R2³))     # Strömgren over the WIND CAVITY
+return pref·n_c3a  if  pref·n_c3a > Pb  else 0.0 # hard branch
+
+# O1 (arm, hpc/b14/k10_o1_arm.patch)
+return P_conf · (R_IF/R2)**2                     # shell's own n0, amplified by the front's area
+
+# K11 (arm, hpc/b14/k11_arm.patch)
+solve  n²·R_IF³ = C_W·√n + C_Q ;  return pref·n·(R_IF/R2)**2
+```
+
+All three are `pref × (a density) × (an amplification)`. **They differ only in the density**, and
+under this workstream's one-radius pin O1 and K11 share the *same* amplification, so
+`drive_K11/drive_O1 ≡ n_K11/n0` identically (measured 0.0e+00 on 143 rows).
+**Per-call cost is a non-issue for all three** — 2.91 / 10.44 / 28.37 µs, measured this session, and
+the helper runs once per snapshot, not per ODE step. O1's 3.9× wall time is trajectory stiffness,
+**not** helper cost.
+
+### 7b.2 🔑 The mass-location argument — verified from source and data, and it is the sharpest thing here
+
+**Chain of verification, each link checked independently rather than assumed:**
+1. **`m_ion` is the ionised part of the SHELL profile.** `harness/ionised_mass_fraction.py:113`:
+   `m_ion = ∫ n·4πr²·μ dr` from the profile's inner edge to `shell_ion_idx`. Not a modelled quantity.
+2. **The shell starts at `R2`** and its inner density is `nShell0 ∝ Pb` (`shell_structure.py:125`,
+   integration from `rShell_start`), so **the ionised layer is the shell's own inner region** and is
+   inside `shell_mass`.
+3. **The equation of motion, verbatim** (`energy_phase_ODEs.py:264`):
+   `vd = (4π·R2²·(P_drive − P_ext) − mShell_dot·v2 − F_grav + F_rad) / mShell`
+   — `P_drive` acts **at R2**, on **`mShell`**, and `P_drive = max(press_bubble, P_HII)`.
+4. **Measured (`data/b15_ionised_mass_fraction.csv`), on BOTH denominators and on the harness's own
+   `profile_trustworthy` subset:**
+
+| phase | `m_ion/m_shell` | `m_ion/m_profile` | rows ≥0.95 |
+|---|---|---|---|
+| **energy** | **1.0010** (trustworthy-only **1.0003**) | **1.0000** | **25/25** |
+| implicit | 0.0652 | 0.0650 | 5/24 |
+| transition | 0.0757 | 0.0756 | 0/12 |
+| momentum | 0.2004 | 0.2002 | 1/11 |
+
+  ✅ The `profile_trustworthy` caveat does **not** bite: `m_profile/shell_mass` = **1.0010**, i.e. the
+  profile does account for the run's shell mass, and restricting to the flagged subset moves the
+  answer to 1.0003. The conclusion is robust to the normalisation.
+
+**The argument.** In the energy phase **the shell IS the photoionised gas**. Adding a photoionised
+pressure as an *external* drive at `R2`, acting on `mShell`, therefore applies that gas's own
+pressure to itself. It also contradicts the shell solve's own inner boundary condition, which sets
+`nShell0` from `Pb` — i.e. the pressure at `R2` **is** `Pb` by construction.
+🔑 **Consequence, and it inverts the primary-source argument this workstream has been leaning on.**
+Lancaster's `eq:HIImomentum_joint1` accelerates `M_sh = (4π/3)ρ̄R_i³` — ambient gas swept up
+**outside** the ionised region. Trinity puts the ionised layer **inside** `shell_mass`. **The two
+geometries are inverted, so the sources' small non-zero confined term does NOT transfer to
+trinity**, and the 2026-08-30 primary-source finding ("no source supports an exactly-zero confined
+contribution") must be read with that scope. On trinity's geometry **C3c's exact `0.0` is the most
+defensible of the three on the confined branch**, and O1 (+0.07%/+0.51%) and K11 (+1.56%/+0.67%) are
+both adding a term whose physical basis is unclear — **K11 more than O1**.
+⚠️ **Relation to the existing record, stated so this is not oversold as new:** this is a sharpening
+of **§6b seam B** ("the code assumes equilibrium in the shell solve and non-equilibrium in the drive,
+for the same gas at the same instant"). What is new is the *mass location* — the gas supplying the
+excess push is inside the accelerated mass, and in the energy phase it **is** the accelerated mass.
+⚠️ It also means the energy phase sits **at Geen 2022's overflow condition** (`M_i ≥ M(<r_i)`)
+throughout, where the sources say none of these models applies. **Needs its own pre-registered gate
+before any paper leans on it.**
+
+### 7b.3 Scorecard — every cell traceable to a measurement in this doc
+
+| | C3c (shipped) | O1 | K11 |
+|---|---|---|---|
+| density physically hostable | ⛔ **no** — cavity 4–5 orders too thin on the `n²` sink | ✅ shell's own boundary condition | ✅ self-consistent |
+| photoionisation-only limit | ✅ 6/6 | ⛔ **structurally absent** (5 failed *with* `R_IF` supplied) | ✅ 6/6, exact to 2.220e-16 |
+| branch discontinuity | ⛔ +6.79% observed step | ✅ none | ✅ none |
+| implied layer mass ≤ shell | ⛔ seam C, 1.5638× over | ✅ 140/140, worst 0.9407 | ⛔ 6/17 momentum rows, max 1.9142 |
+| geometry self-consistent | one radius | one radius | ⛔ demands `r_w` = 0.49–0.65·`R2` |
+| momentum drive ×`P_ram` | 7.165 | **3.274–3.901** | ⛔ **8.833** |
+| confined excess over `P_conf` | **0 (exact)** | +0.07% / +0.51% | ⛔ +1.56% / +0.67% |
+| B3MW001 → own `stop_t` = 5 | ✅ `stopping_time` | ⛔ **VOID, stalls at 21.2%** | ✅ `shell_dissolved`, `t`=3.64 |
+| PRB → own `stop_t` = 0.1 | ✅ clean | ✅ clean | ✅ clean |
+| freeze ratchet | not armed | ⛔ 100% of confined rows | ⛔ 100% of confined rows |
+| per-call cost | 2.91 µs | 10.44 µs | 28.37 µs (all negligible) |
+
+### 7b.4 The verdict, stated as it would have to be stated in print
+
+**Neither arm is a clear improvement on C3c, and that is the honest finding.** O1 trades a fictitious
+density for a missing limit and an integration failure on a registered core config. K11 trades the
+missing limit for the largest over-drive of the three and a broken mass budget. Both re-arm the
+freeze ratchet, so neither addresses what actually blocked O1.
+
+**Defensible for publication now:**
+1. **The critique of C3c's driving branch** — a density inverted from a photon balance over a region
+   measured 4–5 orders too thin to host it. Decisive, and independent of any candidate succeeding.
+2. **The structural limits result** — O1 loses the photoionisation-only limit *by construction*
+   (drive ∝ `P_conf`); K11 retains it exactly. Demonstrated by running the classical anchor with the
+   front supplied: O1 still 5 failed, K11 6 passed, K11 vs `P_C3a` to 2.220e-16 over 400 radii.
+   A general statement about how one-radius codes may couple wind and photoionisation.
+3. **The negative result** — trinity's one-radius geometry cannot host either closure
+   self-consistently (K11's own algebra demands `r_w ≈ 0.5·R2`; the ionised gas is inside the
+   accelerated mass). Honest negatives are publishable.
+
+**NOT defensible for publication:** any "scheme X is dynamically better" claim. Two configs, one arm
+VOID, [E1] failed, and K11's `shell_dissolved` occurs at 62 pc ≈ 12× `rCloud`, outside the cloud in
+`nISM` — a prediction of the scheme, not a validation of it.
+
+**If something must change**, the minimal defensible move is **not** a closure swap but cutting the
+driving-branch magnitude, where **K5b** (the code's own solved profile over the code's own layer
+volume, **1.545×`P_ram`**) has the best provenance of anything measured here because it invents no
+density at all. **It has never been arm-tested** — that is the run to spend next, not more O1/K11
+laddering.
+
 ## 8. Ledger (results land here — the one source of truth)
 
 ### 8.1 Batch verdicts
@@ -6499,3 +6617,40 @@ WARNING | run_energy_implicit_phase | beta-delta solver unconverged for 11 conse
   has. Everything else from this run is one clock-truncated config whose fates had not resolved,
   so it ranks the two schemes far less than my previous message implied. No `trinity/` source
   touched.
+
+- **2026-09-01 (publication assessment + the mass-location argument, verified end-to-end; and the
+  merge question answered)** — Maintainer: *"double check your claim without assuming the origin…
+  write these all up so it stays safe beyond this chat and is referable… is it possible to keep C3c
+  for now, and then merge back to main."* New **§7b** holds the full assessment; this entry records
+  what was verified and what it changes.
+  ✅ **The mass-location claim VERIFIED, four independent links, none assumed.** (1) `m_ion` is a
+  raw integral of the shell's own profile to `shell_ion_idx` (`ionised_mass_fraction.py:113`), not a
+  modelled quantity. (2) The shell integration starts at `R2` with `nShell0 ∝ Pb`
+  (`shell_structure.py:125,162`), so the ionised layer is the shell's inner region and is inside
+  `shell_mass`. (3) The EOM, read verbatim (`energy_phase_ODEs.py:264`), applies `P_drive` at
+  `4π·R2²` and divides by `mShell`. (4) Measured: energy-phase `m_ion/m_profile` = **1.0000** with
+  **25/25** rows ≥ 0.95, and `m_profile/shell_mass` = **1.0010** — so the `profile_trustworthy`
+  caveat I raised does **not** bite, and restricting to that subset gives 1.0003. **My own
+  "deserves a caveat because only 10/25 are flagged" hedge is withdrawn as over-cautious**, though
+  the finding still needs a pre-registered gate before a paper leans on it.
+  🔑 **What it changes.** In the energy phase the shell **is** the photoionised gas, so an external
+  `P_HII` at `R2` acting on `mShell` applies that gas's own pressure to itself, and contradicts the
+  shell solve's own `Pb`-set inner boundary. **This inverts the primary-source argument**: Lancaster
+  accelerates gas swept up *outside* the ionised region, trinity puts the ionised layer *inside* the
+  accelerated mass, so the sources' small non-zero confined term does not transfer. On trinity's
+  geometry **C3c's exact 0.0 is the most defensible confined-branch choice of the three**, and both
+  arms add a term whose basis is unclear — K11 (+1.56%) more than O1 (+0.07%). ⚠️ Recorded as a
+  sharpening of **seam B**, not a new discovery; the new part is the mass *location*.
+  **Publication verdict (§7b.4): neither arm is a clear improvement on C3c.** Defensible to publish:
+  the critique of C3c's cavity density; the structural limits result (O1 cannot have a photo-only
+  limit, K11 does); and the negative result that the one-radius geometry hosts neither closure
+  self-consistently. **Not** defensible: any "X is dynamically better" claim — 2 configs, one arm
+  VOID, [E1] failed, and K11's `shell_dissolved` sits at 12× `rCloud` in `nISM`.
+  ✅ **Merge question — YES, and C3c is untouched by construction.** Verified: `get_phii_c3c` is
+  **byte-identical** between `main` and this branch (2851 chars, exact compare); `get_phii_k10` /
+  `get_phii_k11` appear **nowhere** in `trinity/` (both arms live only as patches under
+  `hpc/b14/`); the branch's entire production delta vs `main` is **three files, +26/+11/+14, zero
+  deletions** — the `mass_freeWind` bubble_mass fix, whose full-run equivalence was **bit-identical**
+  (GB.3: `dR2_max` 0.000%, 0 of 220 rows differ); and `git merge-tree` produces **0 conflict-marker
+  lines**. So merging carries the workstream's evidence and one proven-inert hygiene fix, and leaves
+  the shipped scheme exactly as it is.
