@@ -69,7 +69,10 @@ R2 = output.get('R2')
 - `Eb`: Bubble thermal energy [erg]
 - `T0`: Characteristic bubble temperature [K]
 - `R1`: Inner bubble radius (wind shock) [pc]
-- `Pb`: Bubble pressure [dyn/cm^2]
+- `Pb`: Bubble pressure [dyn/cm^2]. Thermal pressure of the shocked wind+SN
+  interior, `(gamma-1)Eb/[(4pi/3)(R2^3-R1^3)]`, in the energy / implicit /
+  transition phases; **overwritten with the wind+SN ram pressure in the momentum
+  phase**. Contains no radiation pressure and no photoionised-gas pressure.
 
 ### Cooling Parameters
 - `cool_beta`: Pressure evolution parameter
@@ -77,9 +80,15 @@ R2 = output.get('R2')
 
 ### Forces
 - `F_grav`: Gravitational force
-- `F_ram`: Ram pressure force
-- `F_HII`: HII pressure force (outward)
-- `F_rad`: Radiation pressure force
+- `F_ram`: `4*pi*R2^2*Pb` — the hot-bubble **thermal** pressure force in the
+  energy / implicit / transition phases (the name is a misnomer there), and a
+  true ram force only in the momentum phase. Note
+  `F_ram != F_ram_wind + F_ram_SN` outside the momentum phase.
+- `F_ram_wind`, `F_ram_SN`: SPS momentum **injection rates** (`pdot_W`,
+  `pdot_SN`). They are forces on the shell only in the momentum phase.
+- `F_HII`: HII pressure force (outward); exactly 0 while the ionised gas is
+  confined (C3c)
+- `F_rad`: Radiation pressure force (direct + IR-trapped); additive in every phase
 
 ### Residual Diagnostics (Beta-Delta Solver)
 - `residual_Edot1_guess`: Edot from beta [Msun*pc^2/Myr^3] (× INV_CONV.L_au2cgs → erg/s)

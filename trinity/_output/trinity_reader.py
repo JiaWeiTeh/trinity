@@ -87,7 +87,10 @@ The most commonly used output parameters are:
 - Eb: Bubble thermal energy [Msun*pc^2/Myr^2] (internal; × INV_CONV.E_au2cgs → erg)
 - T0: Characteristic bubble temperature [K]
 - R1: Inner bubble radius (wind termination shock) [pc]
-- Pb: Bubble pressure [Msun/pc/Myr^2] (internal units)
+- Pb: Bubble pressure [Msun/pc/Myr^2] (internal units). Thermal pressure of the
+  shocked wind+SN interior, (gamma-1)Eb/[(4pi/3)(R2^3-R1^3)], in the energy /
+  implicit / transition phases; OVERWRITTEN with the wind+SN ram pressure in the
+  momentum phase. Contains no radiation and no photoionised-gas pressure.
 
 **Cooling Parameters (from beta-delta solver):**
 - cool_beta: Pressure evolution parameter β = -(t/Pb)(dPb/dt)
@@ -95,7 +98,9 @@ The most commonly used output parameters are:
 
 **Forces:**
 - F_grav: Gravitational force
-- F_ram: Ram pressure force (total)
+- F_ram: 4*pi*R2^2*Pb. Hot-bubble THERMAL pressure force in the energy / implicit /
+  transition phases (a misnomer there); a true ram force only in the momentum phase.
+  F_ram != F_ram_wind + F_ram_SN outside the momentum phase.
 - F_HII: HII pressure force (outward)
 - F_rad: Radiation pressure force
 
@@ -190,11 +195,11 @@ PARAM_DOCS = {
 
     # Forces
     'F_grav': 'Gravitational force (inward) [Msun*pc/Myr^2]',
-    'F_ram': 'Ram pressure force [Msun*pc/Myr^2]',
+    'F_ram': '4piR2^2*Pb -- hot-bubble THERMAL pressure force in energy/implicit/transition, true ram force only in momentum [Msun*pc/Myr^2]',
     'F_ion_in': 'Ionization force (inward) [Msun*pc/Myr^2]',
-    'F_HII': 'HII pressure force (outward) [Msun*pc/Myr^2]',
-    'F_rad': 'Radiation pressure force [Msun*pc/Myr^2]',
-    'F_ISM': 'ISM pressure force [Msun*pc/Myr^2]',
+    'F_HII': 'HII pressure force (outward) = 4piR2^2*P_HII; exactly 0 while the ionised gas is confined (C3c) [Msun*pc/Myr^2]',
+    'F_rad': 'Radiation pressure force, direct + IR-trapped; additive in every phase [Msun*pc/Myr^2]',
+    'F_ISM': 'ISM pressure force [Msun*pc/Myr^2] (placeholder, never computed -- always 0)',
 
     # Shell properties
     'shell_mass': 'Shell mass [Msun]',

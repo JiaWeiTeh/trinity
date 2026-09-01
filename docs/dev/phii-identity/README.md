@@ -495,6 +495,8 @@ They are consistent; each is a different downstream consequence of §2.
 ```
 README.md                      this file — the consolidated evidence
 PLAN.md                        the fix effort: candidates, gates, batch ladder, ledger, dated log
+trigger-fate-pdrive-audit.md   2026-08-30 census: every phase/collapse trigger, fate mapping,
+                               P_drive verdict (C3c vs b14 O1) + methods-paper-v2 consequences
 data/phii_identity_evidence.csv  every sighting, one row each, with branch + SHA provenance
 data/roundtrip_ulp.csv         the float round-trip model output
 harness/roundtrip_ulp.py       reproduces the ULP signature (pure arithmetic, ~1 s)

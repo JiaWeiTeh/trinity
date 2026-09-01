@@ -301,8 +301,15 @@ CAUSES: Sequence[Cause] = (
         sets_flags="EndSimulationDirectly=True; isCollapse NOT set (reason_code has "
         "neither 'radius' nor 'collapse' in it)",
         means="Nothing physical. The integrator hit a stiff inward manifold and bailed.",
-        trap="v2_final is pinned at exactly -500.0000 by construction. Quoting these in "
-        "any velocity statistic quotes the trigger threshold back at yourself.",
+        trap="Do not quote v2_final for these in any velocity statistic -- it is the "
+        "last stored sample of a bail-out, not a converged speed. NOTE (measured "
+        "2026-08-29 on the delivered v2 summary.csv, 61,920 runs): the older claim "
+        "that 'v2_final is pinned at exactly -500.0000 by construction' is FALSE. "
+        "Only 196 runs sit at exactly -500.0; 7,610 velocity_runaway runs have "
+        "v2_final < 0 spread across the range, and 224 have v2_final > 0 despite "
+        "this being an inward-only event. The last stored snapshot is evidently not "
+        "the trigger sample. The 224 outward ones are unexplained and are the reason "
+        "the unresolved_infall split keys on motion, not on the cause token.",
     ),
     Cause(
         code=51,
@@ -469,11 +476,24 @@ REPORTS: Sequence[Report] = (
         True,
     ),
     Report(
+        "unresolved_infall",
+        "stop=numerical or unknown, and v2_final < 0",
+        "The integration died while the shell was moving INWARD. Still not a fate -- "
+        "we do not know where it stopped -- but unlike bare `unresolved` we do know "
+        "which way it was going, and it was going in. Almost all of these are "
+        "cause 50 (velocity_runaway), which is an inward-only event.",
+        "NOT `recollapsed` and never promotable to it: the shell's inward direction "
+        "at the last integrated instant says nothing about whether it would have "
+        "reached coll_r. Report it inside the censored block, next to `unresolved`, "
+        "never inside the completed-fate block.",
+        True,
+    ),
+    Report(
         "unresolved",
-        "stop=numerical or unknown",
-        "The integration died: velocity runaway, energy-collapse bail-out, a silent "
-        "solver failure, or no code at all. 18.3% of the v2 grid (25.0% at "
-        "etaw=0.01).",
+        "stop=numerical or unknown, and v2_final >= 0 or missing",
+        "The integration died with the shell moving outward, stationary, or with no "
+        "usable velocity: an energy-collapse bail-out, a silent solver failure, or "
+        "no end code at all. Direction unknown or outward.",
         "NOT a physical outcome and never guessable into one. It must appear in "
         "every legend and every denominator, or the percentages stop summing to the "
         "sample with nothing saying why. Excluding it silently is how a solver death "
@@ -497,6 +517,7 @@ REPORT_ORDER: Sequence[str] = (
     "breakout",
     "shell_dissolved",
     "radius_capped",
+    "unresolved_infall",
     "unresolved",
 )
 
@@ -510,6 +531,10 @@ REPORT_COLORS: Mapping[str, str] = {
     "breakout": "#2c7fb8",
     "shell_dissolved": "#7fcdbb",
     "radius_capped": "#74c476",
+    # the two non-fates are both grey: they are the same epistemic class.
+    # unresolved_infall is the darker of the pair, matching the "inward" end
+    # of the ordering without ever leaving the grey block.
+    "unresolved_infall": "#616161",
     "unresolved": "#9e9e9e",
 }
 
@@ -691,6 +716,11 @@ def stop_of(row: Mapping[str, Any]) -> str:
 def _report_rules():
     return (
         (
+            "unresolved_infall",
+            "stop in {numerical, unknown} and v2_final < 0",
+            lambda m, c, s, st: st in ("numerical", "unknown") and m == "contracting",
+        ),
+        (
             "unresolved",
             "stop in {numerical, unknown}",
             lambda m, c, s, st: st in ("numerical", "unknown"),
@@ -753,7 +783,7 @@ REPORT_TABLE = _report_rules()
 
 
 def _cloud_outcome(row: Mapping[str, Any], cleared: str, report: str) -> str:
-    if report == "unresolved":
+    if report in ("unresolved", "unresolved_infall"):
         return "undetermined"
     if cleared != "yes":
         return "retained"

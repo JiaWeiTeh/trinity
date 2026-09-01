@@ -16,6 +16,9 @@ txt/
 fig/
 paper/plots/
 
+# prelimenary.
+docs/dev
+
 # Private: kept local, not tracked
 paper/barnes26/
 paper/II-survey/

@@ -120,8 +120,23 @@ def test_energy_collapsed_is_unresolved_not_recollapsed():
 
 
 def test_velocity_runaway_is_unresolved():
-    v = BF.classify(_row(end_reason="velocity_runaway", v2_final=-500.0))
-    assert v["report"] == "unresolved"
+    """A solver death is never a fate -- but when the shell died moving inward we
+    know the direction, and `unresolved_infall` records that without promoting it.
+
+    Both branches must stay censored and both must leave the cloud's outcome
+    undetermined: knowing which way it was going is not knowing where it stopped.
+    """
+    inward = BF.classify(_row(end_reason="velocity_runaway", v2_final=-500.0))
+    assert inward["report"] == "unresolved_infall"
+    assert inward["stop"] == "numerical"
+    assert inward["censored"] is True
+    assert inward["cloud_outcome"] == "undetermined"
+
+    # 224 velocity_runaway runs on the v2 grid ended with v2_final > 0 despite the
+    # event being inward-only, so the split keys on motion, not on the cause token.
+    outward = BF.classify(_row(end_reason="velocity_runaway", v2_final=373.9))
+    assert outward["report"] == "unresolved"
+    assert outward["cloud_outcome"] == "undetermined"
 
 
 def test_still_expanding_is_not_cleared():
