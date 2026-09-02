@@ -1,9 +1,0 @@
-# generated 2026-08-12T22:35:55Z | builder run_batch.py | code 088a8d6+dirty
-# arm=b4a stop_t_override=1.5 (last writer)
-# run root: outputs/phii/b4a__088a8d6_dirty
-# Rows merged across concurrent streams; wall_s reflects a shared 4-core box.
-config,status,wall_s,n_snapshots
-B3M,ok,625.0,229
-F1HI,ok,491.5,139
-F1LO,ok,762.0,129
-PRB,ok,764.2,184

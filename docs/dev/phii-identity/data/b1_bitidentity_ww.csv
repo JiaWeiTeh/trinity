@@ -1,6 +1,0 @@
-# generated 2026-08-12T22:36:30Z | builder compare_bitidentical.py | code 153fa03+dirty
-# base: outputs/phii/b0__6b55657_dirty
-# new:  outputs/phii/b1__088a8d6
-# PASS = every pre-existing key bit-identical on every row (floats compared via repr, so 1 ULP fails). PASS-PREFIX = same, but one arm was cut short by a wall-clock timeout so only the common prefix was compared.
-config,verdict,n_rows,new_keys,detail
-WW,PASS,178,"n_IF_Str_raw","178 rows identical on all pre-existing keys"

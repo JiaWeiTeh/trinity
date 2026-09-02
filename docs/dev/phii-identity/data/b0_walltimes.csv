@@ -1,6 +1,0 @@
-# generated 2026-08-12T14:27:41Z | builder run_batch.py | code 4055ccc+dirty
-# arm=b0 tier=core stop_t_override=1.5
-# run root: outputs/phii/b0__6b55657_dirty
-config,status,wall_s,n_snapshots
-SC,ok,1368.9,192
-WW,ok,778.9,178
