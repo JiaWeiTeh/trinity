@@ -25,6 +25,16 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 PDV = ROOT / "docs/dev/transition/pdv-trigger"
 
+# docs/dev is untracked (local-only, see .gitignore) as of `a32b098`: absent in a
+# fresh clone and in CI. Every test here reads that tree, so skip the module.
+if not all((PDV / rel).is_file() for rel in (
+        "runs/harvest_bench5.py", "data/make_bench5_analysis.py",
+        "data/make_bench_stale_segments.py", "data/read_bundle.py")):
+    pytest.skip(
+        "docs/dev is untracked (local-only); pdv-trigger harness/data unavailable",
+        allow_module_level=True,
+    )
+
 
 def _load(path, name):
     spec = importlib.util.spec_from_file_location(name, path)

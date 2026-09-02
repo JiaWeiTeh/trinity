@@ -30,6 +30,16 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCREEN_PY = REPO_ROOT / "docs" / "dev" / "screen" / "screen.py"
 
+# docs/dev is untracked (local-only, see .gitignore) as of `a32b098`, so screen.py
+# is absent in a fresh clone and in CI. Skip rather than fail at import -- the
+# module-scope `screen = _screen()` below would otherwise abort collection
+# for the whole suite, hiding every other result behind it.
+if not SCREEN_PY.is_file():
+    pytest.skip(
+        "docs/dev is untracked (local-only); screen.py unavailable",
+        allow_module_level=True,
+    )
+
 
 def _screen():
     """Import screen.py by path — docs/dev is not a package."""

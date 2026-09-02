@@ -30,6 +30,15 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[1]
 HARNESS = REPO_ROOT / "docs" / "dev" / "dictionary-robustness" / "harness"
 
+# docs/dev is untracked (local-only, see .gitignore) as of `a32b098`, so this
+# harness is absent in a fresh clone and in CI. Skip rather than fail at import
+# -- a module-scope loader raising here aborts collection for the WHOLE suite.
+if not (HARNESS / "scan_field_record.py").is_file():
+    pytest.skip(
+        "docs/dev is untracked (local-only); dictionary-robustness harness unavailable",
+        allow_module_level=True,
+    )
+
 
 def _load_harness(name: str):
     """Import a harness script by path (it is stdlib-only, not a package)."""

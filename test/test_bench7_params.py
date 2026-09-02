@@ -19,6 +19,15 @@ import pytest
 RUNS = Path(__file__).resolve().parent.parent / "docs/dev/transition/pdv-trigger/runs"
 PARAMS = RUNS / "params" / "bench7"
 
+# docs/dev is untracked (local-only, see .gitignore) as of `a32b098`: absent in a
+# fresh clone and in CI. Every test here reads PARAMS/RUNS -- and without them the
+# parametrised arm test silently collects zero cases, which is worse than a skip.
+if not PARAMS.is_dir():
+    pytest.skip(
+        "docs/dev is untracked (local-only); bench7 param set unavailable",
+        allow_module_level=True,
+    )
+
 PHASE_COUNTS = {"k1_": 54, "k1b_": 20, "k2_": 66, "k3_": 10, "k4_": 24}
 KNOBS = ("cooling_boost_kappa", "cooling_boost_fA", "cooling_boost_mode")
 

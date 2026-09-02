@@ -16,6 +16,16 @@ import pytest
 
 HARNESS = Path(__file__).resolve().parents[1] / "docs" / "dev" / "rosette-cf" / "harness"
 
+# docs/dev is untracked (local-only, see .gitignore) as of `a32b098`, so this
+# harness is absent in a fresh clone and in CI. Skip rather than fail at import
+# -- the module-scope loads below would otherwise abort collection suite-wide.
+if not all((HARNESS / f"{m}.py").is_file()
+           for m in ("match_cf_scan", "run_cf_scan_local", "harvest_cf_scan")):
+    pytest.skip(
+        "docs/dev is untracked (local-only); rosette-cf harness unavailable",
+        allow_module_level=True,
+    )
+
 
 def _load(name):
     spec = importlib.util.spec_from_file_location(name, HARNESS / f"{name}.py")
