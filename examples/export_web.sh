@@ -116,7 +116,7 @@ body = '\n'.join(rendered)
 header = f"""# Tutorial notebook
 
 [Download this notebook]({site_path}/quickstart.ipynb) to run it yourself, or read it
-here. It works on a fresh clone — the runs it opens ship with the repository.
+here. It works on a fresh clone: the runs it opens ship with the repository.
 
 """
 
