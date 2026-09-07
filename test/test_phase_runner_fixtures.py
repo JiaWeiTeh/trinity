@@ -96,9 +96,30 @@ _SNAPSHOT_COUNT = 97
 
 # Captured on this branch, 2026-08-06. Eb is deliberately absent: it is exactly
 # 0.0 in the momentum phase (no thermal bubble), so it pins nothing.
+#
+# Re-baselined 2026-09-06. ⚠ This file is NOT on D4's re-baselining list
+# (docs/dev/phii-identity/PLAN.md:637-638) and it did not appear in the two-golden
+# count that ruling was given against; it surfaced on the full-suite run afterwards.
+# Before/after: docs/dev/phii-identity/shell-structure-test/golden_three_way.csv
+#
+# ⭐ This is the ONLY golden fixture that reaches the momentum phase, and it decomposes
+# the opposite way to the other two. Measured by re-running it at TShell_ion = 1e4:
+#   W32 + W52 (shell flags + adaptive march) :  R2 -0.012%, v2 -0.017%  -- nothing
+#   W63 (TShell_ion 1e4 -> 8000 K)           :  R2 +1.682%, v2 +8.691%  -- all of it
+#
+# ⛔ And NOT through P_HII, which is 0.0 on 97/97 rows here. The channel is F_ion_in /
+# P_ext, the INWARD pressure of ambient photoionised gas on the shell, which is
+# (mu_H/mu_i) n_r k_B T_ion and so scales LINEARLY with T_ion. This config leaks badly
+# (shell_fAbsorbedIon p50 0.039, < 1 on 97/97 rows), so that branch is live everywhere:
+# F_ion_in falls by x0.8004 -- the temperature ratio exactly -- and the shell, pushed
+# inward 20% less, expands faster.
+#
+# Phase structure is UNCHANGED: 97 snapshots, entry at energy 0 / implicit 87 /
+# transition 89 / momentum 91, all still asserted above and all still passing.
+# Previous values: R2 0.7092571238286148, v2 11.222515227888755.
 _FINAL_GOLDENS = {
-    "R2": 0.7092571238286148,
-    "v2": 11.222515227888755,
+    "R2": 0.7210994339937571,
+    "v2": 12.195810584867257,
 }
 
 

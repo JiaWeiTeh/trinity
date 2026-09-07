@@ -58,6 +58,7 @@ fresh clone, or CI). The shipped scheme is always tested.
 
 import argparse
 import csv
+import os
 import importlib.util
 import math
 import shutil
@@ -110,7 +111,21 @@ def load_scheme(name):
         mod_path = REPO / HELPER_REL
     else:
         if not patch.is_file():
-            pytest.skip(f"{patch.name} not present (untracked workstream); shipped scheme only")
+            # The arm patches are untracked (a32b098e), so on a fresh clone this suite
+            # used to report "6 passed, 15 skipped" and look green -- while the three
+            # EXPECTED_FAIL assertions that ARE the structural result (O1 cannot pass
+            # L1/L1b/L4) were never evaluated. A green suite that measured nothing is
+            # worse than a red one. Fail loudly instead, with one deliberate opt-out.
+            if os.environ.get("PHII_ALLOW_MISSING_ARMS") == "1":
+                pytest.skip(f"{patch.name} absent, PHII_ALLOW_MISSING_ARMS=1 -- "
+                            "shipped scheme only, structural result NOT measured")
+            pytest.fail(
+                f"{patch.name} is MISSING, so the '{name}' arm was not built and this "
+                "suite's structural result was NOT measured. The patches live in "
+                "docs/dev/phii-identity/hpc/b14/, untracked since a32b098e -- so a clean "
+                "clone cannot run them. To test the shipped scheme alone on purpose, set "
+                "PHII_ALLOW_MISSING_ARMS=1.",
+                pytrace=False)
         tmp = Path(tempfile.mkdtemp(prefix=f"phii_{name}_"))
         dest = tmp / HELPER_REL
         dest.parent.mkdir(parents=True)
@@ -459,9 +474,11 @@ def main():
     ap.add_argument("--out", type=Path, required=True)
     args = ap.parse_args()
     rows = []
+    missing = []
     for name in SCHEMES:
         if SCHEMES[name] is not None and not SCHEMES[name].is_file():
-            print(f"  {name}: patch absent, skipped")
+            print(f"  {name}: ** PATCH ABSENT -- ARM NOT MEASURED ** ({SCHEMES[name]})")
+            missing.append(name)
             continue
         for gate in GATES:
             r = gate(name)
@@ -471,6 +488,10 @@ def main():
                        else "pass" if r["passed"]
                        else ("FAIL (expected)" if (name, r["gate"]) in EXPECTED_FAIL else "FAIL"))
             print(f"  {name:4} {r['gate']:4} {verdict:16} {r['measured']!r}")
+    if missing:
+        print(f"\n  !! {len(missing)} arm(s) not measured: {', '.join(missing)}. "
+              f"data/b23_limits.csv will be INCOMPLETE and the structural result "
+              f"(O1 fails L1/L1b/L4) is NOT in it.\n")
     sha = subprocess.run(["git", "-C", str(REPO), "rev-parse", "--short", "HEAD"],
                          capture_output=True, text=True).stdout.strip() or "unknown"
     dirty = subprocess.run(["git", "-C", str(REPO), "status", "--porcelain"],

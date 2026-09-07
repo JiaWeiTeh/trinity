@@ -36,9 +36,27 @@ _PARAM = (
 # Earlier re-baseline 2026-08-05 with the phase-1a segment schedule (was
 # (0.759260, -0.035387) twice, at t=0.00341/0.00381): see
 # docs/dev/phase1a-init/PLAN.md §8, last block.
+#
+# Re-baselined 2026-09-06 under D4's authority, for THREE changes landing together
+# (before/after table: docs/dev/phii-identity/shell-structure-test/golden_three_way.csv):
+#   W32  the shell solver's ionised-loop termination flags were read with any() over the
+#        whole integrated slice instead of AT the termination index, so `has_neutral` came
+#        back False on rows that have a neutral rind and the neutral integration was
+#        SKIPPED (329/895 archived rows). Restoring it saturates shell_fAbsorbedNeu at 1.0
+#        and multiplies tau_kappa_IR, hence F_rad (+69.3% on the first implicit row here) --
+#        the trajectory moves through RADIATION PRESSURE, not through P_HII, which is
+#        exactly 0.0 on these confined-branch rows. This is the whole of the shift.
+#   W52  adaptive slice sizing + terminal refinement in the shell march. Shifts cool_delta
+#        by 0.002x tolerance here; it matters far more elsewhere (the shipped grid was
+#        >10% wrong in tau_kappa_IR on 194/895 rows).
+#   W63  TShell_ion 1e4 -> 8000 K with caseB_alpha scaled to match. Invisible here
+#        (0.002x tol): P_HII is 0 on this config's rows either way.
+# cool_beta was inside tolerance throughout (0.06x tol against the old golden) and moved
+# only in the sixth decimal; cool_delta is what broke the gate, at 1.63x tolerance.
+# Was (0.878396, -0.038973).
 _GOLDEN = [
-    (0.878396, -0.038973),  # t=0.00350 Myr
-    (0.878396, -0.038973),  # t=0.00390 Myr
+    (0.878279, -0.042223),  # t=0.00350 Myr
+    (0.878279, -0.042223),  # t=0.00390 Myr
 ]
 _TOL = 2e-3
 

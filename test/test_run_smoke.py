@@ -40,9 +40,30 @@ _FINAL_GOLDENS = {
     # Eb 778236.3470566473, captured 2026-07-10 on Python 3.9.6, numpy 1.26.4,
     # scipy 1.13.1) are the pre-fix exit state; the equivalence evidence that
     # the trajectories reconverge afterwards is data/gate_results.csv there.
-    "R2": 0.2567222331253797,
-    "v2": 48.944358738549326,
-    "Eb": 657558.3776158141,
+    #
+    # Re-baselined 2026-09-06. ⚠ This file is NOT on D4's standing re-baselining list
+    # (docs/dev/phii-identity/PLAN.md:638), so this carries the maintainer's explicit
+    # per-change sign-off, given 2026-09-06 for the three changes below together.
+    # Before/after table: docs/dev/phii-identity/shell-structure-test/golden_three_way.csv
+    #
+    #   W32  shell-solver termination flags read at the termination index rather than with
+    #        any() over the slice. The neutral-region integration had been SKIPPED on rows
+    #        that have a neutral rind; restoring it saturates the non-ionising absorption
+    #        and raises tau_kappa_IR, so F_rad rises and the shell is pushed harder. This
+    #        is a RADIATION-PRESSURE change: P_HII is exactly 0.0 on every row of this run.
+    #        Exit state moves R2 +1.02%, v2 +1.13%, Eb +0.32%.
+    #   W52  adaptive shell march (+0.002% here; large elsewhere).
+    #   W63  TShell_ion 1e4 -> 8000 K, caseB_alpha auto-scaled (+0.0022% here -- this config
+    #        never leaves C3c's confined branch, so the temperature does not reach P_HII).
+    #
+    # For scale, the C3c re-baseline of 2026-08-14 moved these same three by R2 -1.09%,
+    # v2 -0.57%, Eb -0.75%. R2 is comparable and opposite; v2 and Eb do NOT mirror it, so
+    # this is not a cancellation of C3c.
+    # Previous values, pre-W32: R2 0.2567222331253797, v2 48.944358738549326,
+    # Eb 657558.3776158141.
+    "R2": 0.25934419485301125,
+    "v2": 49.49653363172906,
+    "Eb": 659632.2441434182,
 }
 
 

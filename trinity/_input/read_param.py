@@ -347,19 +347,51 @@ def read_param(path2file):
         ori_units='dimensionless',
     )
 
-    # caseB_alpha (the case-B recombination coefficient, default 2.59e-13 cm^3/s)
-    # is fixed at its ~1e4 K value and is NOT recomputed from TShell_ion. Since
-    # alpha_B(T) ~ T^-0.7, moving the ionised-shell temperature far from ~1e4 K
-    # leaves the Stroemgren balance (n_IF_Str) and P_HII/F_HII internally
-    # inconsistent unless caseB_alpha is adjusted to match. Warn once at load.
+    # ---- caseB_alpha is now TIED to TShell_ion (PLAN.md W62) --------------------
+    # It used to be pinned at its 1e4 K value with only a warning, which left the
+    # Stroemgren balance (n_IF_Str), f_abs^gas and P_HII internally inconsistent the
+    # moment TShell_ion moved. The two are physically one choice, so they are coupled
+    # here rather than left to the user to keep in step.
+    #
+    # SCALING, quoted verbatim from Draine (2011), ApJ 732, 100 (arXiv:1003.0474),
+    # Sect. 2 -- a paper already in this work's bibliography (it is the source of
+    # sigma_d) and, more to the point, the source of the very shell system we solve:
+    # its Eqs. (1)-(3) are our shell ODEs, including the recombination-pressure term
+    # alpha_B n^2 <hv>_i / c with no phi factor (PLAN.md W57/W61):
+    #
+    #     "Take the effective radiative recombination coefficient to be
+    #      alpha_B ~= 2.56e-13 T_4^-0.83 cm^3 s^-1 for 0.5 <~ T_4 <~ 2,
+    #      with T_4 = T/1e4 K, where T is the gas temperature."
+    #
+    # NORMALISATION: we keep the paper's own 1e4 K value (2.59e-13, Osterbrock &
+    # Ferland 2006) and take only the EXPONENT from Draine, so the factor is exactly
+    # 1.0 at TShell_ion = 1e4 K and every existing result is bit-identical. Draine's
+    # own normalisation is 2.56e-13, 1.2% lower; that difference is not adopted here
+    # because the published trinity number is the O&F one.
+    #
+    # Multiplicative, so it is unit-agnostic (caseB_alpha is already in code units).
+    # Skipped entirely if the user set caseB_alpha explicitly -- their value wins.
     _T_shell_ion = params['TShell_ion'].value
-    if not (8000.0 <= _T_shell_ion <= 1.1e4):
+    _T4 = _T_shell_ion / 1.0e4
+    if 'caseB_alpha' in user_dict:
+        logger.info(
+            f"caseB_alpha set explicitly in the .param; NOT rescaled to "
+            f"TShell_ion = {_T_shell_ion:.4g} K. Draine (2011) would give "
+            f"{params['caseB_alpha'].value * _T4 ** -0.83:.4g} (code units) there."
+        )
+    elif _T4 > 0:
+        _alphaB_factor = _T4 ** -0.83
+        params['caseB_alpha'].value = params['caseB_alpha'].value * _alphaB_factor
+        if _alphaB_factor != 1.0:
+            logger.info(
+                f"caseB_alpha rescaled by (T/1e4)^-0.83 = {_alphaB_factor:.6g} for "
+                f"TShell_ion = {_T_shell_ion:.4g} K [Draine 2011, ApJ 732, 100]."
+            )
+    if not (5.0e3 <= _T_shell_ion <= 2.0e4):
         logger.warning(
-            f"TShell_ion = {_T_shell_ion:.4g} K is outside the ~8000-11000 K range "
-            f"that the default caseB_alpha (case-B recombination coefficient) assumes. "
-            f"alpha_B is temperature-dependent (~T^-0.7) and is NOT auto-adjusted, so "
-            f"the Stroemgren n_IF_Str and P_HII/F_HII may be internally inconsistent. "
-            f"Set caseB_alpha to the case-B value at your TShell_ion."
+            f"TShell_ion = {_T_shell_ion:.4g} K is outside 0.5 <= T_4 <= 2, the stated "
+            f"validity range of the Draine (2011) alpha_B fit now used to scale "
+            f"caseB_alpha. The Stroemgren balance and P_HII may be unreliable here."
         )
 
     # Dust cross-section scaling with metallicity

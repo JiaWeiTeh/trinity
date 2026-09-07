@@ -12,7 +12,7 @@
 #
 # To configure a run, create a .param file under param/ and override only the
 # keys you need. Human-facing parameter docs (units, allowed values, physics):
-# see docs/source/parameters.rst.
+# see https://jiaweiteh.github.io/trinity-web/?view=docs&page=parameters
 # ==============================================================================
 
 
@@ -228,8 +228,8 @@ Z_He_shell    1
 # INFO: Temperature of the neutral shell region.
 TShell_neu    1e2
 
-# INFO: Temperature of the ionised shell region.
-TShell_ion    1e4
+# INFO: Temperature of the ionised shell region. 8000 K (maintainer ruling 2026-09-06, PLAN.md W62): the two published Te-metallicity relations give 7584 K (Shaver+1983) and 7009 K (Mendez-Delgado+2023) at solar Z (Balser & Wenger 2024). NOT universal -- harder fields and higher densities push Te up. caseB_alpha is rescaled from this value by (T/1e4)^-0.83 (Draine 2011, ApJ 732, 100) in read_param, so the two cannot drift apart.
+TShell_ion    8e3
 
 # INFO: Dust cross-section at solar metallicity.
 # UNIT: [cm**2]

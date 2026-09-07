@@ -393,7 +393,7 @@ SPECS: tuple[ParamSpec, ...] = (
     ParamSpec(name='Z_He', default='2', info='Helium ionisation state in the HOT bubble interior (T~1e6-1e7 K): 2 = doubly ionised (He2+). Sets mu_ion and the bubble electron factor chi_e = 1 + Z_He*x_He.', category='input_constants', unit=None, exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='Z_He_shell', default='1', info='Helium ionisation state in the ~1e4 K ionised shell / HII region: 1 = singly ionised (He+). Sets mu_ion_shell and chi_e_shell = 1 + Z_He_shell*x_He. (He2+ needs ~1e5 K, so the photoionised shell is singly ionised.)', category='input_constants', unit=None, exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='TShell_neu', default='1e2', info='Temperature of the neutral shell region.', category='input_constants', unit=None, exclude_from_snapshot=True, run_const=True),
-    ParamSpec(name='TShell_ion', default='1e4', info='Temperature of the ionised shell region.', category='input_constants', unit=None, exclude_from_snapshot=True, run_const=True),
+    ParamSpec(name='TShell_ion', default='8e3', info='Temperature of the ionised shell region. 8000 K (maintainer ruling 2026-09-06, PLAN.md W62): the two published Te-metallicity relations give 7584 K (Shaver+1983) and 7009 K (Mendez-Delgado+2023) at solar Z (Balser & Wenger 2024). NOT universal -- harder fields and higher densities push Te up. caseB_alpha is rescaled from this value by (T/1e4)^-0.83 (Draine 2011, ApJ 732, 100) in read_param, so the two cannot drift apart.', category='input_constants', unit=None, exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='dust_sigma', default='1.5e-21', info='Dust cross-section at solar metallicity.', category='input_constants', unit='cm**2', exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='dust_noZ', default='0.05', info='Metallicity below which there is effectively no dust', category='input_constants', unit='Zsun', exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='dust_KappaIR', default='4', info='The Rosseland mean dust opacity kappa_IR.', category='input_constants', unit='cm**2 * g**-1', exclude_from_snapshot=True, run_const=True),
@@ -496,7 +496,14 @@ SPECS: tuple[ParamSpec, ...] = (
     ParamSpec(name='shell_grav_force_m', default=np.array([]), info='Gravitational force per unit mass', category='runtime_shell', unit='pc/Myr**2'),
     ParamSpec(name='shell_r_arr', default=np.array([]), info='Radial grid through ionized+neutral shell', category='runtime_shell', unit='pc'),
     ParamSpec(name='shell_n_arr', default=np.array([]), info='Number density through ionized+neutral shell', category='runtime_shell', unit='1/pc**3', metadata_exclude=True),
-    ParamSpec(name='shell_ion_idx', default=-1, info='Last index of ionized region in shell_r/n_arr (-1 if empty)', category='runtime_shell', unit='N/A'),
+    # ⛔ NOT SNAPSHOTTED (PLAN.md W68). This index is computed on the FULL march grid,
+    # but `dictionary.py` downsamples `shell_r_arr` before writing it, so the stored index
+    # lands in a different index space: measured on 895 archived rows it was out of range
+    # on 354 and pointed at a radius other than R_IF on a further 42 (396/895 = 44.2% wrong).
+    # `R_IF` IS snapshotted, and the index is only a view of it, so consumers reading a
+    # snapshot must derive it:  idx = np.searchsorted(shell_r_arr, R_IF, side='left').
+    # In-memory (ShellProperties.shell_ion_idx) it stays valid and is unchanged.
+    ParamSpec(name='shell_ion_idx', default=-1, info='Last index of ionized region in shell_r/n_arr (-1 if empty). NOT snapshotted: derive from R_IF via searchsorted (PLAN.md W68).', category='runtime_shell', unit='N/A', exclude_from_snapshot=True),
     ParamSpec(name='shell_mass', default=0, info='Shell mass', category='runtime_shell', unit='Msun'),
     ParamSpec(name='shell_massDot', default=0, info='Shell mass accretion rate', category='runtime_shell', unit='Msun/Myr'),
     ParamSpec(name='shell_interpolate_massDot', default=False, info='Use shell mass interpolation?', category='runtime_control', unit='N/A'),
@@ -539,7 +546,9 @@ SPECS: tuple[ParamSpec, ...] = (
     ParamSpec(name='bubble_Leak', default=0, info='Leaking luminosity', category='runtime_bubble_cooling', unit='Msun*pc**2/Myr**3'),
     ParamSpec(name='isCollapse', default=False, info='Is cloud collapsing?', category='runtime_control', unit='N/A'),
     ParamSpec(name='isDissolved', default=False, info='Has shell dissolved?', category='runtime_control', unit='N/A'),
-    ParamSpec(name='is_phiDepleted', default=False, info='Are ionising photons exhausted inside shell (phi->0)?', category='runtime_control', unit='N/A'),
+    ParamSpec(name='is_phiDepleted', default=False, info='Did the ionised integration stop because phi ran out (phi<=eps at R_IF)? R_IF is inside the shell when a neutral region follows.', category='runtime_control', unit='N/A'),
+    ParamSpec(name='is_allMassSwept', default=False, info='Did the ionised integration terminate on the mass condition?', category='runtime_control', unit='N/A'),
+    ParamSpec(name='has_neutral', default=False, info='Was a neutral region integrated beyond the ionisation front?', category='runtime_control', unit='N/A'),
     ParamSpec(name='residual_deltaT', default=0, info='Temperature residual (T1-T2)/T2', category='runtime_residuals', unit='dimensionless'),
     ParamSpec(name='residual_betaEdot', default=0, info='Energy rate residual', category='runtime_residuals', unit='dimensionless'),
     ParamSpec(name='residual_Edot1_guess', default=np.nan, info='Edot from beta', category='runtime_residuals', unit='Msun*pc**2/Myr**3'),

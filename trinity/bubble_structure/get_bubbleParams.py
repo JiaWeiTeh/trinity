@@ -378,7 +378,14 @@ def get_phii_c3c(params, shell_props):
     Qi = params['Qi'].value
     if not (R2 > 0 and Qi > 0):
         return 0.0
-    f_abs = getattr(shell_props, 'shell_fAbsorbedIon', 1.0)
+    # W69: this is a RECOMBINATION-balance density, so it takes the LyC absorbed by GAS --
+    # a photon absorbed by a dust grain ionises nothing and cannot appear in the balance.
+    # shell_fAbsorbedIon is (1 - f_esc) = f_gas + f_dust (aa61074-26.tex eq:Qi_budget), and
+    # dust takes p50 0.53 of it, so using it here inflated P_C3a by 1/sqrt(1-f_dust).
+    # Falls back to the total for snapshots written before the gas fraction existed.
+    f_abs = getattr(shell_props, 'shell_fAbsorbedIonGas', None)
+    if not (isinstance(f_abs, float) and 0.0 <= f_abs <= 1.0):
+        f_abs = getattr(shell_props, 'shell_fAbsorbedIon', 1.0)
     if not (isinstance(f_abs, float) and 0.0 <= f_abs <= 1.0):
         f_abs = 1.0
     Qi_abs = Qi * f_abs

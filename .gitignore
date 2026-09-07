@@ -18,6 +18,8 @@ paper/plots/
 
 # prelimenary.
 docs/dev
+to-be-deleted/
+Claude outputs/
 
 # Private: kept local, not tracked
 paper/barnes26/

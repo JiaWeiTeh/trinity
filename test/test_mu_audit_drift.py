@@ -270,7 +270,12 @@ def test_phase3_shell_structure_coefficients_and_no_original():
     s = _src("trinity/shell_structure/shell_structure.py")
     assert "params['mu_ion_shell'].value / params['mu_convert'].value" in s  # refined BC (singly)
     assert "params['mu_ion'].value" not in s            # bubble (doubly) mu_ion must not leak
-    assert s.count("params['mu_convert'].value") == 8   # 7 mass/grav/tau + BC
+    # 9 since 2026-09-06 (PLAN.md W53): the adaptive shell march added ONE use, the
+    # local alias `_mu_H = params['mu_convert'].value` handed to _adaptive_slice and
+    # _refine_terminal. Aliasing once is deliberate -- reading it inline at the four
+    # call sites would have added four. The guard this test exists for is untouched:
+    # the bubble's doubly-ionised mu_ion / chi_e still must not appear (asserted below).
+    assert s.count("params['mu_convert'].value") == 9   # 7 mass/grav/tau + BC + the march alias
     assert s.count("params['mu_atom'].value") == 1      # only the I-front jump numerator
     assert "params['mu_atom'].value / params['mu_ion_shell'].value" in s  # the :298 jump (singly)
     assert s.count("params['chi_e_shell'].value") == 3  # max_shellRadius, n_IF_Str, phi_hydrogen
