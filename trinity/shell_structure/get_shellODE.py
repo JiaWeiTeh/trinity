@@ -32,7 +32,10 @@ import trinity._functions.unit_conversions as cvt
 _NSHELL_MAX = 1e120
 
 
-# TODO: add cover fraction cf (f_cover)
+# f_cover multiplies dtaudr in BOTH branches (2026-09-08). It is 1.0 everywhere in
+# use, so this changes nothing today; it removes the asymmetry that would have made
+# the neutral rind ignore fragmentation the day f_cover < 1.
+# ponytail: future work -- f_cover should be driven by Cf_leak rather than set by hand.
 
 def get_shellODE(y, 
                  r, 
@@ -108,7 +111,11 @@ def get_shellODE(y,
         # Clamp phi: negative values are unphysical (ionizing photons cannot be regenerated).
         # This prevents the -n*sigma_d*phi term from acting as a photon source
         # and Li*phi from inverting the radiation pressure gradient.
-        phi = max(0.0, phi)   # <-- add this line
+        # MEASURED 2026-09-08, do not remove: the terminal phi event stops the ACCEPTED
+        # solution at phi=eps, but LSODA still probes past it during step trials and the
+        # event root-find. 9904 of 148840 RHS entries over the 895-row archive arrive with
+        # phi < 0 (most negative -0.272), all of them on the solve_ivp path.
+        phi = max(0.0, phi)
 
 
         # number density
@@ -141,7 +148,7 @@ def get_shellODE(y,
             nShell * sigma_dust / (4 * np.pi * r**2 * c) * (Ln * neg_exp_tau) 
             )
         # optical depth
-        dtaudr = nShell * sigma_dust
+        dtaudr = nShell * sigma_dust * f_cover
         
         # return
         return dndr, dtaudr

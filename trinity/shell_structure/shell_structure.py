@@ -63,6 +63,7 @@ _SHELL_REFINE = 1                # terminal re-integrations to land the exit ins
 _SHELL_MAX_SLICES = 100_000      # loud caps; the legacy loops have neither
 _SHELL_MAX_POINTS = 20_000_000
 _SHELL_MIN_STEP_ULP = 8          # a slice must survive being divided into `nsteps` points
+_SHELL_REFINE_MIN_ULP = 256      # ... and a refinement STEP must clear lsoda's start test
 # Stop the IONISED march on its domain boundary (phi -> 0) with a terminal event rather than
 # integrating through it. PLAN.md W51/W57. odeint's defaults, kept so the two paths compare.
 _SHELL_PHI_EVENT = True
@@ -155,8 +156,15 @@ def _refine_terminal(r_lo, y_lo, m_lo, r_hi, nsteps, is_ionised, f_cover, params
     ra, rb, ya, ma = r_lo, r_hi, list(y_lo), m_lo
     out = None
     for _ in range(int(refine)):
-        if (rb - ra) <= 1e4 * np.spacing(rb):
-            break                                    # interval is within ~1e4 ulp: nothing left to resolve
+        # lsoda refuses to start when its first step is below ~100*uround*max(|t|,|tout|)
+        # and prints "tout too close to t". The grid puts `nsteps` steps across this
+        # interval, so testing the SPAN against a few ulp was wrong by a factor of nsteps:
+        # 40 of 1555 refinements over the 895-row archive passed the old test and then
+        # tripped lsoda (PLAN.md W79). np.spacing(x) is uround*x to within 2x, so 256 ulp
+        # per step clears lsoda's 100-200 ulp band with margin. Nothing is lost: an
+        # interval this narrow already places the exit to ~1e-15 pc.
+        if (rb - ra) <= _SHELL_REFINE_MIN_ULP * nsteps * np.spacing(rb):
+            break                                    # refinement step would be below lsoda's floor
         rf = np.linspace(ra, rb, int(nsteps) + 1)
         sf = scipy.integrate.odeint(get_shellODE.get_shellODE, ya, rf,
                                     args=(f_cover, is_ionised, params), mxstep=_SHELL_ODE_MXSTEP)
