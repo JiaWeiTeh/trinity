@@ -13,6 +13,16 @@ import pytest
 
 DOCS_DEV = Path(__file__).resolve().parents[1] / "docs" / "dev"
 
+# docs/dev is untracked (local-only, see .gitignore) as of `a32b098`: absent in a
+# fresh clone and in CI. This whole module checks that tree's conventions, so
+# without it there is nothing to check -- and the parametrised banner test would
+# otherwise collect zero cases and pass vacuously, which is worse than a skip.
+if not (DOCS_DEV / "README.md").is_file():
+    pytest.skip(
+        "docs/dev is untracked (local-only); nothing to check",
+        allow_module_level=True,
+    )
+
 WARN, LIVING, PERSIST, CROSSCHECK, FROZEN = "⚠️", "\U0001f504", "\U0001f4be", "\U0001f517", "\U0001f9ca"
 
 # ⚠️-only docs: pure how-to-run harness READMEs, data-manifest notes, and

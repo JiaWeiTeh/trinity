@@ -62,6 +62,28 @@ from trinity._input.read_param import read_param
 _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _FIXTURE_PATH = os.path.join(_REPO_ROOT, "test", "data", "residual_resample_fixture.json")
 
+
+def _base_param_available(*fixture_names):
+    """True when every fixture's ``base_param`` is present on disk.
+
+    The fixtures are tracked, but their ``base_param`` values point into
+    docs/dev, which is untracked (local-only, see .gitignore) as of `a32b098`.
+    Only the tests that rebuild full params are affected; the analytic sweeps
+    below read scalars from the fixture JSON and run either way.
+    """
+    for name in fixture_names:
+        path = os.path.join(_REPO_ROOT, "test", "data", name)
+        with open(path) as fh:
+            if not os.path.isfile(os.path.join(_REPO_ROOT, json.load(fh)["base_param"])):
+                return False
+    return True
+
+
+_needs_base_param = pytest.mark.skipif(
+    not _base_param_available("residual_resample_fixture.json", "dR2_stiff_state_fixture.json"),
+    reason="docs/dev is untracked (local-only); fixture base_param unavailable",
+)
+
 # Path-valued keys baked into the captured state point at the original checkout;
 # let read_param(base) supply the worktree-local (byte-identical) tables instead.
 _PATH_OVERRIDE_SKIP = {
@@ -165,6 +187,7 @@ def _dR2_from_dTdr(T, dTdr):
     return -2.0 / 5.0 * T / dTdr
 
 
+@_needs_base_param
 def test_dR2_is_exact_inverse_dMdt_with_no_floor(state):
     """dR2 follows pure 1/dMdt scaling across 10 decades -- there is no magic floor.
 
@@ -193,6 +216,7 @@ def test_dR2_is_exact_inverse_dMdt_with_no_floor(state):
     )
 
 
+@_needs_base_param
 def test_thin_layer_well_conditioned_across_physical_clusters(state):
     """R2 - dR2 stays resolvable across the realizable cluster range -- no floor needed.
 
@@ -229,6 +253,7 @@ def test_thin_layer_well_conditioned_across_physical_clusters(state):
         ("dR2_stiff_state_fixture.json", 1e-9),     # 5e9/sfe0.01 flood regime (~1.2e-10)
     ],
 )
+@_needs_base_param
 def test_unfloored_thin_layer_integrates_correctly(fixture_name, max_dR2_over_R2):
     """The ultra-thin layer is crossed correctly without artificial thickening.
 
@@ -287,6 +312,7 @@ def test_unfloored_thin_layer_integrates_correctly(fixture_name, max_dR2_over_R2
     "fixture_name",
     ["residual_resample_fixture.json", "dR2_stiff_state_fixture.json"],
 )
+@_needs_base_param
 def test_production_bubble_path_healthy_on_stiff_state(fixture_name):
     """The WHOLE production solver -- not just the isolated ODE -- is robust unfloored.
 
@@ -315,6 +341,7 @@ def test_production_bubble_path_healthy_on_stiff_state(fixture_name):
     assert np.all(np.diff(T) >= 0) or np.all(np.diff(T) <= 0)
 
 
+@_needs_base_param
 def test_intermediate_zone_luminosity_negligible_for_exact_layer():
     """The exact thin dR2 makes the 1e4-3e4 K intermediate shell geometrically tiny.
 

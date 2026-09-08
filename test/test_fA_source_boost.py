@@ -28,6 +28,16 @@ _BASE = os.path.join(_REPO, "param", "simple_cluster.param")
 _FIXTURE = os.path.join(_REPO, "test", "data", "residual_resample_fixture.json")
 _PATH_SKIP = {"path_cooling_CIE", "path_cooling_nonCIE", "sps_path", "path2output"}
 
+# The fixture is tracked, but its ``base_param`` points into docs/dev, which is
+# untracked (local-only, see .gitignore) as of `a32b098`. Only the two tests that
+# build full params from it are affected; the rest of this module runs normally.
+with open(_FIXTURE) as _fh:
+    _BASE_PARAM = os.path.join(_REPO, json.load(_fh)["base_param"])
+_needs_base_param = pytest.mark.skipif(
+    not os.path.isfile(_BASE_PARAM),
+    reason="docs/dev is untracked (local-only); fixture base_param unavailable",
+)
+
 
 def _build_full_params(fixture_path):
     """Full params (cooling cubes rebuilt) from a distilled state fixture.
@@ -132,6 +142,7 @@ def test_rhs_default_is_inert(monkeypatch):
 
 # --- edit site 2: interface-band loss scaling ---------------------------------
 
+@_needs_base_param
 def test_loss_component_scaling(monkeypatch):
     # ~3s: one full bubble solve x2. Freeze the profile (band top -> 0 disables edit
     # site 1) so ONLY edit site 2's
@@ -154,6 +165,7 @@ def test_loss_component_scaling(monkeypatch):
 
 # --- band-edge pin (audit G9) -------------------------------------------------
 
+@_needs_base_param
 def test_band_edge_pinned_to_cooling_table():
     # _T_INTERFACE_BAND must equal the non-CIE cutoff of the default bundle (in LOG10
     # space -- _noncie_cutoffs returns log10 grid values, compared against np.log10(T)).

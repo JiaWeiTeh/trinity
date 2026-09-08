@@ -10,7 +10,18 @@ import importlib.util
 import json
 from pathlib import Path
 
+import pytest
+
 RUNS = Path(__file__).resolve().parent.parent / "docs/dev/transition/pdv-trigger/runs"
+
+# docs/dev is untracked (local-only, see .gitignore) as of `a32b098`: absent in a
+# fresh clone and in CI. Every test here reads that tree, so skip the module.
+if not all((RUNS / f"{m}.py").is_file()
+           for m in ("harvest_theta_max", "make_theta5_calibration")):
+    pytest.skip(
+        "docs/dev is untracked (local-only); theta5 harvest tooling unavailable",
+        allow_module_level=True,
+    )
 
 
 def _load(name):
