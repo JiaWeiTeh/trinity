@@ -17,6 +17,11 @@ Why pure (non-mutating) functions:
 
 import numpy as np
 import scipy.integrate
+
+# numpy 2.0 renamed np.trapz -> np.trapezoid. The repo PINS numpy<2 (pyproject/requirements),
+# so the new spelling alone crashes on the cluster env: it killed all 8100 tasks of the
+# 2026-09-07 rosette sweep at 12 s (AttributeError, exit 1). Same idiom as rt3d.py / powr_fi.py.
+_trapz = getattr(np, "trapezoid", None) or np.trapz
 from dataclasses import dataclass
 from typing import Optional, Union
 import logging
@@ -198,9 +203,7 @@ class ShellProperties:
     shell_thickness: float  # Thickness of shell
 
     # Absorption fractions
-    shell_fAbsorbedIon: float  # Fraction of ionizing radiation absorbed (gas AND dust) = 1 - f_esc
-    shell_fAbsorbedIonGas: float  # LyC absorbed by GAS alone (eq:fgas_LyC). Use this, not the
-                                  # total, in any recombination-balance density. PLAN.md W69.
+    shell_fAbsorbedIon: float  # Fraction of ionizing radiation absorbed
     shell_fAbsorbedNeu: float  # Fraction of non-ionizing radiation absorbed
     shell_fAbsorbedWeightedTotal: float  # Luminosity-weighted total absorption
     shell_fIonisedDust: float  # Fraction of ionizing radiation absorbed by dust
@@ -497,29 +500,6 @@ def shell_structure_pure(params) -> ShellProperties:
     f_esc_ion = 0.0 if _phi_end <= _PHI_DEPLETED_EPS else float(_phi_end)
 
     # ------------------------------------------------------------------
-    # LyC budget split, computed ONCE here (PLAN.md W69). aa61074-26.tex
-    # eq:fgas_LyC / eq:fdust_LyC -- the two sink terms of dphi/dr integrated over the
-    # ionised layer -- and eq:Qi_budget f_gas + f_dust + f_esc = 1.
-    #   * n_IF_Str needs f_gas ALONE: a LyC photon absorbed by a dust grain does not
-    #     ionise hydrogen and does not enter the recombination balance.
-    #   * F_rad and the P_ext escape gate still want the TOTAL (1 - f_esc): dust
-    #     absorption does deposit momentum, and "did anything escape" is a total test.
-    # Trapezoid, not the left-Riemann sum this used to be 60 lines below: that one also
-    # dropped its last cell, which is what left a residual bracket violation.
-    # ------------------------------------------------------------------
-    if rShell_arr_ion.size >= 2:
-        _f_gas_ion = float(np.trapezoid(
-            4.0 * np.pi * rShell_arr_ion**2 * params['chi_e_shell'].value
-            * params['caseB_alpha'].value * nShell_arr_ion**2 / Qi, rShell_arr_ion))
-        _f_dust_ion = float(np.trapezoid(
-            nShell_arr_ion * params['dust_sigma'].value * phiShell_arr_ion, rShell_arr_ion))
-    else:
-        _f_gas_ion = 0.0          # W47: no ionised layer at all
-        _f_dust_ion = 0.0
-    _f_gas_ion = min(max(_f_gas_ion, 0.0), 1.0)
-    _f_dust_ion = min(max(_f_dust_ion, 0.0), 1.0)
-
-    # ------------------------------------------------------------------
     # Strömgren ionization balance density (Lancaster+2025, generalised)
     #
     # n_IF_Str = sqrt(3 (1 - f_esc_ion) Qi / (4π χ_e αB ΔV))
@@ -531,8 +511,7 @@ def shell_structure_pure(params) -> ShellProperties:
     # ------------------------------------------------------------------
     # R_IF = rShell_arr_ion[-1] in both regimes (I-front or shell edge)
     _vol_ion = R_IF**3 - rShell0**3
-    # W69: f_abs^gas, NOT (1 - f_esc) = f_gas + f_dust. eq:nIF_Str takes the gas term only.
-    _Qi_absorbed = _f_gas_ion * Qi
+    _Qi_absorbed = (1.0 - f_esc_ion) * Qi
 
     if (_vol_ion > 0.0) and (_Qi_absorbed > 0.0):
         n_IF_Str = np.sqrt(
@@ -583,7 +562,7 @@ def shell_structure_pure(params) -> ShellProperties:
             )
         elif grav_ion_r.size == 2:
             grav_ion_phi = -4 * np.pi * params['G'].value * float(
-                np.trapezoid(grav_ion_r * grav_ion_rho, grav_ion_r))
+                _trapz(grav_ion_r * grav_ion_rho, grav_ion_r))
         else:
             grav_ion_phi = 0.0
         grav_phi = grav_ion_phi
@@ -592,11 +571,20 @@ def shell_structure_pure(params) -> ShellProperties:
         grav_force_m = grav_ion_force_m
         grav_r = grav_ion_r
 
-        # Dust vs hydrogen absorption -- reuse the single trapezoid split computed above
-        # (W69). This replaces a second, left-Riemann quadrature of the same two integrals.
+        # Dust vs hydrogen absorption
         dr_ion_arr = rShell_arr_ion[1:] - rShell_arr_ion[:-1]
-        _tot_abs = _f_dust_ion + _f_gas_ion
-        f_ionised_dust = (_f_dust_ion / _tot_abs) if _tot_abs > 0.0 else 0.0
+        phi_dust = np.sum(
+            -nShell_arr_ion[:-1] * params['dust_sigma'].value * phiShell_arr_ion[:-1] * dr_ion_arr
+        )
+        phi_hydrogen = np.sum(
+            -4 * np.pi * rShell_arr_ion[:-1]**2 / Qi *
+            params['chi_e_shell'].value * params['caseB_alpha'].value * nShell_arr_ion[:-1]**2 * dr_ion_arr
+        )
+
+        if (phi_dust + phi_hydrogen) == 0.0:
+            f_ionised_dust = 0.0
+        else:
+            f_ionised_dust = phi_dust / (phi_dust + phi_hydrogen)
 
         # Arrays for neutral region
         mShell_arr_neu = np.array([])
@@ -777,7 +765,6 @@ def shell_structure_pure(params) -> ShellProperties:
 
     elif is_shellDissolved:
         f_absorbed_ion = 0.0 # dissolved shell = no absorber; ionizing photons escape freely
-        _f_gas_ion = 0.0     # W69: and none of them are absorbed by gas either
         f_absorbed_neu = 0.0
         f_absorbed = (f_absorbed_ion * Li + f_absorbed_neu * Ln) / (Li + Ln)
         f_ionised_dust = np.nan
@@ -816,7 +803,6 @@ def shell_structure_pure(params) -> ShellProperties:
         rShell=rShell,
         shell_thickness=shellThickness,
         shell_fAbsorbedIon=f_absorbed_ion,
-        shell_fAbsorbedIonGas=_f_gas_ion,
         shell_fAbsorbedNeu=f_absorbed_neu,
         shell_fAbsorbedWeightedTotal=f_absorbed,
         shell_fIonisedDust=f_ionised_dust,
