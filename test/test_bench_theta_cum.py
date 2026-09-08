@@ -16,6 +16,14 @@ import pytest
 
 DATA = Path(__file__).resolve().parent.parent / "docs/dev/transition/pdv-trigger/data"
 
+# docs/dev is untracked (local-only, see .gitignore) as of `a32b098`: absent in a
+# fresh clone and in CI. Every test here reads that tree, so skip the module.
+if not (DATA / "make_bench5_analysis.py").is_file():
+    pytest.skip(
+        "docs/dev is untracked (local-only); pdv-trigger data unavailable",
+        allow_module_level=True,
+    )
+
 
 def _load(name):
     spec = importlib.util.spec_from_file_location(name, DATA / f"{name}.py")

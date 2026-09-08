@@ -21,8 +21,18 @@ import sys
 import time
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 RUNNER = REPO_ROOT / "docs" / "dev" / "phase1a-stiffness" / "harness" / "seg_stepcount_runner.py"
+
+# docs/dev is untracked (local-only, see .gitignore) as of `a32b098`: absent in a
+# fresh clone and in CI. The single test here drives that runner, so skip the module.
+if not RUNNER.is_file():
+    pytest.skip(
+        "docs/dev is untracked (local-only); seg_stepcount_runner.py unavailable",
+        allow_module_level=True,
+    )
 
 # Measured 22 s with the guard in place. The budget is deliberately an order of
 # magnitude looser: the failure this pins is "does not terminate at all", not a

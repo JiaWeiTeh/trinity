@@ -23,6 +23,14 @@ import pytest
 HARNESS = (Path(__file__).resolve().parents[1]
            / "docs/dev/phii-identity/harness/compare_trajectories.py")
 
+# docs/dev is untracked (local-only, see .gitignore) as of `a32b098`: absent in a
+# fresh clone and in CI. Every test here drives that harness, so skip the module.
+if not HARNESS.is_file():
+    pytest.skip(
+        "docs/dev is untracked (local-only); compare_trajectories.py unavailable",
+        allow_module_level=True,
+    )
+
 
 @pytest.fixture(scope="module")
 def cmp_mod():
