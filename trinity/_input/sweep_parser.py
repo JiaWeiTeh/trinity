@@ -819,8 +819,13 @@ def format_scientific(value: float) -> str:
             else:
                 return f"{mantissa_int}e{exp}"
         else:
-            # Non-integer mantissa - use compact form
-            return f"{mantissa:.2g}e{exp}"
+            # Non-integer mantissa - keep every digit that matters. This used to be
+            # '.2g', which rendered BOTH 1200 and 1250 as '1.2e3': two grid
+            # generations then collided on run-directory names, the second run
+            # overwrote some dirs and not others, and the reduce silently mixed
+            # stale rows into a fresh sweep (E2, 2026-09-08 -- 90 of 695 rows).
+            # Never round an axis value into a name.
+            return f"{mantissa:.10g}e{exp}"
     else:
         # For "normal" numbers (1-99), use regular formatting
         if value == int(value):

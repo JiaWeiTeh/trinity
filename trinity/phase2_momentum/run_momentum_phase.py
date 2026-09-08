@@ -830,9 +830,19 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
         # Check termination conditions
         # ---------------------------------------------------------------------
 
-        # Collapse detection: velocity negative AND radius decreasing
+        # Collapse detection: velocity negative AND radius decreasing.
+        # RELEASED again once the shell turns around and re-expands. Before
+        # 2026-09-08 this was a one-way latch: a shell that dipped inward once
+        # early stayed flagged for the whole run, which (a) froze mShell in the
+        # ODE right-hand sides from that moment on and (b) made every downstream
+        # summary label a blow-out as a collapse -- 156 of E2's runs crossed the
+        # read-off radius outward at 5-6 km/s and stopped at stop_r still
+        # carrying isCollapse=True. The mass-never-decreases guard below keeps
+        # the release safe.
         if v2 < 0 and R2 < R2_prev:
             params['isCollapse'].value = True
+        elif v2 > 0 and R2 > R2_prev:
+            params['isCollapse'].value = False
 
         # Update R2_prev for next iteration
         R2_prev = R2
