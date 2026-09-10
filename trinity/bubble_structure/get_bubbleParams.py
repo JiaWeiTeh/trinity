@@ -368,17 +368,23 @@ def get_phii_c3c(params, shell_props):
     either measure, so the branch outcome is insensitive to that choice.
 
     KNOWN OPEN BEHAVIOUR: the momentum phase comes out photoionisation-dominated in
-    every configuration measured so far. P_C3a/P_ram falls only as Lw**-0.33 with wind
-    strength, so an inversion would need an unphysical Lw ~ 260. This is NOT an O(1)
-    normalisation error -- the same normalisation predicts the transition-phase
-    crossover to within 7% -- it is the R2**-1.5 cavity geometry. See
-    docs/dev/phii-identity/PLAN.md 3c stage 3.
+    every configuration measured so far, and the cause is the R2**-1.5 cavity geometry
+    rather than an O(1) normalisation. The Lw**-0.33 scaling and its inversion near
+    Lw ~ 260, quoted here until 2026-09-10, came from an offline screen on PRE-C3c
+    trajectories and are retired: refitting that ladder gives -0.36, and Batch 10 --
+    real C3c runs -- gives -0.40 (cavity form) and -0.11 (profile form).
+    See docs/dev/phii-identity/PLAN.md.
     """
     R2 = params['R2'].value
     Qi = params['Qi'].value
     if not (R2 > 0 and Qi > 0):
         return 0.0
-    f_abs = getattr(shell_props, 'shell_fAbsorbedIon', 1.0)
+    # W69: the GAS-absorbed budget. n_c3a below is a recombination-balance density, so
+    # the dust share of the absorbed LyC must not enter it. shell_fAbsorbedIon is kept
+    # as the total for F_rad and the P_ext gate; this is the gas term alone.
+    f_abs = getattr(shell_props, 'shell_fAbsorbedIonGas', None)
+    if f_abs is None:
+        f_abs = getattr(shell_props, 'shell_fAbsorbedIon', 1.0)
     if not (isinstance(f_abs, float) and 0.0 <= f_abs <= 1.0):
         f_abs = 1.0
     Qi_abs = Qi * f_abs
