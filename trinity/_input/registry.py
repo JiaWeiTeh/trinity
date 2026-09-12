@@ -509,6 +509,13 @@ SPECS: tuple[ParamSpec, ...] = (
     # partition is visible in the output; option C (PLAN.md D16) is what will consume it.
     ParamSpec(name='shell_mass_ion', default=0.0, info='Shell mass between R2 and R_IF (photoionised layer)', category='runtime_shell', unit='Msun'),
     ParamSpec(name='shell_mass_neutral', default=0.0, info='Shell mass between R_IF and rShell (neutral layer)', category='runtime_shell', unit='Msun'),
+    # Sky-partition totals. The shell solve is per covered ray; these apply coverFraction
+    # once, at budget assembly (docs/dev/cover-fraction/PLAN.md, ruling 2026-09-12).
+    ParamSpec(name='shell_fLeak', default=0.0, info='LyC escaping laterally through the open wall = 1 - coverFraction (paper f_leak)', category='runtime_shell', unit='dimensionless'),
+    ParamSpec(name='shell_fEscLyC_total', default=0.0, info='Whole-sky escaping LyC fraction = (1-Cf) + Cf*f_esc_ion. Use THIS, not shell_fAbsorbedIon, for any escape-fraction quoted outside the code', category='runtime_shell', unit='dimensionless'),
+    ParamSpec(name='shell_fAbsorbedIonGas_total', default=0.0, info='Whole-sky LyC absorbed by gas = Cf * shell_fAbsorbedIonGas', category='runtime_shell', unit='dimensionless'),
+    ParamSpec(name='shell_fAbsorbedIonDust_total', default=0.0, info='Whole-sky LyC absorbed by dust = Cf * f_dust. NOT shell_fIonisedDust, which is the dust share of the absorbed LyC (a ratio)', category='runtime_shell', unit='dimensionless'),
+    ParamSpec(name='shell_fAbsorbedNeu_total', default=0.0, info='Whole-sky non-ionising absorbed fraction = Cf * (1 - exp(-tau_end))', category='runtime_shell', unit='dimensionless'),
     ParamSpec(name='shell_massDot', default=0, info='Shell mass accretion rate', category='runtime_shell', unit='Msun/Myr'),
     ParamSpec(name='shell_interpolate_massDot', default=False, info='Use shell mass interpolation?', category='runtime_control', unit='N/A'),
     ParamSpec(name='shell_n0', default=0, info='Shell inner density (pressure balance)', category='runtime_shell', unit='1/pc**3'),

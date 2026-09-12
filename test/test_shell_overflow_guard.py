@@ -34,7 +34,7 @@ def test_guard_inactive_in_used_region():
     n, phi, tau, r = 1.0e65, 0.5, 0.3, 5.0
     assert n < _NSHELL_MAX  # the guard must not bite here
 
-    dndr, dphidr, dtaudr = get_shellODE([n, phi, tau], r, 1.0, True, p)
+    dndr, dphidr, dtaudr = get_shellODE([n, phi, tau], r, True, p)
     assert np.isfinite([dndr, dphidr, dtaudr]).all()
 
     chi_e = p["chi_e_shell"].value
@@ -52,7 +52,7 @@ def test_guard_prevents_overflow():
     n_huge = 1.0e160  # nShell**2 = 1e320 > 1.8e308 -> inf, unguarded
     assert n_huge > _NSHELL_MAX
 
-    out = get_shellODE([n_huge, 0.5, 0.3], 5.0, 1.0, True, p)
+    out = get_shellODE([n_huge, 0.5, 0.3], 5.0, True, p)
     assert np.isfinite(out).all()
 
     # sanity: confirm the unguarded square really does overflow (numpy -> inf)

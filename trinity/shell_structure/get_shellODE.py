@@ -32,14 +32,17 @@ import trinity._functions.unit_conversions as cvt
 _NSHELL_MAX = 1e120
 
 
-# f_cover multiplies dtaudr in BOTH branches (2026-09-08). It is 1.0 everywhere in
-# use, so this changes nothing today; it removes the asymmetry that would have made
-# the neutral rind ignore fragmentation the day f_cover < 1.
-# ponytail: future work -- f_cover should be driven by Cf_leak rather than set by hand.
+# This ODE is solved along ONE COVERED RAY. It carries no covering fraction, by ruling
+# (2026-09-12, docs/dev/cover-fraction/PLAN.md): `coverFraction` is a vented sky fraction
+# (Harper-Clark & Murray 2009), so the sky partition is applied at budget assembly --
+# totals = Cf * per-ray + (1 - Cf) * free escape -- never inside the shell solve.
+# ⛔ The deleted `f_cover` multiplied dtaudr ONLY, which is the wrong operator twice over:
+# a picket-fence screen absorbs Cf*(1 - e^-tau), not 1 - e^-(Cf*tau) (0.80 vs 1.00 at
+# tau = 10, Cf = 0.8), and scaling tau while leaving dphidr alone leaks nothing at all in
+# the ionising band. Neither WARPFIELD paper (Rahner+2017 eqs 16-20, Rahner+2019) has it.
 
 def get_shellODE(y, 
                  r, 
-                 f_cover,
                  is_ionised,
                  params,
                  ):
@@ -63,9 +66,6 @@ def get_shellODE(y,
     r [pc]: list
         An array of radii where y is evaluated.
                 
-    f_cover: float, 0 < f_cover <= 1
-            The fraction of shell that remained after fragmentation process.
-            f_cover = 1: all remained.
     is_ionised: boolean
             Is this part of the shell ionised? If not, then phi = Li = 0, where
             r > R_ionised.
@@ -126,7 +126,7 @@ def get_shellODE(y,
         # ionising photons
         dphidr = - 4 * np.pi * r**2 * chi_e * alpha_B * nShell**2 / Qi - nShell * sigma_dust * phi
         # optical depth
-        dtaudr = nShell * sigma_dust * f_cover
+        dtaudr = nShell * sigma_dust
         
         # return
         return dndr, dphidr, dtaudr
@@ -148,7 +148,7 @@ def get_shellODE(y,
             nShell * sigma_dust / (4 * np.pi * r**2 * c) * (Ln * neg_exp_tau) 
             )
         # optical depth
-        dtaudr = nShell * sigma_dust * f_cover
+        dtaudr = nShell * sigma_dust
         
         # return
         return dndr, dtaudr

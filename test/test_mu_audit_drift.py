@@ -210,7 +210,7 @@ def test_phase3_shellODE_ion_vs_original():
     from trinity.shell_structure.get_shellODE import get_shellODE
     p = _shell_params()
     n, phi, tau, r = 1.0e3, 0.5, 0.3, 5.0
-    dndr, dphidr, dtaudr = get_shellODE([n, phi, tau], r, 1.0, True, p)
+    dndr, dphidr, dtaudr = get_shellODE([n, phi, tau], r, True, p)
 
     mu_n = p["mu_atom"].value
     mu_p_shell = p["mu_ion_shell"].value   # shell HII is singly-ionised
@@ -243,7 +243,7 @@ def test_phase3_shellODE_neutral_vs_original():
     from trinity.shell_structure.get_shellODE import get_shellODE
     p = _shell_params()
     n, tau, r = 1.0e3, 0.3, 5.0
-    dndr, dtaudr = get_shellODE([n, tau], r, 1.0, False, p)
+    dndr, dtaudr = get_shellODE([n, tau], r, False, p)
 
     mu_n = p["mu_atom"].value
     mu_H = p["mu_convert"].value

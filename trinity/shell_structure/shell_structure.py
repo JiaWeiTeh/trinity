@@ -71,7 +71,7 @@ _SHELL_IVP_RTOL = 1.49012e-8
 _SHELL_IVP_ATOL = 1.49012e-8
 
 
-def _integrate_ionised(y0, r_start, r_stop, nsteps, f_cover, params):
+def _integrate_ionised(y0, r_start, r_stop, nsteps, params):
     """Integrate the ionised system over [r_start, r_stop], stopping early at phi = eps.
 
     Returns (r_arr, n_arr, phi_arr, tau_arr, phi_event_fired). The grid is uniform over
@@ -79,7 +79,7 @@ def _integrate_ionised(y0, r_start, r_stop, nsteps, f_cover, params):
     resolved by `nsteps` points -- the resolution follows the domain, not the request.
     """
     def _rhs(r, y):
-        return get_shellODE.get_shellODE(y, r, f_cover, True, params)
+        return get_shellODE.get_shellODE(y, r, True, params)
 
     def _phi_floor(r, y):
         return y[1] - _PHI_DEPLETED_EPS
@@ -106,7 +106,7 @@ def _integrate_ionised(y0, r_start, r_stop, nsteps, f_cover, params):
     return r_arr, n_arr, phi_arr, tau_arr, fired
 
 
-def _adaptive_slice(slice_default, y, r, m_carry, m_end, is_ionised, f_cover, params, mu, nsteps):
+def _adaptive_slice(slice_default, y, r, m_carry, m_end, is_ionised, params, mu, nsteps):
     """Slice width from the LOCAL scales, never wider than the legacy slice.
 
     Two kinds of scale, used differently:
@@ -121,7 +121,7 @@ def _adaptive_slice(slice_default, y, r, m_carry, m_end, is_ionised, f_cover, pa
       _SHELL_EFOLDS_PER_SLICE of them keeps >= nsteps/efolds points per e-fold, so the
       ionisation front is never jumped in a single step (the density pole lies past it).
     """
-    d = get_shellODE.get_shellODE(y, r, f_cover, is_ionised, params)
+    d = get_shellODE.get_shellODE(y, r, is_ionised, params)
     n_here = y[0]
     cands = [slice_default]
     m_rem = m_end - m_carry
@@ -141,7 +141,7 @@ def _adaptive_slice(slice_default, y, r, m_carry, m_end, is_ionised, f_cover, pa
     return out
 
 
-def _refine_terminal(r_lo, y_lo, m_lo, r_hi, nsteps, is_ionised, f_cover, params, mu,
+def _refine_terminal(r_lo, y_lo, m_lo, r_hi, nsteps, is_ionised, params, mu,
                      m_end, phi_exit, refine):
     """Land the exit inside (r_lo, r_hi] by re-integrating it on a fine grid.
 
@@ -167,7 +167,7 @@ def _refine_terminal(r_lo, y_lo, m_lo, r_hi, nsteps, is_ionised, f_cover, params
             break                                    # refinement step would be below lsoda's floor
         rf = np.linspace(ra, rb, int(nsteps) + 1)
         sf = scipy.integrate.odeint(get_shellODE.get_shellODE, ya, rf,
-                                    args=(f_cover, is_ionised, params), mxstep=_SHELL_ODE_MXSTEP)
+                                    args=(is_ionised, params), mxstep=_SHELL_ODE_MXSTEP)
         nf = sf[:, 0]
         pf = sf[:, 1] if is_ionised else np.zeros_like(nf)
         tf = sf[:, 2] if is_ionised else sf[:, 1]
@@ -261,6 +261,24 @@ class ShellProperties:
     shell_mass_ion: float      # Msun between R2 and R_IF (the photoionised layer)
     shell_mass_neutral: float  # Msun between R_IF and rShell (0.0 when has_neutral is False)
 
+    # ------------------------------------------------------------------
+    # Sky-partition TOTALS.  Everything above is per COVERED RAY; these are the
+    # whole-sky numbers the outside world (CLOUDY / rt3d / the Halpha budget /
+    # the paper's eq:photonbudget) should quote.  Ruling 2026-09-12, picture (A):
+    # coverFraction Cf is a vented sky fraction, so
+    #     total = Cf * (per-ray) + (1 - Cf) * (free escape through the holes).
+    # Closure, exact given the per-ray identity f_esc + f_gas + f_dust = 1 (W69):
+    #     shell_fEscLyC_total + shell_fAbsorbedIonGas_total
+    #                         + shell_fAbsorbedIonDust_total  ==  1
+    # docs/dev/cover-fraction/PLAN.md step 3; closes paper/rosette/PLAN.md F-5 / P13.
+    # ------------------------------------------------------------------
+    shell_fLeak: float                   # 1 - Cf: LyC escaping laterally through the holes
+    shell_fEscLyC_total: float           # all escaping LyC = (1-Cf) + Cf*f_esc_ion
+    shell_fAbsorbedIonGas_total: float   # Cf * f_gas  (recombination; this is what P_HII balances)
+    shell_fAbsorbedIonDust_total: float  # Cf * f_dust (LyC on grains; NOT shell_fIonisedDust,
+                                         # which is the dust SHARE of the absorbed LyC, a ratio)
+    shell_fAbsorbedNeu_total: float      # Cf * (1 - exp(-tau_end)), the non-ionising band
+
 
 def shell_structure_pure(params) -> ShellProperties:
     """
@@ -290,9 +308,6 @@ def shell_structure_pure(params) -> ShellProperties:
 
     # Capture previous rShell for dissolved case (original doesn't update rShell when dissolved)
     rShell_previous = params['rShell'].value
-
-    # TODO: Add f_cover from fragmentation mechanics
-    f_cover = 1
 
     # Initialize values at r = rShell0 = inner edge of shell
     rShell_start = rShell0
@@ -383,7 +398,7 @@ def shell_structure_pure(params) -> ShellProperties:
             )
         if _SHELL_ADAPTIVE:
             sliceSize = _adaptive_slice(sliceSize_default, [nShell0, phi0, tau0_ion],
-                                        rShell_start, mShell0, mShell_end, True, f_cover,
+                                        rShell_start, mShell0, mShell_end, True,
                                         params, _mu_H, nsteps)
             rShell_step = sliceSize / nsteps
             if not (np.isfinite(sliceSize) and sliceSize > 0) or rShell_start + rShell_step == rShell_start:
@@ -399,13 +414,13 @@ def shell_structure_pure(params) -> ShellProperties:
         if _SHELL_PHI_EVENT:
             (rShell_arr, nShell_arr, phiShell_arr, tauShell_arr,
              _phi_event_fired) = _integrate_ionised(
-                y0, rShell_start, rShell_stop, nsteps, f_cover, params)
+                y0, rShell_start, rShell_stop, nsteps, params)
             rShell_step = (rShell_arr[-1] - rShell_arr[0]) / max(1, rShell_arr.size - 1)
         else:
             rShell_arr = np.arange(rShell_start, rShell_stop, rShell_step)
             sol_ODE = scipy.integrate.odeint(
                 get_shellODE.get_shellODE, y0, rShell_arr,
-                args=(f_cover, is_ionised, params), mxstep=_SHELL_ODE_MXSTEP
+                args=(is_ionised, params), mxstep=_SHELL_ODE_MXSTEP
             )
             nShell_arr = sol_ODE[:, 0]
             phiShell_arr = sol_ODE[:, 1]
@@ -445,7 +460,7 @@ def shell_structure_pure(params) -> ShellProperties:
             _ref = _refine_terminal(
                 rShell_arr[idx - 1],
                 [nShell_arr[idx - 1], phiShell_arr[idx - 1], tauShell_arr[idx - 1]],
-                mShell_arr_cum[idx - 1], rShell_arr[idx], nsteps, True, f_cover,
+                mShell_arr_cum[idx - 1], rShell_arr[idx], nsteps, True,
                 params, _mu_H, mShell_end, True, _SHELL_REFINE)
             if _ref is not None:
                 (rShell_arr[idx], nShell_arr[idx], phiShell_arr[idx], tauShell_arr[idx],
@@ -672,7 +687,7 @@ def shell_structure_pure(params) -> ShellProperties:
                     )
                 if _SHELL_ADAPTIVE:
                     sliceSize = _adaptive_slice(sliceSize_default_neu, [nShell0, tau0_neu],
-                                                rShell_start, mShell0, mShell_end, False, f_cover,
+                                                rShell_start, mShell0, mShell_end, False,
                                                 params, _mu_H, nsteps)
                     rShell_step = sliceSize / nsteps
                     if not (np.isfinite(sliceSize) and sliceSize > 0) or rShell_start + rShell_step == rShell_start:
@@ -688,7 +703,7 @@ def shell_structure_pure(params) -> ShellProperties:
                 y0 = [nShell0, tau0_neu]
                 sol_ODE = scipy.integrate.odeint(
                     get_shellODE.get_shellODE, y0, rShell_arr,
-                    args=(f_cover, is_ionised, params), mxstep=_SHELL_ODE_MXSTEP
+                    args=(is_ionised, params), mxstep=_SHELL_ODE_MXSTEP
                 )
                 nShell_arr = sol_ODE[:, 0]
                 tauShell_arr = sol_ODE[:, 1]
@@ -712,7 +727,7 @@ def shell_structure_pure(params) -> ShellProperties:
                     _ref = _refine_terminal(
                         rShell_arr[idx - 1],
                         [nShell_arr[idx - 1], tauShell_arr[idx - 1]],
-                        mShell_arr_cum[idx - 1], rShell_arr[idx], nsteps, False, f_cover,
+                        mShell_arr_cum[idx - 1], rShell_arr[idx], nsteps, False,
                         params, _mu_H, mShell_end, False, _SHELL_REFINE)
                     if _ref is not None:
                         (rShell_arr[idx], nShell_arr[idx], _pf_unused, tauShell_arr[idx],
@@ -837,6 +852,25 @@ def shell_structure_pure(params) -> ShellProperties:
         allow_dissolution = allow_dissolution.value
     diss_condition_met = bool(allow_dissolution and nShell_max < nISM)
 
+    # =============================================================================
+    # Sky-partition totals (see ShellProperties).  The shell solve above is a single
+    # covered ray and knows nothing about Cf; the partition is applied here, once.
+    # =============================================================================
+    _cf_item = params.get('coverFraction', None)
+    _Cf = _cf_item.value if hasattr(_cf_item, 'value') else 1.0
+    shell_fLeak = 1.0 - _Cf
+    if is_shellDissolved:
+        # No absorber at all: every photon leaves, through holes or through nothing.
+        shell_fEscLyC_total = 1.0
+        shell_fAbsorbedIonGas_total = 0.0
+        shell_fAbsorbedIonDust_total = 0.0
+        shell_fAbsorbedNeu_total = 0.0
+    else:
+        shell_fEscLyC_total = shell_fLeak + _Cf * f_esc_ion
+        shell_fAbsorbedIonGas_total = _Cf * _f_gas_ion
+        shell_fAbsorbedIonDust_total = _Cf * _f_dust_ion
+        shell_fAbsorbedNeu_total = _Cf * f_absorbed_neu
+
     # Return dataclass with all properties
     return ShellProperties(
         shell_n0=shell_n0,
@@ -867,5 +901,10 @@ def shell_structure_pure(params) -> ShellProperties:
         shell_ion_idx=shell_ion_idx,
         shell_mass_ion=shell_mass_ion,
         shell_mass_neutral=shell_mass_neutral,
+        shell_fLeak=shell_fLeak,
+        shell_fEscLyC_total=shell_fEscLyC_total,
+        shell_fAbsorbedIonGas_total=shell_fAbsorbedIonGas_total,
+        shell_fAbsorbedIonDust_total=shell_fAbsorbedIonDust_total,
+        shell_fAbsorbedNeu_total=shell_fAbsorbedNeu_total,
     )
 
