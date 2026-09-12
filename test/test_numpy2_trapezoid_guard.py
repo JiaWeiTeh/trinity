@@ -19,6 +19,9 @@ SKIP_PARTS = {".venv", ".git", "node_modules", "__pycache__",
               "to-be-deleted"}       # retired, not on any path
 GUARDS = ("getattr(np", "hasattr(np")
 _CALL = "np.trapezoid" + "("      # a CALL, not prose mentioning the name
+# `getattr(np, "trapezoid", np.trapz)` LOOKS guarded but evaluates np.trapz eagerly as the
+# default, so it raises the day numpy drops trapz. Only the short-circuiting form is safe.
+_EAGER = re.compile(r"getattr\(\s*np\s*,\s*['\"]trapezoid['\"]\s*,\s*np\.trapz")
 
 
 SELF = Path(__file__).resolve()
@@ -41,4 +44,11 @@ def test_no_bare_trapezoid(path):
     assert not bad, (
         f"{path.relative_to(REPO)}: bare np.trapezoid dies on the pinned numpy<2. "
         f"Use the shim `_trapz = getattr(np, 'trapezoid', None) or np.trapz`. Lines: {bad}"
+    )
+    eager = [(i, line.rstrip())
+             for i, line in enumerate(path.read_text(encoding="utf-8", errors="replace").splitlines(), 1)
+             if _EAGER.search(line) and not line.lstrip().startswith("#")]
+    assert not eager, (
+        f"{path.relative_to(REPO)}: eager default -- np.trapz is evaluated before the lookup. "
+        f"Use `getattr(np, 'trapezoid', None) or np.trapz`. Lines: {eager}"
     )
