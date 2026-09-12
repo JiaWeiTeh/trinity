@@ -265,7 +265,7 @@ def compute_forces_momentum_pure(
     P_drive = P_HII + P_ram
 
     # Forces
-    F_ion_in = P_ext * FOUR_PI * R2**2
+    F_ion_in = P_ext * FOUR_PI * R2**2   # same area as the RHS; see get_ODE_Edot_pure
     F_HII = FOUR_PI * R2**2 * P_HII
 
     # Ram pressure force
@@ -444,7 +444,30 @@ def get_ODE_momentum_pure(t: float, y: np.ndarray, snapshot: MomentumODESnapshot
     # ==========================================================================
     P_drive = snapshot.P_HII + P_ram
 
-    # Net pressure force using P_drive
+    # Net pressure force using P_drive.
+    # ⛔ DO NOT "fix" the single area here. It looks like an inconsistency -- P_ext is
+    # evaluated at rShell (the ambient just outside the shell) but charged over 4 pi R2^2 --
+    # and charging it over 4 pi rShell^2 instead was tried and REVERTED on 2026-09-11.
+    #
+    # The test that kills it needs no data: a momentum balance must give ZERO net force
+    # under a UNIFORM pressure field. The single-area form below does, identically:
+    # 4 pi R2^2 (P - P) = 0. The two-area form does not -- it returns
+    # 4 pi P (R2^2 - rShell^2), i.e. a spurious inward force of |1 - (rShell/R2)^2| times
+    # the drive, which is 3.80x at the median of the archived momentum rows (worst 4.98x).
+    #
+    # Making the two-area form a balance needs the curvature term of
+    #     -INT grad(P) dV = 4 pi R2^2 P_in - 4 pi rSh^2 P_out + INT P(r) 8 pi r dr
+    # (parts on -dP/dr * 4 pi r^2), and that term is NOT AVAILABLE here. The shell profile
+    # is radiation-hydrostatic BY CONSTRUCTION: get_shellODE.py:121-125 gives
+    # dP/dr = f_rad(r) with no other source, so -INT grad(P) dV is identically -F_rad
+    # (measured 0.943-0.954 of it, the gap being the IR-trapping factor F_rad carries and
+    # the shell ODE does not). F_rad is ALREADY a separate term in this equation, so the
+    # curvature integral is a piece of a force the EOM has, not a force it is missing.
+    # A genuine thick-shell EOM would need a DYNAMICAL shell structure -- a different
+    # model, not a repair (PLAN.md D5/D11/K8).
+    #
+    # Verified: docs/dev/phii-identity/harness/q2b_curvature_check.py
+    #           -> data/b31_q2b_curvature.csv   (and the /xcheck of 2026-09-11)
     F_pressure = FOUR_PI * R2**2 * (P_drive - P_ext)
 
     # Derivatives

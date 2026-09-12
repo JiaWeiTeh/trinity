@@ -117,6 +117,16 @@ _SNAPSHOT_COUNT = 97
 # Phase structure is UNCHANGED: 97 snapshots, entry at energy 0 / implicit 87 /
 # transition 89 / momentum 91, all still asserted above and all still passing.
 # Previous values: R2 0.7092571238286148, v2 11.222515227888755.
+#
+# 2026-09-11: NOT re-baselined. Q2b -- charging P_ext over 4 pi rShell^2 instead of
+# 4 pi R2^2 -- was applied, measured HERE (R2 -0.9530%, v2 -9.0405%, phase structure
+# unchanged, with the pre-change tree reproducing these goldens to 1e-6 as a control)
+# and then REVERTED, because the two-area form drops the curvature term that makes it a
+# momentum balance. See the block comment at energy_phase_ODEs.get_ODE_Edot_pure and
+# docs/dev/phii-identity/data/b31_q2b_curvature.csv. The measurement is kept because it
+# sizes what a future thick-shell treatment would move: this fixture is the suite's
+# sharpest instrument for the P_ext channel (its whole T_ion response runs through
+# F_ion_in/P_ext, live on 97/97 leaky rows).
 _FINAL_GOLDENS = {
     "R2": 0.7210994339937571,
     "v2": 12.195810584867257,

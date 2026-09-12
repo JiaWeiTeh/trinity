@@ -532,7 +532,7 @@ def compute_forces_pure(
     P_drive = max(Pb, P_HII)
 
     # Forces
-    F_ion_in = P_ext * FOUR_PI * R2**2
+    F_ion_in = P_ext * FOUR_PI * R2**2   # same area as the RHS; see get_ODE_Edot_pure
     F_HII = FOUR_PI * R2**2 * P_HII
 
     # Ram pressure force (from bubble pressure)
