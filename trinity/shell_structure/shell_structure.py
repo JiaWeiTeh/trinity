@@ -252,6 +252,15 @@ class ShellProperties:
     shell_n_arr: Union[np.ndarray, float]  # Number density through shell [1/pc^3]
     shell_ion_idx: int  # Last index of ionized region in shell_r/n_arr (-1 if empty)
 
+    # Mass split at the ionisation front. Taken straight from the solver's own cumulative
+    # mass bookkeeping (mShell_arr_cum_ion / _neu), so no re-integration and no drift
+    # against the mass condition that terminated the loops. Their sum is the swept shell
+    # mass the loops were integrating towards, except on the no-termination edge case
+    # where the slice budget ran out (a warning is logged there).
+    # Written for option C (front-based drive); no caller reads them yet. PLAN.md D16.
+    shell_mass_ion: float      # Msun between R2 and R_IF (the photoionised layer)
+    shell_mass_neutral: float  # Msun between R_IF and rShell (0.0 when has_neutral is False)
+
 
 def shell_structure_pure(params) -> ShellProperties:
     """
@@ -786,6 +795,11 @@ def shell_structure_pure(params) -> ShellProperties:
             shell_r_arr = rShell_arr_ion
             shell_n_arr = nShell_arr_ion
 
+        # Mass on each side of the ionisation front (see ShellProperties).
+        shell_mass_ion = float(mShell_arr_cum_ion[-1])
+        shell_mass_neutral = (float(mShell_arr_cum_neu[-1]) - shell_mass_ion
+                              if has_neutral else 0.0)
+
     elif is_shellDissolved:
         f_absorbed_ion = 0.0 # dissolved shell = no absorber; ionizing photons escape freely
         _f_gas_ion = 0.0     # W69: and none of them are absorbed by gas either
@@ -811,6 +825,8 @@ def shell_structure_pure(params) -> ShellProperties:
         shell_r_arr = np.array([])
         shell_n_arr = np.array([])
         shell_ion_idx = -1
+        shell_mass_ion = 0.0      # no shell, so no mass on either side of a front
+        shell_mass_neutral = 0.0
 
         logger.debug('Shell dissolved.')
 
@@ -849,5 +865,7 @@ def shell_structure_pure(params) -> ShellProperties:
         shell_r_arr=shell_r_arr,
         shell_n_arr=shell_n_arr,
         shell_ion_idx=shell_ion_idx,
+        shell_mass_ion=shell_mass_ion,
+        shell_mass_neutral=shell_mass_neutral,
     )
 

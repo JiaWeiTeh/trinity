@@ -505,6 +505,10 @@ SPECS: tuple[ParamSpec, ...] = (
     # In-memory (ShellProperties.shell_ion_idx) it stays valid and is unchanged.
     ParamSpec(name='shell_ion_idx', default=-1, info='Last index of ionized region in shell_r/n_arr (-1 if empty). NOT snapshotted: derive from R_IF via searchsorted (PLAN.md W68).', category='runtime_shell', unit='N/A', exclude_from_snapshot=True),
     ParamSpec(name='shell_mass', default=0, info='Shell mass', category='runtime_shell', unit='Msun'),
+    # Mass split at the ionisation front (shell_structure). Recorded so the swept-mass
+    # partition is visible in the output; option C (PLAN.md D16) is what will consume it.
+    ParamSpec(name='shell_mass_ion', default=0.0, info='Shell mass between R2 and R_IF (photoionised layer)', category='runtime_shell', unit='Msun'),
+    ParamSpec(name='shell_mass_neutral', default=0.0, info='Shell mass between R_IF and rShell (neutral layer)', category='runtime_shell', unit='Msun'),
     ParamSpec(name='shell_massDot', default=0, info='Shell mass accretion rate', category='runtime_shell', unit='Msun/Myr'),
     ParamSpec(name='shell_interpolate_massDot', default=False, info='Use shell mass interpolation?', category='runtime_control', unit='N/A'),
     ParamSpec(name='shell_n0', default=0, info='Shell inner density (pressure balance)', category='runtime_shell', unit='1/pc**3'),
