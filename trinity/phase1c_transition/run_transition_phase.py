@@ -339,11 +339,14 @@ def compute_forces_pure(
     v_mech_total = params['v_mech_total'].value
     P_ram = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total)
 
-    P_drive = max(Pb, P_HII + P_ram)
+    front_branch = (str(params['phii_scheme'].value) == 'front'
+                    and P_HII > 0.0 and R_IF > 0.0)
+    P_drive = P_HII if front_branch else max(Pb, P_HII + P_ram)
+    R_drive = R_IF if front_branch else R2
 
     # Forces
-    F_ion_in = P_ext * FOUR_PI * R2**2   # same area as the RHS; see get_ODE_Edot_pure
-    F_HII = FOUR_PI * R2**2 * P_HII
+    F_ion_in = P_ext * FOUR_PI * R_drive**2   # same area as the RHS; see get_ODE_Edot_pure
+    F_HII = FOUR_PI * R_drive**2 * P_HII
 
     # Ram pressure force
     F_ram = Pb * FOUR_PI * R2**2
@@ -571,10 +574,10 @@ def run_phase_transition(params) -> TransitionPhaseResults:
 
         # Compute P_HII: photoionised pressure (get_bubbleParams.get_phii_c3c) -- exactly 0.0 while confined
         n_IF_Str = shell_props.n_IF_Str
-        if params['include_PHII'].value and n_IF_Str > 0:
+        if params['include_PHII'].value and get_bubbleParams.phii_is_active(params, shell_props):
             # Photoionised pressure is a regime switch, not the capped Stromgren
             # relabelling of Pb; see get_bubbleParams.get_phii_c3c.
-            P_HII = get_bubbleParams.get_phii_c3c(params, shell_props)
+            P_HII = get_bubbleParams.get_phii(params, shell_props)
         else:
             P_HII = 0.0
         params['P_HII'].value = P_HII
@@ -864,9 +867,9 @@ def run_phase_transition(params) -> TransitionPhaseResults:
         shell_props_f = shell_structure_pure(params)
         updateDict(params, shell_props_f)
         n_IF_Str_f = shell_props_f.n_IF_Str
-        if params['include_PHII'].value and n_IF_Str_f > 0:
+        if params['include_PHII'].value and get_bubbleParams.phii_is_active(params, shell_props_f):
             # Regime switch — see get_bubbleParams.get_phii_c3c.
-            P_HII_f = get_bubbleParams.get_phii_c3c(params, shell_props_f)
+            P_HII_f = get_bubbleParams.get_phii(params, shell_props_f)
         else:
             P_HII_f = 0.0
         params['P_HII'].value = P_HII_f

@@ -22,20 +22,23 @@ WHAT IS PINNED, and what each gate is FOR
       front. THIS IS THE STRUCTURAL RESULT: C3c and K11 pass, O1 CANNOT -- its drive is
       proportional to P_conf, so it follows the wind to zero. Recorded as an expected
       failure for O1, not as a bug to fix: no implementation choice repairs it.
-  L2  wind-only.  Photons -> 0 (Qi -> 0, front collapses to R2). The COMPOSED driving
-      pressure must CONVERGE to P_ram in the momentum phase. Tests the composition, not
-      just the helper -- that is the half that had no test. Taken as a limit rather than
-      at Qi = 0 exactly, because at exactly 0 all three schemes return through a shared
-      guard and the gate passes without evaluating anything (found by audit, 2026-09-02).
-  L3  strong-wind confined fork.  C_W >> C_Q with R_IF/R2 -> 1. RECORDED, NOT SCORED:
-      the three schemes legitimately disagree here (C3c transmits and returns 0, O1
-      returns P_conf*(R_IF/R2)^2, K11 returns P_ram with no area amplification) and
-      choosing between them is D5, a physics-intent call the maintainer owns.
-  L4  front collapse.  R_IF -> R2 must reduce K11's drive to the shipped P_C3a form and
-      O1's to P_conf. This is what makes L1's dynamics transfer: the classical D-type
-      integration (index 4/7, Hosokawa & Inutsuka to 1e-4, (4/3)^(2/7) above Spitzer)
-      is already pinned for P_C3a in test_phii_c3c_spitzer.py, so a scheme that equals
-      P_C3a to 1e-12 at every radius inherits it and need not re-integrate.
+  L2  FRONT COLLAPSE, in four legs with one assertion.  R_IF -> R2 is reached three
+      different ways and the composed momentum drive must tend to P_ram every time.
+      ⭐ MERGED 2026-09-14 (maintainer ruling): what were L3 and L4 are legs (c) and (d)
+      here. They were written against the CAVITY form and under a front-based closure
+      both reduce to this same statement, so they were three gates measuring one limit by
+      three routes. Rationale, and what is still scored, in gate_L2's docstring.
+        (a) photons off, front at R2 -- the physical wind-only geometry
+        (b) front held OPEN at R_IF/R2 = 1.05, so the closure's Qi-dependence is
+            exercised rather than geometrically annihilated (the 2026-09-02 audit)
+        (c) front collapsed at fixed photons, swept over 40 radii -- was L4. Still
+            SCORED against the shipped P_C3a for the P_C3a family (O1, K11), because
+            that is a real relationship between those closures and the shipped one;
+            RECORDED for anything not built on P_C3a, where the reference is meaningless.
+        (d) wind driven up at a near-collapsed front -- was L3, the D5 fork. RECORDED,
+            NOT SCORED: C3c transmits and returns 0, O1 amplifies by (R_IF/R2)^2, K11
+            tends to P_ram unamplified, and choosing between those is a physics-intent
+            call the maintainer owns.
   L5  degenerate inputs return exactly 0.0, never NaN or inf. An ODE right-hand side
       poisoned by a NaN fails far from here, and silently.
   L6  sign and composition. The stored P_HII must never go negative, in momentum OR
@@ -93,6 +96,12 @@ N0_CGS = 1e3
 QI_AU = 5.1227849481751455e64
 TOL = 1e-12
 
+# Schemes built on the shipped cavity form P_C3a. Leg (c) of L2 asserts a candidate
+# reduces to P_C3a when the front collapses; that is a relationship between two
+# particular closures rather than a limit of the physics, so it is scored only here and
+# recorded for closures built on something else. Added with the L3/L4 merge, 2026-09-14.
+_P_C3A_FAMILY = frozenset({"o1", "k11"})
+
 
 # =============================================================================
 # Scheme loading
@@ -114,7 +123,7 @@ def load_scheme(name):
             # The arm patches are untracked (a32b098e), so on a fresh clone this suite
             # used to report "6 passed, 15 skipped" and look green -- while the three
             # EXPECTED_FAIL assertions that ARE the structural result (O1 cannot pass
-            # L1/L1b/L4) were never evaluated. A green suite that measured nothing is
+            # L1/L1b, nor leg (c) of L2) were never evaluated. A green suite that measured nothing is
             # worse than a red one. Fail loudly instead, with one deliberate opt-out.
             if os.environ.get("PHII_ALLOW_MISSING_ARMS") == "1":
                 pytest.skip(f"{patch.name} absent, PHII_ALLOW_MISSING_ARMS=1 -- "
@@ -243,7 +252,26 @@ def gate_L1b(name):
 
 
 def gate_L2(name):
-    """Wind-only: as photons -> 0 the COMPOSED momentum drive must tend to P_ram.
+    """FRONT COLLAPSE: however R_IF -> R2 is reached, the composed drive tends to P_ram.
+
+    Four legs, one assertion. Legs (c) and (d) were the separate gates L3 and L4 until
+    2026-09-14, when the maintainer ruled them merged. The reason they merge is not that
+    they are redundant tests of the same code path -- they are three different routes
+    into the same physical corner:
+        (a)/(b)  drive the PHOTONS down  (Qi -> 0)
+        (c)      set the GEOMETRY collapsed (R_IF = R2) at fixed photons
+        (d)      drive the WIND up until the photon term is buried
+    Under the cavity form these looked like different questions because each closure
+    responded differently; under a front-based closure they are one statement, because
+    R_IF -> R2 sends the front pressure to p_ref*n0 = Pb = P_ram in the momentum phase
+    regardless of which knob got it there.
+
+    WHAT IS STILL SCORED, so that the merge loses nothing. Leg (c) asserted that a
+    candidate equals the shipped P_C3a at collapse. That is a relationship between two
+    particular closures, NOT a limit of the physics -- which is precisely why it fails to
+    generalise to a closure not built on P_C3a. It is therefore scored for the P_C3a
+    family (_P_C3A_FAMILY) and recorded for everything else. Leg (d) was never scored and
+    stays recorded. The scored verdict of legs (a)/(b) is unchanged.
 
     ponytail: this gate has now been caught passing for the wrong reason TWICE, by two
     different audits, and both are recorded here because the pattern is the point.
@@ -269,46 +297,9 @@ def gate_L2(name):
     for fq in (1.0, 1e-10, 1e-20):
         p, P_ram = state(R2=5.0, Qi=QI_AU * fq, Lmech=1.0e5)
         openf.append(compose("momentum", phii(p, _Shell(R_IF=5.25, f_abs=1.0)), P_ram, P_ram) / P_ram)
-    trivial = abs(seq[0] - 1.0) == 0.0 and abs(seq[-1] - 1.0) == 0.0
-    ok = abs(seq[-1] - 1.0) < TOL and abs(seq[-1] - 1.0) <= abs(seq[0] - 1.0)
-    how = ("satisfied STRUCTURALLY (the return is identically 0 at R_IF = R2, for any Qi) "
-           if trivial else "satisfied by CONVERGENCE")
-    return dict(gate="L2", scheme=name, passed=ok, measured=seq[-1], expected=1.0,
-                rel=seq[-1] - 1.0,
-                note=f"{how}; R_IF=R2 leg at Qi x (1e-10, 1e-20) = "
-                     + ", ".join(f"{v:.12f}" for v in seq)
-                     + f"; front-held-open leg (R_IF/R2 = 1.05) at Qi x (1, 1e-10, 1e-20) = "
-                     + ", ".join(f"{v:.6f}" for v in openf)
-                     + " -- a flat sequence there means the drive carries no photon "
-                       "dependence at fixed front, which is L1's finding seen sideways")
 
-
-def gate_L3(name):
-    """Strong-wind confined fork -- RECORDED, NOT SCORED. This IS D5's shape.
-
-    Swept rather than sampled at one point, because the fork only opens as the photon
-    term is driven under the wind term: at the asymptote C3c transmits (ratio 1, it
-    returns 0), O1 amplifies by the front's area (ratio (R_IF/R2)^2), and K11 tends to
-    P_ram with NO amplification because its self-consistent skin puts the wind contact
-    at the front. Which of those trinity should adopt is D5.
-    """
-    phii = load_scheme(name)
-    R2, amp = 5.0, 1.002
-    out = []
-    for f in (1e-6, 1e-9, 1e-12):
-        p, P_ram = state(R2=R2, Qi=QI_AU * f, Lmech=1.0e7)
-        out.append(compose("momentum", phii(p, _Shell(R_IF=R2 * amp)), P_ram, P_ram) / P_ram)
-    return dict(gate="L3", scheme=name, passed=None, measured=out[-1], expected=float("nan"),
-                rel=out[0] - out[-1],
-                note=f"composed drive/P_ram at Qi x (1e-6, 1e-9, 1e-12) with R_IF/R2 = {amp}: "
-                     + ", ".join(f"{v:.6f}" for v in out)
-                     + f"; O1's area factor is {amp**2:.6f}, K11's asymptote is 1.0")
-
-
-def gate_L4(name):
-    """R_IF -> R2 collapse: K11 -> the shipped P_C3a, O1 -> P_conf, over many radii."""
+    # leg (c), was L4: geometry collapsed at fixed photons, wind off, swept over radii.
     c3c = load_scheme("c3c")
-    phii = load_scheme(name)
     worst = 0.0
     for R2 in np.logspace(-2, 2, 40):
         p, _ = state(R2=R2, Lmech=0.0)
@@ -316,8 +307,36 @@ def gate_L4(name):
         got = compose("momentum", phii(p, _Shell(R_IF=R2)), 0.0, 0.0)
         if ref > 0:
             worst = max(worst, abs(got / ref - 1.0))
-    return dict(gate="L4", scheme=name, passed=worst < TOL, measured=worst, expected=0.0,
-                rel=worst, note="max |drive/P_C3a - 1| over 40 radii, wind off, R_IF = R2")
+
+    # leg (d), was L3: wind driven up at a near-collapsed front. Recorded, not scored.
+    amp = 1.002
+    fork = []
+    for f in (1e-6, 1e-9, 1e-12):
+        p, P_ram = state(R2=5.0, Qi=QI_AU * f, Lmech=1.0e7)
+        fork.append(compose("momentum", phii(p, _Shell(R_IF=5.0 * amp)), P_ram, P_ram) / P_ram)
+
+    trivial = abs(seq[0] - 1.0) == 0.0 and abs(seq[-1] - 1.0) == 0.0
+    ok = abs(seq[-1] - 1.0) < TOL and abs(seq[-1] - 1.0) <= abs(seq[0] - 1.0)
+    if name in _P_C3A_FAMILY:
+        ok = ok and worst < TOL          # leg (c) is a real claim only for this family
+    how = ("satisfied STRUCTURALLY (the return is identically 0 at R_IF = R2, for any Qi) "
+           if trivial else "satisfied by CONVERGENCE")
+    scored_c = "SCORED" if name in _P_C3A_FAMILY else "recorded (not built on P_C3a)"
+    return dict(gate="L2", scheme=name, passed=ok, measured=seq[-1], expected=1.0,
+                rel=seq[-1] - 1.0,
+                note=f"{how}; (a) R_IF=R2 at Qi x (1e-10, 1e-20) = "
+                     + ", ".join(f"{v:.12f}" for v in seq)
+                     + f"; (b) front open (R_IF/R2 = 1.05) at Qi x (1, 1e-10, 1e-20) = "
+                     + ", ".join(f"{v:.6f}" for v in openf)
+                     + " -- a flat sequence there means the drive carries no photon "
+                       "dependence at fixed front, which is L1's finding seen sideways"
+                     + f"; (c) was L4, max |drive/P_C3a - 1| over 40 radii at R_IF = R2, "
+                       f"wind off = {worst!r} [{scored_c}]"
+                     + f"; (d) was L3, the D5 fork -- composed drive/P_ram at "
+                       f"Qi x (1e-6, 1e-9, 1e-12) with R_IF/R2 = {amp} = "
+                     + ", ".join(f"{v:.6f}" for v in fork)
+                     + f" (O1's area factor is {amp**2:.6f}, K11's asymptote is 1.0); "
+                       "RECORDED, not scored -- choosing between those is D5")
 
 
 def gate_L5(name):
@@ -434,14 +453,16 @@ def gate_L6(name):
                        f"({'roundoff on the float floor identity' if leak else 'clean'})")
 
 
-GATES = [gate_L1, gate_L1b, gate_L2, gate_L3, gate_L4, gate_L5, gate_L6]
+GATES = [gate_L1, gate_L1b, gate_L2, gate_L5, gate_L6]
 
 # Gates a scheme is EXPECTED to fail, with the reason. An expected failure that starts
 # passing is as much a finding as a pass that starts failing, so both are asserted.
 EXPECTED_FAIL = {
     ("o1", "L1"): "structural: drive is proportional to P_conf, so wind -> 0 kills it",
     ("o1", "L1b"): "structural: no photo-only drive exists to have a slope",
-    ("o1", "L4"): "structural: O1 reduces to P_conf, not to P_C3a",
+    ("o1", "L2"): ("structural: O1 reduces to P_conf, not to P_C3a, so leg (c) of the "
+                   "merged front-collapse gate cannot pass. Was ('o1','L4') before the "
+                   "2026-09-14 merge; legs (a)/(b) still pass for O1 on their own."),
 }
 
 
@@ -491,7 +512,7 @@ def main():
     if missing:
         print(f"\n  !! {len(missing)} arm(s) not measured: {', '.join(missing)}. "
               f"data/b23_limits.csv will be INCOMPLETE and the structural result "
-              f"(O1 fails L1/L1b/L4) is NOT in it.\n")
+              f"(O1 fails L1/L1b and leg (c) of L2) is NOT in it.\n")
     sha = subprocess.run(["git", "-C", str(REPO), "rev-parse", "--short", "HEAD"],
                          capture_output=True, text=True).stdout.strip() or "unknown"
     dirty = subprocess.run(["git", "-C", str(REPO), "status", "--porcelain"],
@@ -502,7 +523,7 @@ def main():
         fh.write(f"# generated {now} | builder test_phii_limits.py | "
                  f"code {sha}{'+dirty' if dirty else ''}\n")
         fh.write("# Limits SSOT: every P_HII scheme against the same gates (PLAN.md 0.0 Phase 2).\n")
-        fh.write("# passed='' means RECORDED-not-scored (L3, the D5 fork). expected_fail is the\n")
+        fh.write("# passed='' means RECORDED-not-scored. expected_fail is the\n")
         fh.write("# reason a failure is structural rather than a defect.\n")
         w = csv.DictWriter(fh, fieldnames=["gate", "scheme", "passed", "measured", "expected",
                                            "rel", "expected_fail", "note"])

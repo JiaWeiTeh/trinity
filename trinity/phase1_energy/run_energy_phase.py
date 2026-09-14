@@ -221,10 +221,10 @@ def run_energy(params):
 
         # Compute P_HII: photoionised pressure (get_bubbleParams.get_phii_c3c) -- exactly 0.0 while confined
         n_IF_Str = shell_data.n_IF_Str
-        if params['include_PHII'].value and n_IF_Str > 0:
+        if params['include_PHII'].value and get_bubbleParams.phii_is_active(params, shell_data):
             # Photoionised pressure is a regime switch, not the capped Stromgren
             # relabelling of Pb; see get_bubbleParams.get_phii_c3c.
-            P_HII = get_bubbleParams.get_phii_c3c(params, shell_data)
+            P_HII = get_bubbleParams.get_phii(params, shell_data)
         else:
             P_HII = 0.0
         params['P_HII'].value = P_HII

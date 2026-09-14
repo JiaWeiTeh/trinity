@@ -78,16 +78,25 @@ def test_phase1_pressure_factor_vs_original():
     assert np.isclose(f_new / f_orig, 1.1, rtol=1e-12)              # intended change vs original
 
 
-def test_phase1_all_eleven_sites_refined_and_no_original_remains():
-    """All 11 ionised-pressure sites carry the refined factor; not one of the
+def test_phase1_all_ionised_pressure_sites_refined_and_no_original_remains():
+    """Every ionised-pressure site carries the refined factor; not one of the
     original `* 2.0 *` operations survives.
 
-    Re-baselined 2026-08-14 for C3c (`c43a50e`): 6 of the 11 were `P_HII`
+    Re-baselined 2026-08-14 for C3c (`c43a50e`): 6 of the original 11 were `P_HII`
     assignments that computed the factor inline, and they were consolidated into
-    `get_bubbleParams.get_phii_c3c`.  The audit invariant is unchanged -- every
-    ionised-pressure site still carries `mu_convert/mu_ion_shell` and no original
-    op came back -- but the factor is now written 5 times inline plus once in the
-    helper, reached from 6 call sites.  5 + 6 = the same 11 sites.
+    `get_bubbleParams.get_phii_c3c`.
+
+    Re-baselined again 2026-09-12 for option C: there are now TWO P_HII closures in
+    the helper -- `get_phii_c3c` (the cavity Stroemgren regime switch, shipped) and
+    `get_phii_front` (the front pressure, D16) -- selected by `phii_scheme` through
+    one dispatcher `get_phii`, which is what the 6 call sites now name.  So the
+    factor is written 5 times inline plus TWICE in the helper, reached from 6 call
+    sites through the dispatcher.
+
+    The audit invariant is what matters and it is unchanged: every ionised-pressure
+    site carries `mu_convert/mu_ion_shell` -- singly ionised, the SHELL value, never
+    the doubly-ionised bubble `mu_ion` -- and no original op came back.  This test
+    firing when a P_HII site is added is the test working, not breaking.
     """
     files = [
         "trinity/phase1_energy/energy_phase_ODEs.py",
@@ -114,14 +123,23 @@ def test_phase1_all_eleven_sites_refined_and_no_original_remains():
 
     assert inline == 5, f"expected 5 inline P_ion/P_ext sites, found {inline}"
 
-    # The other 6: one refined factor in the helper, reached from 6 call sites.
+    # The rest: one refined factor per P_HII closure in the helper, reached from 6
+    # call sites through the `get_phii` dispatcher.
     hlp = _src(helper)
-    assert hlp.count(factor) == 1, (
-        f"get_phii_c3c must carry the refined factor exactly once, "
-        f"found {hlp.count(factor)}")
-    calls = sum(_src(rel).count("get_bubbleParams.get_phii_c3c(") for rel in files)
-    assert calls == 6, f"expected 6 get_phii_c3c call sites, found {calls}"
-    assert inline + calls == 11
+    assert hlp.count(factor) == 2, (
+        f"the two P_HII closures (get_phii_c3c, get_phii_front) must each carry the "
+        f"refined factor exactly once, found {hlp.count(factor)} total")
+    for closure in ("def get_phii_c3c(", "def get_phii_front("):
+        assert closure in hlp, f"{helper}: {closure} missing"
+    calls = sum(_src(rel).count("get_bubbleParams.get_phii(") for rel in files)
+    assert calls == 6, f"expected 6 get_phii dispatcher call sites, found {calls}"
+    # and nothing may bypass the dispatcher to call a closure directly
+    direct = sum(_src(rel).count("get_bubbleParams.get_phii_c3c(")
+                 + _src(rel).count("get_bubbleParams.get_phii_front(") for rel in files)
+    assert direct == 0, (
+        f"{direct} phase-runner call(s) bypass the get_phii dispatcher -- a scheme "
+        f"switch that some sites ignore is worse than no switch")
+    assert inline + hlp.count(factor) + calls == 13
 
 
 # =====================================================================

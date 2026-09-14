@@ -262,11 +262,14 @@ def compute_forces_momentum_pure(
 
     # P_HII pre-computed in phase runner from n_IF_Str
     P_HII = params['P_HII'].value
-    P_drive = P_HII + P_ram
+    front_branch = (str(params['phii_scheme'].value) == 'front'
+                    and P_HII > 0.0 and R_IF > 0.0)
+    P_drive = P_HII if front_branch else P_HII + P_ram
+    R_drive = R_IF if front_branch else R2
 
     # Forces
-    F_ion_in = P_ext * FOUR_PI * R2**2   # same area as the RHS; see get_ODE_Edot_pure
-    F_HII = FOUR_PI * R2**2 * P_HII
+    F_ion_in = P_ext * FOUR_PI * R_drive**2   # same area as the RHS; see get_ODE_Edot_pure
+    F_HII = FOUR_PI * R_drive**2 * P_HII
 
     # Ram pressure force
     F_ram = P_ram * FOUR_PI * R2**2
@@ -313,8 +316,11 @@ class MomentumODESnapshot:
     FABSi: float
     TShell_ion: float  # Ionized shell temperature [K]
     n_IF: float  # Density at ionization front (from shell structure ODE)
+    R_IF: float  # Radius of ionization front [pc] -- the front branch's area (option C)
     include_PHII: bool  # Gate all HII pressure
-    P_HII: float  # photoionised pressure (get_phii_c3c); 0.0 while confined
+    P_HII: float  # photoionised pressure (get_bubbleParams.get_phii); 0.0 while confined
+                  # (c3c) or on a fully ionised shell (front)
+    phii_scheme: str  # 'c3c' | 'front'; selects the force assembly below
     F_rad: float
     mShell: float
     mShell_dot: float
@@ -357,8 +363,10 @@ def create_momentum_snapshot(params, shell_props: ShellProperties,
         rShell=shell_props.rShell,
         FABSi=shell_props.shell_fAbsorbedIon,
         n_IF=shell_props.n_IF,
+        R_IF=shell_props.R_IF,
         include_PHII=params['include_PHII'].value,
         P_HII=params['P_HII'].value,
+        phii_scheme=str(params['phii_scheme'].value),
         F_rad=F_rad,
         mShell=mShell,
         mShell_dot=mShell_dot,
@@ -442,7 +450,21 @@ def get_ODE_momentum_pure(t: float, y: np.ndarray, snapshot: MomentumODESnapshot
     # P_HII: photoionised pressure (get_bubbleParams.get_phii_c3c) -- exactly 0.0 while confined
     # Pre-computed in phase runner and stored in snapshot.
     # ==========================================================================
-    P_drive = snapshot.P_HII + P_ram
+    # Option C: the front pressure alone over the front's area, with NO P_ram added --
+    # the wind acts on the ionised layer, not on the neutral gas beyond the front.
+    # No end-state branch (ruling 2026-09-14): under the front scheme the front pressure
+    # over the front's area is the rule on BOTH sides of the end-state flip, because n_IF
+    # and R_IF are continuous through it. The two conditions below are NUMERIC GUARDS, not
+    # a physics switch -- a degenerate n_IF or R_IF falls back to the shipped assembly
+    # rather than driving with nothing over no area.
+    front_branch = (snapshot.phii_scheme == 'front' and snapshot.P_HII > 0.0
+                    and snapshot.R_IF > 0.0)
+    if front_branch:
+        P_drive = snapshot.P_HII
+        R_drive = snapshot.R_IF
+    else:
+        P_drive = snapshot.P_HII + P_ram
+        R_drive = R2
 
     # Net pressure force using P_drive.
     # ⛔ DO NOT "fix" the single area here. It looks like an inconsistency -- P_ext is
@@ -468,7 +490,7 @@ def get_ODE_momentum_pure(t: float, y: np.ndarray, snapshot: MomentumODESnapshot
     #
     # Verified: docs/dev/phii-identity/harness/q2b_curvature_check.py
     #           -> data/b31_q2b_curvature.csv   (and the /xcheck of 2026-09-11)
-    F_pressure = FOUR_PI * R2**2 * (P_drive - P_ext)
+    F_pressure = FOUR_PI * R_drive**2 * (P_drive - P_ext)
 
     # Derivatives
     rd = v2
@@ -660,10 +682,10 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
 
         # Compute P_HII: photoionised pressure (get_bubbleParams.get_phii_c3c) -- exactly 0.0 while confined
         n_IF_Str = shell_props.n_IF_Str
-        if params['include_PHII'].value and n_IF_Str > 0:
+        if params['include_PHII'].value and get_bubbleParams.phii_is_active(params, shell_props):
             # Photoionised pressure is a regime switch, not the capped Stromgren
             # relabelling of Pb; see get_bubbleParams.get_phii_c3c.
-            P_HII = get_bubbleParams.get_phii_c3c(params, shell_props)
+            P_HII = get_bubbleParams.get_phii(params, shell_props)
         else:
             P_HII = 0.0
         params['P_HII'].value = P_HII

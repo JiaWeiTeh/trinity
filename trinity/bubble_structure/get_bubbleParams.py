@@ -624,3 +624,125 @@ def solve_R1(R2, Eb, Lmech_total, v_mech_total):
             f"Lmech_total={Lmech_total:.6e}, v_mech_total={v_mech_total:.6e}"
         )
         raise
+
+
+# =============================================================================
+# P_HII closures and their dispatcher.
+#
+# ⛔ KEEP THESE AT THE END OF THE FILE. The held candidate arms
+# docs/dev/phii-identity/hpc/b14/{k10_o1,k11}_arm.patch insert immediately after
+# get_phii_c3c, and test/test_phii_limits.py builds both by `git apply`-ing them to
+# a temp copy of this file. Anything added between get_phii_c3c and the next def
+# shifts their context and takes 14 tracked limit gates with it (found by doing it,
+# 2026-09-12). Appending here leaves their hunks untouched.
+# =============================================================================
+
+def get_phii_front(params, shell_props):
+    """Photoionised pressure as the FRONT pressure (option C, D16 ruled 2026-09-11).
+
+    Under the maintainer's geometry ruling G1-G3 the photoionised gas is the shell's
+    inner layer [R2, R_IF]. A fully ionised shell (end state 1) has no neutral gas to
+    push, so P_HII = 0; a partially ionised one (end state 2, `has_neutral`) pushes the
+    neutral rind beyond R_IF, and what it pushes with is the pressure AT the front:
+
+        P_front = (mu_c/mu_i) * n_IF * k_B * T_ion
+
+    The caller applies it over 4*pi*R_IF**2 -- the front's area, not R2's -- and does
+    NOT add Pb or P_ram, because the wind acts on the ionised layer, not on the neutral
+    shell. So this helper is only half of C; the other half is the area and the
+    composition in the two ODE right-hand sides.
+
+    WHY THE FRONT AND NOT THE LAYER'S OWN PRESSURE. Decided on the limits, not the
+    magnitudes (PLAN.md 0.0.1 item 3):
+      * weak ionisation: Qi and Li -> 0 gives R_IF/R2 -> 1.0000000 and n_IF/n0 ->
+        1.000000, continuously and including at exactly zero, with `has_neutral` still
+        true -- so the drive tends to 4*pi*R2**2*Pb, which in the momentum phase is
+        4*pi*R2**2*P_ram: the pure wind solution, recovered with no branch. Measured
+        2026-09-11. (Scaling Qi ALONE gives 1.907 and looks like a Qi=0+ discontinuity;
+        that is an artifact of leaving Li at full strength, which keeps compressing the
+        shell radiatively. Qi and Li are one physical quantity. Do not repeat it.)
+      * weak wind: a layer pressure composed additively gives P_HII + P_ram -> 2*P_ram,
+        discontinuous at Qi = 0+. C adds nothing, so it has no such term.
+
+    RETURNING EXACTLY 0.0 IN STATE 1 IS LOAD-BEARING, exactly as it is for
+    get_phii_c3c: it is what lets the state-1 force assembly stay byte-identical to the
+    shipped one, and it is the branch signal the ODE reads (P_HII > 0 <=> state 2 under
+    this scheme), so no `has_neutral` has to be plumbed into the snapshots.
+
+    NOTE what this does NOT depend on: any photon budget. C3c inverts a recombination
+    balance and so had to be corrected for the gas-vs-total absorbed LyC (W69) and would
+    have to be corrected again for the sky partition (the 2026-09-12 coverFraction
+    ruling, `shell_fAbsorbedIonGas_total`). n_IF is the shell ODE's own value at the
+    front on a covered ray, so C is insulated from both.
+    """
+    # ⛔ NO end-state branch here, by ruling 2026-09-14. It is tempting to return 0.0 on
+    # a fully ionised shell ("nothing neutral left to push"), and C v1 did. It is wrong:
+    # a fully ionised shell means photons LEAK, which means the front has run PAST rShell
+    # into cloud the code no longer tracks -- there IS neutral gas, the model has just
+    # lost the front's radius. R_IF == rShell there (231/231 archived rows) is the front
+    # AT the shell's outer edge on its way out. n_IF and R_IF are both continuous through
+    # that moment (measured: a -1.2% step in p_ref*n_IF/Pb across B3M's momentum flip,
+    # inside its existing trend), so a branch there injects a factor-7.5 discontinuity
+    # into an ODE that the physics does not have. See data/b32_alwayson.csv and
+    # shell_frontEscaped, which flags the regime instead of switching on it.
+    n_IF = getattr(shell_props, 'n_IF', 0.0)
+    try:
+        n_IF = float(n_IF)
+    except (TypeError, ValueError):
+        return 0.0
+    if not (np.isfinite(n_IF) and n_IF > 0.0):
+        return 0.0
+    P_front = ((params['mu_convert'].value / params['mu_ion_shell'].value)
+               * n_IF * params['k_B'].value * params['TShell_ion'].value)
+    return float(P_front) if (np.isfinite(P_front) and P_front > 0.0) else 0.0
+
+
+# name -> closure.  The shipped scheme is first and is the default.
+PHII_SCHEMES = {
+    'c3c': get_phii_c3c,
+    'front': get_phii_front,
+}
+
+
+def phii_is_active(params, shell_props):
+    """Scheme-aware pre-gate for the P_HII call sites.
+
+    The phase runners guard the closure call so that a scheme's own degenerate cases do
+    not have to be re-derived at six sites. The gate is NOT the same question for the
+    two schemes, and conflating them was a real defect (found by /xcheck 2026-09-12):
+
+      c3c    `n_IF_Str > 0`. The shipped gate, kept verbatim so c3c stays bit-identical.
+             It is C3c's own cavity Stroemgren density, which vanishes when the ionised
+             volume (R_IF**3 - R2**3) or the absorbed budget does.
+      front  True. get_phii_front self-gates on `has_neutral` and `n_IF`, which are the
+             front's own quantities. Gating it on `n_IF_Str` instead made option C's
+             ACTIVATION depend on C3c's volume term -- and that term vanishes precisely
+             in the weak-ionisation limit (R_IF -> R2) that C was chosen for. On the 895
+             archived states the two gates happen to agree on every row (0 disagreements),
+             so this changes no measured number; it removes a coupling that would have
+             bitten the next time n_IF_Str's definition moved, as it already did at W60.
+    """
+    item = params.get('phii_scheme', None)
+    name = str(item.value if hasattr(item, 'value') else 'c3c').strip().lower()
+    if name == 'front':
+        return True
+    return getattr(shell_props, 'n_IF_Str', 0.0) > 0
+
+
+def get_phii(params, shell_props):
+    """Dispatch to the P_HII closure named by params['phii_scheme'].
+
+    One dispatcher so the six phase-runner call sites do not each grow a branch, and so
+    `get_phii_c3c` stays byte-identical as the control arm.
+
+    An unknown name falls back to the shipped scheme rather than raising. That is belt
+    and braces, not the primary defence: `registry._validate_phii_scheme` rejects an
+    unrecognised value at startup, so a typo in a .param never reaches here. (Until
+    2026-09-12 this docstring asserted that validation while none existed -- found by
+    /xcheck. The validator is now real; if you remove it, remove this sentence too.)
+    """
+    item = params.get('phii_scheme', None)
+    name = item.value if hasattr(item, 'value') else 'c3c'
+    return PHII_SCHEMES.get(str(name).strip().lower(), get_phii_c3c)(params, shell_props)
+
+

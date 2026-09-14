@@ -86,6 +86,9 @@ rCore    0.01
 # UNIT: [pc]
 rCloud_max    200
 
+# INFO: Which P_HII closure to use. 'c3c' (default, shipped): the confinement regime switch on the CAVITY Stroemgren density -- exactly 0.0 while the ionised gas is confined, P_C3a once it is not (get_bubbleParams.get_phii_c3c). 'front' (option C, D16 ruled 2026-09-11): the pressure AT the ionisation front, (mu_c/mu_i)*n_IF*k_B*T_ion, applied by the caller over 4*pi*R_IF**2 on the neutral rind with NO Pb or P_ram added, and exactly 0.0 on a fully ionised shell (get_bubbleParams.get_phii_front). The two differ in area, in composition and in which body is driven, so they are not interchangeable magnitudes -- see docs/dev/phii-identity/PLAN.md 0.0.5 Step 3.
+phii_scheme    c3c
+
 
 # ==============================================================================
 # Density Profile

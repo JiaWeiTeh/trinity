@@ -148,6 +148,21 @@ def _validate_cooling_boost_fA(value, params) -> None:
                 f"cooling_boost_fA=1); the result is NOT the calibrated f_A.")
 
 
+def _validate_phii_scheme(value, params) -> None:
+    """Selects the P_HII closure: 'c3c' (default, shipped) is the confinement regime
+    switch on the cavity Stroemgren density; 'front' (option C, D16) is the pressure at
+    the ionisation front applied over the front's area on the neutral rind.
+    See trinity/bubble_structure/get_bubbleParams.py and
+    docs/dev/phii-identity/PLAN.md 0.0.5 Step 3."""
+    from trinity._input.errors import ParameterFileError
+    from trinity.bubble_structure.get_bubbleParams import PHII_SCHEMES
+    if str(value).strip().lower() not in PHII_SCHEMES:
+        raise ParameterFileError(
+            f"Invalid phii_scheme '{value}'. "
+            f"Must be one of {sorted(PHII_SCHEMES)}."
+        )
+
+
 def _validate_betadelta_solver(value, params) -> None:
     """Selects the energy-implicit (beta, delta) solver. 'hybr' (default)
     is the unbounded scipy root-finder with a physical dMdt>0 acceptance
@@ -507,6 +522,8 @@ SPECS: tuple[ParamSpec, ...] = (
     ParamSpec(name='shell_mass', default=0, info='Shell mass', category='runtime_shell', unit='Msun'),
     # Mass split at the ionisation front (shell_structure). Recorded so the swept-mass
     # partition is visible in the output; option C (PLAN.md D16) is what will consume it.
+    ParamSpec(name='phii_scheme', default='c3c', info="Which P_HII closure to use. 'c3c' (default, shipped): the confinement regime switch on the CAVITY Stroemgren density -- exactly 0.0 while the ionised gas is confined, P_C3a once it is not (get_bubbleParams.get_phii_c3c). 'front' (option C, D16 ruled 2026-09-11): the pressure AT the ionisation front, (mu_c/mu_i)*n_IF*k_B*T_ion, applied by the caller over 4*pi*R_IF**2 on the neutral rind with NO Pb or P_ram added, and exactly 0.0 on a fully ionised shell (get_bubbleParams.get_phii_front). The two differ in area, in composition and in which body is driven, so they are not interchangeable magnitudes -- see docs/dev/phii-identity/PLAN.md 0.0.5 Step 3.", category='input_physical', unit=None, exclude_from_snapshot=True, run_const=True, validator=_validate_phii_scheme),
+    ParamSpec(name='shell_frontEscaped', default=False, info="Model-validity flag, NOT a physics switch: True when ANY LyC escapes the shell (shell_fAbsorbedIon < 1), i.e. the ionisation front has run past rShell into cloud the one-shell geometry does not represent, so the ionised region is larger than anything the model describes. No threshold and nothing to tune -- one escaping photon is already outside the geometry (ruling 2026-09-14). Applies to EVERY P_HII scheme, not just the front closure; the shipped C3c has the same breakdown and never flagged it. Nothing in the dynamics reads it. Identical condition to the `FABSi < 1.0` gate that switches P_ext on in the four phase runners, which is a consistency: escaping LyC means the ambient is photoionised too. The continuous diagnostic is shell_fAbsorbedIon.", category='runtime_shell', unit='N/A'),
     ParamSpec(name='shell_mass_ion', default=0.0, info='Shell mass between R2 and R_IF (photoionised layer)', category='runtime_shell', unit='Msun'),
     ParamSpec(name='shell_mass_neutral', default=0.0, info='Shell mass between R_IF and rShell (neutral layer)', category='runtime_shell', unit='Msun'),
     # Sky-partition totals. The shell solve is per covered ray; these apply coverFraction

@@ -72,7 +72,8 @@ class ODESnapshot:
     isCollapse: bool
     n_IF: float  # Density at ionization front (from shell structure ODE)
     include_PHII: bool  # Gate all HII pressure
-    R_IF: float  # Radius of ionization front (pc)
+    R_IF: float  # Radius of ionization front (pc) -- the front branch's area (option C)
+    phii_scheme: str  # 'c3c' | 'front'; selects the force assembly in the RHS below
 
     # Cluster/bubble properties
     mCluster: float
@@ -158,6 +159,7 @@ def create_ODE_snapshot(params, shell_props) -> ODESnapshot:
         rCloud=params['rCloud'].value,
         include_PHII=params['include_PHII'].value,
         P_HII=params['P_HII'].value,
+        phii_scheme=str(params['phii_scheme'].value),
         coverFraction=params['coverFraction'].value,
         c_sound=params['c_sound'].value,
     )
@@ -248,7 +250,20 @@ def get_ODE_Edot_pure(t: float, y: list, snapshot: ODESnapshot, params_for_feedb
     # ==========================================================================
     P_HII = snapshot.P_HII
 
-    if snapshot.current_phase == 'transition':
+    # Option C: P_HII IS the whole drive (no Pb, no P_ram) and it acts over 4 pi R_IF^2.
+    # No end-state branch (ruling 2026-09-14): under the front scheme the front pressure
+    # over the front's area is the rule on BOTH sides of the end-state flip, because n_IF
+    # and R_IF are continuous through it. The two conditions below are NUMERIC GUARDS, not
+    # a physics switch -- a degenerate n_IF or R_IF falls back to the shipped assembly
+    # rather than driving with nothing over no area.
+    front_branch = (snapshot.phii_scheme == 'front' and P_HII > 0.0
+                    and snapshot.R_IF > 0.0)
+
+    if front_branch:
+        P_drive = P_HII
+        P_ram = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total) \
+            if snapshot.current_phase == 'transition' else 0.0
+    elif snapshot.current_phase == 'transition':
         P_ram = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total)
         P_drive = max(press_bubble, P_HII + P_ram)
     else:
@@ -260,6 +275,25 @@ def get_ODE_Edot_pure(t: float, y: list, snapshot: ODESnapshot, params_for_feedb
 
     # Time derivatives
     rd = v2
+    # ==========================================================================
+    # THE FORCE ASSEMBLY.  Two of them, selected by the P_HII scheme and, under the
+    # front scheme, by the end state -- for which P_HII > 0 is the exact signal,
+    # because get_phii_front returns exactly 0.0 on a fully ionised shell.
+    #
+    #   front branch (option C, end state 2): the drive is the pressure AT the front
+    #       over the FRONT's area, and Pb/P_ram is NOT added -- the wind acts on the
+    #       ionised layer [R2, R_IF], not on the neutral rind beyond it.
+    #   otherwise (c3c, or the front scheme on a fully ionised shell): unchanged.
+    #
+    # ⛔ ONE area for both faces on the front branch, and DO NOT "fix" that. Same
+    # reason as the single area below (a two-face split without the curvature term of
+    # -INT grad(P) dV is not a momentum balance -- see the block comment further down),
+    # and here it is quantitatively harmless too: over the neutral rind [R_IF, rShell]
+    # the ratio (rShell/R_IF)**2 is 1.018 at the momentum median, max 1.025
+    # (data/b31_q2b_curvature.csv). That thinness is the point of C -- it puts the
+    # one-radius EOM back on a body a one-radius equation can represent, where
+    # [R2, rShell] spans 4.80.
+    # ==========================================================================
     # ⛔ DO NOT "fix" the single area here. It looks like an inconsistency -- P_ext is
     # evaluated at rShell (the ambient just outside the shell) but charged over 4 pi R2^2 --
     # and charging it over 4 pi rShell^2 instead was tried and REVERTED on 2026-09-11.
@@ -283,7 +317,8 @@ def get_ODE_Edot_pure(t: float, y: list, snapshot: ODESnapshot, params_for_feedb
     #
     # Verified: docs/dev/phii-identity/harness/q2b_curvature_check.py
     #           -> data/b31_q2b_curvature.csv   (and the /xcheck of 2026-09-11)
-    vd = (4.0 * np.pi * R2**2 * (P_drive - P_ext)
+    R_drive = snapshot.R_IF if front_branch else R2
+    vd = (4.0 * np.pi * R_drive**2 * (P_drive - P_ext)
           - mShell_dot * v2 - F_grav + F_rad) / mShell
 
     # Energy derivative
@@ -403,14 +438,21 @@ def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_
     # ==========================================================================
     P_HII = snapshot.P_HII
 
-    if snapshot.current_phase == 'transition':
+    front_branch = (snapshot.phii_scheme == 'front' and P_HII > 0.0
+                    and snapshot.R_IF > 0.0)
+    if front_branch:
+        P_drive = P_HII
+        P_ram = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total) \
+            if snapshot.current_phase == 'transition' else 0.0
+    elif snapshot.current_phase == 'transition':
         P_ram = get_bubbleParams.pRam(R2, Lmech_total, v_mech_total)
         P_drive = max(Pb, P_HII + P_ram)
     else:
         # energy / implicit phases: max(Pb, P_HII)
         P_drive = max(Pb, P_HII)
 
-    F_HII = 4.0 * np.pi * R2**2 * P_HII
+    R_drive = snapshot.R_IF if front_branch else R2
+    F_HII = 4.0 * np.pi * R_drive**2 * P_HII
 
     # P_ram: only relevant in transition; 0 in energy/implicit
     if snapshot.current_phase == 'transition':

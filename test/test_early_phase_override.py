@@ -92,6 +92,7 @@ def _snapshot(**overrides):
         current_phase="energy",
         rCloud=0.617,
         P_HII=1.858e9,
+        phii_scheme="c3c",
         coverFraction=1.0,
         c_sound=1.4e3,
     )

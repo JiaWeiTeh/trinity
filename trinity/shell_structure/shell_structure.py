@@ -22,6 +22,7 @@ import scipy.integrate
 # so the new spelling alone crashes on the cluster env: it killed all 8100 tasks of the
 # 2026-09-07 rosette sweep at 12 s (AttributeError, exit 1). Same idiom as rt3d.py / powr_fi.py.
 _trapz = getattr(np, "trapezoid", None) or np.trapz
+
 from dataclasses import dataclass
 from typing import Optional, Union
 import logging
@@ -258,6 +259,14 @@ class ShellProperties:
     # mass the loops were integrating towards, except on the no-termination edge case
     # where the slice budget ran out (a warning is logged there).
     # Written for option C (front-based drive); no caller reads them yet. PLAN.md D16.
+    # Model-validity flag, NOT a physics switch (ruling 2026-09-14). When LyC escapes,
+    # the ionisation front has run past rShell into cloud this one-shell geometry does not
+    # represent, so the ionised region is larger than anything here describes -- for EVERY
+    # P_HII scheme, not just one. NO THRESHOLD: any escape at all already puts ionised gas
+    # outside the geometry, so there is nothing to tune. The continuous diagnostic is
+    # shell_fAbsorbedIon (escape is 1 - that).
+    shell_frontEscaped: bool   # has ANY LyC left the swept shell?
+
     shell_mass_ion: float      # Msun between R2 and R_IF (the photoionised layer)
     shell_mass_neutral: float  # Msun between R_IF and rShell (0.0 when has_neutral is False)
 
@@ -845,6 +854,18 @@ def shell_structure_pure(params) -> ShellProperties:
 
         logger.debug('Shell dissolved.')
 
+    # Geometry-validity flag (see ShellProperties.shell_frontEscaped). ANY escape at all,
+    # by ruling 2026-09-14 -- there is no tunable threshold, because the moment one photon
+    # gets out the ionised region extends past rShell and this geometry stops containing
+    # it. f_absorbed_ion is exactly 1.0 when nothing escapes (verified: 0/664 end-state-2
+    # archived rows have any escape), so the strict test is not a floating-point trap.
+    # ⭐ Note this is the SAME condition that switches P_ext on in all four phase runners
+    # (`if FABSi < 1.0`). That is a consistency, not a coincidence: the model already
+    # treats "LyC escapes" as "the gas outside is photoionised too", and the geometry
+    # boundary is that same line. The flag names it; it adds no information beyond
+    # shell_fAbsorbedIon, which is what makes it cheap.
+    shell_frontEscaped = bool(f_absorbed_ion < 1.0)
+
     # Evaluate instantaneous dissolution condition: shell_nMax < nISM
     nISM = params['nISM'].value
     allow_dissolution = params.get('allowShellDissolution', True)
@@ -899,6 +920,7 @@ def shell_structure_pure(params) -> ShellProperties:
         shell_r_arr=shell_r_arr,
         shell_n_arr=shell_n_arr,
         shell_ion_idx=shell_ion_idx,
+        shell_frontEscaped=shell_frontEscaped,
         shell_mass_ion=shell_mass_ion,
         shell_mass_neutral=shell_mass_neutral,
         shell_fLeak=shell_fLeak,
