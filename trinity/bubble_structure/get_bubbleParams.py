@@ -712,15 +712,26 @@ def phii_is_active(params, shell_props):
     two schemes, and conflating them was a real defect (found by /xcheck 2026-09-12):
 
       c3c    `n_IF_Str > 0`. The shipped gate, kept verbatim so c3c stays bit-identical.
-             It is C3c's own cavity Stroemgren density, which vanishes when the ionised
-             volume (R_IF**3 - R2**3) or the absorbed budget does.
+             ⚠ It is a LEGACY gate and it does not belong to get_phii_c3c at all.
+             `n_IF_Str` is the SHELL-LAYER Stroemgren density, built on the layer volume
+             (R_IF**3 - R2**3); get_phii_c3c builds its own CAVITY density `n_c3a` on
+             R2**3 and never reads n_IF_Str. The layer density is precisely the quantity
+             C3c replaced on 2026-08-14 (see get_phii_c3c's docstring), so the gate
+             outlived the closure it was written for. It is kept only for bit-identity,
+             and it has never been observed to fire: n_IF_Str > 0 on 867/867 rows of the
+             C trajectory pair (data/local/c_20260914T061301Z/) and on 895/895 archived
+             states. ⇒ do not reason about C3c's activation from it. What actually holds
+             C3c at 0.0 through the whole energy era is its CONFINEMENT branch
+             (P_c3a <= Pb), measured on 303/303 energy+implicit rows of that pair -- NOT
+             a vanishing density, which was my error and is corrected here.
       front  True. get_phii_front self-gates on `has_neutral` and `n_IF`, which are the
              front's own quantities. Gating it on `n_IF_Str` instead made option C's
-             ACTIVATION depend on C3c's volume term -- and that term vanishes precisely
-             in the weak-ionisation limit (R_IF -> R2) that C was chosen for. On the 895
-             archived states the two gates happen to agree on every row (0 disagreements),
-             so this changes no measured number; it removes a coupling that would have
-             bitten the next time n_IF_Str's definition moved, as it already did at W60.
+             ACTIVATION depend on a legacy layer-volume term -- and that term vanishes
+             precisely in the weak-ionisation limit (R_IF -> R2) that C was chosen for.
+             On the 895 archived states the two gates happen to agree on every row (0
+             disagreements), so this changes no measured number; it removes a coupling
+             that would have bitten the next time n_IF_Str's definition moved, as it
+             already did at W60.
     """
     item = params.get('phii_scheme', None)
     name = str(item.value if hasattr(item, 'value') else 'c3c').strip().lower()
