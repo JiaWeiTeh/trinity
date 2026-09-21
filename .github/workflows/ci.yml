@@ -26,6 +26,15 @@ jobs:
           pip install -r requirements.txt
           pip install pytest
       - name: Run tests
+        # test_phii_limits.py builds its o1/k11 arms by `git apply`-ing patches that
+        # live only in docs/dev/phii-identity/hpc/b14/, untracked since a32b098e. CI
+        # checks out a clean tree, so those arms can never be built here and the suite
+        # fails by design rather than skipping silently. This is that file's own
+        # documented opt-out ("to test the shipped scheme alone on purpose"), which is
+        # exactly CI's situation. The structural result (O1 cannot pass L1/L1b/L4) is
+        # still measured wherever the patches exist -- locally and on the HPC arms.
+        env:
+          PHII_ALLOW_MISSING_ARMS: "1"
         run: pytest test/
 
   lint:
