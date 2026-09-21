@@ -22,6 +22,7 @@ to-be-deleted/
 Claude outputs/
 
 # Private: kept local, not tracked
+paper/proposal/
 paper/barnes26/
 paper/II-survey/
 paper/shellSSC6/
