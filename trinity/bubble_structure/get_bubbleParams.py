@@ -641,9 +641,16 @@ def get_phii_front(params, shell_props):
     """Photoionised pressure as the FRONT pressure (option C, D16 ruled 2026-09-11).
 
     Under the maintainer's geometry ruling G1-G3 the photoionised gas is the shell's
-    inner layer [R2, R_IF]. A fully ionised shell (end state 1) has no neutral gas to
-    push, so P_HII = 0; a partially ionised one (end state 2, `has_neutral`) pushes the
-    neutral rind beyond R_IF, and what it pushes with is the pressure AT the front:
+    inner layer [R2, R_IF]. It pushes the neutral gas beyond R_IF, and what it pushes
+    with is the pressure AT the front:
+
+    ⛔ NO END-STATE BRANCH, by ruling 2026-09-14. This paragraph used to read "a fully
+    ionised shell (end state 1) has no neutral gas to push, so P_HII = 0". That was C v1
+    and it is RETIRED; the block comment in the body explains why (a fully ionised shell
+    means photons LEAK, i.e. the front has run PAST rShell into cloud the model no longer
+    tracks -- there IS neutral gas, the code has merely lost the front's radius). The
+    docstring outlived the ruling by eight days and misled a reader. If the branch
+    behaviour ever changes again, change BOTH.
 
         P_front = (mu_c/mu_i) * n_IF * k_B * T_ion
 
@@ -664,7 +671,12 @@ def get_phii_front(params, shell_props):
       * weak wind: a layer pressure composed additively gives P_HII + P_ram -> 2*P_ram,
         discontinuous at Qi = 0+. C adds nothing, so it has no such term.
 
-    RETURNING EXACTLY 0.0 IN STATE 1 IS LOAD-BEARING, exactly as it is for
+    ⛔ SUPERSEDED (2026-09-14) -- the paragraph below describes C v1's state-1 zero,
+    which no longer exists. It is kept because the RETURN CONVENTION it documents is
+    still how the phase runners read this helper. Under the current closure P_HII > 0 on
+    every row (measured: 1581/1581 rows across 8 configs), so the "branch signal" it
+    describes never fires.
+    RETURNING EXACTLY 0.0 IN STATE 1 WAS LOAD-BEARING in v1, exactly as it is for
     get_phii_c3c: it is what lets the state-1 force assembly stay byte-identical to the
     shipped one, and it is the branch signal the ODE reads (P_HII > 0 <=> state 2 under
     this scheme), so no `has_neutral` has to be plumbed into the snapshots.
