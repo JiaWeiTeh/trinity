@@ -180,7 +180,9 @@ def test_dispatcher_selects_front(p, name):
     assert G.get_phii(p, shell) == G.get_phii_front(p, shell)
 
 
-@pytest.mark.parametrize("name", ["c3a", "", "Front-pressure", "o1"])
+# "o1"/"k11" were unknown names until 2026-09-22, when the arms were registered in
+# PHII_SCHEMES. "k12" is the near-miss that is still genuinely not a scheme.
+@pytest.mark.parametrize("name", ["c3a", "", "Front-pressure", "k12"])
 def test_unknown_scheme_falls_back_to_c3c(p, name):
     """A typo must not silently change the physics."""
     p["phii_scheme"].value = name
@@ -198,7 +200,7 @@ def test_a_bad_scheme_name_is_rejected_at_startup():
     defence: an unrecognised phii_scheme has to fail before the run starts."""
     from trinity._input.registry import _validate_phii_scheme
     from trinity._input.errors import ParameterFileError
-    for bad in ("c3a", "Front-pressure", "o1", ""):
+    for bad in ("c3a", "Front-pressure", "k12", ""):
         with pytest.raises(ParameterFileError):
             _validate_phii_scheme(bad, None)
     for good in ("c3c", "front", "FRONT", " front "):

@@ -67,6 +67,37 @@ def _shell(Qi, Pb, mShell, R2=1.0, Li=2.0e3, Ln=1.0e3, bubble_mass=0.0):
     return shell_structure_pure(p)
 
 
+@pytest.mark.parametrize("regime", REGIMES)
+def test_ionised_mass_never_exceeds_the_shell(regime):
+    """M_ion is a sub-part of M_sh by construction, so the ratio cannot exceed 1.
+
+    It used to. The total is the ODE's swept mass; shell_mass_ion is the march's own
+    quadrature over the same gas, so a fully ionised shell landed a few parts in 1e9-1e6
+    above it (measured 3.6e-6 max over 1581 archived rows). Harmless while nothing reads
+    the field, fatal the day a (M_sh - M_ion) debit does -- the accelerated mass would go
+    negative. Clamped 2026-09-22; this is the guard against the clamp being removed.
+    """
+    kw = dict(regime)
+    sp = _shell(**kw)
+    assert sp.shell_mass_ion <= kw["mShell"], (
+        f"shell_mass_ion {sp.shell_mass_ion!r} exceeds shell_mass {kw['mShell']!r}")
+
+
+def test_the_mass_clamp_is_actually_exercised():
+    """Non-vacuity, in the spirit of test_a_depleting_regime_is_actually_covered.
+
+    If no regime reaches the cap, the assertion above passes without testing anything.
+    The four mass-terminating regimes fully ionise and sit exactly at it; the depleting
+    one must not (it has a neutral region, so its ratio is well below 1).
+    """
+    at_cap = [dict(rp.values[0]) for rp in REGIMES
+              if _shell(**dict(rp.values[0])).shell_mass_ion == dict(rp.values[0])["mShell"]]
+    assert len(at_cap) >= 1, "no regime reaches the cap -- the clamp is untested"
+    depleting = dict(REGIMES[-1].values[0])
+    assert _shell(**depleting).shell_mass_ion < depleting["mShell"], (
+        "the depleting regime should sit below the cap, not at it")
+
+
 def test_a_depleting_regime_is_actually_covered():
     """Coverage guard. Every has_neutral assertion in this file passes trivially if no
     regime ever depletes phi -- which was true of the first four, so the file proved

@@ -51,23 +51,20 @@ WHAT IS PINNED, and what each gate is FOR
       on committed trajectories (PLAN.md Batch 13 / Batch 21), and re-deriving them needs
       a trajectory, not a limit. Add it here only if a scheme's branch logic changes.
 
-HOW THE ARMS ARE LOADED. Both candidates live ONLY as patches under
-docs/dev/phii-identity/hpc/b14/, which is untracked since a32b098e. This file is in the
-tracked test suite, so it must not depend on them: each arm's copy of
-get_bubbleParams.py is built in a temp dir by `git apply`-ing the same patch
-`run_arms.sh` applies, and the arm parametrisations SKIP when the patch is absent (a
-fresh clone, or CI). The shipped scheme is always tested.
+HOW THE ARMS ARE LOADED. Until 2026-09-22 both candidates lived ONLY as patches under
+docs/dev/phii-identity/hpc/b14/ -- untracked since a32b098e -- so this file built each
+arm in a temp dir by `git apply`-ing the same patch `run_arms.sh` applies, and skipped
+when a patch was absent. They are registered in PHII_SCHEMES now: every scheme is a dict
+lookup on the shipped helper, nothing is skipped, and a fresh clone runs the whole
+suite.
 """
 
 import argparse
 import csv
-import os
 import importlib.util
 import math
-import shutil
 import subprocess
 import sys
-import tempfile
 from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
@@ -81,14 +78,9 @@ sys.path.insert(0, str(REPO))
 from trinity._input.read_param import read_param  # noqa: E402
 
 HELPER_REL = Path("trinity/bubble_structure/get_bubbleParams.py")
-ARMS = REPO / "docs/dev/phii-identity/hpc/b14"
 
 # name -> patch (None = the shipped scheme, unpatched)
-SCHEMES = {
-    "c3c": None,
-    "o1": ARMS / "k10_o1_arm.patch",
-    "k11": ARMS / "k11_arm.patch",
-}
+SCHEMES = ("c3c", "o1", "k11")
 
 # A dense-cloud ambient and a real cluster's ionising output, matching
 # test_phii_c3c_spitzer.py so the two files cannot drift apart on the anchor.
@@ -109,42 +101,16 @@ _P_C3A_FAMILY = frozenset({"o1", "k11"})
 
 @lru_cache(maxsize=None)
 def load_scheme(name):
-    """Return the scheme's `get_phii_c3c` entry point.
+    """Return the named scheme's entry point.
 
-    Every call site in trinity reaches the closure through that one name, and both
-    arm patches alias themselves onto it (`get_phii_c3c = get_phii_k11`), so this is
-    the same function the phase runners would call under the arm.
+    Until 2026-09-22 O1 and K11 lived only as patches under hpc/b14/ and this copied the
+    helper to a tempdir and `git apply`-ed one in. They are registered in PHII_SCHEMES
+    now, so every scheme is a dict lookup and a clean clone can run this suite.
     """
-    patch = SCHEMES[name]
-    if patch is None:
-        mod_path = REPO / HELPER_REL
-    else:
-        if not patch.is_file():
-            # The arm patches are untracked (a32b098e), so on a fresh clone this suite
-            # used to report "6 passed, 15 skipped" and look green -- while the three
-            # EXPECTED_FAIL assertions that ARE the structural result (O1 cannot pass
-            # L1/L1b, nor leg (c) of L2) were never evaluated. A green suite that measured nothing is
-            # worse than a red one. Fail loudly instead, with one deliberate opt-out.
-            if os.environ.get("PHII_ALLOW_MISSING_ARMS") == "1":
-                pytest.skip(f"{patch.name} absent, PHII_ALLOW_MISSING_ARMS=1 -- "
-                            "shipped scheme only, structural result NOT measured")
-            pytest.fail(
-                f"{patch.name} is MISSING, so the '{name}' arm was not built and this "
-                "suite's structural result was NOT measured. The patches live in "
-                "docs/dev/phii-identity/hpc/b14/, untracked since a32b098e -- so a clean "
-                "clone cannot run them. To test the shipped scheme alone on purpose, set "
-                "PHII_ALLOW_MISSING_ARMS=1.",
-                pytrace=False)
-        tmp = Path(tempfile.mkdtemp(prefix=f"phii_{name}_"))
-        dest = tmp / HELPER_REL
-        dest.parent.mkdir(parents=True)
-        shutil.copy2(REPO / HELPER_REL, dest)
-        subprocess.run(["git", "apply", "-p1", str(patch)], cwd=tmp, check=True)
-        mod_path = dest
-    spec = importlib.util.spec_from_file_location(f"_phii_{name}", mod_path)
+    spec = importlib.util.spec_from_file_location("_phii_helper", REPO / HELPER_REL)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
-    return mod.get_phii_c3c
+    return mod.PHII_SCHEMES[name]
 
 
 class _Shell:
@@ -495,12 +461,7 @@ def main():
     ap.add_argument("--out", type=Path, required=True)
     args = ap.parse_args()
     rows = []
-    missing = []
     for name in SCHEMES:
-        if SCHEMES[name] is not None and not SCHEMES[name].is_file():
-            print(f"  {name}: ** PATCH ABSENT -- ARM NOT MEASURED ** ({SCHEMES[name]})")
-            missing.append(name)
-            continue
         for gate in GATES:
             r = gate(name)
             r["expected_fail"] = EXPECTED_FAIL.get((name, r["gate"]), "")
@@ -509,10 +470,6 @@ def main():
                        else "pass" if r["passed"]
                        else ("FAIL (expected)" if (name, r["gate"]) in EXPECTED_FAIL else "FAIL"))
             print(f"  {name:4} {r['gate']:4} {verdict:16} {r['measured']!r}")
-    if missing:
-        print(f"\n  !! {len(missing)} arm(s) not measured: {', '.join(missing)}. "
-              f"data/b23_limits.csv will be INCOMPLETE and the structural result "
-              f"(O1 fails L1/L1b and leg (c) of L2) is NOT in it.\n")
     sha = subprocess.run(["git", "-C", str(REPO), "rev-parse", "--short", "HEAD"],
                          capture_output=True, text=True).stdout.strip() or "unknown"
     dirty = subprocess.run(["git", "-C", str(REPO), "status", "--porcelain"],

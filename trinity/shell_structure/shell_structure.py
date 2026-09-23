@@ -821,6 +821,19 @@ def shell_structure_pure(params) -> ShellProperties:
 
         # Mass on each side of the ionisation front (see ShellProperties).
         shell_mass_ion = float(mShell_arr_cum_ion[-1])
+        # mShell_end is the ODE's swept mass; this is the march's own quadrature over the same
+        # gas, so the two agree only to integration tolerance. A fully ionised shell lands a few
+        # parts in 1e6 above it (measured max 3.6e-6 over 1581 archived rows, all has_neutral
+        # False). M_ion > M_sh is definitionally impossible and would make a future
+        # (M_sh - M_ion) debit negative, so cap it and say so.
+        # ponytail: fixed 1e-3 bar, ~280x the observed noise. If a real inconsistency ever sits
+        # under it, tighten the bar rather than adding a parameter.
+        if mShell_end > 0.0 and shell_mass_ion > mShell_end:
+            _excess = shell_mass_ion / mShell_end - 1.0
+            (logger.warning if _excess > 1e-3 else logger.debug)(
+                f"shell_mass_ion exceeds shell_mass by {_excess:.3e}; capped to shell_mass "
+                f"(two independent integrations of the same gas)")
+            shell_mass_ion = mShell_end
         shell_mass_neutral = (float(mShell_arr_cum_neu[-1]) - shell_mass_ion
                               if has_neutral else 0.0)
 
