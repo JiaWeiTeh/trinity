@@ -364,8 +364,9 @@ def get_phii_c3c(params, shell_props):
 
     P_conf is read as params['Pb'], which IS the wind ram pressure in the momentum
     phase (run_momentum_phase.py assigns it so) and the bubble pressure elsewhere.
-    Note this is the un-ramped Pb; in the energy phase P_C3a/Pb is far below 1 by
-    either measure, so the branch outcome is insensitive to that choice.
+    Note this is the un-ramped Pb. The choice cannot flip the branch at nominal wind,
+    where P_C3a/Pb <= 0.04 in the energy and implicit phases, but it can at weak wind,
+    where the ratio crosses 1 inside the energy phase (B3MW001, t = 1.2 kyr).
 
     KNOWN OPEN BEHAVIOUR: the momentum phase comes out photoionisation-dominated in
     every configuration measured so far, and the cause is the R2**-1.5 cavity geometry
