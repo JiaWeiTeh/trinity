@@ -120,6 +120,13 @@ composition is set by `x_He` and the ionisation states `Z_He` (hot bubble) and
   `energy_handoff_1a` (not in snapshots); `metadata.json` `final_state` carries
   both new flags. Runs that neither have an old seed nor collapse in 1a are
   byte-identical in `dictionary.jsonl`.
+- Phase 1b no longer ends at the shell's first turnaround. The event checker
+  returned the non-terminal `velocity_sign` monitoring event, so 1b handed over to
+  1c the moment `v2` first went negative, and a terminal event later in the same
+  segment was replaced by a rewind to the turnaround. Monitoring events are now
+  ignored by the checker; 1b integrates through the turnaround, as it did before
+  2026-01-22, and ends on its other exits (cooling balance, collapse, `Eb <= 0`, ...).
+  `transition_channel = velocity_sign_change` no longer occurs.
 - Nondeterministic bubble-solver crash: detect LSODA `odeint` failure
   (`istate != 2`) instead of consuming uninitialised memory; return a
   deterministic penalty residual or raise `BubbleSolverError`. Fixes intermittent

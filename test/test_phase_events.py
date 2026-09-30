@@ -167,3 +167,26 @@ def test_check_and_apply_event_result_classify_run_vs_phase_end():
     assert phase_params["R2"].value == pytest.approx(5.0)
     assert phase_params["EndSimulationDirectly"].value is False
     assert phase_params["SimulationEndReason"].value == ""
+
+
+def test_monitoring_event_neither_ends_nor_preempts_the_phase():
+    """Phase 1b's list starts with velocity_sign (terminal=False). Until 2026-09-30 the
+    checker returned it, so 1b ended at the shell's first turnaround and a min_radius
+    later in the same segment was replaced by a rewind to the turnaround."""
+    sign = events.make_velocity_sign_event()
+    min_r = events.make_min_radius_event(1.5)
+
+    both = SimpleNamespace(
+        t_events=[np.array([0.1]), np.array([0.3])],
+        y_events=[np.array([[4.0, 0.0]]), np.array([[1.5, -3.0]])],
+    )
+    result = events.check_event_termination(both, [sign, min_r])
+    assert result.name == "min_radius"
+    assert result.t == pytest.approx(0.3)
+    assert result.is_simulation_ending is True
+
+    only_sign = SimpleNamespace(
+        t_events=[np.array([0.1]), np.array([])],
+        y_events=[np.array([[4.0, 0.0]]), np.empty((0, 2))],
+    )
+    assert events.check_event_termination(only_sign, [sign, min_r]).triggered is False

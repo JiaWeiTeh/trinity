@@ -586,12 +586,14 @@ UPSTREAM_DEFECTS = (
         "on where the sample landed.",
     ),
     (
-        "check_event_termination returns the lowest-index event, not the earliest",
-        "phase_general/phase_events.py:430-483",
-        "returns the first event in list order that has any recorded crossing",
-        "In phase 1b the non-terminal velocity_sign event is index 0, so it can "
-        "pre-empt a same-segment min_radius / max_radius / velocity_runaway and turn a "
-        "terminal outcome into a silent hand-off to 1c with no end code.",
+        "check_event_termination returned monitoring events (FIXED 2026-09-30)",
+        "phase_general/phase_events.py:437-494",
+        "returned the first event in list order with any recorded crossing, terminal or not",
+        "Phase 1b's non-terminal velocity_sign is index 0, so 1b ended at the shell's "
+        "first turnaround (transition_channel velocity_sign_change, 8,285 v4 runs) and "
+        "a same-segment min_radius / max_radius / velocity_runaway became a silent "
+        "hand-off to 1c with no end code. Runs on earlier engines carry it; later runs "
+        "never report velocity_sign_change.",
     ),
     (
         "there is no stall concept in trinity at all",

@@ -462,10 +462,14 @@ def check_event_termination(sol, events: List[Callable]) -> EventResult:
             reason_message=""
         )
 
-    # Check each event
+    # Check each event. A monitoring event (terminal=False, solve_ivp's default)
+    # only records a crossing: the integration ran on past it, so it must neither
+    # end the phase nor pre-empt the terminal event that did stop it. From
+    # 2026-01-22 (2f3182da) to 2026-09-30 phase 1b's velocity_sign (index 0) did
+    # both, and 1b ended at the shell's first turnaround.
     for i, (t_ev, y_ev) in enumerate(zip(sol.t_events, sol.y_events)):
-        if len(t_ev) > 0:
-            event = events[i]
+        event = events[i]
+        if len(t_ev) > 0 and getattr(event, 'terminal', False):
             return EventResult(
                 triggered=True,
                 name=getattr(event, 'name', f'event_{i}'),
