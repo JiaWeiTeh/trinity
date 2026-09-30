@@ -9,8 +9,15 @@ The collapse regime is reached by disabling the ``dt_switchon`` R1 ramp, which
 is exactly what the committed harness does (it forwards ``t=None``, changing
 nothing else). Without the in-band energy-collapse guard this configuration does
 not finish at all: measured, one segment needs ~1e9 explicit steps, about seven
-days (docs/dev/phase1a-stiffness/data/stall_anatomy.csv). With it, the run ends
-in ~22 s on the pre-existing ENERGY_COLLAPSED fate.
+days (docs/dev/phase1a-stiffness/data/stall_anatomy.csv).
+
+Since 2026-09-30 a phase-1a collapse is handed to momentum (via 1c, phase 1b
+skipped) instead of ending the run as ENERGY_COLLAPSED
+(docs/dev/transition/pdv-trigger/HIMASS_HANDOFF_PLAN.md). The test now pins the
+handoff as well as termination. In this ablated configuration the handoff comes
+at t ~ 0.3 yr, R2 ~ 1e-3 pc, and the transition and momentum solvers fail at
+once (LSODA istate), so the run ends UNKNOWN in ~4 s; that fate is an artefact
+of the ablation and is deliberately not pinned.
 
 Run in a subprocess on purpose — trinity leaks module-level global state, so an
 in-process full run would contaminate the rest of the suite.
@@ -59,9 +66,12 @@ def test_collapsing_phase1a_segment_terminates_instead_of_grinding(tmp_path):
     assert metadata.is_file(), "run wrote no metadata.json"
     termination = json.loads(metadata.read_text()).get("termination") or {}
 
-    # It must stop, and stop as the collapse phase 1a already knows how to name —
-    # not as a new outcome, and not by exhausting a wall clock.
-    assert termination.get("outcome") == "energy_collapsed", (
-        f"expected an energy_collapsed fate, got {termination!r}"
+    # It must stop without exhausting a wall clock, and the collapse must have been
+    # handed on rather than ended as ENERGY_COLLAPSED.
+    assert termination.get("outcome") != "energy_collapsed", (
+        f"phase-1a collapse ended the run instead of handing off: {termination!r}"
     )
+    log = (tmp_path / "trinity.log").read_text(errors="ignore")
+    assert "routing to momentum via 1c, phase 1b skipped" in log, "no phase-1a handoff logged"
+    assert "Implicit phase completed: energy_to_momentum" in log, "phase 1b did not report the handoff"
     assert wall < WALL_BUDGET_S

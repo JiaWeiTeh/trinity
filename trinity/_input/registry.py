@@ -462,6 +462,8 @@ SPECS: tuple[ParamSpec, ...] = (
     ParamSpec(name='SimulationEndReason', default='', info='Reason for simulation completion', category='runtime_control', unit='N/A'),
     ParamSpec(name='SimulationEndCode', default=None, info='Exit code (SimulationEndCode enum) for simulation completion', category='runtime_control', unit='N/A'),
     ParamSpec(name='_snapshots_after_rCloud', default=0, info='Snapshots saved with R2 > rCloud (used by stop_at_rCloud_nSnap)', category='runtime_control', unit='N/A', exclude_from_snapshot=True),
+    ParamSpec(name='dt_switchon', default=None, info='R1 switch-on ramp window, set at phase-1a entry to max(1e-3 Myr, 3*dt_phase0); None means 1e-3 (get_bubbleParams.switchon_window, docs/dev/switchon-successor/PLAN.md)', category='runtime_control', unit='Myr', exclude_from_snapshot=True),
+    ParamSpec(name='energy_handoff_1a', default=False, info='Phase 1a handed a spent bubble (Eb collapse) to momentum; phase 1b is skipped and the run continues 1c -> 2 (docs/dev/transition/pdv-trigger/HIMASS_HANDOFF_PLAN.md)', category='runtime_control', unit='N/A', exclude_from_snapshot=True),
     ParamSpec(name='tSF', default=0, info='Time of star formation', category='derived_init', unit='Myr', run_const=True),
     ParamSpec(name='t_now', default=0, info='Current simulation time', category='runtime_time', unit='Myr'),
     ParamSpec(name='v2', default=0, info='Velocity at R2 (outer bubble radius = inner shell edge)', category='runtime_bubble', unit='pc/Myr'),

@@ -667,6 +667,29 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
     tmin = params['t_now'].value
     tmax = params['stop_t'].value
 
+    # Phase 1a already handed a spent bubble to momentum (run_energy_phase.
+    # _handoff_spent_bubble): there is no bubble left to solve beta/delta for.
+    # Report it under the same channel as the Eb<=0 routing below, so the
+    # completion line (read by paper/II-survey reduce_survey.read_transition_channel)
+    # names one mechanism. No snapshot: 1a's reconciliation row is the handoff state.
+    # Checked before stop_t so the line is written even if 1a ended at stop_t; 1c then
+    # applies stop_t.
+    if 'energy_handoff_1a' in params and params['energy_handoff_1a'].value:
+        logger.info("Phase 1a handed off a spent bubble; phase 1b not run")
+        logger.info("Implicit phase completed: energy_to_momentum")
+        logger.info(f"  Final time: {tmin:.6e} Myr, Segments: 0")
+        return ImplicitPhaseResults(
+            t=np.array([tmin]),
+            R2=np.array([params['R2'].value]),
+            v2=np.array([params['v2'].value]),
+            Eb=np.array([params['Eb'].value]),
+            T0=np.array([params['T0'].value]),
+            beta=np.array([params['cool_beta'].value]),
+            delta=np.array([params['cool_delta'].value]),
+            termination_reason="energy_to_momentum",
+            final_time=tmin,
+        )
+
     # If the prior phase already advanced past stop_t, there is no work to
     # do here.  Surface that explicitly instead of silently looping zero
     # times and reporting termination_reason="unknown".

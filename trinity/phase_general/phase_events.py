@@ -352,6 +352,13 @@ def make_energy_collapse_event(Eb_segment_start: float,
     drop and ~4.2 decades above the value at which the solver stalls -- near the
     geometric middle of the measured window.
 
+    The event still carries ENERGY_COLLAPSED and is_simulation_ending, but since
+    2026-09-30 run_energy_phase does not end the run on it: it keys on the name
+    "energy_collapse" and hands the spent bubble to momentum (1c -> 2, 1b skipped).
+    The healthy-segment bound above holds for young seeds; old seeds (dt_phase0 >
+    1/3 kyr, stretched ramp) can lose some Eb in healthy segments (seen down to
+    0.84 of segment start), still far above frac. docs/dev/transition/pdv-trigger/HIMASS_HANDOFF_PLAN.md
+
     Parameters
     ----------
     Eb_segment_start : float

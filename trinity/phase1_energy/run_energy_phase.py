@@ -53,11 +53,43 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 TFINAL_ENERGY_PHASE = 3e-3  # Myr - max duration (~3000 years)
+PHASE1A_WINDOW_FACTOR = 3.0  # phase-1a length / ramp window when the window is stretched (= 3e-3 / 1e-3, the shipped ratio)
 SEGMENT_DURATION = 3e-5  # Myr - fixed-segment fallback, used when phase1a_segFrac = 0
 DT_EXIT_THRESHOLD = 1e-4  # Myr - exit when this close to tfinal
 COOLING_UPDATE_INTERVAL = 5e-2  # Myr - recalculate cooling every 50k years
+COOLING_UPDATE_INTERVAL_STRETCHED = 5e-3  # Myr - in-loop refresh for a stretched 1a; = phase 1b's interval
 RTOL = 1e-6  # Relative tolerance for solve_ivp
 ATOL = 1e-9  # Absolute tolerance for solve_ivp
+
+
+def _handoff_spent_bubble(params, t_now, R2, v2, why):
+    """Hand a spent phase-1a bubble to momentum instead of ending the run.
+
+    Phase-1a counterpart of 1b's energy_to_momentum routing
+    (run_energy_implicit_phase.classify_energy_collapse): once Eb is gone, R1 -> R2
+    and the shell is already pushed by the wind's ram pressure, so the momentum
+    phase is the right model. Sets Eb to 1b's ENERGY_HANDOFF_FLOOR (1c's floor
+    check then moves straight to phase 2), clears the end flags the collapse
+    event set, and marks energy_handoff_1a so phase 1b does not integrate a
+    bubble that no longer exists. Returns the new Eb.
+    docs/dev/transition/pdv-trigger/HIMASS_HANDOFF_PLAN.md, 2026-09-30.
+    """
+    from trinity.phase1b_energy_implicit.run_energy_implicit_phase import ENERGY_HANDOFF_FLOOR
+    params['t_now'].value = t_now
+    params['R2'].value = R2
+    params['v2'].value = v2
+    params['Eb'].value = ENERGY_HANDOFF_FLOOR
+    params['energy_handoff_1a'].value = True
+    params['EndSimulationDirectly'].value = False
+    params['SimulationEndReason'].value = ''
+    params['SimulationEndCode'].value = None
+    params['isCollapse'].value = False
+    logger.warning(
+        f"Energy-driven collapse in phase 1a at t={t_now:.6e} Myr ({why}; R2={R2:.4f} pc, "
+        f"v2={v2:.3e} pc/Myr): thermal driving spent -> routing to momentum via 1c, "
+        f"phase 1b skipped."
+    )
+    return ENERGY_HANDOFF_FLOOR
 
 
 def run_energy(params):
@@ -93,6 +125,22 @@ def run_energy(params):
     # region. See docs/dev/phase1a-init/FINDINGS.md.
     segFrac = params['phase1a_segFrac'].value
     tSF = params['tSF'].value
+
+    # R1 switch-on window, and with it the length of phase 1a, scale with the seed
+    # age once the seed is older than 1/3 kyr; younger seeds keep the shipped 1e-3
+    # and 3e-3 Myr exactly. docs/dev/switchon-successor/PLAN.md, 2026-09-30.
+    params['energy_handoff_1a'].value = False
+    dt_switchon = get_bubbleParams.switchon_window(t_now - tSF)
+    params['dt_switchon'].value = dt_switchon
+    if dt_switchon == get_bubbleParams.DT_SWITCHON:
+        t_end_1a = TFINAL_ENERGY_PHASE
+    else:
+        # A stretched phase 1a stops at stop_t: unlike the shipped 3 kyr it can be long.
+        t_end_1a = max(TFINAL_ENERGY_PHASE, tSF + PHASE1A_WINDOW_FACTOR * dt_switchon)
+        if params['stop_t'].value is not None:
+            t_end_1a = min(t_end_1a, params['stop_t'].value)
+        logger.info(f'Old seed (dt_phase0={t_now - tSF:.4e} Myr): R1 ramp over {dt_switchon:.4e} Myr, '
+                    f'phase 1a to t={t_end_1a:.4e} Myr')
 
     # =============================================================================
     # Initial feedback and bubble parameters
@@ -143,13 +191,13 @@ def run_energy(params):
 
     continueWeaver = True
 
-    while R2 < rCloud and (TFINAL_ENERGY_PHASE - t_now) > DT_EXIT_THRESHOLD and continueWeaver:
+    while R2 < rCloud and (t_end_1a - t_now) > DT_EXIT_THRESHOLD and continueWeaver:
 
         # Define segment time span
         dt_segment = segFrac * (t_now - tSF)
         if dt_segment <= 0:  # phase1a_segFrac=0 (fixed-segment fallback), or a degenerate age
             dt_segment = SEGMENT_DURATION
-        t_segment_end = min(t_now + dt_segment, TFINAL_ENERGY_PHASE)
+        t_segment_end = min(t_now + dt_segment, t_end_1a)
 
         logger.debug(f'Segment: t={t_now:.6e} to {t_segment_end:.6e} Myr')
 
@@ -162,6 +210,16 @@ def run_energy(params):
         params['Eb'].value = Eb
         params['T0'].value = T0
 
+        # Refresh the non-CIE cooling cube on phase 1b's interval. The cube was
+        # set at 1a entry (t_now = t0), and the shipped phase 1a ends at 3e-3 Myr,
+        # so this cannot fire unless phase 1a was stretched (old seeds).
+        if t_now - params['t_previousCoolingUpdate'].value > COOLING_UPDATE_INTERVAL_STRETCHED:
+            cooling_nonCIE, heating_nonCIE, netcooling_interpolation = non_CIE.get_coolingStructure(params)
+            params['cStruc_cooling_nonCIE'].value = cooling_nonCIE
+            params['cStruc_heating_nonCIE'].value = heating_nonCIE
+            params['cStruc_net_nonCIE_interpolation'].value = netcooling_interpolation
+            params['t_previousCoolingUpdate'].value = t_now
+
         # =============================================================================
         # 2. Get feedback
         # =============================================================================
@@ -172,11 +230,13 @@ def run_energy(params):
         # 3. Compute bubble structure (always, not conditional on loop_count)
         # =============================================================================
         # In the energy-driven Eb -> 0 collapse the bubble degenerates:
-        # the cooling table goes out of bounds, solve_R1 cannot bracket, etc. Any
-        # such failure here means the energy-driven model has broken down -- stop
-        # the run cleanly rather than crash with the bare exception. (Phase 1b now
-        # ROUTES a clean Eb<=0 collapse to the momentum phase; routing it from 1a too
-        # is deferred -- see docs/dev/transition/pdv-trigger/HIMASS_HANDOFF_PLAN.md.)
+        # the cooling table goes out of bounds, solve_R1 cannot bracket, etc. A
+        # failure here stops the run cleanly (ENERGY_COLLAPSED, inspection
+        # required) rather than crash with the bare exception. It is NOT handed to
+        # momentum like the collapse event and Eb<=0 below: it also fires on
+        # growing bubbles (seen: 5e9, sfe 0.6, n 1e5, eta_w 1 at 1.3 kyr), and old
+        # seeds lose Eb in some healthy segments, so "Eb fell" cannot tell a spent
+        # bubble from a solver failure. docs/dev/transition/pdv-trigger/HIMASS_HANDOFF_PLAN.md
         try:
             bubble_data = bubble_luminosity.get_bubbleproperties_pure(params)
         except (ValueError, RuntimeError, bubble_luminosity.BubbleSolverError) as e:
@@ -348,6 +408,15 @@ def run_energy(params):
             logger.info(f"Event '{event_result.name}' triggered at t={event_result.t:.6e} Myr")
             apply_event_result(params, event_result, event_result.t, event_result.y,
                               state_keys=['R2', 'v2', 'Eb'])
+            if event_result.name == 'energy_collapse':
+                # Spent bubble: continue in momentum instead of ending the run. The
+                # locals still hold the segment start; move them to the event state
+                # so the reconciliation snapshot below is consistent.
+                t_now = float(event_result.t)
+                R2 = float(event_result.y[0])
+                v2 = float(event_result.y[1])
+                Eb = _handoff_spent_bubble(params, t_now, R2, v2, "Eb fell to 1e-3 of segment start")
+                break
             if event_result.is_simulation_ending:
                 return
             break
@@ -374,15 +443,19 @@ def run_energy(params):
         params['Eb'].value = Eb
 
         # Energy-driven collapse in the early (1a) phase: a massive/dense cloud can
-        # lose the bubble's thermal energy (PdV work on a heavy shell, or radiative
-        # cooling) faster than the wind resupplies it, so Eb falls through zero. The
-        # energy-driven model is then invalid (it would drive R1->R2 and divide-by-zero
-        # -> Eb=nan). Phase 1b now ROUTES such a collapse to the momentum phase
-        # (run_energy_implicit_phase.classify_energy_collapse); routing it from 1a too
-        # is deferred (rare: collapse within the fixed ~3000-yr early window). Until
-        # then 1a stops cleanly here. See
-        # docs/dev/transition/pdv-trigger/HIMASS_HANDOFF_PLAN.md.
-        if not np.isfinite(Eb) or Eb <= 0:
+        # lose the bubble's thermal energy (PdV work on a heavy shell, radiation
+        # pushing the shell past v_wind/2, or radiative cooling) faster than the wind
+        # resupplies it, so Eb falls through zero. The energy-driven model is then
+        # invalid (it would drive R1->R2 and divide-by-zero -> Eb=nan). A finite
+        # collapse is routed to the momentum phase exactly as 1b routes it
+        # (classify_energy_collapse); only a non-finite Eb stops the run. Routing was
+        # deferred as "rare" until 2026-09-30; the v4 survey grid had 7,968 such runs.
+        # See docs/dev/transition/pdv-trigger/HIMASS_HANDOFF_PLAN.md.
+        if np.isfinite(Eb) and Eb <= 0:
+            Eb = _handoff_spent_bubble(params, t_now, R2, v2, "Eb <= 0 after a segment")
+            break
+        if not np.isfinite(Eb):
+            # reason text kept verbatim from before the handoff (read by tools/bubble_fate.py)
             params['EndSimulationDirectly'].value = True
             params['SimulationEndReason'].value = (
                 "Energy-driven bubble collapsed: Eb fell to <= 0 "

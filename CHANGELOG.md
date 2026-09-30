@@ -107,6 +107,19 @@ composition is set by `x_He` and the ionisation states `Z_He` (hot bubble) and
 
 ### Fixed
 
+- Old free-streaming seeds no longer lose the energy-driven phase. When the
+  phase-0 seed time `dt_phase0` exceeds 1/3 kyr (weak winds, large M*/n), the R1
+  switch-on ramp now spans `3·dt_phase0` instead of a fixed 1 kyr, and phase 1a
+  runs to 3× that window (capped at `stop_t`, with the non-CIE cooling table
+  refreshed on phase 1b's 5 kyr interval). Younger seeds keep the 1 kyr / 3 kyr values
+  exactly. New runtime flag `dt_switchon` (not in snapshots).
+- A spent bubble in phase 1a (the `energy_collapse` event, or a finite `Eb <= 0`)
+  now continues in the momentum phase via 1c, skipping 1b, as phase 1b already
+  did for `Eb <= 0`. It used to end the run as `ENERGY_COLLAPSED`. Non-finite `Eb`
+  and any phase-1a bubble-solve failure still end the run. New runtime flag
+  `energy_handoff_1a` (not in snapshots); `metadata.json` `final_state` carries
+  both new flags. Runs that neither have an old seed nor collapse in 1a are
+  byte-identical in `dictionary.jsonl`.
 - Nondeterministic bubble-solver crash: detect LSODA `odeint` failure
   (`istate != 2`) instead of consuming uninitialised memory; return a
   deterministic penalty residual or raise `BubbleSolverError`. Fixes intermittent

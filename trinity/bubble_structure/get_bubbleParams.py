@@ -529,6 +529,7 @@ def get_phii_k11(params, shell_props):
         Eb=Eb, R2=R2, R1=R1, gamma=params['gamma_adia'].value,
         Lmech_total=Lmech_total, v_mech_total=v_mech_total,
         t=params['t_now'].value, tSF=params['tSF'].value,
+        dt_switchon=params['dt_switchon'].value if 'dt_switchon' in params else None,
     )
     # NOTE the bar is >= 0, not > 0, and this is the whole point of the scheme. O1 must
     # guard P_conf > 0 because its drive IS P_conf*(R_IF/R2)**2, so P_conf -> 0 forces the
@@ -625,6 +626,7 @@ def get_phii_k10(params, shell_props):
         Eb=Eb, R2=R2, R1=R1, gamma=params['gamma_adia'].value,
         Lmech_total=Lmech_total, v_mech_total=v_mech_total,
         t=params['t_now'].value, tSF=params['tSF'].value,
+        dt_switchon=params['dt_switchon'].value if 'dt_switchon' in params else None,
     )
     if not (P_conf > 0.0):
         return 0.0
@@ -640,9 +642,30 @@ def get_phii_k10(params, shell_props):
     return float(P_conf * rho)
 
 
+# R1 switch-on ramp window (used by get_effective_bubble_pressure below).
+# DT_SWITCHON is the shipped window. SWITCHON_SEED_FACTOR stretches it for old
+# seeds: the S2 limiter of docs/dev/switchon-successor released at 2.85-3.80
+# dt_phase0 on all five screen configs without being told dt_phase0.
+DT_SWITCHON = 1e-3          # Myr
+SWITCHON_SEED_FACTOR = 3.0
+
+
+def switchon_window(dt_phase0):
+    """Ramp window [Myr] = max(DT_SWITCHON, SWITCHON_SEED_FACTOR * dt_phase0).
+
+    Returns the DT_SWITCHON object itself unless the seed is older than
+    DT_SWITCHON / SWITCHON_SEED_FACTOR (1/3 kyr), so younger seeds run
+    bit-identically to the fixed window. Never shorter than DT_SWITCHON:
+    a shorter window behaves like no ramp (switchon-successor D2).
+    docs/dev/switchon-successor/PLAN.md, 2026-09-30.
+    """
+    w = SWITCHON_SEED_FACTOR * dt_phase0
+    return w if w > DT_SWITCHON else DT_SWITCHON
+
+
 def get_effective_bubble_pressure(current_phase, Eb, R2, R1, gamma,
                                    Lmech_total=None, v_mech_total=None,
-                                   t=None, tSF=None):
+                                   t=None, tSF=None, dt_switchon=None):
     """
     Effective interior pressure felt by the shell.
 
@@ -672,6 +695,9 @@ def get_effective_bubble_pressure(current_phase, Eb, R2, R1, gamma,
         Current time [Myr] (for early-phase R1 ramp-up)
     tSF : float, optional
         Star formation time [Myr] (for early-phase R1 ramp-up)
+    dt_switchon : float, optional
+        Ramp window [Myr], params['dt_switchon'] (set at phase-1a entry by
+        switchon_window). None means DT_SWITCHON.
 
     Returns
     -------
@@ -753,9 +779,9 @@ def get_effective_bubble_pressure(current_phase, Eb, R2, R1, gamma,
         # (docs/dev/phase1a-stiffness/data/dt_switchon_removability.csv).
         #
         # WHY THIS SHAPE, GIVEN IT IS UNCALIBRATED. The 1e-3 Myr window is
-        # absolute, not scale-relative, and runs 500-87,000x longer than
-        # dt_phase0, the establishment time the code itself computes — that is
-        # a real wart. Four successors were pre-registered and measured
+        # absolute, not scale-relative, and on the five screen configs runs
+        # 500-87,000x longer than dt_phase0, the establishment time the code
+        # itself computes — that is a real wart. Four successors were pre-registered and measured
         # (docs/dev/switchon-successor/PLAN.md), and all four failed:
         #   - a physical clock (tmin = k*dt_phase0) flips fates on 3 of 5, and
         #     not in order of window length, so no k rescues it (D2);
@@ -779,9 +805,21 @@ def get_effective_bubble_pressure(current_phase, Eb, R2, R1, gamma,
         # expansion and the energy-driven solution, so the handover does not
         # happen while v2 is still v_wind. TRINITY has no such phase.
         #
+        # OLD SEEDS (2026-09-30). The screen configs all have dt_phase0 <= 138
+        # yr. Weak winds and large M*/n push dt_phase0 to kyr (v4 survey grid:
+        # up to 186 kyr), and there the fixed window ended before or just after
+        # phase 1a began: of the grid runs with dt_phase0 > 1/3 kyr, 7,680 ended
+        # energy_collapsed and 9,296 were handed to momentum within ~11 kyr
+        # (paper/II-survey/plots_v4/v4_sanity.txt s23). So the window is now
+        # max(1e-3, 3*dt_phase0) (switchon_window, set once per run at 1a entry
+        # and passed in as dt_switchon). It never shortens the shipped window,
+        # so D2's failure (a shorter window acts like none) cannot recur, and
+        # for every seed with dt_phase0 <= 1/3 kyr, the screen configs included,
+        # the ramp is exactly the shipped one. docs/dev/switchon-successor/PLAN.md,
+        # 2026-09-30.
+        #
         # Pinned by test/test_dt_switchon_ramp.py.
-        dt_switchon = 1e-3
-        tmin = dt_switchon
+        tmin = DT_SWITCHON if dt_switchon is None else dt_switchon
 
         if t is not None and tSF is not None:
             if t <= (tmin + tSF):

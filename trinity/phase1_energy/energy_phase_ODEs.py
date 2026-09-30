@@ -110,6 +110,9 @@ class ODESnapshot:
     coverFraction: float
     c_sound: float
 
+    # R1 switch-on ramp window [Myr]; None -> get_bubbleParams.DT_SWITCHON
+    dt_switchon: Optional[float] = None
+
 
 def create_ODE_snapshot(params, shell_props) -> ODESnapshot:
     """
@@ -162,6 +165,7 @@ def create_ODE_snapshot(params, shell_props) -> ODESnapshot:
         phii_scheme=str(params['phii_scheme'].value),
         coverFraction=params['coverFraction'].value,
         c_sound=params['c_sound'].value,
+        dt_switchon=params['dt_switchon'].value if 'dt_switchon' in params else None,
     )
 
 
@@ -227,7 +231,7 @@ def get_ODE_Edot_pure(t: float, y: list, snapshot: ODESnapshot, params_for_feedb
         current_phase=snapshot.current_phase,
         Eb=Eb, R2=R2, R1=R1, gamma=snapshot.gamma_adia,
         Lmech_total=Lmech_total, v_mech_total=v_mech_total,
-        t=t, tSF=snapshot.tSF
+        t=t, tSF=snapshot.tSF, dt_switchon=snapshot.dt_switchon
     )
 
     # Inward pressure from photoionized gas outside shell
@@ -415,7 +419,7 @@ def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_
         current_phase=snapshot.current_phase,
         Eb=Eb, R2=R2, R1=R1, gamma=snapshot.gamma_adia,
         Lmech_total=Lmech_total, v_mech_total=v_mech_total,
-        t=t, tSF=snapshot.tSF
+        t=t, tSF=snapshot.tSF, dt_switchon=snapshot.dt_switchon
     )
 
     # Forces

@@ -15,6 +15,17 @@ phase (the handoff works, no ENERGY_COLLAPSED dead-stop) and (b) still writes ze
 negative-Pb rows and a finite-positive terminal Pb (the reconciliation stays clean).
 
 Slow (~1-2 min) end-to-end run, mirroring test_run_smoke's subprocess pattern.
+
+2026-09-30: on engine 2bcfc345 this config no longer reached momentum either -- it
+ended in phase 1a (energy_collapse event at 2.07e-3 Myr, ENERGY_COLLAPSED), so the
+momentum assertion was failing. Its seed is old (dt_phase0 = 1.38e-3 Myr), and with
+the stretched switch-on window (docs/dev/switchon-successor/PLAN.md §D5) its bubble
+no longer collapses by stop_t = 0.05 Myr: it ends energy-driven in phase 1b. So the
+test now pins what still applies -- no ENERGY_COLLAPSED stop, no negative Pb, a
+finite positive terminal Pb -- and no longer requires momentum. It no longer exercises
+any collapse routing: the 1a handoff is pinned by test_phase1a_oldseed_runs.py (runs in the
+default suite), test_phase1a_handoff.py and test_phase1a_collapse_terminates.py. 1b's own
+Eb<=0 routing has no end-to-end test now.
 """
 
 from __future__ import annotations
@@ -33,7 +44,7 @@ ENERGY_COLLAPSED_CODE = 51
 
 @pytest.mark.stress
 def test_energy_collapse_emits_no_negative_Pb(tmp_path):
-    """The heavy cloud that used to dead-stop now hands off to momentum with clean Pb."""
+    """The heavy cloud does not dead-stop, and writes no negative Pb (see the 2026-09-30 note)."""
     param = tmp_path / "collapse.param"
     param.write_text(
         "model_name      collapse\n"
@@ -46,7 +57,7 @@ def test_energy_collapse_emits_no_negative_Pb(tmp_path):
         "densPL_alpha    0\n"
         "ZCloud          1\n"
         "rCloud_max      1e9\n"
-        "stop_t          0.05\n"     # bound runtime; the collapse/handoff fires ~3e-3 Myr
+        "stop_t          0.05\n"     # bound runtime; on 2bcfc345 the 1a collapse fired at 2.07e-3 Myr
         "log_console     False\n"
     )
 
@@ -71,15 +82,10 @@ def test_energy_collapse_emits_no_negative_Pb(tmp_path):
     ]
     assert rows, "dictionary.jsonl is empty — the run never wrote a snapshot"
 
-    # PR #715: the finite Eb<=0 collapse now ROUTES to momentum instead of dead-stopping
-    # as ENERGY_COLLAPSED. Assert the handoff actually happened (the run reached momentum),
-    # and was NOT recorded as the old code-51 dead-stop.
-    phases = {str(r.get("current_phase")) for r in rows}
-    assert "momentum" in phases, (
-        f"heavy cloud did not reach the momentum phase (handoff regressed); phases seen: {phases}"
-    )
+    # The heavy cloud must not dead-stop as ENERGY_COLLAPSED (PR #715 in 1b; the
+    # stretched window and the 1a handoff since 2026-09-30).
     assert rows[-1].get("SimulationEndCode") != ENERGY_COLLAPSED_CODE, (
-        "heavy cloud dead-stopped on ENERGY_COLLAPSED — the PR #715 handoff regressed"
+        "heavy cloud dead-stopped on ENERGY_COLLAPSED"
     )
 
     # The Pb-fix invariant (independent of fate): no row may carry a negative bubble

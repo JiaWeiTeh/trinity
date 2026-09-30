@@ -195,7 +195,7 @@ CAUSES: Sequence[Cause] = (
         "max(coll_r*1.5, 0.01) pc crossing downward",
         phases="implicit (1b), transition (1c), momentum (2); event also in energy (1a)",
         sites=(
-            "phase1b_energy_implicit/run_energy_implicit_phase.py:1318-1326",
+            "phase1b_energy_implicit/run_energy_implicit_phase.py:1341-1349",
             "phase1c_transition/run_transition_phase.py:788-796",
             "phase2_momentum/run_momentum_phase.py:841-849",
             "phase_general/phase_events.py:134 (make_min_radius_event)",
@@ -237,7 +237,7 @@ CAUSES: Sequence[Cause] = (
         phases="main.py after 1a (nSnap==0); top of loop in 1b / 1c / 2 (nSnap>0)",
         sites=(
             "main.py:264-272",
-            "phase1b_energy_implicit/run_energy_implicit_phase.py:764-775",
+            "phase1b_energy_implicit/run_energy_implicit_phase.py:787-798",
             "phase1c_transition/run_transition_phase.py:468-479",
             "phase2_momentum/run_momentum_phase.py:549-560",
         ),
@@ -256,7 +256,7 @@ CAUSES: Sequence[Cause] = (
         condition="stop_r is not None AND R2 > stop_r (default 500 pc)",
         phases="implicit (1b), transition (1c), momentum (2)",
         sites=(
-            "phase1b_energy_implicit/run_energy_implicit_phase.py:1329-1335",
+            "phase1b_energy_implicit/run_energy_implicit_phase.py:1352-1358",
             "phase1c_transition/run_transition_phase.py:799-805",
             "phase2_momentum/run_momentum_phase.py:852-858",
             "phase_general/phase_events.py:166 (make_max_radius_event)",
@@ -278,7 +278,7 @@ CAUSES: Sequence[Cause] = (
         condition="t_now >= stop_t (default 15 Myr; the survey grid runs 10)",
         phases="implicit (1b), transition (1c), momentum (2) -- 9 sites",
         sites=(
-            "phase1b_energy_implicit/run_energy_implicit_phase.py:670-690,1042-1048,1311-1316",
+            "phase1b_energy_implicit/run_energy_implicit_phase.py:693-713,1065-1071,1334-1339",
             "phase1c_transition/run_transition_phase.py:407-424,607-613,781-786",
             "phase2_momentum/run_momentum_phase.py:488-504,689-695,834-839",
         ),
@@ -321,16 +321,20 @@ CAUSES: Sequence[Cause] = (
             "Energy-driven bubble collapsed: bubble solve degenerate as Eb -> 0 (...)",
         ),
         stop="numerical",
-        condition="Eb < 1e-3 * Eb_segment_start (the event); or Eb <= 0 / non-finite "
-        "between segments; or the bubble solver raising as Eb -> 0",
+        condition="engine 2bcfc345 and earlier: Eb < 1e-3 * Eb_segment_start (the event); "
+        "or Eb <= 0 / non-finite between segments; or the bubble solver raising as Eb -> 0. "
+        "Since 2026-09-30 the 1a event and a finite 1a Eb <= 0 hand off to momentum "
+        "(1c -> 2, 1b skipped), as 1b already did for Eb <= 0; code 51 is left for "
+        "non-finite Eb (1a, 1b) and for any 1a bubble-solve failure",
         phases="energy (1a), implicit (1b)",
         sites=(
             "phase_general/phase_events.py:323-382 (ENERGY_COLLAPSE_FRAC = 1e-3)",
-            "phase1_energy/run_energy_phase.py:180-194,385-396",
-            "phase1b_energy_implicit/run_energy_implicit_phase.py:1150-1165",
+            "phase1_energy/run_energy_phase.py:241-254,457-469 (still end); "
+            "_handoff_spent_bubble at :65, called at :418,:455",
+            "phase1b_energy_implicit/run_energy_implicit_phase.py:1176-1191",
         ),
         sets_flags="isCollapse=True on the event path (reason_code contains 'collapse'); "
-        "NOT set on the two inline paths",
+        "NOT set on the two inline paths. The 1a handoff clears it again",
         means="The energy-driven solve went degenerate. A stiffness bail-out.",
         trap="The word 'collapsed' in the token is about the BUBBLE ENERGY, not the "
         "shell. On the v2 grid 99.6% of these runs were still moving OUTWARD when it "
@@ -576,7 +580,7 @@ UPSTREAM_DEFECTS = (
     (
         "the same fate produces two different flag sets",
         "event path via apply_event_result vs the inline between-segment checks",
-        "phase_events.py:688-696 vs 1b:1329 / 1c:799 / 2:852",
+        "phase_events.py:688-696 vs 1b:1352 / 1c:799 / 2:852",
         "Crossing stop_r INSIDE a segment sets isCollapse=True; crossing it BETWEEN "
         "segments sets nothing. Identical physics, different metadata, depending only "
         "on where the sample landed.",
