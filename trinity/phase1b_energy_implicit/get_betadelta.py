@@ -662,19 +662,22 @@ def solve_betadelta_pure(
     delta_guess: float,
     params,
     method: str = 'grid',
+    rescue: bool = True,
 ) -> BetaDeltaResult:
     """Dispatch to the configured beta-delta solver (``betadelta_solver``).
 
     'hybr' (production default) is the unbounded scipy root-finder with a
     physical dMdt>0 acceptance gate. 'legacy' is the bounded grid + L-BFGS-B
-    search, byte-identical to the pre-switch behaviour.
+    search, byte-identical to the pre-switch behaviour. ``rescue=False`` skips
+    hybr's structure-failure rescue ladder (phase 1b's cost cap).
     """
     solver = _get_betadelta_solver(params)
     if solver == 'legacy':
         return _solve_betadelta_legacy(beta_guess, delta_guess, params, method)
     if solver == 'hybr':
         result = _solve_betadelta_hybr(beta_guess, delta_guess, params, method)
-        if result.no_physical_root and 'structure solve failed' in (result.no_root_reason or ''):
+        if (rescue and result.no_physical_root
+                and 'structure solve failed' in (result.no_root_reason or '')):
             return _rescue_structure_failure(result, beta_guess, delta_guess, params, method)
         return result
     # The param validator guards user input; this guards programmatic misuse.

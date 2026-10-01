@@ -43,7 +43,10 @@ def test_young_seed_phase1a_collapse_is_handed_to_momentum(tmp_path):
     rows, meta, log = _run(tmp_path, "handoff",
                            "mCloud 5e6\nsfe 0.5\nnCore 1e4\nFB_thermCoeffWind 0.01\nstop_t 0.004\n")
     assert "routing to momentum via 1c, phase 1b skipped" in log
-    assert "Implicit phase completed: energy_to_momentum" in log
+    # Since 2026-10-01 a turnaround (v2 < 0) also hands off from 1a; whichever fires first.
+    channel = meta["final_state"]["transition_channel"]
+    assert channel in ("energy_to_momentum", "velocity_sign_change")
+    assert f"Implicit phase completed: {channel}" in log
     assert meta["termination"]["outcome"] != "energy_collapsed"
     assert meta["final_state"]["energy_handoff_1a"] is True
     assert meta["final_state"]["dt_switchon"] == 1e-3
@@ -53,7 +56,9 @@ def test_young_seed_phase1a_collapse_is_handed_to_momentum(tmp_path):
     handoff, nxt = rows[last_energy], rows[last_energy + 1]
     assert handoff["Eb"] == 1e3                      # ENERGY_HANDOFF_FLOOR
     assert handoff["isCollapse"] is False
-    assert nxt["t_now"] > handoff["t_now"] and nxt["R2"] > handoff["R2"] > 0
+    assert nxt["t_now"] > handoff["t_now"] and handoff["R2"] > 0
+    if channel == "energy_to_momentum":      # spent while still expanding
+        assert nxt["R2"] > handoff["R2"]
     assert all(r["Pb"] > 0 for r in rows if isinstance(r.get("Pb"), (int, float)))
 
 

@@ -497,17 +497,38 @@ def _solve_bubble_structure(initial_conditions, r_array, params, Pb,
             rhs_error = str(e)
             return np.zeros_like(y, dtype=float)
 
+    def _integrate(method):
+        return scipy.integrate.solve_ivp(
+            fun=_rhs,
+            t_span=(r_array[0], r_array[-1]),
+            y0=initial_conditions,
+            method=method,
+            dense_output=True,
+            rtol=rtol,
+            atol=_BUBBLE_ATOL,
+        )
+
     try:
-        with _quiet_lsoda_fortran():
-            sol = scipy.integrate.solve_ivp(
-                fun=_rhs,
-                t_span=(r_array[0], r_array[-1]),
-                y0=initial_conditions,
-                method='LSODA',
-                dense_output=True,
-                rtol=rtol,
-                atol=_BUBBLE_ATOL,
-            )
+        try:
+            with _quiet_lsoda_fortran():
+                sol = _integrate('LSODA')
+        except ValueError as e:
+            # LSODA can return two equal step points (a step below float
+            # resolution in r) and building the dense output then raises
+            # "`ts` must be strictly increasing or decreasing". Seen 2026-09-30
+            # on growing 5e9 Msun / n 1e5 bubbles at R2 ~ 1 pc; in phase 1a it
+            # ended the run. Radau refuses steps that small, so retry with it
+            # once; a second failure is an ordinary failed solve. Any other
+            # ValueError (e.g. the cooling table out of bounds) is raised as before.
+            if 'strictly increasing' not in str(e):
+                raise
+            logger.debug(f"bubble structure: LSODA raised ({e}); retrying with Radau")
+            rhs_error = None
+            try:
+                sol = _integrate('Radau')
+            except ValueError as e2:
+                psoln = np.full((len(r_array), 3), np.nan)
+                return psoln, False, {'message': f'{e}; Radau retry: {e2}'}, None
     except BubbleSolverError as e:
         psoln = np.full((len(r_array), 3), np.nan)
         return psoln, False, {'message': str(e)}, None

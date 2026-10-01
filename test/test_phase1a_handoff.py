@@ -19,6 +19,8 @@ def _params():
     return {k: SimpleNamespace(value=v) for k, v in {
         't_now': 0.0, 'R2': 0.0, 'v2': 0.0, 'Eb': 1e-3,
         'energy_handoff_1a': False,
+        'Eb_handoff': float('nan'),
+        'transition_channel': '',
         'EndSimulationDirectly': True,
         'SimulationEndReason': 'Energy-driven bubble collapsed (Eb fell to a fraction of segment start)',
         'SimulationEndCode': SimulationEndCode.ENERGY_COLLAPSED.code,
@@ -36,6 +38,18 @@ def test_handoff_clears_the_collapse_ending_and_marks_the_run():
     assert p['SimulationEndReason'].value == ''
     assert p['SimulationEndCode'].value is None
     assert p['isCollapse'].value is False   # the event sets it; the shell is still expanding
+    assert p['Eb_handoff'].value == 1e-3     # what was dropped, kept for the record
+    assert p['transition_channel'].value == 'energy_to_momentum'
+
+
+def test_turnaround_uses_the_same_handoff_under_its_own_channel():
+    """Ruled 2026-10-01: v2 < 0 in phase 1a goes straight to momentum too."""
+    p = _params()
+    p['Eb'].value = 3.4e10
+    _handoff_spent_bubble(p, 1.7e-3, 1.09, 0.0, "shell turned around",
+                          channel="velocity_sign_change")
+    assert p['Eb'].value == ENERGY_HANDOFF_FLOOR and p['Eb_handoff'].value == 3.4e10
+    assert p['transition_channel'].value == 'velocity_sign_change'
 
 
 def test_run_energy_keys_on_the_collapse_event_name():

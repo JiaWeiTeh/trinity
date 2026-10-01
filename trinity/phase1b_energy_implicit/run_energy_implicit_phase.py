@@ -58,6 +58,7 @@ import numpy as np
 import scipy.integrate
 import scipy.optimize
 import logging
+from collections import deque
 from typing import Dict, Optional, Tuple
 from dataclasses import dataclass
 
@@ -96,6 +97,9 @@ from trinity.phase_general.phase_events import (
     build_implicit_phase_events,
     check_event_termination,
     apply_event_result,
+    update_collapse_radius,
+    collapse_reason,
+    add_solver_flag,
 )
 from trinity._output.simulation_end import SimulationEndCode
 
@@ -115,11 +119,21 @@ DT_SEGMENT_MAX = 5e-2   # Myr - maximum segment duration
 MAX_SEGMENTS = 5000
 # Persistent loss of the dMdt>0 structure root marks the evaporation->
 # condensation domain boundary of the conduction-front model (McKee & Cowie
-# 1977) -- the energy-driven solution has physically ended. After this many
-# consecutive no-root segments the phase hands off to momentum instead of
-# grinding frozen state to max_segments (KAPPA_FREEZE_MECHANISM.md fix #1;
-# healthy rejection bursts observed so far are <= 8 segments and recover).
-NO_ROOT_HANDOFF_STREAK = 50
+# 1977) -- the energy-driven solution has physically ended. When at least
+# UNSOLVABLE_HANDOFF_COUNT of the last UNSOLVABLE_WINDOW segments had no physical
+# root or a non-finite accepted residual, the phase hands off (channel and
+# solver_flags 'no_physical_root_handoff') instead of grinding frozen state to
+# max_segments (KAPPA_FREEZE_MECHANISM.md fix #1; healthy rejection bursts
+# observed so far are <= 8 segments and recover). Until 2026-10-01 this counted
+# 50 CONSECUTIVE no-root segments; a rescue that succeeded now and then reset
+# that count, and two pilot_v5 runs ground for 12 h without handing off.
+UNSOLVABLE_WINDOW = 60
+UNSOLVABLE_HANDOFF_COUNT = 50
+# Cost cap: once the root has been unreachable for more than
+# BETADELTA_DT_SHRINK_MAX_STREAK segments, the beta-delta rescue ladder (legacy
+# grid + L-BFGS-B + hybr retry) runs only every RESCUE_EVERY-th segment; the
+# others get hybr alone. Counted in n_cost_capped_segments, flagged 'cost_cap'.
+RESCUE_EVERY = 10
 FOUR_PI = 4.0 * np.pi
 
 # Adaptive stepping parameters
@@ -175,9 +189,9 @@ ODE_MAX_STEP = DT_SEGMENT_MIN / 5  # Max step = 2e-5 Myr (ensures >=5 steps per 
 # Solver method: 'LSODA' for stiff/non-stiff switching
 ODE_METHOD = 'LSODA'
 
-# Energy handed to phase 1c when an energy-driven bubble collapses (Eb -> 0) and
-# is routed to momentum instead of dead-stopping. Matches phase1c ENERGY_FLOOR
-# (1e3) so 1c's floor check immediately transitions to the momentum phase.
+# Energy handed to phase 1c when an energy-driven bubble collapses (Eb -> 0) or
+# turns around and is routed to momentum instead of dead-stopping. Matches phase1c
+# ENERGY_FLOOR (1e3), so 1c is skipped and the momentum phase starts at once.
 ENERGY_HANDOFF_FLOOR = 1e3
 
 
@@ -355,6 +369,19 @@ def update_unconverged_streak(streak: int, converged: bool, t_now: float,
             f"unreachable; resuming standard adaptive stepping"
         )
     return streak
+
+
+def rescue_allowed(unconverged_streak: int) -> bool:
+    """Cost cap: the rescue ladder runs while the root may still be reachable
+    (streak <= BETADELTA_DT_SHRINK_MAX_STREAK), then only every RESCUE_EVERY-th
+    segment of the streak."""
+    return (unconverged_streak <= BETADELTA_DT_SHRINK_MAX_STREAK
+            or unconverged_streak % RESCUE_EVERY == 0)
+
+
+def unsolvable_handoff(window) -> bool:
+    """True once >= UNSOLVABLE_HANDOFF_COUNT of the recent segments were unsolvable."""
+    return sum(window) >= UNSOLVABLE_HANDOFF_COUNT
 
 
 def betadelta_phase_summary(solve_count: int, converged_count: int,
@@ -675,8 +702,9 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
     # Checked before stop_t so the line is written even if 1a ended at stop_t; 1c then
     # applies stop_t.
     if 'energy_handoff_1a' in params and params['energy_handoff_1a'].value:
-        logger.info("Phase 1a handed off a spent bubble; phase 1b not run")
-        logger.info("Implicit phase completed: energy_to_momentum")
+        _channel = params['transition_channel'].value or "energy_to_momentum"
+        logger.info("Phase 1a handed off to momentum; phase 1b not run")
+        logger.info(f"Implicit phase completed: {_channel}")
         logger.info(f"  Final time: {tmin:.6e} Myr, Segments: 0")
         return ImplicitPhaseResults(
             t=np.array([tmin]),
@@ -686,7 +714,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
             T0=np.array([params['T0'].value]),
             beta=np.array([params['cool_beta'].value]),
             delta=np.array([params['cool_delta'].value]),
-            termination_reason="energy_to_momentum",
+            termination_reason=_channel,
             final_time=tmin,
         )
 
@@ -768,6 +796,11 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
     # docs/dev/transition/pdv-trigger/KAPPA_FREEZE_MECHANISM.md). Log-only.
     no_root_streak = 0
     no_root_streak_t0 = None
+    # Recent unsolvable segments (no root or non-finite residual) -> hand-off,
+    # and the run totals written to params at phase end.
+    unsolvable_recent = deque(maxlen=UNSOLVABLE_WINDOW)
+    n_unsolvable = 0
+    n_capped = 0
 
     # =============================================================================
     # Build events for safe termination
@@ -822,6 +855,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         params['Eb'].value = Eb
         params['T0'].value = T0
         params['cool_alpha'].value = t_now / R2 * v2
+        update_collapse_radius(params, R2)
 
         # ---------------------------------------------------------------------
         # Get feedback
@@ -849,11 +883,21 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         # so that Pb and bubble_mass are current when shell_structure_pure
         # reads them (bubble computation does not depend on shell).
         # ---------------------------------------------------------------------
+        rescue = rescue_allowed(betadelta_unconverged_streak)
         betadelta_result = solve_betadelta_pure(
             params['cool_beta'].value,
             params['cool_delta'].value,
-            params
+            params,
+            rescue=rescue,
         )
+        # counted only where the cap changed something: the ladder would have run
+        # (a hybr 'structure solve failed' no-root) and was skipped
+        n_capped += (not rescue and betadelta_result.no_physical_root
+                     and 'structure solve failed' in (betadelta_result.no_root_reason or ''))
+        unsolvable = (betadelta_result.no_physical_root
+                      or not np.isfinite(betadelta_result.total_residual))
+        unsolvable_recent.append(unsolvable)
+        n_unsolvable += unsolvable
 
         beta = betadelta_result.beta
         delta = betadelta_result.delta
@@ -864,12 +908,10 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
             betadelta_converged_count += 1
 
         # No physical (dMdt>0, valid-structure) root: the energy-driven solution
-        # is degenerate at this (beta, delta). Rare on a self-consistent
-        # trajectory (it did not occur in any Phase-3 validation run) -- a logged
-        # safety net, NOT a transition trigger (phase end stays owned by the
-        # cooling-balance event). bubble_properties is None here, so the
-        # structure values and the dMdt warm start below hold at the last
-        # physical segment.
+        # is degenerate at this (beta, delta). One segment is logged and held;
+        # many in a row hand off (unsolvable_handoff below). bubble_properties is
+        # None here, so the structure values and the dMdt warm start below hold
+        # at the last physical segment.
         if betadelta_result.no_physical_root:
             betadelta_no_root_count += 1
             no_root_streak += 1
@@ -888,24 +930,23 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
                 f"Lloss={params['bubble_Lloss'].value:.3e}); implicit phase "
                 f"continues."
             )
-            if no_root_streak >= NO_ROOT_HANDOFF_STREAK:
-                termination_reason = "no_physical_root_handoff"
-                logger.warning(
-                    f"beta-delta: {no_root_streak} consecutive segments with no "
-                    f"physical (dMdt>0) root since t={no_root_streak_t0:.6e} Myr "
-                    f"(state and theta held at their last physical values, "
-                    f"Lloss/Lgain="
-                    f"{params['bubble_Lloss'].value / max(params['bubble_Lgain'].value, 1e-300):.4f}). "
-                    f"The structure root has crossed to dMdt<0 — the "
-                    f"conduction-front condensation regime (McKee & Cowie 1977): "
-                    f"the energy-driven solution has physically ended. Handing "
-                    f"off to the momentum phase (KAPPA_FREEZE_MECHANISM.md "
-                    f"fix #1) instead of grinding frozen state to max_segments."
-                )
-                break
         else:
             no_root_streak = 0
             no_root_streak_t0 = None
+        if unsolvable_handoff(unsolvable_recent):
+            termination_reason = "no_physical_root_handoff"
+            add_solver_flag(params, termination_reason)
+            logger.warning(
+                f"beta-delta: {sum(unsolvable_recent)} of the last "
+                f"{len(unsolvable_recent)} segments had no physical (dMdt>0) root "
+                f"or a non-finite residual (t={t_now:.6e} Myr, Lloss/Lgain="
+                f"{params['bubble_Lloss'].value / max(params['bubble_Lgain'].value, 1e-300):.4f}). "
+                f"The structure root has crossed to dMdt<0 — the "
+                f"conduction-front condensation regime (McKee & Cowie 1977) — or "
+                f"cannot be reached: handing off to the transition phase "
+                f"(KAPPA_FREEZE_MECHANISM.md fix #1) [no_physical_root_handoff]."
+            )
+            break
 
         # Update params with new beta/delta
         params['cool_beta'].value = beta
@@ -1144,6 +1185,17 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
             # Apply event result to params
             apply_event_result(params, event_result, t_now, event_result.y,
                               state_keys=['R2', 'v2', 'Eb', 'T0'])
+            if event_result.name == 'velocity_sign':
+                # Turnaround: straight to momentum, whatever Eb is left (ruled
+                # 2026-10-01, an approximation). Eb to the floor as for the Eb<=0
+                # routing below, so 1c is skipped; Eb_handoff keeps what was dropped.
+                params['Eb_handoff'].value = Eb
+                logger.warning(
+                    f"Shell turned around at t={t_now:.6e} Myr (R2={R2:.4f} pc): "
+                    f"Eb={Eb:.3e} dropped to the floor -> momentum [velocity_sign_change]."
+                )
+                Eb = ENERGY_HANDOFF_FLOOR
+                params['Eb'].value = Eb
             break
 
         # ---------------------------------------------------------------------
@@ -1193,6 +1245,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
             # Hand off (R2, v2) to momentum. Set Eb to the transition energy floor so
             # 1c's bubble calls stay finite and its floor check immediately transitions
             # to phase 2. Do NOT set EndSimulationDirectly -> main runs 1c -> momentum.
+            params['Eb_handoff'].value = Eb
             Eb = ENERGY_HANDOFF_FLOOR
             params['Eb'].value = Eb
             termination_reason = "energy_to_momentum"
@@ -1353,10 +1406,9 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
 
         is_collapse = params.get('isCollapse', None)
         if is_collapse and hasattr(is_collapse, 'value') and is_collapse.value:
-            coll_r = params['coll_r'].value
-            if R2 < coll_r:
+            if R2 < update_collapse_radius(params, R2):
                 termination_reason = "small_radius"
-                params['SimulationEndReason'].value = 'Small radius reached'
+                params['SimulationEndReason'].value = collapse_reason(params)
                 params['SimulationEndCode'].value = SimulationEndCode.SHELL_COLLAPSED.code
                 params['EndSimulationDirectly'].value = True
                 break
@@ -1448,6 +1500,13 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         # If we get here with no termination reason, it's either max_segments or unknown
         termination_reason = "max_segments" if segment_count >= MAX_SEGMENTS else "unknown"
 
+    # Run-level record of how the energy phase ended (metadata final_state).
+    params['transition_channel'].value = termination_reason
+    params['n_unsolvable_segments'].value = n_unsolvable
+    params['n_cost_capped_segments'].value = n_capped
+    if n_capped:
+        add_solver_flag(params, 'cost_cap')
+
     # "unknown" means we fell through every known exit path — a real bug
     # surface, not a routine completion.  Surface it loudly.
     completion_log = logger.warning if termination_reason == "unknown" else logger.info
@@ -1466,6 +1525,10 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
     _clean, _summary = betadelta_phase_summary(
         betadelta_solve_count, betadelta_converged_count, betadelta_no_root_count)
     (logger.info if _clean else logger.warning)(f"  {_summary}")
+    if n_unsolvable or n_capped:
+        logger.warning(f"  {n_unsolvable} unsolvable segment(s), {n_capped} where the cost "
+                       f"cap skipped the rescue ladder; solver_flags="
+                       f"{params['solver_flags'].value!r}")
     logger.info(terminal_prints.format_state(params, label="implicit phase exit"))
 
     # R1 transition SHADOW: persist per-segment criteria to a sideline CSV. This is

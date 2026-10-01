@@ -73,5 +73,7 @@ def test_collapsing_phase1a_segment_terminates_instead_of_grinding(tmp_path):
     )
     log = (tmp_path / "trinity.log").read_text(errors="ignore")
     assert "routing to momentum via 1c, phase 1b skipped" in log, "no phase-1a handoff logged"
-    assert "Implicit phase completed: energy_to_momentum" in log, "phase 1b did not report the handoff"
+    # Since 2026-10-01 a turnaround also hands off from 1a (whichever comes first).
+    assert ("Implicit phase completed: energy_to_momentum" in log
+            or "Implicit phase completed: velocity_sign_change" in log), "phase 1b did not report the handoff"
     assert wall < WALL_BUDGET_S

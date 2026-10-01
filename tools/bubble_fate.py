@@ -191,17 +191,22 @@ CAUSES: Sequence[Cause] = (
         outcome="shell_collapsed",
         details=("Small radius reached", "Small radius reached (event)"),
         stop="physical",
-        condition="isCollapse AND R2 < coll_r (default 1 pc); or the min_radius event at "
-        "max(coll_r*1.5, 0.01) pc crossing downward",
+        condition="isCollapse AND R2 < collapse_radius; or the min_radius event at "
+        "collapse_radius crossing downward. Since 2026-10-01 collapse_radius = "
+        "max(min(coll_r, coll_r_frac*R2_max), 0.01 pc) (defaults 1 pc, 0.25); the value used is "
+        "in final_state.collapse_radius, collapse_rule (coll_r / frac_R2max / floor) says which "
+        "term set it, and the detail reads 'Small radius reached[ (event)]: R2 < <r> pc (...)'. "
+        "Before: coll_r, and the event at max(1.5*coll_r, 0.01) pc",
         phases="implicit (1b), transition (1c), momentum (2); event also in energy (1a)",
         sites=(
-            "phase1b_energy_implicit/run_energy_implicit_phase.py:1341-1349",
-            "phase1c_transition/run_transition_phase.py:788-796",
-            "phase2_momentum/run_momentum_phase.py:841-849",
-            "phase_general/phase_events.py:134 (make_min_radius_event)",
+            "phase1b_energy_implicit/run_energy_implicit_phase.py:1409-1415 (2026-10-01)",
+            "phase1c_transition/run_transition_phase.py:846-852",
+            "phase2_momentum/run_momentum_phase.py:908-914",
+            "phase_general/phase_events.py:105 (make_min_radius_event), :511 (update_collapse_radius)",
         ),
         sets_flags="isCollapse=True (event path); EndSimulationDirectly=True",
-        means="The shell came back to the collapse radius. This is a completed collapse.",
+        means="The shell came back to the collapse radius (final_state.collapse_radius, "
+        "not necessarily coll_r). This is a completed collapse.",
         trap="Says NOTHING about whether the cloud was cleared first -- 27.1% of these "
         "runs carry broke_out=True. Those are 'recaptured', not 'recollapsed'.",
     ),
@@ -396,7 +401,7 @@ REPORTS: Sequence[Report] = (
     Report(
         "recollapsed",
         "stop=physical(shell_collapsed), cleared=no",
-        "The shell went out, turned round, and came back to coll_r without ever "
+        "The shell went out, turned round, and came back to collapse_radius without ever "
         "reaching the cloud edge. A completed collapse; the cloud survives intact.",
         "Not 'the feedback failed' -- it may have cleared a large fraction of the "
         "cloud mass on the way. Only the SHELL returned.",
@@ -405,7 +410,7 @@ REPORTS: Sequence[Report] = (
     Report(
         "recaptured",
         "stop=physical(shell_collapsed), cleared=yes",
-        "The shell DID clear the cloud edge, and then fell back to coll_r. This is "
+        "The shell DID clear the cloud edge, and then fell back to collapse_radius. This is "
         "the case that made 'collapsed' and 'dispersed' look contradictory: both are "
         "true, in that order. 27.1% of shell_collapsed runs on the v2 grid.",
         "Not 'recollapsed' -- the cloud WAS opened. Not 'dispersed' either -- it "
@@ -416,7 +421,7 @@ REPORTS: Sequence[Report] = (
     Report(
         "collapsing",
         "stop=clock or wall, motion=contracting",
-        "Moving inward when we stopped watching, but it never reached coll_r. The "
+        "Moving inward when we stopped watching, but it never reached collapse_radius. The "
         "collapse is UNDERWAY, not finished.",
         "Not 'recollapsed'. A run that would have turned around at t=11 Myr is in "
         "here. Do not merge it into a completed-collapse count.",
@@ -488,7 +493,7 @@ REPORTS: Sequence[Report] = (
         "cause 50 (velocity_runaway), which is an inward-only event.",
         "NOT `recollapsed` and never promotable to it: the shell's inward direction "
         "at the last integrated instant says nothing about whether it would have "
-        "reached coll_r. Report it inside the censored block, next to `unresolved`, "
+        "reached collapse_radius. Report it inside the censored block, next to `unresolved`, "
         "never inside the completed-fate block.",
         True,
     ),
@@ -587,13 +592,15 @@ UPSTREAM_DEFECTS = (
     ),
     (
         "check_event_termination returned monitoring events (FIXED 2026-09-30)",
-        "phase_general/phase_events.py:437-494",
+        "phase_general/phase_events.py (check_event_termination)",
         "returned the first event in list order with any recorded crossing, terminal or not",
         "Phase 1b's non-terminal velocity_sign is index 0, so 1b ended at the shell's "
         "first turnaround (transition_channel velocity_sign_change, 8,285 v4 runs) and "
         "a same-segment min_radius / max_radius / velocity_runaway became a silent "
-        "hand-off to 1c with no end code. Runs on earlier engines carry it; later runs "
-        "never report velocity_sign_change.",
+        "hand-off to 1c with no end code. Since 2026-10-01 velocity_sign is TERMINAL by "
+        "ruling in 1a/1b/1c: a turnaround drops Eb to the floor and goes straight to "
+        "momentum (Eb_handoff keeps the energy dropped), so velocity_sign_change is again "
+        "a channel -- on engines from 2026-10-01 it is deliberate, on v4 it came via 1c.",
     ),
     (
         "there is no stall concept in trinity at all",
@@ -641,6 +648,9 @@ def _outcome_of(row: Mapping[str, Any]) -> str:
             for cause in CAUSES:
                 if any(tok == d.lower() for d in cause.details):
                     return cause.outcome
+            # 'Small radius reached[ (event)]: R2 < 0.31 pc (...)' (2026-10-01)
+            if tok.startswith("small radius reached"):
+                return "shell_collapsed"
             # 'Reached stop_t=... Myr during prior phase'
             if tok.startswith("reached stop_t"):
                 return "stopping_time"
@@ -851,6 +861,9 @@ def explain(row: Mapping[str, Any], stall_frac: float = STALL_DISPLACEMENT_FRAC)
     ]
     if cause and cause.trap:
         lines.insert(1, "  trap   %s" % cause.trap)
+    rc = _num(row.get("collapse_radius"))
+    if rc is not None:
+        lines.insert(1, "  radius collapse_radius %.3g pc (%s)" % (rc, row.get("collapse_rule") or "?"))
     return "\n".join(lines)
 
 

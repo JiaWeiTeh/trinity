@@ -71,6 +71,8 @@ from trinity.cloud_properties import density_profile
 # Import centralized event functions
 from trinity.phase_general.phase_events import (
     build_momentum_phase_events,
+    update_collapse_radius,
+    collapse_reason,
     check_event_termination,
     apply_event_result,
 )
@@ -615,6 +617,7 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
         params['v2'].value = v2
         params['Eb'].value = 0.0
         params['T0'].value = T0
+        update_collapse_radius(params, R2)
 
         # ---------------------------------------------------------------------
         # Get feedback
@@ -902,10 +905,9 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
 
         is_collapse = params.get('isCollapse', None)
         if is_collapse and hasattr(is_collapse, 'value') and is_collapse.value:
-            coll_r = params['coll_r'].value
-            if R2 < coll_r:
+            if R2 < update_collapse_radius(params, R2):
                 termination_reason = "small_radius"
-                params['SimulationEndReason'].value = 'Small radius reached'
+                params['SimulationEndReason'].value = collapse_reason(params)
                 params['SimulationEndCode'].value = SimulationEndCode.SHELL_COLLAPSED.code
                 params['EndSimulationDirectly'].value = True
                 break

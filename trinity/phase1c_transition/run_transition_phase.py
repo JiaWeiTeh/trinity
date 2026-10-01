@@ -78,6 +78,8 @@ import trinity.bubble_structure.get_bubbleParams as get_bubbleParams
 # Import centralized event functions
 from trinity.phase_general.phase_events import (
     build_transition_phase_events,
+    update_collapse_radius,
+    collapse_reason,
     check_event_termination,
     apply_event_result,
 )
@@ -437,6 +439,23 @@ def run_phase_transition(params) -> TransitionPhaseResults:
             final_time=tmin,
         )
 
+    # A forced hand-off (turnaround, spent bubble, from 1a or 1b: Eb_handoff set, Eb at
+    # the floor) goes straight to momentum. Integrating 1c from there started its
+    # energy_floor event at exactly zero, whose root-finder could raise (logged as
+    # solver_error), for one segment of nothing. The previous phase's reconciliation
+    # snapshot is the hand-off state. A normal entry with a small Eb still runs 1c.
+    if np.isfinite(params['Eb_handoff'].value) and params['Eb'].value <= ENERGY_FLOOR:
+        logger.info("Transition phase skipped: Eb at the floor (forced hand-off) -> momentum")
+        logger.info("Transition phase completed: energy_floor_at_entry")
+        return TransitionPhaseResults(
+            t=np.array([tmin]),
+            R2=np.array([params['R2'].value]),
+            v2=np.array([params['v2'].value]),
+            Eb=np.array([params['Eb'].value]),
+            termination_reason="energy_floor_at_entry",
+            final_time=tmin,
+        )
+
     # Initialize state (no T0 in state vector for transition)
     R2 = params['R2'].value
     v2 = params['v2'].value
@@ -503,6 +522,7 @@ def run_phase_transition(params) -> TransitionPhaseResults:
         params['v2'].value = v2
         params['Eb'].value = Eb
         params['T0'].value = T0
+        update_collapse_radius(params, R2)
 
         # ---------------------------------------------------------------------
         # Get feedback
@@ -684,6 +704,18 @@ def run_phase_transition(params) -> TransitionPhaseResults:
             # Apply event result to params
             apply_event_result(params, event_result, t_now, event_result.y,
                               state_keys=['R2', 'v2', 'Eb'])
+            if event_result.name == 'velocity_sign':
+                # Turnaround: straight to momentum, whatever Eb is left (ruled
+                # 2026-10-01, an approximation); Eb_handoff keeps what was dropped
+                # (not overwritten when 1b already handed over at the floor).
+                if Eb > ENERGY_FLOOR:
+                    params['Eb_handoff'].value = Eb
+                    logger.warning(
+                        f"Shell turned around in 1c at t={t_now:.6e} Myr (R2={R2:.4f} pc): "
+                        f"Eb={Eb:.3e} dropped to the floor -> momentum [velocity_sign_change]."
+                    )
+                Eb = ENERGY_FLOOR
+                params['Eb'].value = Eb
             break
 
         # ---------------------------------------------------------------------
@@ -811,10 +843,9 @@ def run_phase_transition(params) -> TransitionPhaseResults:
 
         is_collapse = params.get('isCollapse', None)
         if is_collapse and hasattr(is_collapse, 'value') and is_collapse.value:
-            coll_r = params['coll_r'].value
-            if R2 < coll_r:
+            if R2 < update_collapse_radius(params, R2):
                 termination_reason = "small_radius"
-                params['SimulationEndReason'].value = 'Small radius reached'
+                params['SimulationEndReason'].value = collapse_reason(params)
                 params['SimulationEndCode'].value = SimulationEndCode.SHELL_COLLAPSED.code
                 params['EndSimulationDirectly'].value = True
                 break

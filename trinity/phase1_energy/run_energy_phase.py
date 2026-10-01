@@ -44,6 +44,8 @@ from trinity.phase_general.phase_events import (
     check_event_termination,
     apply_event_result,
     make_energy_collapse_event,
+    update_collapse_radius,
+    add_solver_flag,
 )
 
 logger = logging.getLogger(__name__)
@@ -62,14 +64,18 @@ RTOL = 1e-6  # Relative tolerance for solve_ivp
 ATOL = 1e-9  # Absolute tolerance for solve_ivp
 
 
-def _handoff_spent_bubble(params, t_now, R2, v2, why):
+def _handoff_spent_bubble(params, t_now, R2, v2, why, channel="energy_to_momentum"):
     """Hand a spent phase-1a bubble to momentum instead of ending the run.
+
+    Also used for a turnaround (channel 'velocity_sign_change', ruled 2026-10-01:
+    v2 < 0 goes straight to momentum whatever Eb is left). The Eb thrown away is
+    kept in Eb_handoff and the channel in transition_channel.
 
     Phase-1a counterpart of 1b's energy_to_momentum routing
     (run_energy_implicit_phase.classify_energy_collapse): once Eb is gone, R1 -> R2
     and the shell is already pushed by the wind's ram pressure, so the momentum
-    phase is the right model. Sets Eb to 1b's ENERGY_HANDOFF_FLOOR (1c's floor
-    check then moves straight to phase 2), clears the end flags the collapse
+    phase is the right model. Sets Eb to 1b's ENERGY_HANDOFF_FLOOR (1c is then
+    skipped and phase 2 starts at once), clears the end flags the collapse
     event set, and marks energy_handoff_1a so phase 1b does not integrate a
     bubble that no longer exists. Returns the new Eb.
     docs/dev/transition/pdv-trigger/HIMASS_HANDOFF_PLAN.md, 2026-09-30.
@@ -78,16 +84,18 @@ def _handoff_spent_bubble(params, t_now, R2, v2, why):
     params['t_now'].value = t_now
     params['R2'].value = R2
     params['v2'].value = v2
+    params['Eb_handoff'].value = params['Eb'].value
     params['Eb'].value = ENERGY_HANDOFF_FLOOR
     params['energy_handoff_1a'].value = True
+    params['transition_channel'].value = channel
     params['EndSimulationDirectly'].value = False
     params['SimulationEndReason'].value = ''
     params['SimulationEndCode'].value = None
     params['isCollapse'].value = False
     logger.warning(
-        f"Energy-driven collapse in phase 1a at t={t_now:.6e} Myr ({why}; R2={R2:.4f} pc, "
-        f"v2={v2:.3e} pc/Myr): thermal driving spent -> routing to momentum via 1c, "
-        f"phase 1b skipped."
+        f"Phase 1a hand-off to momentum at t={t_now:.6e} Myr ({why}; R2={R2:.4f} pc, "
+        f"v2={v2:.3e} pc/Myr, Eb={params['Eb_handoff'].value:.3e} dropped to the floor): "
+        f"routing to momentum via 1c, phase 1b skipped [{channel}]."
     )
     return ENERGY_HANDOFF_FLOOR
 
@@ -209,6 +217,7 @@ def run_energy(params):
         params['v2'].value = v2
         params['Eb'].value = Eb
         params['T0'].value = T0
+        update_collapse_radius(params, R2)
 
         # Refresh the non-CIE cooling cube on phase 1b's interval. The cube was
         # set at 1a entry (t_now = t0), and the shipped phase 1a ends at 3e-3 Myr,
@@ -229,27 +238,21 @@ def run_energy(params):
         # =============================================================================
         # 3. Compute bubble structure (always, not conditional on loop_count)
         # =============================================================================
-        # In the energy-driven Eb -> 0 collapse the bubble degenerates:
-        # the cooling table goes out of bounds, solve_R1 cannot bracket, etc. A
-        # failure here stops the run cleanly (ENERGY_COLLAPSED, inspection
-        # required) rather than crash with the bare exception. It is NOT handed to
-        # momentum like the collapse event and Eb<=0 below: it also fires on
-        # growing bubbles (seen: 5e9, sfe 0.6, n 1e5, eta_w 1 at 1.3 kyr), and old
-        # seeds lose Eb in some healthy segments, so "Eb fell" cannot tell a spent
-        # bubble from a solver failure. docs/dev/transition/pdv-trigger/HIMASS_HANDOFF_PLAN.md
+        # A failed structure solve ends phase 1a early and hands the state to 1b,
+        # which has a rescue ladder (and hands a bubble it cannot solve to momentum).
+        # Until 2026-10-01 this ended the run as ENERGY_COLLAPSED "Eb -> 0", but the
+        # pilot_v5 logs show it firing on GROWING bubbles: all 7 such runs (5e9 Msun,
+        # n 1e5, 0.5-1.7 kyr, Eb ~6e53 erg) died on a scipy LSODA error, now retried
+        # with Radau in bubble_luminosity. Flagged in solver_flags.
+        # docs/dev/transition/pdv-trigger/HIMASS_HANDOFF_PLAN.md
         try:
             bubble_data = bubble_luminosity.get_bubbleproperties_pure(params)
         except (ValueError, RuntimeError, bubble_luminosity.BubbleSolverError) as e:
-            params['EndSimulationDirectly'].value = True
-            params['SimulationEndReason'].value = (
-                "Energy-driven bubble collapsed: bubble solve degenerate as Eb -> 0 "
-                "(energy-driven phase no longer self-sustains)"
-            )
-            params['SimulationEndCode'].value = SimulationEndCode.ENERGY_COLLAPSED.code
+            add_solver_flag(params, '1a_structure_failure')
             logger.warning(
-                f"Energy-driven bubble collapsed at t={t_now:.6e} Myr "
-                f"(Eb={Eb:.3e}, R2={R2:.4f} pc; bubble solve failed: "
-                f"{type(e).__name__}: {e}): stopping run cleanly."
+                f"Phase 1a bubble solve failed at t={t_now:.6e} Myr "
+                f"(Eb={Eb:.3e}, R2={R2:.4f} pc; {type(e).__name__}: {e}): "
+                f"ending phase 1a early, phase 1b continues [1a_structure_failure]."
             )
             break
         updateDict(params, bubble_data)
@@ -408,6 +411,15 @@ def run_energy(params):
             logger.info(f"Event '{event_result.name}' triggered at t={event_result.t:.6e} Myr")
             apply_event_result(params, event_result, event_result.t, event_result.y,
                               state_keys=['R2', 'v2', 'Eb'])
+            if event_result.name == 'velocity_sign':
+                # Turnaround: straight to momentum, whatever Eb is left (ruled
+                # 2026-10-01, an approximation; Eb_handoff keeps what was dropped).
+                t_now = float(event_result.t)
+                R2 = float(event_result.y[0])
+                v2 = float(event_result.y[1])
+                Eb = _handoff_spent_bubble(params, t_now, R2, v2, "shell turned around",
+                                           channel="velocity_sign_change")
+                break
             if event_result.name == 'energy_collapse':
                 # Spent bubble: continue in momentum instead of ending the run. The
                 # locals still hold the segment start; move them to the event state

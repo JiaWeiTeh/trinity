@@ -176,6 +176,15 @@ def _validate_betadelta_solver(value, params) -> None:
         )
 
 
+def _validate_coll_r_frac(value, params) -> None:
+    """coll_r_frac must be a positive number (it scales R2_max into a radius)."""
+    from trinity._input.errors import ParameterFileError
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not value > 0:
+        raise ParameterFileError(
+            f"Invalid coll_r_frac '{value}'. Must be a positive number."
+        )
+
+
 def _validate_stop_at_rCloud_nSnap(value, params) -> None:
     """Validate AND coerce: whole-number floats (e.g. 5.0 from '5')
     become ints; fractional floats / negatives / non-numerics raise."""
@@ -392,7 +401,8 @@ SPECS: tuple[ParamSpec, ...] = (
     ParamSpec(name='stop_r', default='500', info='Maximum radial extent permitted for shell expansion. Set to None to disable this termination condition.', category='input_termination', unit='pc', exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='stop_t', default='15', info='Maximum duration of the simulation. Set to None to disable this termination condition.', category='input_termination', unit='Myr', exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='stop_at_rCloud_nSnap', default='None', info='Terminate simulation after the shell crosses the cloud edge (R2 > rCloud). Value is the number of post-crossing segment-loop snapshots to record before terminating. Set to None to disable. 0 stops at the edge (1a reconciliation snapshot only). N>0 lets the implicit phase advance for N more segments past the crossing — note the implicit phase\'s end-of-phase reconciliation snapshot adds one extra past-rCloud sample, so the total snapshots with R2 >= rCloud is roughly N + 2 (1 at-edge + N in-loop + 1 recon).', category='input_termination', unit=None, exclude_from_snapshot=True, validator=_validate_stop_at_rCloud_nSnap),
-    ParamSpec(name='coll_r', default='1', info='Radius below which the cloud is considered completely collapsed.', category='input_termination', unit='pc', exclude_from_snapshot=True, run_const=True),
+    ParamSpec(name='coll_r', default='1', info='Collapse radius cap. A shell moving inward ends the run as collapsed below collapse_radius = min(coll_r, coll_r_frac * R2_max).', category='input_termination', unit='pc', exclude_from_snapshot=True, run_const=True),
+    ParamSpec(name='coll_r_frac', default='0.25', info='Collapse radius as a fraction of the largest radius the shell has reached: collapse_radius = min(coll_r, coll_r_frac * R2_max), so a shell that never grew past a few pc is not stopped at coll_r on its first inward swing. The radius used and which term set it are written to collapse_radius and collapse_rule. A very large value (e.g. 1e9) leaves coll_r alone.', category='input_termination', unit=None, exclude_from_snapshot=True, run_const=True, validator=_validate_coll_r_frac),
     ParamSpec(name='SB99_rotation', default='1', info='Stellar-rotation flag. Selects rot vs norot non-CIE cooling tables (trinity/cooling/non_CIE/read_cloudy.py). Only rot tables ship in lib/default/opiate/, so 0 (norot) requires the user to supply matching cooling tables and an sps_path pointing at a norot SPS file; the default SPS fallback rejects SB99_rotation=0. NOTE: name retained for stability. May rename to sps_rotation in a future PR once the cooling subsystem stops being SB99-flavored.', category='input_sps', unit=None, exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='sps_refmass', default='def_value', info='Reference cluster mass used in f_mass = mCluster / sps_refmass.', category='input_sps', unit='Msun', exclude_from_snapshot=True, consumed_by='sps_path'),
     ParamSpec(name='FB_mColdWindFrac', default='0', info='Fraction of cold mass entrained in stellar winds (increases Mdot_wind, reduces velocity).', category='input_sps', unit=None, exclude_from_snapshot=True, run_const=True),
@@ -464,10 +474,18 @@ SPECS: tuple[ParamSpec, ...] = (
     ParamSpec(name='_snapshots_after_rCloud', default=0, info='Snapshots saved with R2 > rCloud (used by stop_at_rCloud_nSnap)', category='runtime_control', unit='N/A', exclude_from_snapshot=True),
     ParamSpec(name='dt_switchon', default=None, info='R1 switch-on ramp window, set at phase-1a entry to max(1e-3 Myr, 3*dt_phase0); None means 1e-3 (get_bubbleParams.switchon_window, docs/dev/switchon-successor/PLAN.md)', category='runtime_control', unit='Myr', exclude_from_snapshot=True),
     ParamSpec(name='energy_handoff_1a', default=False, info='Phase 1a handed a spent bubble (Eb collapse) to momentum; phase 1b is skipped and the run continues 1c -> 2 (docs/dev/transition/pdv-trigger/HIMASS_HANDOFF_PLAN.md)', category='runtime_control', unit='N/A', exclude_from_snapshot=True),
+    ParamSpec(name='transition_channel', default='', info="How the energy-driven phase ended (phase 1b's exit reason, or phase 1a's when 1b was skipped): cooling_balance is the normal way; velocity_sign_change (shell turned around, Eb dropped to the floor), energy_to_momentum (Eb spent) and no_physical_root_handoff (bubble structure unsolvable in >= 50 of the last 60 segments) are forced hand-offs to momentum", category='runtime_control', unit='N/A', exclude_from_snapshot=True),
+    ParamSpec(name='solver_flags', default='', info="Comma-separated record of anything not normal about the run: 1a_structure_failure (phase 1a bubble solve failed, handed to 1b), no_physical_root_handoff (1b ended because the structure could not be solved), cost_cap (1b's cost cap skipped the beta-delta rescue ladder on some failed segments). Empty for a normal run.", category='runtime_control', unit='N/A', exclude_from_snapshot=True),
+    ParamSpec(name='n_unsolvable_segments', default=0, info='Phase-1b segments whose bubble structure had no physical root or a non-finite residual', category='runtime_control', unit='N/A', exclude_from_snapshot=True),
+    ParamSpec(name='n_cost_capped_segments', default=0, info='Phase-1b segments where the beta-delta rescue ladder would have run (structure-solve failure) but the cost cap skipped it (root unreachable for > 10 segments; the ladder still runs every 10th). Such segments count as unsolvable.', category='runtime_control', unit='N/A', exclude_from_snapshot=True),
+    ParamSpec(name='Eb_handoff', default=np.nan, info='Bubble energy discarded at a forced energy->momentum hand-off (turnaround, spent bubble), before Eb is set to the floor; NaN if none', category='runtime_control', unit='Msun*pc**2/Myr**2', exclude_from_snapshot=True),
+    ParamSpec(name='collapse_rule', default='', info="Which term set collapse_radius: 'coll_r', 'frac_R2max' (coll_r_frac * R2_max) or 'floor' (the 0.01 pc solver floor)", category='runtime_control', unit='N/A', exclude_from_snapshot=True),
     ParamSpec(name='tSF', default=0, info='Time of star formation', category='derived_init', unit='Myr', run_const=True),
     ParamSpec(name='t_now', default=0, info='Current simulation time', category='runtime_time', unit='Myr'),
     ParamSpec(name='v2', default=0, info='Velocity at R2 (outer bubble radius = inner shell edge)', category='runtime_bubble', unit='pc/Myr'),
     ParamSpec(name='R2', default=0, info='Outer bubble radius (= inner shell edge)', category='runtime_radii', unit='pc'),
+    ParamSpec(name='R2_max', default=0.0, info='Largest R2 reached so far, sampled once per segment', category='runtime_radii', unit='pc', exclude_from_snapshot=True),
+    ParamSpec(name='collapse_radius', default=np.nan, info='Collapse radius in force: min(coll_r, coll_r_frac * R2_max), floored at 0.01 pc; see collapse_rule', category='runtime_radii', unit='pc', exclude_from_snapshot=True),
     ParamSpec(name='T0', default=0, info='Characteristic bubble temperature (at xi_Tb fraction of bubble thickness)', category='runtime_bubble', unit='K'),
     ParamSpec(name='Eb', default=0, info='Bubble energy', category='runtime_bubble', unit='Msun*pc**2/Myr**2'),
     ParamSpec(name='R1', default=0, info='Inner bubble radius', category='runtime_radii', unit='pc'),

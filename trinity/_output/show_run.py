@@ -67,17 +67,17 @@ def _collapse_descriptor(final_state: Optional[dict],
 
     ``isCollapse`` alone only means the shell was *contracting* (``v2 < 0``
     and ``R2`` falling) at exit — NOT that it reached the collapse radius
-    ``coll_r``. The two are distinct outcomes, so render them distinctly:
+    (``collapse_radius`` = min(``coll_r``, ``coll_r_frac`` * R2_max)). The two are distinct outcomes, so render them distinctly:
 
       ``"no"``         — not contracting at exit
       ``"collapsing"`` — contracting at exit, but the run ended for some
                          other reason (stopping time, dissolution, error, …)
       ``"yes"``        — terminal collapse: the run stopped *because* the
-                         shell reached ``coll_r``
+                         shell reached ``collapse_radius``
 
     ``"yes"`` is keyed strictly on the ``shell_collapsed`` outcome — the one
     unambiguous signal that the collapse-radius event actually fired. Using
-    a bare ``R2 <= coll_r`` test instead would mislabel runs that merely
+    a bare ``R2 <= collapse_radius`` test instead would mislabel runs that merely
     happened to be small-and-contracting when they ended for an unrelated
     reason (a mid-run numerical crash, an early dissolution).
 
@@ -220,7 +220,7 @@ def _final_state_section(final_state: Optional[dict],
         rows.append(("phase", str(phase)))
     # Collapse / dissolved. "collapsed" is three-state (see
     # _collapse_descriptor): a contracting-but-not-yet-collapsed run reads
-    # "collapsing", distinct from a terminal "yes" (reached coll_r).
+    # "collapsing", distinct from a terminal "yes" (reached collapse_radius).
     if collapse_state is not None:
         rows.append(("collapsed", collapse_state))
     elif "isCollapse" in final_state:
@@ -229,6 +229,20 @@ def _final_state_section(final_state: Optional[dict],
     if "isDissolved" in final_state:
         rows.append(("dissolved",
                      "yes" if final_state["isDissolved"] else "no"))
+    # The collapse radius actually in force (min(coll_r, coll_r_frac*R2_max)),
+    # how the energy phase ended, and anything not normal about the solve.
+    rc = final_state.get("collapse_radius")
+    if rc is not None:
+        rows.append(("collapse_r", f"{_fmt_or_na(rc, '.3g')} pc "
+                                   f"({final_state.get('collapse_rule') or '?'})"))
+    if final_state.get("transition_channel"):
+        rows.append(("channel", str(final_state["transition_channel"])))
+    if final_state.get("solver_flags"):
+        rows.append(("solver_flags", str(final_state["solver_flags"])))
+    eh = final_state.get("Eb_handoff")
+    if isinstance(eh, (int, float)) and eh == eh:
+        rows.append(("Eb_handoff", f"{_fmt_or_na(eh * INV_CONV.E_au2cgs, '.3e')} erg "
+                                   f"dropped at hand-off"))
 
     for name, val in rows:
         lines.append(f"  {name:14s}: {val}")

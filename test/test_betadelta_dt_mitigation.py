@@ -151,3 +151,28 @@ def test_summary_handles_zero_solves():
         solve_count=0, converged_count=0, no_root_count=0)
     assert clean is True  # vacuously: nothing failed
     assert "0/0" in msg and "0%" in msg
+
+
+# =============================================================================
+# cost cap and the windowed unsolvable hand-off (2026-10-01)
+# =============================================================================
+
+
+def test_rescue_ladder_runs_until_unreachable_then_every_tenth_segment():
+    cap = RIP.BETADELTA_DT_SHRINK_MAX_STREAK
+    assert all(RIP.rescue_allowed(k) for k in range(cap + 1))
+    assert not any(RIP.rescue_allowed(k) for k in range(cap + 1, 2 * RIP.RESCUE_EVERY))
+    assert RIP.rescue_allowed(2 * RIP.RESCUE_EVERY)
+
+
+def test_unsolvable_handoff_counts_a_window_not_a_streak():
+    """Two pilot_v5 runs never handed off because a rescue that succeeded now and
+    then reset the old consecutive count. The window ignores the interruptions."""
+    from collections import deque
+    w = deque(maxlen=RIP.UNSOLVABLE_WINDOW)
+    for i in range(RIP.UNSOLVABLE_WINDOW):
+        w.append(i % 6 != 0)          # every 6th segment solves: 50 of 60 unsolvable
+    assert RIP.unsolvable_handoff(w)
+    w.append(False)
+    w.append(False)
+    assert not RIP.unsolvable_handoff(w)

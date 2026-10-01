@@ -126,9 +126,12 @@ stop_t    15
 # INFO: Terminate simulation after the shell crosses the cloud edge (R2 > rCloud). Value is the number of post-crossing segment-loop snapshots to record before terminating. Set to None to disable. 0 stops at the edge (1a reconciliation snapshot only). N>0 lets the implicit phase advance for N more segments past the crossing — note the implicit phase's end-of-phase reconciliation snapshot adds one extra past-rCloud sample, so the total snapshots with R2 >= rCloud is roughly N + 2 (1 at-edge + N in-loop + 1 recon).
 stop_at_rCloud_nSnap    None
 
-# INFO: Radius below which the cloud is considered completely collapsed.
+# INFO: Collapse radius cap. A shell moving inward ends the run as collapsed below collapse_radius = min(coll_r, coll_r_frac * R2_max).
 # UNIT: [pc]
 coll_r    1
+
+# INFO: Collapse radius as a fraction of the largest radius the shell has reached: collapse_radius = min(coll_r, coll_r_frac * R2_max), so a shell that never grew past a few pc is not stopped at coll_r on its first inward swing. The radius used and which term set it are written to collapse_radius and collapse_rule. A very large value (e.g. 1e9) leaves coll_r alone.
+coll_r_frac    0.25
 
 
 # ==============================================================================

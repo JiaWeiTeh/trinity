@@ -117,6 +117,11 @@ def _param(value=None):
     return SimpleNamespace(value=value)
 
 
+def _collapse_params(coll_r=1.0, frac=0.25):
+    return {"coll_r": _param(coll_r), "coll_r_frac": _param(frac), "R2_max": _param(0.0),
+            "collapse_radius": _param(float("nan")), "collapse_rule": _param("")}
+
+
 def test_check_and_apply_event_result_classify_run_vs_phase_end():
     run_end_event = events.make_min_radius_event(1.0)
     phase_end_event = events.make_cloud_boundary_event(5.0)
@@ -139,12 +144,14 @@ def test_check_and_apply_event_result_classify_run_vs_phase_end():
         "SimulationEndCode": _param(),
         "EndSimulationDirectly": _param(False),
         "isCollapse": _param(False),
+        **_collapse_params(),
     }
+    events.update_collapse_radius(params, 40.0)
     events.apply_event_result(params, result, result.t, result.y)
     assert params["t_now"].value == pytest.approx(0.25)
     assert params["R2"].value == pytest.approx(1.0)
     assert params["v2"].value == pytest.approx(-2.0)
-    assert params["SimulationEndReason"].value == "Small radius reached (event)"
+    assert params["SimulationEndReason"].value == "Small radius reached (event): R2 < 1 pc (coll_r)"
     assert params["SimulationEndCode"].value == run_end_event.end_code.code
     assert params["EndSimulationDirectly"].value is True
     assert params["isCollapse"].value is True
@@ -190,3 +197,63 @@ def test_monitoring_event_neither_ends_nor_preempts_the_phase():
         y_events=[np.array([[4.0, 0.0]]), np.empty((0, 2))],
     )
     assert events.check_event_termination(only_sign, [sign, min_r]).triggered is False
+
+
+def test_collapse_radius_is_min_of_cap_and_fraction_of_largest_radius():
+    """collapse_radius = min(coll_r, coll_r_frac * R2_max), with the term that set it
+    recorded, and R2_max a running maximum (a shrinking shell keeps its old max)."""
+    p = _collapse_params()
+    assert events.update_collapse_radius(p, 0.8) == pytest.approx(0.2)
+    assert p["collapse_rule"].value == "frac_R2max"
+    assert events.collapse_reason(p) == (
+        "Small radius reached: R2 < 0.2 pc (0.25 x R2_max 0.8 pc; coll_r 1 pc not used)")
+    assert events.update_collapse_radius(p, 10.0) == pytest.approx(1.0)
+    assert p["collapse_rule"].value == "coll_r"
+    assert events.update_collapse_radius(p, 3.0) == pytest.approx(1.0)
+    assert p["R2_max"].value == pytest.approx(10.0)
+    # exactly at the switch the cap wins
+    q = _collapse_params()
+    events.update_collapse_radius(q, 4.0)
+    assert q["collapse_rule"].value == "coll_r"
+    # a shell that never passed 0.04 pc: the solver floor binds, and is what is recorded
+    f = _collapse_params()
+    assert events.update_collapse_radius(f, 0.03) == pytest.approx(events.MIN_RADIUS_SAFETY)
+    assert f["collapse_rule"].value == "floor"
+    assert events.collapse_reason(f) == "Small radius reached: R2 < 0.01 pc (the 0.01 pc floor; R2_max 0.03 pc)"
+
+
+def test_min_radius_event_follows_the_live_collapse_radius():
+    """The phase builders' min_radius event reads collapse_radius when called, so it
+    moves with R2_max inside one phase; MIN_RADIUS_SAFETY floors it."""
+    p = {"rCloud": _param(20.0), "stop_r": _param(500.0), **_collapse_params()}
+    evs, _ = events.build_implicit_phase_events(p)
+    min_r = next(e for e in evs if e.name == "min_radius")
+    events.update_collapse_radius(p, 0.8)
+    assert min_r(0.0, _y(R2=0.3)) == pytest.approx(0.1)
+    events.update_collapse_radius(p, 40.0)
+    assert min_r(0.0, _y(R2=0.3)) == pytest.approx(-0.7)
+    p["collapse_radius"].value = 0.001
+    assert min_r(0.0, _y(R2=0.3)) == pytest.approx(0.3 - events.MIN_RADIUS_SAFETY)
+
+
+@pytest.mark.parametrize("build", ["energy", "implicit", "transition"])
+def test_turnaround_ends_every_energy_carrying_phase(build):
+    """Ruled 2026-10-01: v2 < 0 goes straight to momentum, so 1a/1b/1c carry a
+    TERMINAL velocity_sign event (phase-ending, not run-ending); phase 2 has none."""
+    p = {"rCloud": _param(20.0), "stop_r": _param(500.0), **_collapse_params()}
+    evs = {"energy": lambda: events.build_energy_phase_events(p),
+           "implicit": lambda: events.build_implicit_phase_events(p)[0],
+           "transition": lambda: events.build_transition_phase_events(p)}[build]()
+    sign = [e for e in evs if e.name == "velocity_sign"]
+    assert len(sign) == 1
+    assert sign[0].terminal is True and sign[0].is_simulation_ending is False
+    assert sign[0].reason_code == "velocity_sign_change"
+    assert not any(e.name == "velocity_sign" for e in events.build_momentum_phase_events(p))
+
+
+def test_solver_flags_accumulate_once():
+    p = {"solver_flags": _param("")}
+    events.add_solver_flag(p, "cost_cap")
+    events.add_solver_flag(p, "no_physical_root_handoff")
+    events.add_solver_flag(p, "cost_cap")
+    assert p["solver_flags"].value == "cost_cap,no_physical_root_handoff"

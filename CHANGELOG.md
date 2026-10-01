@@ -98,6 +98,29 @@ composition is set by `x_He` and the ionisation states `Z_He` (hot bubble) and
   `get_soundspeed` docstring corrected (adiabatic; pc/Myr).
 - Removed dead `get_shellParams.py`. Added `test/test_mu_audit_drift.py` pinning
   every refined operation against its pre-fix value to prevent silent drift.
+- A turnaround now ends the energy-driven phase: in phases 1a, 1b and 1c a downward
+  zero crossing of `v2` drops `Eb` to the energy floor and goes straight to the
+  momentum phase (`transition_channel` `velocity_sign_change`; phase 1c is skipped
+  after any forced hand-off, i.e. `Eb_handoff` set and `Eb` at the floor, which also
+  removes the one-segment 1c pass, and its occasional `solver_error`, after an `Eb <= 0`
+  hand-off). This is an
+  approximation (ruled 2026-10-01): a bubble that turns around while still at the
+  ISM pressure loses its pressure support at once. The energy dropped is recorded in
+  `Eb_handoff`.
+- The collapse radius is `collapse_radius = min(coll_r, coll_r_frac * R2_max)` (new
+  parameter `coll_r_frac`, default 0.25; `R2_max` is the largest radius reached), so
+  a shell that never grew past a few pc is not stopped at `coll_r` on its first
+  inward swing, floored at 0.01 pc. The `min_radius` event now fires at
+  `collapse_radius` itself (it was `1.5 * coll_r`). The radius used and the term that set it are in `collapse_radius`
+  and `collapse_rule` (`final_state`, not in snapshots), and the end reason reads e.g.
+  "Small radius reached: R2 < 0.2 pc (0.25 x R2_max 0.8 pc; coll_r 1 pc not used)".
+- Anything not normal about a run is recorded in `metadata.json` `final_state`:
+  `transition_channel` (how the energy phase ended, previously only in
+  `trinity.log`), `solver_flags` (comma-separated: `1a_structure_failure`,
+  `no_physical_root_handoff`, `cost_cap`; empty for a normal run),
+  `n_unsolvable_segments`, `n_cost_capped_segments` (failed segments where the cap
+  skipped the rescue ladder; they count as unsolvable) and `Eb_handoff`.
+  `show_run` prints them.
 
 ### Removed
 
@@ -116,17 +139,29 @@ composition is set by `x_He` and the ionisation states `Z_He` (hot bubble) and
 - A spent bubble in phase 1a (the `energy_collapse` event, or a finite `Eb <= 0`)
   now continues in the momentum phase via 1c, skipping 1b, as phase 1b already
   did for `Eb <= 0`. It used to end the run as `ENERGY_COLLAPSED`. Non-finite `Eb`
-  and any phase-1a bubble-solve failure still end the run. New runtime flag
+  still ends the run; a phase-1a bubble-solve failure ends phase 1a early and phase
+  1b continues (`solver_flags` `1a_structure_failure`, see below). New runtime flag
   `energy_handoff_1a` (not in snapshots); `metadata.json` `final_state` carries
   both new flags. Runs that neither have an old seed nor collapse in 1a are
   byte-identical in `dictionary.jsonl`.
-- Phase 1b no longer ends at the shell's first turnaround. The event checker
-  returned the non-terminal `velocity_sign` monitoring event, so 1b handed over to
-  1c the moment `v2` first went negative, and a terminal event later in the same
-  segment was replaced by a rewind to the turnaround. Monitoring events are now
-  ignored by the checker; 1b integrates through the turnaround, as it did before
-  2026-01-22, and ends on its other exits (cooling balance, collapse, `Eb <= 0`, ...).
-  `transition_channel = velocity_sign_change` no longer occurs.
+- The event checker returned the non-terminal `velocity_sign` monitoring event, so
+  from 2026-01-22 phase 1b handed over to 1c the moment `v2` first went negative,
+  and a terminal event later in the same segment was replaced by a rewind to the
+  turnaround. Monitoring events are now ignored by the checker. The turnaround is
+  instead a deliberate phase end (see Changed).
+- Phase 1a ended the run as `ENERGY_COLLAPSED` "Eb -> 0" on any bubble-solve
+  failure, but it fired on growing bubbles: LSODA's dense output raised
+  "`ts` must be strictly increasing or decreasing" (two equal step points) on
+  5e9 Msun / n 1e5 clouds at 0.5–1.7 kyr with `Eb` ~6e53 erg and rising. The
+  structure solve now retries once with Radau on that error only, and a phase-1a solve failure ends
+  phase 1a early (phase 1b, which has a rescue ladder, continues) and is flagged
+  `1a_structure_failure` in `solver_flags`.
+- Phase 1b could grind for hours without handing off when the beta-delta structure
+  had no physical root: the hand-off counted 50 *consecutive* no-root segments and
+  an occasional successful rescue reset it. It now hands off when 50 of the last 60
+  segments had no physical root or a non-finite residual (channel still
+  `no_physical_root_handoff`), and once the root has been unreachable for more than
+  10 segments the rescue ladder runs only every 10th segment (cost cap).
 - Nondeterministic bubble-solver crash: detect LSODA `odeint` failure
   (`istate != 2`) instead of consuming uninitialised memory; return a
   deterministic penalty residual or raise `BubbleSolverError`. Fixes intermittent

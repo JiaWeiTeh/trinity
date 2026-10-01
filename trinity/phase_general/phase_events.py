@@ -13,7 +13,7 @@ Event Types
 Events are categorized by their consequence:
 
 1. **Simulation-Ending Events** (EndSimulationDirectly=True):
-   - min_radius: R2 < coll_r (shell collapse)
+   - min_radius: R2 < collapse_radius = min(coll_r, coll_r_frac*R2_max) (shell collapse)
    - max_radius: R2 > stop_r (expansion limit)
    - velocity_runaway: |v2| > threshold (numerical instability)
 
@@ -21,9 +21,12 @@ Events are categorized by their consequence:
    - cloud_boundary: R2 > rCloud (energy phase -> implicit)
    - cooling_balance: L_cool ~ L_gain (implicit -> transition)
    - energy_floor: Eb < threshold (transition -> momentum)
+   - velocity_sign: v2 crosses zero in 1a/1b/1c (shell turned around -> momentum,
+     Eb dropped to the floor; an approximation ruled 2026-10-01)
 
 3. **Monitoring Events** (non-terminal; record a crossing only):
-   - velocity_sign: v2 crosses zero (collapse onset detection)
+   - none in production since 2026-10-01; make_velocity_sign_event() still
+     defaults to monitoring
 
 Usage
 -----
@@ -38,7 +41,7 @@ Events are created via factory functions that capture phase-specific parameters:
 
     # Create events for a phase
     events = [
-        make_min_radius_event(coll_r * 1.5),
+        make_min_radius_event(1.0),
         make_max_radius_event(stop_r),
     ]
 
@@ -69,7 +72,6 @@ logger = logging.getLogger(__name__)
 
 # Default safety thresholds
 MIN_RADIUS_SAFETY = 0.01       # pc - absolute minimum radius
-MIN_RADIUS_FACTOR = 1.5        # Factor above coll_r for early termination
 MAX_VELOCITY_COLLAPSE = 500.0  # pc/Myr (~490 km/s) - extreme inward velocity
 MAX_VELOCITY_EXPANSION = 1000.0  # pc/Myr (~978 km/s) - extreme outward velocity
 # Fraction of a phase-1a segment's starting Eb below which the energy-driven
@@ -109,8 +111,9 @@ def make_min_radius_event(min_r: float, name: str = "min_radius"):
 
     Parameters
     ----------
-    min_r : float
-        Minimum allowed radius (pc). Typically coll_r * factor or MIN_RADIUS_SAFETY.
+    min_r : float or callable
+        Minimum allowed radius (pc), or a no-argument callable returning it (the
+        phase builders pass one that reads the live collapse_radius).
     name : str
         Name for identifying this event in results.
 
@@ -121,9 +124,11 @@ def make_min_radius_event(min_r: float, name: str = "min_radius"):
         Has additional attributes: event.name, event.is_simulation_ending,
         event.reason_code, event.reason_message
     """
+    radius = min_r if callable(min_r) else (lambda: min_r)
+
     def event(t, y):
         R2 = y[0]
-        return R2 - min_r
+        return R2 - radius()
 
     event.terminal = True
     event.direction = -1  # Only trigger when R2 crosses min_r from above
@@ -288,11 +293,14 @@ def make_energy_floor_event(energy_floor: float, y_index: int = 2,
     return event
 
 
-def make_velocity_sign_event(y_index: int = 1, name: str = "velocity_sign"):
+def make_velocity_sign_event(y_index: int = 1, name: str = "velocity_sign",
+                             terminal: bool = False):
     """
     Create event that triggers when velocity changes sign.
 
-    Used to detect collapse onset (v2 going from positive to negative).
+    Used to detect collapse onset (v2 going from positive to negative). The phase
+    builders make it terminal: since 2026-10-01 a turnaround in 1a/1b/1c ends the
+    phase and the runner drops Eb to the floor (straight to momentum).
 
     Parameters
     ----------
@@ -300,23 +308,25 @@ def make_velocity_sign_event(y_index: int = 1, name: str = "velocity_sign"):
         Index of v2 in state vector y. Default 1 for [R2, v2, ...].
     name : str
         Name for identifying this event in results.
+    terminal : bool
+        False (default) only records the crossing; True stops the integration.
 
     Returns
     -------
     event : callable
-        Event function for solve_ivp with terminal=False (monitoring only),
-        direction=-1 (only triggers on positive-to-negative crossing).
+        Event function for solve_ivp, direction=-1 (only triggers on
+        positive-to-negative crossing).
     """
     def event(t, y):
         v2 = y[y_index]
         return v2
 
-    event.terminal = False  # Non-terminal by default - just records the crossing
+    event.terminal = terminal
     event.direction = -1  # Only trigger when v2 goes positive -> negative
     event.name = name
     event.is_simulation_ending = False
     event.reason_code = "velocity_sign_change"
-    event.reason_message = "Velocity changed sign (collapse onset)"
+    event.reason_message = "Shell turned around (v2 < 0)"
     return event
 
 
@@ -495,6 +505,60 @@ def check_event_termination(sol, events: List[Callable]) -> EventResult:
 
 
 # =============================================================================
+# Collapse radius and run-irregularity flags
+# =============================================================================
+
+def update_collapse_radius(params, R2: float) -> float:
+    """Track R2_max and set collapse_radius = min(coll_r, coll_r_frac * R2_max),
+    floored at MIN_RADIUS_SAFETY (collapse_rule 'floor' when the floor binds).
+
+    Called by every phase at the start of each segment, so the radius in force and
+    the term that set it (collapse_rule: 'coll_r' or 'frac_R2max') are always in
+    params and in metadata final_state (not in snapshots). The fraction keeps a shell
+    that never grew past a few pc from being stopped at coll_r on its first inward
+    swing (pilot_v5, 2026-10-01: with 0.25, 2 of 87 declared collapses were premature,
+    against 16 of 95 under the 1.5 * coll_r event it replaces). R2_max is sampled
+    here, once per segment; near a turnaround v2 ~ 0, so the peak between samples is
+    higher by a second-order amount only.
+    """
+    R2_max = max(params['R2_max'].value, R2)
+    cap = params['coll_r'].value
+    frac_r = params['coll_r_frac'].value * R2_max
+    r = min(cap, frac_r)
+    params['R2_max'].value = R2_max
+    params['collapse_radius'].value = max(r, MIN_RADIUS_SAFETY)
+    params['collapse_rule'].value = ('floor' if r < MIN_RADIUS_SAFETY
+                                     else 'coll_r' if cap <= frac_r else 'frac_R2max')
+    return params['collapse_radius'].value
+
+
+def _collapse_radius_getter(params):
+    """The min_radius event's threshold, read live (it moves as R2_max grows)."""
+    return lambda: max(params['collapse_radius'].value, MIN_RADIUS_SAFETY)
+
+
+def collapse_reason(params, event: bool = False) -> str:
+    """SimulationEndReason for a collapse, carrying the radius actually used."""
+    r = params['collapse_radius'].value
+    rule = params['collapse_rule'].value
+    if rule == 'frac_R2max':
+        how = (f"{params['coll_r_frac'].value:g} x R2_max {params['R2_max'].value:.3g} pc; "
+               f"coll_r {params['coll_r'].value:g} pc not used")
+    elif rule == 'floor':
+        how = f"the {MIN_RADIUS_SAFETY:g} pc floor; R2_max {params['R2_max'].value:.3g} pc"
+    else:
+        how = "coll_r"
+    return f"Small radius reached{' (event)' if event else ''}: R2 < {r:.3g} pc ({how})"
+
+
+def add_solver_flag(params, token: str) -> None:
+    """Append token to the comma-separated solver_flags (once)."""
+    flags = [f for f in params['solver_flags'].value.split(',') if f]
+    if token not in flags:
+        params['solver_flags'].value = ','.join(flags + [token])
+
+
+# =============================================================================
 # Event List Builders for Each Phase
 # =============================================================================
 
@@ -504,13 +568,14 @@ def build_energy_phase_events(params) -> List[Callable]:
 
     Events:
     - cloud_boundary: R2 > rCloud (phase ending)
-    - min_radius: R2 < safety threshold (simulation ending)
+    - min_radius: R2 < collapse_radius (simulation ending)
     - velocity_runaway: |v2| too large (simulation ending)
+    - velocity_sign: v2 crosses zero (phase ending -> momentum)
 
     Parameters
     ----------
     params : dict
-        Parameter dictionary with rCloud, coll_r, etc.
+        Parameter dictionary with rCloud, collapse_radius, etc.
 
     Returns
     -------
@@ -518,18 +583,16 @@ def build_energy_phase_events(params) -> List[Callable]:
         List of event functions for solve_ivp.
     """
     rCloud = params['rCloud'].value
-    coll_r = params['coll_r'].value
-
-    min_r = max(coll_r * MIN_RADIUS_FACTOR, MIN_RADIUS_SAFETY)
+    min_r = _collapse_radius_getter(params)
 
     events = [
         make_cloud_boundary_event(rCloud),
         make_min_radius_event(min_r),
         make_velocity_runaway_event(MAX_VELOCITY_COLLAPSE, direction="collapse"),
+        make_velocity_sign_event(terminal=True),
     ]
 
-    logger.debug(f"Energy phase events: cloud_boundary={rCloud:.2f} pc, "
-                 f"min_radius={min_r:.4f} pc")
+    logger.debug(f"Energy phase events: cloud_boundary={rCloud:.2f} pc")
     return events
 
 
@@ -538,8 +601,8 @@ def build_implicit_phase_events(params) -> Tuple[List[Callable], Callable]:
     Build event list for implicit (cooling) phase.
 
     Events:
-    - velocity_sign: v2 crosses zero (monitoring, non-terminal)
-    - min_radius: R2 < safety threshold (simulation ending)
+    - velocity_sign: v2 crosses zero (phase ending -> momentum)
+    - min_radius: R2 < collapse_radius (simulation ending)
     - max_radius: R2 > stop_r (simulation ending)
     - velocity_runaway: |v2| too large (simulation ending)
 
@@ -548,7 +611,7 @@ def build_implicit_phase_events(params) -> Tuple[List[Callable], Callable]:
     Parameters
     ----------
     params : dict
-        Parameter dictionary with coll_r, stop_r, etc.
+        Parameter dictionary with collapse_radius, stop_r, etc.
 
     Returns
     -------
@@ -557,13 +620,12 @@ def build_implicit_phase_events(params) -> Tuple[List[Callable], Callable]:
     cooling_balance_factory : callable
         Factory function to create cooling_balance event for each segment.
     """
-    coll_r = params['coll_r'].value
     stop_r = params['stop_r'].value
 
-    min_r = max(coll_r * MIN_RADIUS_FACTOR, MIN_RADIUS_SAFETY)
+    min_r = _collapse_radius_getter(params)
 
     events = [
-        make_velocity_sign_event(),
+        make_velocity_sign_event(terminal=True),
         make_min_radius_event(min_r),
         make_velocity_runaway_event(MAX_VELOCITY_COLLAPSE, direction="collapse"),
     ]
@@ -574,8 +636,7 @@ def build_implicit_phase_events(params) -> Tuple[List[Callable], Callable]:
 
     cooling_factory = make_cooling_balance_event(threshold=0.05)
 
-    logger.debug(f"Implicit phase events: min_radius={min_r:.4f} pc, "
-                 f"stop_r={stop_r}")
+    logger.debug(f"Implicit phase events: stop_r={stop_r}")
     return events, cooling_factory
 
 
@@ -585,14 +646,15 @@ def build_transition_phase_events(params, energy_floor: float = 1e3) -> List[Cal
 
     Events:
     - energy_floor: Eb < threshold (phase ending -> momentum)
-    - min_radius: R2 < safety threshold (simulation ending)
+    - min_radius: R2 < collapse_radius (simulation ending)
     - max_radius: R2 > stop_r (simulation ending)
     - velocity_runaway: |v2| too large (simulation ending)
+    - velocity_sign: v2 crosses zero (phase ending -> momentum)
 
     Parameters
     ----------
     params : dict
-        Parameter dictionary with coll_r, stop_r, etc.
+        Parameter dictionary with collapse_radius, stop_r, etc.
     energy_floor : float
         Minimum energy threshold (code/AU units, Msun*pc^2/Myr^2). Default 1e3.
 
@@ -601,23 +663,22 @@ def build_transition_phase_events(params, energy_floor: float = 1e3) -> List[Cal
     events : list
         List of event functions for solve_ivp.
     """
-    coll_r = params['coll_r'].value
     stop_r = params['stop_r'].value
 
-    min_r = max(coll_r * MIN_RADIUS_FACTOR, MIN_RADIUS_SAFETY)
+    min_r = _collapse_radius_getter(params)
 
     events = [
         make_energy_floor_event(energy_floor, y_index=2),
         make_min_radius_event(min_r),
         make_velocity_runaway_event(MAX_VELOCITY_COLLAPSE, direction="collapse"),
+        make_velocity_sign_event(terminal=True),
     ]
 
     # Only add max_radius event if stop_r is set
     if stop_r is not None and stop_r > 0:
         events.append(make_max_radius_event(stop_r))
 
-    logger.debug(f"Transition phase events: energy_floor={energy_floor:.2e} (AU), "
-                 f"min_radius={min_r:.4f} pc")
+    logger.debug(f"Transition phase events: energy_floor={energy_floor:.2e} (AU)")
     return events
 
 
@@ -626,24 +687,23 @@ def build_momentum_phase_events(params) -> List[Callable]:
     Build event list for momentum phase.
 
     Events:
-    - min_radius: R2 < safety threshold (simulation ending)
+    - min_radius: R2 < collapse_radius (simulation ending)
     - max_radius: R2 > stop_r (simulation ending)
     - velocity_runaway: |v2| too large (simulation ending)
 
     Parameters
     ----------
     params : dict
-        Parameter dictionary with coll_r, stop_r, etc.
+        Parameter dictionary with collapse_radius, stop_r, etc.
 
     Returns
     -------
     events : list
         List of event functions for solve_ivp.
     """
-    coll_r = params['coll_r'].value
     stop_r = params['stop_r'].value
 
-    min_r = max(coll_r * MIN_RADIUS_FACTOR, MIN_RADIUS_SAFETY)
+    min_r = _collapse_radius_getter(params)
 
     events = [
         make_min_radius_event(min_r),
@@ -654,8 +714,7 @@ def build_momentum_phase_events(params) -> List[Callable]:
     if stop_r is not None and stop_r > 0:
         events.append(make_max_radius_event(stop_r))
 
-    logger.debug(f"Momentum phase events: min_radius={min_r:.4f} pc, "
-                 f"stop_r={stop_r}")
+    logger.debug(f"Momentum phase events: stop_r={stop_r}")
     return events
 
 
@@ -696,7 +755,9 @@ def apply_event_result(params, result: EventResult, t: float, y: np.ndarray,
 
     # Set termination info if simulation-ending
     if result.is_simulation_ending:
-        params['SimulationEndReason'].value = result.reason_message
+        params['SimulationEndReason'].value = (
+            collapse_reason(params, event=True) if result.name == 'min_radius'
+            else result.reason_message)
         if result.end_code is not None and 'SimulationEndCode' in params:
             params['SimulationEndCode'].value = result.end_code.code
         params['EndSimulationDirectly'].value = True
