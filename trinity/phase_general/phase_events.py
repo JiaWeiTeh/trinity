@@ -516,8 +516,8 @@ def update_collapse_radius(params, R2: float) -> float:
     the term that set it (collapse_rule: 'coll_r' or 'frac_R2max') are always in
     params and in metadata final_state (not in snapshots). The fraction keeps a shell
     that never grew past a few pc from being stopped at coll_r on its first inward
-    swing (pilot_v5, 2026-10-01: with 0.25, 2 of 87 declared collapses were premature,
-    against 16 of 95 under the 1.5 * coll_r event it replaces). R2_max is sampled
+    swing (2026-10-01, default 0.1: 1 of 111 declared collapses premature in pilot_v6,
+    8 of 115 with 0.25; pilot_v5: 16 of 95 under the 1.5 * coll_r event it replaces). R2_max is sampled
     here, once per segment; near a turnaround v2 ~ 0, so the peak between samples is
     higher by a second-order amount only.
     """

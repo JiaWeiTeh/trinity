@@ -193,7 +193,7 @@ CAUSES: Sequence[Cause] = (
         stop="physical",
         condition="isCollapse AND R2 < collapse_radius; or the min_radius event at "
         "collapse_radius crossing downward. Since 2026-10-01 collapse_radius = "
-        "max(min(coll_r, coll_r_frac*R2_max), 0.01 pc) (defaults 1 pc, 0.25); the value used is "
+        "max(min(coll_r, coll_r_frac*R2_max), 0.01 pc) (defaults 1 pc, 0.1); the value used is "
         "in final_state.collapse_radius, collapse_rule (coll_r / frac_R2max / floor) says which "
         "term set it, and the detail reads 'Small radius reached[ (event)]: R2 < <r> pc (...)'. "
         "Before: coll_r, and the event at max(1.5*coll_r, 0.01) pc",

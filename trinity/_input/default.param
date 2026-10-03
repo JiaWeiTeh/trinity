@@ -131,7 +131,7 @@ stop_at_rCloud_nSnap    None
 coll_r    1
 
 # INFO: Collapse radius as a fraction of the largest radius the shell has reached: collapse_radius = min(coll_r, coll_r_frac * R2_max), so a shell that never grew past a few pc is not stopped at coll_r on its first inward swing. The radius used and which term set it are written to collapse_radius and collapse_rule. A very large value (e.g. 1e9) leaves coll_r alone.
-coll_r_frac    0.25
+coll_r_frac    0.1
 
 
 # ==============================================================================

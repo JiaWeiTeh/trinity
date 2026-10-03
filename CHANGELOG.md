@@ -108,12 +108,13 @@ composition is set by `x_He` and the ionisation states `Z_He` (hot bubble) and
   ISM pressure loses its pressure support at once. The energy dropped is recorded in
   `Eb_handoff`.
 - The collapse radius is `collapse_radius = min(coll_r, coll_r_frac * R2_max)` (new
-  parameter `coll_r_frac`, default 0.25; `R2_max` is the largest radius reached), so
+  parameter `coll_r_frac`, default 0.1; `R2_max` is the largest radius reached), so
   a shell that never grew past a few pc is not stopped at `coll_r` on its first
   inward swing, floored at 0.01 pc. The `min_radius` event now fires at
   `collapse_radius` itself (it was `1.5 * coll_r`). The radius used and the term that set it are in `collapse_radius`
   and `collapse_rule` (`final_state`, not in snapshots), and the end reason reads e.g.
-  "Small radius reached: R2 < 0.2 pc (0.25 x R2_max 0.8 pc; coll_r 1 pc not used)".
+  "Small radius reached: R2 < 0.08 pc (0.1 x R2_max 0.8 pc; coll_r 1 pc not used)".
+  0.1 from pilot_v6: 1 of 111 declared collapses premature, against 8 of 115 with 0.25.
 - Anything not normal about a run is recorded in `metadata.json` `final_state`:
   `transition_channel` (how the energy phase ended, previously only in
   `trinity.log`), `solver_flags` (comma-separated: `1a_structure_failure`,
