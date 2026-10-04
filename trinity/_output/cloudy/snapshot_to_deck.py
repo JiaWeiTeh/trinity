@@ -86,7 +86,7 @@ def snapshot_to_values(
     3. t_now > tSF (strict).
     4. R2 > 0, rShell > R2, Qi > 0.
     5. Shell array lengths match and are >= 2.
-    6. shell_r_arr endpoints match R2 / rShell (rel_tol=1e-12) — simplify
+    6. shell_r_arr endpoints match R2 / rShell (rel_tol=1e-6) — simplify
        preserves them by contract; an exact-equality drift would indicate
        upstream regression.
     7. Cluster age in [age_min_yr, age_max_yr]: warn unless hard_age_bounds.
@@ -151,13 +151,14 @@ def snapshot_to_values(
             f"shell arrays need >= 2 points; got {shell_r.size}"
         )
 
-    # 6. Shell endpoints
-    if not math.isclose(float(shell_r[0]), R2, rel_tol=1e-12):
+    # 6. Shell endpoints. 1e-6, not 1e-12: stored snapshots miss the endpoint by 1e-8 to 1e-4
+    # in a few per cent of cases (6-44 of ~270 per run, Rosette runs, 2026-10-04).
+    if not math.isclose(float(shell_r[0]), R2, rel_tol=1e-6):
         raise SnapshotInvalid(
             f"shell_r_arr[0] ({shell_r[0]:.6e}) does not match R2 "
             f"({R2:.6e}); upstream simplify endpoint guarantee broken?"
         )
-    if not math.isclose(float(shell_r[-1]), rShell, rel_tol=1e-12):
+    if not math.isclose(float(shell_r[-1]), rShell, rel_tol=1e-6):
         raise SnapshotInvalid(
             f"shell_r_arr[-1] ({shell_r[-1]:.6e}) does not match rShell "
             f"({rShell:.6e}); upstream simplify endpoint guarantee broken?"

@@ -257,7 +257,7 @@ def test_rejects_short_shell(tmp_path):
 def test_rejects_endpoint_drift_from_R2(tmp_path):
     bundle = _make_synth_bundle(tmp_path)
     snap = _good_snap()
-    snap["shell_r_arr"][0] = 1.0 + 1e-9  # drift beyond rel_tol=1e-12
+    snap["shell_r_arr"][0] = 1.0 + 1e-5  # drift beyond rel_tol=1e-6
     with pytest.raises(SnapshotInvalid, match="does not match R2"):
         snapshot_to_values(snap, bundle)
 
@@ -265,9 +265,16 @@ def test_rejects_endpoint_drift_from_R2(tmp_path):
 def test_rejects_endpoint_drift_from_rShell(tmp_path):
     bundle = _make_synth_bundle(tmp_path)
     snap = _good_snap()
-    snap["shell_r_arr"][-1] = 1.5 + 1e-9
+    snap["shell_r_arr"][-1] = 1.5 + 1e-5
     with pytest.raises(SnapshotInvalid, match="does not match rShell"):
         snapshot_to_values(snap, bundle)
+
+
+def test_accepts_endpoint_drift_within_tolerance(tmp_path):
+    bundle = _make_synth_bundle(tmp_path)
+    snap = _good_snap()
+    snap["shell_r_arr"][-1] = 1.5 * (1 - 4.5e-8)  # the size seen in stored runs
+    snapshot_to_values(snap, bundle)
 
 
 # --------------------------------------------------------------------------- #

@@ -159,7 +159,7 @@ def build_dlaw_block(
                 log_n_pc3 = np.concatenate([log_n_pc3, a_n[mask]])
 
     # --- 4. Bracket check (with tiny float tolerance) -----------------------
-    rel_tol = 1e-12
+    rel_tol = 1e-6       # as the endpoint check in snapshot_to_deck.py
     if r_pc[0] > r_in_pc * (1.0 + rel_tol):
         raise DlawError(
             f"r_in_pc ({r_in_pc:.6e}) below dlaw range start ({r_pc[0]:.6e})"
