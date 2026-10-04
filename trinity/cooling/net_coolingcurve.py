@@ -14,8 +14,11 @@ import scipy.interpolate
 import numpy as np
 import astropy.units as u
 import sys
+from bisect import bisect_right as _bisect_right
+from itertools import product as _product
 
 import trinity.cooling.CIE.read_coolingcurve as CIE
+from trinity.cooling.CIE.read_coolingcurve import _scalar_evaluator
 import trinity._functions.unit_conversions as cvt
 
 
@@ -53,6 +56,58 @@ def _cie_tcutoff(logT_CIE):
         cached = min(logT_CIE[logT_CIE > 5.5])
         _CIE_TCUTOFF_CACHE[key] = cached
     return cached
+
+
+# get_dudt evaluates the cooling tables at ONE scalar point per bubble-ODE RHS call.
+# scipy's RegularGridInterpolator / interp1d spend ~50-200 us per call on input
+# validation and array plumbing for that single point; the arithmetic is a few
+# flops. This evaluator (and _ScalarLinear in CIE/read_coolingcurve.py) reproduces
+# scipy's linear evaluation op-for-op --
+# the same interval search (grid[i] <= x < grid[i+1], closed at the top), the same
+# itertools.product corner order, the same 1*w0*w1*w2 weight products and the same
+# left-to-right accumulation from 0 -- so the result is bit-identical, at ~5 us.
+# Verified bit-for-bit on 29k real RHS calls (all three branches) and 345k random /
+# grid-node points (HOTPATH W1, docs/dev/performance/). They are cached ON the
+# interpolator object, so a rebuilt cooling cube gets a fresh evaluator.
+
+
+def _find_interval(grid, x):
+    """scipy find_interval_ascending(extrapolate=1): i with grid[i] <= x < grid[i+1],
+    clipped to [0, len-2] (x == grid[-1] -> len-2)."""
+    i = _bisect_right(grid, x) - 1
+    if i < 0:
+        return 0
+    n2 = len(grid) - 2
+    return n2 if i > n2 else i
+
+
+class _ScalarTrilinear:
+    """RegularGridInterpolator(method='linear', bounds_error=True) at one 3-D point."""
+    __slots__ = ('grids', 'lo', 'hi', 'values')
+
+    def __init__(self, rgi):
+        self.grids = [list(map(float, g)) for g in rgi.grid]
+        self.lo = [g[0] for g in self.grids]
+        self.hi = [g[-1] for g in self.grids]
+        self.values = rgi.values
+
+    def __call__(self, x0, x1, x2):
+        idx, nd = [], []
+        for d, x in enumerate((x0, x1, x2)):
+            if not (self.lo[d] <= x <= self.hi[d]):
+                raise ValueError(f"One of the requested xi is out of bounds in dimension {d}")
+            g = self.grids[d]
+            i = _find_interval(g, x)
+            idx.append(i)
+            nd.append((x - g[i]) / (g[i + 1] - g[i]))
+        v = self.values
+        value = 0.0
+        for (i0, w0), (i1, w1), (i2, w2) in _product(
+                ((idx[0], 1 - nd[0]), (idx[0] + 1, nd[0])),
+                ((idx[1], 1 - nd[1]), (idx[1] + 1, nd[1])),
+                ((idx[2], 1 - nd[2]), (idx[2] + 1, nd[2]))):
+            value = value + v[i0, i1, i2] * (1.0 * w0 * w1 * w2)
+        return value
 
 
 def get_dudt(age, ndens, T, phi, params_dict):
@@ -129,13 +184,14 @@ def get_dudt(age, ndens, T, phi, params_dict):
     # ODE never sends T below the 3e4 boundary (see docs/dev/magic-numbers/).
     if np.log10(T) < nonCIE_Tmin:
         T = 10**nonCIE_Tmin
+    logT = np.log10(T)   # one evaluation of the SAME expression the branches below compared
     # output
     # print(f'{cpr.WARN}Taking net-cooling curve from non-CIE condition at T <= {nonCIE_Tcutoff}K and CIE condition at T >= {CIE_Tcutoff}K.{cpr.END}')
     # if nonCIE_Tcutoff != CIE_Tcutoff:
         # print(f'{cpr.WARN}Net cooling for temperature values in-between will be interpolated{cpr.END}.')
 
     # if temperature is lower than the non-CIE temperature, use non-CIE
-    if np.log10(T) <= nonCIE_Tcutoff and np.log10(T) >= nonCIE_Tmin:
+    if logT <= nonCIE_Tcutoff and logT >= nonCIE_Tmin:
         # print(f'{cpr.WARN}Entering non-CIE regime...{cpr.END}')
         # All this does here is to interpolate for values of Lambda based on
         # T, dens and phi.
@@ -151,12 +207,12 @@ def get_dudt(age, ndens, T, phi, params_dict):
         # print(cooling_nonCIE.phi)
         # print(netcooling)
         # print(ndens, T, phi)
-        dudt = netcool_interp([np.log10(ndens), np.log10(T), np.log10(phi)])[0] #* u.erg / u.cm**3 / u.s
+        dudt = _scalar_evaluator(netcool_interp, _ScalarTrilinear)(np.log10(ndens), logT, np.log10(phi))
         # return in negative sign for convension (since the rate of change is negative due to net cooling)
         return -1 * dudt * cvt.dudt_cgs2au
         
     # if temperature is higher than the CIE curve, use CIE.
-    elif np.log10(T) >= CIE_Tcutoff:
+    elif logT >= CIE_Tcutoff:
         # print(f'{cpr.WARN}Entering CIE regime...{cpr.END}')
         # get CIE cooling rate (Lambda_CIE evaluated here only -- the non-CIE and
         # interpolation branches never use it; HOTPATH F2.4)
@@ -165,7 +221,7 @@ def get_dudt(age, ndens, T, phi, params_dict):
         return -1 * dudt * cvt.dudt_cgs2au
         
     # if temperature is between, do interpolation
-    elif (np.log10(T) > nonCIE_Tcutoff) and (np.log10(T) < CIE_Tcutoff):
+    elif (logT > nonCIE_Tcutoff) and (logT < CIE_Tcutoff):
         # print(f'{cpr.WARN}Entering interpolation regime...{cpr.END}')
         # =============================================================================
         # This part is just for non-CIE, and slight-modification from above
@@ -176,7 +232,7 @@ def get_dudt(age, ndens, T, phi, params_dict):
         # create interpolation function (depreciated)
         # f_dudt = scipy.interpolate.RegularGridInterpolator((cooling_nonCIE.ndens, cooling_nonCIE.temp, cooling_nonCIE.phi), netcooling)
         # get net cooling rate
-        dudt_nonCIE = netcool_interp([np.log10(ndens), nonCIE_Tcutoff, np.log10(phi)])[0] #* u.erg / u.cm**3 / u.s
+        dudt_nonCIE = _scalar_evaluator(netcool_interp, _ScalarTrilinear)(np.log10(ndens), nonCIE_Tcutoff, np.log10(phi))
         
         # =============================================================================
         # This part is just for CIE
@@ -191,7 +247,7 @@ def get_dudt(age, ndens, T, phi, params_dict):
         # =============================================================================
         
         # print(np.log10(T), [nonCIE_Tcutoff, CIE_Tcutoff],[dudt_nonCIE, dudt_CIE])
-        dudt = np.interp(np.log10(T), [nonCIE_Tcutoff, CIE_Tcutoff],[dudt_nonCIE, dudt_CIE])
+        dudt = np.interp(logT, [nonCIE_Tcutoff, CIE_Tcutoff],[dudt_nonCIE, dudt_CIE])
     
         return -1 * dudt * cvt.dudt_cgs2au
     
