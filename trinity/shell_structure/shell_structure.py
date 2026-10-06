@@ -324,7 +324,13 @@ def shell_structure_pure(params) -> ShellProperties:
     tau0_ion = 0  # tau(r) at ionized region
     mShell0 = 0
 
-    # Density at inner edge of shell
+    # Density at inner edge of shell: pressure balance with the bubble, Rahner+2017 eq. 14.
+    # This one line sets the ionised layer's thickness: the layer is a Stroemgren volume at n0,
+    # so it grows as Pb**-2. That is the physics only while Pb is also what drives the shell;
+    # once C3c has fired the EOM pushes with P_HII > Pb and the layer solved here sits at a
+    # pressure the dynamics has left behind. record_validity() flags such rows
+    # (shell_bc_mismatch) and the thickening rate against c_i (shell_vt_ci); do not quote this
+    # solve's thickness / R_IF / n_IF from flagged rows without saying so. PLAN.md row 63.
     nShell0 = (params['mu_ion_shell'].value / params['mu_convert'].value /
                (params['k_B'].value * params['TShell_ion'].value) * params['Pb'].value)
     shell_n0 = nShell0  # Store for output
@@ -943,3 +949,32 @@ def shell_structure_pure(params) -> ShellProperties:
         shell_fAbsorbedNeu_total=shell_fAbsorbedNeu_total,
     )
 
+
+def record_validity(params) -> None:
+    """Reporting-only domain flags for the shell solve. Call once per saved state, after the
+    runner has made P_HII and Pb final. Nothing in the dynamics reads what this sets.
+
+      shell_bc_mismatch   P_HII > Pb: the EOM's photoionised pressure exceeds the inner-boundary
+                          pressure the solve used (eq. 14), so the stored layer sits at a
+                          pressure the dynamics has left behind.
+      shell_vt_ci         d(shell_thickness)/dt / c_i between consecutive saved states, i.e.
+                          Rahner+2017 sec 2.3's quasi-hydrostatic criterion |v_t| < c_s, which
+                          the solve assumes and cannot check on its own (it has no time).
+
+    Measured ranges are in the registry entries. shell_vt_t_prev / shell_vt_thickness_prev hold
+    the finite-difference reference; a re-solve at the same t_now (phase-end reconciliation,
+    then the next phase's first state) leaves both the value and the reference alone.
+    """
+    params['shell_bc_mismatch'].value = bool(params['P_HII'].value > params['Pb'].value)
+    t = params['t_now'].value
+    d = params['shell_thickness'].value
+    t0 = params['shell_vt_t_prev'].value
+    if np.isfinite(t0) and t > t0:
+        c_i = np.sqrt(params['k_B'].value * params['TShell_ion'].value
+                      / params['mu_ion_shell'].value)
+        # NaN propagates from a dissolved shell, whose shell_thickness is NaN.
+        params['shell_vt_ci'].value = (
+            (d - params['shell_vt_thickness_prev'].value) / (t - t0) / c_i)
+    if not (t <= t0):          # first state (t0 is NaN) or a later time: advance the reference
+        params['shell_vt_t_prev'].value = t
+        params['shell_vt_thickness_prev'].value = d

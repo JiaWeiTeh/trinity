@@ -335,6 +335,7 @@ def run_energy(params):
         # =============================================================================
         # 6. Save snapshot BEFORE ODE — all values consistent at t_now
         # =============================================================================
+        shell_structure.record_validity(params)
         params.save_snapshot()
 
         # =============================================================================
@@ -501,6 +502,7 @@ def run_energy(params):
         params['shell_mass'].value = mShell_f
         shell_f = shell_structure.shell_structure_pure(params)
         updateDict(params, shell_f)
+        shell_structure.record_validity(params)
         params.save_snapshot()
     except Exception as e:
         logger.warning(f"Phase-boundary reconciliation failed: {e}")

@@ -64,6 +64,7 @@ from trinity._input.dictionary import updateDict
 from trinity.shell_structure.shell_structure import (
     shell_structure_pure,
     ShellProperties,
+    record_validity,
 )
 import trinity.bubble_structure.get_bubbleParams as get_bubbleParams
 from trinity.cloud_properties import density_profile
@@ -729,6 +730,7 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
         # At this point: t_now, R2, v2, feedback, shell_props, mShell, forces,
         # Pb are all computed for the SAME t_now
         _save_count_before = params.save_count
+        record_validity(params)
         params.save_snapshot()
 
         # stop_at_rCloud_nSnap: increment past-rCloud counter only when the
@@ -964,6 +966,7 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
 
         shell_props_f = shell_structure_pure(params)
         updateDict(params, shell_props_f)
+        record_validity(params)
         params.save_snapshot()
     except Exception as e:
         # Include exception class and deepest traceback frame so the warning

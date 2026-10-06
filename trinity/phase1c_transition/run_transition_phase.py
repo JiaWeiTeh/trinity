@@ -72,6 +72,7 @@ from trinity.phase1b_energy_implicit.get_betadelta import (
 from trinity.shell_structure.shell_structure import (
     shell_structure_pure,
     ShellProperties,
+    record_validity,
 )
 import trinity.bubble_structure.get_bubbleParams as get_bubbleParams
 
@@ -626,6 +627,7 @@ def run_phase_transition(params) -> TransitionPhaseResults:
         # At this point: t_now, R2, v2, Eb, feedback, shell_props, R1, Pb,
         # forces, mShell are all computed for the SAME t_now
         _save_count_before = params.save_count
+        record_validity(params)
         params.save_snapshot()
 
         # stop_at_rCloud_nSnap: increment past-rCloud counter only when the
@@ -915,6 +917,7 @@ def run_phase_transition(params) -> TransitionPhaseResults:
         params['P_HII'].value = force_f.P_HII
         params['P_drive'].value = force_f.P_drive
         params['P_ram'].value = force_f.P_ram
+        record_validity(params)
         params.save_snapshot()
     except Exception as e:
         logger.warning(f"Phase-boundary reconciliation failed: {e}")
