@@ -957,7 +957,7 @@ def record_validity(params) -> None:
       shell_bc_mismatch   P_HII > Pb: the EOM's photoionised pressure exceeds the inner-boundary
                           pressure the solve used (eq. 14), so the stored layer sits at a
                           pressure the dynamics has left behind.
-      shell_vt_ci         d(shell_thickness)/dt / c_i between consecutive saved states, i.e.
+      shell_vt_ci         d(shell_thickness)/dt [pc/Myr] / c_i [pc/Myr] between consecutive saved states, i.e.
                           Rahner+2017 sec 2.3's quasi-hydrostatic criterion |v_t| < c_s, which
                           the solve assumes and cannot check on its own (it has no time).
 
@@ -971,7 +971,7 @@ def record_validity(params) -> None:
     t0 = params['shell_vt_t_prev'].value
     if np.isfinite(t0) and t > t0:
         c_i = np.sqrt(params['k_B'].value * params['TShell_ion'].value
-                      / params['mu_ion_shell'].value)
+                      / params['mu_ion_shell'].value)   # [pc/Myr]: k_B [Msun pc^2/Myr^2/K] * T [K] / mu [Msun]
         # NaN propagates from a dissolved shell, whose shell_thickness is NaN.
         params['shell_vt_ci'].value = (
             (d - params['shell_vt_thickness_prev'].value) / (t - t0) / c_i)

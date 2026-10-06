@@ -108,3 +108,12 @@ def test_reference_keys_stay_out_of_snapshots(params):
     assert params["shell_vt_thickness_prev"].exclude_from_snapshot
     assert not params["shell_vt_ci"].exclude_from_snapshot
     assert not params["shell_bc_mismatch"].exclude_from_snapshot
+
+
+def test_c_i_is_the_isothermal_ionised_sound_speed(params):
+    """Pins the MAGNITUDE, not just the ratio: 10.18 km/s at 8000 K and mu = 14/22 m_H. A
+    units slip (k_B left in erg/K, mu_ion_shell as a bare m_H multiple) passes the ratio
+    tests above and fails here."""
+    import trinity._functions.unit_conversions as cvt
+
+    assert _c_i(params) == pytest.approx(10.18 * cvt.v_kms2au, rel=2e-3)
