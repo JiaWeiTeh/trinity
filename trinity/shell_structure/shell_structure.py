@@ -206,6 +206,7 @@ class ShellProperties:
     """
     # Shell density
     shell_n0: float  # Density at inner edge of shell
+    shell_P_bc: float  # Pressure used as the inner boundary (Pb, or max(Pb, P_HII_prev) under shell_bc = drive)
 
     # Shell geometry
     rShell: float  # Outer radius of shell
@@ -331,8 +332,20 @@ def shell_structure_pure(params) -> ShellProperties:
     # pressure the dynamics has left behind. record_validity() flags such rows
     # (shell_bc_mismatch) and the thickening rate against c_i (shell_vt_ci); do not quote this
     # solve's thickness / R_IF / n_IF from flagged rows without saying so. PLAN.md row 63.
+    # shell_bc = 'drive' lifts the boundary to the pressure the C3c EOM pushes with, using
+    # the PREVIOUS saved state's P_HII (it is computed from this solve's f_gas afterwards).
+    # That removes the two-pressures-at-one-surface inconsistency; it does not make the
+    # layer physical -- C3c has already spent the absorbed photons on the cavity sphere,
+    # so the layer absorbs them a second time (R_IF/R2 -> 2**(1/3)). Registry entry has
+    # the measured trajectory effect. Default 'Pb' is the same float, so bit-identical.
+    _bc_item = params.get('shell_bc', None)
+    _bc_mode = str(_bc_item.value if hasattr(_bc_item, 'value') else 'Pb').strip()
+    if _bc_mode == 'drive':
+        p_bc = max(pBubble, params['P_HII'].value)
+    else:
+        p_bc = pBubble
     nShell0 = (params['mu_ion_shell'].value / params['mu_convert'].value /
-               (params['k_B'].value * params['TShell_ion'].value) * params['Pb'].value)
+               (params['k_B'].value * params['TShell_ion'].value) * p_bc)
     shell_n0 = nShell0  # Store for output
 
     # Initialize logic gates
@@ -914,6 +927,7 @@ def shell_structure_pure(params) -> ShellProperties:
     # Return dataclass with all properties
     return ShellProperties(
         shell_n0=shell_n0,
+        shell_P_bc=p_bc,
         rShell=rShell,
         shell_thickness=shellThickness,
         shell_fAbsorbedIon=f_absorbed_ion,
@@ -954,9 +968,10 @@ def record_validity(params) -> None:
     """Reporting-only domain flags for the shell solve. Call once per saved state, after the
     runner has made P_HII and Pb final. Nothing in the dynamics reads what this sets.
 
-      shell_bc_mismatch   P_HII > Pb: the EOM's photoionised pressure exceeds the inner-boundary
-                          pressure the solve used (eq. 14), so the stored layer sits at a
-                          pressure the dynamics has left behind.
+      shell_bc_mismatch   P_HII > shell_P_bc: the EOM's photoionised pressure exceeds the
+                          pressure the solve used as its inner boundary (Pb by default; lifted to
+                          the previous P_HII under shell_bc = drive), so the stored layer sits at
+                          a pressure the dynamics has left behind.
       shell_vt_ci         d(shell_thickness)/dt [pc/Myr] / c_i [pc/Myr] between consecutive saved states, i.e.
                           Rahner+2017 sec 2.3's quasi-hydrostatic criterion |v_t| < c_s, which
                           the solve assumes and cannot check on its own (it has no time).
@@ -966,7 +981,7 @@ def record_validity(params) -> None:
     reference alone (a 0/0 guard: no two saved states share a t_now in the measured runs -- every
     phase boundary advances t by one segment -- but nothing upstream promises that).
     """
-    params['shell_bc_mismatch'].value = bool(params['P_HII'].value > params['Pb'].value)
+    params['shell_bc_mismatch'].value = bool(params['P_HII'].value > params['shell_P_bc'].value)
     t = params['t_now'].value
     d = params['shell_thickness'].value
     t0 = params['shell_vt_t_prev'].value

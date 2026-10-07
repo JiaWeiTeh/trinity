@@ -36,6 +36,7 @@ def params():
     # the homogeneous HEAD run at transition onset (t = 2.496 Myr): thermal Pb still the drive
     p["t_now"].value = 2.496
     p["Pb"].value = 730.0
+    p["shell_P_bc"].value = 730.0                               # what the solve stores under shell_bc = Pb
     p["P_HII"].value = 0.0
     p["shell_thickness"].value = 0.332
     return p
