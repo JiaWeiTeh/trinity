@@ -11,6 +11,19 @@ double-count caveat and the measured trajectory effect. These tests pin
   * the stored shell_P_bc is the pressure actually used, and shell_bc_mismatch compares
     P_HII against it;
   * the validator rejects unknown values and 'drive' under any closure other than c3c.
+
+Full-run gate for the commit that added the switch (2026-10-07, separate processes):
+  default 'Pb'   cloud_example_BE (285 snapshots) and cloud_example_homogeneous (503) identical
+                 on every pre-existing key of every row to the runs made before the switch
+                 existed; shell_P_bc == Pb on every row.
+  'drive'        the homogeneous run reproduces, on every pre-existing key of all 507 rows, a
+                 run made by wrapping shell_structure_pure from OUTSIDE the package with the
+                 same rule (two implementations, one answer).
+  Pb vs drive    energy/implicit rows identical on both configs. Homogeneous: momentum R2
+                 +4.05 % at 15 Myr, turnaround 14.02 -> 14.52 Myr, f_abs = 1 throughout,
+                 R_IF/R2 1.20-1.26 instead of 1.4-2.6. BE: recollapse 3.981 -> 3.989 Myr,
+                 R2 within 1 % until the last 0.2 Myr of the collapse, f_abs = 1 throughout,
+                 R_IF/R2 1.17-1.23 instead of 1.2-1.74. Neither run dissolves by its end.
 """
 from pathlib import Path
 
