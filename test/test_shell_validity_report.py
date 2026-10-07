@@ -4,7 +4,7 @@ Why they exist (docs/dev/phii-identity/PLAN.md row 63, 2026-10-06): the shell so
 inner edge at n0 ~ Pb (Rahner+2017 eq. 14) while, once C3c has fired, the EOM pushes with
 P_HII > Pb -- so every fired row stores a layer at a pressure the dynamics has left behind, and
 that layer re-equilibrates in the stored output at 6-19x the ionised sound speed through the
-transition. Neither condition is visible from the dynamics; these columns name them so a reader
+transition (p50 6-7). Neither condition is visible from the dynamics; these columns name them so a reader
 can gate structure diagnostics (thickness, R_IF, n_IF, profile exports) on them.
 
     shell_bc_mismatch   P_HII > Pb at the saved state
@@ -79,8 +79,9 @@ def test_rate_is_thickness_change_over_time_in_sound_speed_units(params):
 
 
 def test_resolve_at_the_same_time_changes_nothing(params):
-    """Phase-end reconciliation re-solves at the state's own t_now, and the next phase's
-    first state is at that same t_now: neither may produce a 0/0 or move the reference."""
+    """A call at an unchanged t_now must neither divide by zero nor move the reference. No
+    two saved states share a t_now in the measured runs (phase boundaries advance t by one
+    segment), so this is a guard, not an observed path."""
     record_validity(params)
     params["t_now"].value = 2.903
     params["shell_thickness"].value = 33.4

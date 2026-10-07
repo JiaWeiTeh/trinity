@@ -962,8 +962,9 @@ def record_validity(params) -> None:
                           the solve assumes and cannot check on its own (it has no time).
 
     Measured ranges are in the registry entries. shell_vt_t_prev / shell_vt_thickness_prev hold
-    the finite-difference reference; a re-solve at the same t_now (phase-end reconciliation,
-    then the next phase's first state) leaves both the value and the reference alone.
+    the finite-difference reference. A call at an unchanged t_now leaves both the value and the
+    reference alone (a 0/0 guard: no two saved states share a t_now in the measured runs -- every
+    phase boundary advances t by one segment -- but nothing upstream promises that).
     """
     params['shell_bc_mismatch'].value = bool(params['P_HII'].value > params['Pb'].value)
     t = params['t_now'].value
