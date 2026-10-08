@@ -3,6 +3,19 @@
 Thanks for your interest! Bug reports, fixes, and feature ideas are
 welcome.
 
+## Repository layout
+
+```
+run.py         single entry point for individual runs and parameter sweeps
+trinity/       the package: solver, evolution phases, bubble/shell/cloud physics, I/O
+param/         .param config files (the tracked ones are worked examples)
+lib/default/   bundled defaults — SB99 SPS table + cooling tables (quickstart runs out of the box)
+paper/         scripts that regenerate published figures (see "Reproducing the figures")
+docs/dev/      internal plan & audit write-ups (not user documentation)
+test/          pytest test suite
+tools/         small CLI utilities (param generation, audits, output comparisons)
+```
+
 ## Dev environment
 
 ```bash

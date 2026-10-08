@@ -7,24 +7,25 @@ authors:
   - given-names: Jia Wei
     family-names: Teh
     affiliation: >-
-      Institut für Theoretische Astrophysik, Zentrum für Astronomie,
-      Universität Heidelberg
+      Universität Heidelberg, Zentrum für Astronomie, Institut für
+      Theoretische Astrophysik
     email: jiaweiteh.astro@gmail.com
   - given-names: Ralf S.
     family-names: Klessen
     affiliation: >-
-      Institut für Theoretische Astrophysik, Zentrum für Astronomie,
-      Universität Heidelberg
+      Universität Heidelberg, Zentrum für Astronomie, Institut für
+      Theoretische Astrophysik; Universität Heidelberg, Interdisziplinäres
+      Zentrum für Wissenschaftliches Rechnen
   - given-names: Simon C. O.
     family-names: Glover
     affiliation: >-
-      Institut für Theoretische Astrophysik, Zentrum für Astronomie,
-      Universität Heidelberg
+      Universität Heidelberg, Zentrum für Astronomie, Institut für
+      Theoretische Astrophysik
   - given-names: Kathryn
     family-names: Kreckel
     affiliation: >-
-      Astronomisches Rechen-Institut, Zentrum für Astronomie,
-      Universität Heidelberg
+      Universität Heidelberg, Zentrum für Astronomie, Astronomisches
+      Rechen-Institut
 repository-code: "https://github.com/JiaWeiTeh/trinity"
 url: "https://jiaweiteh.github.io/trinity-web/"
 license: GPL-3.0-only

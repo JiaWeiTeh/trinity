@@ -1,9 +1,10 @@
 # TRINITY
 
-[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/)
+[![CI](https://github.com/JiaWeiTeh/trinity/actions/workflows/ci.yml/badge.svg)](https://github.com/JiaWeiTeh/trinity/actions/workflows/ci.yml)
+[![Docs](https://img.shields.io/badge/docs-trinity--web-brightgreen.svg)](https://jiaweiteh.github.io/trinity-web/)
 [![arXiv](https://img.shields.io/badge/arXiv-2605.27517-b31b1b.svg)](https://arxiv.org/abs/2605.27517)
-<a href="https://jiaweiteh.github.io/trinity-web/" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/docs-trinity--web-brightgreen.svg" alt="Documentation"></a>
+[![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 
 TRINITY is a feedback-driven bubble evolution code. For a given
 giant-molecular-cloud mass, star-formation efficiency, density profile,
@@ -12,27 +13,7 @@ feedback bubble, i.e., shell radius, velocity, thermal state, and force
 budget, and resolves the phase transitions and stopping fate of the
 shell.
 
-Full documentation: <https://jiaweiteh.github.io/trinity-web/>
-
-## Repository layout
-
-```
-run.py         single entry point for individual runs and parameter sweeps
-trinity/       the package: solver, evolution phases, bubble/shell/cloud physics, I/O
-param/         .param config files (the tracked ones are worked examples)
-lib/default/   bundled defaults — SB99 SPS table + cooling tables (quickstart runs out of the box)
-paper/         scripts that regenerate published figures (see "Reproducing the figures")
-docs/dev/      internal plan & audit write-ups (not user documentation)
-test/          pytest test suite
-tools/         small CLI utilities (param generation, audits, output comparisons)
-```
-
-## Requirements
-
-Python 3.9 or newer and the scientific stack (NumPy, SciPy, Astropy,
-Matplotlib, pandas), installed via the command below. No compilation
-step. Regenerating the publication-quality figures additionally needs a
-LaTeX installation, since the plot style renders text with `text.usetex`.
+**Documentation: <https://jiaweiteh.github.io/trinity-web/>**
 
 ## Quickstart
 
@@ -43,44 +24,10 @@ pip install -r requirements.txt
 python run.py param/simple_cluster.param
 ```
 
-A run is configured by a `.param` file that overrides only the keys it
-cares about; everything else falls back to the schema defaults. The
-shipped example is just two lines:
-
-```
-mCloud    1e5
-sfe       0.3
-```
-
-Other worked examples are tracked in `param/`: `cloud_example_PL.param`,
-`cloud_example_BE.param`, and `cloud_example_homogeneous.param` cover the
-three density profiles, and `sweep_example.param`,
-`sweep_tuple_example.param`, and `sweep_hybrid_example.param` cover the
-sweep syntaxes.
-
-## Parameter sweeps
-
-A `.param` file that uses list or tuple syntax is auto-detected as a
-sweep and run across an in-process worker pool:
-
-```bash
-python run.py param/sweep_example.param --dry-run     # list the combinations, run nothing
-python run.py param/sweep_example.param --workers 4   # run them across 4 workers
-```
-
-To scale across nodes on an HPC cluster (e.g. bwForCluster Helix /
-bwUniCluster), emit a SLURM job array instead, one task per combination:
-
-```bash
-python run.py param/sweep_example.param --emit-jobs jobs/
-# edit jobs/submit_sweep.sbatch: set --account / --partition / --time / --mem
-sbatch jobs/submit_sweep.sbatch
-python run.py --collect-report jobs/      # after the array finishes
-```
-
-Set an absolute `path2output` on a work/scratch filesystem for cluster
-runs. See the [documentation](https://jiaweiteh.github.io/trinity-web/)
-for the full workflow.
+Pure Python 3.9 or newer, with no compilation step. The
+[Running TRINITY](https://jiaweiteh.github.io/trinity-web/?view=docs&page=running)
+guide covers parameter files, parameter sweeps (including SLURM job arrays on a
+cluster), and the output layout.
 
 ## Reproducing the figures
 
@@ -104,10 +51,30 @@ on the [project site](https://jiaweiteh.github.io/trinity-web/#contact).
 
 ## Citation
 
-If you use TRINITY in your research, please consider citing the method
-paper, Teh et al. (2026) (arXiv [2605.27517](https://arxiv.org/abs/2605.27517)).
-A BibTeX entry is available from
-[ADS](https://ui.adsabs.harvard.edu/abs/2026arXiv260527517T/abstract).
+If you use TRINITY in published work, please cite the method paper,
+Teh et al. (2026), [arXiv:2605.27517](https://arxiv.org/abs/2605.27517):
+
+```bibtex
+@ARTICLE{2026arXiv260527517T,
+       author = {{Teh}, Jia Wei and {Klessen}, Ralf S. and {Glover}, Simon C.~O. and {Kreckel}, Kathryn},
+        title = "{TRINITY: A coupled model of winds, radiation, and photoionised gas in molecular clouds. I. Methods and validation}",
+      journal = {arXiv e-prints},
+         year = 2026,
+        month = may,
+          eid = {arXiv:2605.27517},
+archivePrefix = {arXiv},
+       eprint = {2605.27517},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2026arXiv260527517T},
+}
+```
+
+GitHub's *Cite this repository* button offers the same paper, from
+[`CITATION.cff`](CITATION.cff).
+
+## Contributing
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the development setup, the tests,
+and a map of the repository.
 
 ## License
 
