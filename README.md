@@ -15,6 +15,8 @@ shell.
 
 **Documentation: <https://jiaweiteh.github.io/trinity-web/>**
 
+Developed by [Jia Wei Teh](https://jiaweiteh.github.io/) at Universität Heidelberg.
+
 ## Quickstart
 
 ```bash
