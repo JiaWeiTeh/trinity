@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/JiaWeiTeh/trinity/actions/workflows/ci.yml/badge.svg)](https://github.com/JiaWeiTeh/trinity/actions/workflows/ci.yml)
 [![Docs](https://img.shields.io/badge/docs-trinity--web-brightgreen.svg)](https://jiaweiteh.github.io/trinity-web/)
+[![A&A](https://img.shields.io/badge/A%26A-714%2C%20A226-blue.svg)](https://doi.org/10.1051/0004-6361/202661074)
 [![arXiv](https://img.shields.io/badge/arXiv-2605.27517-b31b1b.svg)](https://arxiv.org/abs/2605.27517)
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
@@ -54,19 +55,21 @@ on the [project site](https://jiaweiteh.github.io/trinity-web/#contact).
 ## Citation
 
 If you use TRINITY in published work, please cite the method paper,
-Teh et al. (2026), [arXiv:2605.27517](https://arxiv.org/abs/2605.27517):
+Teh et al. (2026), [A&A 714, A226](https://doi.org/10.1051/0004-6361/202661074):
 
 ```bibtex
-@ARTICLE{2026arXiv260527517T,
+@ARTICLE{2026A&A...714A.226T,
        author = {{Teh}, Jia Wei and {Klessen}, Ralf S. and {Glover}, Simon C.~O. and {Kreckel}, Kathryn},
         title = "{TRINITY: A coupled model of winds, radiation, and photoionised gas in molecular clouds. I. Methods and validation}",
-      journal = {arXiv e-prints},
+      journal = {A\&A},
          year = 2026,
-        month = may,
-          eid = {arXiv:2605.27517},
+        month = oct,
+       volume = {714},
+          eid = {A226},
+        pages = {A226},
+          doi = {10.1051/0004-6361/202661074},
 archivePrefix = {arXiv},
        eprint = {2605.27517},
-       adsurl = {https://ui.adsabs.harvard.edu/abs/2026arXiv260527517T},
 }
 ```
 
