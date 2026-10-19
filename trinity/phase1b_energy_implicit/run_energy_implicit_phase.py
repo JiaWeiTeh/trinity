@@ -113,10 +113,16 @@ logger = logging.getLogger(__name__)
 # TODO: very fine grid in this phase. Only in transition phase it goes coarse. 
 
 COOLING_UPDATE_INTERVAL = 5e-3  # Myr - recalculate cooling
-DT_SEGMENT_INIT = 5e-4  # Myr - initial segment duration
+DT_SEGMENT_INIT = 5e-5  # Myr - initial segment duration (was 5e-4: see DT_DELTA_FRAC)
 DT_SEGMENT_MIN = 1e-4   # Myr - minimum segment duration
 DT_SEGMENT_MAX = 5e-2   # Myr - maximum segment duration
 MAX_SEGMENTS = 5000
+# A segment is integrated with the (beta, delta) of its start, so T0 moves by ~|delta| dt / t over it. When that
+# reaches ~10 % (a 0.5 kyr opening segment at 3 kyr with the first root's delta ~ -0.6, or later segments of ~8 %
+# of t once delta has gone below ~ -1), T0 overshoots and the tracked beta-delta root disappears; the run then held
+# frozen cooling (orionM43 probe, 2026-10-19: all 751 frozen runs lost the root this way). Capping every segment at
+# DT_DELTA_FRAC * t / |delta| keeps the implied T0 change near 2 %.
+DT_DELTA_FRAC = 0.02
 # Persistent loss of the dMdt>0 structure root marks the evaporation->
 # condensation domain boundary of the conduction-front model (McKee & Cowie
 # 1977) -- the energy-driven solution has physically ended. When at least
@@ -433,6 +439,13 @@ def next_dt_segment(dt_segment: float, max_dex_change: float,
         dt_segment = max(dt_segment / ADAPTIVE_FACTOR, DT_SEGMENT_MIN)
         logger.debug(f"beta-delta unconverged (streak {unconverged_streak}): "
                      f"dt: {dt_pre_guard:.3e} -> {dt_segment:.3e}")
+    return dt_segment
+
+
+def cap_dt_by_delta(dt_segment: float, delta: float, t_now: float) -> float:
+    """Longest next segment whose implied T0 change, |delta| * dt / t, stays at DT_DELTA_FRAC (see there)."""
+    if t_now > 0 and np.isfinite(delta) and delta != 0:
+        return min(dt_segment, DT_DELTA_FRAC * t_now / abs(delta))
     return dt_segment
 
 
@@ -1281,6 +1294,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
 
         dt_segment = next_dt_segment(dt_segment, max_dex_change,
                                      betadelta_unconverged_streak)
+        dt_segment = cap_dt_by_delta(dt_segment, params['cool_delta'].value, t_now)
 
         # ---------------------------------------------------------------------
         # Proactive velocity-based timestep control during collapse
