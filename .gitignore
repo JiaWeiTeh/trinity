@@ -31,6 +31,9 @@ paper/rosette/
 paper/orionNeAtHood/
 paper/orionM43/
 paper/trinity-phangs-I/
+paper/hamed/
+paper/pineda/
+paper/website/
 # referee-revision staging area (new analysis + HPC control-sweep harness; review before wiring into src/)
 paper/methods/upgrade/
 test/test_barnes_population.py
@@ -248,6 +251,20 @@ pytest-cache-files-*/
 .claude/settings.local.json
 .claude/worktrees/
 .claude/skills/referee/
+# GSD (@opengsd/gsd-core) local install: vendored tooling + per-machine state, reinstall with
+#  npx -y @opengsd/gsd-core@latest --claude --local. Planning artifacts stay local too.
+.claude/gsd-core/
+.claude/commands/gsd-*
+.claude/agents/gsd-*
+.claude/hooks/gsd-*
+.claude/hooks/lib/
+.claude/hooks/managed-hooks-registry.cjs
+.claude/hooks/package.json
+.claude/scripts/
+.claude/gsd-*
+.claude/.gsd-*
+.claude/.cc-writes/
+.planning/
 
 # HOTPATH F1 capture: large regenerable bubble-state pickles (~3 MB each).
 # Commit the CSV diagnostics under docs/dev/performance/data/, not these.
