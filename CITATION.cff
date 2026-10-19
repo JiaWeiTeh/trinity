@@ -54,7 +54,12 @@ preferred-citation:
       family-names: Glover
     - given-names: Kathryn
       family-names: Kreckel
+  journal: Astronomy & Astrophysics
+  volume: 714
+  start: A226
   year: 2026
+  month: 10
+  doi: 10.1051/0004-6361/202661074
   identifiers:
     - type: other
       value: "arXiv:2605.27517"
