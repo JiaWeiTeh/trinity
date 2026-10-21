@@ -63,6 +63,16 @@ _SHELL_EFOLDS_PER_SLICE = 5.0    # ... or this many phi e-folds, whichever is sm
 _SHELL_REFINE = 1                # terminal re-integrations to land the exit inside the last interval
 _SHELL_MAX_SLICES = 100_000      # loud caps; the legacy loops have neither
 _SHELL_MAX_POINTS = 20_000_000
+# Neutral-march slice cap (docs/dev/phii-identity PLAN.md Step 2b', 2026-10-21). The legacy neutral cap,
+# min(1, (max_shellRadius - R_IF)/10), is a tenth of an IONISED length; for a uniform ionised layer around
+# a small bubble it falls to ~R2/10 (3.5e-5 pc in StarBench's late phase), so a warm neutral layer took
+# millions of points. True: the adaptive neutral march's cap is max(legacy, _SHELL_NEU_R_FRAC * r), r the
+# slice's start radius. Wherever the legacy cap is the larger, nothing changes; where it is not, a slice
+# spans at most 1 % of r, so the area 4 pi r^2 the mass scale assumes changes by <= 2 % across it. (A flat
+# 1 pc cap let the mass scale overshoot layers much wider than R_IF: 1e-3 in shell_grav_phi on an archived
+# row.) False: the legacy cap.
+_SHELL_NEU_LAYER_SCALE = True
+_SHELL_NEU_R_FRAC = 0.01
 _SHELL_MIN_STEP_ULP = 8          # a slice must survive being divided into `nsteps` points
 _SHELL_REFINE_MIN_ULP = 256      # ... and a refinement STEP must clear lsoda's start test
 # Stop the IONISED march on its domain boundary (phi -> 0) with a terminal event rather than
@@ -108,7 +118,10 @@ def _integrate_ionised(y0, r_start, r_stop, nsteps, params):
 
 
 def _adaptive_slice(slice_default, y, r, m_carry, m_end, is_ionised, params, mu, nsteps):
-    """Slice width from the LOCAL scales, never wider than the legacy slice.
+    """Slice width from the LOCAL scales, never wider than `slice_default`.
+
+    `slice_default` is the legacy slice for the ionised march, and max(legacy,
+    _SHELL_NEU_R_FRAC * r) for the neutral march under _SHELL_NEU_LAYER_SCALE.
 
     Two kinds of scale, used differently:
 
@@ -344,6 +357,9 @@ def shell_structure_pure(params) -> ShellProperties:
     tauShell_arr_ion = np.array([])
     nShell_arr_ion = np.array([])
     rShell_arr_ion = np.array([])
+    # Each slice's (m, m_cum, phi, tau, n, r) is collected here and joined once after the march: a
+    # per-slice np.concatenate re-copied everything stored so far, O(N^2) in the slice count (PLAN Step 2b).
+    _ion_parts = []
 
     # No ionising photons => no ionised region at all. PLAN.md W47.
     _has_ionising = (Qi > 0.0) and (Li > 0.0)
@@ -498,13 +514,9 @@ def shell_structure_pure(params) -> ShellProperties:
             is_allMassSwept = bool(massCondition[idx])
             is_phiDepleted = bool(phiCondition[idx])
 
-        # Store values
-        mShell_arr_ion = np.concatenate((mShell_arr_ion, mShell_arr[:idx]))
-        mShell_arr_cum_ion = np.concatenate((mShell_arr_cum_ion, mShell_arr_cum[:idx]))
-        phiShell_arr_ion = np.concatenate((phiShell_arr_ion, phiShell_arr[:idx]))
-        tauShell_arr_ion = np.concatenate((tauShell_arr_ion, tauShell_arr[:idx]))
-        nShell_arr_ion = np.concatenate((nShell_arr_ion, nShell_arr[:idx]))
-        rShell_arr_ion = np.concatenate((rShell_arr_ion, rShell_arr[:idx]))
+        # Store values (joined after the loop)
+        _ion_parts.append((mShell_arr[:idx], mShell_arr_cum[:idx], phiShell_arr[:idx],
+                           tauShell_arr[:idx], nShell_arr[:idx], rShell_arr[:idx]))
 
         # Reinitialize for next iteration
         nShell0 = nShell_arr[idx]
@@ -515,6 +527,10 @@ def shell_structure_pure(params) -> ShellProperties:
 
         # Dissolution condition is now evaluated after shell structure is computed
         # (see diss_condition_met below); shell_structure_pure is stateless.
+
+    if _ion_parts:
+        (mShell_arr_ion, mShell_arr_cum_ion, phiShell_arr_ion, tauShell_arr_ion, nShell_arr_ion,
+         rShell_arr_ion) = (np.concatenate((np.array([]),) + col) for col in zip(*_ion_parts))
 
     # Append final values
     mShell_arr_ion = np.append(mShell_arr_ion, mShell_arr[idx])
@@ -648,6 +664,7 @@ def shell_structure_pure(params) -> ShellProperties:
         tauShell_arr_neu = np.array([])
         nShell_arr_neu = np.array([])
         rShell_arr_neu = np.array([])
+        _neu_parts = []      # per-slice (m, m_cum, tau, n, r), joined once after the march (PLAN Step 2b)
         rShell_start = rShell_arr_ion[-1]
 
         logger.debug('Ready to evaluate neutral shell region')
@@ -695,7 +712,10 @@ def shell_structure_pure(params) -> ShellProperties:
                         f"slices at r={rShell_start:.6g} (remaining mass {mShell_end - mShell0:.6g})."
                     )
                 if _SHELL_ADAPTIVE:
-                    sliceSize = _adaptive_slice(sliceSize_default_neu, [nShell0, tau0_neu],
+                    # the legacy cap is an ionised length; never let it fall below 1 % of r
+                    cap_neu = (max(sliceSize_default_neu, _SHELL_NEU_R_FRAC * rShell_start)
+                               if _SHELL_NEU_LAYER_SCALE else sliceSize_default_neu)
+                    sliceSize = _adaptive_slice(cap_neu, [nShell0, tau0_neu],
                                                 rShell_start, mShell0, mShell_end, False,
                                                 params, _mu_H, nsteps)
                     rShell_step = sliceSize / nsteps
@@ -746,16 +766,17 @@ def shell_structure_pure(params) -> ShellProperties:
 
                 neutral_massSwept = any(massCondition)
 
-                mShell_arr_neu = np.concatenate((mShell_arr_neu, mShell_arr[:idx]))
-                mShell_arr_cum_neu = np.concatenate((mShell_arr_cum_neu, mShell_arr_cum[:idx]))
-                tauShell_arr_neu = np.concatenate((tauShell_arr_neu, tauShell_arr[:idx]))
-                nShell_arr_neu = np.concatenate((nShell_arr_neu, nShell_arr[:idx]))
-                rShell_arr_neu = np.concatenate((rShell_arr_neu, rShell_arr[:idx]))
+                _neu_parts.append((mShell_arr[:idx], mShell_arr_cum[:idx], tauShell_arr[:idx],
+                                   nShell_arr[:idx], rShell_arr[:idx]))
 
                 nShell0 = nShell_arr[idx]
                 tau0_neu = tauShell_arr[idx]
                 mShell0 = mShell_arr_cum[idx]
                 rShell_start = rShell_arr[idx]
+
+            if _neu_parts:
+                (mShell_arr_neu, mShell_arr_cum_neu, tauShell_arr_neu, nShell_arr_neu,
+                 rShell_arr_neu) = (np.concatenate((np.array([]),) + col) for col in zip(*_neu_parts))
 
             # Append final neutral values
             mShell_arr_neu = np.append(mShell_arr_neu, mShell_arr[idx])
