@@ -996,6 +996,11 @@ PHII_SCHEMES = {
     'front': get_phii_front,
     'o1': get_phii_k10,
     'k11': get_phii_k11,
+    # The swept-mass formulation (docs/dev/phii-identity PLAN.md 0.0.11, Step 4) has no P_HII: in the
+    # momentum phase its runner (trinity/phase2_momentum/swept.py) drives the shell by the profile's own
+    # outer pressure. Until Steps 5-6 port the earlier phases it is c3c there, so a 'swept' run and a
+    # 'c3c' run share their history up to the momentum phase.
+    'swept': get_phii_c3c,
 }
 
 
