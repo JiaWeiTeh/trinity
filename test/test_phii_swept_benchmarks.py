@@ -22,6 +22,18 @@ if not all((HARNESS / f).exists() for f in ("option3_bench.py", "option3_offline
 sys.path.insert(0, str(HARNESS))
 import option3_bench as Bn  # noqa: E402
 import option3_offline as O  # noqa: E402
+import trinity.phase2_momentum.swept as S  # noqa: E402
+
+
+def _trinity_drive(syn, rs, Ms, t):
+    """Step 4 (PLAN 0.0.11.6): the root and the drive through trinity/'s swept code, not the harness's."""
+    fb, P = syn.fb(t), syn.P
+    P["Qi"].value, P["Li"].value, P["Ln"].value, P["Lbol"].value = fb.Qi, fb.Li, fb.Ln, fb.Lbol
+    r = S.root_R2(rs, Ms, fb, P)
+    assert r["ok"], r.get("why")
+    F = (Bn.FOUR_PI * r["R2"] ** 2 * r["Pc"] + r["K"]
+         - Bn.FOUR_PI * rs ** 2 * S.p_ext(rs, r["sp"].shell_fAbsorbedIon, P) + S.f_rad(r["sp"], P))
+    return r, F
 
 
 def _cem(zeta, kind):
@@ -64,14 +76,12 @@ def test_ed_switch_state_matches_the_dimensionless_form():
 def test_swept_drive_is_lancaster_eq28_at_the_switch_state(zeta):
     syn, R_eq, R_i, t_eq, u0 = _cem(zeta, "MD")
     rs, Ms, _ = Bn.swept_state(syn, "momentum", R_eq, 0.0, t_eq)
-    sw = O.Swept(syn, "momentum", 0)
-    sol = sw.root(rs, Ms, t_eq, 0.0, syn.fb(t_eq), dict(bubble_mass=0.0), scan=False)
-    assert sol["ok"]
+    sol, F = _trinity_drive(syn, rs, Ms, t_eq)
     R_IF = float(sol["sp"].R_IF)
     assert R_IF / R_i == pytest.approx(1.0, abs=1e-6)            # measured 2026-10-20: 6e-8
     assert sol["R2"] / R_eq == pytest.approx(1.0, abs=1e-10)
-    F = sw.drive(rs, sol["R2"], sol["Pc"], sol["K"], sol["Pext"], sol["Frad"])
-    # eq. 28's force pdot (R_i/R_w)^2; the residual is the 1 K rind's share of K (measured 1e-5)
+    # eq. 28's force pdot (R_i/R_w)^2; the residual is the 1 K rind's share of K (measured 1e-5; trinity's drive
+    # equals the harness's to the last bit here, 2026-10-24)
     assert F / (syn.pdot * (R_IF / sol["R2"]) ** 2) == pytest.approx(1.0, abs=1e-4)
     assert abs(sol["L8"]) < 1e-10
 
@@ -86,10 +96,9 @@ def test_swept_drive_is_the_hosokawa_inutsuka_force_at_the_b1_start():
     R0 = 1.1 * R_St
     rs, Ms, sp = Bn.rs_from_RIF(syn, "momentum", R0, 0.0, 0.0)
     assert float(sp.R_IF) / R0 == pytest.approx(1.0, abs=1e-10)
-    sol = Bn.SweptSB(syn, "momentum", 0).root(rs, Ms, 0.0, 0.0, syn.fb(0.0), dict(bubble_mass=0.0), scan=False)
-    F = O.Swept(syn, "momentum", 0).drive(rs, sol["R2"], sol["Pc"], sol["K"], sol["Pext"], sol["Frad"])
+    sol, F = _trinity_drive(syn, rs, Ms, 0.0)     # trinity's own bracket: no D18 needed at this state (14 solves)
     F_HI = Bn.FOUR_PI * R0**2 * syn.rho * syn.c_i() ** 2 * (R_St / R0) ** 1.5      # Bisbas eq. 6 at R_IF
-    assert F / F_HI == pytest.approx(1.0, abs=1e-4)              # measured 2026-10-20: 5e-6
+    assert F / F_HI == pytest.approx(1.0, abs=1e-4)              # measured 2026-10-20: 5e-6; trinity 2026-10-24: 4.9e-6
 
 
 def test_zero_light_w47_root_is_finite_and_radiation_free():
