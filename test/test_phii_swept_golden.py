@@ -96,6 +96,12 @@ def test_root_recovers_R2_and_the_shell_identity_closes(params, R2):
     assert root["R2"] == pytest.approx(R2, rel=1e-8)
     assert abs(root["resid"]) < 1e-9
     assert abs(root["L8"]) < 1e-6
+    # the bracket from a guess (Step 4c) finds the same root, and the same guess finds it bit-identically -- the
+    # runner's reconciliation after a broken-off segment relies on that to dedupe its snapshot
+    g1 = S.root_R2(float(sp.rShell), Ms, fb, params, guess=1.3 * R2)
+    g2 = S.root_R2(float(sp.rShell), Ms, fb, params, guess=1.3 * R2)
+    assert g1["R2"] == pytest.approx(R2, rel=1e-8)
+    assert g1["R2"] == g2["R2"]
 
 
 def test_swept_runner_invariants_on_simple_cluster(tmp_path):

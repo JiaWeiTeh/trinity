@@ -152,12 +152,17 @@ def f_rad(sp, params):
             * (1.0 + sp.shell_tauKappaRatio * params['dust_KappaIR'].value))
 
 
-def root_R2(rs, Ms, fb, params):
+def root_R2(rs, Ms, fb, params, guess=None):
     """R2 in (0, r_s) whose shell solve ends at r_s (PLAN 0.0.11.3). Returns a dict; ok=False with a reason.
 
-    Bracket [lo, r_s (1 - 1e-9)], lo = min(1e-3 r_s, the R2 whose inner density is 100 n_St(r_s)): at lo the mass
-    fits in a thin skin, at the top it cannot be held, so the residual rShell(R2) - r_s changes sign. A very thin
-    trial can be rejected by the shell solve, so lo steps up through 10 lo, 100 lo, 0.1 r_s, 0.5 r_s.
+    The residual rShell(R2) - r_s rises with R2: near R2 -> 0 the mass fits in a thin skin, at R2 -> r_s it cannot be
+    held. Lower end: given `guess` (the previous segment's root, scaled to this r_s), guess/1.5; otherwise
+    lo = min(1e-3 r_s, the R2 whose inner density is 100 n_St(r_s)), stepping up through 10 lo, 100 lo, 0.1 r_s,
+    0.5 r_s while the shell solve rejects a very thin trial. Upper end (Step 4c, 2026-10-24): 1.5 guess, or 4x the
+    lower end, stepping up by 4x until the residual is positive -- each trial still below the root becomes the lower
+    end. R2 = r_s (1 - 1e-9) is only the last resort: there the whole mass sits in a sliver at r_s and the profile
+    runs to millions of points (6.3M at B2's late states, each solve leaving ~9 MB of C-level memory behind). The
+    residual is cached, so brentq re-solves neither end.
     """
     g = lambda k: params[k].value  # noqa: E731
     count = {'n': 0}
@@ -168,10 +173,14 @@ def root_R2(rs, Ms, fb, params):
             params[k].value = v
         return dict(ok=False, why=why, nsolve=count['n'])
 
+    cache = {}
+
     def resid(R2):
-        count['n'] += 1
-        sp, _ = _shell_at(R2, rs, Ms, fb, params)
-        return float(sp.rShell) - rs
+        if R2 not in cache:
+            count['n'] += 1
+            sp, _ = _shell_at(R2, rs, Ms, fb, params)
+            cache[R2] = float(sp.rShell) - rs
+        return cache[R2]
 
     lo = 1e-3 * rs
     pdot = 2.0 * fb.Lmech_total / fb.v_mech_total if fb.v_mech_total > 0 else 0.0
@@ -181,24 +190,42 @@ def root_R2(rs, Ms, fb, params):
         lo = min(lo, math.sqrt(pdot / (FOUR_PI * p_ion * 100.0 * n_st)))
     hi = rs * (1 - 1e-9)
     flo, why = None, ''
-    for lo_try in (lo, 10 * lo, 100 * lo, 0.1 * rs, 0.5 * rs):
+    if guess is not None and lo < guess / 1.5 < hi:
         try:
-            flo = resid(lo_try)
-            lo = lo_try
-            break
-        except Exception as exc:  # noqa: BLE001 -- a trial the shell solve rejects; the next one is thicker
-            why = f'{type(exc).__name__}: {exc}'
+            f = resid(guess / 1.5)
+            if f < 0:
+                lo, flo = guess / 1.5, f
+        except Exception:  # noqa: BLE001 -- fall back to the ladder
+            pass
+    if flo is None:
+        for lo_try in (lo, 10 * lo, 100 * lo, 0.1 * rs, 0.5 * rs):
+            try:
+                flo = resid(lo_try)
+                lo = lo_try
+                break
+            except Exception as exc:  # noqa: BLE001 -- a trial the shell solve rejects; the next one is thicker
+                why = f'{type(exc).__name__}: {exc}'
     if flo is None:
         return failed(f'lower bracket solve failed: {why}')
-    try:
-        fhi = resid(hi)
-    except Exception as exc:  # noqa: BLE001
-        return failed(f'upper bracket solve failed: {type(exc).__name__}: {exc}')
-    if not (flo < 0 < fhi):
-        return failed(f'no bracket: f(lo)={flo:.3e} f(hi)={fhi:.3e}')
+    if flo >= 0:
+        return failed(f'no bracket: f(lo)={flo:.3e} >= 0 at lo={lo:.4g}')
+    up = min(1.5 * guess if (guess is not None and 1.5 * guess > lo) else 4 * lo, hi)
+    while True:
+        try:
+            fhi = resid(up)
+        except Exception as exc:  # noqa: BLE001
+            if up >= hi:
+                return failed(f'upper bracket solve failed: {type(exc).__name__}: {exc}')
+            up = hi                          # a trial the solve rejects: the last resort
+            continue
+        if fhi > 0:
+            break
+        if up >= hi:
+            return failed(f'no bracket: f(lo)={flo:.3e} f(hi)={fhi:.3e}')
+        lo, flo, up = up, fhi, min(4 * up, hi)
     n0 = count['n']
     try:
-        R2 = scipy.optimize.brentq(resid, lo, hi, xtol=1e-10 * rs, maxiter=100)
+        R2 = scipy.optimize.brentq(resid, lo, up, xtol=1e-10 * rs, maxiter=100)
     except Exception as exc:  # noqa: BLE001
         return failed(f'brentq: {exc}')
     iters = count['n'] - n0
@@ -270,7 +297,8 @@ def run_phase_momentum_swept(params) -> MomentumPhaseResults:
     logger.info(f"[swept] hand-off: r_s={rs:.6g} pc (R2={params['R2'].value:.6g}), M_s={Ms:.6g} Msun, "
                 f"u={u:.6g} pc/Myr (v2={params['v2'].value:.6g})")
 
-    t_now, rs_prev, segment_count, termination_reason = tmin, rs, 0, None
+    # the hand-off's fixed point solved (r_s, M_s) at the entry R2, so that R2 is the first segment's root
+    t_now, rs_prev, segment_count, termination_reason, x_prev = tmin, rs, 0, None, params['R2'].value / rs
     t_results, R2_results, u_results = [tmin], [params['R2'].value], [u]
     dt_segment, t_diss_onset = DT_SEGMENT_INIT, np.inf
     ode_events = build_momentum_phase_events(params)
@@ -292,7 +320,7 @@ def run_phase_momentum_swept(params) -> MomentumPhaseResults:
 
         # mass at the segment start: never decreasing, frozen while u <= 0 (D-T1)
         Ms = max(Ms, swept_mass(rs, u, Ms, u <= 0.0, params)[0])
-        root = root_R2(rs, Ms, fb, params)
+        root = root_R2(rs, Ms, fb, params, guess=x_prev * rs if x_prev else None)
         if not root['ok']:
             termination_reason = _end(params, f"swept_root_failed: {root['why']}", SimulationEndCode.ERROR_SOLVER,
                                       f"swept R2 root-find failed at t={t_now:.6e} Myr: {root['why']}")
@@ -358,6 +386,10 @@ def run_phase_momentum_swept(params) -> MomentumPhaseResults:
             break
 
         rs, u, t_now = float(sol.y[0, -1]), float(sol.y[1, -1]), float(sol.t[-1])
+        # the next guess only once the state has moved: a segment that breaks off (solver error) leaves the state
+        # where it was, and the reconciliation must re-find the same root -- bit-identical, so save_snapshot's
+        # (t_now, R2) guard drops it rather than writing a second row at the same t
+        x_prev = x
         # never decreasing: everything the edge passed this segment, up to its farthest point (a turnaround
         # inside the segment would otherwise drop the gas between the start and the peak)
         Ms = max(Ms, _scalar(mass_profile.get_mass_profile(float(np.max(sol.y[0])), params)))
@@ -420,7 +452,7 @@ def run_phase_momentum_swept(params) -> MomentumPhaseResults:
         params['rs_dyn'].value, params['v2'].value, params['shell_mass'].value = rs, u, Ms
         params.save_snapshot()
     else:
-        root = root_R2(rs, Ms, fb, params)
+        root = root_R2(rs, Ms, fb, params, guess=x_prev * rs if x_prev else None)
         if root['ok']:
             updateDict(params, root['sp'])
             U = edge_speed(u, rs, root['sp'].shell_fAbsorbedIon, params)
