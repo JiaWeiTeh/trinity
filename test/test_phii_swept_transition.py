@@ -120,3 +120,26 @@ def test_swept_momentum_continues_the_transition_state(tmp_path):
     first = mom[0]
     assert first["t_now"] == t_x
     assert (first["rs_dyn"], first["v2"], first["shell_mass"]) == (rs_x, u_x, M_x)
+
+
+def test_swept_transition_continues_a_swept_implicit_state(tmp_path, caplog):
+    """After a swept 1b (Step 6) the transition takes (rs_dyn, u, M_s) as they are, and its first zeta is the secant
+    from 1b's last root (params R2, rShell) to its own first root."""
+    import logging
+    p = _entry(tmp_path, f_thermal=3.0, stop_t=0.504)
+    fb = get_current_sps_feedback(p["t_now"].value, p)
+    rs_last = 1.02 * p["rShell"].value                                       # a 1b root pair just behind
+    M_last = S._scalar(S.mass_profile.get_mass_profile(rs_last, p))
+    last = S.root_R2(rs_last, M_last, fb, p, guess=0.98 * rs_last, Eb=p["Eb"].value, phase="implicit",
+                     t=p["t_now"].value)
+    assert last["ok"], last["why"]
+    rs0, u0 = 1.01 * rs_last, 8.0 * cvt.v_kms2au
+    M0 = S._scalar(S.mass_profile.get_mass_profile(rs0, p))
+    p["R2"].value, p["rShell"].value = last["R2"], rs_last
+    p["rs_dyn"].value, p["v2"].value, p["shell_mass"].value = rs0, u0, M0
+    with caplog.at_level(logging.DEBUG, logger="trinity.phase2_momentum.swept"):
+        TP.run_phase_transition(p)
+    tr = [r for r in _rows(p, tmp_path) if r["current_phase"] == "transition"]
+    assert (tr[0]["rs_dyn"], tr[0]["v2"], tr[0]["shell_mass"]) == (rs0, u0, M0)
+    zeta_logged = float(next(m for m in caplog.messages if "[swept] transition t=" in m).split("zeta=")[1].split(",")[0])
+    assert zeta_logged == pytest.approx((tr[0]["R2"] - last["R2"]) / (rs0 - rs_last), rel=1e-5)

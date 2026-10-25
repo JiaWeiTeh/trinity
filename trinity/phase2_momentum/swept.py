@@ -110,21 +110,27 @@ def swept_mass(r, U, M_floor, frozen, params):
 _TRIAL_KEYS = ('R2', 'R1', 'Pb', 'shell_mass', 'bubble_mass', 'rShell')     # what _shell_at writes
 
 
-def _p_conf(R2, Eb, fb, params):
-    """(P_conf, R1) at the inner face: P_ram in momentum (Eb None); max(P_th, P_ram) in transition (PLAN 0.0.11.3)."""
+def _p_conf(R2, Eb, fb, params, phase='transition', t=None):
+    """(P_conf, R1) at the inner face (PLAN 0.0.11.3): P_ram in momentum (Eb None); max(P_th, P_ram) in transition;
+    in the implicit phase the bubble's own pressure at time t, the switch-on ramp included, exactly as its drive."""
     if Eb is None:
         return get_bubbleParams.pRam(R2, fb.Lmech_total, fb.v_mech_total), R2
     R1 = get_bubbleParams.solve_R1(R2, Eb, fb.Lmech_total, fb.v_mech_total)
+    if phase == 'implicit':
+        dt_on = params['dt_switchon'].value if 'dt_switchon' in params else None
+        return get_bubbleParams.get_effective_bubble_pressure(
+            'implicit', Eb, R2, R1, params['gamma_adia'].value, fb.Lmech_total, fb.v_mech_total,
+            t=t, tSF=params['tSF'].value, dt_switchon=dt_on), R1
     return get_bubbleParams.get_effective_bubble_pressure('transition', Eb, R2, R1, params['gamma_adia'].value,
                                                           fb.Lmech_total, fb.v_mech_total), R1
 
 
-def _shell_at(R2, rs, Ms, fb, params, Eb=None):
+def _shell_at(R2, rs, Ms, fb, params, Eb=None, phase='transition', t=None):
     """The shell solve started at R2 (inner density from P_conf(R2)) with mass Ms; r_s is only the solver's guess.
 
-    In transition (Eb given) bubble_mass is left as the c3c transition leaves it (the implicit phase's last value).
+    With Eb given (implicit, transition) bubble_mass is left as the c3c runners leave it.
     """
-    Pc, R1 = _p_conf(R2, Eb, fb, params)
+    Pc, R1 = _p_conf(R2, Eb, fb, params, phase, t)
     params['R2'].value, params['R1'].value, params['Pb'].value = R2, R1, Pc
     params['shell_mass'].value = Ms
     if Eb is None:
@@ -166,7 +172,7 @@ def f_rad(sp, params):
             * (1.0 + sp.shell_tauKappaRatio * params['dust_KappaIR'].value))
 
 
-def root_R2(rs, Ms, fb, params, guess=None, Eb=None):
+def root_R2(rs, Ms, fb, params, guess=None, Eb=None, phase='transition', t=None):
     """R2 in (0, r_s) whose shell solve ends at r_s (PLAN 0.0.11.3). Returns a dict; ok=False with a reason.
 
     The residual rShell(R2) - r_s rises with R2: near R2 -> 0 the mass fits in a thin skin, at R2 -> r_s it cannot be
@@ -176,7 +182,10 @@ def root_R2(rs, Ms, fb, params, guess=None, Eb=None):
     lower end, stepping up by 4x until the residual is positive -- each trial still below the root becomes the lower
     end. R2 = r_s (1 - 1e-9) is only the last resort: there the whole mass sits in a sliver at r_s and the profile
     runs to millions of points (6.3M at B2's late states, each solve leaving ~9 MB of C-level memory behind). The
-    residual is cached, so brentq re-solves neither end. Eb given: the transition's inner pressure (_p_conf).
+    residual is cached, so brentq re-solves neither end. Eb given: the implicit or transition inner pressure (_p_conf).
+    Thin shells (Step 6, 2026-10-25): with a guess the bracket also works in the gap g = r_s - R2 (lower end no lower
+    than r_s - 2g, upper end no higher than r_s - g/2, stepping the gap down by 4), so a shell with R2/r_s near 1 does
+    not send the upper end to the last resort; for R2/r_s < 1/2 the ends are the R2 ones above.
     """
     g = lambda k: params[k].value  # noqa: E731
     count = {'n': 0}
@@ -192,7 +201,7 @@ def root_R2(rs, Ms, fb, params, guess=None, Eb=None):
     def resid(R2):
         if R2 not in cache:
             count['n'] += 1
-            sp, _ = _shell_at(R2, rs, Ms, fb, params, Eb)
+            sp, _ = _shell_at(R2, rs, Ms, fb, params, Eb, phase, t)
             cache[R2] = float(sp.rShell) - rs
         return cache[R2]
 
@@ -204,11 +213,12 @@ def root_R2(rs, Ms, fb, params, guess=None, Eb=None):
         lo = min(lo, math.sqrt(pdot / (FOUR_PI * p_ion * 100.0 * n_st)))
     hi = rs * (1 - 1e-9)
     flo, why = None, ''
-    if guess is not None and lo < guess / 1.5 < hi:
+    lo_g = max(guess / 1.5, rs - 2.0 * (rs - guess)) if guess is not None else None
+    if lo_g is not None and lo < lo_g < hi:
         try:
-            f = resid(guess / 1.5)
+            f = resid(lo_g)
             if f < 0:
-                lo, flo = guess / 1.5, f
+                lo, flo = lo_g, f
         except Exception:  # noqa: BLE001 -- fall back to the ladder
             pass
     if flo is None:
@@ -223,7 +233,9 @@ def root_R2(rs, Ms, fb, params, guess=None, Eb=None):
         return failed(f'lower bracket solve failed: {why}')
     if flo >= 0:
         return failed(f'no bracket: f(lo)={flo:.3e} >= 0 at lo={lo:.4g}')
-    up = min(1.5 * guess if (guess is not None and 1.5 * guess > lo) else 4 * lo, hi)
+    up = min(1.5 * guess, rs - 0.5 * (rs - guess), hi) if guess is not None else lo
+    if up <= lo:
+        up = min(4 * lo, hi)
     while True:
         try:
             fhi = resid(up)
@@ -236,31 +248,31 @@ def root_R2(rs, Ms, fb, params, guess=None, Eb=None):
             break
         if up >= hi:
             return failed(f'no bracket: f(lo)={flo:.3e} f(hi)={fhi:.3e}')
-        lo, flo, up = up, fhi, min(4 * up, hi)
+        lo, flo, up = up, fhi, min(4 * up, rs - 0.25 * (rs - up), hi)
     n0 = count['n']
     try:
         R2 = scipy.optimize.brentq(resid, lo, up, xtol=1e-10 * rs, maxiter=100)
     except Exception as exc:  # noqa: BLE001
         return failed(f'brentq: {exc}')
     iters = count['n'] - n0
-    sp, Pc = _shell_at(R2, rs, Ms, fb, params, Eb)
+    sp, Pc = _shell_at(R2, rs, Ms, fb, params, Eb, phase, t)
     count['n'] += 1
     K, F_rad_sh, P_out, L8 = layer_terms(sp, R2, Pc, params)
     return dict(ok=True, R2=R2, sp=sp, Pc=Pc, K=K, F_rad_sh=F_rad_sh, P_out=P_out, L8=L8,
                 resid=(float(sp.rShell) - rs) / rs, iters=iters, nsolve=count['n'])
 
 
-def initial_state(params, fb, Eb=None):
+def initial_state(params, fb, Eb=None, phase='transition', t=None):
     """Hand-off (PLAN 0.0.11.3): r_s from the mass-matched shell solve at the entry R2, u conserving momentum.
 
     r_s is the fixed point r_s = rShell(R2, M(<r_s)) (row 60), and u = M_sh v2 / M(<r_s): the shell's momentum
     shared with the swept gas, taken at rest (a merge, as Lancaster et al.'s eq. 37 divides the momentum injected
-    so far by the mass carried). Eb given: the transition's inner pressure.
+    so far by the mass carried). Eb given: the implicit or transition inner pressure.
     """
     R2, v2, m0 = params['R2'].value, params['v2'].value, params['shell_mass'].value
     m = m0
     for _ in range(60):
-        sp, _ = _shell_at(R2, params['rShell'].value, m, fb, params, Eb)
+        sp, _ = _shell_at(R2, params['rShell'].value, m, fb, params, Eb, phase, t)
         m_new = max(_scalar(mass_profile.get_mass_profile(float(sp.rShell), params)), m0)
         if abs(m_new - m) <= 1e-10 * m:
             break
@@ -271,11 +283,11 @@ def initial_state(params, fb, Eb=None):
     return float(sp.rShell), m, m0 * v2 / m
 
 
-def _forces_to_params(params, root, rs, u, Ms, Mdot, U, fabs_ion, fb, Eb=None):
+def _forces_to_params(params, root, rs, u, Ms, Mdot, U, fabs_ion, fb, Eb=None, phase='transition'):
     """The snapshot's force and pressure columns under 'swept' (no P_HII; F_ion_in over the OUTER area).
 
-    F_ram and P_drive are the inner face's P_conf; in transition (Eb given) Pb and P_ram keep the c3c transition's
-    meanings, the bubble's thermal pressure and the free wind's ram pressure.
+    F_ram and P_drive are the inner face's P_conf; with Eb given Pb and P_ram keep the c3c runners' meanings: Pb the
+    bubble's (unramped) thermal pressure, P_ram the free wind's ram pressure in transition and 0 in the implicit phase.
     """
     sp, R2, Pc = root['sp'], root['R2'], root['Pc']
     Pext = p_ext(rs, fabs_ion, params)
@@ -289,7 +301,8 @@ def _forces_to_params(params, root, rs, u, Ms, Mdot, U, fabs_ion, fb, Eb=None):
     params['P_drive'].value = params['P_ram'].value = params['Pb'].value = Pc
     if Eb is not None:
         params['Pb'].value = get_bubbleParams.bubble_E2P(Eb, R2, params['R1'].value, params['gamma_adia'].value)
-        params['P_ram'].value = get_bubbleParams.pRam(R2, fb.Lmech_total, fb.v_mech_total)
+        params['P_ram'].value = (0.0 if phase == 'implicit'
+                                 else get_bubbleParams.pRam(R2, fb.Lmech_total, fb.v_mech_total))
     params['press_HII_in'].value = Pext
     params['F_ram_wind'].value, params['F_ram_SN'].value = fb.pdot_W, fb.pdot_SN
     params['rs_dyn'].value, params['v2'].value, params['rs_dot'].value = rs, u, U
@@ -303,6 +316,110 @@ def _end(params, reason, code, message):
     params['SimulationEndCode'].value = code.code
     params['EndSimulationDirectly'].value = True
     return reason
+
+
+class ImplicitSwept:
+    """The swept state through phase 1b (PLAN.md Step 6, 2026-10-25): r_s, u, M_s and the closure's carry.
+
+    The c3c implicit runner keeps its loop -- the beta/delta solve and everything around it -- and calls these at its
+    hooks. Per segment: R2 root-found with the bubble's own pressure (switch-on ramp included); the wall speed
+    Rdot2 = zeta U, zeta = Delta R2 / Delta r_s from successive roots (1 on the first 1b segment); the RHS evolves
+    (r_s, u) with R2 = R2_root + zeta (r_s - r_s,root), while Eb and T0 keep their frozen beta/delta rates.
+    """
+
+    def __init__(self, params):
+        t = params['t_now'].value
+        fb = get_current_sps_feedback(t, params)
+        self.rs, self.Ms, self.u = initial_state(params, fb, params['Eb'].value, 'implicit', t)
+        logger.info(f"[swept] implicit hand-off: r_s={self.rs:.6g} pc (R2={params['R2'].value:.6g}), "
+                    f"M_s={self.Ms:.6g} Msun, u={self.u:.6g} pc/Myr (v2={params['v2'].value:.6g})")
+        self.x_prev, self.rs_prev = params['R2'].value / self.rs, self.rs
+        self.zeta, self.R2_last, self.rs_last, self.root = 1.0, None, None, None
+
+    def segment_start(self, params, fb, t, Eb):
+        """Mass, root, zeta and the speeds at the segment start; returns the root dict (ok=False on failure)."""
+        self.Ms = max(self.Ms, swept_mass(self.rs, self.u, self.Ms, self.u <= 0.0, params)[0])
+        root = root_R2(self.rs, self.Ms, fb, params, guess=self.x_prev * self.rs, Eb=Eb, phase='implicit', t=t)
+        if not root['ok']:
+            return root
+        # ponytail: zeta is a backward difference (as in 1c); ill-conditioned when r_s barely moves, kept then
+        if self.R2_last is not None and abs(self.rs - self.rs_last) > 1e-9 * self.rs:
+            self.zeta = (root['R2'] - self.R2_last) / (self.rs - self.rs_last)
+        self.R2_last, self.rs_last, self.root = root['R2'], self.rs, root
+        self.fabs_ion = root['sp'].shell_fAbsorbedIon
+        self.U = edge_speed(self.u, self.rs, self.fabs_ion, params)
+        self.Mdot = swept_mass(self.rs, self.U, self.Ms, self.u <= 0.0, params)[1]
+        self.Rdot2 = self.zeta * self.U
+        return root
+
+    def to_params(self, params, fb, Eb):
+        """The snapshot's swept columns (v2 back to the gas speed u; cool_alpha keeps t Rdot2 / R2)."""
+        _forces_to_params(params, self.root, self.rs, self.u, self.Ms, self.Mdot, self.U, self.fabs_ion, fb, Eb,
+                          phase='implicit')
+        if abs(self.root['L8']) > 1e-6:
+            logger.warning(f"[swept] L8 = {self.root['L8']:.2e} at t={params['t_now'].value:.6e} (bar 1e-6)")
+
+    def y0(self, Eb, T0):
+        return np.array([self.rs, self.u, Eb, T0])
+
+    def rhs(self, params, Ed, Td):
+        """The segment's RHS: (r_s, u) evolve with the live drive, Eb and T0 at their frozen beta/delta rates."""
+        R2a, rsa, z, K, F_rad = self.root['R2'], self.rs, self.zeta, self.root['K'], params['F_rad'].value
+        M_floor, fabs_ion = self.Ms, self.fabs_ion
+        G, mCluster = params['G'].value, params['mCluster'].value
+
+        def f(t, y):
+            r, v = max(y[0], 1e-10), y[1]
+            fb_t = get_current_sps_feedback(t, params)       # live, as the c3c RHS
+            R2t = R2a + z * (r - rsa)
+            Pc, _ = _p_conf(R2t, y[2], fb_t, params, 'implicit', t)
+            F = FOUR_PI * R2t**2 * Pc + K - FOUR_PI * r**2 * p_ext(r, fabs_ion, params) + F_rad
+            U_t = edge_speed(v, r, fabs_ion, params)
+            m, md = swept_mass(r, U_t, M_floor, v <= 0.0, params)
+            return np.array([U_t, (F - G * m / r**2 * (mCluster + 0.5 * m) - md * v) / m, Ed, Td])
+        return f
+
+    def R2_at(self, r):
+        """The bubble radius the closure gives at outer radius r within the current segment."""
+        return self.root['R2'] + self.zeta * (r - self.rs_last)
+
+    def advance(self, params, y, r_max):
+        """Take the segment's end state y = (r_s, u, ...); mass up to the farthest r_s reached. params R2 stays the
+        last root (with rShell, the pair the next phase's first zeta is taken from)."""
+        self.rs, self.u = float(y[0]), float(y[1])
+        self.Ms = max(self.Ms, _scalar(mass_profile.get_mass_profile(float(r_max), params)))
+        params['rs_dyn'].value, params['v2'].value, params['shell_mass'].value = self.rs, self.u, self.Ms
+        params['R2'].value = self.root['R2']
+
+    def moved(self):
+        """The next guess, once a segment has advanced (see the momentum runner)."""
+        self.x_prev = self.root['R2'] / self.rs_last
+
+    def collapse_flags(self, params):
+        """The c3c rule on (u, r_s), as Steps 4-5."""
+        if self.u < 0 and self.rs < self.rs_prev:
+            params['isCollapse'].value = True
+        elif self.u > 0 and self.rs > self.rs_prev:
+            params['isCollapse'].value = False
+        self.rs_prev = self.rs
+
+    def reconcile(self, params, t, Eb):
+        """The exit row when the run ends in 1b; when 1c follows it continues this state and writes none."""
+        if not params['EndSimulationDirectly'].value:
+            return
+        fb = get_current_sps_feedback(t, params)
+        updateDict(params, fb)
+        root = root_R2(self.rs, self.Ms, fb, params, guess=self.x_prev * self.rs, Eb=Eb, phase='implicit', t=t)
+        if not root['ok']:
+            logger.warning(f"[swept] phase-boundary reconciliation skipped: {root['why']}")
+            return
+        updateDict(params, root['sp'])
+        self.root, self.rs_last = root, self.rs
+        self.fabs_ion = root['sp'].shell_fAbsorbedIon
+        self.U = edge_speed(self.u, self.rs, self.fabs_ion, params)
+        self.Mdot = swept_mass(self.rs, self.U, self.Ms, self.u <= 0.0, params)[1]
+        self.to_params(params, fb, Eb)
+        params.save_snapshot()
 
 
 def run_phase_momentum_swept(params) -> MomentumPhaseResults:
@@ -507,7 +624,8 @@ def run_phase_transition_swept(params):
     transition's energy equation, min(L_mech - L_bubble - 4 pi R2^2 P_conf Rdot2 - L_leak, -Eb c_s / R2), with the
     bubble wall's speed Rdot2 := zeta U, zeta = Delta R2 / Delta r_s over the two latest root-finds (1 on the first
     segment; PLAN 0.0.11.3). Within a segment R2 = R2_root + zeta (r_s - r_s,root), so the volume in P_th moves at
-    the Rdot2 the work term charges. Exits, events and stops as the c3c transition, on (r_s, u). The exit row is
+    the Rdot2 the work term charges. After a swept implicit phase (Step 6) its state continues, and the first zeta is the
+    secant across the boundary. Exits, events and stops as the c3c transition, on (r_s, u). The exit row is
     written only if the run ends here; otherwise the momentum runner continues this state and its first row is it.
     """
     from trinity.phase1c_transition import run_transition_phase as TP     # TP dispatches here: import late
@@ -516,12 +634,21 @@ def run_phase_transition_swept(params):
     fb = get_current_sps_feedback(tmin, params)
     updateDict(params, fb)
     Eb = params['Eb'].value
-    rs, Ms, u = initial_state(params, fb, Eb)
-    logger.info(f"[swept] transition hand-off: r_s={rs:.6g} pc (R2={params['R2'].value:.6g}), M_s={Ms:.6g} Msun, "
-                f"u={u:.6g} pc/Myr (v2={params['v2'].value:.6g})")
+    if params['rs_dyn'].value > 0:
+        # 1b ran under 'swept' (Step 6): its state goes on, and the first zeta is the secant from 1b's last root
+        # (params R2 and rShell hold that pair) to this phase's first
+        rs, Ms, u = params['rs_dyn'].value, params['shell_mass'].value, params['v2'].value
+        R2_last, rs_last = params['R2'].value, params['rShell'].value
+        logger.info(f"[swept] continuing the implicit phase's state: r_s={rs:.12e} pc, M_s={Ms:.12e} Msun, "
+                    f"u={u:.12e} pc/Myr")
+    else:
+        rs, Ms, u = initial_state(params, fb, Eb)
+        R2_last = rs_last = None
+        logger.info(f"[swept] transition hand-off: r_s={rs:.6g} pc (R2={params['R2'].value:.6g}), M_s={Ms:.6g} Msun, "
+                    f"u={u:.6g} pc/Myr (v2={params['v2'].value:.6g})")
 
     t_now, rs_prev, segment_count, termination_reason, x_prev = tmin, rs, 0, None, params['R2'].value / rs
-    zeta, R2_last, rs_last = 1.0, None, None
+    zeta = 1.0
     t_results, R2_results, u_results, Eb_results = [tmin], [params['R2'].value], [u], [Eb]
     dt_segment, t_diss_onset = TP.DT_SEGMENT_INIT, np.inf
     ode_events = build_transition_phase_events(params, energy_floor=TP.ENERGY_FLOOR)

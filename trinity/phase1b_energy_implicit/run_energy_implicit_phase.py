@@ -756,6 +756,11 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
             final_time=tmin,
         )
 
+    # phii_scheme 'swept' (PLAN.md 0.0.11, Step 6): the loop below with swept hooks (`if sw:`); every c3c expression
+    # is unchanged, and where the c3c lines compute something swept replaces, the swept value overrides it after
+    from trinity.phase2_momentum.swept import ImplicitSwept, is_swept
+    sw = ImplicitSwept(params) if is_swept(params) else None
+
     # Initialize state
     R2 = params['R2'].value
     v2 = params['v2'].value
@@ -835,7 +840,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         # break BEFORE this iteration's save_snapshot fires.
         nSnap_rCloud = params['stop_at_rCloud_nSnap'].value
         if (nSnap_rCloud is not None
-                and R2 > params['rCloud'].value
+                and (sw.rs if sw else R2) > params['rCloud'].value
                 and params['_snapshots_after_rCloud'].value >= nSnap_rCloud):
             termination_reason = "stop_at_rCloud"
             params['SimulationEndReason'].value = (
@@ -868,13 +873,27 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         params['Eb'].value = Eb
         params['T0'].value = T0
         params['cool_alpha'].value = t_now / R2 * v2
-        update_collapse_radius(params, R2)
+        update_collapse_radius(params, sw.rs if sw else R2)
 
         # ---------------------------------------------------------------------
         # Get feedback
         # ---------------------------------------------------------------------
         feedback = get_current_sps_feedback(t_now, params)
         updateDict(params, feedback)
+
+        if sw:
+            root = sw.segment_start(params, feedback, t_now, Eb)
+            if not root['ok']:
+                termination_reason = f"swept_root_failed: {root['why']}"
+                params['SimulationEndReason'].value = f"swept R2 root-find failed at t={t_now:.6e} Myr: {root['why']}"
+                params['SimulationEndCode'].value = SimulationEndCode.ERROR_SOLVER.code
+                params['EndSimulationDirectly'].value = True
+                logger.error(params['SimulationEndReason'].value)
+                break
+            # beta/delta (its bubble solve and both Edot), A12 and cool_alpha see the bubble radius and its wall speed
+            R2, v2 = root['R2'], sw.Rdot2
+            params['R2'].value, params['v2'].value = R2, v2
+            params['cool_alpha'].value = t_now / R2 * v2
 
         # ---------------------------------------------------------------------
         # Covering-fraction energy leak (Eq. leak), consumed by the
@@ -1048,11 +1067,14 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
                 mShell = mShell_new
         params['shell_mass'].value = mShell
         params['shell_massDot'].value = mShell_dot
+        if sw:
+            mShell, mShell_dot = sw.Ms, sw.Mdot          # M(<r_s), swept at U
+            params['shell_mass'].value, params['shell_massDot'].value = mShell, mShell_dot
 
         # ---------------------------------------------------------------------
         # Calculate shell structure (now with current Pb, bubble_mass, shell_mass)
         # ---------------------------------------------------------------------
-        shell_props = shell_structure_pure(params)
+        shell_props = sw.root['sp'] if sw else shell_structure_pure(params)   # swept: the root's own solve
         updateDict(params, shell_props)
 
         # Compute P_HII: photoionised pressure (get_bubbleParams.get_phii_c3c) -- exactly 0.0 while confined
@@ -1089,6 +1111,8 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         params['press_HII_in'].value = force_props.press_HII_in
         params['F_ram_wind'].value = feedback.pdot_W
         params['F_ram_SN'].value = feedback.pdot_SN
+        if sw:
+            sw.to_params(params, feedback, Eb)      # swept forces and columns; v2 back to the gas speed u
 
         # ---------------------------------------------------------------------
         # Save snapshot BEFORE ODE - all values are consistent at t_now
@@ -1134,10 +1158,12 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
 
         # Capture parameter values BEFORE integration for adaptive stepping
         values_before = get_monitor_values(params)
+        if sw:
+            values_before['rs_dyn'] = params['rs_dyn'].value
 
         t_segment_end = min(t_now + dt_segment, tmax)
         t_span = (t_now, t_segment_end)
-        y0 = np.array([R2, v2, Eb, T0])
+        y0 = sw.y0(Eb, T0) if sw else np.array([R2, v2, Eb, T0])
 
         # Debug: log the solve_ivp inputs
         logger.debug(f"solve_ivp: t_span=({t_span[0]:.10e}, {t_span[1]:.10e}), dt={dt_segment:.3e}, "
@@ -1146,7 +1172,8 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         try:
             # Build solver kwargs (min_step only supported by LSODA)
             solver_kwargs = {
-                'fun': lambda t, y: get_ODE_implicit_pure(t, y, snapshot, params, Ed, Td),
+                'fun': (sw.rhs(params, Ed, Td) if sw
+                        else (lambda t, y: get_ODE_implicit_pure(t, y, snapshot, params, Ed, Td))),
                 't_span': t_span,
                 'y0': y0,
                 'method': ODE_METHOD,
@@ -1197,7 +1224,9 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
             delta_results.append(delta)
             # Apply event result to params
             apply_event_result(params, event_result, t_now, event_result.y,
-                              state_keys=['R2', 'v2', 'Eb', 'T0'])
+                              state_keys=(['rs_dyn', 'v2', 'Eb', 'T0'] if sw else ['R2', 'v2', 'Eb', 'T0']))
+            if sw:
+                sw.advance(params, event_result.y, np.max(sol.y[0]))
             if event_result.name == 'velocity_sign':
                 # Turnaround: straight to momentum, whatever Eb is left (ruled
                 # 2026-10-01, an approximation). Eb to the floor as for the Eb<=0
@@ -1229,6 +1258,10 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         params['v2'].value = v2
         params['Eb'].value = Eb
         params['T0'].value = T0
+        if sw:
+            sw.advance(params, sol.y[:, -1], np.max(sol.y[0]))
+            sw.moved()
+            R2, v2 = sw.R2_at(sw.rs), sw.u           # the bubble radius the closure gives now, and the gas speed
 
         # Energy-driven collapse: Eb has fallen through zero (a sink -- PdV work on a
         # heavy shell, or radiative cooling -- outruns the wind). The energy-driven
@@ -1290,7 +1323,10 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
                 params['shell_mass'].value = mShell_post
 
         values_after = get_monitor_values(params)
-        max_dex_change = compute_max_dex_change(values_before, values_after, ADAPTIVE_MONITOR_KEYS)
+        if sw:
+            values_after['rs_dyn'] = params['rs_dyn'].value
+        max_dex_change = compute_max_dex_change(values_before, values_after,
+                                                ADAPTIVE_MONITOR_KEYS + (['rs_dyn'] if sw else []))
 
         dt_segment = next_dt_segment(dt_segment, max_dex_change,
                                      betadelta_unconverged_streak)
@@ -1402,7 +1438,9 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         # read-off radius outward at 5-6 km/s and stopped at stop_r still
         # carrying isCollapse=True. The mass-never-decreases guard below keeps
         # the release safe.
-        if v2 < 0 and R2 < R2_prev:
+        if sw:
+            sw.collapse_flags(params)
+        elif v2 < 0 and R2 < R2_prev:
             params['isCollapse'].value = True
         elif v2 > 0 and R2 > R2_prev:
             params['isCollapse'].value = False
@@ -1420,7 +1458,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
 
         is_collapse = params.get('isCollapse', None)
         if is_collapse and hasattr(is_collapse, 'value') and is_collapse.value:
-            if R2 < update_collapse_radius(params, R2):
+            if (sw.rs if sw else R2) < update_collapse_radius(params, sw.rs if sw else R2):
                 termination_reason = "small_radius"
                 params['SimulationEndReason'].value = collapse_reason(params)
                 params['SimulationEndCode'].value = SimulationEndCode.SHELL_COLLAPSED.code
@@ -1429,7 +1467,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
 
         # Stop radius check (skip if stop_r is None)
         stop_r = params['stop_r'].value
-        if stop_r is not None and R2 > stop_r:
+        if stop_r is not None and (sw.rs if sw else R2) > stop_r:
             termination_reason = "large_radius"
             params['SimulationEndReason'].value = 'Large radius reached'
             params['SimulationEndCode'].value = SimulationEndCode.LARGE_RADIUS.code
@@ -1466,7 +1504,9 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
     # block (set before the break above). See docs/dev/transition/pdv-trigger/
     # PB_COLLAPSE_GUARD_FIX.md.
     # =========================================================================
-    if termination_reason != "energy_collapsed":
+    if sw and termination_reason != "energy_collapsed":
+        sw.reconcile(params, t_now, Eb)            # only when the run ends here; otherwise 1c continues the state
+    elif termination_reason != "energy_collapsed":
         try:
             feedback_final = get_current_sps_feedback(t_now, params)
             updateDict(params, feedback_final)
