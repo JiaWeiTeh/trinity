@@ -11,7 +11,8 @@ Unit checks on trinity/phase2_momentum/swept.py, on simple_cluster's own paramet
     recover the R2 that produced a given r_s, inside and outside the cloud.
 Goldens from momentum-phase replays of two archived runs (harness/momentum_replay.py; skipped where the gitignored
 docs/dev is absent): ROS for 0.05 Myr inside its cloud, and B3MW1 to 3 Myr, whose shell leaks its ionising photons
-from 2.59 Myr and then runs supersonically into photoionised gas -- the one regime where the sweep speed matters.
+from 2.59 Myr; that lies past its cloud's edge, where since Step 7a (A1, 2026-10-26) the edge moves at one speed, so
+the jump itself is covered by the edge-speed unit tests above.
 Every momentum snapshot must close L8 to 1e-6 and keep rs_dyn on the shell solve's rShell.
 """
 import json
