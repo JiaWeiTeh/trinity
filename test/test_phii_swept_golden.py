@@ -63,16 +63,20 @@ def test_edge_speed_is_the_isothermal_jump_when_photons_escape_inside_the_cloud(
     assert (rho1 * ((U - u) ** 2 + c0_sq)) / (U ** 2 + c0_sq) == pytest.approx(1.0, rel=1e-12)   # momentum flux
 
 
-def test_edge_speed_past_the_cloud_follows_the_ambient(params):
+def test_edge_speed_is_one_speed_past_the_cloud(params):
+    # PLAN Step 7a (A1, ruled 2026-10-26): the isothermal jump only while the gas ahead is cloud gas; past rCloud the
+    # edge moves with the shell gas whatever the ambient, warm (c0 = c_i / 2, where the jump used to fire) or hot.
     r, u = 2.0 * params["rCloud"].value, 20.0
     rho = params["mu_convert"].value * S._scalar(S.density_profile.get_density_profile(S.np.array([r]), params))
     kB, saved = params["k_B"].value, params["PISM"].value
     try:
-        params["PISM"].value = 0.25 * _c_i_sq(params) * rho / kB          # warm ambient, c0 = c_i / 2
-        assert S.edge_speed(u, r, 1.0, params) == pytest.approx(0.5 * (u + math.sqrt(u * u + _c_i_sq(params))),
-                                                                rel=1e-12)
-        params["PISM"].value = 4.0 * _c_i_sq(params) * rho / kB           # hotter than photoionised gas
-        assert S.edge_speed(u, r, 1.0, params) == u
+        for c0_sq_over_ci_sq in (0.25, 4.0):
+            params["PISM"].value = c0_sq_over_ci_sq * _c_i_sq(params) * rho / kB
+            assert S.edge_speed(u, r, 1.0, params) == u
+            assert S.edge_speed(u, params["rCloud"].value, 1.0, params) == u     # the boundary counts as past, as p_ext has it
+        params["PISM"].value = 0.0                                                # a leaking shell past the cloud, no ambient
+        assert S.p_ext(r, 0.5, params) > 0.0                                      # pressure: the photoionised gas sets c0 alone
+        assert S.edge_speed(u, r, 0.5, params) == u
     finally:
         params["PISM"].value = saved
 
@@ -160,9 +164,12 @@ REPLAYS = {
     "ROS": ("data/hpc/c_20261020_160344Z/c3c/ROS", 0.05,
             dict(t_now=0.2541449275435451, rs_dyn=7.803146704777075, R2=2.8182449184169838, v2=0.4751732523377449,
                  shell_mass=48782.04930761799, rs_dot=0.4751732523377449)),
+    # re-baselined 2026-10-26 for Step 7a (A1: no isothermal jump past rCloud); the photon-leaking phase past the cloud
+    # now moves at u. Before: rs_dyn 56.5944666794103, R2 29.77295416523202, v2 23.640990774125516,
+    # shell_mass 126267.9094900973, rs_dot 27.574867019049176 (rs_dyn -2.7 %, the jump's ~+3 % of row 65d removed).
     "B3MW1": ("data/hpc/c_20261020_160350Z/c3c/B3MW1", 2.5949,
-              dict(t_now=3.000005544939368, rs_dyn=56.5944666794103, R2=29.77295416523202, v2=23.640990774125516,
-                   shell_mass=126267.9094900973, rs_dot=27.574867019049176)),
+              dict(t_now=3.000005544939368, rs_dyn=55.06341541842723, R2=28.93108066838488, v2=24.07067971163264,
+                   shell_mass=124191.75344031441, rs_dot=24.07067971163264)),
 }
 
 

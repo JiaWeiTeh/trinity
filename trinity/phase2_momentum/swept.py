@@ -83,10 +83,12 @@ def p_ext(r, fabs_ion, params):
 def edge_speed(u, r, fabs_ion, params):
     """The outer edge's speed U for shell-gas speed u: the isothermal jump at the gas ahead (D-T2 (b)).
 
-    Applies where u > 0 and 0 < c0 <= c_i; elsewhere U = u. c0 = c_i exactly when photons escape inside the
-    cloud (P_ext/rho = k T_ion / mu_ion_shell), so the cut carries a 1e-9 relative allowance for rounding.
+    Applies where u > 0, the gas ahead is cloud gas (r < rCloud; PLAN Step 7a, A1) and 0 < c0 <= c_i; elsewhere
+    U = u. c0 = c_i exactly when photons escape inside the cloud (P_ext/rho = k T_ion / mu_ion_shell), so the cut
+    carries a 1e-9 relative allowance for rounding. Past the cloud the dense shell moves with its gas, as in every
+    single-speed shell model; a separately tracked weak front there (A2) is the future upgrade.
     """
-    if u <= 0.0:
+    if u <= 0.0 or r >= params['rCloud'].value:
         return u
     rho = params['mu_convert'].value * _scalar(density_profile.get_density_profile(np.array([r]), params))
     if rho <= 0.0:
