@@ -978,6 +978,9 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
                 f"cannot be reached: handing off to the transition phase "
                 f"(KAPPA_FREEZE_MECHANISM.md fix #1) [no_physical_root_handoff]."
             )
+            if sw:
+                # v2 holds the wall speed set at this segment's start; 1c continues the swept state, as advance wrote it
+                params['rs_dyn'].value, params['v2'].value, params['shell_mass'].value = sw.rs, sw.u, sw.Ms
             break
 
         # Update params with new beta/delta

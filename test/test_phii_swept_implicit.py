@@ -11,6 +11,7 @@ which ties the stored R2, rs_dyn, rs_dot and cool_alpha together. The mass never
 """
 import json
 import math
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -52,3 +53,54 @@ def test_swept_implicit_rows_close_the_shell_and_carry_the_wall_speed(rows):
         assert b["cool_alpha"] * b["R2"] / b["t_now"] == pytest.approx(zeta * b["rs_dot"], rel=1e-9)
         assert b["shell_mass"] >= a["shell_mass"]
     assert len({r["cool_beta"] for r in im}) > 1                              # beta/delta was solved, not held
+
+
+# The 1b -> 1c hand-off on the no-physical-root exit (PLAN.md Step 7 item (6), gate H1, registered 2026-10-26).
+# The runner forces that exit on the second implicit segment and spies on ImplicitSwept.advance; the transition
+# runner must start from the last state advance carried, not from the wall speed set at the segment start.
+_HANDOFF_DRIVER = r'''
+import json, runpy, sys
+import trinity.phase1b_energy_implicit.run_energy_implicit_phase as imp
+import trinity.phase2_momentum.swept as swept
+calls, last, seen = [0], {}, {}
+def forced(window):
+    calls[0] += 1
+    return calls[0] >= 2
+imp.unsolvable_handoff = forced
+_start = swept.ImplicitSwept.segment_start
+def segment_start(self, params, fb, t, Eb):
+    root = _start(self, params, fb, t, Eb)
+    last['wall'] = self.Rdot2                     # what this segment's start put in v2
+    return root
+swept.ImplicitSwept.segment_start = segment_start
+_advance = swept.ImplicitSwept.advance
+def advance(self, params, y, r_max):
+    _advance(self, params, y, r_max)
+    last.update(rs=self.rs, u=self.u, Ms=self.Ms)
+    last.pop('wall', None)
+swept.ImplicitSwept.advance = advance
+_transition = swept.run_phase_transition_swept
+def transition(params):
+    if not seen:
+        seen.update(rs=params['rs_dyn'].value, u=params['v2'].value, Ms=params['shell_mass'].value, last=dict(last),
+                    calls=calls[0], flags=str(params['solver_flags'].value))
+        with open('handoff.json', 'w') as f:
+            json.dump(seen, f)
+    return _transition(params)
+swept.run_phase_transition_swept = transition
+sys.argv = ['run.py', 'fixture.param']
+runpy.run_path(%r, run_name='__main__')
+'''
+
+
+def test_no_root_handoff_carries_the_swept_state(tmp_path):
+    (tmp_path / "fixture.param").write_text(_PARAM)
+    (tmp_path / "driver.py").write_text(_HANDOFF_DRIVER % str(REPO / "run.py"))
+    res = subprocess.run([sys.executable, "driver.py"], cwd=tmp_path, capture_output=True, text=True, timeout=1800,
+                         env={**os.environ, "PYTHONPATH": os.pathsep.join(filter(None, [str(REPO), os.environ.get("PYTHONPATH")]))})
+    assert res.returncode == 0, res.stderr[-3000:]
+    h = json.loads((tmp_path / "handoff.json").read_text())
+    assert h["last"], "advance never ran before the forced exit"
+    assert h["calls"] == 2 and "no_physical_root_handoff" in h["flags"], "1b did not leave by the forced exit"
+    assert h["last"]["wall"] != h["last"]["u"], "the segment-start wall speed equals u: the test could not see the bug"
+    assert (h["rs"], h["u"], h["Ms"]) == (h["last"]["rs"], h["last"]["u"], h["last"]["Ms"])
