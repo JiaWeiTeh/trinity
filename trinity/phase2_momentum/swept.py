@@ -342,6 +342,40 @@ def root_R2(rs, Ms, fb, params, guess=None, Eb=None, phase='transition', t=None)
                 resid=(float(sp.rShell) - rs) / rs, iters=iters, nsolve=count['n'])
 
 
+def capped_r2(R2_eq, R2_prev, dt, c_i, k):
+    """The R2 a segment uses under swept_r2_cap = k: inward no faster than k c_i, outward free (PLAN \u00a79, 2026-10-27)."""
+    if k <= 0 or R2_prev is None:
+        return R2_eq
+    return max(R2_eq, R2_prev - k * c_i * dt)
+
+
+def _r2_cap_state(params, t0):
+    """The cap's [R2, t] at the last segment start, or None when swept_r2_cap is off."""
+    if not (params['swept_r2_cap'].value if 'swept_r2_cap' in params else 0.0):
+        return None
+    # ponytail: the memory rides on the params object so it crosses the 1c->2 hand-off; a registry key would put it in
+    # every snapshot. Only touched when the cap is on (separate processes per run, so nothing leaks between runs).
+    if getattr(params, '_r2cap_prev', None) is None:
+        params._r2cap_prev = [params['R2'].value, t0]
+    return params._r2cap_prev
+
+
+def _r2_cap(root, rs, Ms, fb, params, Eb, t, prev):
+    """swept_r2_cap: the root at the capped R2 (prev updated in place). Re-solved there, so P_conf, K_s and F_rad,sh
+    follow the capped R2; the structure's own edge then overshoots r_s, kept in resid (the registered mismatch)."""
+    if prev is None:
+        return root
+    c_i = math.sqrt(params['k_B'].value * params['TShell_ion'].value / params['mu_ion_shell'].value)
+    R2 = capped_r2(root['R2'], prev[0], t - prev[1], c_i, params['swept_r2_cap'].value)
+    prev[0], prev[1] = R2, t
+    if R2 == root['R2']:
+        return root
+    sp, Pc = _shell_at(R2, rs, Ms, fb, params, Eb)
+    K, F_rad_sh, P_out, L8 = layer_terms(sp, R2, Pc, params)
+    return dict(root, R2=R2, sp=sp, Pc=Pc, K=K, F_rad_sh=F_rad_sh, P_out=P_out, L8=L8,
+                resid=(float(sp.rShell) - rs) / rs, nsolve=root['nsolve'] + 1)
+
+
 def initial_state(params, fb, Eb=None, phase='transition', t=None):
     """Hand-off (PLAN 0.0.11.3): r_s from the mass-matched shell solve at the entry R2, u conserving momentum.
 
@@ -620,6 +654,7 @@ def run_phase_momentum_swept(params) -> MomentumPhaseResults:
     t_results, R2_results, u_results = [tmin], [params['R2'].value], [u]
     dt_segment, t_diss_onset = DT_SEGMENT_INIT, np.inf
     ode_events = build_momentum_phase_events(params)
+    r2_prev = _r2_cap_state(params, tmin)
     G, mCluster = params['G'].value, params['mCluster'].value
 
     while t_now <= tmax and segment_count < MAX_SEGMENTS:
@@ -644,6 +679,7 @@ def run_phase_momentum_swept(params) -> MomentumPhaseResults:
                                       f"swept R2 root-find failed at t={t_now:.6e} Myr: {root['why']}")
             logger.error(params['SimulationEndReason'].value)
             break
+        root = _r2_cap(root, rs, Ms, fb, params, None, t_now, r2_prev)
         sp = root['sp']
         updateDict(params, sp)
         fabs_ion = sp.shell_fAbsorbedIon
@@ -772,6 +808,7 @@ def run_phase_momentum_swept(params) -> MomentumPhaseResults:
     else:
         root = root_R2(rs, Ms, fb, params, guess=x_prev * rs if x_prev else None)
         if root['ok']:
+            root = _r2_cap(root, rs, Ms, fb, params, None, t_now, r2_prev)
             updateDict(params, root['sp'])
             U = edge_speed(u, rs, root['sp'].shell_fAbsorbedIon, params)
             _forces_to_params(params, root, rs, u, Ms, swept_mass(rs, U, Ms, u <= 0.0, params)[1], U,
@@ -825,6 +862,7 @@ def run_phase_transition_swept(params):
     t_results, R2_results, u_results, Eb_results = [tmin], [params['R2'].value], [u], [Eb]
     dt_segment, t_diss_onset = TP.DT_SEGMENT_INIT, np.inf
     ode_events = build_transition_phase_events(params, energy_floor=TP.ENERGY_FLOOR)
+    r2_prev = _r2_cap_state(params, tmin)
     G, mCluster = params['G'].value, params['mCluster'].value
 
     while t_now <= tmax and segment_count < TP.MAX_SEGMENTS:
@@ -851,6 +889,7 @@ def run_phase_transition_swept(params):
                                       f"swept R2 root-find failed at t={t_now:.6e} Myr: {root['why']}")
             logger.error(params['SimulationEndReason'].value)
             break
+        root = _r2_cap(root, rs, Ms, fb, params, Eb, t_now, r2_prev)
         # ponytail: zeta is a backward difference, ill-conditioned when r_s barely moves (a turnaround); there
         # the previous zeta is kept. Upgrade if Step 6 needs it: Rdot2 = Delta R2 / Delta t
         if R2_last is not None and abs(rs - rs_last) > 1e-9 * rs:
@@ -1011,6 +1050,7 @@ def run_phase_transition_swept(params):
         else:
             root = root_R2(rs, Ms, fb, params, guess=x_prev * rs if x_prev else None, Eb=Eb)
             if root['ok']:
+                root = _r2_cap(root, rs, Ms, fb, params, Eb, t_now, r2_prev)
                 updateDict(params, root['sp'])
                 U = edge_speed(u, rs, root['sp'].shell_fAbsorbedIon, params)
                 _forces_to_params(params, root, rs, u, Ms, swept_mass(rs, U, Ms, u <= 0.0, params)[1], U,

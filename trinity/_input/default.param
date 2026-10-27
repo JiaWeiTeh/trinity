@@ -316,3 +316,6 @@ cool_delta    -6/35
 
 # INFO: The relative radius xi = r/R2, at which we measure the bubble temperature.
 bubble_xi_Tb    0.98
+
+# INFO: phii_scheme 'swept' only, a SENSITIVITY switch (docs/dev/phii-identity PLAN.md §9, 2026-10-27, G-R2cap): k > 0 caps how fast the bubble radius R2 may move INWARD in the transition and momentum phases, R2 >= R2_prev - k c_i dt with c_i the isothermal ionised sound speed (k_B TShell_ion / mu_ion_shell)**0.5. Where the cap binds, the shell is re-solved at the capped R2, so the forces follow it and the structure's own outer edge overshoots r_s (recorded in swept_root_resid). 0 (default) = off, the root R2 as before.
+swept_r2_cap    0.0
