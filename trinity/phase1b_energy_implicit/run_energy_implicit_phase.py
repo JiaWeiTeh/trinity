@@ -80,6 +80,7 @@ from trinity.phase1_energy.energy_phase_ODEs import (
     compute_derived_quantities,
 )
 from trinity.phase1b_energy_implicit.get_betadelta import (
+    _get_betadelta_solver,
     solve_betadelta_pure,
     cool_beta_to_Ebdot_pure,
     delta2dTdt_pure,
@@ -133,12 +134,16 @@ DT_DELTA_FRAC = 0.02
 # observed so far are <= 8 segments and recover). Until 2026-10-01 this counted
 # 50 CONSECUTIVE no-root segments; a rescue that succeeded now and then reset
 # that count, and two pilot_v5 runs ground for 12 h without handing off.
+# (2026-10-27, docs/dev/phii-identity PLAN.md Step 7b-4: BETADELTA_DT_SHRINK_MAX_STREAK + 1 consecutive unconverged segments,
+# no-root ones included, now hand off too -- unconverged_handoff -- so this window still catches intermittent runs of no-root
+# segments but no longer consecutive ones.)
 UNSOLVABLE_WINDOW = 60
 UNSOLVABLE_HANDOFF_COUNT = 50
 # Cost cap: once the root has been unreachable for more than
 # BETADELTA_DT_SHRINK_MAX_STREAK segments, the beta-delta rescue ladder (legacy
 # grid + L-BFGS-B + hybr retry) runs only every RESCUE_EVERY-th segment; the
 # others get hybr alone. Counted in n_cost_capped_segments, flagged 'cost_cap'.
+# (Since 2026-10-27, Step 7b-4, the 1b loop hands off at that streak, so it no longer reaches the cost-capped branch.)
 RESCUE_EVERY = 10
 FOUR_PI = 4.0 * np.pi
 
@@ -156,6 +161,8 @@ BETADELTA_UNCONVERGED_WARN_STREAK = 3
 # floor-dt only multiplies segment count without buying correctness
 # (field case: a 1e6 Msun run pinned at beta=1 ground at ~1e-4 Myr/segment
 # with a ~4-day projected phase completion).
+# (Since 2026-10-27, Step 7b-4, the 1b loop hands off on the first unconverged segment beyond this streak instead of
+# disengaging the mitigation and carrying on: unconverged_handoff.)
 BETADELTA_DT_SHRINK_MAX_STREAK = 10
 
 # Velocity-based proactive timestep control (for rapid collapse)
@@ -388,6 +395,17 @@ def rescue_allowed(unconverged_streak: int) -> bool:
 def unsolvable_handoff(window) -> bool:
     """True once >= UNSOLVABLE_HANDOFF_COUNT of the recent segments were unsolvable."""
     return sum(window) >= UNSOLVABLE_HANDOFF_COUNT
+
+
+def unconverged_handoff(unconverged_streak: int, converged: bool, solver: str) -> bool:
+    """True when this segment's beta-delta solve is unconverged after BETADELTA_DT_SHRINK_MAX_STREAK unconverged segments.
+
+    The dt and rescue mitigation has had its segments and the cooling solve still has no converged root: the energy-driven
+    solution has ended (the root is lost; docs/dev/phii-identity PLAN.md Step 7b-4, 2026-10-27), so hand off rather than carry on
+    in 1b. Until then the runner logged 'root apparently unreachable' here and carried on. Only for the production 'hybr' solver
+    (maintainer, 2026-10-27): under the opt-in 'legacy' solver non-convergence can be its bounded search box, not a lost root.
+    """
+    return solver == 'hybr' and not converged and unconverged_streak >= BETADELTA_DT_SHRINK_MAX_STREAK
 
 
 def betadelta_phase_summary(solve_count: int, converged_count: int,
@@ -798,6 +816,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
     # Active transition criteria (parsed + validated once; default {'cooling_balance'}
     # reproduces current behavior exactly). Comma-separated set allows >1 trigger.
     active_triggers = parse_transition_triggers(params['transition_trigger'].value)
+    betadelta_solver = _get_betadelta_solver(params)    # the lost-root hand-off (unconverged_handoff) is for 'hybr' only
 
     # Adaptive time stepping
     dt_segment = DT_SEGMENT_INIT
@@ -951,7 +970,8 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
 
         # No physical (dMdt>0, valid-structure) root: the energy-driven solution
         # is degenerate at this (beta, delta). One segment is logged and held;
-        # many in a row hand off (unsolvable_handoff below). bubble_properties is
+        # many in a row hand off (unsolvable_handoff, or unconverged_handoff after BETADELTA_DT_SHRINK_MAX_STREAK
+        # consecutive unconverged segments; below). bubble_properties is
         # None here, so the structure values and the dMdt warm start below hold
         # at the last physical segment.
         if betadelta_result.no_physical_root:
@@ -975,19 +995,30 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         else:
             no_root_streak = 0
             no_root_streak_t0 = None
-        if unsolvable_handoff(unsolvable_recent):
+        no_root = unsolvable_handoff(unsolvable_recent)
+        lost_root = unconverged_handoff(betadelta_unconverged_streak, betadelta_result.converged, betadelta_solver)
+        if no_root or lost_root:
             termination_reason = "no_physical_root_handoff"
             add_solver_flag(params, termination_reason)
-            logger.warning(
-                f"beta-delta: {sum(unsolvable_recent)} of the last "
-                f"{len(unsolvable_recent)} segments had no physical (dMdt>0) root "
-                f"or a non-finite residual (t={t_now:.6e} Myr, Lloss/Lgain="
-                f"{params['bubble_Lloss'].value / max(params['bubble_Lgain'].value, 1e-300):.4f}). "
-                f"The structure root has crossed to dMdt<0 — the "
-                f"conduction-front condensation regime (McKee & Cowie 1977) — or "
-                f"cannot be reached: handing off to the transition phase "
-                f"(KAPPA_FREEZE_MECHANISM.md fix #1) [no_physical_root_handoff]."
-            )
+            if no_root:
+                logger.warning(
+                    f"beta-delta: {sum(unsolvable_recent)} of the last "
+                    f"{len(unsolvable_recent)} segments had no physical (dMdt>0) root "
+                    f"or a non-finite residual (t={t_now:.6e} Myr, Lloss/Lgain="
+                    f"{params['bubble_Lloss'].value / max(params['bubble_Lgain'].value, 1e-300):.4f}). "
+                    f"The structure root has crossed to dMdt<0 — the "
+                    f"conduction-front condensation regime (McKee & Cowie 1977) — or "
+                    f"cannot be reached: handing off to the transition phase "
+                    f"(KAPPA_FREEZE_MECHANISM.md fix #1) [no_physical_root_handoff]."
+                )
+            else:
+                logger.warning(
+                    f"beta-delta: no converged root for {betadelta_unconverged_streak + 1} consecutive segments "
+                    f"(t={t_now:.6e} Myr, accepted residual={betadelta_result.total_residual:.3e}): the dt and rescue "
+                    f"mitigation is spent and the energy-driven solution has ended (its root is lost); handing off "
+                    f"to the transition phase instead of carrying on in 1b (1c starts from this segment's state, its "
+                    f"last cooling luminosity included; PLAN.md Step 7b-4) [no_physical_root_handoff]."
+                )
             if sw:
                 # v2 holds the wall speed set at this segment's start; 1c continues the swept state, as advance wrote it
                 params['rs_dyn'].value, params['v2'].value, params['shell_mass'].value = sw.rs, sw.u, sw.Ms

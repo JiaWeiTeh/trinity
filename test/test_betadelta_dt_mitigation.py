@@ -176,3 +176,64 @@ def test_unsolvable_handoff_counts_a_window_not_a_streak():
     w.append(False)
     w.append(False)
     assert not RIP.unsolvable_handoff(w)
+
+
+def test_unconverged_handoff_after_the_mitigation_streak():
+    """Step 7b-4: an unconverged solve hands off once BETADELTA_DT_SHRINK_MAX_STREAK unconverged segments came before it,
+    under the production 'hybr' solver only."""
+    M = RIP.BETADELTA_DT_SHRINK_MAX_STREAK
+    assert not RIP.unconverged_handoff(M - 1, False, "hybr")       # still inside the mitigation
+    assert RIP.unconverged_handoff(M, False, "hybr")               # the (M+1)-th unconverged segment in a row
+    assert RIP.unconverged_handoff(5 * M, False, "hybr")
+    assert not RIP.unconverged_handoff(M, True, "hybr")            # a converged solve never hands off here
+    assert not RIP.unconverged_handoff(0, False, "hybr")           # an isolated miss does not
+    assert not RIP.unconverged_handoff(5 * M, False, "legacy")     # legacy: non-convergence may be its bounded box
+
+
+# The runner's call site (Step 7b-4, /xcheck 2026-10-27): a run whose beta-delta solves are reported unconverged from the third
+# implicit segment on must hand off on the 11th such segment, and only there. c3c fixture, in its own process (trinity keeps
+# module-level state). The forced results keep the solver's real (beta, delta); only the convergence flag is overridden.
+_UNCONV_DRIVER = r"""
+import atexit, dataclasses, json, runpy, sys
+import trinity.phase1b_energy_implicit.run_energy_implicit_phase as RIP
+n, rec = [0], {"calls": []}
+_solve = RIP.solve_betadelta_pure
+def solve(b, d, params, *a, **kw):
+    n[0] += 1
+    res = _solve(b, d, params, *a, **kw)
+    return dataclasses.replace(res, converged=False) if n[0] >= 3 else res
+RIP.solve_betadelta_pure = solve
+_uh = RIP.unconverged_handoff
+def uh(streak, converged, solver):
+    out = _uh(streak, converged, solver)
+    rec["calls"].append([streak, bool(converged), bool(out)])
+    return out
+RIP.unconverged_handoff = uh
+atexit.register(lambda: json.dump(rec, open("unconv.json", "w")))
+sys.argv = ["run.py", "fixture.param"]
+runpy.run_path(%r, run_name="__main__")
+"""
+
+
+def test_runner_hands_off_on_the_eleventh_unconverged_segment(tmp_path):
+    import json
+    import os
+    import subprocess
+    import sys
+    from pathlib import Path
+    repo = Path(__file__).resolve().parents[1]
+    (tmp_path / "fixture.param").write_text("mCloud 1e4\nsfe 0.1\nnCore 5e2\nstop_t 0.008\nmodel_name unconv\nlog_console False\n")
+    (tmp_path / "driver.py").write_text(_UNCONV_DRIVER % str(repo / "run.py"))
+    res = subprocess.run([sys.executable, "driver.py"], cwd=tmp_path, capture_output=True, text=True, timeout=1800,
+                         env={**os.environ, "PYTHONPATH": os.pathsep.join(filter(None, [str(repo), os.environ.get("PYTHONPATH")]))})
+    assert res.returncode == 0, res.stderr[-3000:]
+    calls = json.loads((tmp_path / "unconv.json").read_text())["calls"]
+    M = RIP.BETADELTA_DT_SHRINK_MAX_STREAK
+    forced = [c for c in calls if not c[1]]
+    assert len(forced) == M + 1                                       # 1b ended on the (M+1)-th forced segment
+    assert [c[0] for c in forced] == list(range(M + 1))               # streak 0..M before each
+    assert [c[2] for c in calls] == [False] * (len(calls) - 1) + [True]   # handed off once, on the last call
+    rows = [json.loads(ln) for ln in (tmp_path / "outputs" / "unconv" / "dictionary.jsonl").read_text().splitlines() if ln.strip()]
+    assert any(r["current_phase"] == "transition" for r in rows)       # and the run went on into 1c
+    final = json.loads((tmp_path / "outputs" / "unconv" / "metadata.json").read_text())["final_state"]
+    assert final["transition_channel"] == "no_physical_root_handoff"     # the rows do not carry the channel; metadata does
