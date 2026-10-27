@@ -80,6 +80,7 @@ from trinity.phase1_energy.energy_phase_ODEs import (
     compute_derived_quantities,
 )
 from trinity.phase1b_energy_implicit.get_betadelta import (
+    _get_betadelta_solver,
     solve_betadelta_pure,
     cool_beta_to_Ebdot_pure,
     delta2dTdt_pure,
@@ -133,12 +134,16 @@ DT_DELTA_FRAC = 0.02
 # observed so far are <= 8 segments and recover). Until 2026-10-01 this counted
 # 50 CONSECUTIVE no-root segments; a rescue that succeeded now and then reset
 # that count, and two pilot_v5 runs ground for 12 h without handing off.
+# (2026-10-27, docs/dev/phii-identity PLAN.md Step 7b-4: BETADELTA_DT_SHRINK_MAX_STREAK + 1 consecutive unconverged segments,
+# no-root ones included, now hand off too -- unconverged_handoff -- so this window still catches intermittent runs of no-root
+# segments but no longer consecutive ones.)
 UNSOLVABLE_WINDOW = 60
 UNSOLVABLE_HANDOFF_COUNT = 50
 # Cost cap: once the root has been unreachable for more than
 # BETADELTA_DT_SHRINK_MAX_STREAK segments, the beta-delta rescue ladder (legacy
 # grid + L-BFGS-B + hybr retry) runs only every RESCUE_EVERY-th segment; the
 # others get hybr alone. Counted in n_cost_capped_segments, flagged 'cost_cap'.
+# (Since 2026-10-27, Step 7b-4, the 1b loop hands off at that streak, so it no longer reaches the cost-capped branch.)
 RESCUE_EVERY = 10
 FOUR_PI = 4.0 * np.pi
 
@@ -156,6 +161,8 @@ BETADELTA_UNCONVERGED_WARN_STREAK = 3
 # floor-dt only multiplies segment count without buying correctness
 # (field case: a 1e6 Msun run pinned at beta=1 ground at ~1e-4 Myr/segment
 # with a ~4-day projected phase completion).
+# (Since 2026-10-27, Step 7b-4, the 1b loop hands off on the first unconverged segment beyond this streak instead of
+# disengaging the mitigation and carrying on: unconverged_handoff.)
 BETADELTA_DT_SHRINK_MAX_STREAK = 10
 
 # Velocity-based proactive timestep control (for rapid collapse)
@@ -388,6 +395,17 @@ def rescue_allowed(unconverged_streak: int) -> bool:
 def unsolvable_handoff(window) -> bool:
     """True once >= UNSOLVABLE_HANDOFF_COUNT of the recent segments were unsolvable."""
     return sum(window) >= UNSOLVABLE_HANDOFF_COUNT
+
+
+def unconverged_handoff(unconverged_streak: int, converged: bool, solver: str) -> bool:
+    """True when this segment's beta-delta solve is unconverged after BETADELTA_DT_SHRINK_MAX_STREAK unconverged segments.
+
+    The dt and rescue mitigation has had its segments and the cooling solve still has no converged root: the energy-driven
+    solution has ended (the root is lost; docs/dev/phii-identity PLAN.md Step 7b-4, 2026-10-27), so hand off rather than carry on
+    in 1b. Until then the runner logged 'root apparently unreachable' here and carried on. Only for the production 'hybr' solver
+    (maintainer, 2026-10-27): under the opt-in 'legacy' solver non-convergence can be its bounded search box, not a lost root.
+    """
+    return solver == 'hybr' and not converged and unconverged_streak >= BETADELTA_DT_SHRINK_MAX_STREAK
 
 
 def betadelta_phase_summary(solve_count: int, converged_count: int,
@@ -756,6 +774,11 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
             final_time=tmin,
         )
 
+    # phii_scheme 'swept' (PLAN.md 0.0.11, Step 6): the loop below with swept hooks (`if sw:`); every c3c expression
+    # is unchanged, and where the c3c lines compute something swept replaces, the swept value overrides it after
+    from trinity.phase2_momentum.swept import ImplicitSwept, is_swept
+    sw = ImplicitSwept(params) if is_swept(params) else None
+
     # Initialize state
     R2 = params['R2'].value
     v2 = params['v2'].value
@@ -793,6 +816,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
     # Active transition criteria (parsed + validated once; default {'cooling_balance'}
     # reproduces current behavior exactly). Comma-separated set allows >1 trigger.
     active_triggers = parse_transition_triggers(params['transition_trigger'].value)
+    betadelta_solver = _get_betadelta_solver(params)    # the lost-root hand-off (unconverged_handoff) is for 'hybr' only
 
     # Adaptive time stepping
     dt_segment = DT_SEGMENT_INIT
@@ -835,7 +859,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         # break BEFORE this iteration's save_snapshot fires.
         nSnap_rCloud = params['stop_at_rCloud_nSnap'].value
         if (nSnap_rCloud is not None
-                and R2 > params['rCloud'].value
+                and (sw.rs if sw else R2) > params['rCloud'].value
                 and params['_snapshots_after_rCloud'].value >= nSnap_rCloud):
             termination_reason = "stop_at_rCloud"
             params['SimulationEndReason'].value = (
@@ -868,13 +892,31 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         params['Eb'].value = Eb
         params['T0'].value = T0
         params['cool_alpha'].value = t_now / R2 * v2
-        update_collapse_radius(params, R2)
+        update_collapse_radius(params, sw.rs if sw else R2)
 
         # ---------------------------------------------------------------------
         # Get feedback
         # ---------------------------------------------------------------------
         feedback = get_current_sps_feedback(t_now, params)
         updateDict(params, feedback)
+
+        if sw:
+            root = sw.segment_start(params, feedback, t_now, Eb)
+            if not root['ok']:
+                termination_reason = f"swept_root_failed: {root['why']}"
+                params['SimulationEndReason'].value = f"swept R2 root-find failed at t={t_now:.6e} Myr: {root['why']}"
+                params['SimulationEndCode'].value = SimulationEndCode.ERROR_SOLVER.code
+                params['EndSimulationDirectly'].value = True
+                logger.error(params['SimulationEndReason'].value)
+                break
+            # beta/delta (its bubble solve and both Edot), A12 and cool_alpha see the bubble radius and its wall speed
+            R2, v2 = root['R2'], sw.Rdot2
+            params['R2'].value, params['v2'].value = R2, v2
+            params['cool_alpha'].value = t_now / R2 * v2
+            # Step 7b-1 step control: a large miss of the last closure shortens this segment (never below the floor)
+            dt_segment = sw.cap_dt(dt_segment, min(dt_segment, DT_SEGMENT_MIN))
+            # Step 7b-2: a photon-escape switch predicted inside the segment ends it just past the switch (this segment only)
+            dt_run = sw.switch_cut(dt_segment, min(dt_segment, DT_SEGMENT_MIN))
 
         # ---------------------------------------------------------------------
         # Covering-fraction energy leak (Eq. leak), consumed by the
@@ -903,6 +945,12 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
             params,
             rescue=rescue,
         )
+        if sw and sw.recouple(params, Eb, betadelta_result.L_gain, betadelta_result.L_loss):
+            # Step 7b-1: the wall speed with this solve's own luminosities moved > 1 %: solve once more with it
+            v2 = sw.Rdot2
+            params['v2'].value = v2
+            params['cool_alpha'].value = t_now / R2 * v2
+            betadelta_result = solve_betadelta_pure(betadelta_result.beta, betadelta_result.delta, params, rescue=rescue)
         # counted only where the cap changed something: the ladder would have run
         # (a hybr 'structure solve failed' no-root) and was skipped
         n_capped += (not rescue and betadelta_result.no_physical_root
@@ -922,7 +970,8 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
 
         # No physical (dMdt>0, valid-structure) root: the energy-driven solution
         # is degenerate at this (beta, delta). One segment is logged and held;
-        # many in a row hand off (unsolvable_handoff below). bubble_properties is
+        # many in a row hand off (unsolvable_handoff, or unconverged_handoff after BETADELTA_DT_SHRINK_MAX_STREAK
+        # consecutive unconverged segments; below). bubble_properties is
         # None here, so the structure values and the dMdt warm start below hold
         # at the last physical segment.
         if betadelta_result.no_physical_root:
@@ -946,19 +995,33 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         else:
             no_root_streak = 0
             no_root_streak_t0 = None
-        if unsolvable_handoff(unsolvable_recent):
+        no_root = unsolvable_handoff(unsolvable_recent)
+        lost_root = unconverged_handoff(betadelta_unconverged_streak, betadelta_result.converged, betadelta_solver)
+        if no_root or lost_root:
             termination_reason = "no_physical_root_handoff"
             add_solver_flag(params, termination_reason)
-            logger.warning(
-                f"beta-delta: {sum(unsolvable_recent)} of the last "
-                f"{len(unsolvable_recent)} segments had no physical (dMdt>0) root "
-                f"or a non-finite residual (t={t_now:.6e} Myr, Lloss/Lgain="
-                f"{params['bubble_Lloss'].value / max(params['bubble_Lgain'].value, 1e-300):.4f}). "
-                f"The structure root has crossed to dMdt<0 — the "
-                f"conduction-front condensation regime (McKee & Cowie 1977) — or "
-                f"cannot be reached: handing off to the transition phase "
-                f"(KAPPA_FREEZE_MECHANISM.md fix #1) [no_physical_root_handoff]."
-            )
+            if no_root:
+                logger.warning(
+                    f"beta-delta: {sum(unsolvable_recent)} of the last "
+                    f"{len(unsolvable_recent)} segments had no physical (dMdt>0) root "
+                    f"or a non-finite residual (t={t_now:.6e} Myr, Lloss/Lgain="
+                    f"{params['bubble_Lloss'].value / max(params['bubble_Lgain'].value, 1e-300):.4f}). "
+                    f"The structure root has crossed to dMdt<0 — the "
+                    f"conduction-front condensation regime (McKee & Cowie 1977) — or "
+                    f"cannot be reached: handing off to the transition phase "
+                    f"(KAPPA_FREEZE_MECHANISM.md fix #1) [no_physical_root_handoff]."
+                )
+            else:
+                logger.warning(
+                    f"beta-delta: no converged root for {betadelta_unconverged_streak + 1} consecutive segments "
+                    f"(t={t_now:.6e} Myr, accepted residual={betadelta_result.total_residual:.3e}): the dt and rescue "
+                    f"mitigation is spent and the energy-driven solution has ended (its root is lost); handing off "
+                    f"to the transition phase instead of carrying on in 1b (1c starts from this segment's state, its "
+                    f"last cooling luminosity included; PLAN.md Step 7b-4) [no_physical_root_handoff]."
+                )
+            if sw:
+                # v2 holds the wall speed set at this segment's start; 1c continues the swept state, as advance wrote it
+                params['rs_dyn'].value, params['v2'].value, params['shell_mass'].value = sw.rs, sw.u, sw.Ms
             break
 
         # Update params with new beta/delta
@@ -1048,11 +1111,14 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
                 mShell = mShell_new
         params['shell_mass'].value = mShell
         params['shell_massDot'].value = mShell_dot
+        if sw:
+            mShell, mShell_dot = sw.Ms, sw.Mdot          # M(<r_s), swept at U
+            params['shell_mass'].value, params['shell_massDot'].value = mShell, mShell_dot
 
         # ---------------------------------------------------------------------
         # Calculate shell structure (now with current Pb, bubble_mass, shell_mass)
         # ---------------------------------------------------------------------
-        shell_props = shell_structure_pure(params)
+        shell_props = sw.root['sp'] if sw else shell_structure_pure(params)   # swept: the root's own solve
         updateDict(params, shell_props)
 
         # Compute P_HII: photoionised pressure (get_bubbleParams.get_phii_c3c) -- exactly 0.0 while confined
@@ -1089,6 +1155,8 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         params['press_HII_in'].value = force_props.press_HII_in
         params['F_ram_wind'].value = feedback.pdot_W
         params['F_ram_SN'].value = feedback.pdot_SN
+        if sw:
+            sw.to_params(params, feedback, Eb)      # swept forces and columns; v2 back to the gas speed u
 
         # ---------------------------------------------------------------------
         # Save snapshot BEFORE ODE - all values are consistent at t_now
@@ -1134,10 +1202,12 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
 
         # Capture parameter values BEFORE integration for adaptive stepping
         values_before = get_monitor_values(params)
+        if sw:
+            values_before['rs_dyn'] = params['rs_dyn'].value
 
-        t_segment_end = min(t_now + dt_segment, tmax)
+        t_segment_end = min(t_now + (dt_run if sw else dt_segment), tmax)
         t_span = (t_now, t_segment_end)
-        y0 = np.array([R2, v2, Eb, T0])
+        y0 = sw.y0(Eb, T0) if sw else np.array([R2, v2, Eb, T0])
 
         # Debug: log the solve_ivp inputs
         logger.debug(f"solve_ivp: t_span=({t_span[0]:.10e}, {t_span[1]:.10e}), dt={dt_segment:.3e}, "
@@ -1146,7 +1216,8 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         try:
             # Build solver kwargs (min_step only supported by LSODA)
             solver_kwargs = {
-                'fun': lambda t, y: get_ODE_implicit_pure(t, y, snapshot, params, Ed, Td),
+                'fun': (sw.rhs(params, Ed, Td) if sw
+                        else (lambda t, y: get_ODE_implicit_pure(t, y, snapshot, params, Ed, Td))),
                 't_span': t_span,
                 'y0': y0,
                 'method': ODE_METHOD,
@@ -1197,7 +1268,9 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
             delta_results.append(delta)
             # Apply event result to params
             apply_event_result(params, event_result, t_now, event_result.y,
-                              state_keys=['R2', 'v2', 'Eb', 'T0'])
+                              state_keys=(['rs_dyn', 'v2', 'Eb', 'T0'] if sw else ['R2', 'v2', 'Eb', 'T0']))
+            if sw:
+                sw.advance(params, event_result.y, np.max(sol.y[0]))
             if event_result.name == 'velocity_sign':
                 # Turnaround: straight to momentum, whatever Eb is left (ruled
                 # 2026-10-01, an approximation). Eb to the floor as for the Eb<=0
@@ -1229,6 +1302,10 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         params['v2'].value = v2
         params['Eb'].value = Eb
         params['T0'].value = T0
+        if sw:
+            sw.advance(params, sol.y[:, -1], np.max(sol.y[0]))
+            sw.moved()
+            R2, v2 = sw.R2_at(sw.rs, Eb, sw.Ms, t_now), sw.u   # the bubble radius the closure gives now, the gas speed
 
         # Energy-driven collapse: Eb has fallen through zero (a sink -- PdV work on a
         # heavy shell, or radiative cooling -- outruns the wind). The energy-driven
@@ -1290,7 +1367,10 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
                 params['shell_mass'].value = mShell_post
 
         values_after = get_monitor_values(params)
-        max_dex_change = compute_max_dex_change(values_before, values_after, ADAPTIVE_MONITOR_KEYS)
+        if sw:
+            values_after['rs_dyn'] = params['rs_dyn'].value
+        max_dex_change = compute_max_dex_change(values_before, values_after,
+                                                ADAPTIVE_MONITOR_KEYS + (['rs_dyn'] if sw else []))
 
         dt_segment = next_dt_segment(dt_segment, max_dex_change,
                                      betadelta_unconverged_streak)
@@ -1402,7 +1482,9 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         # read-off radius outward at 5-6 km/s and stopped at stop_r still
         # carrying isCollapse=True. The mass-never-decreases guard below keeps
         # the release safe.
-        if v2 < 0 and R2 < R2_prev:
+        if sw:
+            sw.collapse_flags(params)
+        elif v2 < 0 and R2 < R2_prev:
             params['isCollapse'].value = True
         elif v2 > 0 and R2 > R2_prev:
             params['isCollapse'].value = False
@@ -1420,7 +1502,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
 
         is_collapse = params.get('isCollapse', None)
         if is_collapse and hasattr(is_collapse, 'value') and is_collapse.value:
-            if R2 < update_collapse_radius(params, R2):
+            if (sw.rs if sw else R2) < update_collapse_radius(params, sw.rs if sw else R2):
                 termination_reason = "small_radius"
                 params['SimulationEndReason'].value = collapse_reason(params)
                 params['SimulationEndCode'].value = SimulationEndCode.SHELL_COLLAPSED.code
@@ -1429,7 +1511,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
 
         # Stop radius check (skip if stop_r is None)
         stop_r = params['stop_r'].value
-        if stop_r is not None and R2 > stop_r:
+        if stop_r is not None and (sw.rs if sw else R2) > stop_r:
             termination_reason = "large_radius"
             params['SimulationEndReason'].value = 'Large radius reached'
             params['SimulationEndCode'].value = SimulationEndCode.LARGE_RADIUS.code
@@ -1466,7 +1548,13 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
     # block (set before the break above). See docs/dev/transition/pdv-trigger/
     # PB_COLLAPSE_GUARD_FIX.md.
     # =========================================================================
-    if termination_reason != "energy_collapsed":
+    if sw:
+        logger.info(f"[swept] 1b tangent (Step 7b-1): {sw.n_tan} segments with partials, {sw.n_fallback} on the secant, "
+                    f"{sw.n_recouple} beta/delta re-solves, {sw.n_capped} segments cut by the closure's miss, "
+                    f"{sw.n_switch} segments ended at a predicted escape switch (Step 7b-2)")
+    if sw and termination_reason != "energy_collapsed":
+        sw.reconcile(params, t_now, Eb)            # only when the run ends here; otherwise 1c continues the state
+    elif termination_reason != "energy_collapsed":
         try:
             feedback_final = get_current_sps_feedback(t_now, params)
             updateDict(params, feedback_final)

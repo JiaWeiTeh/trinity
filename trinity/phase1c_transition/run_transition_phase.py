@@ -456,6 +456,11 @@ def run_phase_transition(params) -> TransitionPhaseResults:
             final_time=tmin,
         )
 
+    # phii_scheme 'swept' evolves the shell's outer radius instead of R2 (PLAN.md 0.0.11, Step 5): its own runner
+    from trinity.phase2_momentum.swept import is_swept, run_phase_transition_swept
+    if is_swept(params):
+        return run_phase_transition_swept(params)
+
     # Initialize state (no T0 in state vector for transition)
     R2 = params['R2'].value
     v2 = params['v2'].value
