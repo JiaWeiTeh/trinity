@@ -109,9 +109,11 @@ def test_no_root_handoff_carries_the_swept_state(tmp_path):
 # The fixture run spies on swept.tangent_partials (one-sided values against central differences at the same state, signs,
 # the trial keys put back) and on ImplicitSwept.to_params (the wall speed and the closure's miss at each snapshot).
 _TANGENT_DRIVER = r'''
-import atexit, json, runpy, sys
+import atexit, dataclasses, json, runpy, sys
+import numpy as np
 import trinity.phase2_momentum.swept as S
-rec = {"partials": [], "rows": [], "fallback_calls": [], "live": []}
+from trinity.phase1b_energy_implicit.get_betadelta import compute_R1_Pb
+rec = {"partials": [], "rows": [], "fallback_calls": [], "live": [], "coupled": []}
 FAIL_AT = %d
 _tp, calls = S.tangent_partials, [0]
 def tp(R2, rs, Ms, Eb, fb, params, t, sp, h=S.TAN_STEP):
@@ -120,14 +122,22 @@ def tp(R2, rs, Ms, Eb, fb, params, t, sp, h=S.TAN_STEP):
         rec["fallback_calls"].append(t)
         return None
     keys = {k: params[k].value for k in S._TRIAL_KEYS}
+    fbkeys = {f.name: params[f.name].value for f in dataclasses.fields(fb) if f.name in params}
     out = _tp(R2, rs, Ms, Eb, fb, params, t, sp, h)
     restored = all(params[k].value == v for k, v in keys.items())
+    fb_restored = all(np.array_equal(params[k].value, v) for k, v in fbkeys.items())
     ro = lambda a, e: float(S._shell_at(a, rs, Ms, fb, params, Eb=e, phase="implicit", t=t)[0].rShell)
     Nc = (ro(R2 * (1 + 1e-4), Eb) - ro(R2 * (1 - 1e-4), Eb)) / (2e-4 * R2)
     DEc = (ro(R2, Eb * (1 + 1e-4)) - ro(R2, Eb * (1 - 1e-4))) / (2e-4 * Eb)
+    def ro_t(tt):                                    # the shell at time tt, with the feedback of tt
+        fbt = S.get_current_sps_feedback(tt, params)
+        S.updateDict(params, fbt)
+        return float(S._shell_at(R2, rs, Ms, fbt, params, Eb=Eb, phase="implicit", t=tt)[0].rShell)
+    DTc = (ro_t(t * (1 + 1e-4)) - ro_t(t * (1 - 1e-4))) / (2e-4 * t)
+    S.updateDict(params, fb)
     for k, v in keys.items():
         params[k].value = v
-    rec["partials"].append(dict(out=out, Nc=Nc, DEc=DEc, restored=restored, rs=rs, Eb=Eb))
+    rec["partials"].append(dict(out=out, Nc=Nc, DEc=DEc, DTc=DTc, restored=restored, fb_restored=fb_restored, rs=rs, Eb=Eb, t=t))
     return out
 S.tangent_partials = tp
 _to = S.ImplicitSwept.to_params
@@ -135,8 +145,13 @@ def to_params(self, params, fb, Eb):
     _to(self, params, fb, Eb)
     rec["rows"].append(dict(t=params["t_now"].value, Rdot2=self.Rdot2, secant=self.zeta * self.U,
                             tan=self.tan is not None, miss=self.miss_eps))
+    if self.tan is not None:      # what an independent coupled wall speed needs: the partials and beta/delta's final luminosities
+        R2 = self.root["R2"]
+        Pb = compute_R1_Pb(R2, Eb, params["Lmech_total"].value, params["v_mech_total"].value, params["gamma_adia"].value)[1]
+        rec["coupled"].append(dict(fed=self.Rdot2, U=self.U, Mdot=self.Mdot, k=4 * S.math.pi * R2**2 * Pb,
+                                   Lg=params["bubble_Lgain"].value, Ll=params["bubble_Lloss"].value,
+                                   **{q: self.tan[q] for q in ("N", "DE", "DM", "DT")}))
 S.ImplicitSwept.to_params = to_params
-from trinity.phase1b_energy_implicit.get_betadelta import compute_R1_Pb
 _rhs = S.ImplicitSwept.rhs
 def rhs(self, params, Ed, Td):
     f = _rhs(self, params, Ed, Td)
@@ -193,6 +208,10 @@ def test_tangent_partials_and_wall_speed(tangent):
         # the nudge moves r_out by ~3e-7 pc and one- and two-sided values differ by ~2e-9 pc (5e-9 of r_out), in two
         # quantised levels -- the solve's own tolerance, not a defect (amended 2026-10-26, PLAN Step 7b-1)
         assert out["DE"] == pytest.approx(p["DEc"], rel=1e-3, abs=1e-8 * p["rs"] / (1e-4 * p["Eb"]))
+        # D_t: here ~3e-8 pc/Myr, so the 1e-4 nudge moves r_out by ~1e-14 pc, ~100 ulp of r_out: one- and two-sided values agree to
+        # what double precision resolves, 8 ulp of r_s over the nudge (~2e-9 pc/Myr; measured <= 1.5e-10). A sign error is 2 |D_t|.
+        assert out["DT"] == pytest.approx(p["DTc"], rel=1e-3, abs=8 * sys.float_info.epsilon * p["rs"] / (1e-4 * p["t"]))
+        assert p["fb_restored"]                                                   # the feedback of t, not of t (1 + h)
     by_t = {r["t"]: r for r in rec["rows"]}
     differs = 0
     for r in im:
@@ -201,6 +220,13 @@ def test_tangent_partials_and_wall_speed(tangent):
         assert r["cool_alpha"] * r["R2"] / r["t_now"] == pytest.approx(s["Rdot2"], rel=1e-12)   # the speed beta/delta saw
         differs += abs(s["Rdot2"] / s["secant"] - 1) > 1e-6
     assert differs >= 1                                                           # the tangent, not the secant
+    # the fed speed against the coupled formula, rebuilt here from the partials and beta/delta's final luminosities: within the
+    # recouple dead-band (1 %); without the coupling it is off by 1.3-1.5 % here, measured
+    fin = [c for c in rec["coupled"] if math.isfinite(c["Lg"]) and math.isfinite(c["Ll"])]
+    assert len(fin) >= 5
+    for c in fin:
+        v = (c["U"] - c["DE"] * (c["Lg"] - c["Ll"]) - c["DM"] * c["Mdot"] - c["DT"]) / (c["N"] - c["DE"] * c["k"])
+        assert abs(c["fed"] / v - 1) <= 0.01
     assert all(abs(s["miss"]) <= 1e-3 for s in rec["rows"][1:])                    # the closure predicts the next root
 
 
@@ -257,7 +283,23 @@ def test_escape_switch_cut():
     assert S.switch_dt(0.02, 1.0, 0.01, 1.0, 2.0) == 2.0                        # no time between the two roots
     sw = S.ImplicitSwept.__new__(S.ImplicitSwept)                               # the cut as the runner applies it
     sw.s_prev, sw.t_prev, sw.s_esc, sw.t_seg, sw.n_switch, sw.miss_eps, sw.n_capped = 0.02, 0.0, 0.01, 1.0, 0, 0.0, 0
-    assert sw.cap_dt(2.0) == 2.0 and sw.n_capped == 0                            # the miss cap does not see the switch
+    assert sw.cap_dt(2.0, 1e-4) == 2.0 and sw.n_capped == 0                      # the miss cap does not see the switch
     assert sw.switch_cut(2.0, 1e-4) == pytest.approx(1.05) and sw.n_switch == 1
     assert sw.switch_cut(2.0, 1.5) == 1.5 and sw.n_switch == 2                  # floored, still shorter than dt: counted
     assert sw.switch_cut(2.0, 2.0) == 2.0 and sw.n_switch == 2                  # floor at dt: no cut, not counted
+
+
+def test_miss_cap_shortens_against_the_segment_that_missed():
+    """Step 7b-1 step control, as fixed 2026-10-27: after a miss above 1e-3 the next segment is a fraction of the one that missed,
+    even when the runner has already grown the proposal past it; never below the floor; counted only when it cuts."""
+    import trinity.phase2_momentum.swept as S
+    sw = S.ImplicitSwept.__new__(S.ImplicitSwept)
+    sw.t_prev, sw.t_seg, sw.n_capped, sw.miss_eps = 0.0, 1.0, 0, 2e-3          # the segment that missed ran 1.0
+    f = 0.9 * math.sqrt(1e-3 / 2e-3)
+    assert sw.cap_dt(1.26, 1e-4) == pytest.approx(f) and sw.n_capped == 1        # grown proposal 1.26 -> 0.64 of the missed 1.0
+    assert sw.cap_dt(1.26, 0.7) == 0.7 and sw.n_capped == 2                     # floored, still a cut
+    assert sw.cap_dt(0.5, 1e-4) == 0.5 and sw.n_capped == 2                     # already shorter: unchanged, not counted
+    sw.miss_eps = 1.0
+    assert sw.cap_dt(2.0, 1e-4) == pytest.approx(0.3)                           # the factor's lower bound
+    sw.miss_eps = 5e-4
+    assert sw.cap_dt(2.0, 1e-4) == 2.0                                          # below the threshold: no cap

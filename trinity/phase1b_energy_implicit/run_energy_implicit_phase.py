@@ -895,7 +895,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
             params['R2'].value, params['v2'].value = R2, v2
             params['cool_alpha'].value = t_now / R2 * v2
             # Step 7b-1 step control: a large miss of the last closure shortens this segment (never below the floor)
-            dt_segment = max(sw.cap_dt(dt_segment), min(dt_segment, DT_SEGMENT_MIN))
+            dt_segment = sw.cap_dt(dt_segment, min(dt_segment, DT_SEGMENT_MIN))
             # Step 7b-2: a photon-escape switch predicted inside the segment ends it just past the switch (this segment only)
             dt_run = sw.switch_cut(dt_segment, min(dt_segment, DT_SEGMENT_MIN))
 

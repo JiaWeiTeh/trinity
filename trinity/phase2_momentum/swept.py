@@ -174,6 +174,7 @@ def tangent_partials(R2, rs, Ms, Eb, fb, params, t, sp, h=TAN_STEP):
     out = dict(N=(base - r_dn) / (h * R2), DE=(r_eb - base) / (h * Eb), DT=(r_t - base) / (t2 - t),
                DM=1.0 / (FOUR_PI * base**2 * rho_out) if rho_out > 0 else float('nan'))
     if not (out['N'] > 0 and all(np.isfinite(v) for v in out.values())):
+        logger.warning(f"[swept] tangent partials unusable at t={t:.6e} (N={out['N']:.3e}): the secant stands in")
         return None
     return out
 
@@ -493,13 +494,17 @@ class ImplicitSwept:
         self.n_recouple += 1
         return True
 
-    def cap_dt(self, dt):
-        """Step control (PLAN.md Step 7b-1): a closure miss above TAN_MISS_EPS shortens the segment about to run."""
+    def cap_dt(self, dt, floor):
+        """Step control (PLAN.md Step 7b-1): a closure miss above TAN_MISS_EPS makes the segment about to run a fraction of the
+        one that missed (t_seg - t_prev), never longer than dt nor below floor; counted only when it cuts. dt, floor [Myr].
+        (2026-10-27, /xcheck: it used to scale dt, which the runner may already have grown past the missed segment.)"""
         e = abs(self.miss_eps)
-        if e <= TAN_MISS_EPS:
+        if e <= TAN_MISS_EPS or self.t_prev is None:
             return dt
-        self.n_capped += 1
-        return dt * max(0.3, 0.9 * math.sqrt(TAN_MISS_EPS / e))
+        run = max(min(dt, (self.t_seg - self.t_prev) * max(0.3, 0.9 * math.sqrt(TAN_MISS_EPS / e))), floor)
+        if run < dt:
+            self.n_capped += 1
+        return run
 
     def switch_cut(self, dt, floor):
         """This segment's run length (Step 7b-2): dt, or just past a photon-escape switch predicted inside it (switch_dt),
@@ -507,7 +512,7 @@ class ImplicitSwept:
         run = max(switch_dt(self.s_prev, self.t_prev, self.s_esc, self.t_seg, dt), floor)
         if run < dt:
             self.n_switch += 1
-            logger.info(f"[swept] escape switch predicted inside the segment at t={self.t_seg:.6e} Myr: runs {run:.3e} "
+            logger.info(f"[swept] segment from t={self.t_seg:.6e} Myr ends just past a predicted escape switch: runs {run:.3e} "
                         f"of {dt:.3e} Myr")
         return run
 
