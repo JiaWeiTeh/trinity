@@ -142,6 +142,82 @@ def _shell_at(R2, rs, Ms, fb, params, Eb=None, phase='transition', t=None):
     return shell_structure_pure(params), Pc
 
 
+TAN_STEP = 1e-4        # relative step of the tangent's one-sided differences (Step 7b-0: partials flat over 1e-5..1e-3)
+TAN_MISS_EPS = 1e-3    # the closure's miss at the next root, in Step 6's energy units, above which the next segment is cut
+
+
+def tangent_partials(R2, rs, Ms, Eb, fb, params, t, sp, h=TAN_STEP):
+    """Partials of the outer edge r_out(R2, Eb, M, t) at an implicit-phase root (PLAN.md Step 7b-1, 2026-10-26).
+
+    One-sided differences from the root's own solve sp (r_out = sp.rShell = r_s): N = dr_out/dR2 with R2 stepped DOWN
+    (a thin shell sits next to r_s), D_E = dr_out/dEb with Eb stepped up, D_t = dr_out/dt with the feedback at t (1 + h);
+    D_M = 1 / (4 pi r_out^2 rho_out) in closed form (equal to the finite difference to 4e-4, row 71). params' trial keys
+    and feedback are put back. None when a solve fails or N <= 0: the caller then keeps the secant.
+    """
+    saved = {k: params[k].value for k in _TRIAL_KEYS}
+    t2 = t * (1.0 + h)
+    try:
+        base = float(sp.rShell)
+        r_dn = float(_shell_at(R2 * (1.0 - h), rs, Ms, fb, params, Eb=Eb, phase='implicit', t=t)[0].rShell)
+        r_eb = float(_shell_at(R2, rs, Ms, fb, params, Eb=Eb * (1.0 + h), phase='implicit', t=t)[0].rShell)
+        fb2 = get_current_sps_feedback(t2, params)
+        updateDict(params, fb2)
+        r_t = float(_shell_at(R2, rs, Ms, fb2, params, Eb=Eb, phase='implicit', t=t2)[0].rShell)
+    except Exception as e:  # a failed trial solve: fall back, never stop the run
+        logger.warning(f"[swept] tangent partials failed at t={t:.6e}: {e}")
+        return None
+    finally:
+        updateDict(params, fb)
+        for k, v in saved.items():
+            params[k].value = v
+    rho_out = params['mu_convert'].value * float(np.asarray(sp.shell_n_arr, float)[-1])
+    out = dict(N=(base - r_dn) / (h * R2), DE=(r_eb - base) / (h * Eb), DT=(r_t - base) / (t2 - t),
+               DM=1.0 / (FOUR_PI * base**2 * rho_out) if rho_out > 0 else float('nan'))
+    if not (out['N'] > 0 and all(np.isfinite(v) for v in out.values())):
+        return None
+    return out
+
+
+def escape_indicator(sp):
+    """Signed distance to the photon-escape switch (PLAN.md Step 7b-2): 1 - R_IF/r_out while the shell traps every ionising
+    photon, -(1 - f_abs,ion) while some escape. Continuous, zero at the switch, where r_out has a kink."""
+    f = float(sp.shell_fAbsorbedIon)
+    return -(1.0 - f) if f < 1.0 - 1e-12 else 1.0 - float(sp.R_IF) / float(sp.rShell)
+
+
+def switch_dt(s_prev, t_prev, s, t, dt):
+    """The segment length that ends just past a predicted escape switch, or dt (Step 7b-2).
+
+    The crossing t_x of the indicator's linear trend through (t_prev, s_prev), (t, s); if s moves toward zero and t < t_x < t + dt
+    the segment ends at t + 1.05 (t_x - t), so the kink lies just inside its end and the next segment starts on the new branch.
+    Offline on the 7a and 7b-1 runs this flagged every switch at its own segment start and nothing else (data/b75_*).
+    s_prev, s dimensionless; t_prev, t, dt [Myr]; returns [Myr].
+    """
+    if s_prev is None or t <= t_prev:
+        return dt
+    rate = (s - s_prev) / (t - t_prev)
+    if rate == 0 or s * rate >= 0:
+        return dt
+    t_x = t - s / rate
+    return min(dt, 1.05 * (t_x - t)) if t < t_x < t + dt else dt
+
+
+def live_rates(Ed, W0, k_t, U_t, Mdot_t, tan, zeta):
+    """dR2/dt and dEb/dt inside a 1b segment with the wall's work live (Step 7b-2).
+
+    dEb/dt = Ed - (k_t dR2/dt - W0), k_t = 4 pi R2^2 Pb, W0 the work rate the beta/delta solve charged at the segment start.
+    With the tangent, dR2/dt is the closure's own derivative, N dR2/dt + D_E dEb/dt + D_M dM/dt + D_t = U, solved with dEb/dt
+    in closed form; with the secant, dR2/dt = zeta U.
+    Ed, W0 [Msun pc^2/Myr^3]; k_t [Msun pc/Myr^2]; U_t [pc/Myr]; Mdot_t [Msun/Myr]; tan: N [-], DE [Myr^2/(Msun pc)],
+    DM [pc/Msun], DT [pc/Myr]. Returns (dR2/dt [pc/Myr], dEb/dt [Msun pc^2/Myr^3]).
+    """
+    if tan is None:
+        rd = zeta * U_t
+    else:
+        rd = (U_t - tan['DE'] * (Ed + W0) - tan['DM'] * Mdot_t - tan['DT']) / (tan['N'] - tan['DE'] * k_t)
+    return rd, Ed + W0 - k_t * rd
+
+
 def layer_terms(sp, R2, Pc, params):
     """K_s, F_rad,sh, P(r_s) and the L8 residual of 4 pi R2^2 P_ram + K_s + F_rad,sh = 4 pi r_s^2 P(r_s).
 
@@ -325,9 +401,13 @@ class ImplicitSwept:
     """The swept state through phase 1b (PLAN.md Step 6, 2026-10-25): r_s, u, M_s and the closure's carry.
 
     The c3c implicit runner keeps its loop -- the beta/delta solve and everything around it -- and calls these at its
-    hooks. Per segment: R2 root-found with the bubble's own pressure (switch-on ramp included); the wall speed
-    Rdot2 = zeta U, zeta = Delta R2 / Delta r_s from successive roots (1 on the first 1b segment); the RHS evolves
-    (r_s, u) with R2 = R2_root + zeta (r_s - r_s,root), while Eb and T0 keep their frozen beta/delta rates.
+    hooks. Per segment: R2 root-found with the bubble's own pressure (switch-on ramp included); the RHS evolves (r_s, u)
+    while Eb and T0 keep their frozen beta/delta rates. Step 7b-1 (2026-10-26): inside a segment R2 follows the tangent of
+    the constraint r_out(R2, Eb, M, t) = r_s at the root, R2 = R2_0 + [(r_s - r_s0) - D_E (Eb - Eb0) - D_M (M - M0)
+    - D_t (t - t0)] / N, and the beta/delta solve sees the coupled wall speed (wall_speed); where the partials cannot be
+    had the secant zeta = Delta R2 / Delta r_s of successive roots stands in (1 on the first segment). Step 7b-2: Eb's rate
+    charges the wall's work at R2's own speed inside the segment (live_rates), and a segment with a predicted photon-escape
+    switch inside it ends just past the switch (switch_cut).
     """
 
     def __init__(self, params):
@@ -338,6 +418,10 @@ class ImplicitSwept:
                     f"M_s={self.Ms:.6g} Msun, u={self.u:.6g} pc/Myr (v2={params['v2'].value:.6g})")
         self.x_prev, self.rs_prev = params['R2'].value / self.rs, self.rs
         self.zeta, self.R2_last, self.rs_last, self.root = 1.0, None, None, None
+        self.tan, self.miss_eps = None, 0.0
+        self.n_tan = self.n_fallback = self.n_recouple = self.n_capped = 0
+        self.s_prev, self.t_prev, self.s_esc, self.t_seg, self.Eb0 = None, None, None, None, None   # Step 7b-2
+        self.n_switch = 0
 
     def segment_start(self, params, fb, t, Eb):
         """Mass, root, zeta and the speeds at the segment start; returns the root dict (ok=False on failure)."""
@@ -345,6 +429,11 @@ class ImplicitSwept:
         root = root_R2(self.rs, self.Ms, fb, params, guess=self.x_prev * self.rs, Eb=Eb, phase='implicit', t=t)
         if not root['ok']:
             return root
+        # Step 7b-1: how far the last segment's closure missed this root, in Step 6's energy units (step control)
+        self.miss_eps = 0.0
+        if self.tan is not None and Eb > 0:
+            miss = root['R2'] - self._closure(self.rs, Eb, self.Ms, t)
+            self.miss_eps = FOUR_PI * root['R2']**2 * params['Pb'].value * miss / Eb
         # ponytail: zeta is a backward difference (as in 1c); ill-conditioned when r_s barely moves, kept then
         if self.R2_last is not None and abs(self.rs - self.rs_last) > 1e-9 * self.rs:
             self.zeta = (root['R2'] - self.R2_last) / (self.rs - self.rs_last)
@@ -352,8 +441,75 @@ class ImplicitSwept:
         self.fabs_ion = root['sp'].shell_fAbsorbedIon
         self.U = edge_speed(self.u, self.rs, self.fabs_ion, params)
         self.Mdot = swept_mass(self.rs, self.U, self.Ms, self.u <= 0.0, params)[1]
-        self.Rdot2 = self.zeta * self.U
+        # Step 7b-2: the escape indicator at this root (the previous one is kept for switch_dt)
+        self.s_prev, self.t_prev = self.s_esc, self.t_seg
+        self.s_esc, self.t_seg, self.Eb0 = escape_indicator(root['sp']), t, Eb
+        p = tangent_partials(root['R2'], self.rs, self.Ms, Eb, fb, params, t, root['sp'])
+        if p is None:
+            self.tan = None
+            self.n_fallback += 1
+        else:
+            self.tan = dict(p, R2_0=root['R2'], rs_0=self.rs, Eb_0=Eb, M_0=self.Ms, t_0=t)
+            self.n_tan += 1
+        # the speed the beta/delta solve sees: coupled with the previous segment's loss (recouple() refines it)
+        self.Rdot2 = self.wall_speed(params, Eb, params['Lmech_total'].value, params['bubble_Lloss'].value)
         return root
+
+    def _closure(self, r, Eb, M, t):
+        """R2 inside the current segment: the tangent of the constraint, or the secant where there is none."""
+        p = self.tan
+        if p is None:
+            return self.root['R2'] + self.zeta * (r - self.rs_last)
+        return p['R2_0'] + ((r - p['rs_0']) - p['DE'] * (Eb - p['Eb_0']) - p['DM'] * (M - p['M_0'])
+                            - p['DT'] * (t - p['t_0'])) / p['N']
+
+    def wall_speed(self, params, Eb, Lgain, Lloss):
+        """dR2/dt for the beta/delta solve, coupled with the energy balance it enforces (PLAN.md Step 7b-1).
+
+        From N dR2/dt + D_E dEb/dt + D_M dM/dt + D_t = U and dEb/dt = L_gain - L_loss - 4 pi R2^2 Pb dR2/dt (L_loss with
+        the leak, Pb the unramped thermal pressure, as get_betadelta's balance):
+        dR2/dt = (U - D_E (L_gain - L_loss) - D_M dM/dt - D_t) / (N - D_E 4 pi R2^2 Pb). The secant's zeta U without partials.
+        """
+        p = self.tan
+        # no partials, or no luminosities yet (the cooling keys are NaN at the 1b hand-off): the secant's speed
+        if p is None or not (Lgain is not None and Lloss is not None and np.isfinite(Lgain) and np.isfinite(Lloss)):
+            return self.zeta * self.U
+        from trinity.phase1b_energy_implicit.get_betadelta import compute_R1_Pb
+        R2 = self.root['R2']
+        Pb = compute_R1_Pb(R2, Eb, params['Lmech_total'].value, params['v_mech_total'].value,
+                           params['gamma_adia'].value)[1]
+        v = (self.U - p['DE'] * (Lgain - Lloss) - p['DM'] * self.Mdot - p['DT']) / (p['N'] - p['DE'] * FOUR_PI * R2**2 * Pb)
+        return v if np.isfinite(v) else self.zeta * self.U
+
+    def recouple(self, params, Eb, Lgain, Lloss):
+        """After the beta/delta solve: the wall speed with its own luminosities. True (and Rdot2 updated) if it moved by
+        more than 1 %; the runner then solves beta/delta once more with it."""
+        if self.tan is None or Lgain is None or Lloss is None or not (np.isfinite(Lgain) and np.isfinite(Lloss)):
+            return False
+        new = self.wall_speed(params, Eb, Lgain, Lloss)
+        if abs(new - self.Rdot2) <= 0.01 * abs(self.Rdot2):
+            return False
+        self.Rdot2 = new
+        self.n_recouple += 1
+        return True
+
+    def cap_dt(self, dt):
+        """Step control (PLAN.md Step 7b-1): a closure miss above TAN_MISS_EPS shortens the segment about to run."""
+        e = abs(self.miss_eps)
+        if e <= TAN_MISS_EPS:
+            return dt
+        self.n_capped += 1
+        return dt * max(0.3, 0.9 * math.sqrt(TAN_MISS_EPS / e))
+
+    def switch_cut(self, dt, floor):
+        """This segment's run length (Step 7b-2): dt, or just past a photon-escape switch predicted inside it (switch_dt),
+        never below floor. Unlike cap_dt it is not carried into the next segment's dt. dt, floor [Myr]."""
+        run = max(switch_dt(self.s_prev, self.t_prev, self.s_esc, self.t_seg, dt), floor)
+        if run < dt:
+            self.n_switch += 1
+            logger.info(f"[swept] escape switch predicted inside the segment at t={self.t_seg:.6e} Myr: runs {run:.3e} "
+                        f"of {dt:.3e} Myr")
+        return run
 
     def to_params(self, params, fb, Eb):
         """The snapshot's swept columns (v2 back to the gas speed u; cool_alpha keeps t Rdot2 / R2)."""
@@ -366,25 +522,34 @@ class ImplicitSwept:
         return np.array([self.rs, self.u, Eb, T0])
 
     def rhs(self, params, Ed, Td):
-        """The segment's RHS: (r_s, u) evolve with the live drive, Eb and T0 at their frozen beta/delta rates."""
-        R2a, rsa, z, K, F_rad = self.root['R2'], self.rs, self.zeta, self.root['K'], params['F_rad'].value
+        """The segment's RHS: (r_s, u) evolve with the live drive; T0 at its frozen delta rate, Eb at its beta/delta rate with
+        the wall's work live (Step 7b-2: the work charged at R2's own speed inside the segment, not the start speed)."""
+        from trinity.phase1b_energy_implicit.get_betadelta import compute_R1_Pb
+        K, F_rad = self.root['K'], params['F_rad'].value
         M_floor, fabs_ion = self.Ms, self.fabs_ion
-        G, mCluster = params['G'].value, params['mCluster'].value
+        G, mCluster, gamma = params['G'].value, params['mCluster'].value, params['gamma_adia'].value
+        closure, tan, zeta = self._closure, self.tan, self.zeta
+        # Step 7b-2: the work rate the beta/delta solve charged, W0 = 4 pi R2_0^2 Pb_0 Rdot2_0 (unramped Pb, as its balance)
+        R2_0 = self.root['R2']
+        Pb_0 = compute_R1_Pb(R2_0, self.Eb0, params['Lmech_total'].value, params['v_mech_total'].value, gamma)[1]
+        W0 = FOUR_PI * R2_0**2 * Pb_0 * self.Rdot2
 
         def f(t, y):
             r, v = max(y[0], 1e-10), y[1]
             fb_t = get_current_sps_feedback(t, params)       # live, as the c3c RHS
-            R2t = R2a + z * (r - rsa)
-            Pc, _ = _p_conf(R2t, y[2], fb_t, params, 'implicit', t)
-            F = FOUR_PI * R2t**2 * Pc + K - FOUR_PI * r**2 * p_ext(r, fabs_ion, params) + F_rad
             U_t = edge_speed(v, r, fabs_ion, params)
             m, md = swept_mass(r, U_t, M_floor, v <= 0.0, params)
-            return np.array([U_t, (F - G * m / r**2 * (mCluster + 0.5 * m) - md * v) / m, Ed, Td])
+            R2t = closure(r, y[2], m, t)
+            Pc, R1t = _p_conf(R2t, y[2], fb_t, params, 'implicit', t)
+            F = FOUR_PI * R2t**2 * Pc + K - FOUR_PI * r**2 * p_ext(r, fabs_ion, params) + F_rad
+            k_t = FOUR_PI * R2t**2 * get_bubbleParams.bubble_E2P(y[2], R2t, R1t, gamma)   # unramped Pb, as compute_R1_Pb
+            _, Edot = live_rates(Ed, W0, k_t, U_t, md, tan, zeta)
+            return np.array([U_t, (F - G * m / r**2 * (mCluster + 0.5 * m) - md * v) / m, Edot, Td])
         return f
 
-    def R2_at(self, r):
-        """The bubble radius the closure gives at outer radius r within the current segment."""
-        return self.root['R2'] + self.zeta * (r - self.rs_last)
+    def R2_at(self, r, Eb, M, t):
+        """The bubble radius the closure gives at the state (r, Eb, M, t) within the current segment."""
+        return self._closure(r, Eb, M, t)
 
     def advance(self, params, y, r_max):
         """Take the segment's end state y = (r_s, u, ...); mass up to the farthest r_s reached. params R2 stays the

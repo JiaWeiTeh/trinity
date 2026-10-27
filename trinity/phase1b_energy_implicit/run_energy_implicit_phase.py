@@ -894,6 +894,10 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
             R2, v2 = root['R2'], sw.Rdot2
             params['R2'].value, params['v2'].value = R2, v2
             params['cool_alpha'].value = t_now / R2 * v2
+            # Step 7b-1 step control: a large miss of the last closure shortens this segment (never below the floor)
+            dt_segment = max(sw.cap_dt(dt_segment), min(dt_segment, DT_SEGMENT_MIN))
+            # Step 7b-2: a photon-escape switch predicted inside the segment ends it just past the switch (this segment only)
+            dt_run = sw.switch_cut(dt_segment, min(dt_segment, DT_SEGMENT_MIN))
 
         # ---------------------------------------------------------------------
         # Covering-fraction energy leak (Eq. leak), consumed by the
@@ -922,6 +926,12 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
             params,
             rescue=rescue,
         )
+        if sw and sw.recouple(params, Eb, betadelta_result.L_gain, betadelta_result.L_loss):
+            # Step 7b-1: the wall speed with this solve's own luminosities moved > 1 %: solve once more with it
+            v2 = sw.Rdot2
+            params['v2'].value = v2
+            params['cool_alpha'].value = t_now / R2 * v2
+            betadelta_result = solve_betadelta_pure(betadelta_result.beta, betadelta_result.delta, params, rescue=rescue)
         # counted only where the cap changed something: the ladder would have run
         # (a hybr 'structure solve failed' no-root) and was skipped
         n_capped += (not rescue and betadelta_result.no_physical_root
@@ -1164,7 +1174,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         if sw:
             values_before['rs_dyn'] = params['rs_dyn'].value
 
-        t_segment_end = min(t_now + dt_segment, tmax)
+        t_segment_end = min(t_now + (dt_run if sw else dt_segment), tmax)
         t_span = (t_now, t_segment_end)
         y0 = sw.y0(Eb, T0) if sw else np.array([R2, v2, Eb, T0])
 
@@ -1264,7 +1274,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         if sw:
             sw.advance(params, sol.y[:, -1], np.max(sol.y[0]))
             sw.moved()
-            R2, v2 = sw.R2_at(sw.rs), sw.u           # the bubble radius the closure gives now, and the gas speed
+            R2, v2 = sw.R2_at(sw.rs, Eb, sw.Ms, t_now), sw.u   # the bubble radius the closure gives now, the gas speed
 
         # Energy-driven collapse: Eb has fallen through zero (a sink -- PdV work on a
         # heavy shell, or radiative cooling -- outruns the wind). The energy-driven
@@ -1507,6 +1517,10 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
     # block (set before the break above). See docs/dev/transition/pdv-trigger/
     # PB_COLLAPSE_GUARD_FIX.md.
     # =========================================================================
+    if sw:
+        logger.info(f"[swept] 1b tangent (Step 7b-1): {sw.n_tan} segments with partials, {sw.n_fallback} on the secant, "
+                    f"{sw.n_recouple} beta/delta re-solves, {sw.n_capped} segments cut by the closure's miss, "
+                    f"{sw.n_switch} segments ended at a predicted escape switch (Step 7b-2)")
     if sw and termination_reason != "energy_collapsed":
         sw.reconcile(params, t_now, Eb)            # only when the run ends here; otherwise 1c continues the state
     elif termination_reason != "energy_collapsed":
