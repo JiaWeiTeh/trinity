@@ -163,6 +163,19 @@ def _validate_phii_scheme(value, params) -> None:
         )
 
 
+def _validate_start_scheme(value, params) -> None:
+    """Selects how the integration starts (docs/dev/phii-identity/weak-wind/PLAN.md section 4):
+    'weaver' (default, shipped) from the free-streaming wind into phase 1a; 'stromgren'
+    (phii_scheme 'swept' only) from the end of the R-type phase straight into the swept
+    momentum phase, the Hosokawa & Inutsuka 2006 state at the Stroemgren radius."""
+    from trinity._input.errors import ParameterFileError
+    if value not in ('weaver', 'stromgren'):
+        raise ParameterFileError(
+            f"Invalid start_scheme '{value}'. "
+            f"Must be 'weaver' or 'stromgren'."
+        )
+
+
 def _validate_betadelta_solver(value, params) -> None:
     """Selects the energy-implicit (beta, delta) solver. 'hybr' (default)
     is the unbounded scipy root-finder with a physical dMdt>0 acceptance
@@ -390,6 +403,7 @@ SPECS: tuple[ParamSpec, ...] = (
     ParamSpec(name='coverFraction', default='1.0', info='Closed fraction of the bubble wall (covering fraction Cf). Geometry-set energy/mass leak: hot gas vents through the open area (1-Cf)*4*pi*R2^2 at the interior sound speed, draining bubble energy (and, when the mass sink is enabled, mass). Cf=1 recovers the sealed (Weaver) bubble exactly; not fragmentation-triggered. Usable range ~0.9-0.99; Cf near 0 drains the bubble within a step and stresses the integrator.', category='input_physical', unit=None, exclude_from_snapshot=True, run_const=True, validator=_validate_coverFraction),
     ParamSpec(name='dens_profile', default='densPL', info='Specifies how the cloud density scales with radius.', category='input_profile', unit=None, run_const=True, validator=_validate_dens_profile),
     ParamSpec(name='betadelta_solver', default='hybr', info="Energy-implicit (beta, delta) solver: 'hybr' (default; unbounded scipy root-finder with a physical dMdt>0 acceptance gate) or 'legacy' (bounded grid + L-BFGS-B).", category='input_admin', unit=None, exclude_from_snapshot=True, run_const=True, validator=_validate_betadelta_solver),
+    ParamSpec(name='start_scheme', default='weaver', info="How the integration starts. 'weaver' (default, shipped): from the free-streaming wind into phase 1a (get_InitPhaseParam.get_y0); refused with a ValueError when the first structure solve would fall off the non-CIE cooling cube (phi(r0) = Qi/(4 pi r0^2) > 1e21 cm^-2 s^-1: a weak wind in a dense core). 'stromgren' (phii_scheme 'swept' only): phases 1a-1c are skipped and the swept momentum phase starts at the end of the R-type phase, r_s = R_St (solved on the run's own density profile), u = 2 c_i/sqrt(3), M_s = M(<R_St), the wind bubble inside at its ram-pressure equilibrium (Hosokawa & Inutsuka 2006 eq. 36; Lancaster et al. 2025a sec. 3.5); refused at zeta = R_eq/R_St >= 1 or R_St > rCloud. docs/dev/phii-identity/weak-wind/PLAN.md.", category='input_admin', unit=None, exclude_from_snapshot=True, run_const=True, validator=_validate_start_scheme),
     ParamSpec(name='densBE_Omega', default='14.1', info='if `densBE` is selected, then the ratio `Omega = nCore/nCloudEdge` must be specified.', category='input_profile', unit=None, exclude_from_snapshot=True, run_const=True, active_when=_active_densBE),
     ParamSpec(name='densPL_alpha', default='0', info='if `densPL` is selected, then the power-law coefficient `nCore*(r/rCore)^alpha` (0 = homogeneous, -2 = isothermal) must be specified.', category='input_profile', unit=None, run_const=True, active_when=_active_densPL),
     ParamSpec(name='nCore', default='1e5', info='Hydrogen nuclei number density of cloud core (n_H). Standard GMC/ISM convention. Mass density: rho = nCore * mu_convert * m_H. If `densPL` AND densPL_alpha = 0, this is the average cloud density.', category='input_physical', unit='cm**-3', run_const=True),
