@@ -316,3 +316,6 @@ cool_delta    -6/35
 
 # INFO: The relative radius xi = r/R2, at which we measure the bubble temperature.
 bubble_xi_Tb    0.98
+
+# INFO: phii_scheme 'swept' only, a DIAGNOSTIC one-ingredient swap (docs/dev/phii-identity PLAN.md §9, Step 7c-4 Stage B, S-F_body): True replaces, in the MOMENTUM phase only, the swept shell's layer-integrated force K_s by c3c's added photoionised force 4 pi r_s**2 P_HII, P_HII being c3c's own closure (get_phii_c3c) on the cavity r_s with confinement against P_ram(r_s), evaluated at each segment start and held. Mass, R2 closure, edge speed, F_rad, P_ext and gravity stay swept's. K_s is still written as the profile's value but leaves the equation of motion; P_HII and F_HII then hold the swapped term. False (default) = swept as shipped.
+swept_c3c_force    False

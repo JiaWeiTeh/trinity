@@ -342,6 +342,20 @@ def root_R2(rs, Ms, fb, params, guess=None, Eb=None, phase='transition', t=None)
                 resid=(float(sp.rShell) - rs) / rs, iters=iters, nsolve=count['n'])
 
 
+def c3c_phii_at_body(params, sp, rs, fb):
+    """Step 7c-4 Stage B (S-F_body): c3c's P_HII closure (get_phii_c3c) on the cavity r_s, confined against P_ram(r_s),
+    with the swept shell's own absorbed fraction; params R2 and Pb are restored. 0 where c3c's gate would not call it."""
+    if not params['include_PHII'].value or not getattr(sp, 'n_IF_Str', 0.0) > 0:
+        return 0.0
+    saved = params['R2'].value, params['Pb'].value
+    params['R2'].value = rs
+    params['Pb'].value = get_bubbleParams.pRam(rs, fb.Lmech_total, fb.v_mech_total)
+    try:
+        return get_bubbleParams.get_phii_c3c(params, sp)
+    finally:
+        params['R2'].value, params['Pb'].value = saved
+
+
 def initial_state(params, fb, Eb=None, phase='transition', t=None):
     """Hand-off (PLAN 0.0.11.3): r_s from the mass-matched shell solve at the entry R2, u conserving momentum.
 
@@ -650,6 +664,10 @@ def run_phase_momentum_swept(params) -> MomentumPhaseResults:
         U = edge_speed(u, rs, fabs_ion, params)
         _, Mdot = swept_mass(rs, U, Ms, u <= 0.0, params)
         _forces_to_params(params, root, rs, u, Ms, Mdot, U, fabs_ion, fb)
+        sf = 'swept_c3c_force' in params and params['swept_c3c_force'].value     # Step 7c-4 Stage B, default off
+        if sf:
+            phii_sf = c3c_phii_at_body(params, sp, rs, fb)
+            params['P_HII'].value, params['F_HII'].value = phii_sf, FOUR_PI * rs**2 * phii_sf
         if abs(root['L8']) > 1e-6:
             logger.warning(f"[swept] L8 = {root['L8']:.2e} at t={t_now:.6e} (shell identity, bar 1e-6)")
 
@@ -669,7 +687,8 @@ def run_phase_momentum_swept(params) -> MomentumPhaseResults:
             r, v = max(y[0], 1e-10), y[1]
             fb_t = get_current_sps_feedback(t, params)       # live, as the c3c RHS (SN turn-on mid-segment)
             R2t = x * r
-            F = (FOUR_PI * R2t**2 * get_bubbleParams.pRam(R2t, fb_t.Lmech_total, fb_t.v_mech_total) + K
+            Kt = FOUR_PI * r**2 * phii_sf if sf else K      # S-F_body: c3c's added force replaces K_s
+            F = (FOUR_PI * R2t**2 * get_bubbleParams.pRam(R2t, fb_t.Lmech_total, fb_t.v_mech_total) + Kt
                  - FOUR_PI * r**2 * p_ext(r, fabs_ion, params) + F_rad)
             U_t = edge_speed(v, r, fabs_ion, params)
             m, md = swept_mass(r, U_t, M_floor, v <= 0.0, params)
@@ -776,6 +795,9 @@ def run_phase_momentum_swept(params) -> MomentumPhaseResults:
             U = edge_speed(u, rs, root['sp'].shell_fAbsorbedIon, params)
             _forces_to_params(params, root, rs, u, Ms, swept_mass(rs, U, Ms, u <= 0.0, params)[1], U,
                               root['sp'].shell_fAbsorbedIon, fb)
+            if 'swept_c3c_force' in params and params['swept_c3c_force'].value:
+                phii_end = c3c_phii_at_body(params, root['sp'], rs, fb)
+                params['P_HII'].value, params['F_HII'].value = phii_end, FOUR_PI * rs**2 * phii_end
             params.save_snapshot()
         else:
             logger.warning(f"[swept] phase-boundary reconciliation skipped: {root['why']}")
