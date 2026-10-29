@@ -254,7 +254,7 @@ def compute_forces_momentum_pure(
     # Add ISM pressure if shell extends beyond cloud
     if rShell >= rCloud:
         P_ext += PISM * k_B
-    P_ext += density_profile.get_press_cloud(rShell, FABSi, params)   # cloud gas ahead (opt-in; 0 by default)
+    P_ext += density_profile.get_press_cloud(rShell, FABSi, params)   # cloud gas ahead (TCloud, 10 K by default)
 
     # ==========================================================================
     # WARM IONIZED GAS PRESSURE (momentum phase)
@@ -447,7 +447,7 @@ def get_ODE_momentum_pure(t: float, y: np.ndarray, snapshot: MomentumODESnapshot
     # Add ambient pressure if shell is beyond cloud
     if rShell >= snapshot.rCloud:
         P_ext += snapshot.PISM * k_B
-    P_ext += density_profile.get_press_cloud(rShell, FABSi, params)   # cloud gas ahead (opt-in; 0 by default)
+    P_ext += density_profile.get_press_cloud(rShell, FABSi, params)   # cloud gas ahead (TCloud, 10 K by default)
 
     # ==========================================================================
     # WARM IONIZED GAS PRESSURE (momentum phase)

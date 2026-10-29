@@ -48,11 +48,16 @@ def _c_i_sq(p):
 
 
 def test_edge_speed_one_speed_in_a_cold_cloud_and_when_falling_back(params):
-    r = 0.5 * params["rCloud"].value
-    for u in (0.3, 3.0, 30.0):
-        assert S.edge_speed(u, r, 1.0, params) == u                      # photons held, P_ext = 0
-    for u in (0.0, -2.0):
-        assert S.edge_speed(u, r, 0.5, params) == u                      # D-T1
+    # a pressure-free cloud, TCloud 0 (the default is 10 K since 2026-10-29; test_cloud_pressure.py covers its jump)
+    r, saved = 0.5 * params["rCloud"].value, params["TCloud"].value
+    try:
+        params["TCloud"].value = 0.0
+        for u in (0.3, 3.0, 30.0):
+            assert S.edge_speed(u, r, 1.0, params) == u                  # photons held, P_ext = 0
+        for u in (0.0, -2.0):
+            assert S.edge_speed(u, r, 0.5, params) == u                  # D-T1
+    finally:
+        params["TCloud"].value = saved
 
 
 def test_edge_speed_is_the_isothermal_jump_when_photons_escape_inside_the_cloud(params):

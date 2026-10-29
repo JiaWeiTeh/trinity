@@ -1,4 +1,4 @@
-"""The cloud gas's own pressure inside the cloud (TCloud thermal, alphaVirCloud turbulent; both 0 by default).
+"""The cloud gas's own pressure inside the cloud (TCloud thermal, default 10 K since 2026-10-29; alphaVirCloud turbulent, default 0).
 
 density_profile.get_press_cloud is added after the photoionised and PISM terms at every place the outside pressure is
 built (docs/dev/phii-identity/weak-wind/PLAN.md section 11). Checked here against independent cgs arithmetic.
@@ -37,11 +37,15 @@ def _params(tmp_path, **over):
     return P
 
 
-def test_defaults_give_no_cloud_pressure(tmp_path):
+def test_defaults_give_the_10K_thermal_term_and_no_turbulence(tmp_path):
     P = _params(tmp_path)
-    assert P["TCloud"].value == 0.0 and P["alphaVirCloud"].value == 0.0
-    assert density_profile.get_press_cloud(R_IN, 1.0, P) == 0.0
-    assert S.p_ext(R_IN, 1.0, P) == 0.0                      # inside a cold cloud, as before
+    assert P["TCloud"].value == 10.0 and P["alphaVirCloud"].value == 0.0
+    want = 0.6 * N_CORE * cvt.CGS.k_B * 10.0 * cvt.Pb_cgs2au                    # (mu_convert/mu_mol) n k_B 10 K
+    assert density_profile.get_press_cloud(R_IN, 1.0, P) == pytest.approx(want, rel=1e-9)
+    assert density_profile.get_press_cloud(R_IN, 0.5, P) == 0.0                # photons escape: the photoionised term
+    P0 = _params(tmp_path, TCloud=0)                                            # switched off: as before 2026-10-29
+    assert density_profile.get_press_cloud(R_IN, 1.0, P0) == 0.0
+    assert S.p_ext(R_IN, 1.0, P0) == 0.0
 
 
 def test_thermal_term_is_molecular_gas_at_TCloud(tmp_path):
@@ -62,13 +66,13 @@ def test_virial_term_is_rho_sigma_sq_minus_the_thermal_part(tmp_path):
     assert turb > 2 * therm
     assert density_profile.get_press_cloud(R_IN, 1.0, P) == pytest.approx(turb, rel=1e-6)
     assert density_profile.get_press_cloud(R_IN, 0.5, P) == pytest.approx(turb - therm, rel=1e-6)
-    P0 = _params(tmp_path, alphaVirCloud=2)                         # no TCloud: the virial term alone
+    P0 = _params(tmp_path, TCloud=0, alphaVirCloud=2)               # no thermal term: the virial term alone
     assert density_profile.get_press_cloud(R_IN, 0.5, P0) == pytest.approx(turb, rel=1e-6)
 
 
 def test_virial_term_grows_as_r_squared_in_a_uniform_cloud(tmp_path):
     """sigma^2 ~ M(<r)/r ~ r^2 with the gas mass alone; the cluster's mass would make it grow toward the centre."""
-    P = _params(tmp_path, alphaVirCloud=1)
+    P = _params(tmp_path, TCloud=0, alphaVirCloud=1)
     r1, r2 = 0.1, 0.4
     ratio = density_profile.get_press_cloud(r2, 0.5, P) / density_profile.get_press_cloud(r1, 0.5, P)
     assert ratio == pytest.approx((r2 / r1) ** 2, rel=1e-6)

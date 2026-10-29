@@ -39,6 +39,7 @@ def _trinity_drive(syn, rs, Ms, t):
 def _cem(zeta, kind):
     """Lancaster's set-up in TRINITY's own units: n = 100 cm^-3, Q = 4e50 s^-1, pure H, a 1 K rind."""
     syn = Bn.Synth("t", 100.0, 4e50, T_ion=1e4, T_neu=1.0, no_r1=(kind == "ED"))
+    syn.P["TCloud"].value = 0.0        # Lancaster's medium has no pressure ahead (the default is 10 K since 2026-10-29)
     source, R_eq, R_i, t_eq, u0 = Bn.cem_start(syn, zeta, kind)
     if kind == "MD":
         syn.pdot = source
@@ -88,6 +89,7 @@ def test_swept_drive_is_lancaster_eq28_at_the_switch_state(zeta):
 
 def test_swept_drive_is_the_hosokawa_inutsuka_force_at_the_b1_start():
     syn = Bn.Synth("t", Bn.SB_RHO / Bn.M_H, Bn.SB_Q, T_ion=1e4, T_neu=1.0)
+    syn.P["TCloud"].value = 0.0        # Hosokawa & Inutsuka's medium has no pressure ahead (default 10 K since 2026-10-29)
     R_St = syn.R_St()
     assert R_St == pytest.approx(0.314, rel=2e-3)                # Bisbas et al. 2015 §4.1
     assert syn.c_i() / Bn.cvt.v_kms2au == pytest.approx(12.85, rel=1e-3)     # their c_i (km/s)

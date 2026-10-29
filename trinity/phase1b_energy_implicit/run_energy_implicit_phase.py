@@ -578,7 +578,7 @@ def compute_forces_pure(
     if rShell >= rCloud:
         P_ext += PISM * k_B
     from trinity.cloud_properties import density_profile
-    P_ext += density_profile.get_press_cloud(rShell, FABSi, params)   # cloud gas ahead (opt-in; 0 by default)
+    P_ext += density_profile.get_press_cloud(rShell, FABSi, params)   # cloud gas ahead (TCloud, 10 K by default)
 
     # ==========================================================================
     # WARM IONIZED GAS PRESSURE (implicit phase)
