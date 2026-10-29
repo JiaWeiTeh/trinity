@@ -283,9 +283,8 @@ PISM    0
 # UNIT: [K]
 TCloud    0
 
-# INFO: One-dimensional turbulent velocity dispersion of the cloud's gas, for its turbulent pressure rho sigmaCloud^2 on the shell INSIDE the cloud only (density_profile.get_press_cloud); the ambient ISM outside the cloud is PISM. 0 (default) = off. Experimental. docs/dev/phii-identity/weak-wind/PLAN.md section 11.3.
-# UNIT: [km * s**-1]
-sigmaCloud    0
+# INFO: Virial parameter of the cloud's gas for its turbulent pressure on the shell INSIDE the cloud only: rho sigma^2 with sigma^2 = alphaVirCloud G M(<r) / (5 r), Krumholz & Matzner (2009) eq. 17, alpha_vir = 5 sigma^2 r / (G M(<r)) as Bertoldi & McKee (1992), sigma the total one-dimensional dispersion (thermal included, so the term adds rho sigma^2 minus the TCloud thermal pressure); M(<r) is the cloud gas inside r, the cluster not included (density_profile.get_press_cloud). The ambient ISM outside the cloud is PISM. 0 (default) = off. Experimental. docs/dev/phii-identity/weak-wind/PLAN.md section 11.3.
+alphaVirCloud    0
 
 
 # ==============================================================================
