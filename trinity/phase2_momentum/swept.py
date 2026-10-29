@@ -81,11 +81,13 @@ def _scalar(x):
     return float(np.atleast_1d(x)[0])
 
 
-def p_ext(r, fabs_ion, params):
-    """External pressure at r, as the c3c runner has it: photoionised gas if photons escape, PISM past rCloud."""
+def p_ext(r, fabs_ion, params, turbulent=True):
+    """External pressure at r, as the c3c runner has it: photoionised gas if photons escape, PISM past rCloud, and the
+    cloud gas's own pressure inside the cloud (density_profile.get_press_cloud; opt-in, 0 by default)."""
     P = _scalar(get_press_ion(r, params)) if fabs_ion < 1.0 else 0.0
     if r >= params['rCloud'].value:
         P += params['PISM'].value * params['k_B'].value
+    P += density_profile.get_press_cloud(r, fabs_ion, params, turbulent)
     return P
 
 
@@ -102,7 +104,7 @@ def edge_speed(u, r, fabs_ion, params):
     rho = params['mu_convert'].value * _scalar(density_profile.get_density_profile(np.array([r]), params))
     if rho <= 0.0:
         return u
-    c0_sq = p_ext(r, fabs_ion, params) / rho
+    c0_sq = p_ext(r, fabs_ion, params, turbulent=False) / rho   # thermal only: the jump is a sound-speed condition
     c_i_sq = params['k_B'].value * params['TShell_ion'].value / params['mu_ion_shell'].value
     if not (0.0 < c0_sq <= c_i_sq * (1.0 + 1e-9)):
         return u

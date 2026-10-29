@@ -279,6 +279,14 @@ k_B    1.380649e-16
 # UNIT: [K * cm**-3]
 PISM    0
 
+# INFO: Temperature of the cloud's own (molecular) gas, for its thermal pressure on the shell INSIDE the cloud: (mu_convert/mu_mol) n(r) k_B TCloud while every ionising photon is absorbed (density_profile.get_press_cloud). 0 (default) = no pressure from the cloud gas, as before 2026-10-29. Outside the cloud the ambient pressure is PISM. Future work: a default of ~10 K (molecular gas). docs/dev/phii-identity/weak-wind/PLAN.md section 11.
+# UNIT: [K]
+TCloud    0
+
+# INFO: One-dimensional turbulent velocity dispersion of the cloud's gas, for its turbulent pressure rho sigmaCloud^2 on the shell INSIDE the cloud only (density_profile.get_press_cloud); the ambient ISM outside the cloud is PISM. 0 (default) = off. Experimental. docs/dev/phii-identity/weak-wind/PLAN.md section 11.3.
+# UNIT: [km * s**-1]
+sigmaCloud    0
+
 
 # ==============================================================================
 # Solver / Phase Control

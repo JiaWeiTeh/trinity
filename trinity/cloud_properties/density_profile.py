@@ -168,3 +168,31 @@ def get_density_profile(r, params):
 
     # Convert back to scalar if input was scalar
     return _to_output(n_arr, was_scalar)
+
+
+def get_press_cloud(r, fabs_ion, params, turbulent=True):
+    """Pressure of the cloud's own gas ahead of the shell at radius r [code units]; 0 outside the cloud (PISM applies there).
+
+    Two opt-in terms, both zero by default so the outside pressure is unchanged unless set
+    (docs/dev/phii-identity/weak-wind/PLAN.md section 11):
+      TCloud      thermal pressure of the molecular cloud gas, (mu_convert/mu_mol) n(r) k_B TCloud, while every ionising
+                  photon is absorbed (if photons escape, the gas ahead is photoionised and get_press_ion gives it);
+      sigmaCloud  turbulent pressure of the cloud gas, rho sigmaCloud^2 = mu_convert n(r) sigmaCloud^2, whatever the
+                  ionisation of the gas ahead.
+    Added after the photoionised and PISM terms at every place the outside pressure is built. turbulent=False gives the
+    thermal part alone: swept's edge_speed uses it, because the isothermal jump there is a thermal sound-speed condition
+    (with sigma in it a stalled shell would keep sweeping mass at U -> sigma).
+    """
+    if params is None:                     # callers that only needed params when photons escape may pass None
+        return 0.0
+    T = params['TCloud'].value if 'TCloud' in params else 0.0
+    sigma = params['sigmaCloud'].value if 'sigmaCloud' in params else 0.0
+    if (T <= 0.0 and sigma <= 0.0) or r >= params['rCloud'].value:
+        return 0.0
+    n = float(np.atleast_1d(get_density_profile(np.atleast_1d(r), params))[0])
+    P = 0.0
+    if T > 0.0 and fabs_ion >= 1.0:
+        P += params['mu_convert'].value / params['mu_mol'].value * n * params['k_B'].value * T
+    if turbulent and sigma > 0.0:
+        P += params['mu_convert'].value * n * sigma * sigma
+    return P
