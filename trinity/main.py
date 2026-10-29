@@ -227,6 +227,11 @@ def run_expansion(params):
     # v2 = initial velocity (pc/Myr)
     # Eb = initial energy
     # T0 = initial temperature (K)
+    # start_scheme (docs/dev/phii-identity/weak-wind/PLAN.md): 'weaver' (default) starts phase 1a from the
+    # free-streaming wind; 'stromgren' (swept only) skips 1a-1c and starts the momentum phase at the Stroemgren radius.
+    if get_InitPhaseParam.resolve_start_scheme(params) == 'stromgren':
+        return _run_expansion_stromgren(params)
+
     logger.info("Computing initial phase parameters (free-streaming -> Weaver transition)...")
 
     t0, r0, v0, E0, T0 = get_InitPhaseParam.get_y0(params)
@@ -361,6 +366,37 @@ def run_expansion(params):
     logger.info("All expansion phases complete")
 
     return 
+
+
+def _run_expansion_stromgren(params):
+    """start_scheme 'stromgren': the swept momentum phase from the D-type initial state; no energy phases."""
+    logger.info("Computing initial phase parameters (Stroemgren start: R-type phase -> D-type expansion)...")
+    t0, rs, u0, Ms, R2_guess = get_InitPhaseParam.get_y0_stromgren(params)
+    params['t_now'].value = t0
+    params['R2'].value = R2_guess         # the first segment's root-find starts from this guess (swept.root_R2)
+    params['R1'].value = R2_guess         # free wind up to the contact, as the momentum phase has it
+    params['v2'].value = u0
+    params['Eb'].value = 0.0
+    params['T0'].value = params['TShell_ion'].value   # no hot bubble: the gas at the contact is the ionised gas
+    params['rs_dyn'].value = rs           # > 0: run_phase_momentum_swept continues from (rs_dyn, shell_mass, v2)
+    params['rShell'].value = rs
+    params['shell_mass'].value = Ms
+    for phase in ('1a (energy)', '1b (implicit)', '1c (transition)'):
+        logger.info(f"start_scheme stromgren: phase {phase} skipped")
+    params.reset_keys(COOLING_PHASE_KEYS)
+
+    logger.info("-" * 5 + " PHASE 2: Momentum-driven phase (Stroemgren start) " + "-" * 5)
+    terminal_prints.phase('Entering momentum phase (Stroemgren start)')
+    params['current_phase'].value = 'momentum'
+    phase2_starttime = datetime.datetime.now()
+    run_momentum_phase.run_phase_momentum(params)
+    logger.info(f"Phase 2 (momentum) complete. Duration: {datetime.datetime.now() - phase2_starttime}")
+
+    try:
+        params.flush()
+    except Exception as e:  # noqa: BLE001 -- as run_expansion
+        logger.warning(f"Could not flush parameters: {e}")
+    logger.info("All expansion phases complete")
 
 
 def expansion_next(tStart, ODEpar, sps_data_old, sps_f_old, mypath, cloudypath, ii_coll):

@@ -168,3 +168,39 @@ def get_density_profile(r, params):
 
     # Convert back to scalar if input was scalar
     return _to_output(n_arr, was_scalar)
+
+
+def get_press_cloud(r, fabs_ion, params, turbulent=True):
+    """Pressure [code units] of the cloud's own gas ahead of the shell at radius r [pc]; 0 outside the cloud (PISM applies there).
+
+    Two opt-in terms, both zero by default so the outside pressure is unchanged unless set
+    (docs/dev/phii-identity/weak-wind/PLAN.md section 11):
+      TCloud      thermal pressure of the molecular cloud gas, (mu_convert/mu_mol) n(r) k_B TCloud, while every ionising
+                  photon is absorbed (if photons escape, the gas ahead is photoionised and get_press_ion gives it);
+      alphaVirCloud  turbulent pressure of the cloud gas, rho sigma^2 with the virial dispersion of Krumholz & Matzner
+                  (2009, eq. 17) sigma^2 = alphaVirCloud G M(<r) / (5 r), alpha_vir = 5 sigma^2 r / (G M(<r)) as in
+                  Bertoldi & McKee (1992); M(<r) is the cloud gas inside r (mass_profile, as KM09's eq. 18: the cluster
+                  is not included). sigma is the total one-dimensional dispersion, thermal included (Kauffmann et al.
+                  2013, eq. 1), so the term adds rho sigma^2 minus the TCloud thermal pressure, whatever the ionisation
+                  of the gas ahead; with both on and every photon absorbed the cloud gas pushes with rho sigma^2.
+    Added after the photoionised and PISM terms at every place the outside pressure is built. turbulent=False gives the
+    thermal part alone: swept's edge_speed uses it, because the isothermal jump there is a thermal sound-speed condition
+    (with sigma in it a stalled shell would keep sweeping mass at U -> sigma).
+    """
+    if params is None:                     # callers that only needed params when photons escape may pass None
+        return 0.0
+    T = params['TCloud'].value if 'TCloud' in params else 0.0
+    a_vir = params['alphaVirCloud'].value if 'alphaVirCloud' in params else 0.0
+    if (T <= 0.0 and a_vir <= 0.0) or r >= params['rCloud'].value:
+        return 0.0
+    n = float(np.atleast_1d(get_density_profile(np.atleast_1d(r), params))[0])
+    P = 0.0
+    P_th = params['mu_convert'].value / params['mu_mol'].value * n * params['k_B'].value * T
+    if T > 0.0 and fabs_ion >= 1.0:
+        P += P_th
+    if turbulent and a_vir > 0.0:
+        from trinity.cloud_properties.mass_profile import get_mass_profile   # local: mass_profile imports this module
+        sigma_sq = a_vir * params['G'].value * get_mass_profile(r, params) / (5.0 * r)
+        # Bertoldi & McKee's sigma is thermal + non-thermal, so only the non-thermal part rho sigma^2 - P_th is added
+        P += max(params['mu_convert'].value * n * sigma_sq - P_th, 0.0)
+    return P

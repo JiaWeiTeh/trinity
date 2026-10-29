@@ -55,6 +55,14 @@ from trinity.sps.update_feedback import get_current_sps_feedback
 
 logger = logging.getLogger(__name__)
 
+# D12 (docs/dev/phii-identity/weak-wind/PLAN.md, ruled 2026-10-28): segment control after a Stroemgren start, in units
+# of the shell's dynamical time r_s/|u|. Measured on the G-WW1 test cloud (R_St/c_i = 3.2 kyr; the runner's default
+# segments, 2e-3 / 1e-3 Myr there, reverse the shell in its first segment): the outer edge's largest deviation from
+# Hosokawa & Inutsuka 2006 over 2-4.3 R_St is 1.5e-3, 4.2e-4 and 8.5e-5 at a fraction 0.03, 0.01 and 0.003 (93, 246,
+# 792 rows to 10 R_St); 0.01 meets the 1e-3 bar with a factor 2.4 to spare (weak-wind/data/g_ww1_cap_20261028/).
+STROMGREN_DT_FIRST = 1e-3   # fraction of r_s/|u| for the first segment (not Myr)
+STROMGREN_DT_FRAC = 0.01    # fraction of r_s/|u| for every later segment (not Myr)
+
 FOUR_PI = 4.0 * math.pi
 MONITOR_KEYS = ADAPTIVE_MONITOR_KEYS + ['rs_dyn']     # R2 is algebraic here; the evolved radius is rs_dyn
 
@@ -73,11 +81,13 @@ def _scalar(x):
     return float(np.atleast_1d(x)[0])
 
 
-def p_ext(r, fabs_ion, params):
-    """External pressure at r, as the c3c runner has it: photoionised gas if photons escape, PISM past rCloud."""
+def p_ext(r, fabs_ion, params, turbulent=True):
+    """External pressure at r, as the c3c runner has it: photoionised gas if photons escape, PISM past rCloud, and the
+    cloud gas's own pressure inside the cloud (density_profile.get_press_cloud; opt-in, 0 by default)."""
     P = _scalar(get_press_ion(r, params)) if fabs_ion < 1.0 else 0.0
     if r >= params['rCloud'].value:
         P += params['PISM'].value * params['k_B'].value
+    P += density_profile.get_press_cloud(r, fabs_ion, params, turbulent)
     return P
 
 
@@ -94,7 +104,7 @@ def edge_speed(u, r, fabs_ion, params):
     rho = params['mu_convert'].value * _scalar(density_profile.get_density_profile(np.array([r]), params))
     if rho <= 0.0:
         return u
-    c0_sq = p_ext(r, fabs_ion, params) / rho
+    c0_sq = p_ext(r, fabs_ion, params, turbulent=False) / rho   # thermal only: the jump is a sound-speed condition
     c_i_sq = params['k_B'].value * params['TShell_ion'].value / params['mu_ion_shell'].value
     if not (0.0 < c0_sq <= c_i_sq * (1.0 + 1e-9)):
         return u
@@ -619,6 +629,16 @@ def run_phase_momentum_swept(params) -> MomentumPhaseResults:
     t_now, rs_prev, segment_count, termination_reason, x_prev = tmin, rs, 0, None, params['R2'].value / rs
     t_results, R2_results, u_results = [tmin], [params['R2'].value], [u]
     dt_segment, t_diss_onset = DT_SEGMENT_INIT, np.inf
+    # D12 (docs/dev/phii-identity/weak-wind/PLAN.md): after a Stroemgren start the shell's dynamical time r_s/u is of
+    # order R_St/c_i (kyr in a dense core), shorter than the default segments, and the first segment holds the
+    # start's photon-escape flag; so under start_scheme 'stromgren' only, the first segment is at most STROMGREN_DT_FIRST
+    # of r_s/|u| and every later one at most STROMGREN_DT_FRAC of r_s/|u| (both dimensionless fractions, not Myr), with
+    # the floor lowered to match. Weaver starts: unchanged.
+    stromgren = str(getattr(params.get('start_scheme'), 'value', 'weaver')).strip().lower() == 'stromgren'
+    dt_floor = DT_SEGMENT_MIN
+    if stromgren:
+        dt_segment = min(dt_segment, STROMGREN_DT_FIRST * rs / max(abs(u), 1e-30))
+        dt_floor = min(DT_SEGMENT_MIN, dt_segment)
     ode_events = build_momentum_phase_events(params)
     G, mCluster = params['G'].value, params['mCluster'].value
 
@@ -717,7 +737,7 @@ def run_phase_momentum_swept(params) -> MomentumPhaseResults:
 
         max_dex_change = compute_max_dex_change(values_before, _monitor(params), MONITOR_KEYS)
         if max_dex_change > ADAPTIVE_THRESHOLD_DEX:
-            dt_segment = max(dt_segment / ADAPTIVE_FACTOR, DT_SEGMENT_MIN)
+            dt_segment = max(dt_segment / ADAPTIVE_FACTOR, dt_floor)
         else:
             dt_segment = min(dt_segment * ADAPTIVE_FACTOR, DT_SEGMENT_MAX)
         if u < 0:
@@ -725,6 +745,8 @@ def run_phase_momentum_swept(params) -> MomentumPhaseResults:
                 dt_segment = DT_SEGMENT_COLLAPSE
             elif -u > VELOCITY_THRESHOLD_COLLAPSE:
                 dt_segment = min(dt_segment, DT_SEGMENT_MIN)
+        if stromgren:                                    # D12: at most a fraction of the dynamical time
+            dt_segment = min(dt_segment, STROMGREN_DT_FRAC * rs / max(abs(u), 1e-30))
 
         t_results.append(t_now)
         R2_results.append(params['R2'].value)

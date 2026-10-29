@@ -48,6 +48,9 @@ log_colors    True
 # INFO: Energy-implicit (beta, delta) solver: 'hybr' (default; unbounded scipy root-finder with a physical dMdt>0 acceptance gate) or 'legacy' (bounded grid + L-BFGS-B).
 betadelta_solver    hybr
 
+# INFO: How the integration starts. 'weaver' (default, shipped): from the free-streaming wind into phase 1a (get_InitPhaseParam.get_y0); refused with a ValueError when the first structure solve would fall off the non-CIE cooling cube (phi(r0) = Qi/(4 pi r0^2) > 1e21 cm^-2 s^-1: a weak wind in a dense core). 'stromgren' (phii_scheme 'swept' only): phases 1a-1c are skipped and the swept momentum phase starts at the end of the R-type phase, r_s = R_St (solved on the run's own density profile), u = 2 c_i/sqrt(3), M_s = M(<R_St), the wind bubble inside at its ram-pressure equilibrium (Hosokawa & Inutsuka 2006 eq. 36; Lancaster et al. 2025a sec. 3.5); refused at zeta = R_eq/R_St >= 1 or R_St > rCloud. docs/dev/phii-identity/weak-wind/PLAN.md.
+start_scheme    weaver
+
 
 # ==============================================================================
 # Physical Parameters
@@ -275,6 +278,13 @@ k_B    1.380649e-16
 # INFO: ISM Pressure, P/k
 # UNIT: [K * cm**-3]
 PISM    0
+
+# INFO: Temperature of the cloud's own (molecular) gas, for its thermal pressure on the shell INSIDE the cloud: (mu_convert/mu_mol) n(r) k_B TCloud while every ionising photon is absorbed (density_profile.get_press_cloud). 0 (default) = no pressure from the cloud gas, as before 2026-10-29. Outside the cloud the ambient pressure is PISM. Future work: a default of ~10 K (molecular gas). docs/dev/phii-identity/weak-wind/PLAN.md section 11.
+# UNIT: [K]
+TCloud    0
+
+# INFO: Virial parameter of the cloud's gas for its turbulent pressure on the shell INSIDE the cloud only: rho sigma^2 with sigma^2 = alphaVirCloud G M(<r) / (5 r), Krumholz & Matzner (2009) eq. 17, alpha_vir = 5 sigma^2 r / (G M(<r)) as Bertoldi & McKee (1992), sigma the total one-dimensional dispersion (thermal included, so the term adds rho sigma^2 minus the TCloud thermal pressure); M(<r) is the cloud gas inside r, the cluster not included (density_profile.get_press_cloud). The ambient ISM outside the cloud is PISM. 0 (default) = off. Experimental. docs/dev/phii-identity/weak-wind/PLAN.md section 11.3.
+alphaVirCloud    0
 
 
 # ==============================================================================
