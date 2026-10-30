@@ -173,8 +173,8 @@ def get_density_profile(r, params):
 def get_press_cloud(r, fabs_ion, params, turbulent=True):
     """Pressure [code units] of the cloud's own gas ahead of the shell at radius r [pc]; 0 outside the cloud (PISM applies there).
 
-    Two opt-in terms, both zero by default so the outside pressure is unchanged unless set
-    (docs/dev/phii-identity/weak-wind/PLAN.md section 11):
+    Two terms (docs/dev/phii-identity/weak-wind/PLAN.md section 11); TCloud defaults to 10 K (since 2026-10-29, gate
+    G-CP3; 0 switches it off), alphaVirCloud to 0 (off):
       TCloud      thermal pressure of the molecular cloud gas, (mu_convert/mu_mol) n(r) k_B TCloud, while every ionising
                   photon is absorbed (if photons escape, the gas ahead is photoionised and get_press_ion gives it);
       alphaVirCloud  turbulent pressure of the cloud gas, rho sigma^2 with the virial dispersion of Krumholz & Matzner
@@ -189,7 +189,7 @@ def get_press_cloud(r, fabs_ion, params, turbulent=True):
     """
     if params is None:                     # callers that only needed params when photons escape may pass None
         return 0.0
-    T = params['TCloud'].value if 'TCloud' in params else 0.0
+    T = params['TCloud'].value if 'TCloud' in params else 0.0          # hand-built params without the key: off
     a_vir = params['alphaVirCloud'].value if 'alphaVirCloud' in params else 0.0
     if (T <= 0.0 and a_vir <= 0.0) or r >= params['rCloud'].value:
         return 0.0

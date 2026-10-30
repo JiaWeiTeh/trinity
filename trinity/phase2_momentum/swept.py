@@ -16,7 +16,7 @@ exported as K_s, F_rad_sh, P_outer). There is no P_HII: the photoionised gas's p
 
 The outer edge is the leading shock (ruling D-T2 (b), 2026-10-21): it runs at U = (u + sqrt(u^2 + 4 c0^2))/2,
 the isothermal jump at the gas ahead, c0^2 = P_ext / rho_amb at r_s, where 0 < c0 <= c_i and the gas ahead is cloud
-gas (r_s < rCloud; Step 7a, A1, 2026-10-26); elsewhere U = u. In a cold cloud (P_ext = 0) that is one speed exactly,
+gas (r_s < rCloud; Step 7a, A1, 2026-10-26); elsewhere U = u. In a pressure-free cloud (TCloud 0, P_ext = 0) that is one speed exactly,
 and past the cloud the shell moves with its gas. Mass is swept at 4 pi r_s^2 rho_amb U and carried at u:
 
     dr_s/dt = U,      du/dt = (F - F_grav - Mdot_s u) / M_s,      F_grav = G M_s (M_* + M_s/2) / r_s^2.
@@ -83,7 +83,7 @@ def _scalar(x):
 
 def p_ext(r, fabs_ion, params, turbulent=True):
     """External pressure at r, as the c3c runner has it: photoionised gas if photons escape, PISM past rCloud, and the
-    cloud gas's own pressure inside the cloud (density_profile.get_press_cloud; opt-in, 0 by default)."""
+    cloud gas's own pressure inside the cloud (density_profile.get_press_cloud; TCloud 10 K by default)."""
     P = _scalar(get_press_ion(r, params)) if fabs_ion < 1.0 else 0.0
     if r >= params['rCloud'].value:
         P += params['PISM'].value * params['k_B'].value

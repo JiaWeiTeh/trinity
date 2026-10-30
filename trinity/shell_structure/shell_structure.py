@@ -893,7 +893,7 @@ def shell_structure_pure(params) -> ShellProperties:
     # gets out the ionised region extends past rShell and this geometry stops containing
     # it. f_absorbed_ion is exactly 1.0 when nothing escapes (verified: 0/664 end-state-2
     # archived rows have any escape), so the strict test is not a floating-point trap.
-    # ⭐ Note this is the SAME condition that switches P_ext on in all four phase runners
+    # ⭐ Note this is the SAME condition that switches the photoionised P_ext on in all four phase runners
     # (`if FABSi < 1.0`). That is a consistency, not a coincidence: the model already
     # treats "LyC escapes" as "the gas outside is photoionised too", and the geometry
     # boundary is that same line. The flag names it; it adds no information beyond

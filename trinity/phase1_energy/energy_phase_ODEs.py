@@ -246,7 +246,7 @@ def get_ODE_Edot_pure(t: float, y: list, snapshot: ODESnapshot, params_for_feedb
     # Add ISM pressure if shell beyond cloud
     if rShell >= snapshot.rCloud:
         P_ext += snapshot.PISM * snapshot.k_B
-    P_ext += density_profile.get_press_cloud(rShell, FABSi, params_for_feedback)   # cloud gas ahead (opt-in; 0 by default)
+    P_ext += density_profile.get_press_cloud(rShell, FABSi, params_for_feedback)   # cloud gas ahead (TCloud, 10 K by default)
 
     # ==========================================================================
     # WARM IONIZED GAS PRESSURE
@@ -435,7 +435,7 @@ def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_
 
     if rShell >= snapshot.rCloud:
         P_ext += snapshot.PISM * snapshot.k_B
-    P_ext += density_profile.get_press_cloud(rShell, FABSi, params_for_feedback)   # cloud gas ahead (opt-in; 0 by default)
+    P_ext += density_profile.get_press_cloud(rShell, FABSi, params_for_feedback)   # cloud gas ahead (TCloud, 10 K by default)
 
     # ==========================================================================
     # WARM IONIZED GAS PRESSURE

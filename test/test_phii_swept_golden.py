@@ -17,6 +17,7 @@ Every momentum snapshot must close L8 to 1e-6 and keep rs_dyn on the shell solve
 """
 import json
 import math
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -48,11 +49,16 @@ def _c_i_sq(p):
 
 
 def test_edge_speed_one_speed_in_a_cold_cloud_and_when_falling_back(params):
-    r = 0.5 * params["rCloud"].value
-    for u in (0.3, 3.0, 30.0):
-        assert S.edge_speed(u, r, 1.0, params) == u                      # photons held, P_ext = 0
-    for u in (0.0, -2.0):
-        assert S.edge_speed(u, r, 0.5, params) == u                      # D-T1
+    # a pressure-free cloud, TCloud 0 (the default is 10 K since 2026-10-29; test_cloud_pressure.py covers its jump)
+    r, saved = 0.5 * params["rCloud"].value, params["TCloud"].value
+    try:
+        params["TCloud"].value = 0.0
+        for u in (0.3, 3.0, 30.0):
+            assert S.edge_speed(u, r, 1.0, params) == u                  # photons held, P_ext = 0
+        for u in (0.0, -2.0):
+            assert S.edge_speed(u, r, 0.5, params) == u                  # D-T1
+    finally:
+        params["TCloud"].value = saved
 
 
 def test_edge_speed_is_the_isothermal_jump_when_photons_escape_inside_the_cloud(params):
@@ -182,8 +188,14 @@ def test_momentum_replay_golden(cfg, tmp_path):
     if not all(f.exists() for f in need):
         pytest.skip("archived run or replay harness absent (docs/dev is gitignored)")
     out = tmp_path / "swept.jsonl"
+    # the archived runs predate the cloud gas's own pressure: replay them on a copy whose .param sets TCloud 0 (the
+    # default is 10 K since 2026-10-29), so the goldens keep their subject
+    arch = tmp_path / (BUNDLE / rel).name
+    shutil.copytree(BUNDLE / rel, arch)
+    pfile = arch / f"{arch.name}.param"
+    pfile.write_text(pfile.read_text().rstrip("\n") + "\nTCloud    0\n")
     # a separate process: trinity keeps module-level state between runs in one interpreter
-    subprocess.run([sys.executable, str(BUNDLE / "harness" / "momentum_replay.py"), str(BUNDLE / rel),
+    subprocess.run([sys.executable, str(BUNDLE / "harness" / "momentum_replay.py"), str(arch),
                     "--scheme", "swept", "--dt", str(dt), "--out", str(out)], cwd=REPO, check=True,
                    capture_output=True, text=True, timeout=1800)
     rows = [json.loads(ln) for ln in out.read_text().splitlines() if ln.strip()]

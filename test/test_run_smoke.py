@@ -78,8 +78,9 @@ def test_quickstart_completes_cleanly(tmp_path):
     are cleaned by pytest.
     """
     param = tmp_path / "smoke.param"
+    # TCloud 0: the goldens below predate the cloud gas's own pressure (TCloud defaults to 10 K since 2026-10-29)
     param.write_text(
-        "mCloud      1e5\n" "sfe         0.3\n" "stop_t      1e-4\n" "model_name  smoke\n"
+        "mCloud      1e5\n" "sfe         0.3\n" "stop_t      1e-4\n" "model_name  smoke\n" "TCloud      0\n"
     )
 
     result = subprocess.run(
