@@ -40,5 +40,11 @@ echo "$cmd" | grep -Eiq 'chown[[:space:]]+-R'                                   
 echo "$cmd" | grep -Eiq '(curl|wget)[[:space:]].*\|[[:space:]]*(sudo[[:space:]]+)?(ba|z)?sh' && block "pipe-to-shell"
 # sudo / privilege escalation
 echo "$cmd" | grep -Eiq '(^|[^[:alnum:]])sudo([[:space:]]|$)'                                && block "sudo"
+# commits authored as Claude (web containers default git to noreply@anthropic.com when the
+# session-start hook hasn't set the owner identity)
+if echo "$cmd" | grep -Eiq 'git[[:space:]]+commit' \
+   && git var GIT_AUTHOR_IDENT 2>/dev/null | grep -qi 'noreply@anthropic\.com'; then
+  block "git author is Claude; run: git config user.name 'Jia Wei Teh' && git config user.email jiaweiteh.astro@gmail.com"
+fi
 
 exit 0
