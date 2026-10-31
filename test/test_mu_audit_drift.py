@@ -283,7 +283,7 @@ def test_phase3_shellODE_neutral_vs_original():
 def test_phase3_shell_structure_coefficients_and_no_original():
     """shell_structure.py uses the SINGLY-ionised shell composition: BC and
     I-front jump on mu_ion_shell; chi_e_shell x3; mass/grav/tau weights
-    mu_convert x8; mu_atom only at the jump numerator; the bubble's doubly-
+    mu_convert x8; mu_atom at the I-front jump numerator and the two-zone boundary; the bubble's doubly-
     ionised mu_ion / chi_e never appear in the shell."""
     s = _src("trinity/shell_structure/shell_structure.py")
     assert "params['mu_ion_shell'].value / params['mu_convert'].value" in s  # refined BC (singly)
@@ -294,7 +294,10 @@ def test_phase3_shell_structure_coefficients_and_no_original():
     # call sites would have added four. The guard this test exists for is untouched:
     # the bubble's doubly-ionised mu_ion / chi_e still must not appear (asserted below).
     assert s.count("params['mu_convert'].value") == 9   # 7 mass/grav/tau + BC + the march alias
-    assert s.count("params['mu_atom'].value") == 1      # only the I-front jump numerator
+    # 2 since the two-zone neutral layer (weak-wind/neutral-shell/PLAN.md): the I-front jump numerator, and the
+    # denominator of the atomic -> molecular jump (mu_mol/mu_atom) at the zone boundary, which is off by default.
+    assert s.count("params['mu_atom'].value") == 2      # the I-front jump numerator + the zone-boundary jump
+    assert "params['mu_mol'].value / params['mu_atom'].value" in s  # the zone-boundary jump (TShell_mol > 0)
     assert "params['mu_atom'].value / params['mu_ion_shell'].value" in s  # the :298 jump (singly)
     assert s.count("params['chi_e_shell'].value") == 3  # max_shellRadius, n_IF_Str, phi_hydrogen
     assert "params['chi_e'].value" not in s             # bubble chi_e must not leak
