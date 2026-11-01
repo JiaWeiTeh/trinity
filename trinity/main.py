@@ -145,7 +145,7 @@ def start_expansion(params):
     logger.debug(f"SPS mass scaling factor: {f_mass:.4f}")
     # Get SPS data and interpolation functions.
     sps_data = read_sps.read_sps(f_mass, params)
-    sps_f = read_sps.get_interpolation(sps_data)
+    sps_f = read_sps.get_interpolation(sps_data, params['sps_interp'].value)
     # TODO:
     # if tSF != 0.: we would actually need to shift the feedback parameters by tSF
     # update

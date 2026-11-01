@@ -160,6 +160,9 @@ FB_thermCoeffWind    1
 # INFO: Defines the thermalization efficiency for supernova ejecta.
 FB_thermCoeffSN    1
 
+# INFO: How the SPS table is interpolated in time. 'pchip' (default): monotone, never outside the two bracketing table rows, so the feedback is never negative; total = wind + supernova. 'cubic': the spline used before 2026-11, kept only to reproduce older runs; it rings across the supernova switch-on and switch-off (negative mechanical luminosity near 3.45 Myr at FB_thermCoeffWind 0.01 and near 45 Myr at every coefficient). docs/dev/phii-identity/weak-wind/early-1b/SPS_TRANSIENTS.md.
+sps_interp    pchip
+
 # INFO: Specifies the velocity of supernova ejecta.
 # UNIT: [km * s**-1]
 FB_vSN    1e4

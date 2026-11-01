@@ -61,9 +61,15 @@ _FINAL_GOLDENS = {
     # this is not a cancellation of C3c.
     # Previous values, pre-W32: R2 0.2567222331253797, v2 48.944358738549326,
     # Eb 657558.3776158141.
-    "R2": 0.25934419485301125,
-    "v2": 49.49653363172906,
-    "Eb": 659632.2441434182,
+    # Re-baselined 2026-11-01 for the PCHIP stellar table (sps_interp pchip, the new
+    # default): before the first table row (0-0.01 Myr) PCHIP is flat where the cubic
+    # spline was not. R2 -1.28e-6, v2 -3.45e-6, Eb -1.73e-5 (relative); with
+    # sps_interp cubic the previous values are reproduced (R2 0.25934419485301125,
+    # v2 49.49653363172906, Eb 659632.2441434182).
+    # docs/dev/phii-identity/weak-wind/early-1b/SPS_TRANSIENTS.md section 7.
+    "R2": 0.25934386495844797,
+    "v2": 49.49636304648124,
+    "Eb": 659620.8513924862,
 }
 
 
