@@ -1,4 +1,5 @@
 {
+  "attribution": { "commit": "", "pr": "" },
   "permissions": {
     "defaultMode": "default",
     "disableBypassPermissionsMode": "disable",
