@@ -1,0 +1,136 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""The two-zone neutral shell (TShell_mol > 0) against an exact isothermal slab, and the one-zone default untouched.
+
+docs/dev/phii-identity/weak-wind/neutral-shell/PLAN.md, gate G-NS1. The state is StarBench-like, as in
+test_shell_neutral_slice_cap.py: n = 1e3 cm^-3, R_St = 1 pc, R2 = 1e-3 pc, Ln = 0 (no radiation force on the neutral gas; a
+tiny Li keeps the ionised march on), dust ON so that tau grows (the column is counted from the front). The ionised layer's own
+dust then stops the front short of R_St: R_IF = 0.527 pc, tau_IF = 2.43 (checked by an independent scipy integration of
+dphi/dr = -3 r^2/R_St^3 - n dust_sigma phi, 2026-10-29). Both neutral zones are uniform and the solve has a closed form:
+    n_1 = n_IF (mu_atom/mu_ion_shell) (T_ion/T_PDR)               the atomic zone, from R_IF to r_b
+    r_b = R_IF + tauShell_mol / (n_1 dust_sigma)                    dtau/dr = n_1 dust_sigma
+    n_2 = n_1 (mu_mol/mu_atom) (T_PDR/T_mol)                        the pressure-continuous jump (27.5 at 300 K / 20 K, x_He 0.1)
+    r_s^3 = r_b^3 + 3 M_2 / (4 pi mu_H n_2),   M_1 = (4 pi/3) mu_H n_1 (r_b^3 - R_IF^3),   M_2 = M_sh - M_ion - M_1
+In units of the test's m_ion (n0 uniform to R_St): M_ion = 0.146, M_1 = 0.553 (n_1 = 5.33e4 cm^-3, zone 1 0.0122 pc thick), so
+a shell of 10 m_ion has both zones and a shell of 0.4 m_ion runs out of mass inside the atomic zone (checked as a premise in the
+test that uses it). A first version used 2.5 m_ion, from a closed form without the ionised layer's dust; that shell reaches the
+molecular zone.
+"""
+import math
+from pathlib import Path
+
+import numpy as np
+import pytest
+
+import trinity._functions.unit_conversions as cvt
+import trinity.phase2_momentum.swept as S
+from trinity._input.read_param import read_param
+from trinity.shell_structure.shell_structure import shell_structure_pure
+
+REPO = Path(__file__).resolve().parents[1]
+N0_CGS = 1e3                            # cm^-3
+H_NU_ERG = 13.6 * 1.602176634e-12
+T_PDR, T_MOL, DTAU = 300.0, 20.0, 3.0
+
+
+def _slab(m_over_m_ion, **keys):
+    p = read_param(str(REPO / "param" / "simple_cluster.param"))
+    g = lambda k: float(p[k].value)  # noqa: E731
+    for k, v in keys.items():
+        p[k].value = v
+    n0 = N0_CGS * cvt.ndens_cgs2au
+    Pb = n0 * g("k_B") * g("TShell_ion") * g("mu_convert") / g("mu_ion_shell")     # the solve derives n0 from Pb
+    Qi = 4 * math.pi / 3 * g("chi_e_shell") * g("caseB_alpha") * n0**2 * 1.0**3       # R_St = 1 pc
+    m_ion = g("mu_convert") * n0 * 4 * math.pi / 3 * 1.0**3                            # the uniform ionised layer
+    p["Qi"].value, p["Ln"].value = Qi, 0.0
+    p["Li"].value = 1e-20 * Qi * H_NU_ERG * cvt.E_cgs2au
+    p["Pb"].value, p["R2"].value, p["rShell"].value = Pb, 1e-3, 1e-3
+    p["shell_mass"].value = m_over_m_ion * m_ion
+    p["bubble_mass"].value = 0.0
+    p["isDissolved"].value = False
+    return p, m_ion, shell_structure_pure(p)
+
+
+def test_defaults_are_one_zone():
+    p, _, sp = _slab(10.0)
+    assert p["TShell_mol"].value == 0.0 and p["tauShell_mol"].value == 3.0
+    assert sp.has_neutral and sp.shell_mol_idx == -1
+
+
+def test_column_at_the_defaults_is_2e21_per_cm2():
+    p, _, _ = _slab(2.5)
+    sigma_cgs = float(p["dust_sigma"].value) * cvt.pc2cm**2            # dust_sigma is stored in pc^2
+    assert float(p["tauShell_mol"].value) / sigma_cgs == pytest.approx(2.0e21, rel=1e-9)
+
+
+def test_two_zone_slab_matches_the_closed_form():
+    p, m_ion, sp = _slab(10.0, TShell_neu=T_PDR, TShell_mol=T_MOL, tauShell_mol=DTAU)
+    g = lambda k: float(p[k].value)  # noqa: E731
+    i, j = int(sp.shell_ion_idx), int(sp.shell_mol_idx)
+    assert sp.has_neutral and j > i
+    r, n = np.asarray(sp.shell_r_arr, float), np.asarray(sp.shell_n_arr, float)
+    n1 = float(sp.n_IF) * g("mu_atom") / g("mu_ion_shell") * g("TShell_ion") / T_PDR
+    r_b = float(sp.R_IF) + DTAU / (n1 * g("dust_sigma"))
+    assert abs(r[j] / r_b - 1) < 1e-6                                    # the landed boundary, atomic side
+    assert r[j + 1] == r[j]                                              # the molecular side starts at the same radius
+    jump = g("mu_mol") / g("mu_atom") * T_PDR / T_MOL
+    assert jump == pytest.approx(27.5, rel=1e-12)                        # (14/6)/(14/11) x 300/20 at x_He 0.1
+    assert n[j + 1] / n[j] == pytest.approx(jump, rel=1e-12)
+    assert np.all(np.abs(n[i + 1:j + 1] / n1 - 1) < 1e-9)                # zone 1 uniform (Ln = 0)
+    assert np.all(np.abs(n[j + 1:] / (n1 * jump) - 1) < 1e-9)            # zone 2 uniform
+    m_1 = 4 * math.pi / 3 * g("mu_convert") * n1 * (r_b**3 - float(sp.R_IF)**3)
+    m_2 = 10.0 * m_ion - float(sp.shell_mass_ion) - m_1
+    assert m_2 > 0
+    r_exact = (r_b**3 + 3 * m_2 / (4 * math.pi * g("mu_convert") * n1 * jump)) ** (1 / 3)
+    assert abs(float(sp.rShell) / r_exact - 1) < 1e-6
+    assert float(sp.shell_mass_neutral) == pytest.approx(10.0 * m_ion - float(sp.shell_mass_ion), rel=1e-6)
+
+
+def test_mass_running_out_inside_the_atomic_zone_leaves_one_zone():
+    p1, m_ion, one = _slab(0.4, TShell_neu=T_PDR)
+    g = lambda k: float(p1[k].value)  # noqa: E731
+    n1 = float(one.n_IF) * g("mu_atom") / g("mu_ion_shell") * g("TShell_ion") / T_PDR
+    r_b = float(one.R_IF) + DTAU / (n1 * g("dust_sigma"))
+    m_1 = 4 * math.pi / 3 * g("mu_convert") * n1 * (r_b**3 - float(one.R_IF)**3)
+    assert one.has_neutral, "premise: the shell must reach past the front"
+    assert 0.4 * m_ion - float(one.shell_mass_ion) < m_1, "premise: the neutral mass must run out before the column"
+    _, _, two = _slab(0.4, TShell_neu=T_PDR, TShell_mol=T_MOL, tauShell_mol=DTAU)
+    assert two.shell_mol_idx == -1
+    assert np.array_equal(np.asarray(one.shell_r_arr), np.asarray(two.shell_r_arr))
+    assert np.array_equal(np.asarray(one.shell_n_arr), np.asarray(two.shell_n_arr))
+    assert float(one.rShell) == float(two.rShell)
+
+
+def test_layer_terms_identity_closes_with_a_molecular_zone():
+    """L8, 4 pi R2^2 P_c + K_s + F_rad,sh = 4 pi r_s^2 P(r_s), with the zone pressures of swept.layer_terms. The slab is isobaric
+    (radiation off), so L8 closes for ANY state once each zone's pressure prefactor is right -- which is what this checks: with
+    the atomic prefactor kept beyond the boundary, K_s and P(r_s) would be 27.5x too large there and L8 would be of order 1."""
+    p, _, sp = _slab(10.0, TShell_neu=T_PDR, TShell_mol=T_MOL, tauShell_mol=DTAU)
+    g = lambda k: float(p[k].value)  # noqa: E731
+    j = int(sp.shell_mol_idx)
+    assert j > int(sp.shell_ion_idx)
+    n = np.asarray(sp.shell_n_arr, float)
+    p_neu = g("mu_convert") / g("mu_atom") * g("k_B") * T_PDR
+    p_mol = g("mu_convert") / g("mu_mol") * g("k_B") * T_MOL
+    assert p_mol * n[j + 1] == pytest.approx(p_neu * n[j], rel=1e-12)       # pressure continuous at the boundary
+    K, F_rad_sh, P_out, L8 = S.layer_terms(sp, g("R2"), g("Pb"), p)          # P_c = Pb: the shell's inner edge
+    assert P_out == pytest.approx(p_mol * n[-1], rel=1e-12)
+    assert abs(L8) < 1e-9
+
+
+def test_validators_refuse_bad_two_zone_keys():
+    """A negative TShell_mol would read as 'off' without a word; tauShell_mol <= 0 would switch at the front itself."""
+    from trinity._input.errors import ParameterFileError
+    from trinity._input.registry import SPECS, _validate_TShell_mol, _validate_tauShell_mol
+    spec = {s.name: s for s in SPECS}
+    assert spec["TShell_mol"].validator is _validate_TShell_mol
+    assert spec["tauShell_mol"].validator is _validate_tauShell_mol
+    _validate_TShell_mol(0.0, None)
+    _validate_TShell_mol(20.0, None)
+    _validate_tauShell_mol(3.0, None)
+    for bad in (-1.0, True, "20"):
+        with pytest.raises(ParameterFileError):
+            _validate_TShell_mol(bad, None)
+    for bad in (0.0, -2.0, True):
+        with pytest.raises(ParameterFileError):
+            _validate_tauShell_mol(bad, None)

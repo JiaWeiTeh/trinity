@@ -117,7 +117,7 @@ def _integrate_ionised(y0, r_start, r_stop, nsteps, params):
     return r_arr, n_arr, phi_arr, tau_arr, fired
 
 
-def _adaptive_slice(slice_default, y, r, m_carry, m_end, is_ionised, params, mu, nsteps):
+def _adaptive_slice(slice_default, y, r, m_carry, m_end, is_ionised, params, mu, nsteps, tmu=None):
     """Slice width from the LOCAL scales, never wider than `slice_default`.
 
     `slice_default` is the legacy slice for the ionised march, and max(legacy,
@@ -135,7 +135,8 @@ def _adaptive_slice(slice_default, y, r, m_carry, m_end, is_ionised, params, mu,
       _SHELL_EFOLDS_PER_SLICE of them keeps >= nsteps/efolds points per e-fold, so the
       ionisation front is never jumped in a single step (the density pole lies past it).
     """
-    d = get_shellODE.get_shellODE(y, r, is_ionised, params)
+    d = (get_shellODE.get_shellODE(y, r, is_ionised, params) if tmu is None
+         else get_shellODE.get_shellODE(y, r, is_ionised, params, tmu))
     n_here = y[0]
     cands = [slice_default]
     m_rem = m_end - m_carry
@@ -156,7 +157,7 @@ def _adaptive_slice(slice_default, y, r, m_carry, m_end, is_ionised, params, mu,
 
 
 def _refine_terminal(r_lo, y_lo, m_lo, r_hi, nsteps, is_ionised, params, mu,
-                     m_end, phi_exit, refine):
+                     m_end, phi_exit, refine, tmu=None, tau_exit=None):
     """Land the exit inside (r_lo, r_hi] by re-integrating it on a fine grid.
 
     The march keeps the first grid point at or past the exit, so without this the shell
@@ -166,6 +167,11 @@ def _refine_terminal(r_lo, y_lo, m_lo, r_hi, nsteps, is_ionised, params, mu,
     Returns (r, n, phi, tau, m_cum, dr, mass_fired, phi_fired) at the landed exit, or
     None if the interval could not be refined -- in which case the caller keeps the
     coarse exit point, which is exactly the legacy behaviour.
+
+    tmu passes the neutral zone's (T, mu) to the RHS (None = TShell_neu, mu_atom); tau_exit, when not
+    None, is a second landed exit at tau >= tau_exit (the two-zone layer's column, PLAN neutral-shell),
+    and the returned tuple then carries a ninth element, tau_fired. Without them the call, the RHS
+    calls and the 8-tuple are exactly as before.
     """
     ra, rb, ya, ma = r_lo, r_hi, list(y_lo), m_lo
     out = None
@@ -181,7 +187,8 @@ def _refine_terminal(r_lo, y_lo, m_lo, r_hi, nsteps, is_ionised, params, mu,
             break                                    # refinement step would be below lsoda's floor
         rf = np.linspace(ra, rb, int(nsteps) + 1)
         sf = scipy.integrate.odeint(get_shellODE.get_shellODE, ya, rf,
-                                    args=(is_ionised, params), mxstep=_SHELL_ODE_MXSTEP)
+                                    args=(is_ionised, params) if tmu is None else (is_ionised, params, tmu),
+                                    mxstep=_SHELL_ODE_MXSTEP)
         nf = sf[:, 0]
         pf = sf[:, 1] if is_ionised else np.zeros_like(nf)
         tf = sf[:, 2] if is_ionised else sf[:, 1]
@@ -196,6 +203,8 @@ def _refine_terminal(r_lo, y_lo, m_lo, r_hi, nsteps, is_ionised, params, mu,
         hit = cf >= m_end
         if phi_exit:
             hit = hit | (pf <= _PHI_DEPLETED_EPS)
+        if tau_exit is not None:
+            hit = hit | (tf >= tau_exit)
         j_arr = np.nonzero(hit)[0]
         if len(j_arr) == 0 or j_arr[0] == 0:
             break
@@ -203,6 +212,8 @@ def _refine_terminal(r_lo, y_lo, m_lo, r_hi, nsteps, is_ionised, params, mu,
         out = (rf[j], nf[j], pf[j], tf[j], cf[j], rf[j] - rf[j - 1],
                bool(cf[j] >= m_end),
                bool(pf[j] <= _PHI_DEPLETED_EPS) if phi_exit else False)
+        if tau_exit is not None:
+            out = out + (bool(tf[j] >= tau_exit),)
         ra, rb = rf[j - 1], rf[j]
         ya = [nf[j - 1], pf[j - 1], tf[j - 1]] if is_ionised else [nf[j - 1], tf[j - 1]]
         ma = cf[j - 1]
@@ -300,6 +311,13 @@ class ShellProperties:
     shell_fAbsorbedIonDust_total: float  # Cf * f_dust (LyC on grains; NOT shell_fIonisedDust,
                                          # which is the dust SHARE of the absorbed LyC, a ratio)
     shell_fAbsorbedNeu_total: float      # Cf * (1 - exp(-tau_end)), the non-ionising band
+
+    # The two-zone neutral layer (TShell_mol > 0; docs/dev/phii-identity/weak-wind/neutral-shell/PLAN.md): the last
+    # index of the atomic (PDR) zone in shell_r/n_arr, so the molecular zone is shell_mol_idx + 1 .. end and the two
+    # points at the boundary share a radius (atomic and molecular sides), as the two at R_IF do. -1 when there is no
+    # molecular zone (the default one-zone layer, a dissolved shell, no neutral region, or the mass ran out first).
+    # Not a registered key, so updateDict never writes it: dictionary.jsonl is unchanged at the defaults.
+    shell_mol_idx: int = -1
 
 
 def shell_structure_pure(params) -> ShellProperties:
@@ -542,6 +560,7 @@ def shell_structure_pure(params) -> ShellProperties:
 
     # Neutral region exists only when photons are depleted AND mass remains
     has_neutral = is_phiDepleted and not is_allMassSwept
+    shell_mol_idx = -1
 
     # Extract ionization front properties
     n_IF = nShell_arr_ion[-1]  # Density at ionization front from shell ODE
@@ -680,6 +699,14 @@ def shell_structure_pure(params) -> ShellProperties:
                       params['TShell_ion'].value / params['TShell_neu'].value)
             tau0_neu = tau0_ion
 
+            # The two-zone layer (TShell_mol > 0): the atomic zone ends where the march's tau has grown by
+            # tauShell_mol beyond the front; the molecular zone restarts there at the pressure-continuous density.
+            # params.get: the keys are absent from pre-2026-10-30 fixtures, which then get the one-zone layer.
+            _tmol = params.get('TShell_mol', None)
+            T_mol = float(_tmol.value) if hasattr(_tmol, 'value') else 0.0
+            tau_mol = tau0_neu + float(params['tauShell_mol'].value) if T_mol > 0.0 else None
+            tmu_neu = None                     # the atomic zone: the RHS reads TShell_neu and mu_atom itself
+
             tau_max = 100
             nsteps = 5e3
             sliceSize = np.min([1, (max_shellRadius - rShell_start) / 10])
@@ -715,9 +742,14 @@ def shell_structure_pure(params) -> ShellProperties:
                     # the legacy cap is an ionised length; never let it fall below 1 % of r
                     cap_neu = (max(sliceSize_default_neu, _SHELL_NEU_R_FRAC * rShell_start)
                                if _SHELL_NEU_LAYER_SCALE else sliceSize_default_neu)
-                    sliceSize = _adaptive_slice(cap_neu, [nShell0, tau0_neu],
-                                                rShell_start, mShell0, mShell_end, False,
-                                                params, _mu_H, nsteps)
+                    if tmu_neu is None:          # the call as before the two-zone layer (harness wrappers rely on it)
+                        sliceSize = _adaptive_slice(cap_neu, [nShell0, tau0_neu],
+                                                    rShell_start, mShell0, mShell_end, False,
+                                                    params, _mu_H, nsteps)
+                    else:
+                        sliceSize = _adaptive_slice(cap_neu, [nShell0, tau0_neu],
+                                                    rShell_start, mShell0, mShell_end, False,
+                                                    params, _mu_H, nsteps, tmu=tmu_neu)
                     rShell_step = sliceSize / nsteps
                     if not (np.isfinite(sliceSize) and sliceSize > 0) or rShell_start + rShell_step == rShell_start:
                         raise ValueError(
@@ -732,7 +764,8 @@ def shell_structure_pure(params) -> ShellProperties:
                 y0 = [nShell0, tau0_neu]
                 sol_ODE = scipy.integrate.odeint(
                     get_shellODE.get_shellODE, y0, rShell_arr,
-                    args=(is_ionised, params), mxstep=_SHELL_ODE_MXSTEP
+                    args=(is_ionised, params) if tmu_neu is None else (is_ionised, params, tmu_neu),
+                    mxstep=_SHELL_ODE_MXSTEP
                 )
                 nShell_arr = sol_ODE[:, 0]
                 tauShell_arr = sol_ODE[:, 1]
@@ -745,7 +778,11 @@ def shell_structure_pure(params) -> ShellProperties:
                 mShell_arr_cum = np.cumsum(mShell_arr)
 
                 massCondition = mShell_arr_cum >= mShell_end
-                idx_array = np.nonzero(massCondition)[0]
+                if tau_mol is not None:
+                    tauCondition = tauShell_arr >= tau_mol
+                    idx_array = np.nonzero(massCondition | tauCondition)[0]
+                else:
+                    idx_array = np.nonzero(massCondition)[0]
 
                 if len(idx_array) == 0:
                     idx = len(rShell_arr) - 1
@@ -753,18 +790,29 @@ def shell_structure_pure(params) -> ShellProperties:
                     idx = idx_array[0]
 
                 if _SHELL_ADAPTIVE and _SHELL_REFINE and len(idx_array) and idx >= 1:
-                    _ref = _refine_terminal(
-                        rShell_arr[idx - 1],
-                        [nShell_arr[idx - 1], tauShell_arr[idx - 1]],
-                        mShell_arr_cum[idx - 1], rShell_arr[idx], nsteps, False,
-                        params, _mu_H, mShell_end, False, _SHELL_REFINE)
+                    if tmu_neu is None and tau_mol is None:     # the call as before the two-zone layer
+                        _ref = _refine_terminal(
+                            rShell_arr[idx - 1],
+                            [nShell_arr[idx - 1], tauShell_arr[idx - 1]],
+                            mShell_arr_cum[idx - 1], rShell_arr[idx], nsteps, False,
+                            params, _mu_H, mShell_end, False, _SHELL_REFINE)
+                    else:
+                        _ref = _refine_terminal(
+                            rShell_arr[idx - 1],
+                            [nShell_arr[idx - 1], tauShell_arr[idx - 1]],
+                            mShell_arr_cum[idx - 1], rShell_arr[idx], nsteps, False,
+                            params, _mu_H, mShell_end, False, _SHELL_REFINE,
+                            tmu=tmu_neu, tau_exit=tau_mol)
                     if _ref is not None:
                         (rShell_arr[idx], nShell_arr[idx], _pf_unused, tauShell_arr[idx],
-                         mShell_arr_cum[idx], _dr, _mass_fired, _unused) = _ref
+                         mShell_arr_cum[idx], _dr, _mass_fired, _unused) = _ref[:8]
                         mShell_arr[idx] = mShell_arr_cum[idx] - mShell_arr_cum[idx - 1]
                         massCondition[idx] = _mass_fired
+                        if tau_mol is not None:
+                            tauCondition[idx] = _ref[8]
 
-                neutral_massSwept = any(massCondition)
+                # one condition: any() == [idx] (W32); with the tau exit, points past idx may carry the mass
+                neutral_massSwept = any(massCondition) if tau_mol is None else bool(massCondition[idx])
 
                 _neu_parts.append((mShell_arr[:idx], mShell_arr_cum[:idx], tauShell_arr[:idx],
                                    nShell_arr[:idx], rShell_arr[:idx]))
@@ -773,6 +821,18 @@ def shell_structure_pure(params) -> ShellProperties:
                 tau0_neu = tauShell_arr[idx]
                 mShell0 = mShell_arr_cum[idx]
                 rShell_start = rShell_arr[idx]
+
+                if tau_mol is not None and tauCondition[idx] and not massCondition[idx]:
+                    # the atomic zone ends here: keep its last point, jump the density at constant pressure,
+                    # and let the same loop carry on as the molecular zone (one switch per solve)
+                    _neu_parts.append((mShell_arr[idx:idx + 1], mShell_arr_cum[idx:idx + 1],
+                                       tauShell_arr[idx:idx + 1], nShell_arr[idx:idx + 1],
+                                       rShell_arr[idx:idx + 1]))
+                    shell_mol_idx = len(rShell_arr_ion) + sum(len(p[4]) for p in _neu_parts) - 1
+                    nShell0 = nShell0 * (params['mu_mol'].value / params['mu_atom'].value
+                                         * params['TShell_neu'].value / T_mol)
+                    tmu_neu = (T_mol, params['mu_mol'].value)
+                    tau_mol = None
 
             if _neu_parts:
                 (mShell_arr_neu, mShell_arr_cum_neu, tauShell_arr_neu, nShell_arr_neu,
@@ -794,9 +854,23 @@ def shell_structure_pure(params) -> ShellProperties:
                 _dr_grav_neu = rShell_step
             grav_neu_m = grav_neu_rho * 4 * np.pi * grav_neu_r**2 * _dr_grav_neu
             grav_neu_m_cum = np.cumsum(grav_neu_m) + grav_ion_m_cum[-1]
-            grav_neu_phi = -4 * np.pi * params['G'].value * scipy.integrate.simpson(
-                grav_neu_r * grav_neu_rho, x=grav_neu_r
-            )
+            if shell_mol_idx < 0:
+                grav_neu_phi = -4 * np.pi * params['G'].value * scipy.integrate.simpson(
+                    grav_neu_r * grav_neu_rho, x=grav_neu_r
+                )
+            else:
+                # two zones: integrate each on its own, as the ionised and neutral parts are -- one Simpson rule
+                # across the two points at the boundary radius (zero width, a density step) mis-weights that panel
+                _k = shell_mol_idx - len(rShell_arr_ion) + 1      # the first molecular index in the neutral arrays
+                _y = grav_neu_r * grav_neu_rho
+                _c = -4 * np.pi * params['G'].value
+                grav_neu_phi = 0.0
+                for _sl in (slice(0, _k), slice(_k, None)):
+                    _r = grav_neu_r[_sl]
+                    if _r.size >= 3:
+                        grav_neu_phi += _c * scipy.integrate.simpson(_y[_sl], x=_r)
+                    elif _r.size == 2:
+                        grav_neu_phi += _c * float(_trapz(_y[_sl], _r))
             grav_phi = grav_neu_phi + grav_ion_phi
             grav_neu_force_m = params['G'].value * grav_neu_m_cum / grav_neu_r**2
 
@@ -962,5 +1036,6 @@ def shell_structure_pure(params) -> ShellProperties:
         shell_fAbsorbedIonGas_total=shell_fAbsorbedIonGas_total,
         shell_fAbsorbedIonDust_total=shell_fAbsorbedIonDust_total,
         shell_fAbsorbedNeu_total=shell_fAbsorbedNeu_total,
+        shell_mol_idx=shell_mol_idx,
     )
 

@@ -234,7 +234,7 @@ def layer_terms(sp, R2, Pc, params):
 
     Trapezoids over the solve's own grid (thousands of points): L8 <= 3.2e-7 on Step 1's 427 momentum segments.
     The two points at R_IF (ionised and neutral sides) carry the same pressure, so that zero-width interval adds
-    nothing.
+    nothing. So do the two at the molecular boundary of the two-zone layer (TShell_mol > 0).
     """
     g = lambda k: params[k].value  # noqa: E731
     r = np.asarray(sp.shell_r_arr, float)
@@ -243,6 +243,9 @@ def layer_terms(sp, R2, Pc, params):
     p_ion = g('mu_convert') / g('mu_ion_shell') * g('k_B') * g('TShell_ion')
     p_neu = g('mu_convert') / g('mu_atom') * g('k_B') * g('TShell_neu')
     pref = np.where(np.arange(len(r)) <= i, p_ion, p_neu) if i >= 0 else np.full(len(r), p_neu)
+    j = int(getattr(sp, 'shell_mol_idx', -1))
+    if j >= 0:      # the two-zone layer (TShell_mol > 0): molecular gas beyond index j, same pressure at the boundary
+        pref = np.where(np.arange(len(r)) > j, g('mu_convert') / g('mu_mol') * g('k_B') * g('TShell_mol'), pref)
     P = pref * n
     K = float(np.sum(0.5 * (8 * math.pi * r[1:] * P[1:] + 8 * math.pi * r[:-1] * P[:-1]) * np.diff(r)))
     light = g('Li') + g('Ln')

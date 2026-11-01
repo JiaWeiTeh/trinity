@@ -45,6 +45,7 @@ def get_shellODE(y,
                  r, 
                  is_ionised,
                  params,
+                 tmu=None,
                  ):
     """
     A function that returns ODE of the ionised number density (n), 
@@ -69,6 +70,11 @@ def get_shellODE(y,
     is_ionised: boolean
             Is this part of the shell ionised? If not, then phi = Li = 0, where
             r > R_ionised.
+    tmu: None or (T [K], mu [Msun])
+            The neutral zone's temperature and mean mass per particle. None (the
+            default, and every caller before the two-zone layer) reads TShell_neu
+            and mu_atom from params; the molecular zone (TShell_mol > 0) passes
+            (TShell_mol, mu_mol). Ignored when is_ionised.
 
     Returns
     -------
@@ -79,12 +85,12 @@ def get_shellODE(y,
     """
 
     sigma_dust = params['dust_sigma'].value
-    mu_n = params['mu_atom'].value
+    mu_n = params['mu_atom'].value if tmu is None else tmu[1]
     mu_p = params['mu_ion_shell'].value   # shell HII is singly ionised (Z_He_shell)
     mu_H = params['mu_convert'].value
     chi_e = params['chi_e_shell'].value   # shell electron factor (singly ionised)
     t_ion = params['TShell_ion'].value
-    t_neu = params['TShell_neu'].value
+    t_neu = params['TShell_neu'].value if tmu is None else tmu[0]
     alpha_B = params['caseB_alpha'].value  # case-B recombination coeff [code units; physically cm^3/s]
     k_B = params['k_B'].value  
     c = params['c_light'].value  
