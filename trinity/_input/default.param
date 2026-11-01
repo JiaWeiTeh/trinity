@@ -51,6 +51,9 @@ betadelta_solver    hybr
 # INFO: How the integration starts. 'weaver' (default, shipped): from the free-streaming wind into phase 1a (get_InitPhaseParam.get_y0); refused with a ValueError when the first structure solve would fall off the non-CIE cooling cube (phi(r0) = Qi/(4 pi r0^2) > 1e21 cm^-2 s^-1: a weak wind in a dense core). 'stromgren' (phii_scheme 'swept' only): phases 1a-1c are skipped and the swept momentum phase starts at the end of the R-type phase, r_s = R_St (solved on the run's own density profile), u = 2 c_i/sqrt(3), M_s = M(<R_St), the wind bubble inside at its ram-pressure equilibrium (Hosokawa & Inutsuka 2006 eq. 36; Lancaster et al. 2025a sec. 3.5); refused at zeta = R_eq/R_St >= 1 or R_St > rCloud. docs/dev/phii-identity/weak-wind/PLAN.md.
 start_scheme    weaver
 
+# INFO: Phase 1b: when the beta-delta solve fails with a structure-solve failure (hybr left the integrable domain, e.g. at a steep feedback ramp), retry once from the beta that balances the energy equation at the previous segment's losses (A12 inverted); the result is kept only if it is a physical, converged root, and found condensation roots are never retried. False restores the pre-2026-11 behaviour (hold the old beta/delta). docs/dev/phii-identity/weak-wind/early-1b/G1_PLAN.md.
+betadelta_balance_retry    True
+
 
 # ==============================================================================
 # Physical Parameters

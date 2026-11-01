@@ -675,13 +675,74 @@ def solve_betadelta_pure(
     if solver == 'legacy':
         return _solve_betadelta_legacy(beta_guess, delta_guess, params, method)
     if solver == 'hybr':
-        result = _solve_betadelta_hybr(beta_guess, delta_guess, params, method)
-        if (rescue and result.no_physical_root
-                and 'structure solve failed' in (result.no_root_reason or '')):
-            return _rescue_structure_failure(result, beta_guess, delta_guess, params, method)
+        result = _solve_hybr_rescued(beta_guess, delta_guess, params, method, rescue)
+        if rescue and _structure_failure(result) and _balance_retry_enabled(params):
+            return _balance_retry(result, beta_guess, delta_guess, params, method)
         return result
     # The param validator guards user input; this guards programmatic misuse.
     raise ValueError(f"Unknown betadelta_solver '{solver}'.")
+
+
+def _structure_failure(result) -> bool:
+    """A 'structure solve failed' no-root (hybr left the integrable domain) — not a found condensation root."""
+    return result.no_physical_root and 'structure solve failed' in (result.no_root_reason or '')
+
+
+def _solve_hybr_rescued(beta_guess, delta_guess, params, method, rescue):
+    """hybr from the guess, then the structure-failure rescue ladder when allowed."""
+    result = _solve_betadelta_hybr(beta_guess, delta_guess, params, method)
+    if rescue and _structure_failure(result):
+        return _rescue_structure_failure(result, beta_guess, delta_guess, params, method)
+    return result
+
+
+def _balance_retry_enabled(params) -> bool:
+    """The ``betadelta_balance_retry`` key (absent -> off, e.g. in unit-test fixtures)."""
+    item = params.get('betadelta_balance_retry') if hasattr(params, 'get') else None
+    return getattr(item, 'value', item) is True
+
+
+def _beta_from_balance(params) -> float:
+    """The beta whose A12 energy rate equals the energy balance at the previous segment's losses.
+
+    The same quantities as get_residual_pure's energy residual: L_gain - L_loss - 4 pi R2^2 v2 Pb, with R1, Pb from
+    compute_R1_Pb and L_loss from the last accepted structure (bubble_LTotal + leak, cooling boost applied once). A12 is
+    linear in beta, so get_bubbleParams.Ebdot_to_cool_beta inverts it exactly. At a steep feedback ramp the gain jumps and
+    this beta carries the forced response (docs/dev/phii-identity/weak-wind/early-1b/RAMP_PLAN.md).
+    """
+    g = lambda k: float(params[k].value)  # noqa: E731
+    R1, Pb = compute_R1_Pb(g('R2'), g('Eb'), g('Lmech_total'), g('v_mech_total'), g('gamma_adia'))
+    leak = getattr(params.get('bubble_Leak', None), 'value', 0.0) or 0.0
+    Lloss = effective_Lloss_from_params(params, g('bubble_LTotal'), leak, g('Lmech_total'))
+    Edot = g('Lmech_total') - Lloss - 4 * np.pi * g('R2') ** 2 * g('v2') * Pb
+    return get_bubbleParams.Ebdot_to_cool_beta(
+        Pb, R1, Edot, {k: g(k) for k in ('t_now', 'pdot_total', 'pdotdot_total', 'R2', 'v2', 'Eb')})
+
+
+def _balance_retry(result, beta_guess, delta_guess, params, method):
+    """Retry a structure-failure no-root once from the energy-balance beta (``betadelta_balance_retry``).
+
+    At a steep feedback ramp (the winds at ~3 Myr, the supernova switch-on) the root moves far from the previous segment's
+    (beta ~ -10, ~ -48) and hybr cannot reach it from there; the energy balance points at it. Only a physical, converged
+    root is accepted; otherwise the original result and its reason stand, so the runner holds the old (beta, delta) as
+    before. Engages only on an already-failed segment: every other segment is byte-identical (RAMP_PLAN.md R-4).
+    """
+    t = getattr(params.get('t_now', None), 'value', float('nan'))
+    try:
+        beta1 = float(_beta_from_balance(params))
+    except (ZeroDivisionError, FloatingPointError, OverflowError, ValueError):
+        beta1 = float('nan')
+    if not np.isfinite(beta1):
+        logger.info(f"beta-delta: balance retry skipped at t={t:.6f} (no finite energy-balance beta) after a structure "
+                    f"failure at (beta={beta_guess:.4f}, delta={delta_guess:.4f})")
+        return result
+    retried = _solve_hybr_rescued(beta1, delta_guess, params, method, True)
+    ok = (not retried.no_physical_root) and bool(retried.converged)
+    logger.info(f"beta-delta: balance retry at t={t:.6f} from beta1={beta1:.4f} after a structure failure at "
+                f"(beta={beta_guess:.4f}, delta={delta_guess:.4f}): "
+                + (f"root at (beta={retried.beta:.4f}, delta={retried.delta:.4f})" if ok
+                   else "no physical converged root; holding as before"))
+    return retried if ok else result
 
 
 def _rescue_structure_failure(result, beta_guess, delta_guess, params, method):
