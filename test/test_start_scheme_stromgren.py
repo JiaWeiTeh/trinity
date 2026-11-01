@@ -148,6 +148,27 @@ def test_stromgren_refuses_a_strong_wind_and_a_c3c_run(tmp_path):
         IP.get_y0_stromgren(_params(tmp_path, phii_scheme="c3c", name="c3c"))
 
 
+# --- the start check (weak-wind/start-selection/PLAN.md, Phase 1) -----------------------------------------------------
+
+def test_start_check_on_the_test_cloud(tmp_path):
+    P = _params(tmp_path, nCore=1e4)
+    zMD, zED, zbar, x, y, phi, why_w, why_s = IP.start_check(P)
+    assert zMD == pytest.approx(0.05222, rel=1e-3) and phi / 1e21 == pytest.approx(0.00989, rel=1e-3)
+    assert why_w is None and why_s is None
+    assert x == pytest.approx(zMD ** 2, rel=1e-9)          # R_St inside the flat core: F_w/F_g = zeta_MD^2
+    assert zED / zMD == pytest.approx(7.934, rel=1e-3)     # fixed v_inf: [sqrt(7) v_inf / (11 c_i)]^(1/2)
+    assert zbar == pytest.approx(zMD, rel=1e-2)            # uniform cloud: the two conventions agree (edge smoothing aside)
+    assert phi == IP._phi_cgs(IP.get_y0(P)[1], float(P["sps_f"].value["fQi"](P["tSF"].value)))   # get_y0's r0, bit for bit
+
+
+def test_start_check_names_an_input_with_no_admissible_start(tmp_path):
+    P = _params(tmp_path, nCore=2e6, phii_scheme="c3c", name="nostart")
+    *_, why_w, why_s = IP.start_check(P)
+    assert why_w is not None and why_s is not None
+    with pytest.raises(ValueError, match="no admissible start"):
+        IP.get_y0(P)
+
+
 # --- a phase-2-only run (D12's segment control included) -------------------------------------------------------------
 
 @pytest.fixture(scope="module")

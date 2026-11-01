@@ -220,7 +220,7 @@ def get_y0(params):
             f"Weaver start below the start-up limit: phi(r0) = Qi/(4 pi r0^2) = {phi_r0_cgs:.3e} cm^-2 s^-1 exceeds the "
             f"non-CIE cooling cube's top {NONCIE_PHI_MAX_CGS:.0e} (r0 = {r0:.3e} pc; phase 1a needs "
             f"3 pdot_w 1e21 >= Qi rho_core v_inf^2). This is a weak wind in a dense core: use start_scheme stromgren "
-            f"under phii_scheme swept, or a lower nCore."
+            f"under phii_scheme swept, or a lower nCore." + _other_start(params, 'stromgren')
         )
 
     return t0, r0, v0, E0, T0
@@ -289,8 +289,59 @@ def stromgren_zeta(params):
     return R_eq / R_St, R_eq_ED / R_St, R_St, R_eq, c_i
 
 
+def start_check(params):
+    """Which start applies to this input, at tSF (docs/dev/phii-identity/weak-wind/start-selection/PLAN.md, Phase 1).
+
+    Returns (zeta_MD, zeta_ED, zeta_MD_bar, x, y, phi_r0_cgs, why_not_weaver, why_not_stromgren); a reason is None where
+    that start applies. zeta_MD and zeta_ED are stromgren_zeta's (P_i at nCore, R_St on the profile); zeta_MD_bar is the
+    same ratio with the cloud's mean density for both, as Step 9c defines it. x = F_w/F_g and y = F_r/F_g are the
+    thin-shell force ratios at R_St, F_g = 4 pi R_St^2 p_ion n_St(R_St) with n_St the Stroemgren density for R_St
+    (x = zeta_MD^2 while R_St lies in a flat core; y counts all of L_bol / c). phi(r0) is get_y0's, computed the same way.
+    zeta = R_eq / R_St is Lancaster et al. 2025a's parameter (arXiv:2505.22730, eq. 25). A diagnostic: nothing here
+    changes the run.
+    """
+    from trinity.cloud_properties import density_profile
+    zMD, zED, R_St, _, _ = stromgren_zeta(params)
+    g = lambda k: params[k].value  # noqa: E731
+    f, t = g('sps_f'), g('tSF')
+    L = max(float(f['fLmech_W'](t)), MIN_LUMINOSITY)
+    p = max(float(f['fpdot_W'](t)), MIN_MOMENTUM)
+    v0 = max(2.0 * L / p, MIN_VELOCITY)
+    rhoa = g('nCore') * g('mu_convert')                                          # get_y0's order (bit for bit)
+    r0 = v0 * np.sqrt(3.0 * (p ** 2 / (2.0 * L)) / (4.0 * np.pi * rhoa * v0 ** 3))
+    Qi, Lbol = float(f['fQi'](t)), float(f['fLbol'](t))
+    phi = _phi_cgs(r0, Qi)
+    chi_aB = g('chi_e_shell') * g('caseB_alpha')
+    p_ion = g('mu_convert') / g('mu_ion_shell') * g('k_B') * g('TShell_ion')     # P_i per unit n_H
+    n = lambda r: float(np.atleast_1d(density_profile.get_density_profile(np.array([r]), params))[0])  # noqa: E731
+    rcl = g('rCloud')
+    pts = [r for r in (g('rCore'),) if 0.0 < r < rcl]
+    nbar = 3.0 * scipy.integrate.quad(lambda r: n(r) * r * r, 0.0, rcl, points=pts or None, limit=200)[0] / rcl ** 3
+    zbar = np.sqrt(p / (4.0 * np.pi * p_ion * nbar)) / (3.0 * Qi / (4.0 * np.pi * chi_aB * nbar ** 2)) ** (1.0 / 3.0)
+    n_St = np.sqrt(3.0 * Qi / (4.0 * np.pi * chi_aB * R_St ** 3))
+    F_g = 4.0 * np.pi * R_St ** 2 * p_ion * n_St
+    x, y = p / F_g, Lbol / g('c_light') / F_g
+    why_w = f"phi(r0) = {phi:.3e} > {NONCIE_PHI_MAX_CGS:.0e} cm^-2 s^-1" if phi > NONCIE_PHI_MAX_CGS else None
+    why_s = ("phii_scheme is not swept" if str(g('phii_scheme')).strip().lower() != 'swept' else
+             f"R_St = {R_St:.3e} pc > rCloud" if not R_St <= rcl else
+             f"zeta_MD = {zMD:.3g} >= {ZETA_REFUSE}" if zMD >= ZETA_REFUSE else None)
+    return zMD, zED, zbar, x, y, phi, why_w, why_s
+
+
+def _other_start(params, other):
+    """The other start's verdict, appended to a refusal; never raises, so it cannot replace the refusal it extends."""
+    try:
+        why = start_check(params)[6 if other == 'weaver' else 7]
+    except Exception as e:  # noqa: BLE001 -- a diagnostic only
+        return f" (Whether the {other} start applies could not be checked: {type(e).__name__}.)"
+    if why is None:
+        return f" The {other} start applies to this input."
+    return f" The {other} start does not apply either ({why}): no admissible start for this input."
+
+
 def resolve_start_scheme(params):
-    """'weaver' or 'stromgren', as the .param sets it; zeta and R_St are logged for every start (D5).
+    """'weaver' or 'stromgren', as the .param sets it; zeta and R_St are logged for every start (D5), and the start
+    check (start_check: both zeta conventions, zeta_ED, the thin-shell ratios, phi(r0), which start applies).
 
     No automatic choice between the two starts yet (D17): the switch value is set after the zeta ladders.
     """
@@ -299,6 +350,13 @@ def resolve_start_scheme(params):
         zeta_MD, zeta_ED, R_St, R_eq, _ = stromgren_zeta(params)
         logger.info(f"start_scheme {scheme}: zeta_MD = R_eq/R_St = {zeta_MD:.4g} (zeta_ED = {zeta_ED:.4g}; "
                     f"R_eq = {R_eq:.4e} pc, R_St = {R_St:.4e} pc on the run's density profile)")
+        zMD, zED, zbar, x, y, phi, why_w, why_s = start_check(params)
+        logger.info(f"start check at tSF: zeta_MD {zMD:.4g} (core), {zbar:.4g} (mean density); zeta_ED {zED:.4g}; "
+                    f"(F_w + F_r)/F_g at R_St {x + y:.4g} (F_w/F_g {x:.4g}, F_r/F_g {y:.4g}); "
+                    f"phi(r0)/1e21 {phi / NONCIE_PHI_MAX_CGS:.4g}; weaver: {why_w or 'applies'}; "
+                    f"stromgren: {why_s or 'applies'}")
+        if why_w is not None and why_s is not None:
+            logger.warning(f"start check: no admissible start for this input (weaver: {why_w}; stromgren: {why_s})")
     except Exception as e:  # noqa: BLE001 -- a diagnostic only; the Weaver start must not depend on it
         logger.warning(f"start_scheme {scheme}: zeta not computed ({type(e).__name__}: {e})")
     return scheme
@@ -343,12 +401,13 @@ def get_y0_stromgren(params):
         raise ValueError(
             f"start_scheme 'stromgren' does not apply: the Stroemgren radius on the cloud's profile, {R_St:.3e} pc, "
             f"exceeds rCloud = {rCloud:.3e} pc (the ionising photons leave the cloud). Use start_scheme weaver."
+            + _other_start(params, 'weaver')
         )
     if zeta_MD >= ZETA_REFUSE:
         raise ValueError(
             f"start_scheme 'stromgren' does not apply: zeta = R_eq/R_St = {zeta_MD:.3g} >= {ZETA_REFUSE} "
             f"(R_eq = {R_eq:.3e} pc, R_St = {R_St:.3e} pc): the wind bubble would outgrow the H II region. "
-            f"Use start_scheme weaver."
+            f"Use start_scheme weaver." + _other_start(params, 'weaver')
         )
     if zeta_MD >= ZETA_WARN:
         logger.warning(f"start_scheme 'stromgren' at zeta_MD = {zeta_MD:.3g} (zeta_ED = {zeta_ED:.3g}): the wind's "
