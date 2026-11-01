@@ -415,11 +415,13 @@ def _get_bubble_ODE(r_arr, initial_ODEs, params, Pb: float):
     """Bubble structure ODE (Equations 42-43 in Weaver+77)."""
     v, T, dTdr = initial_ODEs
 
-    if np.abs(T - 0) < 1e-5:
+    if not np.isfinite(T) or np.abs(T - 0) < 1e-5:
         # T has collapsed to ~zero (typically an infeasible trial dMdt during
         # the fsolve probe). Raise a catchable error -- _solve_bubble_structure
         # converts it to its ok=False contract -- rather than sys.exit, which
         # bypasses every handler (SystemExit is not an Exception).
+        # A NaN T is the same failed probe (weak winds at t0; D14, 2026-10-30):
+        # get_dudt would raise a bare Exception that no phase-1a handler catches.
         logger.debug(f'T~0 in bubble ODE RHS (T={T:.3e}); aborting solve')
         raise BubbleSolverError(
             f'temperature reached zero in bubble ODE RHS (T={T:.3e})')

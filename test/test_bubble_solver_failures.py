@@ -34,6 +34,14 @@ def test_rhs_collapse_returns_ok_false(monkeypatch):
     assert "temperature reached zero" in info["message"]
 
 
+def test_nan_temperature_in_rhs_raises_solver_error():
+    """A NaN T reached during an fsolve probe (weak winds at t0) raises the
+    catchable BubbleSolverError -- the residual's penalty -- before get_dudt,
+    whose bare Exception for an unknown T escaped the phase-1a guard."""
+    with pytest.raises(BL.BubbleSolverError, match="T=nan"):
+        BL._get_bubble_ODE(1.0, [1.0, np.nan, -1.0], None, 1.0)
+
+
 def test_nonfinite_initial_conditions_return_ok_false():
     """Non-finite y0 must come back as ok=False (solve_ivp would raise raw
     ValueError on it), matching the documented contract."""
