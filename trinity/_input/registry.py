@@ -176,6 +176,18 @@ def _validate_start_scheme(value, params) -> None:
         )
 
 
+def _validate_sps_interp(value, params) -> None:
+    """How the SPS table is interpolated in time (docs/dev/phii-identity/weak-wind/
+    early-1b/SPS_TRANSIENTS.md): 'pchip' (default) or 'cubic' (the spline used before
+    2026-11, kept to reproduce older runs)."""
+    from trinity._input.errors import ParameterFileError
+    if value not in ('pchip', 'cubic'):
+        raise ParameterFileError(
+            f"Invalid sps_interp '{value}'. "
+            f"Must be 'pchip' or 'cubic'."
+        )
+
+
 def _validate_betadelta_solver(value, params) -> None:
     """Selects the energy-implicit (beta, delta) solver. 'hybr' (default)
     is the unbounded scipy root-finder with a physical dMdt>0 acceptance
@@ -423,6 +435,7 @@ SPECS: tuple[ParamSpec, ...] = (
     ParamSpec(name='FB_mColdSNFrac', default='0', info='Fraction of cold mass entrained in supernova ejecta (increases Mdot_SN, reduces velocity).', category='input_sps', unit=None, exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='FB_thermCoeffWind', default='1', info='Defines the thermalization efficiency for colliding stellar winds.', category='input_sps', unit=None, exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='FB_thermCoeffSN', default='1', info='Defines the thermalization efficiency for supernova ejecta.', category='input_sps', unit=None, exclude_from_snapshot=True, run_const=True),
+    ParamSpec(name='sps_interp', default='pchip', info="How the SPS table is interpolated in time. 'pchip' (default): monotone, never outside the two bracketing table rows, so the feedback is never negative; total = wind + supernova. 'cubic': the spline used before 2026-11, kept only to reproduce older runs; it rings across the supernova switch-on and switch-off (negative mechanical luminosity near 3.45 Myr at FB_thermCoeffWind 0.01 and near 45 Myr at every coefficient). docs/dev/phii-identity/weak-wind/early-1b/SPS_TRANSIENTS.md.", category='input_sps', unit=None, exclude_from_snapshot=True, run_const=True, validator=_validate_sps_interp),
     ParamSpec(name='FB_vSN', default='1e4', info='Specifies the velocity of supernova ejecta.', category='input_sps', unit='km * s**-1', exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='mu_atom', default='14/11', info='Mean mass per particle for neutral atomic gas (HI + He) = mu_H/(1+x_He). Derived at load from x_He (default 14/11 at x_He=0.1). In units of m_H.', category='input_constants', unit='m_H', exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='mu_ion', default='14/23', info='Mean mass per particle for the HOT bubble interior (fully ionised H+ + He2+) = mu_H/(2+x_He*(1+Z_He)). Derived at load from x_He, Z_He (default 14/23 at x_He=0.1, Z_He=2). The ~1e4 K ionised shell uses mu_ion_shell (singly-ionised He) instead. In units of m_H.', category='input_constants', unit='m_H', exclude_from_snapshot=True, run_const=True),
@@ -515,7 +528,7 @@ SPECS: tuple[ParamSpec, ...] = (
     ParamSpec(name='initial_cloud_n_arr', default=np.array([]), info='Initial cloud density array', category='runtime_cloud_profile', unit='1/cm**3'),
     ParamSpec(name='initial_cloud_m_arr', default=np.array([]), info='Initial cloud enclosed mass array', category='runtime_cloud_profile', unit='Msun'),
     ParamSpec(name='sps_data', default=0, info='SPS raw 11-array datacube', category='runtime_loaded', unit='N/A', exclude_from_snapshot=True),
-    ParamSpec(name='sps_f', default=0, info='SPS interpolators (dict of scipy interp1d)', category='runtime_loaded', unit='N/A', exclude_from_snapshot=True),
+    ParamSpec(name='sps_f', default=0, info='SPS interpolators (dict of scipy PCHIP interpolants)', category='runtime_loaded', unit='N/A', exclude_from_snapshot=True),
     ParamSpec(name='Lmech_W', default=0, info='Wind mechanical luminosity', category='runtime_feedback', unit='Msun*pc**2/Myr**3'),
     ParamSpec(name='Lmech_SN', default=0, info='SN mechanical luminosity', category='runtime_feedback', unit='Msun*pc**2/Myr**3'),
     ParamSpec(name='Lmech_total', default=0, info='Total mechanical luminosity', category='runtime_feedback', unit='Msun*pc**2/Myr**3'),

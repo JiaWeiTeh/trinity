@@ -334,9 +334,9 @@ def _format_missing_template(*, sps_path: str,
 def validate_t_monotonic(t: np.ndarray, filepath: str) -> None:
     """Validate that the time array is strictly increasing.
 
-    scipy.interpolate.interp1d (used by read_sps.get_interpolation)
-    requires strict monotonicity; its native error message — "Expect x
-    to not have duplicates" — is cryptic and fires deep in scipy.
+    scipy.interpolate.PchipInterpolator (used by read_sps.get_interpolation)
+    requires strict monotonicity; its native error message is cryptic and
+    fires deep in scipy.
     This check raises a clearer ValueError at load time, pointing at
     the file and the first offending row.
 
@@ -364,7 +364,7 @@ def validate_t_monotonic(t: np.ndarray, filepath: str) -> None:
         f"post-unit-conversion): {violation_pairs}{suffix}\n"
         f"  t values around the first offender (Myr): "
         f"{around.tolist()}\n"
-        f"  scipy.interpolate.interp1d requires strictly-increasing t.\n"
+        f"  scipy.interpolate.PchipInterpolator requires strictly-increasing t.\n"
         f"  Common cause: the time column was written with too few "
         f"significant figures (e.g. '%.2e' collapses 1.001e7, 1.002e7,\n"
         f"  1.003e7 all to '1.00e+07'). Regenerate the file with "

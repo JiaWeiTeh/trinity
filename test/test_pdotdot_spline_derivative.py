@@ -1,5 +1,5 @@
 """Finding #3 of the magic-number audit (docs/dev/magic-numbers/SWEEP2_PLAN.md §3):
-``pdotdot_total`` must be the exact derivative of the ``pdot_total`` cubic
+``pdotdot_total`` must be the exact derivative of the ``pdot_total``
 interpolant, and feedback evaluation within 1e-9 Myr of the SPS table edges
 must not raise.
 
@@ -11,7 +11,7 @@ evaluations fall outside the table when ``t`` is within 1e-9 of either edge,
 raising through interp1d despite passing the function's own range check.
 """
 import numpy as np
-from scipy.interpolate import make_interp_spline
+from scipy.interpolate import PchipInterpolator
 
 import trinity._functions.unit_conversions as cvt
 from trinity._input.registry import _resolve_sps_bundle
@@ -44,11 +44,15 @@ def _bundled_sps_feedback_params():
 
 def test_pdotdot_matches_exact_spline_derivative():
     params, sps_data = _bundled_sps_feedback_params()
-    t_knots, pdot_total = np.asarray(sps_data[0]), np.asarray(sps_data[10])
-    # interp1d(kind='cubic') and make_interp_spline(k=3) are the same
-    # not-a-knot cubic (verified bit-identical in the finding-#3 study), so
-    # this is THE derivative of the interpolant production evaluates.
-    exact = make_interp_spline(t_knots, pdot_total, k=3).derivative()
+    t_knots = np.asarray(sps_data[0])
+    # pdot_total's interpolant is the sum of the wind and SN PCHIPs
+    # (read_sps.get_interpolation), so this is THE derivative of the
+    # interpolant production evaluates.
+    dW = PchipInterpolator(t_knots, np.asarray(sps_data[8])).derivative()
+    dSN = PchipInterpolator(t_knots, np.asarray(sps_data[9])).derivative()
+
+    def exact(t):
+        return dW(t) + dSN(t)
 
     # Times spanning every phase window a run visits (Myr): early 1a through
     # the SN era; includes 4.3257e-3, the worst-noise point measured.
