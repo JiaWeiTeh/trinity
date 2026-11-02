@@ -95,3 +95,39 @@ def test_wired_through_solve_betadelta_pure(monkeypatch):
     assert r.beta == -0.5 and r.converged and calls[-1] == (-0.5, -0.5)
     off = {'betadelta_wide_search': _V(False), 'betadelta_solver': _V('hybr')}
     assert GB.solve_betadelta_pure(0.8, -6 / 35, off, rescue=True) is fail
+
+
+# The first-segment restriction (F1_ADOPTION.md §8): the phase-1b runner passes wide=False after its first
+# WIDE_SEARCH_MAX_SOLVES solves; wide=False must keep the search out, wide=True (the default) must not change anything.
+
+def _structure_failure_everywhere(monkeypatch, scans):
+    monkeypatch.setattr(GB, "_solve_betadelta_hybr",
+                        lambda b, d, params, method: _result(b, d, converged=False, no_root=True,
+                                                             reason="structure solve failed at the guess"))
+    monkeypatch.setattr(GB, "_solve_betadelta_legacy",
+                        lambda b, d, params, method="grid": _result(b, d, converged=False))   # the grid finds nothing better
+
+    def scan(params, betas, deltas, seen):
+        scans.append(len(betas) * len(deltas))
+        return None                                                         # no structure anywhere: the search gives up
+    monkeypatch.setattr(GB, "_wide_scan", scan)
+
+
+def test_restriction_constant_is_three():
+    assert GB.WIDE_SEARCH_MAX_SOLVES == 3
+
+
+def test_wide_false_keeps_the_search_out(monkeypatch):
+    scans = []
+    _structure_failure_everywhere(monkeypatch, scans)
+    r = GB.solve_betadelta_pure(0.8, -6 / 35, ON, rescue=True, wide=False)
+    assert r.no_physical_root and "structure" in r.no_root_reason
+    assert scans == []
+
+
+def test_wide_true_is_the_default_and_scans(monkeypatch):
+    scans = []
+    _structure_failure_everywhere(monkeypatch, scans)
+    r = GB.solve_betadelta_pure(0.8, -6 / 35, ON, rescue=True)
+    assert r.no_physical_root
+    assert scans == [77]                                                    # the 11 x 7 map, once

@@ -82,6 +82,7 @@ from trinity.phase1_energy.energy_phase_ODEs import (
 from trinity.phase1b_energy_implicit.get_betadelta import (
     _get_betadelta_solver,
     solve_betadelta_pure,
+    WIDE_SEARCH_MAX_SOLVES,
     cool_beta_to_Ebdot_pure,
     delta2dTdt_pure,
     compute_R1_Pb,
@@ -825,6 +826,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
 
     # Consecutive unconverged beta-delta solves (see update_unconverged_streak)
     betadelta_unconverged_streak = 0
+    n_solves = 0  # beta/delta solves so far (the opt-in wide search runs only in the first WIDE_SEARCH_MAX_SOLVES)
 
     # End-of-phase solver summary counters (see the summary log after the loop).
     betadelta_solve_count = 0
@@ -941,18 +943,22 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         # reads them (bubble computation does not depend on shell).
         # ---------------------------------------------------------------------
         rescue = rescue_allowed(betadelta_unconverged_streak)
+        n_solves += 1
         betadelta_result = solve_betadelta_pure(
             params['cool_beta'].value,
             params['cool_delta'].value,
             params,
             rescue=rescue,
+            wide=n_solves <= WIDE_SEARCH_MAX_SOLVES,
         )
         if sw and sw.recouple(params, Eb, betadelta_result.L_gain, betadelta_result.L_loss):
             # Step 7b-1: the wall speed with this solve's own luminosities moved > 1 %: solve once more with it
             v2 = sw.Rdot2
             params['v2'].value = v2
             params['cool_alpha'].value = t_now / R2 * v2
-            betadelta_result = solve_betadelta_pure(betadelta_result.beta, betadelta_result.delta, params, rescue=rescue)
+            n_solves += 1
+            betadelta_result = solve_betadelta_pure(betadelta_result.beta, betadelta_result.delta, params, rescue=rescue,
+                                                    wide=n_solves <= WIDE_SEARCH_MAX_SOLVES)
         # counted only where the cap changed something: the ladder would have run
         # (a hybr 'structure solve failed' no-root) and was skipped
         n_capped += (not rescue and betadelta_result.no_physical_root
