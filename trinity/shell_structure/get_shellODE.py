@@ -74,7 +74,9 @@ def get_shellODE(y,
             The neutral zone's temperature and mean mass per particle. None (the
             default, and every caller before the two-zone layer) reads TShell_neu
             and mu_atom from params; the molecular zone (TShell_mol > 0) passes
-            (TShell_mol, mu_mol). Ignored when is_ionised.
+            (TShell_mol, mu_mol); with TShell_neu 'auto' (step (b)) every neutral
+            zone passes its own (the atomic one (T_atom, mu_atom), warm H2
+            (T_atom, mu_mol)). Ignored when is_ionised.
 
     Returns
     -------

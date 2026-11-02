@@ -234,18 +234,26 @@ def layer_terms(sp, R2, Pc, params):
 
     Trapezoids over the solve's own grid (thousands of points): L8 <= 3.2e-7 on Step 1's 427 momentum segments.
     The two points at R_IF (ionised and neutral sides) carry the same pressure, so that zero-width interval adds
-    nothing. So do the two at the molecular boundary of the two-zone layer (TShell_mol > 0).
+    nothing. So do the two at the molecular boundary of the two-zone layer (TShell_mol > 0), and with step (b)
+    (TShell_neu 'auto') the two at the cold boundary; the atomic temperature is then the solve's (sp.shell_T_atom).
     """
     g = lambda k: params[k].value  # noqa: E731
     r = np.asarray(sp.shell_r_arr, float)
     n = np.asarray(sp.shell_n_arr, float)
     i = int(sp.shell_ion_idx)
+    T_atom = float(getattr(sp, 'shell_T_atom', float('nan')))
+    T_neu = T_atom if np.isfinite(T_atom) else g('TShell_neu')     # step (b): the solve's own atomic temperature
+    if isinstance(T_neu, str):      # 'auto' and no neutral gas in this solve: no point takes p_neu
+        T_neu = float('nan')
     p_ion = g('mu_convert') / g('mu_ion_shell') * g('k_B') * g('TShell_ion')
-    p_neu = g('mu_convert') / g('mu_atom') * g('k_B') * g('TShell_neu')
+    p_neu = g('mu_convert') / g('mu_atom') * g('k_B') * T_neu
     pref = np.where(np.arange(len(r)) <= i, p_ion, p_neu) if i >= 0 else np.full(len(r), p_neu)
     j = int(getattr(sp, 'shell_mol_idx', -1))
-    if j >= 0:      # the two-zone layer (TShell_mol > 0): molecular gas beyond index j, same pressure at the boundary
-        pref = np.where(np.arange(len(r)) > j, g('mu_convert') / g('mu_mol') * g('k_B') * g('TShell_mol'), pref)
+    c = int(getattr(sp, 'shell_cold_idx', j))     # an older ShellProperties without the field: the a2 layer (c == j)
+    if j >= 0 and c != j:   # step (b): warm H2 at the atomic temperature beyond index j (to c, or to the end without a cold zone)
+        pref = np.where(np.arange(len(r)) > j, g('mu_convert') / g('mu_mol') * g('k_B') * T_neu, pref)
+    if c >= 0:      # cold molecular gas beyond index c (the two-zone layer's one boundary when c == j), same pressure there
+        pref = np.where(np.arange(len(r)) > c, g('mu_convert') / g('mu_mol') * g('k_B') * g('TShell_mol'), pref)
     P = pref * n
     K = float(np.sum(0.5 * (8 * math.pi * r[1:] * P[1:] + 8 * math.pi * r[:-1] * P[:-1]) * np.diff(r)))
     light = g('Li') + g('Ln')

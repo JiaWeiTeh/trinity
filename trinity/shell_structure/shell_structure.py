@@ -27,7 +27,8 @@ from dataclasses import dataclass
 from typing import Optional, Union
 import logging
 
-from trinity.shell_structure import get_shellODE
+from trinity.shell_structure import get_shellODE, pdr
+import trinity._functions.unit_conversions as cvt
 
 logger = logging.getLogger(__name__)
 
@@ -318,6 +319,13 @@ class ShellProperties:
     # molecular zone (the default one-zone layer, a dissolved shell, no neutral region, or the mass ran out first).
     # Not a registered key, so updateDict never writes it: dictionary.jsonl is unchanged at the defaults.
     shell_mol_idx: int = -1
+    # Not registered keys either (PDR_DEFAULT_PLAN.md): the last index before the cold zone -- equal to shell_mol_idx when the
+    # gas turns molecular and cold at one switch (the a2 layer), larger with step (b)'s warm H2 zone in between, -1 when the
+    # cold switch is not reached (then any molecular gas beyond shell_mol_idx is step (b)'s warm H2); and, with TShell_neu
+    # 'auto' (step (b)), the atomic zone's temperature from the PDR at the front [K] and the far-UV field there [Habing].
+    shell_cold_idx: int = -1
+    shell_T_atom: float = float('nan')
+    shell_G0_IF: float = float('nan')
 
 
 def shell_structure_pure(params) -> ShellProperties:
@@ -561,6 +569,9 @@ def shell_structure_pure(params) -> ShellProperties:
     # Neutral region exists only when photons are depleted AND mass remains
     has_neutral = is_phiDepleted and not is_allMassSwept
     shell_mol_idx = -1
+    shell_cold_idx = -1               # the last index before the cold zone (= shell_mol_idx in a2), -1 when none
+    shell_T_atom = float('nan')       # step (b): the atomic zone's temperature from the PDR at the front
+    shell_G0_IF = float('nan')        # step (b): the far-UV field at the front [Habing]
 
     # Extract ionization front properties
     n_IF = nShell_arr_ion[-1]  # Density at ionization front from shell ODE
@@ -694,18 +705,44 @@ def shell_structure_pure(params) -> ShellProperties:
         if has_neutral:
             logger.debug('φ depleted with mass remaining — integrating neutral region')
 
-            # Temperature/density discontinuity at boundary
-            nShell0 = (nShell0 * params['mu_atom'].value / params['mu_ion_shell'].value *
-                      params['TShell_ion'].value / params['TShell_neu'].value)
-            tau0_neu = tau0_ion
-
-            # The two-zone layer (TShell_mol > 0): the atomic zone ends where the march's tau has grown by
-            # tauShell_mol beyond the front; the molecular zone restarts there at the pressure-continuous density.
-            # params.get: the keys are absent from pre-2026-10-30 fixtures, which then get the one-zone layer.
+            # The atomic zone's temperature: TShell_neu, or with TShell_neu 'auto' (step (b), two zones only) the PDR's at the
+            # front, from the far-UV field there (fFUV_Ln x Ln behind the ionised layer's dust) and the pressure-continuous
+            # density (pdr.py; docs/dev/phii-identity/weak-wind/neutral-shell/PDR_DEFAULT_PLAN.md).
+            # params.get: the two-zone keys are absent from pre-2026-10-30 fixtures, which then get the one-zone layer.
             _tmol = params.get('TShell_mol', None)
             T_mol = float(_tmol.value) if hasattr(_tmol, 'value') else 0.0
-            tau_mol = tau0_neu + float(params['tauShell_mol'].value) if T_mol > 0.0 else None
-            tmu_neu = None                     # the atomic zone: the RHS reads TShell_neu and mu_atom itself
+            pdr_auto = isinstance(params['TShell_neu'].value, str)       # 'auto': the validator admits no other string
+            if pdr_auto:
+                _jump = params['mu_atom'].value / params['mu_ion_shell'].value * params['TShell_ion'].value
+                _l_fuv = float(params['fFUV_Ln'].value) * params['Ln'].value * cvt.L_au2cgs
+                shell_G0_IF = pdr.g0_habing(_l_fuv, rShell_arr_ion[-1] * cvt.pc2cm, tau0_ion)
+                T_atom = max(pdr.t_pdr(shell_G0_IF, nShell0 * cvt.ndens_au2cgs, _jump), T_mol)
+                shell_T_atom = T_atom
+            else:
+                T_atom = params['TShell_neu'].value
+
+            # Temperature/density discontinuity at boundary
+            nShell0 = (nShell0 * params['mu_atom'].value / params['mu_ion_shell'].value *
+                      params['TShell_ion'].value / T_atom)
+            tau0_neu = tau0_ion
+
+            # The two-zone layer (TShell_mol > 0): pending switches (tau, T, mu, kind) in the march's own tau, each ending a
+            # zone where the march's tau reaches it; the next zone restarts there at the pressure-continuous density. Cold
+            # molecular gas (TShell_mol, mu_mol) from tauShell_mol beyond the front on; with step (b) also H2 (T_atom, mu_mol)
+            # from Bialy & Sternberg's column to the H/H2 transition on, dropped when it lies at or beyond the cold switch.
+            switches = []
+            if T_mol > 0.0:
+                switches.append((tau0_neu + float(params['tauShell_mol'].value), T_mol, params['mu_mol'].value, 'cold'))
+                if pdr_auto:
+                    _tau_h2 = (pdr.n_tran_bs16(shell_G0_IF, nShell0 * cvt.ndens_au2cgs, float(params['ZCloud'].value))
+                               * params['dust_sigma'].value * cvt.pc2cm**2)    # dust_sigma is stored in pc^2
+                    # strictly inside the atomic zone (a margin of 1e-6 tauShell_mol), so the warm H2 zone has a width; none
+                    # without dust (dust_sigma 0 below dust_noZ: tau never grows, the switch would fire at the front itself)
+                    if 0.0 < _tau_h2 < float(params['tauShell_mol'].value) * (1.0 - 1e-6):
+                        switches.insert(0, (tau0_neu + _tau_h2, T_atom, params['mu_mol'].value, 'h2'))
+            tau_mol = switches[0][0] if switches else None
+            tmu_neu = (T_atom, params['mu_atom'].value) if pdr_auto else None   # None: the RHS reads TShell_neu, mu_atom
+            T_cur, mu_cur = T_atom, params['mu_atom'].value
 
             tau_max = 100
             nsteps = 5e3
@@ -823,16 +860,21 @@ def shell_structure_pure(params) -> ShellProperties:
                 rShell_start = rShell_arr[idx]
 
                 if tau_mol is not None and tauCondition[idx] and not massCondition[idx]:
-                    # the atomic zone ends here: keep its last point, jump the density at constant pressure,
-                    # and let the same loop carry on as the molecular zone (one switch per solve)
+                    # a zone ends here: keep its last point, jump the density at constant pressure, and let the same
+                    # loop carry on as the next zone (atomic -> cold molecular; step (b): atomic -> warm H2 -> cold)
                     _neu_parts.append((mShell_arr[idx:idx + 1], mShell_arr_cum[idx:idx + 1],
                                        tauShell_arr[idx:idx + 1], nShell_arr[idx:idx + 1],
                                        rShell_arr[idx:idx + 1]))
-                    shell_mol_idx = len(rShell_arr_ion) + sum(len(p[4]) for p in _neu_parts) - 1
-                    nShell0 = nShell0 * (params['mu_mol'].value / params['mu_atom'].value
-                                         * params['TShell_neu'].value / T_mol)
-                    tmu_neu = (T_mol, params['mu_mol'].value)
-                    tau_mol = None
+                    _, T_new, mu_new, _kind = switches.pop(0)
+                    _last = len(rShell_arr_ion) + sum(len(p[4]) for p in _neu_parts) - 1
+                    if shell_mol_idx < 0:
+                        shell_mol_idx = _last              # the molecular zone starts at the next point
+                    if _kind == 'cold':
+                        shell_cold_idx = _last             # the cold zone starts at the next point (= shell_mol_idx in a2)
+                    nShell0 = nShell0 * (mu_new / mu_cur * T_cur / T_new)
+                    tmu_neu = (T_new, mu_new)
+                    T_cur, mu_cur = T_new, mu_new
+                    tau_mol = switches[0][0] if switches else None
 
             if _neu_parts:
                 (mShell_arr_neu, mShell_arr_cum_neu, tauShell_arr_neu, nShell_arr_neu,
@@ -859,13 +901,14 @@ def shell_structure_pure(params) -> ShellProperties:
                     grav_neu_r * grav_neu_rho, x=grav_neu_r
                 )
             else:
-                # two zones: integrate each on its own, as the ionised and neutral parts are -- one Simpson rule
-                # across the two points at the boundary radius (zero width, a density step) mis-weights that panel
-                _k = shell_mol_idx - len(rShell_arr_ion) + 1      # the first molecular index in the neutral arrays
+                # two or three zones: integrate each on its own, as the ionised and neutral parts are -- one Simpson
+                # rule across the two points at a boundary radius (zero width, a density step) mis-weights that panel
+                _ks = sorted({_i - len(rShell_arr_ion) + 1 for _i in (shell_mol_idx, shell_cold_idx) if _i >= 0})  # zone starts
                 _y = grav_neu_r * grav_neu_rho
                 _c = -4 * np.pi * params['G'].value
                 grav_neu_phi = 0.0
-                for _sl in (slice(0, _k), slice(_k, None)):
+                _edges = [0] + _ks + [None]
+                for _sl in (slice(_a, _b) for _a, _b in zip(_edges[:-1], _edges[1:])):
                     _r = grav_neu_r[_sl]
                     if _r.size >= 3:
                         grav_neu_phi += _c * scipy.integrate.simpson(_y[_sl], x=_r)
@@ -1037,5 +1080,8 @@ def shell_structure_pure(params) -> ShellProperties:
         shell_fAbsorbedIonDust_total=shell_fAbsorbedIonDust_total,
         shell_fAbsorbedNeu_total=shell_fAbsorbedNeu_total,
         shell_mol_idx=shell_mol_idx,
+        shell_cold_idx=shell_cold_idx,
+        shell_T_atom=shell_T_atom,
+        shell_G0_IF=shell_G0_IF,
     )
 

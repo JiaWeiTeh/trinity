@@ -118,6 +118,77 @@ def test_layer_terms_identity_closes_with_a_molecular_zone():
     assert abs(L8) < 1e-9
 
 
+def _auto_slab(m_over_m_ion, g0):
+    """The slab with step (b) on (TShell_neu 'auto') and a far-UV field of about g0 Habing at R_IF ~ 1 pc. The dust is a millionth
+    of the default (dust_sigma 1.5e-27 cm^2, tauShell_mol 3e-6, so the cold switch stays at 2e21 cm^-2): with the default dust and
+    R2 = 1e-3 pc, Ln's radiation force would confine the ionised layer to ~1e-3 pc and pin T_atom at the table's 5000 K corner (the
+    package's second cross-check, PDR_DEFAULT_PLAN.md). Premises checked by an independent CGS integration of the same equations
+    (2026-11-01): R_IF 1.00 / 1.00 / 0.99 pc and the zones each test asserts."""
+    p, m_ion, _ = _slab(m_over_m_ion, TShell_neu="auto", TShell_mol=T_MOL, tauShell_mol=3e-6, dust_sigma=1.5e-27 * cvt.cm2pc**2)
+    p["Ln"].value = g0 * 4 * math.pi * cvt.pc2cm**2 * 1.6e-3 / 0.67 * cvt.L_cgs2au
+    return p, m_ion, shell_structure_pure(p)
+
+
+def test_step_b_three_zones_on_the_slab():
+    """TShell_neu 'auto' (step (b), PDR_DEFAULT_PLAN.md G-B1) at G0 ~ 100: warm atomic gas at the PDR temperature of the front's
+    field and density, warm H2 from Bialy & Sternberg's column, cold gas beyond tauShell_mol; every jump pressure-continuous; L8."""
+    import trinity.shell_structure.pdr as pdr
+    p, _, sp = _auto_slab(10.0, 1e2)
+    g = lambda k: float(p[k].value)  # noqa: E731
+    i, j, c = int(sp.shell_ion_idx), int(sp.shell_mol_idx), int(sp.shell_cold_idx)
+    assert sp.has_neutral and i < j < c, "premise: three zones"
+    n = np.asarray(sp.shell_n_arr, float)
+    T = float(sp.shell_T_atom)
+    jump_IF = g("mu_atom") / g("mu_ion_shell") * g("TShell_ion")
+    assert T == pytest.approx(pdr.t_pdr(float(sp.shell_G0_IF), float(sp.n_IF) * cvt.ndens_au2cgs, jump_IF), rel=1e-12)
+    assert 50.0 < float(sp.shell_G0_IF) < 200.0 and T_MOL < T < 1000.0
+    assert n[i + 1] / n[i] == pytest.approx(jump_IF / T, rel=1e-12)          # the front
+    assert n[j + 1] / n[j] == pytest.approx(g("mu_mol") / g("mu_atom"), rel=1e-12)   # H2 forms: 11/6, same T
+    assert n[c + 1] / n[c] == pytest.approx(T / T_MOL, rel=1e-12)            # the gas turns cold: same mu
+    K, F_rad_sh, P_out, L8 = S.layer_terms(sp, g("R2"), g("Pb"), p)
+    assert P_out == pytest.approx(g("mu_convert") / g("mu_mol") * g("k_B") * T_MOL * n[-1], rel=1e-12)
+    assert abs(L8) < 1e-6
+
+
+def test_step_b_warm_h2_without_a_cold_zone_closes_L8():
+    """The mass runs out between the H2 switch and the cold one: beyond shell_mol_idx the gas is warm H2 at the atomic temperature
+    (shell_cold_idx -1), and swept.layer_terms must price it so -- as cold gas, K_s and P(r_s) would be off by T_atom/T_mol and
+    L8 of order 1 (the package's first review, B2)."""
+    p, _, sp = _auto_slab(1.5, 1e2)
+    g = lambda k: float(p[k].value)  # noqa: E731
+    j, c = int(sp.shell_mol_idx), int(sp.shell_cold_idx)
+    assert sp.has_neutral and j > int(sp.shell_ion_idx) and c == -1, "premise: H2 forms, the cold switch is not reached"
+    n = np.asarray(sp.shell_n_arr, float)
+    K, F_rad_sh, P_out, L8 = S.layer_terms(sp, g("R2"), g("Pb"), p)
+    assert P_out == pytest.approx(g("mu_convert") / g("mu_mol") * g("k_B") * float(sp.shell_T_atom) * n[-1], rel=1e-12)
+    assert abs(L8) < 1e-6
+
+
+def test_step_b_cold_switch_first():
+    """At G0 ~ 1e5 Bialy & Sternberg's column (~2.8e21 cm^-2) lies beyond the cold switch (2e21): the H2 switch is dropped and the
+    gas turns molecular and cold at once, as in the a2 layer (shell_cold_idx == shell_mol_idx), but at the PDR temperature."""
+    p, _, sp = _auto_slab(10.0, 1e5)
+    g = lambda k: float(p[k].value)  # noqa: E731
+    j, c = int(sp.shell_mol_idx), int(sp.shell_cold_idx)
+    assert sp.has_neutral and j > int(sp.shell_ion_idx) and c == j, "premise: one switch, molecular and cold together"
+    n = np.asarray(sp.shell_n_arr, float)
+    T = float(sp.shell_T_atom)
+    assert n[j + 1] / n[j] == pytest.approx(g("mu_mol") / g("mu_atom") * T / T_MOL, rel=1e-12)
+    K, F_rad_sh, P_out, L8 = S.layer_terms(sp, g("R2"), g("Pb"), p)
+    assert abs(L8) < 1e-6
+
+
+def test_step_b_layer_terms_without_neutral_gas():
+    """TShell_neu 'auto' on a shell that is all ionised (no neutral zone, so no PDR temperature in this solve): layer_terms must
+    run (it is called on every swept root) and give the ionised layer's pressure (the package's first review, B1)."""
+    p, _, sp = _slab(0.05, TShell_neu="auto", TShell_mol=T_MOL, tauShell_mol=DTAU)
+    g = lambda k: float(p[k].value)  # noqa: E731
+    assert not sp.has_neutral, "premise: 0.05 m_ion is all ionised"
+    K, F_rad_sh, P_out, L8 = S.layer_terms(sp, g("R2"), g("Pb"), p)
+    n = np.asarray(sp.shell_n_arr, float)
+    assert P_out == pytest.approx(g("mu_convert") / g("mu_ion_shell") * g("k_B") * g("TShell_ion") * n[-1], rel=1e-12)
+
+
 def test_validators_refuse_bad_two_zone_keys():
     """A negative TShell_mol would read as 'off' without a word; tauShell_mol <= 0 would switch at the front itself."""
     from trinity._input.errors import ParameterFileError
@@ -134,3 +205,16 @@ def test_validators_refuse_bad_two_zone_keys():
     for bad in (0.0, -2.0, True):
         with pytest.raises(ParameterFileError):
             _validate_tauShell_mol(bad, None)
+    from trinity._input.registry import _validate_TShell_neu, _validate_fFUV_Ln
+    assert spec["TShell_neu"].validator is _validate_TShell_neu and spec["fFUV_Ln"].validator is _validate_fFUV_Ln
+    _validate_TShell_neu(100.0, None)
+    _validate_TShell_neu("auto", {"TShell_mol": 20.0})
+    for bad in (0.0, -1.0, True, "300"):
+        with pytest.raises(ParameterFileError):
+            _validate_TShell_neu(bad, None)
+    with pytest.raises(ParameterFileError):                       # 'auto' needs the two-zone layer
+        _validate_TShell_neu("auto", {"TShell_mol": 0.0})
+    _validate_fFUV_Ln(0.67, None)
+    for bad in (0.0, 1.5, -0.1, True):
+        with pytest.raises(ParameterFileError):
+            _validate_fFUV_Ln(bad, None)

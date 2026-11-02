@@ -288,6 +288,33 @@ def _validate_TShell_mol(value, params) -> None:
         )
 
 
+def _validate_TShell_neu(value, params) -> None:
+    """Temperature of the neutral shell's (atomic) zone [K]: a number > 0, or 'auto' -- step (b), the PDR temperature at the
+    front from its far-UV field and density, H2 from Bialy & Sternberg's column -- which needs the two-zone layer
+    (TShell_mol > 0) (docs/dev/phii-identity/weak-wind/neutral-shell/PDR_DEFAULT_PLAN.md)."""
+    from trinity._input.errors import ParameterFileError
+    if isinstance(value, str):
+        if value != 'auto':
+            raise ParameterFileError(f"Invalid TShell_neu '{value}'. Must be a temperature > 0 K or 'auto'.")
+        tm = params.get('TShell_mol', None) if params is not None else None
+        tm = tm.value if hasattr(tm, 'value') else tm
+        if isinstance(tm, bool) or not isinstance(tm, (int, float)) or not tm > 0:
+            raise ParameterFileError(
+                "TShell_neu 'auto' (the PDR temperature, step (b)) needs the two-zone layer: set TShell_mol > 0."
+            )
+        return
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not value > 0:
+        raise ParameterFileError(f"Invalid TShell_neu '{value}'. Must be a temperature > 0 K or 'auto'.")
+
+
+def _validate_fFUV_Ln(value, params) -> None:
+    """Far-UV (6-13.6 eV) share of the non-ionising luminosity Ln: 0 < fFUV_Ln <= 1
+    (docs/dev/phii-identity/weak-wind/neutral-shell/PDR_DEFAULT_PLAN.md, D-B3)."""
+    from trinity._input.errors import ParameterFileError
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not 0 < value <= 1:
+        raise ParameterFileError(f"Invalid fFUV_Ln '{value}'. Must be a fraction in (0, 1].")
+
+
 def _validate_tauShell_mol(value, params) -> None:
     """Dust optical depth of the two-zone layer's atomic zone: > 0. At <= 0 the switch would fire at the ionisation
     front itself, which would then carry three points (docs/dev/phii-identity/weak-wind/neutral-shell/PLAN.md)."""
@@ -451,9 +478,10 @@ SPECS: tuple[ParamSpec, ...] = (
     ParamSpec(name='x_He', default='0.1', info='Helium-to-hydrogen number ratio n_He/n_H. Composition source of truth: mu_atom, mu_ion, mu_mol, mu_convert and chi_e are all derived from x_He and Z_He at load (read_param Step 6).', category='input_constants', unit=None, exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='Z_He', default='2', info='Helium ionisation state in the HOT bubble interior (T~1e6-1e7 K): 2 = doubly ionised (He2+). Sets mu_ion and the bubble electron factor chi_e = 1 + Z_He*x_He.', category='input_constants', unit=None, exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='Z_He_shell', default='1', info='Helium ionisation state in the ~1e4 K ionised shell / HII region: 1 = singly ionised (He+). Sets mu_ion_shell and chi_e_shell = 1 + Z_He_shell*x_He. (He2+ needs ~1e5 K, so the photoionised shell is singly ionised.)', category='input_constants', unit=None, exclude_from_snapshot=True, run_const=True),
-    ParamSpec(name='TShell_neu', default='1e2', info="Temperature of the neutral shell gas behind the ionisation front [K]; the layer's structure sees only T/mu (mu_atom). One zone by default (TShell_mol 0), and then 100 K is an EFFECTIVE thickness parameter for a warm PDR skin plus cold molecular gas, not a temperature: an isobaric layer's thickness is the sum over zones of (T/mu) N, so a neutral column N_neu whose first N_tr = tauShell_mol/dust_sigma (2e21 cm^-2 at the defaults) is atomic at T_PDR and whose rest is molecular at T_mol has the thickness of one zone at T_eff = f T_PDR + (1 - f) (mu_atom/mu_mol) T_mol, f = min(1, N_tr/N_neu): with 300 K / 20 K that is 300 K for N_neu <= 2e21, 83 K at 8e21, 10.9 K as N_neu grows (the 7c-1 ladder's shells span 7e19 to 7e25 cm^-2). With TShell_mol > 0 this is the atomic (PDR) zone's temperature, e.g. 300 K. docs/dev/phii-identity/weak-wind/neutral-shell/PLAN.md.", category='input_constants', unit=None, exclude_from_snapshot=True, run_const=True),
+    ParamSpec(name='TShell_neu', default='1e2', info="Temperature of the neutral shell gas behind the ionisation front [K]; the layer's structure sees only T/mu (mu_atom). One zone by default (TShell_mol 0), and then 100 K is an EFFECTIVE thickness parameter for a warm PDR skin plus cold molecular gas, not a temperature: an isobaric layer's thickness is the sum over zones of (T/mu) N, so a neutral column N_neu whose first N_tr = tauShell_mol/dust_sigma (2e21 cm^-2 at the defaults) is atomic at T_PDR and whose rest is molecular at T_mol has the thickness of one zone at T_eff = f T_PDR + (1 - f) (mu_atom/mu_mol) T_mol, f = min(1, N_tr/N_neu): with 300 K / 20 K that is 300 K for N_neu <= 2e21, 83 K at 8e21, 10.9 K as N_neu grows (the 7c-1 ladder's shells span 7e19 to 7e25 cm^-2). With TShell_mol > 0 this is the atomic (PDR) zone's temperature, e.g. 300 K. docs/dev/phii-identity/weak-wind/neutral-shell/PLAN.md. 'auto' (step (b); needs TShell_mol > 0): the atomic zone's temperature is the PDR surface temperature of Kaufman et al. 1999 (lib/default/pdr/k99_tsurf_grid.csv) at the front's far-UV field (fFUV_Ln x Ln) and pressure-continuous density, and H2 forms from Bialy & Sternberg 2016's column to the H/H2 transition on (warm H2 at that temperature until tauShell_mol, cold beyond). docs/dev/phii-identity/weak-wind/neutral-shell/PDR_DEFAULT_PLAN.md.", category='input_constants', unit=None, exclude_from_snapshot=True, run_const=True, validator=_validate_TShell_neu),
     ParamSpec(name='TShell_mol', default='0', info="Temperature of the molecular zone of the neutral shell [K]. 0 (default) = one neutral zone at TShell_neu, as before 2026-10-30. > 0: beyond a dust optical depth tauShell_mol behind the ionisation front the shell gas is molecular (mu_mol) at this temperature, with the pressure-continuous density jump n_mol = n_atom (mu_mol/mu_atom) (TShell_neu/TShell_mol) (27.5 at 300 K / 20 K, x_He 0.1). Thermal pressure only: magnetic support would thicken the zone (Pellegrini et al. 2007, 2009); an effective value can stand in for it. docs/dev/phii-identity/weak-wind/neutral-shell/PLAN.md.", category='input_constants', unit=None, exclude_from_snapshot=True, run_const=True, validator=_validate_TShell_mol),
     ParamSpec(name='tauShell_mol', default='3', info="Dust optical depth of the atomic (PDR) zone behind the ionisation front at which the neutral shell turns molecular: the shell march's own tau (dtau/dr = n dust_sigma), so the column is tauShell_mol/dust_sigma (2.0e21 cm^-2, A_V 1.07 at the defaults) and it scales with metallicity as the H/H2 transition does (Sternberg et al. 2014 eq. 40: a fixed dust optical depth ln(alpha G/2 + 1)). Used only when TShell_mol > 0. docs/dev/phii-identity/weak-wind/neutral-shell/PLAN.md.", category='input_constants', unit=None, exclude_from_snapshot=True, run_const=True, validator=_validate_tauShell_mol),
+    ParamSpec(name='fFUV_Ln', default='0.67', info="Far-UV (6-13.6 eV) share of the non-ionising luminosity Ln, for the PDR's field at the ionisation front when TShell_neu is 'auto' (step (b)). An ESTIMATE that can be far off: Kim et al. 2023 (ApJS 264, 10) Fig. 21, read by pixel, gives 0.65-0.7 for a Starburst99 cluster of 0-5.5 Myr; unknown later. A stellar table's own far-UV column is to replace it when one exists (PDR_DEFAULT_PLAN.md D-B3). docs/dev/phii-identity/weak-wind/neutral-shell/PDR_DEFAULT_PLAN.md.", category='input_constants', unit=None, exclude_from_snapshot=True, run_const=True, validator=_validate_fFUV_Ln),
     ParamSpec(name='TShell_ion', default='8e3', info='Temperature of the ionised shell region. 8000 K (maintainer ruling 2026-09-06, PLAN.md W62): the two published Te-metallicity relations give 7584 K (Shaver+1983) and 7009 K (Mendez-Delgado+2023) at solar Z (Balser & Wenger 2024). NOT universal -- harder fields and higher densities push Te up. caseB_alpha is rescaled from this value by (T/1e4)^-0.83 (Draine 2011, ApJ 732, 100) in read_param, so the two cannot drift apart.', category='input_constants', unit=None, exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='dust_sigma', default='1.5e-21', info='Dust cross-section at solar metallicity.', category='input_constants', unit='cm**2', exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='dust_noZ', default='0.05', info='Metallicity below which there is effectively no dust', category='input_constants', unit='Zsun', exclude_from_snapshot=True, run_const=True),
