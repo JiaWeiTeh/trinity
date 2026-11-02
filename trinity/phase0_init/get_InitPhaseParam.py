@@ -343,9 +343,17 @@ def resolve_start_scheme(params):
     """'weaver' or 'stromgren', as the .param sets it; zeta and R_St are logged for every start (D5), and the start
     check (start_check: both zeta conventions, zeta_ED, the thin-shell ratios, phi(r0), which start applies).
 
-    No automatic choice between the two starts yet (D17): the switch value is set after the zeta ladders.
+    'auto' (opt-in; rule A1, weak-wind/start-selection/AUTO_START.md): outside phii_scheme 'swept' it is the Weaver
+    start (no Stroemgren start exists there; ruling AU6). Under swept it picks here only where phi(r0) refuses the
+    Weaver start (SS6): 'stromgren' if it applies, else a ValueError naming both reasons. Otherwise it returns
+    'auto' and phase 1a's first structure solve decides (auto_pending, auto_seed_failed).
     """
     scheme = str(params['start_scheme'].value).strip().lower()
+    if scheme == 'auto' and str(params['phii_scheme'].value).strip().lower() != 'swept':
+        scheme = 'weaver'                      # AU6: from here on the run is an explicit 'weaver' run
+        params['start_scheme'].value = scheme
+        logger.info(f"start_scheme auto -> weaver (phii_scheme {params['phii_scheme'].value} has no Stroemgren "
+                    f"start); betadelta_wide_search {params['betadelta_wide_search'].value} (AU3)")
     try:
         zeta_MD, zeta_ED, R_St, R_eq, _ = stromgren_zeta(params)
         logger.info(f"start_scheme {scheme}: zeta_MD = R_eq/R_St = {zeta_MD:.4g} (zeta_ED = {zeta_ED:.4g}; "
@@ -358,8 +366,65 @@ def resolve_start_scheme(params):
         if why_w is not None and why_s is not None:
             logger.warning(f"start check: no admissible start for this input (weaver: {why_w}; stromgren: {why_s})")
     except Exception as e:  # noqa: BLE001 -- a diagnostic only; the Weaver start must not depend on it
+        if scheme == 'auto':  # ... but 'auto' chooses by it, so a failure there is loud
+            raise ValueError(f"start_scheme auto: the start check failed ({type(e).__name__}: {e})") from e
         logger.warning(f"start_scheme {scheme}: zeta not computed ({type(e).__name__}: {e})")
+    if scheme == 'auto' and why_w is not None:  # SS6: phi(r0) > 1e21 refuses the Weaver start
+        if why_s is not None:
+            raise ValueError(f"start_scheme auto: no admissible start for this input (weaver: {why_w}; "
+                             f"stromgren: {why_s})")
+        scheme = 'stromgren'
+        params['start_scheme'].value = scheme  # metadata.json and swept.py's D12 caps see the start used
+        logger.info(f"start_scheme auto -> stromgren (weaver: {why_w})")
+    elif scheme == 'auto':
+        logger.info(f"start_scheme auto: phase 1a's first structure solve decides (rule A1); "
+                    f"betadelta_wide_search {params['betadelta_wide_search'].value} for a Weaver start (AU3)")
     return scheme
+
+
+class WeaverSeedInvalid(Exception):
+    """start_scheme 'auto' (rule A1): the Weaver seed has no physical bubble structure and the Stroemgren start
+    applies. Raised at phase 1a's first structure solve (auto_seed_failed), caught in main.run_expansion."""
+
+
+def auto_pending(params):
+    """True while start_scheme 'auto' is unresolved, i.e. until phase 1a's first structure solve."""
+    return getattr(params.get('start_scheme'), 'value', None) == 'auto'
+
+
+def seed_has_structure(params):
+    """Rule A1's probe (weak-wind/start-selection/AUTO_START.md section 5, harness/au_probe.py), called after the
+    seed's structure solve failed at Weaver's exponents: True at the first point of get_betadelta's 77-point
+    wide-search map (beta -1..4, delta -3..0, step 0.5) with a physical structure (the acceptance gate: a
+    structure solve with dMdt > 0). Reads params only."""
+    import trinity.phase1b_energy_implicit.get_betadelta as GB
+    for b in GB.WIDE_BETAS:
+        for d in GB.WIDE_DELTAS:
+            try:
+                GB._hybr_g_residual(b, d, params, None)
+            except (GB._NoPhysicalRoot, Exception):  # noqa: BLE001 -- any failure = no structure at this point
+                continue
+            return True
+    return False
+
+
+def auto_seed_failed(params, err):
+    """start_scheme 'auto' (swept only, see resolve_start_scheme) after phase 1a's first structure solve failed at
+    Weaver's exponents (rule A1): the Weaver start goes on, as an explicit 'weaver' run would, where the seed has a
+    structure elsewhere in the map; otherwise WeaverSeedInvalid where the Stroemgren start applies, else a
+    ValueError naming both reasons.
+    """
+    if seed_has_structure(params):
+        logger.warning(f"start_scheme auto -> weaver: the seed's structure solve failed at Weaver's exponents "
+                       f"({type(err).__name__}: {err}), but a physical structure exists in the beta-delta map")
+        params['start_scheme'].value = 'weaver'
+        return
+    why_s = start_check(params)[7]
+    reason = f"the seed has no physical bubble structure ({type(err).__name__}: {err})"
+    if why_s is not None:
+        raise ValueError(f"start_scheme auto: no admissible start for this input (weaver: {reason}; "
+                         f"stromgren: {why_s})")
+    raise WeaverSeedInvalid(reason)
 
 
 def rtype_duration(R_St, c_i, params):

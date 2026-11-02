@@ -394,6 +394,12 @@ def read_param(path2file):
             f"caseB_alpha. The Stroemgren balance and P_HII may be unreliable here."
         )
 
+    # start_scheme 'auto' (start-selection/AUTO_START.md, ruling AU3 2026-11-02): a Weaver start
+    # chosen by 'auto' runs with the wide beta-delta search, unless the .param sets the key.
+    # Inert on the Stroemgren start (no phase 1b); resolve_start_scheme logs the value.
+    if params['start_scheme'].value == 'auto' and 'betadelta_wide_search' not in user_dict:
+        params['betadelta_wide_search'].value = True
+
     # Dust cross-section scaling with metallicity
     if params['ZCloud'].value >= params['dust_noZ'].value:
         params['dust_sigma'].value = params['dust_sigma'].value * params['ZCloud'].value
