@@ -73,6 +73,19 @@ class SweepProgress:
 # GMC pre-flight validation
 # =============================================================================
 
+def two_zone_flip_warning(combinations):
+    """The two-zone neutral layer is the default since 2026-11-02 (PDR_DEFAULT_PLAN.md P5, D-B5/D-F7). read_param warns a run whose
+    .param sets a numeric TShell_neu without TShell_mol, but a sweep discards its children's stderr, so the parent says it once.
+    combinations: a list of (params dict, run name). Returns the message, or None."""
+    hit = [name for p, name in combinations
+           if 'TShell_neu' in p and 'TShell_mol' not in p and not isinstance(p['TShell_neu'], str)]
+    if not hit:
+        return None
+    return (f"WARNING: {len(hit)}/{len(combinations)} combinations set a numeric TShell_neu without TShell_mol: since "
+            "2026-11-02 that is the atomic zone's temperature of the two-zone neutral layer (TShell_mol 20 K beyond "
+            "tauShell_mol). Add 'TShell_mol 0' for the one-zone layer of earlier runs.")
+
+
 def _validate_sweep_combination(params_dict):
     """
     Validate a single sweep combination's GMC parameters.

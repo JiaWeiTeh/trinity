@@ -322,10 +322,13 @@ class ShellProperties:
     # Not registered keys either (PDR_DEFAULT_PLAN.md): the last index before the cold zone -- equal to shell_mol_idx when the
     # gas turns molecular and cold at one switch (the a2 layer), larger with step (b)'s warm H2 zone in between, -1 when the
     # cold switch is not reached (then any molecular gas beyond shell_mol_idx is step (b)'s warm H2); and, with TShell_neu
-    # 'auto' (step (b)), the atomic zone's temperature from the PDR at the front [K] and the far-UV field there [Habing].
+    # 'auto' (step (b)), the atomic zone's temperature from the PDR at the front [K], the far-UV field there [Habing] and the
+    # H-nuclei column from the front to the H/H2 transition [cm^-2]; these three are registered keys since the flip
+    # (PDR_DEFAULT_PLAN.md P5), so every row stores them (NaN without 'auto').
     shell_cold_idx: int = -1
     shell_T_atom: float = float('nan')
     shell_G0_IF: float = float('nan')
+    shell_N_tran: float = float('nan')
 
 
 def shell_structure_pure(params) -> ShellProperties:
@@ -572,6 +575,7 @@ def shell_structure_pure(params) -> ShellProperties:
     shell_cold_idx = -1               # the last index before the cold zone (= shell_mol_idx in a2), -1 when none
     shell_T_atom = float('nan')       # step (b): the atomic zone's temperature from the PDR at the front
     shell_G0_IF = float('nan')        # step (b): the far-UV field at the front [Habing]
+    shell_N_tran = float('nan')       # step (b): the H-nuclei column from the front to the H/H2 transition [cm^-2]
 
     # Extract ionization front properties
     n_IF = nShell_arr_ion[-1]  # Density at ionization front from shell ODE
@@ -734,8 +738,8 @@ def shell_structure_pure(params) -> ShellProperties:
             if T_mol > 0.0:
                 switches.append((tau0_neu + float(params['tauShell_mol'].value), T_mol, params['mu_mol'].value, 'cold'))
                 if pdr_auto:
-                    _tau_h2 = (pdr.n_tran_bs16(shell_G0_IF, nShell0 * cvt.ndens_au2cgs, float(params['ZCloud'].value))
-                               * params['dust_sigma'].value * cvt.pc2cm**2)    # dust_sigma is stored in pc^2
+                    shell_N_tran = pdr.n_tran_bs16(shell_G0_IF, nShell0 * cvt.ndens_au2cgs, float(params['ZCloud'].value))
+                    _tau_h2 = shell_N_tran * params['dust_sigma'].value * cvt.pc2cm**2    # dust_sigma is stored in pc^2
                     # strictly inside the atomic zone (a margin of 1e-6 tauShell_mol), so the warm H2 zone has a width; none
                     # without dust (dust_sigma 0 below dust_noZ: tau never grows, the switch would fire at the front itself)
                     if 0.0 < _tau_h2 < float(params['tauShell_mol'].value) * (1.0 - 1e-6):
@@ -1083,5 +1087,6 @@ def shell_structure_pure(params) -> ShellProperties:
         shell_cold_idx=shell_cold_idx,
         shell_T_atom=shell_T_atom,
         shell_G0_IF=shell_G0_IF,
+        shell_N_tran=shell_N_tran,
     )
 

@@ -260,6 +260,7 @@ def test_phase3_shellODE_neutral_vs_original():
     """Neutral shell ODE: prefactor 1 -> mu_n/mu_H (dust-only RHS)."""
     from trinity.shell_structure.get_shellODE import get_shellODE
     p = _shell_params()
+    p["TShell_neu"].value = 100.0     # the RHS reads TShell_neu only without tmu; since the flip (P5) the default is 'auto'
     n, tau, r = 1.0e3, 0.3, 5.0
     dndr, dtaudr = get_shellODE([n, tau], r, False, p)
 
@@ -296,7 +297,7 @@ def test_phase3_shell_structure_coefficients_and_no_original():
     assert s.count("params['mu_convert'].value") == 9   # 7 mass/grav/tau + BC + the march alias
     # 4 since step (b) of the two-zone layer (weak-wind/neutral-shell/PDR_DEFAULT_PLAN.md): the I-front jump numerator,
     # step (b)'s front jump factor for the PDR temperature, its atomic-zone (T, mu) for the RHS, and the march's current mu
-    # that every zone-boundary jump (mu_new/mu_cur) starts from; the boundary jumps are off by default (TShell_mol 0).
+    # that every zone-boundary jump (mu_new/mu_cur) starts from; the boundary jumps are off for TShell_mol 0 (on by default since the flip, P5).
     assert s.count("params['mu_atom'].value") == 4      # the I-front jump numerator + step (b)'s three atomic-zone reads
     assert "nShell0 * (mu_new / mu_cur * T_cur / T_new)" in s  # every zone-boundary jump (TShell_mol > 0)
     assert "params['mu_atom'].value / params['mu_ion_shell'].value" in s  # the :298 jump (singly)

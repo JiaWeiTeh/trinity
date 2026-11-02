@@ -255,6 +255,7 @@ def run_sweep(args):
         SweepReport,
         SimulationResult,
         _validate_sweep_combination,
+        two_zone_flip_warning,
     )
 
     # Module-level shutdown flag for signal handler access
@@ -498,6 +499,9 @@ def run_sweep(args):
         if n_invalid > 0:
             print(f"WARNING: {n_invalid}/{n_combinations} combinations have "
                   f"implausible GMC parameters and will fail.")
+        flip_msg = two_zone_flip_warning(combinations)
+        if flip_msg:
+            print(flip_msg)
         print("(No simulations were run - dry run mode)")
         sys.exit(0)
 
@@ -546,6 +550,9 @@ def run_sweep(args):
             for e in res_inv.errors:
                 print(f"    - {e}")
         print()
+    flip_msg = two_zone_flip_warning(pre_combinations)
+    if flip_msg:
+        print(f"\n{flip_msg}\n")
 
     # =================================================================
     # Confirmation

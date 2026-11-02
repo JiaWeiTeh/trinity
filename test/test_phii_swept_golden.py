@@ -188,12 +188,13 @@ def test_momentum_replay_golden(cfg, tmp_path):
     if not all(f.exists() for f in need):
         pytest.skip("archived run or replay harness absent (docs/dev is gitignored)")
     out = tmp_path / "swept.jsonl"
-    # the archived runs predate the cloud gas's own pressure: replay them on a copy whose .param sets TCloud 0 (the
-    # default is 10 K since 2026-10-29), so the goldens keep their subject
+    # the archived runs predate the cloud gas's own pressure and the two-zone neutral layer: replay them on a copy whose .param
+    # sets TCloud 0 (the default is 10 K since 2026-10-29) and the one-zone 100 K layer (TShell_neu 'auto' with TShell_mol 20 is
+    # the default since 2026-11-02, PDR_DEFAULT_PLAN.md P5), so the goldens keep their subject
     arch = tmp_path / (BUNDLE / rel).name
     shutil.copytree(BUNDLE / rel, arch)
     pfile = arch / f"{arch.name}.param"
-    pfile.write_text(pfile.read_text().rstrip("\n") + "\nTCloud    0\n")
+    pfile.write_text(pfile.read_text().rstrip("\n") + "\nTCloud    0\nTShell_neu    100\nTShell_mol    0\n")
     # a separate process: trinity keeps module-level state between runs in one interpreter
     subprocess.run([sys.executable, str(BUNDLE / "harness" / "momentum_replay.py"), str(arch),
                     "--scheme", "swept", "--dt", str(dt), "--out", str(out)], cwd=REPO, check=True,

@@ -38,6 +38,7 @@ def test_thick_neutral_layer_is_cheap_and_exact(m_over_m_ion, tol):
     g = lambda k: float(p[k].value)  # noqa: E731
     p["dust_sigma"].value = 0.0
     p["TShell_neu"].value = 1000.0
+    p["TShell_mol"].value = 0.0          # one neutral zone: the march this test was written for (two zones by default since P5)
     n0 = N0_CGS * cvt.ndens_cgs2au
     # n0 is the density the shell solve derives from Pb (mu_ion_shell/mu_convert * Pb/(k_B T_ion))
     Pb = n0 * g("k_B") * g("TShell_ion") * g("mu_convert") / g("mu_ion_shell")

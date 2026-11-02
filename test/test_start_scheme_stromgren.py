@@ -35,7 +35,7 @@ def _write_cloud(tmp, name="ww", eps=0.05, radiation=True, **over):
         f"{t:.6e},{Q_NUORI:.6e},{lb:.6e},{li:.6e},{ln:.6e},{LW_X005 * k:.6e},{PDOT_X005 * k:.6e},0\n"
         for t in (0.0, 5e4, 1e5, 2e5, 3e5, 5e5)))                      # the M43 tables' time grid (yr)
     keys = {"model_name": name, "mCloud": "257.4", "sfe": f"{16.4 / 257.4:.10g}", "dens_profile": "densPL",
-            "densPL_alpha": "0", "rCore": "0.03", "nCore": "1e4", "nISM": "100", "PISM": "1e4", "TShell_neu": "10",
+            "densPL_alpha": "0", "rCore": "0.03", "nCore": "1e4", "nISM": "100", "PISM": "1e4", "TShell_neu": "10", "TShell_mol": "0",
             "phii_scheme": "swept", "include_PHII": "True", "log_console": "False", "path2output": str(tmp / "out"),
             "sps_path": str(sps), "sps_refmass": "16.4"}
     if not radiation:
