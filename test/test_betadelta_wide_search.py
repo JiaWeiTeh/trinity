@@ -131,3 +131,27 @@ def test_wide_true_is_the_default_and_scans(monkeypatch):
     r = GB.solve_betadelta_pure(0.8, -6 / 35, ON, rescue=True)
     assert r.no_physical_root
     assert scans == [77]                                                    # the 11 x 7 map, once
+
+
+def test_wide_false_also_holds_inside_the_balance_retry(monkeypatch):
+    # the default-on balance retry re-runs hybr + rescue: wide=False must keep the search out there too
+    scans = []
+    _structure_failure_everywhere(monkeypatch, scans)
+    monkeypatch.setattr(GB, "_beta_from_balance", lambda params: -9.0)
+    on_retry = dict(ON, betadelta_balance_retry=_V(True))
+    r = GB.solve_betadelta_pure(0.8, -6 / 35, on_retry, rescue=True, wide=False)
+    assert r.no_physical_root and scans == []
+    r = GB.solve_betadelta_pure(0.8, -6 / 35, on_retry, rescue=True)
+    assert r.no_physical_root and scans == [77, 77]                         # the first rescue's search and the retry's
+
+
+def test_wide_false_at_the_rescue_second_return_point(monkeypatch):
+    # the legacy grid proposes a new seed and hybr fails there too: the rescue's second hand-over to the search
+    scans = []
+    _structure_failure_everywhere(monkeypatch, scans)
+    monkeypatch.setattr(GB, "_solve_betadelta_legacy",
+                        lambda b, d, params, method="grid": _result(b + 0.02, d, converged=False))
+    r = GB.solve_betadelta_pure(0.8, -6 / 35, ON, rescue=True, wide=False)
+    assert r.no_physical_root and scans == []
+    r = GB.solve_betadelta_pure(0.8, -6 / 35, ON, rescue=True)
+    assert r.no_physical_root and scans == [77]
