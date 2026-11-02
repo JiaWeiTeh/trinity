@@ -229,8 +229,12 @@ def run_expansion(params):
     # T0 = initial temperature (K)
     # start_scheme (docs/dev/phii-identity/weak-wind/PLAN.md): 'weaver' (default) starts phase 1a from the
     # free-streaming wind; 'stromgren' (swept only) skips 1a-1c and starts the momentum phase at the Stroemgren radius.
-    if get_InitPhaseParam.resolve_start_scheme(params) == 'stromgren':
+    scheme = get_InitPhaseParam.resolve_start_scheme(params)
+    if scheme == 'stromgren':
         return _run_expansion_stromgren(params)
+    # 'auto' (rule A1): the Weaver route until phase 1a's first structure solve decides. Nothing is
+    # written before that solve, so a re-route to the Stroemgren start restores params from here.
+    saved = {k: item.value for k, item in params.items()} if scheme == 'auto' else None
 
     logger.info("Computing initial phase parameters (free-streaming -> Weaver transition)...")
 
@@ -253,7 +257,14 @@ def run_expansion(params):
 
     phase1a_starttime = datetime.datetime.now()
 
-    run_energy_phase.run_energy(params)
+    try:
+        run_energy_phase.run_energy(params)
+    except get_InitPhaseParam.WeaverSeedInvalid as e:
+        logger.info(f"start_scheme auto -> stromgren: {e}")
+        for k, v in saved.items():
+            params[k].value = v
+        params['start_scheme'].value = 'stromgren'
+        return _run_expansion_stromgren(params)
 
     phase1a_endtime = datetime.datetime.now()
     phase1a_elapsed = phase1a_endtime - phase1a_starttime

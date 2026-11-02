@@ -70,10 +70,10 @@ def _uniform_cgs(n, T=8000.0):
 
 # --- the key -----------------------------------------------------------------------------------------------------
 
-def test_validator_accepts_the_two_starts_and_rejects_others():
-    for ok in ("weaver", "stromgren"):
+def test_validator_accepts_the_three_starts_and_rejects_others():
+    for ok in ("weaver", "stromgren", "auto"):                          # 'auto' opt-in: rule A1 (AUTO_START.md)
         _validate_start_scheme(ok, None)
-    for bad in ("auto", "WEAVER", "spitzer", "", "stroemgren"):          # no 'auto' until the zeta ladders (D17)
+    for bad in ("AUTO", "WEAVER", "spitzer", "", "stroemgren"):
         with pytest.raises(ParameterFileError):
             _validate_start_scheme(bad, None)
 
@@ -253,3 +253,118 @@ def test_stromgren_dense_core_follows_hi06_with_gravity(tmp_path):
     w = (rs / R_St >= 1.5)
     assert w.sum() > 20 and rs[-1] / R_St > 5
     assert np.max(np.abs(rs[w] / ref[w] - 1)) < 3e-3
+
+
+# --- start_scheme 'auto' (weak-wind/start-selection/AUTO_START.md rule A1; AUTO_PLAN.md) -----------------------------
+
+def test_auto_routes_a_phi_refused_weaver_start_to_stromgren(tmp_path):
+    P = _params(tmp_path, nCore=2e6, start_scheme="auto", name="autodense")    # phi(r0) ~ 2e21 > 1e21 (SS6)
+    assert IP.resolve_start_scheme(P) == "stromgren" and P["start_scheme"].value == "stromgren"
+
+
+def test_auto_is_the_weaver_start_outside_swept(tmp_path):
+    P = _params(tmp_path, nCore=2e6, phii_scheme="c3c", start_scheme="auto", name="autoc3c")   # AU6
+    assert IP.resolve_start_scheme(P) == "weaver" and P["start_scheme"].value == "weaver"
+    with pytest.raises(ValueError, match="no admissible start"):                  # the Weaver start's own refusal
+        IP.get_y0(P)
+
+
+def test_auto_refuses_a_phi_refused_swept_input_without_a_stromgren_start(tmp_path, monkeypatch):
+    P = _params(tmp_path, start_scheme="auto", name="autonostart")
+    monkeypatch.setattr(IP, "start_check", lambda p: (0.5, 4.0, 0.5, 0.25, 0.1, 2e21, "phi", "zeta"))
+    with pytest.raises(ValueError, match="no admissible start"):
+        IP.resolve_start_scheme(P)
+
+
+def test_auto_leaves_the_choice_to_phase_1a_when_weaver_is_not_refused(tmp_path):
+    P = _params(tmp_path, nCore=1e4, start_scheme="auto", name="autovalid")
+    assert IP.resolve_start_scheme(P) == "auto" and IP.auto_pending(P)
+
+
+@pytest.mark.parametrize("valid, kw, outcome", [
+    (True, {}, "weaver"),                       # a structure elsewhere in the map: the Weaver start goes on
+    (False, {}, IP.WeaverSeedInvalid),          # the test cloud's Stroemgren start applies (zeta_MD 0.052)
+    (False, {"eps": 20.0}, ValueError),         # zeta_MD ~ 1.04: neither start applies
+])
+def test_auto_seed_failed_follows_rule_a1(tmp_path, monkeypatch, valid, kw, outcome):
+    P = _params(tmp_path, start_scheme="auto", name="autoseed", **kw)
+    monkeypatch.setattr(IP, "seed_has_structure", lambda params: valid)
+    if isinstance(outcome, str):
+        IP.auto_seed_failed(P, ValueError("seed"))
+        assert P["start_scheme"].value == outcome
+    else:
+        with pytest.raises(outcome):
+            IP.auto_seed_failed(P, ValueError("seed"))
+
+
+def test_auto_turns_the_wide_search_on_unless_the_param_sets_it(tmp_path):
+    on = _params(tmp_path, start_scheme="auto", name="au3on")
+    off = _params(tmp_path, start_scheme="auto", betadelta_wide_search="False", name="au3off")
+    weaver = _params(tmp_path, name="au3weaver")
+    assert on["betadelta_wide_search"].value is True
+    assert off["betadelta_wide_search"].value is False and weaver["betadelta_wide_search"].value is False
+
+
+# A run driven through run.py: "stop" prints the resolved start at the first snapshot and exits; "scan" runs the real
+# seed scan at phase 1a's first structure solve and exits; "invalid" makes the seed fail at Weaver's exponents with no
+# structure anywhere (rule A1's Stroemgren branch) and runs on.
+_DRIVER = """import runpy, sys
+sys.path.insert(0, {repo!r})
+import trinity._input.dictionary as D
+import trinity.bubble_structure.bubble_luminosity as BL
+import trinity.phase0_init.get_InitPhaseParam as IP
+import trinity.phase1b_energy_implicit.get_betadelta  # binds the real structure solver before any patch below
+if sys.argv[2] == "stop":
+    def _stop(self):
+        print("AUTO", self["start_scheme"].value, self["betadelta_wide_search"].value)
+        raise SystemExit(0)
+    D.DescribedDict.save_snapshot = _stop
+elif sys.argv[2] == "scan":
+    def _scan(params):
+        print("SCAN", IP.seed_has_structure(params))
+        raise SystemExit(0)
+    BL.get_bubbleproperties_pure = _scan
+else:
+    _solve, _calls = BL.get_bubbleproperties_pure, []
+    def _fail_first(params):
+        _calls.append(1)
+        if len(_calls) == 1:
+            raise ValueError("forced: no structure at Weaver's exponents")
+        return _solve(params)
+    BL.get_bubbleproperties_pure = _fail_first
+    IP.seed_has_structure = lambda params: False
+sys.argv = ["run.py", sys.argv[1]]
+runpy.run_path({run!r}, run_name="__main__")
+"""
+
+
+def _drive(tmp, par, mode):
+    drv = tmp / "drive_auto.py"
+    drv.write_text(_DRIVER.format(repo=str(REPO), run=str(REPO / "run.py")))
+    res = subprocess.run([sys.executable, str(drv), str(par), mode], cwd=tmp, capture_output=True, text=True,
+                         timeout=1800)
+    assert res.returncode == 0, res.stderr[-3000:]
+    return res.stdout
+
+
+def test_auto_run_picks_weaver_on_the_test_cloud(tmp_path):
+    # the seed has a structure at Weaver's exponents (probed 2026-11-02: AUTO_PLAN.md section 1)
+    par = _write_cloud(tmp_path, name="autow", radiation=False, start_scheme="auto", stop_t=0.012, stop_r=10)
+    assert "AUTO weaver True" in _drive(tmp_path, par, "stop")
+
+
+def test_seed_scan_finds_the_structure_of_a_valid_seed(tmp_path):
+    # The real 77-point scan, no stub: on a seed with a structure it must return True. Its broad except would turn a
+    # renamed or re-signed get_betadelta helper into "no structure" for every input (/xcheck 2026-11-02).
+    par = _write_cloud(tmp_path, name="autoscan", radiation=False, start_scheme="auto", stop_t=0.012, stop_r=10)
+    assert "SCAN True" in _drive(tmp_path, par, "scan")
+
+
+def test_auto_run_reroutes_an_invalid_seed_to_the_stromgren_run(tmp_path, run):
+    par = _write_cloud(tmp_path, name="wwstart", radiation=False, start_scheme="auto", stop_t=0.012, stop_r=10)
+    _drive(tmp_path, par, "invalid")
+    meta = json.loads(next((tmp_path / "out").rglob("metadata.json")).read_text())
+    assert meta["start_scheme"] == "stromgren"
+    rows = [json.loads(ln) for ln in next((tmp_path / "out").rglob("dictionary.jsonl")).read_text().splitlines()
+            if ln.strip()]
+    assert rows == run[0]                                       # every row = the explicit Stroemgren run's

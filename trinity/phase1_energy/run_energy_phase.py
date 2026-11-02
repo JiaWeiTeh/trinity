@@ -30,6 +30,7 @@ import trinity.shell_structure.shell_structure as shell_structure
 import trinity.cloud_properties.mass_profile as mass_profile
 import trinity.phase1_energy.energy_phase_ODEs as energy_phase_ODEs
 import trinity.bubble_structure.bubble_luminosity as bubble_luminosity
+import trinity.phase0_init.get_InitPhaseParam as get_InitPhaseParam
 import trinity.cooling.non_CIE.read_cloudy as non_CIE
 import trinity._functions.operations as operations
 from trinity._input.dictionary import updateDict
@@ -248,6 +249,8 @@ def run_energy(params):
         try:
             bubble_data = bubble_luminosity.get_bubbleproperties_pure(params)
         except (ValueError, RuntimeError, bubble_luminosity.BubbleSolverError) as e:
+            if get_InitPhaseParam.auto_pending(params):  # rule A1's seed probe (may re-route)
+                get_InitPhaseParam.auto_seed_failed(params, e)
             add_solver_flag(params, '1a_structure_failure')
             logger.warning(
                 f"Phase 1a bubble solve failed at t={t_now:.6e} Myr "
@@ -255,6 +258,9 @@ def run_energy(params):
                 f"ending phase 1a early, phase 1b continues [1a_structure_failure]."
             )
             break
+        if get_InitPhaseParam.auto_pending(params):  # rule A1: a structure at Weaver's exponents
+            params['start_scheme'].value = 'weaver'
+            logger.info("start_scheme auto -> weaver: the seed has a physical bubble structure")
         updateDict(params, bubble_data)
 
         T0 = bubble_data.bubble_T_r_Tb
