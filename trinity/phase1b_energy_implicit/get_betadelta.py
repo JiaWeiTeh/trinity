@@ -675,13 +675,74 @@ def solve_betadelta_pure(
     if solver == 'legacy':
         return _solve_betadelta_legacy(beta_guess, delta_guess, params, method)
     if solver == 'hybr':
-        result = _solve_betadelta_hybr(beta_guess, delta_guess, params, method)
-        if (rescue and result.no_physical_root
-                and 'structure solve failed' in (result.no_root_reason or '')):
-            return _rescue_structure_failure(result, beta_guess, delta_guess, params, method)
+        result = _solve_hybr_rescued(beta_guess, delta_guess, params, method, rescue)
+        if rescue and _structure_failure(result) and _balance_retry_enabled(params):
+            return _balance_retry(result, beta_guess, delta_guess, params, method)
         return result
     # The param validator guards user input; this guards programmatic misuse.
     raise ValueError(f"Unknown betadelta_solver '{solver}'.")
+
+
+def _structure_failure(result) -> bool:
+    """A 'structure solve failed' no-root (hybr left the integrable domain) — not a found condensation root."""
+    return result.no_physical_root and 'structure solve failed' in (result.no_root_reason or '')
+
+
+def _solve_hybr_rescued(beta_guess, delta_guess, params, method, rescue):
+    """hybr from the guess, then the structure-failure rescue ladder when allowed."""
+    result = _solve_betadelta_hybr(beta_guess, delta_guess, params, method)
+    if rescue and _structure_failure(result):
+        return _rescue_structure_failure(result, beta_guess, delta_guess, params, method)
+    return result
+
+
+def _balance_retry_enabled(params) -> bool:
+    """The ``betadelta_balance_retry`` key (absent -> off, e.g. in unit-test fixtures)."""
+    item = params.get('betadelta_balance_retry') if hasattr(params, 'get') else None
+    return getattr(item, 'value', item) is True
+
+
+def _beta_from_balance(params) -> float:
+    """The beta whose A12 energy rate equals the energy balance at the previous segment's losses.
+
+    The same quantities as get_residual_pure's energy residual: L_gain - L_loss - 4 pi R2^2 v2 Pb, with R1, Pb from
+    compute_R1_Pb and L_loss from the last accepted structure (bubble_LTotal + leak, cooling boost applied once). A12 is
+    linear in beta, so get_bubbleParams.Ebdot_to_cool_beta inverts it exactly. At a steep feedback ramp the gain jumps and
+    this beta carries the forced response (docs/dev/phii-identity/weak-wind/early-1b/RAMP_PLAN.md).
+    """
+    g = lambda k: float(params[k].value)  # noqa: E731
+    R1, Pb = compute_R1_Pb(g('R2'), g('Eb'), g('Lmech_total'), g('v_mech_total'), g('gamma_adia'))
+    leak = getattr(params.get('bubble_Leak', None), 'value', 0.0) or 0.0
+    Lloss = effective_Lloss_from_params(params, g('bubble_LTotal'), leak, g('Lmech_total'))
+    Edot = g('Lmech_total') - Lloss - 4 * np.pi * g('R2') ** 2 * g('v2') * Pb
+    return get_bubbleParams.Ebdot_to_cool_beta(
+        Pb, R1, Edot, {k: g(k) for k in ('t_now', 'pdot_total', 'pdotdot_total', 'R2', 'v2', 'Eb')})
+
+
+def _balance_retry(result, beta_guess, delta_guess, params, method):
+    """Retry a structure-failure no-root once from the energy-balance beta (``betadelta_balance_retry``).
+
+    At a steep feedback ramp (the winds at ~3 Myr, the supernova switch-on) the root moves far from the previous segment's
+    (beta ~ -10, ~ -48) and hybr cannot reach it from there; the energy balance points at it. Only a physical, converged
+    root is accepted; otherwise the original result and its reason stand, so the runner holds the old (beta, delta) as
+    before. Engages only on an already-failed segment: every other segment is byte-identical (RAMP_PLAN.md R-4).
+    """
+    t = getattr(params.get('t_now', None), 'value', float('nan'))
+    try:
+        beta1 = float(_beta_from_balance(params))
+    except (ZeroDivisionError, FloatingPointError, OverflowError, ValueError):
+        beta1 = float('nan')
+    if not np.isfinite(beta1):
+        logger.info(f"beta-delta: balance retry skipped at t={t:.6f} (no finite energy-balance beta) after a structure "
+                    f"failure at (beta={beta_guess:.4f}, delta={delta_guess:.4f})")
+        return result
+    retried = _solve_hybr_rescued(beta1, delta_guess, params, method, True)
+    ok = (not retried.no_physical_root) and bool(retried.converged)
+    logger.info(f"beta-delta: balance retry at t={t:.6f} from beta1={beta1:.4f} after a structure failure at "
+                f"(beta={beta_guess:.4f}, delta={delta_guess:.4f}): "
+                + (f"root at (beta={retried.beta:.4f}, delta={retried.delta:.4f})" if ok
+                   else "no physical converged root; holding as before"))
+    return retried if ok else result
 
 
 def _rescue_structure_failure(result, beta_guess, delta_guess, params, method):
@@ -701,16 +762,74 @@ def _rescue_structure_failure(result, beta_guess, delta_guess, params, method):
     """
     rescue = _solve_betadelta_legacy(beta_guess, delta_guess, params, method)
     if (rescue.beta, rescue.delta) == (beta_guess, delta_guess):
-        return result  # grid found nothing better than the failing seed
+        return _wide_search(result, params, method)  # the grid found nothing better than the seed
     retried = _solve_betadelta_hybr(rescue.beta, rescue.delta, params, method)
     if retried.no_physical_root:
-        return result  # keep the original diagnosis (incl. its reason string)
+        return _wide_search(result, params, method)  # keeps the diagnosis unless a root is found
     logger.info(
         f"beta-delta: structure-failure rescue succeeded — legacy grid re-seeded hybr from "
         f"(beta={rescue.beta:.4f}, delta={rescue.delta:.4f}) after failure at "
         f"(beta={beta_guess:.4f}, delta={delta_guess:.4f})"
     )
     return retried
+
+
+# Opt-in wide search (betadelta_wide_search;
+# docs/dev/phii-identity/weak-wind/early-1b/F1_ADOPTION.md). At weak winds the Weaver guess and the
+# +-0.02 rescue grid can both lack a physical structure while a physical root exists far away
+# (beta -0.25..-0.66, delta -0.22..-0.78 in the early-1b F1 prototype): seed hybr from the best
+# point of a coarse map.
+WIDE_BETAS = tuple(float(b) for b in np.arange(-1.0, 4.0001, 0.5))
+WIDE_DELTAS = tuple(float(d) for d in np.arange(-3.0, 0.0001, 0.5))
+
+
+def _wide_search_enabled(params) -> bool:
+    """The betadelta_wide_search key: on only for a real True (a copied default 'False' is off)."""
+    item = params.get('betadelta_wide_search') if hasattr(params, 'get') else None
+    return getattr(item, 'value', item) is True
+
+
+def _wide_scan(params, betas, deltas, seen):
+    """(beta, delta, gE^2 + gT^2) of the best physical point, or None; skips points in ``seen``."""
+    best = None
+    for b in betas:
+        for d in deltas:
+            if (b, d) in seen:
+                continue
+            seen.add((b, d))
+            try:
+                gE, gT, _ = _hybr_g_residual(b, d, params, None)
+            except _NoPhysicalRoot:
+                continue
+            g = gE ** 2 + gT ** 2
+            if np.isfinite(g) and (best is None or g < best[2]):
+                best = (b, d, g)
+    return best
+
+
+def _wide_search(result, params, method):
+    """After a failed rescue: hybr seeded at the best physical point of a 77-point (beta, delta)
+    map, the box moved once onto an edge the best point sits on. Returns ``result`` unless that
+    converges with a physical root."""
+    if not _wide_search_enabled(params):
+        return result
+    seen = set()
+    best = _wide_scan(params, WIDE_BETAS, WIDE_DELTAS, seen)
+    if best is None:
+        return result
+    if best[0] in (WIDE_BETAS[0], WIDE_BETAS[-1]) or best[1] in (WIDE_DELTAS[0], WIDE_DELTAS[-1]):
+        b0, d0 = best[0], best[1]
+        betas = tuple(round(float(b), 10) for b in np.arange(b0 - 2.5, b0 + 2.5001, 0.5))
+        deltas = tuple(round(float(d), 10) for d in np.arange(d0 - 1.5, d0 + 1.5001, 0.5))
+        other = _wide_scan(params, betas, deltas, seen)
+        if other is not None and other[2] < best[2]:
+            best = other
+    found = _solve_betadelta_hybr(best[0], best[1], params, method)
+    if found.no_physical_root or not found.converged:
+        return result
+    logger.info(f"beta-delta: wide search found a root at (beta={found.beta:.4f}, "
+                f"delta={found.delta:.4f}) from the seed ({best[0]:.2f}, {best[1]:.2f})")
+    return found
 
 
 def _solve_betadelta_legacy(

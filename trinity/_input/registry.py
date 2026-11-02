@@ -176,6 +176,18 @@ def _validate_start_scheme(value, params) -> None:
         )
 
 
+def _validate_sps_interp(value, params) -> None:
+    """How the SPS table is interpolated in time (docs/dev/phii-identity/weak-wind/
+    early-1b/SPS_TRANSIENTS.md): 'pchip' (default) or 'cubic' (the spline used before
+    2026-11, kept to reproduce older runs)."""
+    from trinity._input.errors import ParameterFileError
+    if value not in ('pchip', 'cubic'):
+        raise ParameterFileError(
+            f"Invalid sps_interp '{value}'. "
+            f"Must be 'pchip' or 'cubic'."
+        )
+
+
 def _validate_betadelta_solver(value, params) -> None:
     """Selects the energy-implicit (beta, delta) solver. 'hybr' (default)
     is the unbounded scipy root-finder with a physical dMdt>0 acceptance
@@ -450,7 +462,9 @@ SPECS: tuple[ParamSpec, ...] = (
     ParamSpec(name='coverFraction', default='1.0', info='Closed fraction of the bubble wall (covering fraction Cf). Geometry-set energy/mass leak: hot gas vents through the open area (1-Cf)*4*pi*R2^2 at the interior sound speed, draining bubble energy (and, when the mass sink is enabled, mass). Cf=1 recovers the sealed (Weaver) bubble exactly; not fragmentation-triggered. Usable range ~0.9-0.99; Cf near 0 drains the bubble within a step and stresses the integrator.', category='input_physical', unit=None, exclude_from_snapshot=True, run_const=True, validator=_validate_coverFraction),
     ParamSpec(name='dens_profile', default='densPL', info='Specifies how the cloud density scales with radius.', category='input_profile', unit=None, run_const=True, validator=_validate_dens_profile),
     ParamSpec(name='betadelta_solver', default='hybr', info="Energy-implicit (beta, delta) solver: 'hybr' (default; unbounded scipy root-finder with a physical dMdt>0 acceptance gate) or 'legacy' (bounded grid + L-BFGS-B).", category='input_admin', unit=None, exclude_from_snapshot=True, run_const=True, validator=_validate_betadelta_solver),
+    ParamSpec(name='betadelta_wide_search', default='False', info="Opt-in: when phase 1b's beta-delta guess and the +-0.02 rescue grid have no physical bubble structure, seed hybr from the best physical point of a coarse (beta, delta) map (docs/dev/phii-identity/weak-wind/early-1b/F1_ADOPTION.md). False (default) = unchanged.", category='input_admin', unit=None, exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='start_scheme', default='weaver', info="How the integration starts. 'weaver' (default, shipped): from the free-streaming wind into phase 1a (get_InitPhaseParam.get_y0); refused with a ValueError when the first structure solve would fall off the non-CIE cooling cube (phi(r0) = Qi/(4 pi r0^2) > 1e21 cm^-2 s^-1: a weak wind in a dense core). 'stromgren' (phii_scheme 'swept' only): phases 1a-1c are skipped and the swept momentum phase starts at the end of the R-type phase, r_s = R_St (solved on the run's own density profile), u = 2 c_i/sqrt(3), M_s = M(<R_St), the wind bubble inside at its ram-pressure equilibrium (Hosokawa & Inutsuka 2006 eq. 36; Lancaster et al. 2025a sec. 3.5); refused at zeta = R_eq/R_St >= 1 or R_St > rCloud. docs/dev/phii-identity/weak-wind/PLAN.md.", category='input_admin', unit=None, exclude_from_snapshot=True, run_const=True, validator=_validate_start_scheme),
+    ParamSpec(name='betadelta_balance_retry', default='True', info="Phase 1b: when the beta-delta solve fails with a structure-solve failure (hybr left the integrable domain, e.g. at a steep feedback ramp), retry once from the beta that balances the energy equation at the previous segment's losses (A12 inverted); the result is kept only if it is a physical, converged root, and found condensation roots are never retried. False restores the pre-2026-11 behaviour (hold the old beta/delta). docs/dev/phii-identity/weak-wind/early-1b/G1_PLAN.md.", category='input_admin', unit=None, exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='densBE_Omega', default='14.1', info='if `densBE` is selected, then the ratio `Omega = nCore/nCloudEdge` must be specified.', category='input_profile', unit=None, exclude_from_snapshot=True, run_const=True, active_when=_active_densBE),
     ParamSpec(name='densPL_alpha', default='0', info='if `densPL` is selected, then the power-law coefficient `nCore*(r/rCore)^alpha` (0 = homogeneous, -2 = isothermal) must be specified.', category='input_profile', unit=None, run_const=True, active_when=_active_densPL),
     ParamSpec(name='nCore', default='1e5', info='Hydrogen nuclei number density of cloud core (n_H). Standard GMC/ISM convention. Mass density: rho = nCore * mu_convert * m_H. If `densPL` AND densPL_alpha = 0, this is the average cloud density.', category='input_physical', unit='cm**-3', run_const=True),
@@ -470,6 +484,7 @@ SPECS: tuple[ParamSpec, ...] = (
     ParamSpec(name='FB_mColdSNFrac', default='0', info='Fraction of cold mass entrained in supernova ejecta (increases Mdot_SN, reduces velocity).', category='input_sps', unit=None, exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='FB_thermCoeffWind', default='1', info='Defines the thermalization efficiency for colliding stellar winds.', category='input_sps', unit=None, exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='FB_thermCoeffSN', default='1', info='Defines the thermalization efficiency for supernova ejecta.', category='input_sps', unit=None, exclude_from_snapshot=True, run_const=True),
+    ParamSpec(name='sps_interp', default='pchip', info="How the SPS table is interpolated in time. 'pchip' (default): monotone, never outside the two bracketing table rows, so the feedback is never negative; total = wind + supernova. 'cubic': the spline used before 2026-11, kept only to reproduce older runs; it rings across the supernova switch-on and switch-off (negative mechanical luminosity near 3.45 Myr at FB_thermCoeffWind 0.01 and near 45 Myr at every coefficient). docs/dev/phii-identity/weak-wind/early-1b/SPS_TRANSIENTS.md.", category='input_sps', unit=None, exclude_from_snapshot=True, run_const=True, validator=_validate_sps_interp),
     ParamSpec(name='FB_vSN', default='1e4', info='Specifies the velocity of supernova ejecta.', category='input_sps', unit='km * s**-1', exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='mu_atom', default='14/11', info='Mean mass per particle for neutral atomic gas (HI + He) = mu_H/(1+x_He). Derived at load from x_He (default 14/11 at x_He=0.1). In units of m_H.', category='input_constants', unit='m_H', exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='mu_ion', default='14/23', info='Mean mass per particle for the HOT bubble interior (fully ionised H+ + He2+) = mu_H/(2+x_He*(1+Z_He)). Derived at load from x_He, Z_He (default 14/23 at x_He=0.1, Z_He=2). The ~1e4 K ionised shell uses mu_ion_shell (singly-ionised He) instead. In units of m_H.', category='input_constants', unit='m_H', exclude_from_snapshot=True, run_const=True),
@@ -565,7 +580,7 @@ SPECS: tuple[ParamSpec, ...] = (
     ParamSpec(name='initial_cloud_n_arr', default=np.array([]), info='Initial cloud density array', category='runtime_cloud_profile', unit='1/cm**3'),
     ParamSpec(name='initial_cloud_m_arr', default=np.array([]), info='Initial cloud enclosed mass array', category='runtime_cloud_profile', unit='Msun'),
     ParamSpec(name='sps_data', default=0, info='SPS raw 11-array datacube', category='runtime_loaded', unit='N/A', exclude_from_snapshot=True),
-    ParamSpec(name='sps_f', default=0, info='SPS interpolators (dict of scipy interp1d)', category='runtime_loaded', unit='N/A', exclude_from_snapshot=True),
+    ParamSpec(name='sps_f', default=0, info='SPS interpolators (dict of scipy PCHIP interpolants)', category='runtime_loaded', unit='N/A', exclude_from_snapshot=True),
     ParamSpec(name='Lmech_W', default=0, info='Wind mechanical luminosity', category='runtime_feedback', unit='Msun*pc**2/Myr**3'),
     ParamSpec(name='Lmech_SN', default=0, info='SN mechanical luminosity', category='runtime_feedback', unit='Msun*pc**2/Myr**3'),
     ParamSpec(name='Lmech_total', default=0, info='Total mechanical luminosity', category='runtime_feedback', unit='Msun*pc**2/Myr**3'),

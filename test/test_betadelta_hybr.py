@@ -248,3 +248,128 @@ def test_rescue_keeps_original_diagnosis_when_retry_fails(monkeypatch):
     res = GBD.solve_betadelta_pure(0.5, -0.5, make_hybr_params())
     assert res.no_physical_root
     assert "structure" in res.no_root_reason
+
+
+# =============================================================================
+# Energy-balance retry after a structure failure (betadelta_balance_retry; G1_PLAN.md)
+# =============================================================================
+
+
+def make_retry_params(on: bool = True) -> dict:
+    p = make_hybr_params()
+    p["betadelta_balance_retry"] = SimpleNamespace(value=on)
+    return p
+
+
+def _rescue_finds_nothing(monkeypatch):
+    # the legacy grid returns the failing seed itself -> the rescue keeps the original no-root
+    monkeypatch.setattr(
+        GBD, "_solve_betadelta_legacy",
+        lambda bg, dg, params, method="grid": GBD.BetaDeltaResult(
+            beta=bg, delta=dg, Edot_residual=0.0, T_residual=0.0, total_residual=0.0,
+            converged=False, iterations=1, bubble_properties=None),
+    )
+
+
+def _ramp_landscape(monkeypatch):
+    # a steep ramp: structure exists only for beta < -5, the root is at beta = -10; the warm seed (0.5) has none
+    install_landscape(monkeypatch, gE=lambda b, d: b + 10.0, gT=lambda b, d: d + 0.3,
+                      dmdt=lambda b, d: 1.0 if b < -5.0 else None)
+
+
+def _plausible_bubble():
+    # Code units (Msun, pc, Myr) for a wind bubble at 3 Myr: R2 = 30 pc expanding at 8 km/s, E_b = 1e51 erg,
+    # L_mech = 1e38 erg/s with a 2000 km/s mechanical speed, losses 20 % of the gain; R1, Pb consistent via compute_R1_Pb.
+    import trinity._functions.unit_conversions as cvt
+    L, vm = 1.0e38 * cvt.L_cgs2au, 2.0e3 * cvt.v_kms2au
+    p = dict(t_now=3.0, R2=30.0, v2=8.0 * cvt.v_kms2au, Eb=1.0e51 * cvt.E_cgs2au, gamma_adia=5.0 / 3.0,
+             Lmech_total=L, v_mech_total=vm, pdot_total=2.0 * L / vm, pdotdot_total=0.1 * (2.0 * L / vm) / 3.0,
+             bubble_LTotal=0.2 * L, bubble_Leak=0.0)
+    R1, Pb = GBD.compute_R1_Pb(p["R2"], p["Eb"], L, vm, p["gamma_adia"])
+    return p, R1, Pb
+
+
+def test_balance_retry_reaches_a_far_root_after_a_structure_failure(monkeypatch):
+    _ramp_landscape(monkeypatch)
+    _rescue_finds_nothing(monkeypatch)
+    monkeypatch.setattr(GBD, "_beta_from_balance", lambda params: -9.0)
+    res = GBD.solve_betadelta_pure(0.5, -0.5, make_retry_params())
+    assert not res.no_physical_root and res.converged
+    assert res.beta == pytest.approx(-10.0, abs=1e-6)
+    assert res.delta == pytest.approx(-0.3, abs=1e-6)
+
+
+def test_balance_retry_off_keeps_the_structure_failure(monkeypatch):
+    _ramp_landscape(monkeypatch)
+    _rescue_finds_nothing(monkeypatch)
+    monkeypatch.setattr(GBD, "_beta_from_balance", lambda params: -9.0)
+    res = GBD.solve_betadelta_pure(0.5, -0.5, make_retry_params(on=False))
+    assert res.no_physical_root and "structure" in res.no_root_reason
+
+
+def test_balance_retry_never_retries_a_condensation_root(monkeypatch):
+    install_landscape(monkeypatch, gE=lambda b, d: b - 0.7, gT=lambda b, d: d + 0.3, dmdt=lambda b, d: -5.0)
+
+    def _boom(params):
+        raise AssertionError("a found condensation root must not be retried")
+    monkeypatch.setattr(GBD, "_beta_from_balance", _boom)
+    res = GBD.solve_betadelta_pure(0.5, -0.5, make_retry_params())
+    assert res.no_physical_root and "dMdt" in res.no_root_reason
+
+
+def test_balance_retry_respects_the_rescue_cost_cap(monkeypatch):
+    _ramp_landscape(monkeypatch)
+
+    def _boom(params):
+        raise AssertionError("no retry when rescue is not allowed")
+    monkeypatch.setattr(GBD, "_beta_from_balance", _boom)
+    res = GBD.solve_betadelta_pure(0.5, -0.5, make_retry_params(), rescue=False)
+    assert res.no_physical_root
+
+
+def test_balance_retry_rejects_an_unconverged_retry(monkeypatch):
+    _ramp_landscape(monkeypatch)
+    _rescue_finds_nothing(monkeypatch)
+    monkeypatch.setattr(GBD, "_beta_from_balance", lambda params: -9.0)
+    unconverged = GBD.BetaDeltaResult(beta=-9.5, delta=-0.3, Edot_residual=0.1, T_residual=0.1,
+                                      total_residual=0.2, converged=False, iterations=30, bubble_properties=None)
+    first = GBD._solve_hybr_rescued
+    monkeypatch.setattr(GBD, "_solve_hybr_rescued",
+                        lambda bg, dg, params, method, rescue: unconverged if bg == -9.0
+                        else first(bg, dg, params, method, rescue))
+    res = GBD.solve_betadelta_pure(0.5, -0.5, make_retry_params())
+    assert res.no_physical_root and "structure" in res.no_root_reason
+
+
+def test_balance_retry_survives_a_singular_balance(monkeypatch):
+    _ramp_landscape(monkeypatch)
+    _rescue_finds_nothing(monkeypatch)
+
+    def _bad(params):
+        raise ValueError("solve_R1: no bracket")
+    monkeypatch.setattr(GBD, "_beta_from_balance", _bad)
+    res = GBD.solve_betadelta_pure(0.5, -0.5, make_retry_params())
+    assert res.no_physical_root and "structure" in res.no_root_reason
+
+
+def test_beta_from_balance_zeroes_the_energy_residual():
+    # the real _beta_from_balance (real key names): A12's rate at beta1 equals L_gain - L_loss - 4 pi R2^2 v2 Pb
+    p, R1, Pb = _plausible_bubble()
+    params = {k: SimpleNamespace(value=v) for k, v in p.items()}
+    beta1 = GBD._beta_from_balance(params)
+    balance = p["Lmech_total"] - p["bubble_LTotal"] - 4 * np.pi * p["R2"] ** 2 * p["v2"] * Pb
+    rate = GBD.cool_beta_to_Ebdot_pure(beta1, Pb, p["t_now"], R1, p["R2"], p["v2"], p["Eb"],
+                                       p["pdot_total"], p["pdotdot_total"])
+    assert np.isfinite(beta1)
+    assert rate == pytest.approx(balance, rel=1e-9)
+
+
+def test_energy_balance_beta_inverts_a12():
+    # Ebdot_to_cool_beta is the exact inverse of A12 (cool_beta_to_Ebdot_pure) across the ramp roots and the usual range
+    import trinity.bubble_structure.get_bubbleParams as GBP
+    p, R1, Pb = _plausible_bubble()
+    for beta in (-48.0, -10.0, 0.8, 2.0):
+        Edot = GBD.cool_beta_to_Ebdot_pure(beta, Pb, p["t_now"], R1, p["R2"], p["v2"], p["Eb"],
+                                           p["pdot_total"], p["pdotdot_total"])
+        back = GBP.Ebdot_to_cool_beta(Pb, R1, Edot, {k: p[k] for k in ("t_now", "pdot_total", "pdotdot_total", "R2", "v2", "Eb")})
+        assert back == pytest.approx(beta, rel=1e-9, abs=1e-9)

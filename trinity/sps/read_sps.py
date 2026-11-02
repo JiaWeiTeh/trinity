@@ -15,9 +15,9 @@ Two entry points into the file:
       column map to extract the feedback time series. The column map
       may use integer column indices or header-row names per ColumnSpec.
 
-  get_interpolation(sps, ftype='cubic')
-      Wraps the 11-array tuple returned by read_sps() in scipy cubic
-      interpolators on `params['sps_f']`.
+  get_interpolation(sps)
+      Wraps the 11-array tuple returned by read_sps() in scipy monotone
+      (PCHIP) interpolators on `params['sps_f']`.
 """
 
 import numpy as np
@@ -177,7 +177,7 @@ def _read_sps_user(filepath, f_mass, params, column_map):
             )
         cols[canonical] = arr
 
-    # Validate strict monotonicity of t — scipy.interpolate.interp1d
+    # Validate strict monotonicity of t — scipy.interpolate.PchipInterpolator
     # (called later in get_interpolation) requires it, and its native
     # error is cryptic. This produces a useful message at load time
     # pointing at the file + the first offending row. Common cause:
@@ -259,6 +259,17 @@ def _read_sps_user(filepath, f_mass, params, column_map):
     Lmech_SN = Lmech_SN_final
     pdot_W = pdot_wind
 
+    # get_interpolation's PCHIP stays within each pair of table rows, so a
+    # finite, non-negative table gives non-negative feedback at every t.
+    for name, arr in (('Qi', Qi), ('Li', Li), ('Ln', Ln), ('Lbol', Lbol),
+                      ('Lmech_W', Lmech_W), ('Lmech_SN', Lmech_SN),
+                      ('pdot_W', pdot_W), ('pdot_SN', pdot_SN)):
+        if not np.all(np.isfinite(arr)) or np.any(arr < 0):
+            raise ValueError(
+                f"SPS column {name} in {filepath} has negative or non-finite "
+                f"values (first at row {int(np.argmax(~np.isfinite(arr) | (arr < 0)))})."
+            )
+
     # === t=0 prepend (idempotent — skip if the file already starts at t=0) ===
     if len(t) == 0 or t[0] != 0.0:
         t = np.insert(t, 0, 0.0)
@@ -282,9 +293,20 @@ def _read_sps_user(filepath, f_mass, params, column_map):
             pdot_W, pdot_SN, pdot_total]
 
 
-def get_interpolation(sps, ftype='cubic'):
+class _SumInterpolant:
+    """Sum of interpolants: a total (wind + supernova) built from its parts."""
+
+    def __init__(self, *parts):
+        self.parts = parts
+        self.x = parts[0].x  # the table's time grid (update_feedback reads its range)
+
+    def __call__(self, t):
+        return sum(f(t) for f in self.parts)
+
+
+def get_interpolation(sps, kind='pchip'):
     """
-    Create cubic interpolation functions for SPS feedback data.
+    Create monotone (PCHIP) interpolation functions for SPS feedback data.
 
     This function takes the output from read_sps() and creates scipy
     interpolation functions for all feedback parameters, with properly
@@ -295,10 +317,12 @@ def get_interpolation(sps, ftype='cubic'):
     sps : list
         Data array from read_sps():
         [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SN, pdot_total]
-    ftype : str, optional
-        Interpolation type for scipy.interpolate.interp1d.
-        Options: 'linear', 'cubic' (default), 'quadratic', etc.
-        Cubic is recommended for small-value interpolations.
+        (with kind='pchip', Lmech_total and pdot_total are not read: the
+        totals are the sums of the wind and SN interpolants, as read_sps
+        builds them)
+    kind : str, optional
+        'pchip' (default; the sps_interp key) or 'cubic' — the spline used
+        before 2026-11, kept to reproduce older runs bit for bit.
 
     Returns
     -------
@@ -327,7 +351,7 @@ def get_interpolation(sps, ftype='cubic'):
     Examples
     --------
     >>> sps_data = read_sps(f_mass=1.0, params=params)
-    >>> sps_f = get_interpolation(sps_data, ftype='cubic')
+    >>> sps_f = get_interpolation(sps_data)
     >>> t = 5.0  # Myr
     >>> Lmech_W = sps_f['fLmech_W'](t)
     >>> Lmech_SN = sps_f['fLmech_SN'](t)
@@ -339,31 +363,47 @@ def get_interpolation(sps, ftype='cubic'):
     [t_Myr, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total,
      pdot_W, pdot_SN, pdot_total] = sps
 
-    # Create interpolation functions for all feedback parameters
-    fQi = scipy.interpolate.interp1d(t_Myr, Qi, kind=ftype)
-    fLi = scipy.interpolate.interp1d(t_Myr, Li, kind=ftype)
-    fLn = scipy.interpolate.interp1d(t_Myr, Ln, kind=ftype)
-    fLbol = scipy.interpolate.interp1d(t_Myr, Lbol, kind=ftype)
+    if kind == 'cubic':
+        # The pre-2026-11 interpolation, unchanged (sps_interp cubic). It rings
+        # across steps in the table: negative Lmech_total / pdot_total near the
+        # supernova switch-on and switch-off (SPS_TRANSIENTS.md §5).
+        names = ('Qi', 'Li', 'Ln', 'Lbol', 'Lmech_W', 'Lmech_SN', 'Lmech_total',
+                 'pdot_W', 'pdot_SN', 'pdot_total')
+        sps_f = {'f' + n: scipy.interpolate.interp1d(t_Myr, y, kind='cubic')
+                 for n, y in zip(names, sps[1:])}
+        # make_interp_spline(k=3) is the same not-a-knot cubic interp1d builds
+        # (bit-identical: docs/dev/magic-numbers/data/pdotdot_percall.csv).
+        sps_f['fpdotdot_total'] = scipy.interpolate.make_interp_spline(
+            t_Myr, pdot_total, k=3).derivative()
+        return sps_f
+    if kind != 'pchip':
+        raise ValueError(f"sps_interp must be 'pchip' or 'cubic', not {kind!r}")
 
-    # Mechanical luminosity interpolators (separated with consistent naming!)
-    fLmech_W = scipy.interpolate.interp1d(t_Myr, Lmech_W, kind=ftype)
-    fLmech_SN = scipy.interpolate.interp1d(t_Myr, Lmech_SN, kind=ftype)
-    fLmech_total = scipy.interpolate.interp1d(t_Myr, Lmech_total, kind=ftype)
+    # Monotone PCHIP, not a cubic spline: between two table rows it never
+    # leaves their range, so it cannot overshoot or go negative. The cubic rang
+    # across every step in the table — the supernova switch-on (~3.5 Myr) and
+    # switch-off (~44.9 Myr) — and gave negative mechanical luminosity and
+    # momentum rate there (docs/dev/phii-identity/weak-wind/early-1b/
+    # SPS_TRANSIENTS.md §5). extrapolate=False: NaN outside the table
+    # (update_feedback checks the range first).
+    def pchip(y):
+        return scipy.interpolate.PchipInterpolator(t_Myr, y, extrapolate=False)
 
-    # Momentum rate interpolators (separated with consistent naming!)
-    fpdot_W = scipy.interpolate.interp1d(t_Myr, pdot_W, kind=ftype)
-    fpdot_SN = scipy.interpolate.interp1d(t_Myr, pdot_SN, kind=ftype)
-    fpdot_total = scipy.interpolate.interp1d(t_Myr, pdot_total, kind=ftype)
+    fQi, fLi, fLn, fLbol = pchip(Qi), pchip(Li), pchip(Ln), pchip(Lbol)
+    fLmech_W, fLmech_SN = pchip(Lmech_W), pchip(Lmech_SN)
+    fpdot_W, fpdot_SN = pchip(pdot_W), pchip(pdot_SN)
 
-    # Exact derivative of the pdot_total interpolant, for pdotdot_total.
-    # make_interp_spline(k=3) is the same not-a-knot cubic interp1d builds for
-    # kind='cubic' (bit-identical: docs/dev/magic-numbers/data/pdotdot_percall.csv),
-    # so this must stay k=3 as long as ftype stays 'cubic'. A finite difference
-    # here is roundoff-dominated at any step far below the table grid and
-    # evaluates outside the table within one step of the edges (audit #3,
+    # Totals = wind + supernova, as read_sps builds the total columns, so
+    # Lmech_total >= Lmech_W at every t (PCHIP is not linear in the data, so
+    # interpolating the total column separately would not keep this).
+    fLmech_total = _SumInterpolant(fLmech_W, fLmech_SN)
+    fpdot_total = _SumInterpolant(fpdot_W, fpdot_SN)
+
+    # Exact derivative of the pdot_total interpolant, for pdotdot_total. A finite
+    # difference here is roundoff-dominated at any step far below the table grid
+    # and evaluates outside the table within one step of the edges (audit #3,
     # docs/dev/magic-numbers/SWEEP2_PLAN.md).
-    fpdotdot_total = scipy.interpolate.make_interp_spline(
-        t_Myr, pdot_total, k=3).derivative()
+    fpdotdot_total = _SumInterpolant(fpdot_W.derivative(), fpdot_SN.derivative())
 
     # Dictionary of all interpolators with consistent key naming
     sps_f = {
