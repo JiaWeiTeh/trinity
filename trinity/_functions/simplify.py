@@ -471,6 +471,12 @@ def _simplify(
         keep = np.empty(x.size, dtype=bool)
         keep[0] = True
         keep[1:] = (np.abs(x[1:] - x[:-1]) > _ax) | (np.abs(y[1:] - y[:-1]) > _ay)
+        # The last point is an endpoint. Each point is compared with its ORIGINAL predecessor, so a run of
+        # sub-tolerance steps (a shell march's last, mass-limited slice: 5000 flat steps) used to drop whole,
+        # last point included, and the endpoint guarantees below act on the already-deduplicated array: the
+        # stored shell profile then ended up to 4.8e-3 (rShell - R2) short of rShell and the Cloudy exporter
+        # refused the snapshot (docs/dev/phii-identity/weak-wind/neutral-shell/PDR_DEFAULT_PLAN.md S0).
+        keep[-1] = True
         dedupe_idx = np.where(keep)[0]
         if dedupe_idx.size != x.size:
             x = x[keep]
