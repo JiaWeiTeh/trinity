@@ -120,7 +120,9 @@ DT_SEGMENT_COLLAPSE = 5e-4           # Myr - segment duration during collapse (0
 # exit, so a free-wind formula would under-count. Its only consumer is the shell's
 # diagnostic gravity profile (shell_structure.py:268 -> shell_grav_*), which never
 # reaches the equation of motion, so the effect is reporting-only. See
-# docs/dev/phii-identity/PLAN.md, 2026-08-29.
+# docs/dev/phii-identity/PLAN.md, 2026-08-29. Exception: with shell_mass_net True this
+# held value is the evaporated mass taken off the shell through 1c (its inertia, weight
+# and profile; get_bubbleParams.evaporated_mass, mass-budget/PLAN.md D-MB5).
 
 ADAPTIVE_MONITOR_KEYS = [
     # Core state variables
@@ -292,9 +294,13 @@ def compute_forces_pure(
     Compute all force components without mutating params.
     """
     # Gravitational force
+    # shell_mass_net (docs/dev/phii-identity/mass-budget/PLAN.md): on the net mass, the evaporated gas pulling from inside
+    # R2, as the RHS (energy_phase_ODEs); 0.0 when off
     G = params['G'].value
     mCluster = params['mCluster'].value
-    F_grav = G * mShell / (R2**2) * (mCluster + 0.5 * mShell)
+    m_ev = get_bubbleParams.evaporated_mass(params)
+    mShell = mShell - m_ev
+    F_grav = G * mShell / (R2**2) * (mCluster + m_ev + 0.5 * mShell)
 
     # Ionization pressure forces
     k_B = params['k_B'].value

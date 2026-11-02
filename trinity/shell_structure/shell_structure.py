@@ -29,6 +29,7 @@ import logging
 
 from trinity.shell_structure import get_shellODE, pdr
 import trinity._functions.unit_conversions as cvt
+import trinity.bubble_structure.get_bubbleParams as get_bubbleParams
 
 logger = logging.getLogger(__name__)
 
@@ -352,7 +353,11 @@ def shell_structure_pure(params) -> ShellProperties:
     mBubble = params['bubble_mass'].value
     pBubble = params['Pb'].value
     rShell0 = params['R2'].value
-    mShell_end = params['shell_mass'].value
+    # shell_mass_net (docs/dev/phii-identity/mass-budget/PLAN.md): the profile holds the swept mass minus the gas
+    # evaporated into the bubble (phases 1b and 1c, opt-in); 0.0 when off, so mShell_end is then shell_mass exactly
+    m_ev = get_bubbleParams.evaporated_mass(params)
+    get_bubbleParams.refuse_no_shell(m_ev, params['shell_mass'].value)
+    mShell_end = params['shell_mass'].value - m_ev
     Qi = params['Qi'].value
     Li = params['Li'].value
     Ln = params['Ln'].value

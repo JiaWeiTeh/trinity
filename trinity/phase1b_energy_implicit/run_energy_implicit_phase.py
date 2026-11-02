@@ -545,9 +545,13 @@ def compute_forces_pure(
         Dataclass with all force values
     """
     # Gravitational force: F = G * mShell / R2^2 * (mCluster + mShell/2)
+    # shell_mass_net (docs/dev/phii-identity/mass-budget/PLAN.md): on the net mass, the evaporated gas pulling from inside
+    # R2, as the RHS (energy_phase_ODEs); 0.0 when off
     G = params['G'].value
     mCluster = params['mCluster'].value
-    F_grav = G * mShell / (R2**2) * (mCluster + 0.5 * mShell)
+    m_ev = get_bubbleParams.evaporated_mass(params)
+    mShell = mShell - m_ev
+    F_grav = G * mShell / (R2**2) * (mCluster + m_ev + 0.5 * mShell)
 
     # Ionization pressure forces
     k_B = params['k_B'].value
@@ -1239,6 +1243,8 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
 
             sol = scipy.integrate.solve_ivp(**solver_kwargs)
         except Exception as e:
+            if str(e).startswith("shell_mass_net:"):    # D-MB10's refusal is not a solver failure: raise it, as c3c does
+                raise
             logger.error(f"solve_ivp failed at t={t_now:.6e}: {e}")
             termination_reason = f"solver_error: {e}"
             break

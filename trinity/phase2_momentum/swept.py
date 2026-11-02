@@ -289,6 +289,8 @@ def root_R2(rs, Ms, fb, params, guess=None, Eb=None, phase='transition', t=None)
     not send the upper end to the last resort; for R2/r_s < 1/2 the ends are the R2 ones above.
     """
     g = lambda k: params[k].value  # noqa: E731
+    # shell_mass_net: refuse here, before the bracket ladder below swallows the shell solve's refusal as a rejected trial
+    get_bubbleParams.refuse_no_shell(get_bubbleParams.evaporated_mass(params), Ms)
     count = {'n': 0}
     saved = {k: params[k].value for k in _TRIAL_KEYS}
 
@@ -381,7 +383,10 @@ def initial_state(params, fb, Eb=None, phase='transition', t=None):
     else:
         m = m_used          # the mass the last solve used, so r_s and M_s stay a pair
         logger.warning(f"[swept] hand-off fixed point not converged in 60 solves (M {m:.6g} -> {m_new:.6g} Msun)")
-    return float(sp.rShell), m, m0 * v2 / m
+    # shell_mass_net (docs/dev/phii-identity/mass-budget/PLAN.md, D-MB9): the evaporated gas leaves with its own momentum
+    # (it moves at the wall's speed), the rest of the shell merges with the newly swept gas at rest; 0.0 when off
+    m_ev = get_bubbleParams.evaporated_mass(params)
+    return float(sp.rShell), m, (m0 - m_ev) * v2 / (m - m_ev)
 
 
 def _forces_to_params(params, root, rs, u, Ms, Mdot, U, fabs_ion, fb, Eb=None, phase='transition'):
@@ -393,7 +398,8 @@ def _forces_to_params(params, root, rs, u, Ms, Mdot, U, fabs_ion, fb, Eb=None, p
     sp, R2, Pc = root['sp'], root['R2'], root['Pc']
     Pext = p_ext(rs, fabs_ion, params)
     params['shell_mass'].value, params['shell_massDot'].value = Ms, Mdot
-    params['F_grav'].value = params['G'].value * Ms / rs**2 * (params['mCluster'].value + 0.5 * Ms)
+    m_ev = get_bubbleParams.evaporated_mass(params)          # shell_mass_net (mass-budget/PLAN.md); 0.0 when off
+    params['F_grav'].value = params['G'].value * (Ms - m_ev) / rs**2 * (params['mCluster'].value + m_ev + 0.5 * (Ms - m_ev))
     params['F_ram'].value = FOUR_PI * R2**2 * Pc
     params['F_rad'].value = f_rad(sp, params)
     params['F_ion_in'].value = FOUR_PI * rs**2 * Pext
@@ -553,6 +559,8 @@ class ImplicitSwept:
         from trinity.phase1b_energy_implicit.get_betadelta import compute_R1_Pb
         K, F_rad = self.root['K'], params['F_rad'].value
         M_floor, fabs_ion = self.Ms, self.fabs_ion
+        m_ev = get_bubbleParams.evaporated_mass(params)   # shell_mass_net: held over the segment (PLAN D-MB8); 0.0 when off
+        get_bubbleParams.refuse_no_shell(m_ev, M_floor)  # the root saw the structure before; refuse here too (D-MB10)
         G, mCluster, gamma = params['G'].value, params['mCluster'].value, params['gamma_adia'].value
         closure, tan, zeta = self._closure, self.tan, self.zeta
         # Step 7b-2: the work rate the beta/delta solve charged, W0 = 4 pi R2_0^2 Pb_0 Rdot2_0 (unramped Pb, as its balance)
@@ -570,7 +578,8 @@ class ImplicitSwept:
             F = FOUR_PI * R2t**2 * Pc + K - FOUR_PI * r**2 * p_ext(r, fabs_ion, params) + F_rad
             k_t = FOUR_PI * R2t**2 * get_bubbleParams.bubble_E2P(y[2], R2t, R1t, gamma)   # unramped Pb, as compute_R1_Pb
             _, Edot = live_rates(Ed, W0, k_t, U_t, md, tan, zeta)
-            return np.array([U_t, (F - G * m / r**2 * (mCluster + 0.5 * m) - md * v) / m, Edot, Td])
+            mn = m - m_ev                                    # the shell's own mass; the closure keeps the swept m
+            return np.array([U_t, (F - G * mn / r**2 * (mCluster + m_ev + 0.5 * mn) - md * v) / mn, Edot, Td])
         return f
 
     def R2_at(self, r, Eb, M, t):
@@ -912,6 +921,7 @@ def run_phase_transition_swept(params):
         # R2 moves with r_s at the slope zeta over the segment, so the bubble volume in P_th changes at the same
         # Rdot2 = zeta U the work term charges (a held R2/r_s would grow it at (R2/r_s) U instead)
         R2a, rsa, K, F_rad, M_floor, z = root['R2'], rs, root['K'], params['F_rad'].value, Ms, zeta
+        m_ev = get_bubbleParams.evaporated_mass(params)   # shell_mass_net: 1b's last value (PLAN D-MB5); 0.0 when off
         L_bubble, Cf = params['bubble_LTotal'].value, params['coverFraction'].value
 
         def rhs(t, y):
@@ -925,7 +935,8 @@ def run_phase_transition_swept(params):
             Ed = (fb_t.Lmech_total - L_bubble - FOUR_PI * R2t**2 * Pc * z * U_t
                   - get_bubbleParams.get_leak_luminosity(Cf, R2t, Pc, c_sound, gamma))
             Ed_sc = -E / (R2t / c_sound) if c_sound > 0 else 0.0
-            return np.array([U_t, (F - G * m / r**2 * (mCluster + 0.5 * m) - md * v) / m, min(Ed, Ed_sc)])
+            mn = m - m_ev                                    # the shell's own mass
+            return np.array([U_t, (F - G * mn / r**2 * (mCluster + m_ev + 0.5 * mn) - md * v) / mn, min(Ed, Ed_sc)])
 
         values_before = _monitor(params)
         solver_kwargs = dict(fun=rhs, t_span=(t_now, min(t_now + dt_segment, tmax)), y0=np.array([rs, u, Eb]),

@@ -334,6 +334,40 @@ def mass_freeWind(r, Lmech, v_mech):
     return 2.0 * Lmech * r / v_mech**3
 
 
+def evaporated_mass(params):
+    """Mass [Msun] in the bubble that came off the shell, under the opt-in key shell_mass_net; else 0.0.
+
+    Conduction evaporates shell gas into the hot interior at bubble_dMdt, and the structure solve integrates what the
+    interior holds into bubble_mass (on the archived ladder it equals the integrated dMdt to a few per cent:
+    docs/dev/phii-identity/mass-budget/FINDINGS.md). shell_mass stays the swept mass -- M(<R2) under c3c, M(<r_s) under
+    swept -- and its never-decrease guards act on it; the shell's own mass, shell_mass - evaporated_mass, is what its
+    profile holds and what moves and weighs in the equation of motion, and the evaporated gas pulls on it from inside R2.
+
+    By phase (mass-budget/PLAN.md, D-MB1, D-MB2, D-MB5): 'implicit' -> bubble_mass, the current structure's;
+    'transition' -> bubble_mass as 1b left it (1c does not re-solve the structure); 'energy' -> 0.0 (phase 1a is left
+    as it is: early in 1a the structure holds more than the shell has swept, so the subtraction would leave no shell);
+    'momentum' -> 0.0 (the bubble is gone and its gas is back in the shell). Hand-built params without the key: off.
+    """
+    # ponytail: bubble_mass is held over each segment (swept's root even reads the previous segment's structure), so the
+    # evaporation inside a segment is not taken off. Ceiling: late in 1b dMdt reaches 0.4-1.6x the sweep rate (GMC, F1LO,
+    # SSC6) and ~140x on a stalled shell (SDHS). Upgrade: carry M_b(t) = M_b0 + dMdt (t - t0) through the RHS and swept's
+    # closure.
+    item = params.get('shell_mass_net') if hasattr(params, 'get') else None
+    if getattr(item, 'value', item) is not True:
+        return 0.0
+    if params['current_phase'].value not in ('implicit', 'transition'):
+        return 0.0
+    return float(params['bubble_mass'].value)
+
+
+def refuse_no_shell(m_ev, M):
+    """shell_mass_net (mass-budget/PLAN.md D-MB10): a bubble holding as much as the swept mass M [Msun] leaves no shell.
+    Raises ValueError (message starts 'shell_mass_net:'; NaN refused too); m_ev = 0.0 (the key off) never does."""
+    if m_ev != 0.0 and not m_ev < M:
+        raise ValueError(f"shell_mass_net: the bubble holds {m_ev:.6g} Msun of evaporated gas, not less than the "
+                         f"{M:.6g} Msun swept; no shell is left (mass-budget/PLAN.md D-MB10)")
+
+
 def get_phii_c3c(params, shell_props):
     """Photoionised pressure as a regime switch (the C3c scheme).
 
