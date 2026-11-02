@@ -75,15 +75,33 @@ class SweepProgress:
 
 def two_zone_flip_warning(combinations):
     """The two-zone neutral layer is the default since 2026-11-02 (PDR_DEFAULT_PLAN.md P5, D-B5/D-F7). read_param warns a run whose
-    .param sets a numeric TShell_neu without TShell_mol, but a sweep discards its children's stderr, so the parent says it once.
-    combinations: a list of (params dict, run name). Returns the message, or None."""
-    hit = [name for p, name in combinations
-           if 'TShell_neu' in p and 'TShell_mol' not in p and not isinstance(p['TShell_neu'], str)]
-    if not hit:
-        return None
-    return (f"WARNING: {len(hit)}/{len(combinations)} combinations set a numeric TShell_neu without TShell_mol: since "
-            "2026-11-02 that is the atomic zone's temperature of the two-zone neutral layer (TShell_mol 20 K beyond "
-            "tauShell_mol). Add 'TShell_mol 0' for the one-zone layer of earlier runs.")
+    .param sets a numeric TShell_neu without TShell_mol, and refuses one whose layer cannot be built (a TShell_neu below TShell_mol,
+    or TShell_mol 0 with TShell_neu 'auto'); a sweep discards its children's stderr, so the parent says both once.
+    combinations: a list of (params dict, run name), each dict the full set of keys the run's .param sets. Returns the message, or
+    None."""
+    from trinity._input.registry import SPECS
+    default = {s.name: s.default for s in SPECS}
+    warned, refused = 0, 0
+    for p, _name in combinations:
+        neu = p.get('TShell_neu', default['TShell_neu'])
+        try:
+            mol = float(p.get('TShell_mol', default['TShell_mol']))
+        except (TypeError, ValueError):
+            continue                     # not a number: the run's own validator names it; the parent must not stop the sweep
+        if (isinstance(neu, str) and not mol > 0) or (not isinstance(neu, str) and 0 < mol and neu < mol):
+            refused += 1
+        elif 'TShell_neu' in p and 'TShell_mol' not in p and not isinstance(neu, str):
+            warned += 1
+    lines = []
+    if warned:
+        lines.append(f"WARNING: {warned}/{len(combinations)} combinations set a numeric TShell_neu without TShell_mol: since "
+                     "2026-11-02 that is the atomic zone's temperature of the two-zone neutral layer (TShell_mol 20 K beyond "
+                     "tauShell_mol). Add 'TShell_mol 0' for the one-zone layer of earlier runs.")
+    if refused:
+        lines.append(f"WARNING: {refused}/{len(combinations)} combinations will be refused at load: a TShell_neu below "
+                     "TShell_mol, or TShell_mol 0 without a numeric TShell_neu (the default TShell_neu 'auto' needs two zones). "
+                     "For one neutral zone, the layer of earlier runs, set TShell_mol 0 and a numeric TShell_neu.")
+    return "\n".join(lines) or None
 
 
 def _validate_sweep_combination(params_dict):

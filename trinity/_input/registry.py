@@ -294,7 +294,7 @@ def _validate_TShell_mol(value, params) -> None:
     """Temperature of the two-zone neutral layer's molecular zone [K]: 0 (one zone, the default before 2026-11-02) or > 0 (20 K since). A negative value
     would otherwise read as 'off' without a word (docs/dev/phii-identity/weak-wind/neutral-shell/PLAN.md)."""
     from trinity._input.errors import ParameterFileError
-    if isinstance(value, bool) or not isinstance(value, (int, float)) or value < 0:
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not 0 <= value < float('inf'):   # NaN, inf too
         raise ParameterFileError(
             f"Invalid TShell_mol '{value}'. Must be 0 (one neutral zone) or a temperature > 0 K."
         )
@@ -305,10 +305,11 @@ def _validate_TShell_neu(value, params) -> None:
     front from its far-UV field and density, H2 from Bialy & Sternberg's column -- which needs the two-zone layer
     (TShell_mol > 0) (docs/dev/phii-identity/weak-wind/neutral-shell/PDR_DEFAULT_PLAN.md)."""
     from trinity._input.errors import ParameterFileError
-    tm = params.get('TShell_mol', None) if params is not None else None
+    present = params is not None and 'TShell_mol' in params
+    tm = params['TShell_mol'] if present else None
     tm = tm.value if hasattr(tm, 'value') else tm
-    if tm is not None:
-        _validate_TShell_mol(tm, params)        # this validator runs first: report an invalid TShell_mol as such
+    if present:
+        _validate_TShell_mol(tm, params)        # this validator runs first: report an invalid TShell_mol (None too) as such
     if isinstance(value, str):
         if value != 'auto':
             raise ParameterFileError(f"Invalid TShell_neu '{value}'. Must be a temperature > 0 K or 'auto'.")
@@ -319,7 +320,7 @@ def _validate_TShell_neu(value, params) -> None:
                 "(100 K was the default before 2026-11-02)."
             )
         return
-    if isinstance(value, bool) or not isinstance(value, (int, float)) or not value > 0:
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not 0 < value < float('inf'):
         raise ParameterFileError(f"Invalid TShell_neu '{value}'. Must be a temperature > 0 K or 'auto'.")
     if tm is not None and tm > 0 and value < tm:       # D-F6: an atomic zone colder than the molecular zone beyond it
         raise ParameterFileError(

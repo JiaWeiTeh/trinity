@@ -225,6 +225,14 @@ def test_validators_refuse_bad_two_zone_keys():
     _validate_TShell_neu(10.0, {"TShell_mol": 0.0})                          # one zone at 10 K stays allowed
     with pytest.raises(ParameterFileError, match="Invalid TShell_mol"):      # D-F8: reported as TShell_mol's error
         _validate_TShell_neu("auto", {"TShell_mol": -1.0})
+    for bad in (float("nan"), float("inf"), None):                            # pre-push /xcheck: present but not a temperature
+        with pytest.raises(ParameterFileError, match="Invalid TShell_mol"):
+            _validate_TShell_neu(100.0, {"TShell_mol": bad})
+    for bad in (float("nan"), float("inf")):
+        with pytest.raises(ParameterFileError):
+            _validate_TShell_mol(bad, None)
+        with pytest.raises(ParameterFileError, match="Invalid TShell_neu"):
+            _validate_TShell_neu(bad, None)
     _validate_fFUV_Ln(0.67, None)
     for bad in (0.0, 1.5, -0.1, True):
         with pytest.raises(ParameterFileError):
@@ -280,4 +288,11 @@ def test_sweep_parent_warns_once_for_a_numeric_tshell_neu():
               ({}, "d")]
     msg = two_zone_flip_warning(combos)
     assert msg is not None and msg.startswith("WARNING: 1/4 combinations") and "TShell_mol 0" in msg
+    assert "refused" not in msg
     assert two_zone_flip_warning(combos[1:]) is None
+    # runs that read_param will refuse are named as refused, not as two-zone (the pre-push /xcheck)
+    cold = [({"TShell_neu": 10.0}, "e"), ({"TShell_mol": 0.0}, "f"), ({"TShell_neu": "auto", "TShell_mol": 0.0}, "g")]
+    msg = two_zone_flip_warning(combos + cold)
+    assert msg.splitlines()[0].startswith("WARNING: 1/7 combinations set a numeric")
+    assert msg.splitlines()[1].startswith("WARNING: 3/7 combinations will be refused")
+    assert two_zone_flip_warning([({"TShell_mol": "abc"}, "h")]) is None     # left to the run's own validator, no crash
