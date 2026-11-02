@@ -260,6 +260,7 @@ def test_phase3_shellODE_neutral_vs_original():
     """Neutral shell ODE: prefactor 1 -> mu_n/mu_H (dust-only RHS)."""
     from trinity.shell_structure.get_shellODE import get_shellODE
     p = _shell_params()
+    p["TShell_neu"].value = 100.0     # the RHS reads TShell_neu only without tmu; since the flip (P5) the default is 'auto'
     n, tau, r = 1.0e3, 0.3, 5.0
     dndr, dtaudr = get_shellODE([n, tau], r, False, p)
 
@@ -283,7 +284,7 @@ def test_phase3_shellODE_neutral_vs_original():
 def test_phase3_shell_structure_coefficients_and_no_original():
     """shell_structure.py uses the SINGLY-ionised shell composition: BC and
     I-front jump on mu_ion_shell; chi_e_shell x3; mass/grav/tau weights
-    mu_convert x8; mu_atom at the I-front jump numerator and the two-zone boundary; the bubble's doubly-
+    mu_convert x8; mu_atom at the I-front jump numerator and the two-zone layer's atomic zone; the bubble's doubly-
     ionised mu_ion / chi_e never appear in the shell."""
     s = _src("trinity/shell_structure/shell_structure.py")
     assert "params['mu_ion_shell'].value / params['mu_convert'].value" in s  # refined BC (singly)
@@ -294,10 +295,11 @@ def test_phase3_shell_structure_coefficients_and_no_original():
     # call sites would have added four. The guard this test exists for is untouched:
     # the bubble's doubly-ionised mu_ion / chi_e still must not appear (asserted below).
     assert s.count("params['mu_convert'].value") == 9   # 7 mass/grav/tau + BC + the march alias
-    # 2 since the two-zone neutral layer (weak-wind/neutral-shell/PLAN.md): the I-front jump numerator, and the
-    # denominator of the atomic -> molecular jump (mu_mol/mu_atom) at the zone boundary, which is off by default.
-    assert s.count("params['mu_atom'].value") == 2      # the I-front jump numerator + the zone-boundary jump
-    assert "params['mu_mol'].value / params['mu_atom'].value" in s  # the zone-boundary jump (TShell_mol > 0)
+    # 4 since step (b) of the two-zone layer (weak-wind/neutral-shell/PDR_DEFAULT_PLAN.md): the I-front jump numerator,
+    # step (b)'s front jump factor for the PDR temperature, its atomic-zone (T, mu) for the RHS, and the march's current mu
+    # that every zone-boundary jump (mu_new/mu_cur) starts from; the boundary jumps are off for TShell_mol 0 (on by default since the flip, P5).
+    assert s.count("params['mu_atom'].value") == 4      # the I-front jump numerator + step (b)'s three atomic-zone reads
+    assert "nShell0 * (mu_new / mu_cur * T_cur / T_new)" in s  # every zone-boundary jump (TShell_mol > 0)
     assert "params['mu_atom'].value / params['mu_ion_shell'].value" in s  # the :298 jump (singly)
     assert s.count("params['chi_e_shell'].value") == 3  # max_shellRadius, n_IF_Str, phi_hydrogen
     assert "params['chi_e'].value" not in s             # bubble chi_e must not leak

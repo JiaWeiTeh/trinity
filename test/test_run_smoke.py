@@ -67,9 +67,14 @@ _FINAL_GOLDENS = {
     # sps_interp cubic the previous values are reproduced (R2 0.25934419485301125,
     # v2 49.49653363172906, Eb 659632.2441434182).
     # docs/dev/phii-identity/weak-wind/early-1b/SPS_TRANSIENTS.md section 7.
-    "R2": 0.25934386495844797,
-    "v2": 49.49636304648124,
-    "Eb": 659620.8513924862,
+    # Re-baselined 2026-11-02 for the two-zone neutral layer as the default (TShell_neu 'auto', TShell_mol 20;
+    # docs/dev/phii-identity/weak-wind/neutral-shell/PDR_DEFAULT_PLAN.md P5, ruling D-F5): the neutral rows now carry a PDR
+    # atomic zone (here at the K99 table's 5000 K top, G0 ~ 1.6e6) and a 20 K molecular zone. R2 -1.8e-6, v2 -3.6e-6,
+    # Eb +1.1e-7 (relative); with TShell_neu 100 and TShell_mol 0 the previous values are reproduced exactly
+    # (R2 0.25934386495844797, v2 49.49636304648124, Eb 659620.8513924862).
+    "R2": 0.2593433916087158,
+    "v2": 49.496185853010495,
+    "Eb": 659620.924962753,
 }
 
 

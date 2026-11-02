@@ -400,6 +400,15 @@ def read_param(path2file):
     else:
         params['dust_sigma'].value = 0
     
+    # The two-zone layer is the default (PDR_DEFAULT_PLAN.md P5, D-B5): before the flip a numeric TShell_neu without TShell_mol
+    # meant one neutral zone; say what it means now and how to get the old layer.
+    if 'TShell_neu' in user_dict and 'TShell_mol' not in user_dict and not isinstance(params['TShell_neu'].value, str):
+        logger.warning(
+            f"TShell_neu = {params['TShell_neu'].value:g} K is set without TShell_mol: the neutral shell has two zones by "
+            f"default since 2026-11-02, so this is the atomic zone's temperature, with cold molecular gas at TShell_mol = "
+            f"{params['TShell_mol'].value:g} K beyond tauShell_mol. Set TShell_mol 0 for the one-zone layer of earlier runs."
+        )
+
     # Use filename as model name if not specified
     if params['model_name'].value == "default":
         params['model_name'].value = filename
