@@ -335,8 +335,8 @@ def test_balance_retry_rejects_an_unconverged_retry(monkeypatch):
                                       total_residual=0.2, converged=False, iterations=30, bubble_properties=None)
     first = GBD._solve_hybr_rescued
     monkeypatch.setattr(GBD, "_solve_hybr_rescued",
-                        lambda bg, dg, params, method, rescue: unconverged if bg == -9.0
-                        else first(bg, dg, params, method, rescue))
+                        lambda bg, dg, params, method, rescue, wide=True: unconverged if bg == -9.0
+                        else first(bg, dg, params, method, rescue, wide))
     res = GBD.solve_betadelta_pure(0.5, -0.5, make_retry_params())
     assert res.no_physical_root and "structure" in res.no_root_reason
 

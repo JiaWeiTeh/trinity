@@ -663,21 +663,24 @@ def solve_betadelta_pure(
     params,
     method: str = 'grid',
     rescue: bool = True,
+    wide: bool = True,
 ) -> BetaDeltaResult:
     """Dispatch to the configured beta-delta solver (``betadelta_solver``).
 
     'hybr' (production default) is the unbounded scipy root-finder with a
     physical dMdt>0 acceptance gate. 'legacy' is the bounded grid + L-BFGS-B
     search, byte-identical to the pre-switch behaviour. ``rescue=False`` skips
-    hybr's structure-failure rescue ladder (phase 1b's cost cap).
+    hybr's structure-failure rescue ladder (phase 1b's cost cap). ``wide=False``
+    keeps the opt-in wide search (``betadelta_wide_search``) out of the rescue:
+    the phase-1b runner allows it only in its first WIDE_SEARCH_MAX_SOLVES solves.
     """
     solver = _get_betadelta_solver(params)
     if solver == 'legacy':
         return _solve_betadelta_legacy(beta_guess, delta_guess, params, method)
     if solver == 'hybr':
-        result = _solve_hybr_rescued(beta_guess, delta_guess, params, method, rescue)
+        result = _solve_hybr_rescued(beta_guess, delta_guess, params, method, rescue, wide)
         if rescue and _structure_failure(result) and _balance_retry_enabled(params):
-            return _balance_retry(result, beta_guess, delta_guess, params, method)
+            return _balance_retry(result, beta_guess, delta_guess, params, method, wide)
         return result
     # The param validator guards user input; this guards programmatic misuse.
     raise ValueError(f"Unknown betadelta_solver '{solver}'.")
@@ -688,11 +691,11 @@ def _structure_failure(result) -> bool:
     return result.no_physical_root and 'structure solve failed' in (result.no_root_reason or '')
 
 
-def _solve_hybr_rescued(beta_guess, delta_guess, params, method, rescue):
+def _solve_hybr_rescued(beta_guess, delta_guess, params, method, rescue, wide=True):
     """hybr from the guess, then the structure-failure rescue ladder when allowed."""
     result = _solve_betadelta_hybr(beta_guess, delta_guess, params, method)
     if rescue and _structure_failure(result):
-        return _rescue_structure_failure(result, beta_guess, delta_guess, params, method)
+        return _rescue_structure_failure(result, beta_guess, delta_guess, params, method, wide)
     return result
 
 
@@ -719,7 +722,7 @@ def _beta_from_balance(params) -> float:
         Pb, R1, Edot, {k: g(k) for k in ('t_now', 'pdot_total', 'pdotdot_total', 'R2', 'v2', 'Eb')})
 
 
-def _balance_retry(result, beta_guess, delta_guess, params, method):
+def _balance_retry(result, beta_guess, delta_guess, params, method, wide=True):
     """Retry a structure-failure no-root once from the energy-balance beta (``betadelta_balance_retry``).
 
     At a steep feedback ramp (the winds at ~3 Myr, the supernova switch-on) the root moves far from the previous segment's
@@ -736,7 +739,7 @@ def _balance_retry(result, beta_guess, delta_guess, params, method):
         logger.info(f"beta-delta: balance retry skipped at t={t:.6f} (no finite energy-balance beta) after a structure "
                     f"failure at (beta={beta_guess:.4f}, delta={delta_guess:.4f})")
         return result
-    retried = _solve_hybr_rescued(beta1, delta_guess, params, method, True)
+    retried = _solve_hybr_rescued(beta1, delta_guess, params, method, True, wide)
     ok = (not retried.no_physical_root) and bool(retried.converged)
     logger.info(f"beta-delta: balance retry at t={t:.6f} from beta1={beta1:.4f} after a structure failure at "
                 f"(beta={beta_guess:.4f}, delta={delta_guess:.4f}): "
@@ -745,7 +748,7 @@ def _balance_retry(result, beta_guess, delta_guess, params, method):
     return retried if ok else result
 
 
-def _rescue_structure_failure(result, beta_guess, delta_guess, params, method):
+def _rescue_structure_failure(result, beta_guess, delta_guess, params, method, wide=True):
     """Re-seed hybr from the bounded legacy grid when the search wandered out of domain.
 
     A 'structure solve failed' no-root is a wandering artifact candidate: hybr walked into
@@ -762,10 +765,10 @@ def _rescue_structure_failure(result, beta_guess, delta_guess, params, method):
     """
     rescue = _solve_betadelta_legacy(beta_guess, delta_guess, params, method)
     if (rescue.beta, rescue.delta) == (beta_guess, delta_guess):
-        return _wide_search(result, params, method)  # the grid found nothing better than the seed
+        return _wide_search(result, params, method) if wide else result  # the grid found nothing better than the seed
     retried = _solve_betadelta_hybr(rescue.beta, rescue.delta, params, method)
     if retried.no_physical_root:
-        return _wide_search(result, params, method)  # keeps the diagnosis unless a root is found
+        return _wide_search(result, params, method) if wide else result  # keeps the diagnosis unless a root is found
     logger.info(
         f"beta-delta: structure-failure rescue succeeded — legacy grid re-seeded hybr from "
         f"(beta={rescue.beta:.4f}, delta={rescue.delta:.4f}) after failure at "
@@ -779,6 +782,10 @@ def _rescue_structure_failure(result, beta_guess, delta_guess, params, method):
 # +-0.02 rescue grid can both lack a physical structure while a physical root exists far away
 # (beta -0.25..-0.66, delta -0.22..-0.78 in the early-1b F1 prototype): seed hybr from the best
 # point of a coarse map.
+# The wide search runs only in phase 1b's first three beta/delta solves: the weak-wind start-up failures it was built for
+# (docs/dev/phii-identity/weak-wind/early-1b/F1_ADOPTION.md §7-8, ruled 2026-10-31); later structure failures are left
+# to the energy-balance retry (betadelta_balance_retry).
+WIDE_SEARCH_MAX_SOLVES = 3
 WIDE_BETAS = tuple(float(b) for b in np.arange(-1.0, 4.0001, 0.5))
 WIDE_DELTAS = tuple(float(d) for d in np.arange(-3.0, 0.0001, 0.5))
 
