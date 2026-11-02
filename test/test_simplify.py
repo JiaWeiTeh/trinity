@@ -372,6 +372,14 @@ class TestEdgeCases:
         with pytest.raises(ValueError):
             _simplify(np.array([0.0, 1.0]), np.array([0.0, 1.0, 2.0]))
 
+    def test_last_point_survives_a_flat_fine_tail(self):
+        """A shell profile whose last slice is 5000 sub-tolerance flat steps (each below dedup_tol of the range in
+        both axes) must keep its last point: the de-duplication used to drop the whole run, last point included."""
+        x = np.concatenate([np.linspace(3e-4, 0.874, 200), 0.874 + np.linspace(0.0, 0.00275, 5001)])
+        y = np.concatenate([np.full(200, 58.17), np.full(5001, 61.47)])
+        xo, yo = _simplify(x, y, nmin=100)
+        assert xo[-1] == x[-1] and yo[-1] == y[-1]
+
     def test_output_endpoints_match_input(self):
         """For any non-edge case input, both endpoints of the input must
         appear in the output. Crucial for noisy curves where the prominence
