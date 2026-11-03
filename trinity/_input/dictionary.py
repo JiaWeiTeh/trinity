@@ -225,6 +225,7 @@ class DescribedDict(dict):
         # Snapshot counters
         self.save_count: int = 0                  # how many snapshots have been saved in-memory
         self.snapshot_interval: int = 10          # flush every N snapshots
+        self._simp_last_maxerr: float = float("nan")   # set by simplify(), stored by _clean_for_snapshot (output-profiles E3)
         self.previous_snapshot: Dict[str, Dict[str, Any]] = {}  # pending snapshots not yet flushed
         self.flush_count: int = 0                 # number of flush() calls (used for "fresh run" logic)
 
@@ -477,6 +478,7 @@ class DescribedDict(dict):
         nmin: Optional[int] = None,
         grad_inc: float = 1.0,
         keyname: str = "",
+        max_dy: Optional[float] = None,
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Heuristic downsampling of a curve y(x) to ``nmin`` points,
@@ -510,6 +512,9 @@ class DescribedDict(dict):
         dict (loaded from default.param), or to 100 if absent.  Pass an
         explicit ``nmin`` to override per call.
 
+        ``max_dy`` is passed to ``_simplify`` (bounded variation per stored
+        interval; None = off).
+
         Input / output contract:
         * Input: ``x_arr``, ``y_arr`` are 1-D array-likes of equal
           length.  Input may be ascending, descending, or non-monotonic
@@ -534,7 +539,7 @@ class DescribedDict(dict):
             item = self.get("simplify_npoints")
             nmin = int(item.value) if item is not None else 100
         try:
-            x_out, y_out = _simplify(x_arr, y_arr, nmin=nmin, grad_inc=grad_inc)
+            x_out, y_out = _simplify(x_arr, y_arr, nmin=nmin, grad_inc=grad_inc, max_dy=max_dy)
         except ValueError:
             raise ValueError(
                 f"simplify(): x and y must have same length for {keyname}. "
@@ -549,6 +554,7 @@ class DescribedDict(dict):
         # phase-0 one, where every profile array is still its empty registry
         # default.  Diagnostics-only: a non-empty curve is unaffected.
         if x_out.size == 0:
+            self._simp_last_maxerr = float("nan")
             return x_out, y_out
 
         # Compute reconstruction R² for every simplify() call.  If the
@@ -560,6 +566,19 @@ class DescribedDict(dict):
         # without flooding the log.
         import logging
         metrics = _simplify_error(x_arr, y_arr, x_out, y_out)
+        # The per-row record the writer stores as <key>_simp_maxerr (output-profiles/PLAN.md E3): the largest deviation of the
+        # straight-line reconstruction of the stored curve from the full curve, in the simplified y (dex for the log keys),
+        # at every full sample not at a repeated x. At a zero-width step np.interp returns one side's value, so the sample on
+        # the other side would report the step's height (about 2 dex at every ionisation front), not an error: both sides are
+        # stored. The same rule as output-profiles/harness/audit_full.py's maxerr. (metrics' max_abs_err scores every sample.)
+        xf, yf = np.asarray(x_arr, dtype=float), np.asarray(y_arr, dtype=float)
+        of, os_ = np.argsort(xf, kind="stable"), np.argsort(x_out, kind="stable")
+        xf, yf = xf[of], yf[of]
+        ev = np.ones(xf.size, dtype=bool)
+        ev[1:] &= np.diff(xf) != 0
+        ev[:-1] &= np.diff(xf) != 0
+        res = (yf - np.interp(xf, x_out[os_], y_out[os_]))[ev]
+        self._simp_last_maxerr = float(np.max(np.abs(res))) if res.size else float("nan")
         msg = (f"simplify[{keyname}]: R²={metrics['r_squared']:.4f} "
                f"(N_in={metrics['n_orig']} → N_out={metrics['n_simp']})")
 
@@ -657,6 +676,24 @@ class DescribedDict(dict):
         new_dict: Dict[str, Any] = {}
         eps = 1e-300  # used for safe log10()
 
+        # Profile cadence (output-profiles/PLAN.md E5, E2). ``profile_every`` N: the simplified arrays go into every N-th row
+        # (1 = every row, the historical output; 0 = never). ``profile_dump_every`` N: every N-th row's arrays are also written
+        # at full resolution, before any simplification, to <path2output>/profiles_full/row<id>.npz (0 = never).
+        _every = self.get("profile_every")
+        _every = int(_every.value) if _every is not None else 1
+        keep_arrays = _every > 0 and snap_id % _every == 0
+        _dump = self.get("profile_dump_every")
+        _dump = int(_dump.value) if _dump is not None else 0
+        dump_full = _dump > 0 and snap_id % _dump == 0
+
+        def _simp(x_arr, y_arr, key, max_dy=None):
+            """The simplifier plus its per-row record (E3): <key>_simp_maxerr is the largest deviation of the straight-line
+            reconstruction of the stored curve from the full curve, in the stored y (dex for the log-stored keys)."""
+            new_r, new_y = self.simplify(x_arr, y_arr, keyname=key, max_dy=max_dy)
+            if new_r.size:
+                new_dict[key + "_simp_maxerr"] = self._simp_last_maxerr
+            return new_r, new_y
+
         for key, item in self.items():
             # Skip excluded keys and non-DescribedItem values (shouldn't happen)
             if key in self._excluded_keys:
@@ -679,28 +716,34 @@ class DescribedDict(dict):
                 continue
 
             if key in ("bubble_T_arr", "bubble_n_arr"):
+                if not keep_arrays:
+                    continue
                 x_arr = np.asarray(self["bubble_r_arr"].value)
                 y_arr = np.log10(np.maximum(np.asarray(val), eps))
-                new_r, new_y = self.simplify(x_arr, y_arr, keyname=key)
+                new_r, new_y = _simp(x_arr, y_arr, key, max_dy=0.1)
 
                 new_dict["log_" + key] = self._to_json_ready_value(np.asarray(new_y))
                 new_dict[key + "_r_arr"] = self._to_json_ready_value(np.asarray(new_r))
                 continue
 
             if key == "bubble_dTdr_arr":
+                if not keep_arrays:
+                    continue
                 x_arr = np.asarray(self["bubble_r_arr"].value)
                 v = np.asarray(val)
                 y_arr = np.log10(np.maximum(np.abs(v), eps))
-                new_r, new_y = self.simplify(x_arr, y_arr, keyname=key)
+                new_r, new_y = _simp(x_arr, y_arr, key)
 
                 new_dict["log_" + key] = self._to_json_ready_value(np.asarray(new_y))
                 new_dict[key + "_r_arr"] = self._to_json_ready_value(np.asarray(new_r))
                 continue
 
             if key == "bubble_v_arr":
+                if not keep_arrays:
+                    continue
                 x_arr = np.asarray(self["bubble_r_arr"].value)
                 y_arr = np.asarray(val)
-                new_r, new_y = self.simplify(x_arr, y_arr, keyname=key)
+                new_r, new_y = _simp(x_arr, y_arr, key)
 
                 new_dict[key] = self._to_json_ready_value(np.asarray(new_y))
                 new_dict[key + "_r_arr"] = self._to_json_ready_value(np.asarray(new_r))
@@ -714,9 +757,11 @@ class DescribedDict(dict):
                 continue
 
             if key == "shell_grav_force_m":
+                if not keep_arrays:
+                    continue
                 x_arr = np.asarray(self["shell_grav_r"].value)
                 y_arr = np.log10(np.maximum(np.abs(np.asarray(val)), eps))
-                new_r, new_y = self.simplify(x_arr, y_arr, keyname=key)
+                new_r, new_y = _simp(x_arr, y_arr, key)
 
                 new_dict[key] = self._to_json_ready_value(np.asarray(new_y))
                 new_dict["shell_grav_r"] = self._to_json_ready_value(np.asarray(new_r))
@@ -730,10 +775,12 @@ class DescribedDict(dict):
                 continue
 
             if key == "shell_n_arr":
+                if not keep_arrays:
+                    continue
                 x_arr = np.asarray(self["shell_r_arr"].value)
                 if x_arr.size > 0:
                     y_arr = np.log10(np.maximum(np.asarray(val), eps))
-                    new_r, new_y = self.simplify(x_arr, y_arr, keyname=key)
+                    new_r, new_y = _simp(x_arr, y_arr, key, max_dy=0.1)
                     new_dict["log_" + key] = self._to_json_ready_value(np.asarray(new_y))
                     new_dict["shell_r_arr"] = self._to_json_ready_value(np.asarray(new_r))
                 continue
@@ -741,7 +788,34 @@ class DescribedDict(dict):
             # Default: store everything as JSON-ready values
             new_dict[key] = self._to_json_ready_value(val)
 
+        # The full-resolution dump only once the row itself is built (output-profiles PLAN.md D-OP14): a save that fails in
+        # the loop above (e.g. a 0-d profile array, F5c) writes neither the row nor an orphan dump.
+        if dump_full:
+            self._dump_full_profiles(snap_id)
+
         return new_dict
+
+    def _dump_full_profiles(self, snap_id: int) -> None:
+        """Write this row's profile arrays at full resolution, before any simplification, to
+        <path2output>/profiles_full/row<snap_id>.npz (numpy savez_compressed, float64), with t_now and R2 for a self-check.
+        Opt-in through ``profile_dump_every`` (0 = never): the audit's ground truth and the full-shape source for consumers
+        (``TrinityOutput.profile_full``; docs/dev/phii-identity/weak-wind/neutral-shell/output-profiles/PLAN.md E2)."""
+        out: Dict[str, Any] = {}
+        for key in sorted(SNAPSHOT_PROFILE_ARRAY_KEYS):
+            item = self.get(key)
+            if isinstance(item, DescribedItem):
+                out[key] = np.asarray(item.value, dtype=float)
+        for key in ("t_now", "R2"):
+            item = self.get(key)
+            if isinstance(item, DescribedItem):
+                out[key] = np.asarray(item.value, dtype=float)
+        d = self._get_output_dir() / "profiles_full"
+        d.mkdir(parents=True, exist_ok=True)
+        # Written to a temporary name and renamed: a job killed mid-write leaves a .tmp, never a truncated rowNNNNNN.npz.
+        tmp = d / f"row{snap_id:06d}.npz.tmp"
+        with open(tmp, "wb") as f:
+            np.savez_compressed(f, **out)
+        os.replace(tmp, d / f"row{snap_id:06d}.npz")
 
     # -------------------------------------------------------------------------
     # Public API: snapshot saving and flushing to disk

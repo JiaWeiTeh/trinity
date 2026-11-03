@@ -892,3 +892,31 @@ class TestTiming:
         ratio = times[1] / max(times[0], 1e-6)
         # Strict O(n^2) would give ratio ~16 for 4x size; require well below.
         assert ratio < 8.0, f"runtime ratio {ratio:.2f} suggests super-linear scaling"
+
+
+class TestBoundedVariation:
+    """max_dy (output-profiles/PLAN.md E4): no stored interval spans more than 2*max_dy in y; None leaves the output as it was."""
+
+    def test_every_stored_interval_is_bounded(self):
+        x = np.logspace(-2, 0, 60000)
+        y = 4.0 * (x - x[0]) / (x[-1] - x[0]) + 0.3 * np.sin(40 * x)          # 4 dex of rise with wiggles
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            xo, yo = _simplify(x, y, nmin=100, max_dy=0.1)
+        assert np.max(np.abs(np.diff(yo))) <= 0.2 + 1e-12
+        assert xo.size <= 150
+
+    def test_off_or_unreached_cap_adds_no_point(self):
+        """max_dy None or 0 is off, and a cap above the total variation (here about 2.2) runs the branch but crosses no
+        multiple: all three equal the uncapped output, while a small cap does change it. (That None leaves main's output
+        unchanged is the ladder's G-OP3b: every uncapped array byte-identical.)"""
+        x = np.linspace(0.0, 1.0, 5000)
+        y = np.exp(-((x - 0.4) / 0.05) ** 2) + 0.2 * x
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            a = _simplify(x, y, nmin=100)
+            for kw in ({"max_dy": None}, {"max_dy": 0.0}, {"max_dy": 10.0}):
+                b = _simplify(x, y, nmin=100, **kw)
+                assert np.array_equal(a[0], b[0]) and np.array_equal(a[1], b[1]), kw
+            c = _simplify(x, y, nmin=100, max_dy=0.01)
+        assert c[0].size > a[0].size

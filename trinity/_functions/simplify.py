@@ -294,6 +294,7 @@ def _simplify(
     grad_inc: float = 1.0,
     warn_below_r2: Optional[float] = 0.9,
     dedup_tol: float = _DEDUP_TOL_DEFAULT,
+    max_dy: Optional[float] = None,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Heuristic downsampling of a curve y(x) to ``nmin`` points,
@@ -350,8 +351,8 @@ def _simplify(
     5. **Budget-based selection with mandatory override**
        Output size is normally ``nmin``.  Endpoints, both ends of every
        zero-width step (consecutive samples at one x with different y: a
-       shell zone boundary), every high-prominence extremum, and the
-       coverage skeleton are always retained — if that mandatory set already exceeds ``nmin``,
+       shell zone boundary), every ``max_dy`` crossing (if set), every
+       high-prominence extremum, and the coverage skeleton are always retained — if that mandatory set already exceeds ``nmin``,
        output size is the mandatory-set size (we'd rather overshoot
        the budget than drop a real feature).  Remaining slots are
        filled in hierarchical-bisection order (endpoints → midpoint →
@@ -410,6 +411,16 @@ def _simplify(
         clumps emitted by stalled integrators without folding any
         meaningful structure unless the input has more than ~10⁶
         uniformly-sampled points.  Pass ``0`` to disable.
+    max_dy : float or None, optional
+        Bounded variation per stored interval: every sample at which the
+        cumulative total variation of ``y`` crosses a multiple of ``max_dy``
+        is mandatory, so between two stored samples ``y`` varies by less
+        than ``2*max_dy`` plus the largest single jump between two input
+        samples there (only the sample after a crossing is mandatory).
+        ``None`` (default) disables it.  The mandatory count is about the
+        total variation over ``max_dy``, without a cap: a noisy ``y`` can
+        far exceed ``nmin``.  TRINITY's writer passes 0.1 for its
+        log-stored density and temperature profiles.
 
     Returns
     -------
@@ -658,6 +669,22 @@ def _simplify(
     bins = (s_cum / maxdist).astype(int)
     idx_dist = np.where(bins[:-1] != bins[1:])[0]
 
+    # Bounded variation per stored interval (output-profiles/PLAN.md E4). Every sample at which the cumulative total variation
+    # of y crosses a multiple of ``max_dy`` is mandatory, so between two stored samples y varies by less than 2·max_dy, except
+    # across a zero-width step (its two ends are stored, E1) and plus any single jump between two input samples larger than
+    # max_dy (the sample after it is mandatory, the one before it is not, so such a jump can be spread over the stored
+    # interval). The writer passes 0.1 for the log-stored density and temperature profiles: over at most 0.2 dex a trapezoid
+    # in y overstates the integral of the log-linear segment by at most 1.8 % ((1+f)/2 against (f-1)/ln f at f = 10^0.2).
+    # ``None`` (the default) leaves the output untouched.
+    # ponytail: no cap on the count of these points (about the total variation / max_dy): a noisy profile can store far more
+    # than nmin (none on the ladder: 100 at most). If that ever matters, cap len(idx_dy) or raise max_dy for that key.
+    if max_dy is not None and max_dy > 0:
+        var = np.concatenate(([0.0], np.cumsum(np.abs(np.diff(y)))))
+        var_bins = (var / max_dy).astype(int)
+        idx_dy = np.where(var_bins[1:] != var_bins[:-1])[0] + 1
+    else:
+        idx_dy = np.array([], dtype=np.int64)
+
     # =====================================================================
     # Merge all candidates + endpoints via boolean mask
     # =====================================================================
@@ -668,6 +695,7 @@ def _simplify(
     mask[important_sign] = True                     # local extrema
     mask[idx_dist] = True                           # arc-length bins
     mask[step_idx] = True                           # both ends of every zero-width step
+    mask[idx_dy] = True                             # bounded variation (max_dy)
     merged = np.where(mask)[0]
 
     # =================================================================
@@ -748,7 +776,7 @@ def _simplify(
         # is fine — it never overflows the budget.
         endpoints_idx = np.array([0, x.size - 1], dtype=np.int64)
         all_priorities = np.concatenate(
-            [endpoints_idx, step_idx, prominent_idx, coverage_idx, idx_dist, bisection_pool]
+            [endpoints_idx, step_idx, idx_dy, prominent_idx, coverage_idx, idx_dist, bisection_pool]
         )
         _, unique_pos = np.unique(all_priorities, return_index=True)
         priority_indices = all_priorities[np.sort(unique_pos)]
@@ -756,7 +784,7 @@ def _simplify(
         # Mandatory floor: endpoints + zero-width steps + prominent extrema + coverage skeleton.
         # If this exceeds nmin the mandatory floor wins.
         mandatory_set = np.unique(np.concatenate(
-            [endpoints_idx, step_idx, prominent_idx, coverage_idx]
+            [endpoints_idx, step_idx, idx_dy, prominent_idx, coverage_idx]
         ))
         budget = max(int(nmin), int(mandatory_set.size))
         budget = min(budget, priority_indices.size)
