@@ -1,7 +1,7 @@
 """shell_mass_net (docs/dev/phii-identity/mass-budget/PLAN.md): the shell holds the swept mass minus the bubble's.
 
 Conduction evaporates shell gas into the hot bubble; the structure solve integrates what the bubble holds into
-bubble_mass. Under the opt-in key that mass is taken off the swept mass wherever the shell's mass acts -- the shell
+bubble_mass. Under the key (on by default) that mass is taken off the swept mass wherever the shell's mass acts -- the shell
 solve's mass condition and the inertia and weight of the equation of motion -- in phases 1b and 1c only (1a unchanged,
 ruling D-MB1; back in the shell in the momentum phase, D-MB2). shell_mass itself stays the swept mass.
 """
@@ -39,9 +39,9 @@ def _params(phase, on):
     return p
 
 
-def test_registry_default_is_off():
+def test_registry_default_is_on():
     spec = next(s for s in SPECS if s.name == "shell_mass_net")
-    assert spec.default == "False" and spec.run_const is True and spec.exclude_from_snapshot is True
+    assert spec.default == "True" and spec.run_const is True and spec.exclude_from_snapshot is True
 
 
 @pytest.mark.parametrize("phase", ["energy", "implicit", "transition", "momentum"])
@@ -71,11 +71,27 @@ def test_no_shell_left_is_refused():
     """A bubble holding the whole swept mass leaves no shell: the solve refuses it (D-MB10) instead of a profile of
     zero or negative mass. With the key off the same state solves."""
     p = _params("implicit", True)
+    p["_shell_mass_net_on"].value = True       # the subtraction has started (D-MB18)
     p["bubble_mass"].value = FRONT["mShell"]
     with pytest.raises(ValueError, match="shell_mass_net"):
         shell_structure_pure(p)
     p["shell_mass_net"].value = False
     shell_structure_pure(p)
+
+
+def test_subtraction_waits_until_the_bubble_holds_less():
+    """D-MB18: a weak wind whose 1a lasts ~1 yr enters 1b with the bubble holding ~3x the swept mass (AU006W); the shell keeps
+    it until the bubble holds less, the latch then stays on, and a later rise to the swept mass is refused (D-MB10)."""
+    p = _params("implicit", True)
+    p["bubble_mass"].value = 3.1 * FRONT["mShell"]
+    assert get_bubbleParams.evaporated_mass(p) == 0.0 and p["_shell_mass_net_on"].value is False
+    s = shell_structure_pure(p)                # solves with the whole swept mass, as in 1a
+    assert s.shell_mass_ion + s.shell_mass_neutral == pytest.approx(FRONT["mShell"], rel=1e-4)
+    p["bubble_mass"].value = FRONT["bubble_mass"]
+    assert get_bubbleParams.evaporated_mass(p) == FRONT["bubble_mass"] and p["_shell_mass_net_on"].value is True
+    p["bubble_mass"].value = FRONT["mShell"]
+    with pytest.raises(ValueError, match="shell_mass_net"):
+        shell_structure_pure(p)
 
 
 # A physically plausible segment-0 snapshot, test_early_phase_override.py's (phase1a-init probe.param), set in phase 1b.
@@ -120,9 +136,11 @@ def test_swept_1b_rhs_moves_and_weighs_the_net_mass(monkeypatch):
     swept = {}
     monkeypatch.setattr(SW, "swept_mass", lambda r, U, M_floor, frozen, params: (swept["m"], Mdot))
 
-    def rhs(on, m, dm_cluster, M_floor=Ms):
+    def rhs(on, m, dm_cluster, M_floor=Ms, started=False):
         p = _params("implicit", on)
         p["bubble_mass"].value = Mb
+        p["shell_mass"].value = M_floor             # as the 1b runner writes it (sw.Ms) before building the RHS
+        p["_shell_mass_net_on"].value = started     # D-MB18's latch: rhs() sets it here when Mb < shell_mass
         p["mCluster"].value = p["mCluster"].value + dm_cluster
         p["F_rad"].value = 12079.826019091612
         swept["m"] = m
@@ -135,7 +153,7 @@ def test_swept_1b_rhs_moves_and_weighs_the_net_mass(monkeypatch):
     assert keyed == by_hand
     assert keyed[1] != legacy[1] and keyed[0] == legacy[0]
     with pytest.raises(ValueError, match="shell_mass_net"):
-        rhs(True, Ms, 0.0, M_floor=Mb)
+        rhs(True, Ms, 0.0, M_floor=Mb, started=True)   # after the subtraction has started (D-MB18)
 
 
 @pytest.mark.parametrize("on", [False, True])

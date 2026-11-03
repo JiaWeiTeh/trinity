@@ -335,10 +335,10 @@ def mass_freeWind(r, Lmech, v_mech):
 
 
 def evaporated_mass(params):
-    """Mass [Msun] in the bubble that came off the shell, under the opt-in key shell_mass_net; else 0.0.
+    """Mass [Msun] in the bubble that came off the shell, under the key shell_mass_net (on by default); else 0.0.
 
     Conduction evaporates shell gas into the hot interior at bubble_dMdt, and the structure solve integrates what the
-    interior holds into bubble_mass (on the archived ladder it equals the integrated dMdt to a few per cent:
+    interior holds into bubble_mass (on the archived ladder it equals the integrated dMdt to 0.91-1.11:
     docs/dev/phii-identity/mass-budget/FINDINGS.md). shell_mass stays the swept mass -- M(<R2) under c3c, M(<r_s) under
     swept -- and its never-decrease guards act on it; the shell's own mass, shell_mass - evaporated_mass, is what its
     profile holds and what moves and weighs in the equation of motion, and the evaporated gas pulls on it from inside R2.
@@ -347,6 +347,11 @@ def evaporated_mass(params):
     'transition' -> bubble_mass as 1b left it (1c does not re-solve the structure); 'energy' -> 0.0 (phase 1a is left
     as it is: early in 1a the structure holds more than the shell has swept, so the subtraction would leave no shell);
     'momentum' -> 0.0 (the bubble is gone and its gas is back in the shell). Hand-built params without the key: off.
+
+    The subtraction starts once the bubble holds less than the swept mass (D-MB18): a weak wind whose 1a lasts ~1 yr enters
+    1b with the structure still holding more (AU006W: 3.1x at the hand-off, 0.003x one row later), and until then the shell
+    keeps all of it, as in 1a. The run-time latch _shell_mass_net_on then stays True, so a later rise to bubble_mass >=
+    shell_mass is refused by refuse_no_shell (D-MB10). Params without the latch decide afresh at each call.
     """
     # ponytail: bubble_mass is held over each segment (swept's root even reads the previous segment's structure), so the
     # evaporation inside a segment is not taken off. Ceiling: late in 1b dMdt reaches 0.4-1.6x the sweep rate (GMC, F1LO,
@@ -357,7 +362,14 @@ def evaporated_mass(params):
         return 0.0
     if params['current_phase'].value not in ('implicit', 'transition'):
         return 0.0
-    return float(params['bubble_mass'].value)
+    m_ev = float(params['bubble_mass'].value)
+    latch = params.get('_shell_mass_net_on')
+    if not getattr(latch, 'value', False):
+        if not m_ev < params['shell_mass'].value:      # not yet less than the swept mass (NaN too): the shell keeps it
+            return 0.0
+        if latch is not None:
+            latch.value = True
+    return m_ev
 
 
 def refuse_no_shell(m_ev, M):

@@ -610,6 +610,11 @@ class ImplicitSwept:
         """The exit row when the run ends in 1b; when 1c follows it continues this state and writes none."""
         if not params['EndSimulationDirectly'].value:
             return
+        # the run ends where its last segment started (stop_t): that segment's row, already written, is the exit row. A
+        # re-solve here would see only the bubble mass that segment's beta/delta just updated (shell_mass_net) and write a
+        # second row at the same t whose cool_alpha no longer matches its R2 (mass-budget/PLAN.md §10, D-MB17)
+        if t == self.t_seg:
+            return
         fb = get_current_sps_feedback(t, params)
         updateDict(params, fb)
         root = root_R2(self.rs, self.Ms, fb, params, guess=self.x_prev * self.rs, Eb=Eb, phase='implicit', t=t)

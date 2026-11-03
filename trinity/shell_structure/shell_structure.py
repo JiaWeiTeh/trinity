@@ -354,7 +354,7 @@ def shell_structure_pure(params) -> ShellProperties:
     pBubble = params['Pb'].value
     rShell0 = params['R2'].value
     # shell_mass_net (docs/dev/phii-identity/mass-budget/PLAN.md): the profile holds the swept mass minus the gas
-    # evaporated into the bubble (phases 1b and 1c, opt-in); 0.0 when off, so mShell_end is then shell_mass exactly
+    # evaporated into the bubble (phases 1b and 1c; the key is on by default); 0.0 when off, so mShell_end is then shell_mass exactly
     m_ev = get_bubbleParams.evaporated_mass(params)
     get_bubbleParams.refuse_no_shell(m_ev, params['shell_mass'].value)
     mShell_end = params['shell_mass'].value - m_ev

@@ -226,7 +226,9 @@ def get_ODE_Edot_pure(t: float, y: list, snapshot: ODESnapshot, params_for_feedb
 
     # shell_mass_net (docs/dev/phii-identity/mass-budget/PLAN.md): the gas evaporated into the bubble leaves the shell's
     # inertia and weight and pulls on it from inside R2; 0.0 when off (bit-identical then). mShell_dot stays the sweep
-    # rate: the evaporated gas leaves at the wall's speed, so it carries no thrust (PLAN D-MB7).
+    # rate: the evaporated gas is taken to leave at the wall's speed, so it carries no thrust (PLAN D-MB7). The structure
+    # starts it w = dMdt/(4 pi R2^2 rho) slower, a thrust dMdt*w left out here: on the ladder its impulse is <= 2.5e-4 of
+    # F_ram's (mass-budget/FINDINGS.md 1.4c).
     mShell = mShell - snapshot.evaporated_mass
 
     # Gravity force (self + cluster)
