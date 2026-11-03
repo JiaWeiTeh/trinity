@@ -774,6 +774,78 @@ class TestSolverArtefacts:
         assert (xo_off < 0.0501).sum() > (xo_on < 0.0501).sum()
 
 
+class TestZeroWidthSteps:
+    """Both ends of a zero-width step survive (docs/dev/phii-identity/chapter/chapter4.tex): the shell march
+    stores every zone boundary as two samples at one radius, and the budget used to cut the dense side, ramping
+    a flat zone and halving its mass."""
+
+    @staticmethod
+    def _gmc_shell():
+        # A shell-first GMC shell at 3 Myr (main 32523375's ladder): ionised gas from R2 to R_IF, then the PDR
+        # layer's atomic zone, the H2 step (x 11/6) and warm H2 to the cold switch, the cold step (x 101 K / 20 K)
+        # and flat cold gas to the edge.
+        # 5000 samples per zone, as the march stores them; n in cm^-3, r in pc.
+        r2, r_if = 17.583, 30.224
+        def zone(x0, x1, n0, n1):
+            x = np.linspace(x0, x1, 5000)
+            return x, n0 + (n1 - n0) * (x - x0) / (x1 - x0)
+        parts = [zone(r2, r_if, 2.0, 16.0), zone(r_if, r_if + 0.0097, 3308.0, 3334.5),
+                 zone(r_if + 0.0097, r_if + 0.1069, 3334.5 * 11 / 6, 6440.8),
+                 zone(r_if + 0.1069, r_if + 0.1586, 6440.8 * 101 / 20, 32612.0)]
+        r = np.concatenate([p[0] for p in parts])
+        n = np.concatenate([p[1] for p in parts])
+        steps = [(p[0][0], q[1][-1], p[1][0]) for q, p in zip(parts[:-1], parts[1:])]     # (radius, n before, n after)
+        return r, n, r_if, steps
+
+    @staticmethod
+    def _neutral_mass(r, n, r_if):
+        m = r >= r_if
+        x, v = r[m], n[m]
+        return float(np.sum(0.5 * (x[1:] ** 2 * v[1:] + x[:-1] ** 2 * v[:-1]) * np.diff(x)))
+
+    def test_both_sides_of_every_shell_step_survive(self):
+        r, n, r_if, steps = self._gmc_shell()
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            xo, yo = _simplify(r, np.log10(n), nmin=100)
+        assert xo.size <= 100
+        for x_b, n_lo, n_hi in steps:
+            at = np.isclose(xo, x_b, rtol=0, atol=1e-12)
+            got = np.sort(10 ** yo[at])
+            assert at.sum() == 2 and np.allclose(got, sorted((n_lo, n_hi)), rtol=1e-9), (x_b, got)
+
+    def test_shell_neutral_mass_is_kept(self):
+        # Before the fix the stored profile carried 0.708 of this mass (the cold step's dense side was cut).
+        r, n, r_if, _ = self._gmc_shell()
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            xo, yo = _simplify(r, np.log10(n), nmin=100)
+        full, kept = self._neutral_mass(r, n, r_if), self._neutral_mass(xo, 10 ** yo, r_if)
+        assert abs(kept / full - 1) < 0.01, kept / full
+
+    def test_vertical_tail_adds_only_its_two_ends(self):
+        # 50 samples at one x (a vertical tail): its first and last are mandatory, the budget is not blown.
+        x = np.concatenate([np.linspace(0.0, 1.0, 500), np.full(50, 1.0)])
+        y = np.concatenate([np.linspace(0.0, 1.0, 500), np.linspace(1.0, 0.0, 50)])
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            xo, yo = _simplify(x, y, nmin=100)
+        assert xo.size <= 100
+        tail = np.isclose(xo, 1.0, rtol=0, atol=1e-12)
+        assert 1.0 in yo[tail] and 0.0 in yo[tail]
+
+    def test_noise_level_repeats_are_not_steps(self):
+        # Every x twice, the second y higher by 1e-12, far below the de-duplication tolerance: noise, folded as
+        # before the step rule, not 1000 steps (which would make all 2000 points mandatory).
+        x = np.repeat(np.linspace(1.0, 2.0, 1000), 2)
+        y = np.repeat(np.linspace(0.0, 1.0, 1000), 2)
+        y[1::2] += 1e-12
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            xo, _ = _simplify(x, y, nmin=100)
+        assert xo.size == 100
+
+
 # ---------------------------------------------------------------------------
 # Timing / efficiency — ensures the algorithm scales reasonably and the
 # fixed-budget version is at least as fast as the input-size dominated
