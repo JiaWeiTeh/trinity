@@ -113,6 +113,9 @@ class ODESnapshot:
     # R1 switch-on ramp window [Myr]; None -> get_bubbleParams.DT_SWITCHON
     dt_switchon: Optional[float] = None
 
+    # shell_mass_net: the shell gas evaporated into the bubble [Msun] (get_bubbleParams.evaporated_mass); 0.0 = off
+    evaporated_mass: float = 0.0
+
 
 def create_ODE_snapshot(params, shell_props) -> ODESnapshot:
     """
@@ -166,6 +169,7 @@ def create_ODE_snapshot(params, shell_props) -> ODESnapshot:
         coverFraction=params['coverFraction'].value,
         c_sound=params['c_sound'].value,
         dt_switchon=params['dt_switchon'].value if 'dt_switchon' in params else None,
+        evaporated_mass=get_bubbleParams.evaporated_mass(params),
     )
 
 
@@ -220,8 +224,15 @@ def get_ODE_Edot_pure(t: float, y: list, snapshot: ODESnapshot, params_for_feedb
         else:
             mShell = mShell_new
 
+    # shell_mass_net (docs/dev/phii-identity/mass-budget/PLAN.md): the gas evaporated into the bubble leaves the shell's
+    # inertia and weight and pulls on it from inside R2; 0.0 when off (bit-identical then). mShell_dot stays the sweep
+    # rate: the evaporated gas is taken to leave at the wall's speed, so it carries no thrust (PLAN D-MB7). The structure
+    # starts it w = dMdt/(4 pi R2^2 rho) slower, a thrust dMdt*w left out here: on the ladder its impulse is <= 2.5e-4 of
+    # F_ram's (mass-budget/FINDINGS.md 1.4c).
+    mShell = mShell - snapshot.evaporated_mass
+
     # Gravity force (self + cluster)
-    F_grav = snapshot.G * mShell / (R2**2) * (snapshot.mCluster + 0.5 * mShell)
+    F_grav = snapshot.G * mShell / (R2**2) * (snapshot.mCluster + snapshot.evaporated_mass + 0.5 * mShell)
 
     # Calculate R1 (inner bubble radius)
     R1 = get_bubbleParams.solve_R1(R2, Eb, Lmech_total, v_mech_total)
