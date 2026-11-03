@@ -541,6 +541,27 @@ class TestProfileArrays:
             d.save_snapshot()
         assert not [r for r in caplog.records if "R²" in r.message]
 
+    def test_profile_every_zero_writes_no_arrays(self, tmp_path, no_handlers):
+        """output-profiles/PLAN.md E5: profile_every 0 keeps every scalar and drops every profile array from the row."""
+        d = _params(tmp_path, bubble_r_arr=np.linspace(1.0, 0.1, 50), bubble_T_arr=np.linspace(1e6, 1e4, 50),
+                    profile_every=0)
+        d.save_snapshot()
+        snap = d.previous_snapshot["0"]
+        assert "t_now" in snap and not [k for k in snap if k.startswith("log_") or k.endswith("_r_arr")]
+
+    def test_simp_maxerr_is_the_fit_error_not_the_step(self, tmp_path, no_handlers):
+        """output-profiles/PLAN.md E3: a shell with an exact 2-dex zone boundary (two samples at one radius, as the march
+        stores it) is stored exactly, so shell_n_arr_simp_maxerr is ~0, not the step's 2 dex (np.interp at a repeated x
+        returns one side). A curved profile scores a real, nonzero deviation."""
+        r = np.r_[np.linspace(1.0, 2.0, 1000), np.linspace(2.0, 3.0, 1000)]
+        d = _params(tmp_path, shell_r_arr=r, shell_n_arr=np.r_[np.full(1000, 10.0), np.full(1000, 1e3)])
+        d.save_snapshot()
+        assert d.previous_snapshot["0"]["shell_n_arr_simp_maxerr"] < 1e-12
+        x = np.linspace(1.0, 2.0, 5000)
+        d = _params(tmp_path, shell_r_arr=x, shell_n_arr=10.0 ** (3 + np.sin(40 * x)))
+        d.save_snapshot()
+        assert 1e-6 < d.previous_snapshot["0"]["shell_n_arr_simp_maxerr"] < 0.2
+
 
 # =============================================================================
 # Battery E — serialization round-trip (F11, F12, I8)
