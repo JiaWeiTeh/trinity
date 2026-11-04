@@ -85,15 +85,11 @@ log_console           False
 # TFINAL_ENERGY_PHASE = 3e-3 Myr schedule boundary, not a physics trigger, so it
 # is stable across configs; 'transition' and 'momentum' are the physics hand-offs
 # this fixture exists to exercise.
-_PHASE_ENTRY_SNAPSHOT = {
-    "energy": 0,
-    "implicit": 87,
-    "transition": 89,
-    "momentum": 91,
-}
-
-_SNAPSHOT_COUNT = 97
-
+#
+# The stored values (phase entries, snapshot count, final R2 and v2) live in
+# test/goldens/phase_runner_fixtures.json; `pytest --regen-goldens` rewrites them.
+# The history below says why each set was taken.
+#
 # Captured on this branch, 2026-08-06. Eb is deliberately absent: it is exactly
 # 0.0 in the momentum phase (no thermal bubble), so it pins nothing.
 #
@@ -127,10 +123,6 @@ _SNAPSHOT_COUNT = 97
 # sizes what a future thick-shell treatment would move: this fixture is the suite's
 # sharpest instrument for the P_ext channel (its whole T_ion response runs through
 # F_ion_in/P_ext, live on 97/97 leaky rows).
-_FINAL_GOLDENS = {
-    "R2": 0.7210994339937571,
-    "v2": 12.195810584867257,
-}
 
 
 def _run_fixture(tmp_path: Path, param_text: str, model_name: str):
@@ -166,35 +158,63 @@ def _phase_entries(rows):
     return entries
 
 
-def test_all_four_phase_runners_execute(tmp_path):
+# Since `eded76a5` (2026-10-19) this config no longer leaves `implicit`: its 1c/2
+# coverage had come from the frozen-cooling bug that commit fixed. Before it, the
+# first implicit segment held beta 2.36 / delta -1.19 and the hand-off ratio
+# (Lgain - Lloss)/Lgain at 0.0367 for every row, below the 0.05 switch, so the run
+# went to transition at 0.0059 Myr and momentum at 0.0087. After it, beta and delta
+# evolve, the ratio stays 0.13-0.21, and the run is still implicit at 0.02 Myr.
+# Expected to fail until 1c/2 are reachable again (the mixing-layer work, roadmap
+# lane A item A4); then re-baseline with `--regen-goldens` and remove this marker.
+# Ruled 2026-11-04 (xfail rather than forcing phaseSwitch_LlossLgain).
+@pytest.mark.xfail(
+    strict=True,
+    reason="phases 1c/2 unreachable for this config since eded76a5 fixed frozen cooling (roadmap A4)",
+)
+def test_all_four_phase_runners_execute(tmp_path, golden):
     """The lane-B gate: all four phase runners execute and still agree.
 
     Fails loudly if an edit changes *which* phases a run reaches, *when* it
     reaches them, how many snapshots it writes, how it terminates, or where the
     shell ends up. Any of those moving is either an intended scheme change that
     should re-baseline this fixture on purpose, or the regression F4 warns about.
+    ``--regen-goldens`` cannot bless a run that stops short of momentum: the
+    final-phase and termination checks below are not stored values.
     """
     rows, termination = _run_fixture(tmp_path, _FIXTURE_PARAM, "phasefix")
 
     entries = _phase_entries(rows)
-    assert entries == _PHASE_ENTRY_SNAPSHOT, (
-        "phase reachability or ordering changed.\n"
-        f"  expected {_PHASE_ENTRY_SNAPSHOT}\n"
-        f"  got      {entries}\n"
+    final = rows[-1]
+    # Not stored values, so checked before golden(): --regen-goldens never writes a run
+    # that stops short of momentum.
+    assert final["current_phase"] == "momentum", (
+        f"the run ends in {final['current_phase']!r}; phases first seen at {entries}.\n"
         "If phases 1c/2 have gone missing, the implicit->momentum hand-off no "
         "longer fires for this arm — see the module docstring and "
         "docs/dev/transition/cleanroom/FINDINGS.md."
     )
-    assert rows[-1]["current_phase"] == "momentum"
-    assert len(rows) == _SNAPSHOT_COUNT
     assert termination.get("exit_code") == 1
     assert termination.get("outcome") == "stopping_time"
-
-    final = rows[-1]
-    for key, expected in _FINAL_GOLDENS.items():
+    for key in ("R2", "v2"):
         value = final.get(key)
         assert isinstance(value, (int, float)) and math.isfinite(value) and value > 0
-        assert value == pytest.approx(expected, rel=1e-6), f"final {key} moved"
+
+    expected = golden(
+        "phase_runner_fixtures",
+        {
+            "phase_entries": entries,
+            "snapshot_count": len(rows),
+            "final": {key: final[key] for key in ("R2", "v2")},
+        },
+    )
+    assert entries == expected["phase_entries"], (
+        "phase reachability or ordering changed.\n"
+        f"  expected {expected['phase_entries']}\n"
+        f"  got      {entries}"
+    )
+    assert len(rows) == expected["snapshot_count"]
+    for key, stored in expected["final"].items():
+        assert final[key] == pytest.approx(stored, rel=1e-6), f"final {key} moved"
 
 
 @pytest.mark.stress
