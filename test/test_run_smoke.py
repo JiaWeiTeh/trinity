@@ -72,9 +72,15 @@ _FINAL_GOLDENS = {
     # atomic zone (here at the K99 table's 5000 K top, G0 ~ 1.6e6) and a 20 K molecular zone. R2 -1.8e-6, v2 -3.6e-6,
     # Eb +1.1e-7 (relative); with TShell_neu 100 and TShell_mol 0 the previous values are reproduced exactly
     # (R2 0.25934386495844797, v2 49.49636304648124, Eb 659620.8513924862).
-    "R2": 0.2593433916087158,
-    "v2": 49.496185853010495,
-    "Eb": 659620.924962753,
+    # Re-baselined 2026-11-04 for the CIE-switch bracket (bubble_luminosity._cie_switch_radius; the maintainer's sign-off,
+    # docs/dev/phii-identity/weak-wind/neutral-shell/output-profiles/CIE_BRACKET.md, G-CIE3): the inserted radius now lies
+    # between its two grid points. R2 -8.6e-6, v2 -7.8e-6, Eb -2.7e-5 (relative); a control that only changes the former
+    # search's xtol from 1e-8 to 1e-9 moves them as far (-8.9e-6, -8.9e-6, -3.1e-5), so these values are this
+    # root's own tolerance noise. Previous values (main c126ba10): R2 0.2593433916087158, v2 49.496185853010495,
+    # Eb 659620.924962753.
+    "R2": 0.25934117039512505,
+    "v2": 49.495797588179144,
+    "Eb": 659603.2710969658,
 }
 
 
