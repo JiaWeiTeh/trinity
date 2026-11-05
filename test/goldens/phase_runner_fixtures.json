@@ -1,0 +1,13 @@
+{
+  "phase_entries": {
+    "energy": 0,
+    "implicit": 87,
+    "transition": 89,
+    "momentum": 91
+  },
+  "snapshot_count": 97,
+  "final": {
+    "R2": 0.7210994339937571,
+    "v2": 12.195810584867257
+  }
+}

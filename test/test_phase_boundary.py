@@ -21,7 +21,11 @@ _PARAM = (
     "log_level   WARNING\n"
 )
 
-# Matches test_betadelta_hybr_stress._GOLDEN[:2] for the shortened stop_t=0.004 run.
+# The stored (cool_beta, cool_delta) of the first two implicit rows live in
+# test/goldens/phase_boundary_implicit_rows.json; `pytest --regen-goldens` rewrites them.
+#
+# Matched test_betadelta_hybr_stress._GOLDEN[:2] for the shortened stop_t=0.004 run
+# until 2026-11-04; that stress golden was not re-checked at the re-baseline below.
 # Verified 2026-08-14 that the two runs agree to all printed digits on both rows,
 # so stop_t does not perturb the trajectory ahead of the truncation.
 #
@@ -54,10 +58,14 @@ _PARAM = (
 # cool_beta was inside tolerance throughout (0.06x tol against the old golden) and moved
 # only in the sixth decimal; cool_delta is what broke the gate, at 1.63x tolerance.
 # Was (0.878396, -0.038973).
-_GOLDEN = [
-    (0.878279, -0.042223),  # t=0.00350 Myr
-    (0.878279, -0.042223),  # t=0.00390 Myr
-]
+#
+# Re-baselined 2026-11-04 for `eded76a5` (2026-10-19): the implicit phase now starts
+# 0.05 kyr past TFINAL_ENERGY_PHASE and caps each segment at 0.02 t/|delta|, so the
+# first two implicit rows sit at t = 0.00305 and 0.00311 Myr (were 0.00350 and
+# 0.00390) and carry the values solved there. At matched t = 0.004 Myr the runs agree
+# closely (main `c126ba10` against `d544aa62`): cool_beta 0.8559 vs 0.8539, cool_delta
+# -0.1289 vs -0.1187, R2 -4.6e-5 and v2 -4.6e-4 relative. This test failed on every
+# push from `eded76a5` to `c126ba10`. Was (0.878279, -0.042223) on both rows.
 _TOL = 2e-3
 
 
@@ -102,7 +110,7 @@ def _implicit_rows(rows):
     return implicit
 
 
-def test_default_run_crosses_energy_to_implicit_boundary(tmp_path):
+def test_default_run_crosses_energy_to_implicit_boundary(tmp_path, golden):
     result, run_dir = _run(tmp_path)
     assert (
         result.returncode == 0
@@ -118,6 +126,10 @@ def test_default_run_crosses_energy_to_implicit_boundary(tmp_path):
         assert math.isfinite(row["cool_beta"])
         assert math.isfinite(row["cool_delta"])
 
-    for (golden_beta, golden_delta), row in zip(_GOLDEN, implicit):
+    expected = golden(
+        "phase_boundary_implicit_rows",
+        [[row["cool_beta"], row["cool_delta"]] for row in implicit[:2]],
+    )
+    for (golden_beta, golden_delta), row in zip(expected, implicit):
         assert row["cool_beta"] == pytest.approx(golden_beta, abs=_TOL)
         assert row["cool_delta"] == pytest.approx(golden_delta, abs=_TOL)
