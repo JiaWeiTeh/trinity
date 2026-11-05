@@ -72,9 +72,12 @@ _FINAL_GOLDENS = {
     # atomic zone (here at the K99 table's 5000 K top, G0 ~ 1.6e6) and a 20 K molecular zone. R2 -1.8e-6, v2 -3.6e-6,
     # Eb +1.1e-7 (relative); with TShell_neu 100 and TShell_mol 0 the previous values are reproduced exactly
     # (R2 0.25934386495844797, v2 49.49636304648124, Eb 659620.8513924862).
-    "R2": 0.2593433916087158,
-    "v2": 49.496185853010495,
-    "Eb": 659620.924962753,
+    # Re-baselined 2026-11-05 for Kaufman et al. 1999's numeric surface-temperature grid in place of the digitised Fig. 1
+    # (docs/dev/phii-identity/weak-wind/neutral-shell/pdr-table/PLAN.md): R2 -7.35e-07, v2 -1.63e-06, Eb +1.03e-07 (relative);
+    # previous values R2 0.2593433916087158, v2 49.496185853010495, Eb 659620.924962753.
+    "R2": 0.25934320092070445,
+    "v2": 49.49610518700041,
+    "Eb": 659620.9928299702,
 }
 
 

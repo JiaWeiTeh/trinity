@@ -127,7 +127,7 @@ def test_layer_terms_identity_closes_with_a_molecular_zone():
 def _auto_slab(m_over_m_ion, g0):
     """The slab with step (b) on (TShell_neu 'auto') and a far-UV field of about g0 Habing at R_IF ~ 1 pc. The dust is a millionth
     of the default (dust_sigma 1.5e-27 cm^2, tauShell_mol 3e-6, so the cold switch stays at 2e21 cm^-2): with the default dust and
-    R2 = 1e-3 pc, Ln's radiation force would confine the ionised layer to ~1e-3 pc and pin T_atom at the table's 5000 K corner (the
+    R2 = 1e-3 pc, Ln's radiation force would confine the ionised layer to ~1e-3 pc and pin T_atom at the table's high-n, high-G0 corner (6530 K; the
     package's second cross-check, PDR_DEFAULT_PLAN.md). Premises checked by an independent CGS integration of the same equations
     (2026-11-01): R_IF 1.00 / 1.00 / 0.99 pc and the zones each test asserts."""
     p, m_ion, _ = _slab(m_over_m_ion, TShell_neu="auto", TShell_mol=T_MOL, tauShell_mol=3e-6, dust_sigma=1.5e-27 * cvt.cm2pc**2)
