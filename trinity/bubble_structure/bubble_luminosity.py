@@ -438,6 +438,13 @@ def _get_bubble_ODE(r_arr, initial_ODEs, params, Pb: float):
     if fA != 1.0 and T < _T_INTERFACE_BAND:
         dudt = fA * dudt
 
+    # cooling_scale (docs/dev/cooling-enhance-suppress/PLAN.md): scalar f_cool in [0, 1] on the
+    # net radiative source at EVERY temperature -- no band. f_cool = 0 leaves the conduction-only
+    # Weaver+77 structure. The != 1.0 guard keeps the default path byte-identical.
+    f_cool = params['cooling_scale'].value
+    if f_cool != 1.0:
+        dudt = f_cool * dudt
+
     v_term = params['cool_alpha'].value * r_arr / params['t_now'].value
 
     dTdrr = (Pb / (params['cooling_boost_kappa'].value * params['C_thermal'].value * T**(5/2)) * (
@@ -869,6 +876,14 @@ def _bubble_luminosity(params, R1, Pb, r2Prime, initial_conditions,
     if fA != 1.0:
         L_conduction = fA * L_conduction
         L_intermediate = fA * L_intermediate
+
+    # cooling_scale: the same factor on every resolved radiative component (L1, L2, L3), so the
+    # integrals stay consistent with the in-ODE source above. L_leak is bulk escape, not scaled.
+    f_cool = params['cooling_scale'].value
+    if f_cool != 1.0:
+        L_bubble = f_cool * L_bubble
+        L_conduction = f_cool * L_conduction
+        L_intermediate = f_cool * L_intermediate
 
     # Total luminosity
     L_total = L_bubble + L_conduction + L_intermediate
