@@ -125,7 +125,7 @@ def tp(R2, rs, Ms, Eb, fb, params, t, sp, h=S.TAN_STEP):
     fbkeys = {f.name: params[f.name].value for f in dataclasses.fields(fb) if f.name in params}
     out = _tp(R2, rs, Ms, Eb, fb, params, t, sp, h)
     restored = all(params[k].value == v for k, v in keys.items())
-    fb_restored = all(np.array_equal(params[k].value, v) for k, v in fbkeys.items())
+    fb_restored = all(np.array_equal(params[k].value, v, equal_nan=True) for k, v in fbkeys.items())
     ro = lambda a, e: float(S._shell_at(a, rs, Ms, fb, params, Eb=e, phase="implicit", t=t)[0].rShell)
     Nc = (ro(R2 * (1 + 1e-4), Eb) - ro(R2 * (1 - 1e-4), Eb)) / (2e-4 * R2)
     DEc = (ro(R2, Eb * (1 + 1e-4)) - ro(R2, Eb * (1 - 1e-4))) / (2e-4 * Eb)

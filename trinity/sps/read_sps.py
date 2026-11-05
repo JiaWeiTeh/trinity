@@ -16,7 +16,7 @@ Two entry points into the file:
       may use integer column indices or header-row names per ColumnSpec.
 
   get_interpolation(sps)
-      Wraps the 11-array tuple returned by read_sps() in scipy monotone
+      Wraps the 12-array tuple returned by read_sps() in scipy monotone
       (PCHIP) interpolators on `params['sps_f']`.
 """
 
@@ -58,7 +58,7 @@ def read_sps(f_mass, params):
 
     Returns
     -------
-    list : [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SN, pdot_total]
+    list : [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SN, pdot_total, L_FUV]
         Time series arrays (all with t=0 prepended):
 
         t : ndarray
@@ -83,6 +83,8 @@ def read_sps(f_mass, params):
             SN momentum rate [M_sun·pc/Myr²] (AU)
         pdot_total : ndarray
             Total momentum rate (winds + SN) [M_sun·pc/Myr²] (AU)
+        L_FUV : ndarray
+            Far-UV (6-13.6 eV) luminosity [Msun*pc^2/Myr^3] (AU) when the table declares sps_col_L_FUV; NaN otherwise
 
     Raises
     ------
@@ -101,7 +103,7 @@ def read_sps(f_mass, params):
     Examples
     --------
     >>> sps_data = read_sps(f_mass=1.0, params=params)
-    >>> t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SN, pdot_total = sps_data
+    >>> t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SN, pdot_total, L_FUV = sps_data
     >>> print(f"At t={t[50]:.3f} Myr: Wind Lmech={Lmech_W[50]:.3e}, SN Lmech={Lmech_SN[50]:.3e}")
     """
 
@@ -193,6 +195,16 @@ def _read_sps_user(filepath, f_mass, params, column_map):
     if 'Ln' not in cols:
         cols['Ln'] = cols['Lbol'] * (1.0 - cols['fi'])
 
+    # The far-UV (6-13.6 eV) luminosity when the table declares it (sps_col_L_FUV); NaN otherwise, and the PDR layer falls
+    # back to fFUV_Ln x Ln (shell_structure.py; docs/dev/sps-tables/PLAN.md). Refused when unphysical (D-S8).
+    if 'L_FUV' in cols:
+        L_FUV = cols['L_FUV']
+        if not np.all(np.isfinite(L_FUV)) or np.any(L_FUV < 0) or np.any(L_FUV > cols['Ln']):
+            raise ValueError(f"SPS column L_FUV in {filepath} must be finite, non-negative and at most Ln at every row.")
+    else:
+        L_FUV = np.full_like(cols['t'], np.nan)
+        logger.info(f"No far-UV column (sps_col_L_FUV) in {filepath}: the PDR layer takes L_FUV = fFUV_Ln x Ln.")
+
     # Derive Lmech_SN_raw if not supplied. Validation in read_param.py
     # ensures at least one of (Lmech_SN, Lmech_total) is present.
     if 'Lmech_SN' in cols:
@@ -283,6 +295,7 @@ def _read_sps_user(filepath, f_mass, params, column_map):
         pdot_W = np.insert(pdot_W, 0, pdot_W[0])
         pdot_SN = np.insert(pdot_SN, 0, pdot_SN[0])
         pdot_total = np.insert(pdot_total, 0, pdot_total[0])
+        L_FUV = np.insert(L_FUV, 0, L_FUV[0])
 
     logger.info(
         f"SPS data processed: {len(t)} time points, "
@@ -290,7 +303,12 @@ def _read_sps_user(filepath, f_mass, params, column_map):
     )
 
     return [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total,
-            pdot_W, pdot_SN, pdot_total]
+            pdot_W, pdot_SN, pdot_total, L_FUV]
+
+
+def _nan_interpolant(t):
+    """The far-UV interpolant of a table without the column: NaN at every t (shell_structure falls back to fFUV_Ln x Ln)."""
+    return np.float64(np.nan)
 
 
 class _SumInterpolant:
@@ -316,7 +334,7 @@ def get_interpolation(sps, kind='pchip'):
     ----------
     sps : list
         Data array from read_sps():
-        [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SN, pdot_total]
+        [t, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total, pdot_W, pdot_SN, pdot_total, L_FUV]
         (with kind='pchip', Lmech_total and pdot_total are not read: the
         totals are the sums of the wind and SN interpolants, as read_sps
         builds them)
@@ -340,6 +358,7 @@ def get_interpolation(sps, kind='pchip'):
         - 'fpdot_total' : Total momentum rate interpolator
         - 'fpdotdot_total' : Exact derivative of the total momentum rate
           interpolant (d(pdot_total)/dt) [Msun*pc/Myr**3]
+        - 'fL_FUV' : Far-UV luminosity interpolator (NaN without the column)
 
     Notes
     -----
@@ -361,7 +380,7 @@ def get_interpolation(sps, kind='pchip'):
 
     # Unpack all SPS values (with separated components)
     [t_Myr, Qi, Li, Ln, Lbol, Lmech_W, Lmech_SN, Lmech_total,
-     pdot_W, pdot_SN, pdot_total] = sps
+     pdot_W, pdot_SN, pdot_total, L_FUV] = sps
 
     if kind == 'cubic':
         # The pre-2026-11 interpolation, unchanged (sps_interp cubic). It rings
@@ -370,11 +389,13 @@ def get_interpolation(sps, kind='pchip'):
         names = ('Qi', 'Li', 'Ln', 'Lbol', 'Lmech_W', 'Lmech_SN', 'Lmech_total',
                  'pdot_W', 'pdot_SN', 'pdot_total')
         sps_f = {'f' + n: scipy.interpolate.interp1d(t_Myr, y, kind='cubic')
-                 for n, y in zip(names, sps[1:])}
+                 for n, y in zip(names, sps[1:11])}
         # make_interp_spline(k=3) is the same not-a-knot cubic interp1d builds
         # (bit-identical: docs/dev/magic-numbers/data/pdotdot_percall.csv).
         sps_f['fpdotdot_total'] = scipy.interpolate.make_interp_spline(
             t_Myr, pdot_total, k=3).derivative()
+        sps_f['fL_FUV'] = (scipy.interpolate.interp1d(t_Myr, L_FUV, kind='cubic') if np.all(np.isfinite(L_FUV))
+                           else _nan_interpolant)
         return sps_f
     if kind != 'pchip':
         raise ValueError(f"sps_interp must be 'pchip' or 'cubic', not {kind!r}")
@@ -392,6 +413,7 @@ def get_interpolation(sps, kind='pchip'):
     fQi, fLi, fLn, fLbol = pchip(Qi), pchip(Li), pchip(Ln), pchip(Lbol)
     fLmech_W, fLmech_SN = pchip(Lmech_W), pchip(Lmech_SN)
     fpdot_W, fpdot_SN = pchip(pdot_W), pchip(pdot_SN)
+    fL_FUV = pchip(L_FUV) if np.all(np.isfinite(L_FUV)) else _nan_interpolant
 
     # Totals = wind + supernova, as read_sps builds the total columns, so
     # Lmech_total >= Lmech_W at every t (PCHIP is not linear in the data, so
@@ -417,7 +439,8 @@ def get_interpolation(sps, kind='pchip'):
         'fpdot_W': fpdot_W,              # Consistent: variable is pdot_W, key is fpdot_W
         'fpdot_SN': fpdot_SN,
         'fpdot_total': fpdot_total,
-        'fpdotdot_total': fpdotdot_total
+        'fpdotdot_total': fpdotdot_total,
+        'fL_FUV': fL_FUV,
     }
 
     return sps_f

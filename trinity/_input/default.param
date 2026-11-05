@@ -205,6 +205,8 @@ sps_col_Li    def_unset
 
 sps_col_Ln    def_unset
 
+sps_col_L_FUV    def_unset
+
 
 # ==============================================================================
 # Cooling Tables
@@ -255,7 +257,7 @@ TShell_mol    20
 # INFO: Dust optical depth of the atomic (PDR) zone behind the ionisation front at which the neutral shell turns molecular: the shell march's own tau (dtau/dr = n dust_sigma), so the column is tauShell_mol/dust_sigma (2.0e21 cm^-2, A_V 1.07 at the defaults) and it scales with metallicity as the H/H2 transition does (Sternberg et al. 2014 eq. 40: a fixed dust optical depth ln(alpha G/2 + 1)). Used only when TShell_mol > 0. docs/dev/phii-identity/weak-wind/neutral-shell/PLAN.md.
 tauShell_mol    3
 
-# INFO: Far-UV (6-13.6 eV) share of the non-ionising luminosity Ln, for the PDR's field at the ionisation front when TShell_neu is 'auto' (step (b)). An ESTIMATE that can be far off: Kim et al. 2023 (ApJS 264, 10) Fig. 21, read by pixel, gives 0.65-0.7 for a Starburst99 cluster of 0-5.5 Myr; unknown later. A stellar table's own far-UV column is to replace it when one exists (PDR_DEFAULT_PLAN.md D-B3). docs/dev/phii-identity/weak-wind/neutral-shell/PDR_DEFAULT_PLAN.md.
+# INFO: Far-UV (6-13.6 eV) share of the non-ionising luminosity Ln, for the PDR's field at the ionisation front when TShell_neu is 'auto' (step (b)). An ESTIMATE that can be far off: Kim et al. 2023 (ApJS 264, 10) Fig. 21, read by pixel, gives 0.65-0.7 for a Starburst99 cluster of 0-5.5 Myr; unknown later. A stellar table's own far-UV column replaces it when one is declared (sps_col_L_FUV; D-B3; docs/dev/sps-tables/PLAN.md). docs/dev/phii-identity/weak-wind/neutral-shell/PDR_DEFAULT_PLAN.md.
 fFUV_Ln    0.67
 
 # INFO: Temperature of the ionised shell region. 8000 K (maintainer ruling 2026-09-06, PLAN.md W62): the two published Te-metallicity relations give 7584 K (Shaver+1983) and 7009 K (Mendez-Delgado+2023) at solar Z (Balser & Wenger 2024). NOT universal -- harder fields and higher densities push Te up. caseB_alpha is rescaled from this value by (T/1e4)^-0.83 (Draine 2011, ApJ 732, 100) in read_param, so the two cannot drift apart.

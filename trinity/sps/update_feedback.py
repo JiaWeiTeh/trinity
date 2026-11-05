@@ -62,6 +62,8 @@ class SPSFeedback:
         Time derivative of total momentum rate [Msun*pc/Myr**3]
     v_mech_total : float
         Effective total mechanical velocity [pc/Myr]
+    L_FUV : float
+        Far-UV (6-13.6 eV) luminosity [Msun·pc²/Myr³] from the table's L_FUV column; NaN when the table has none
     """
     t: float
     Qi: float
@@ -76,6 +78,7 @@ class SPSFeedback:
     pdot_total: float
     pdotdot_total: float
     v_mech_total: float
+    L_FUV: float = float('nan')
 
     def __iter__(self) -> Iterator[float]:
         """Allow unpacking: t, Qi, Li, ... = feedback"""
@@ -83,7 +86,7 @@ class SPSFeedback:
             self.t, self.Qi, self.Li, self.Ln, self.Lbol,
             self.Lmech_W, self.Lmech_SN, self.Lmech_total,
             self.pdot_W, self.pdot_SN, self.pdot_total,
-            self.pdotdot_total, self.v_mech_total
+            self.pdotdot_total, self.v_mech_total, self.L_FUV
         ])
 
     def __getitem__(self, idx: int) -> float:
@@ -92,7 +95,7 @@ class SPSFeedback:
 
     def __len__(self) -> int:
         """Return number of fields."""
-        return 13
+        return 14
 
 
 def get_current_sps_feedback(t, params) -> SPSFeedback:
@@ -134,6 +137,7 @@ def get_current_sps_feedback(t, params) -> SPSFeedback:
         - pdot_total : float, total momentum rate [M_sun·pc/Myr²]
         - pdotdot_total : float, time derivative of pdot_total [Msun*pc/Myr**3]
         - v_mech_total : float, effective total mechanical velocity [pc/Myr]
+        - L_FUV : float, far-UV luminosity [Msun·pc²/Myr³], NaN without the column
 
     Notes
     -----
@@ -185,6 +189,9 @@ def get_current_sps_feedback(t, params) -> SPSFeedback:
     # a finite difference: t +/- h leaves the table within h of the edges, and
     # any h far below the table grid is roundoff-dominated (audit finding #3).
     pdotdot_total = sps_f['fpdotdot_total'](t)[()]
+    # The table's far-UV luminosity; fixtures that build sps_f by hand have no 'fL_FUV' (then: no column)
+    fL_FUV = sps_f.get('fL_FUV')
+    L_FUV = fL_FUV(t)[()] if fL_FUV is not None else float('nan')
 
     # Return SPSFeedback dataclass (supports both attribute access and unpacking)
     return SPSFeedback(
@@ -201,4 +208,5 @@ def get_current_sps_feedback(t, params) -> SPSFeedback:
         pdot_total=pdot_total,
         pdotdot_total=pdotdot_total,
         v_mech_total=v_mech_total,
+        L_FUV=L_FUV,
     )

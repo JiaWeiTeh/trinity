@@ -210,7 +210,7 @@ def test_every_sentinel_default_has_resolver_or_pointer() -> None:
     ``resolver`` (standalone case — ``path2output``,
     ``path_cooling_nonCIE``, ``sps_path``) or declare ``consumed_by``
     pointing at another spec that does (bulk-consumed case — ``sps_refmass``
-    and the 13 ``sps_col_*`` specs delegate to ``sps_path``).
+    and the 14 ``sps_col_*`` specs delegate to ``sps_path``).
 
     Wired in Phase 7: the three standalone resolvers land in the registry
     and ``read_param`` Step 7 drives them via ``resolve_all``.

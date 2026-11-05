@@ -84,6 +84,8 @@ CANONICALS: Dict[str, CanonicalSpec] = {
                                  derivation='Lbol * fi'),
     'Ln':          CanonicalSpec('Msun*pc^2/Myr^3',  mass_scaled=True,  required=False,
                                  derivation='Lbol * (1 - fi)'),
+    'L_FUV':       CanonicalSpec('Msun*pc^2/Myr^3',  mass_scaled=True,  required=False,
+                                 derivation='none: NaN when the table has no far-UV column (the PDR layer uses fFUV_Ln x Ln)'),
 }
 
 # Public list of canonical names (preserves declaration order).
@@ -133,6 +135,7 @@ UNIT_CONVERSIONS: Dict[str, Dict[str, float]] = {
     'Lmech_SN':    {'erg/s': cvt.L_cgs2au, 'L_sun': _L_SUN_ERG_S * cvt.L_cgs2au, 'cgs': cvt.L_cgs2au},
     'Li':          {'erg/s': cvt.L_cgs2au, 'L_sun': _L_SUN_ERG_S * cvt.L_cgs2au, 'cgs': cvt.L_cgs2au},
     'Ln':          {'erg/s': cvt.L_cgs2au, 'L_sun': _L_SUN_ERG_S * cvt.L_cgs2au, 'cgs': cvt.L_cgs2au},
+    'L_FUV':       {'erg/s': cvt.L_cgs2au, 'L_sun': _L_SUN_ERG_S * cvt.L_cgs2au, 'cgs': cvt.L_cgs2au},
     'pdot_W':      {'g*cm/s^2': cvt.pdot_cgs2au, 'cgs': cvt.pdot_cgs2au},
     'pdot_SN':     {'g*cm/s^2': cvt.pdot_cgs2au, 'cgs': cvt.pdot_cgs2au},
     'Mdot_SN': {

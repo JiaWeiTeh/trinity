@@ -657,6 +657,8 @@ def write_termination_debug_report(output_dir: str, reason: str = "Unknown") -> 
             continue
         if isinstance(val, (int, float)):
             if np.isnan(val):
+                if key == "L_FUV":  # NaN by design without sps_col_L_FUV: G0 uses fFUV_Ln x Ln (docs/dev/sps-tables/PLAN.md)
+                    continue
                 nan_keys.append(key)
             elif np.isinf(val):
                 inf_keys.append(key)
