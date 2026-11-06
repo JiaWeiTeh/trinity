@@ -23,6 +23,7 @@ _SPS_LABELS = (
     "pdot_W",
     "pdot_SN",
     "pdot_total",
+    "L_FUV",
 )
 
 _CANONICAL_UNITS = {

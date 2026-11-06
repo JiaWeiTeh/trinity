@@ -67,7 +67,7 @@ Category = Literal[
 #   * its own ``resolver`` (the standalone case — ``path2output``,
 #     ``path_cooling_nonCIE``, ``sps_path``), or
 #   * another spec's resolver, declared via ``consumed_by`` (the
-#     bulk-consumed case — ``sps_refmass`` plus the 13 ``sps_col_*`` specs
+#     bulk-consumed case — ``sps_refmass`` plus the 14 ``sps_col_*`` specs
 #     are owned by ``sps_path``'s bundle resolver, which reads the columns
 #     en bloc via ``sps_columns.build_user_column_map`` and fills
 #     ``sps_refmass``; when ``sps_path`` is the default the columns stay
@@ -121,7 +121,7 @@ class ParamSpec:
     # (path2output, path_cooling_nonCIE, sps_path).  See SENTINEL_PREFIX.
     resolver: Optional[Callable[[Any, dict], Any]] = None
     # ``consumed_by`` names another spec whose resolver bulk-consumes this
-    # one's raw value.  Used by ``sps_refmass`` and the 13 ``sps_col_*``
+    # one's raw value.  Used by ``sps_refmass`` and the 14 ``sps_col_*``
     # specs, all pointing at ``sps_path`` — its bundle resolver assembles
     # the columns via ``sps_columns.build_user_column_map`` and fills
     # ``sps_refmass``.  Target existence is checked by

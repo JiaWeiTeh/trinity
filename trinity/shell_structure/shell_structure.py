@@ -715,7 +715,7 @@ def shell_structure_pure(params) -> ShellProperties:
             logger.debug('φ depleted with mass remaining — integrating neutral region')
 
             # The atomic zone's temperature: TShell_neu, or with TShell_neu 'auto' (step (b), two zones only) the PDR's at the
-            # front, from the far-UV field there (fFUV_Ln x Ln behind the ionised layer's dust) and the pressure-continuous
+            # front, from the far-UV field there (the table's L_FUV, or fFUV_Ln x Ln without one, behind the ionised layer's dust) and the pressure-continuous
             # density (pdr.py; docs/dev/phii-identity/weak-wind/neutral-shell/PDR_DEFAULT_PLAN.md).
             # params.get: the two-zone keys are absent from pre-2026-10-30 fixtures, which then get the one-zone layer.
             _tmol = params.get('TShell_mol', None)
@@ -723,7 +723,12 @@ def shell_structure_pure(params) -> ShellProperties:
             pdr_auto = isinstance(params['TShell_neu'].value, str)       # 'auto': the validator admits no other string
             if pdr_auto:
                 _jump = params['mu_atom'].value / params['mu_ion_shell'].value * params['TShell_ion'].value
-                _l_fuv = float(params['fFUV_Ln'].value) * params['Ln'].value * cvt.L_au2cgs
+                # the table's far-UV column when it has one (L_FUV; NaN otherwise, absent from hand-built fixtures), else
+                # fFUV_Ln x Ln -- the same product as before, so runs without the column are unchanged (docs/dev/sps-tables/PLAN.md)
+                _lf = params.get('L_FUV', None)
+                _l_fuv_au = (float(_lf.value) if hasattr(_lf, 'value') and np.isfinite(float(_lf.value))
+                             else float(params['fFUV_Ln'].value) * params['Ln'].value)
+                _l_fuv = _l_fuv_au * cvt.L_au2cgs
                 shell_G0_IF = pdr.g0_habing(_l_fuv, rShell_arr_ion[-1] * cvt.pc2cm, tau0_ion)
                 T_atom = max(pdr.t_pdr(shell_G0_IF, nShell0 * cvt.ndens_au2cgs, _jump), T_mol)
                 shell_T_atom = T_atom

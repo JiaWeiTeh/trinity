@@ -184,6 +184,7 @@ PARAM_DOCS = {
     'Lbol': 'Bolometric luminosity [Msun*pc^2/Myr^3]',
     'Li': 'Ionizing luminosity [Msun*pc^2/Myr^3]',
     'Ln': 'Non-ionizing luminosity [Msun*pc^2/Myr^3]',
+    'L_FUV': 'Far-UV (6-13.6 eV) luminosity from the stellar table [Msun*pc^2/Myr^3]; NaN without sps_col_L_FUV (fFUV_Ln x Ln used)',
     'Qi': 'Ionizing photon rate [1/Myr] (× s2Myr → photons/s)',
 
     # Momentum injection

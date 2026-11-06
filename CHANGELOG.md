@@ -35,6 +35,14 @@ First public release.
   silently inheriting a default, and `sps_refmass` must be declared explicitly
   when `sps_path` is user-set (fixes silently-wrong `f_mass = mCluster/sps_refmass`
   scaling for non-bundled SPS tables).
+- Far-UV column for stellar tables (opt-in): `sps_col_L_FUV` maps a table's
+  6-13.6 eV luminosity, which then sets the PDR field at the ionisation front
+  instead of `fFUV_Ln x Ln`. Bundled `lib/default/sps/starburst99/1e6cluster_default_fuv.csv`:
+  the default table's seven columns unchanged plus `L_FUV`, `L_LW`, `Q_FUV`,
+  `Q_LW` from pySTARBURST99 (Hawcroft et al. 2025, arXiv:2505.24841), and its
+  writer `tools/sps_tables/make_sb99_table.py`; example `param/simple_cluster_fuv.param`.
+  Every snapshot row gains the key `L_FUV` (NaN without the column), so run
+  hashes change even when the column is not used.
 
 ### Changed
 

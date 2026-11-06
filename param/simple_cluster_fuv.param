@@ -1,0 +1,16 @@
+mCloud    1e5
+sfe    0.3
+# The bundled table with the far-UV columns (docs/dev/sps-tables/PLAN.md; opt-in, D-S3): the PDR layer's G0 uses L_FUV
+# instead of fFUV_Ln x Ln. The seven dynamics columns are the default table's, so only the neutral layer changes.
+# Run from the repository root: a relative sps_path is read from the working directory.
+sps_path        lib/default/sps/starburst99/1e6cluster_default_fuv.csv
+sps_refmass     1e6
+sps_col_t            0 yr linear
+sps_col_Qi           1 1/s log
+sps_col_fi           2 dimensionless log
+sps_col_Lbol         3 erg/s log
+sps_col_Lmech_total  4 erg/s log
+sps_col_pdot_W       5 g*cm/s^2 log
+sps_col_Lmech_W      6 erg/s log
+sps_col_L_FUV        L_FUV erg/s log
+model_name    simple_cluster_fuv
