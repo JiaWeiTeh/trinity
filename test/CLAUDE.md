@@ -24,6 +24,10 @@
   table, mechanism and reproduce commands: `docs/dev/phii-identity/data/g34_golden_rebaseline.csv`.
   These three move together — a change to the 1a exit state moves all of them, which is a signal
   about the change, not three separate regressions.
+- The full-run goldens of `test_run_smoke.py`, `test_phase_boundary.py` and
+  `test_phase_runner_fixtures.py` live in `test/goldens/*.json`. A PR that changes a result
+  re-baselines them **in that PR**: `pytest --regen-goldens <test file>` (on Helix), review the JSON
+  diff, write the reason in the test's history comment and the commit message.
 - A few tempdir-dependent tests flake **only under the Claude Code sandbox** (where `/tmp` is not
   writable) — not a real regression. Re-run with `TMPDIR` pointing at a writable dir before
   treating them as failures; never "fix" the test for the sandbox.

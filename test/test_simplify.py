@@ -774,6 +774,78 @@ class TestSolverArtefacts:
         assert (xo_off < 0.0501).sum() > (xo_on < 0.0501).sum()
 
 
+class TestZeroWidthSteps:
+    """Both ends of a zero-width step survive (docs/dev/phii-identity/chapter/chapter4.tex): the shell march
+    stores every zone boundary as two samples at one radius, and the budget used to cut the dense side, ramping
+    a flat zone and halving its mass."""
+
+    @staticmethod
+    def _gmc_shell():
+        # A shell-first GMC shell at 3 Myr (main 32523375's ladder): ionised gas from R2 to R_IF, then the PDR
+        # layer's atomic zone, the H2 step (x 11/6) and warm H2 to the cold switch, the cold step (x 101 K / 20 K)
+        # and flat cold gas to the edge.
+        # 5000 samples per zone, as the march stores them; n in cm^-3, r in pc.
+        r2, r_if = 17.583, 30.224
+        def zone(x0, x1, n0, n1):
+            x = np.linspace(x0, x1, 5000)
+            return x, n0 + (n1 - n0) * (x - x0) / (x1 - x0)
+        parts = [zone(r2, r_if, 2.0, 16.0), zone(r_if, r_if + 0.0097, 3308.0, 3334.5),
+                 zone(r_if + 0.0097, r_if + 0.1069, 3334.5 * 11 / 6, 6440.8),
+                 zone(r_if + 0.1069, r_if + 0.1586, 6440.8 * 101 / 20, 32612.0)]
+        r = np.concatenate([p[0] for p in parts])
+        n = np.concatenate([p[1] for p in parts])
+        steps = [(p[0][0], q[1][-1], p[1][0]) for q, p in zip(parts[:-1], parts[1:])]     # (radius, n before, n after)
+        return r, n, r_if, steps
+
+    @staticmethod
+    def _neutral_mass(r, n, r_if):
+        m = r >= r_if
+        x, v = r[m], n[m]
+        return float(np.sum(0.5 * (x[1:] ** 2 * v[1:] + x[:-1] ** 2 * v[:-1]) * np.diff(x)))
+
+    def test_both_sides_of_every_shell_step_survive(self):
+        r, n, r_if, steps = self._gmc_shell()
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            xo, yo = _simplify(r, np.log10(n), nmin=100)
+        assert xo.size <= 100
+        for x_b, n_lo, n_hi in steps:
+            at = np.isclose(xo, x_b, rtol=0, atol=1e-12)
+            got = np.sort(10 ** yo[at])
+            assert at.sum() == 2 and np.allclose(got, sorted((n_lo, n_hi)), rtol=1e-9), (x_b, got)
+
+    def test_shell_neutral_mass_is_kept(self):
+        # Before the fix the stored profile carried 0.708 of this mass (the cold step's dense side was cut).
+        r, n, r_if, _ = self._gmc_shell()
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            xo, yo = _simplify(r, np.log10(n), nmin=100)
+        full, kept = self._neutral_mass(r, n, r_if), self._neutral_mass(xo, 10 ** yo, r_if)
+        assert abs(kept / full - 1) < 0.01, kept / full
+
+    def test_vertical_tail_adds_only_its_two_ends(self):
+        # 50 samples at one x (a vertical tail): its first and last are mandatory, the budget is not blown.
+        x = np.concatenate([np.linspace(0.0, 1.0, 500), np.full(50, 1.0)])
+        y = np.concatenate([np.linspace(0.0, 1.0, 500), np.linspace(1.0, 0.0, 50)])
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            xo, yo = _simplify(x, y, nmin=100)
+        assert xo.size <= 100
+        tail = np.isclose(xo, 1.0, rtol=0, atol=1e-12)
+        assert 1.0 in yo[tail] and 0.0 in yo[tail]
+
+    def test_noise_level_repeats_are_not_steps(self):
+        # Every x twice, the second y higher by 1e-12, far below the de-duplication tolerance: noise, folded as
+        # before the step rule, not 1000 steps (which would make all 2000 points mandatory).
+        x = np.repeat(np.linspace(1.0, 2.0, 1000), 2)
+        y = np.repeat(np.linspace(0.0, 1.0, 1000), 2)
+        y[1::2] += 1e-12
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            xo, _ = _simplify(x, y, nmin=100)
+        assert xo.size == 100
+
+
 # ---------------------------------------------------------------------------
 # Timing / efficiency — ensures the algorithm scales reasonably and the
 # fixed-budget version is at least as fast as the input-size dominated
@@ -820,3 +892,31 @@ class TestTiming:
         ratio = times[1] / max(times[0], 1e-6)
         # Strict O(n^2) would give ratio ~16 for 4x size; require well below.
         assert ratio < 8.0, f"runtime ratio {ratio:.2f} suggests super-linear scaling"
+
+
+class TestBoundedVariation:
+    """max_dy (output-profiles/PLAN.md E4): no stored interval spans more than 2*max_dy in y; None leaves the output as it was."""
+
+    def test_every_stored_interval_is_bounded(self):
+        x = np.logspace(-2, 0, 60000)
+        y = 4.0 * (x - x[0]) / (x[-1] - x[0]) + 0.3 * np.sin(40 * x)          # 4 dex of rise with wiggles
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            xo, yo = _simplify(x, y, nmin=100, max_dy=0.1)
+        assert np.max(np.abs(np.diff(yo))) <= 0.2 + 1e-12
+        assert xo.size <= 150
+
+    def test_off_or_unreached_cap_adds_no_point(self):
+        """max_dy None or 0 is off, and a cap above the total variation (here about 2.2) runs the branch but crosses no
+        multiple: all three equal the uncapped output, while a small cap does change it. (That None leaves main's output
+        unchanged is the ladder's G-OP3b: every uncapped array byte-identical.)"""
+        x = np.linspace(0.0, 1.0, 5000)
+        y = np.exp(-((x - 0.4) / 0.05) ** 2) + 0.2 * x
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            a = _simplify(x, y, nmin=100)
+            for kw in ({"max_dy": None}, {"max_dy": 0.0}, {"max_dy": 10.0}):
+                b = _simplify(x, y, nmin=100, **kw)
+                assert np.array_equal(a[0], b[0]) and np.array_equal(a[1], b[1]), kw
+            c = _simplify(x, y, nmin=100, max_dy=0.01)
+        assert c[0].size > a[0].size

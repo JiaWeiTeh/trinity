@@ -646,6 +646,26 @@ class TrinityOutput:
             nEdge=m.get("nEdge"),
         )
 
+    def profile_full(self, index: int) -> Optional[Dict[str, np.ndarray]]:
+        """The full-resolution profile arrays of snapshot ``index`` (its line in dictionary.jsonl), written by the run's
+        ``profile_dump_every`` to <run_dir>/profiles_full/row<index>.npz, as a dict of arrays keyed by the raw names
+        (bubble_r_arr, bubble_T_arr, ..., shell_r_arr, shell_n_arr, plus t_now and R2); None when the run wrote none for
+        that row (docs/dev/phii-identity/weak-wind/neutral-shell/output-profiles/PLAN.md E2/E8). A negative index counts
+        from the end. The dump's t_now must equal the snapshot's, else None: a file left in profiles_full/ by an earlier run
+        into the same folder, or (on a filter()ed output, whose indices are no longer the file's lines) another row's."""
+        n = len(self._snapshots)
+        if not -n <= int(index) < n:
+            return None
+        i = int(index) % n
+        p = self.filepath.parent / "profiles_full" / f"row{i:06d}.npz"
+        if not p.is_file():
+            return None
+        with np.load(p) as z:
+            out = {k: z[k] for k in z.files}
+        if "t_now" in out and float(out["t_now"]) != float(self._snapshots[i].get("t_now", np.nan)):
+            return None
+        return out
+
     @property
     def model_name(self) -> str:
         """Model name from first snapshot."""

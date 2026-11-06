@@ -20,7 +20,9 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
-_FINAL_GOLDENS = {
+# The stored final-row values live in test/goldens/run_smoke_final.json;
+# `pytest --regen-goldens` rewrites them. The history below says why each set was taken.
+_FINAL_KEYS = (
     # Re-baselined 2026-08-14 for C3c (`c43a50e`): the capped-Strömgren `P_HII` was
     # `Pb` un-ramped, and `P_drive = max(press_bubble, P_HII)` selected it over the
     # dt_switchon-ramped pressure, so the ramp never reached the momentum equation.
@@ -72,13 +74,13 @@ _FINAL_GOLDENS = {
     # atomic zone (here at the K99 table's 5000 K top, G0 ~ 1.6e6) and a 20 K molecular zone. R2 -1.8e-6, v2 -3.6e-6,
     # Eb +1.1e-7 (relative); with TShell_neu 100 and TShell_mol 0 the previous values are reproduced exactly
     # (R2 0.25934386495844797, v2 49.49636304648124, Eb 659620.8513924862).
-    "R2": 0.2593433916087158,
-    "v2": 49.496185853010495,
-    "Eb": 659620.924962753,
-}
+    "R2",
+    "v2",
+    "Eb",
+)
 
 
-def test_quickstart_completes_cleanly(tmp_path):
+def test_quickstart_completes_cleanly(tmp_path, golden):
     """``python run.py <fast param>`` exits 0 and writes the expected outputs.
 
     Uses ``stop_t = 1e-4`` Myr so the run stays short while writing enough
@@ -129,7 +131,9 @@ def test_quickstart_completes_cleanly(tmp_path):
     )
 
     final = rows[-1]
-    for key, expected in _FINAL_GOLDENS.items():
+    for key in _FINAL_KEYS:  # before golden(), so --regen-goldens never stores a bad value
         value = final.get(key)
         assert isinstance(value, (int, float)) and math.isfinite(value) and value > 0
-        assert value == pytest.approx(expected, rel=1e-6)
+    expected = golden("run_smoke_final", {key: final[key] for key in _FINAL_KEYS})
+    for key, stored in expected.items():
+        assert final[key] == pytest.approx(stored, rel=1e-6)

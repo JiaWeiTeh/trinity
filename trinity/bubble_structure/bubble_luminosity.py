@@ -438,6 +438,13 @@ def _get_bubble_ODE(r_arr, initial_ODEs, params, Pb: float):
     if fA != 1.0 and T < _T_INTERFACE_BAND:
         dudt = fA * dudt
 
+    # cooling_scale (docs/dev/cooling-enhance-suppress/PLAN.md): scalar f_cool in [0, 1] on the
+    # net radiative source at EVERY temperature -- no band. f_cool = 0 leaves the conduction-only
+    # Weaver+77 structure. The != 1.0 guard keeps the default path byte-identical.
+    f_cool = params['cooling_scale'].value
+    if f_cool != 1.0:
+        dudt = f_cool * dudt
+
     v_term = params['cool_alpha'].value * r_arr / params['t_now'].value
 
     dTdrr = (Pb / (params['cooling_boost_kappa'].value * params['C_thermal'].value * T**(5/2)) * (
@@ -744,7 +751,7 @@ def _bubble_luminosity(params, R1, Pb, r2Prime, initial_conditions,
         fv_interp = interp1d(r_interp, v_array[:index_CIE_switch + _xtra], kind='linear')
 
         # calculate quantities
-        r_CIEswitch = scipy.optimize.brentq(fT_interp, np.min(r_interp), np.max(r_interp), xtol=1e-8)
+        r_CIEswitch = _cie_switch_radius(fT_interp, r_array, index_CIE_switch, r_interp)
         n_CIEswitch = Pb / ((params['mu_convert'].value / params['mu_ion'].value) * params['k_B'].value * _CIEswitch)
         dTdr_CIEswitch = fdTdr_interp(r_CIEswitch)
         v_CIEswitch = fv_interp(r_CIEswitch)
@@ -870,6 +877,14 @@ def _bubble_luminosity(params, R1, Pb, r2Prime, initial_conditions,
         L_conduction = fA * L_conduction
         L_intermediate = fA * L_intermediate
 
+    # cooling_scale: the same factor on every resolved radiative component (L1, L2, L3), so the
+    # integrals stay consistent with the in-ODE source above. L_leak is bulk escape, not scaled.
+    f_cool = params['cooling_scale'].value
+    if f_cool != 1.0:
+        L_bubble = f_cool * L_bubble
+        L_conduction = f_cool * L_conduction
+        L_intermediate = f_cool * L_intermediate
+
     # Total luminosity
     L_total = L_bubble + L_conduction + L_intermediate
 
@@ -933,6 +948,26 @@ def _bubble_luminosity(params, R1, Pb, r2Prime, initial_conditions,
         Pb=Pb,
         bubble_r_Tb=bubble_r_Tb,
     )
+
+
+def _cie_switch_radius(fT_interp, r_array, i, r_interp):
+    """Radius where T crosses 10**5.5 K, strictly between grid points ``i`` and ``i - 1``.
+
+    ``r_array`` descends; ``i`` is the first point with T >= the switch, so the crossing lies between ``r_array[i]``
+    and ``r_array[i - 1]``, where the inserted point goes. Searching the whole interpolation slice with an absolute
+    xtol of 1e-8 pc, as before, let the root fall outside these two neighbours, because the grid near the switch is
+    spaced far below 1e-8 pc (median 4e-11 pc in the 6831 rows of the 26 ladder and 3 edge runs); the grid then
+    stepped backwards in 30 % of them (docs/dev/phii-identity/weak-wind/neutral-shell/output-profiles/CIE_BRACKET.md). Brent's method stays
+    inside its bracket. xtol is kept below the bracket width, else brentq stops at once on a grid point and the
+    radius is duplicated, and the result is kept off both points (possible because _clean_radius_grid spaces the grid
+    by at least MIN_SPACING, thousands of ulps). Without a sign change on the bracket (a tolerated spike in T, or
+    i == 0), it falls back to the former search over the whole slice, which can again leave the grid stepping back.
+    """
+    lo, hi = r_array[i], r_array[i - 1]
+    if i > 0 and fT_interp(lo) * fT_interp(hi) <= 0:
+        r = scipy.optimize.brentq(fT_interp, lo, hi, xtol=min(1e-8, 1e-3 * (hi - lo)))
+        return min(max(r, np.nextafter(lo, hi)), np.nextafter(hi, lo))
+    return scipy.optimize.brentq(fT_interp, np.min(r_interp), np.max(r_interp), xtol=1e-8)
 
 
 def _get_mass_and_grav(n, r, params):

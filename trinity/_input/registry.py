@@ -148,6 +148,43 @@ def _validate_cooling_boost_fA(value, params) -> None:
                 f"cooling_boost_fA=1); the result is NOT the calibrated f_A.")
 
 
+def _validate_cooling_scale(value, params) -> None:
+    """0 <= cooling_scale <= 1; warn when combined with an active boost knob.
+
+    cooling_scale (f_cool; docs/dev/cooling-enhance-suppress/PLAN.md) multiplies
+    the resolved net radiative cooling everywhere -- the structure-ODE source and
+    the L1+L2+L3 loss integrals. 1.0 = off (byte-identical); 0 = the conduction-
+    only Weaver structure. Values > 1 are refused: enhancement is the
+    cooling_boost_* family's job and its single-knob record stays clean.
+    Validators run before resolvers, so cooling_boost_kappa may still be 'auto'.
+    """
+    from trinity._input.errors import ParameterFileError
+    if isinstance(value, bool):
+        raise ParameterFileError(
+            f"cooling_scale={value!r} must be a number in [0, 1], not a boolean.")
+    try:
+        f = float(value)
+    except (TypeError, ValueError):
+        raise ParameterFileError(
+            f"cooling_scale={value!r} must be a number in [0, 1].")
+    if not (0.0 <= f <= 1.0):
+        raise ParameterFileError(
+            f"cooling_scale={value} must be in [0, 1] (1.0 = off, byte-identical; "
+            f"0 = no radiative cooling; use the cooling_boost_* family for > 1).")
+    if f != 1.0:
+        mode = params['cooling_boost_mode'].value if 'cooling_boost_mode' in params else None
+        kappa = params['cooling_boost_kappa'].value if 'cooling_boost_kappa' in params else 1.0
+        fA = params['cooling_boost_fA'].value if 'cooling_boost_fA' in params else 1.0
+        kappa_active = ((isinstance(kappa, str) and kappa.strip().lower() == 'auto')
+                        or (not isinstance(kappa, str) and kappa != 1.0))
+        if mode not in (None, 'none', '') or kappa_active or fA != 1.0:
+            logger.warning(
+                f"cooling_scale={f} combined with cooling_boost_mode={mode!r} / "
+                f"cooling_boost_kappa={kappa!r} / cooling_boost_fA={fA!r}: cooling_scale "
+                f"is intended as a SINGLE knob; a suppression on top of a boost is not "
+                f"calibrated.")
+
+
 def _validate_phii_scheme(value, params) -> None:
     """Selects the P_HII closure: 'c3c' (default, shipped) is the confinement regime
     switch on the cavity Stroemgren density; 'front' (option C, D16) is the pressure at
@@ -470,6 +507,8 @@ SPECS: tuple[ParamSpec, ...] = (
     ParamSpec(name='path2output', default='def_dir', info='Defines the output directory where all generated files will be stored.', category='input_admin', unit=None, exclude_from_snapshot=True, metadata_exclude=True, resolver=_resolve_path2output),
     ParamSpec(name='output_format', default='JSON', info='Output-format selector; currently inert — snapshots are always written as JSONL.', category='input_admin', unit=None, exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='simplify_npoints', default='100', info='Target number of points retained for simplified profile arrays in saved snapshots (bubble_T_arr, bubble_n_arr, bubble_dTdr_arr, bubble_v_arr, shell_grav_force_m, shell_n_arr). Default 100. Larger values give higher-fidelity snapshots at the cost of larger output files. Clamped to >= 20 (matches the coverage-skeleton chunk count). The first two simplify calls per implicit-phase snapshot log their reconstruction R² at INFO level so you can verify the chosen budget is faithful.', category='input_admin', unit=None, exclude_from_snapshot=True),
+    ParamSpec(name='profile_every', default='1', info='Write the simplified profile arrays (bubble_T/n/dTdr/v, shell_n, shell_grav) into every N-th snapshot row: 1 = every row (the historical output), 0 = never (scalars only; rows are 86 % smaller; for surveys that read scalars). A row without arrays lacks the log_*/_r_arr keys and the Cloudy exporter refuses it by name. docs/dev/phii-identity/weak-wind/neutral-shell/output-profiles/PLAN.md E5.', category='input_admin', unit=None, exclude_from_snapshot=True, run_const=True),
+    ParamSpec(name='profile_dump_every', default='0', info='Also write every N-th row\'s profile arrays at full resolution, before any simplification, to <path2output>/profiles_full/row<id>.npz (numpy savez_compressed, float64, about 1-2 MB per row): 0 = never. The audit\'s ground truth and the source for consumers that need the full shape (TrinityOutput.profile_full). Same PLAN.md, E2.', category='input_admin', unit=None, exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='log_level', default='INFO', info='Logging level for terminal and file output. Controls how much detail is logged. DEBUG emits per-RHS-evaluation records (formatted and written to the log file on every solver stage), a measurable hot-path cost over a full run; INFO is the default, DEBUG is opt-in for diagnostics.', category='input_admin', unit=None, exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='log_console', default='False', info='Enable console (terminal) output for logging. If True, log messages are printed to terminal.', category='input_admin', unit=None, exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='log_file', default='True', info='Enable file output for logging. If True, log messages are written to a .log file in the output directory.', category='input_admin', unit=None, exclude_from_snapshot=True, run_const=True),
@@ -537,6 +576,7 @@ SPECS: tuple[ParamSpec, ...] = (
     ParamSpec(name='cooling_boost_theta', default='0.0', info='Target loss fraction theta = Lloss/Lmech when cooling_boost_mode=theta_target (0..1, with a ceiling theta_max<1 at GMC-core density). Default 0.0 = off.', category='input_solver', unit=None, exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='cooling_boost_kappa', default='1.0', info='Rung-A probe (docs/dev/transition/pdv-trigger/KAPPA_EFF_SCOPING.md): multiplier f_kappa on the Spitzer conduction coefficient C_thermal in the bubble-structure solve (f_kappa >= 1). Inflates conduction-zone cooling THROUGH the structure (theta emerges as an output), unlike the scalar cooling_boost on Lcool. Default 1.0 = byte-identical. NOTE it RAISES the evaporative mass flux, which MATCHES El-Badry+19 Eq 47 (mdot ~ C^(2/7), C=6e-7 cgs = C_thermal): measured 1.2175 vs analytic 2^(2/7)=1.2190 at f_kappa=2. [CORRECTED 2026-07-29, FINDINGS 23: an earlier note here called that the "wrong El-Badry sign" -- it is not; Eq 47 rises with conduction. the OTHER factor of Eq 47, (1-theta)^(37/35)/theta^(2/7), falls with theta and is the channel cooling_boost_fA moves.] It remains a structural probe rather than the final model for independent reasons: no whole-band f_kappa exists (FINDINGS 12) and a scalar on Spitzer C cannot represent cool-layer mixing, where kappa_mix/kappa_Spitzer ~ 1e3-1e7 (FINDINGS 9b). Set to \'auto\' to resolve at load time to the measured f_kappa that fires the cooling_balance trigger for this (mCloud, sfe, nCore), from the 819-run sweep grid (trinity/_input/fkappa_auto.py; docs/dev/transition/pdv-trigger/data/fkappa_nH_sweep.csv). The \'auto\' grid was measured at cooling_boost_fA=1; combining with f_A!=1 silently invalidates the lookup.', category='input_solver', unit=None, exclude_from_snapshot=True, run_const=True, resolver=resolve_fkappa_auto),
     ParamSpec(name='cooling_boost_fA', default='1.0', info='Interface source-term boost f_A (docs/dev/transition/pdv-trigger/SOURCE_TERM_DESIGN.md): multiplies the net radiative dudt inside the bubble-structure ODE and the resolved L2+L3 loss integrals, in the interface band T < 10^5.5 K -- the bubble-side conduction front (zones L2+L3) draped on the contact discontinuity at R2, NOT the interface surface itself. The dudt gate is strictly T < 10^5.5 K; the L2+L3 component scaling is unconditional (a degenerate no-conduction-zone slice can scale a sliver above-band -- FINDINGS.md 15j). The 1-D projection of fractal-interface mixing (Lancaster) on the SOURCE side: cooling rises THROUGH the structure and evaporation dMdt FALLS -- the theta-channel of El-Badry Eq 47, (1-theta)^(37/35)/theta^(2/7). [CORRECTED 2026-07-29, FINDINGS 23: cooling_boost_kappa raising dMdt is NOT a contrasting "wrong sign" -- it moves the other factor of Eq 47, (C/6e-7 cgs)^(2/7), which rises with conduction by construction. Both knobs move Eq 47 correctly, in different variables.] L_leak is deliberately NOT scaled (leakage is bulk escape, not interface radiation). Requires f_A > 0; values < 1 are untested suppression territory. Default 1.0 = byte-identical. Single-knob use intended: combining with cooling_boost_mode != none or cooling_boost_kappa != 1 warns at load (double-boost / cross-knob).', category='input_solver', unit=None, exclude_from_snapshot=True, run_const=True, validator=_validate_cooling_boost_fA),
+    ParamSpec(name='cooling_scale', default='1.0', info="Scalar f_cool in [0, 1] on the resolved net radiative cooling EVERYWHERE in the bubble: the net source dudt inside the bubble-structure ODE at every temperature, and the loss integrals L1 (CIE interior) + L2 (conduction zone) + L3 (intermediate). The suppression counterpart of the cooling_boost_* family (docs/dev/cooling-enhance-suppress/PLAN.md). 1.0 (default) = shipped physics, BYTE-IDENTICAL; 0 = no radiative loss from the bubble, the conduction-only Weaver+77 structure (the energy-retaining limit); values > 1 are refused (enhancement is the boost family's job). In the non-CIE band (T < 10^5.5 K) the net term includes the cube's photoionisation heating, so the factor scales that heating too. L_leak (bulk escape), the conduction coefficient and the evaporative dMdt seed are not touched. Physically it is a bracket (the adiabatic limit), a stand-in for sub-solar metallicity, or a probe of cooling below CIE in over-ionised gas; the 3-D codes' delayed or suppressed cooling cures a numerical over-cooling that a resolved 1-D bubble does not have. Single-knob use intended: combining with cooling_boost_mode != none, cooling_boost_kappa != 1 or cooling_boost_fA != 1 warns at load.", category='input_solver', unit=None, exclude_from_snapshot=True, run_const=True, validator=_validate_cooling_scale),
     ParamSpec(name='phase1a_segFrac', default='0.1', info='Phase-1a integration segments as a fraction of the bubble age: dt_segment = phase1a_segFrac*(t_now-tSF). The driving terms (bubble structure, shell, P_HII) are frozen per segment, so this holds their staleness at a constant fraction of the expansion time at every object scale. Set to 0 to fall back to the fixed 30-yr SEGMENT_DURATION, which is a small step for a GMC but spans the entire free-streaming->Weaver relaxation of a compact HII region (docs/dev/phase1a-init/FINDINGS.md). Must be in [0, 1]: negative values would hit the same <=0 fallback as 0 and silently run stock segments, and above 1 a single frozen segment spans more than the bubble\'s whole age. Converged at the 0.03-0.3 measured range (0.1 -> 0.03 moves R2 at the compact-probe observed age by 0.11%).', category='input_solver', unit=None, exclude_from_snapshot=True, run_const=True, validator=_validate_phase1a_segFrac),
     ParamSpec(name='cool_alpha', default='0.6', info='Cooling related values. alpha = v2*t_now/R2', category='input_solver', unit=None),
     ParamSpec(name='cool_beta', default='0.8', info='Cooling related values. beta = - dPb/dt.', category='input_solver', unit=None),

@@ -168,15 +168,21 @@ def test_swept_runner_invariants_on_simple_cluster(tmp_path):
 # --- goldens from archived momentum-entry states ---------------------------------------------------------------
 REPLAYS = {
     # cfg: (archive, dt [Myr], final values)
+    # Both re-baselined 2026-11-04 for #754 (8ee1307f, the PCHIP stellar table by default): bisected on Helix, the replay
+    # matched the previous values at d6fb8af2 and moved at acd2cefb, identically on every later main commit to c126ba10;
+    # unseen because the replay skips wherever docs/dev is absent. ROS: rs_dyn -8.1e-5, R2 -2.2e-4, v2 +2.3e-4,
+    # shell_mass -1.9e-4 (relative). B3MW1: rs_dyn -1.9e-8, R2 +6.1e-3, v2 +9.1e-5, shell_mass -1.1e-8. Previous ROS:
+    # rs_dyn 7.803146704777075, R2 2.8182449184169838, v2 0.4751732523377449, shell_mass 48782.04930761799; previous
+    # B3MW1: rs_dyn 55.06341541842723, R2 28.93108066838488, v2 24.07067971163264, shell_mass 124191.75344031441.
     "ROS": ("data/hpc/c_20261020_160344Z/c3c/ROS", 0.05,
-            dict(t_now=0.2541449275435451, rs_dyn=7.803146704777075, R2=2.8182449184169838, v2=0.4751732523377449,
-                 shell_mass=48782.04930761799, rs_dot=0.4751732523377449)),
+            dict(t_now=0.2541449275435451, rs_dyn=7.802517861835634, R2=2.817611842883991, v2=0.47528352476747293,
+                 shell_mass=48772.58992184762, rs_dot=0.47528352476747293)),
     # re-baselined 2026-10-26 for Step 7a (A1: no isothermal jump past rCloud); the photon-leaking phase past the cloud
     # now moves at u. Before: rs_dyn 56.5944666794103, R2 29.77295416523202, v2 23.640990774125516,
     # shell_mass 126267.9094900973, rs_dot 27.574867019049176 (rs_dyn -2.7 %, the jump's ~+3 % of row 65d removed).
     "B3MW1": ("data/hpc/c_20261020_160350Z/c3c/B3MW1", 2.5949,
-              dict(t_now=3.000005544939368, rs_dyn=55.06341541842723, R2=28.93108066838488, v2=24.07067971163264,
-                   shell_mass=124191.75344031441, rs_dot=24.07067971163264)),
+              dict(t_now=3.000005544939368, rs_dyn=55.063414350359416, R2=29.106282142564062, v2=24.07287974852348,
+                   shell_mass=124191.7520315143, rs_dot=24.07287974852348)),
 }
 
 
@@ -206,7 +212,9 @@ def test_momentum_replay_golden(cfg, tmp_path):
         outer = 4 * math.pi * r["rShell"] ** 2 * r["P_outer"]
         L8 = (4 * math.pi * r["R2"] ** 2 * r["Pb"] + r["K_s"] + r["F_rad_sh"] - outer) / outer
         assert abs(L8) < 1e-6, (r["t_now"], L8)
-        assert abs(r["rs_dyn"] / r["rShell"] - 1) < 1e-9
+        # 1e-8 since 2026-11-04 (was 1e-9): under the PCHIP table B3MW1 reaches 1.37e-9 (4.2e-11 before), rounding
+        # in the shell solve's root, not a broken identity
+        assert abs(r["rs_dyn"] / r["rShell"] - 1) < 1e-8
         assert r["rs_dot"] >= r["v2"] or r["v2"] <= 0
     for key, value in golden.items():
         assert mom[-1][key] == pytest.approx(value, rel=1e-6), key
