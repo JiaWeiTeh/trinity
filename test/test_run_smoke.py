@@ -74,6 +74,12 @@ _FINAL_KEYS = (
     # atomic zone (here at the K99 table's 5000 K top, G0 ~ 1.6e6) and a 20 K molecular zone. R2 -1.8e-6, v2 -3.6e-6,
     # Eb +1.1e-7 (relative); with TShell_neu 100 and TShell_mol 0 the previous values are reproduced exactly
     # (R2 0.25934386495844797, v2 49.49636304648124, Eb 659620.8513924862).
+    # Re-baselined 2026-11-06 for Kaufman et al. 1999's numeric surface-temperature grid in place of the digitised Fig. 1
+    # (docs/dev/phii-identity/weak-wind/neutral-shell/pdr-table/PLAN.md): against what d8ababfa computes, R2 -7.35e-07,
+    # v2 -1.63e-06, Eb +8.2e-08 (relative; at c126ba10 the same change gave -7.35e-07, -1.63e-06, +1.03e-07). The values
+    # stored before were c126ba10's (R2 0.2593433916087158, v2 49.496185853010495, Eb 659620.924962753), which d8ababfa
+    # itself misses by R2 -8.56e-06, v2 -7.84e-06, Eb -2.68e-05: #767's CIE-bracket fix, the one default-path code change
+    # between the two, was never re-pinned here. This re-pin takes that up too.
     "R2",
     "v2",
     "Eb",

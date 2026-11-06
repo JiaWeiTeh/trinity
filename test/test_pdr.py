@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 """Step (b) of the two-zone neutral layer: trinity/shell_structure/pdr.py against its sources.
 
-docs/dev/phii-identity/weak-wind/neutral-shell/PDR_DEFAULT_PLAN.md, gate G-B1. The table is Kaufman et al. 1999 Fig. 1 read
-from its vector EPS (harness/k99_digitize.py there); the H/H2 column is Bialy & Sternberg 2016 eqs. 22 and 39.
+docs/dev/phii-identity/weak-wind/neutral-shell/PDR_DEFAULT_PLAN.md, gate G-B1. The table is Kaufman et al. 1999's own numeric
+grid (the PDR Toolbox's wk2006 tsweb.fits; pdr-table/PLAN.md there); the H/H2 column is Bialy & Sternberg 2016 eqs. 22 and 39.
 """
 import math
 
@@ -16,7 +16,7 @@ JUMP = (14 / 11) / (14 / 22) * 1e4          # (mu_atom/mu_ion_shell) T_ion at x_
 
 
 def test_k99_text_value():
-    # Kaufman et al. 1999: T_S ~ 400 K at n = 1e4 cm^-3, G0 = 10^3.5 (their sect. 4); the digitised table gives 343 K
+    # Kaufman et al. 1999: T_S ~ 400 K at n = 1e4 cm^-3, G0 = 10^3.5 (their sect. 4); their numeric grid gives 343 K
     assert pdr.t_surface_k99(10 ** 3.5, 1e4) == pytest.approx(400.0, rel=0.2)
 
 

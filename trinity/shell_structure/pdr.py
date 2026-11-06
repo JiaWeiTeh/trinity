@@ -5,15 +5,15 @@ switches, D-B2 the K99 table, D-B3 fFUV_Ln). Pure functions in CGS units; shell_
 
 g0_habing      the 6-13.6 eV field at radius r from a point source, G0 = L_FUV e^-tau / (4 pi r^2 1.6e-3 erg cm^-2 s^-1), in
                Habing units (Bakes & Tielens 1994 sect. 5.1; Kaufman et al. 1999 sect. 1).
-t_surface_k99  the PDR surface temperature of Kaufman et al. 1999 (ApJ 527, 795; astro-ph/9907255) Fig. 1, read from the figure's
-               vector EPS onto a 0.25-dex grid in (log n, log G0), n = 1e1-1e7 cm^-3, G0 = 10^-0.5-10^6.5
-               (lib/default/pdr/k99_tsurf_grid.csv; made by docs/dev/phii-identity/weak-wind/neutral-shell/harness/
-               k99_digitize.py). Bilinear in log T; clamped at the grid's edges, and outside the outermost contours the grid
-               itself holds the nearest contour's value.
+t_surface_k99  the PDR surface temperature of Kaufman et al. 1999 (ApJ 527, 795; astro-ph/9907255) on their own 0.25-dex grid in
+               (log n, log G0), n = 1e1-1e7 cm^-3, G0 = 10^-0.5-10^6.5, 8.36-7140 K, as the PDR Toolbox distributes it (Pound &
+               Wolfire 2023, AJ 165, 25: wk2006 tsweb.fits; lib/default/pdr/k99_tsurf_grid.csv, made by docs/dev/phii-identity/
+               weak-wind/neutral-shell/pdr-table/harness/k99_numeric_table.py). Bilinear in log T; clamped at the grid's edges.
 t_pdr          the atomic zone's temperature behind the front: a root of T = T_K99(G0, n(T)), n(T) = n_ion jump / T with
                jump = (mu_atom/mu_ion_shell) T_ion (pressure continuity across the front). Where the table falls faster than
-               n^-1 (n >~ 10^6.5 at G0 ~ 10^2-10^3, and its clamped lower edge) there can be more than one root, the
-               multiphase equilibria of gas at fixed pressure; the warmest is taken (the heated skin behind the front).
+               n^-1 there can be more than one root (29 points of a 0.1-dex mesh over log G0 -1-12, log n_ion 0-9 at jump
+               16000 K: pdr-table/PLAN.md), the multiphase equilibria of gas at fixed pressure; the warmest is taken (the
+               heated skin behind the front).
 n_tran_bs16    the column from the front to the H/H2 transition (N_1 + 2 N_2, Bialy & Sternberg 2016 eq. 31), tau_tran / sigma_g
                with tau_tran = 0.7 ln[(alphaG/2)^(1/0.7) + 1] (their eq. 39), alphaG = 0.59 I_UV (100 cm^-3/n)
                [9.9/(1 + 8.9 Z')]^0.37 (their eq. 22), sigma_g = 1.9e-21 Z' cm^2 (Sternberg et al. 2014 eq. 20); floored at
@@ -71,7 +71,7 @@ def t_surface_k99(g0, n):
 
 def t_pdr(g0, n_ion, jump):
     """The atomic zone's temperature [K] behind the front (module docstring): the warmest root of
-    log T - log T_K99(G0, n_ion jump / T), which is positive at 1e5 K and negative at 1 K (the table spans 10-5000 K)."""
+    log T - log T_K99(G0, n_ion jump / T), which is positive at 1e5 K and negative at 1 K (the table spans 8.36-7140 K)."""
     lt = np.linspace(5.0, 0.0, 501)
     fv = lt - np.log10(t_surface_k99(g0, n_ion * jump / 10.0 ** lt))
     k = int(np.argmax((fv[:-1] > 0.0) & (fv[1:] <= 0.0)))      # the first sign change from the top

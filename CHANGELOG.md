@@ -38,6 +38,11 @@ First public release.
 
 ### Changed
 
+- The PDR layer's surface-temperature table (`lib/default/pdr/k99_tsurf_grid.csv`, used by the default
+  `TShell_neu auto`) now holds Kaufman et al. (1999)'s own numeric grid, as the PDR Toolbox distributes it
+  (Pound & Wolfire 2023), instead of values digitised from their Fig. 1, which were flat beyond the figure's
+  outermost contours (off by -0.39 to +0.42 dex on the 261 of 725 nodes outside its bracketing contours, by up
+  to 0.08 dex elsewhere) and capped at 5000 K (now up to 7140 K). Every run with the default neutral layer changes.
 - **`P_HII` is now a real photoionised pressure, not a relabelling of the
   confining pressure.** It was computed from the Strömgren density *after* that
   density was capped at the shell's inner value `shell_n0` — and `shell_n0` is
