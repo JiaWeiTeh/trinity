@@ -85,6 +85,13 @@ _FINAL_KEYS = (
     "Eb",
 )
 
+# Relative bar on the stored values (was 1e-6 until 2026-11-07). The largest relative move of the seven re-pins above:
+# 1.5e-1 (phase-1a segments), 1.1e-2 (C3c), 1.1e-2 (W32), then 1.7e-5 (PCHIP), 3.6e-6 (two-zone), 2.7e-5 (CIE),
+# 1.6e-6 (K99). At 1e-6 every physics change tripped this CI test, so the November four each needed a re-pin and one
+# was lost in a merge. 1e-3 sits 1.5 decades above those small moves and a decade below the real physics changes,
+# so this test still fails when the phase-1a exit state really moves. Exact equivalence is the author's full-run check.
+_REL = 1e-3
+
 
 def test_quickstart_completes_cleanly(tmp_path, golden):
     """``python run.py <fast param>`` exits 0 and writes the expected outputs.
@@ -142,4 +149,4 @@ def test_quickstart_completes_cleanly(tmp_path, golden):
         assert isinstance(value, (int, float)) and math.isfinite(value) and value > 0
     expected = golden("run_smoke_final", {key: final[key] for key in _FINAL_KEYS})
     for key, stored in expected.items():
-        assert final[key] == pytest.approx(stored, rel=1e-6)
+        assert final[key] == pytest.approx(stored, rel=_REL)
