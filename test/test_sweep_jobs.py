@@ -91,7 +91,8 @@ def test_emit_sbatch_has_helix_defaults(tmp_path) -> None:
     assert '#!/bin/bash -l' in sbatch
     assert '#SBATCH --job-name=trinity-sweep' in sbatch   # from sweep.param stem
     assert '#SBATCH --partition=cpu-single' in sbatch
-    assert '#SBATCH --account=bw22J006' in sbatch
+    # no project ID in this public repo: Slurm takes it from $SBATCH_ACCOUNT
+    assert '#SBATCH --account' not in sbatch
     assert '#SBATCH --export=NONE' in sbatch
     assert 'conda activate trinity' in sbatch
 

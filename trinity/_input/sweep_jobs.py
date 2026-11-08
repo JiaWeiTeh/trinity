@@ -53,7 +53,6 @@ _SBATCH_TEMPLATE = """\
 #!/bin/bash -l
 #SBATCH --job-name=trinity-{name}
 #SBATCH --partition=cpu-single
-#SBATCH --account=bw22J006
 #SBATCH --export=NONE
 #SBATCH --array=1-{n}{throttle}
 #SBATCH --cpus-per-task=1
@@ -61,8 +60,10 @@ _SBATCH_TEMPLATE = """\
 #SBATCH --time=1:15:00
 #SBATCH --output={logs_dir}/%A_%a.out
 # Defaults target bwForCluster Helix (same conventions as paper/ + pdv-trigger
-# sbatchs) so the bundle runs straight from --emit-jobs, no patch step. Edit
-# account/partition/time/mem for another cluster or for longer-running sweeps.
+# sbatchs) so the bundle runs straight from --emit-jobs, no patch step. No
+# --account line: Slurm reads the project from $SBATCH_ACCOUNT (set it on the
+# cluster), else uses the cluster default. Edit
+# partition/time/mem for another cluster or for longer-running sweeps.
 
 module load devel/miniforge
 source "$(conda info --base)/etc/profile.d/conda.sh" 2>/dev/null || true

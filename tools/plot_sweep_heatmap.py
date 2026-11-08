@@ -183,7 +183,7 @@ def make_figures(rows, x_key, y_key, out_prefix, vmin=10.0, vmax=120.0):
         cbar.set_label("wall-clock runtime [min]", fontsize=8)
 
         suffix = "_" + "_".join(f"{k}{_fmt(v)}" for k, v in zip(file_keys, file_combo))
-        out = Path(f"{out_prefix}{suffix if sub else ''}.png")
+        out = Path(f"{out_prefix}{suffix if sub else ''}.pdf")
         out.parent.mkdir(parents=True, exist_ok=True)
         fig.savefig(out, dpi=150)
         plt.close(fig)

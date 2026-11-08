@@ -8,7 +8,7 @@ Usage:
 Prints a compact table for all events, then a DETAILED breakdown for every
 non-'boundary_transient' event (the ones that decide the fix), localizing each
 violation against the geometry (cloud radius, R1/R2, grid stitches, the
-over-refined outer band). If matplotlib is available, writes a 2x2 PNG per
+over-refined outer band). If matplotlib is available, writes a 2x2 PDF per
 detailed event next to the .npz: T profile + reference lines, a zoom on the
 violation, grid spacing (dr), and the LSODA step size (when captured).
 
@@ -187,7 +187,7 @@ for e in detail:
     print(f"  T[{lo}:{hi}] = " + np.array2string(T[lo:hi], precision=4, floatmode='maxprec'))
 
     if HAVE_PLT:
-        png = e['path'].replace('.npz', '.png')
+        png = e['path'].replace('.npz', '.pdf')
         idx = np.arange(n)
         fig, ax = plt.subplots(2, 2, figsize=(13, 9))
 
