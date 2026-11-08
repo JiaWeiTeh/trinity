@@ -127,7 +127,7 @@ def test_layer_terms_identity_closes_with_a_molecular_zone():
 def _auto_slab(m_over_m_ion, g0):
     """The slab with step (b) on (TShell_neu 'auto') and a far-UV field of about g0 Habing at R_IF ~ 1 pc. The dust is a millionth
     of the default (dust_sigma 1.5e-27 cm^2, tauShell_mol 3e-6, so the cold switch stays at 2e21 cm^-2): with the default dust and
-    R2 = 1e-3 pc, Ln's radiation force would confine the ionised layer to ~1e-3 pc and pin T_atom at the table's high-n, high-G0 corner (6530 K; the
+    R2 = 1e-3 pc, Ln's radiation force would confine the ionised layer to ~1e-3 pc and pin T_atom at the table's high-n, high-G0 corner (7299 K; the
     package's second cross-check, PDR_DEFAULT_PLAN.md). Premises checked by an independent CGS integration of the same equations
     (2026-11-01): R_IF 1.00 / 1.00 / 0.99 pc and the zones each test asserts."""
     p, m_ion, _ = _slab(m_over_m_ion, TShell_neu="auto", TShell_mol=T_MOL, tauShell_mol=3e-6, dust_sigma=1.5e-27 * cvt.cm2pc**2)
@@ -171,7 +171,7 @@ def test_step_b_warm_h2_without_a_cold_zone_closes_L8():
 
 
 def test_step_b_cold_switch_first():
-    """At G0 ~ 1e5 Bialy & Sternberg's column (~2.8e21 cm^-2) lies beyond the cold switch (2e21): the H2 switch is dropped and the
+    """At G0 ~ 1e5 Bialy & Sternberg's column (~2.7e21 cm^-2) lies beyond the cold switch (2e21): the H2 switch is dropped and the
     gas turns molecular and cold at once, as in the a2 layer (shell_cold_idx == shell_mol_idx), but at the PDR temperature."""
     p, _, sp = _auto_slab(10.0, 1e5)
     g = lambda k: float(p[k].value)  # noqa: E731

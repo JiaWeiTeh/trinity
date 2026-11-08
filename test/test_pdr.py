@@ -2,8 +2,9 @@
 # -*- coding: utf-8 -*-
 """Step (b) of the two-zone neutral layer: trinity/shell_structure/pdr.py against its sources.
 
-docs/dev/phii-identity/weak-wind/neutral-shell/PDR_DEFAULT_PLAN.md, gate G-B1. The table is Kaufman et al. 1999's own numeric
-grid (the PDR Toolbox's wk2006 tsweb.fits; pdr-table/PLAN.md there); the H/H2 column is Bialy & Sternberg 2016 eqs. 22 and 39.
+docs/dev/phii-identity/weak-wind/neutral-shell/PDR_DEFAULT_PLAN.md, gate G-B1. The table is the Wolfire-Kaufman 2020 models'
+temperature at A_V = 0.01 (the PDR Toolbox's wk2020 TSAV0p01sm.fits; pdr-table/WK2020_PLAN.md there); the H/H2 column is
+Bialy & Sternberg 2016 eqs. 22 and 39.
 """
 import math
 
@@ -15,27 +16,29 @@ from trinity.shell_structure import pdr
 JUMP = (14 / 11) / (14 / 22) * 1e4          # (mu_atom/mu_ion_shell) T_ion at x_He 0.1, T_ion 1e4 K
 
 
-def test_k99_text_value():
-    # Kaufman et al. 1999: T_S ~ 400 K at n = 1e4 cm^-3, G0 = 10^3.5 (their sect. 4); their numeric grid gives 343 K
-    assert pdr.t_surface_k99(10 ** 3.5, 1e4) == pytest.approx(400.0, rel=0.2)
+def test_wk2020_node_value():
+    # The wk2020 grid's node at n = 1e4 cm^-3, G0 = 10^3.5 (TSAV0p01sm.fits, float32). Kaufman et al. 1999's grid, the table until
+    # 2026-11-08, gives 343 K there (their sect. 4: T_S ~ 400 K).
+    assert pdr.t_surface(10 ** 3.5, 1e4) == pytest.approx(259.125, rel=1e-6)
 
 
-def test_k99_grid_nodes_and_clamping():
-    ln_n, ln_g, lt = pdr._k99()
-    assert lt.shape == (25, 29) and ln_n[0] == 1.0 and ln_n[-1] == 7.0 and ln_g[0] == -0.5 and ln_g[-1] == 6.5
-    for i in (0, 7, 24):
-        for j in (0, 13, 28):
-            assert math.log10(float(pdr.t_surface_k99(10 ** ln_g[j], 10 ** ln_n[i]))) == pytest.approx(lt[i, j], abs=1e-12)
-    assert float(pdr.t_surface_k99(0.0, 1e4)) == float(pdr.t_surface_k99(10 ** -0.5, 1e4))    # no field: the lowest G0
-    assert float(pdr.t_surface_k99(1e9, 1e9)) == float(pdr.t_surface_k99(10 ** 6.5, 1e7))     # beyond the grid: its corner
+def test_grid_nodes_and_clamping():
+    ln_n, ln_g, lt = pdr._table()
+    assert lt.shape == (49, 57) and ln_n[0] == 1.0 and ln_n[-1] == 7.0 and ln_g[0] == -0.5 and ln_g[-1] == 6.5
+    for i in (0, 14, 48):
+        for j in (0, 26, 56):
+            assert math.log10(float(pdr.t_surface(10 ** ln_g[j], 10 ** ln_n[i]))) == pytest.approx(lt[i, j], abs=1e-12)
+    assert float(pdr.t_surface(0.0, 1e4)) == float(pdr.t_surface(10 ** -0.5, 1e4))    # no field: the lowest G0
+    assert float(pdr.t_surface(1e9, 1e9)) == float(pdr.t_surface(10 ** 6.5, 1e7))     # beyond the grid: its corner
 
 
 def test_t_pdr_is_the_warmest_root():
-    for g0, n_ion in ((5000.0, 500.0), (10.0, 5.0), (1e5, 1e4), (0.0, 50.0), (300.0, 3e4)):
+    # (10^4.5, 10^1.7) has three roots with wk2020 (~712, ~1906, ~3410 K): a wrong root choice fails there
+    for g0, n_ion in ((5000.0, 500.0), (10.0, 5.0), (1e5, 1e4), (0.0, 50.0), (300.0, 3e4), (10 ** 4.5, 10 ** 1.7)):
         t = pdr.t_pdr(g0, n_ion, JUMP)
-        assert t == pytest.approx(float(pdr.t_surface_k99(g0, n_ion * JUMP / t)), rel=1e-8)
+        assert t == pytest.approx(float(pdr.t_surface(g0, n_ion * JUMP / t)), rel=1e-8)
         lt = np.linspace(math.log10(t) + 0.01, 5.0, 400)                    # no warmer root
-        assert np.all(lt - np.log10(pdr.t_surface_k99(g0, n_ion * JUMP / 10.0 ** lt)) > 0.0)
+        assert np.all(lt - np.log10(pdr.t_surface(g0, n_ion * JUMP / 10.0 ** lt)) > 0.0)
 
 
 def test_bialy_sternberg_worked_example():
