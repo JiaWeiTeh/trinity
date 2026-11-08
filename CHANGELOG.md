@@ -46,11 +46,18 @@ First public release.
 
 ### Changed
 
+- The PDR layer's surface-temperature table (default `TShell_neu auto`) is now the Wolfire-Kaufman 2020 models'
+  gas temperature at A_V = 0.01, as the PDR Toolbox distributes it (wk2020, Z = 1, constant density; Pound & Wolfire
+  2023): `lib/default/pdr/wk2020_ts_grid.csv`, 0.125 dex in n and G0 over K99's range, 9.46-7860 K. It replaces
+  Kaufman et al. (1999)'s grid (K99, `lib/default/pdr/k99_tsurf_grid.csv`, removed); on their 725 shared nodes
+  wk2020 - K99 = -0.83 to +0.69 dex (median +0.03). `pdr.t_surface_k99` is now `pdr.t_surface`. Every run with the default
+  neutral layer changes.
 - The PDR layer's surface-temperature table (`lib/default/pdr/k99_tsurf_grid.csv`, used by the default
   `TShell_neu auto`) now holds Kaufman et al. (1999)'s own numeric grid, as the PDR Toolbox distributes it
   (Pound & Wolfire 2023), instead of values digitised from their Fig. 1, which were flat beyond the figure's
   outermost contours (off by -0.39 to +0.42 dex on the 261 of 725 nodes outside its bracketing contours, by up
   to 0.08 dex elsewhere) and capped at 5000 K (now up to 7140 K). Every run with the default neutral layer changes.
+  Superseded by the wk2020 table (entry above).
 - **`P_HII` is now a real photoionised pressure, not a relabelling of the
   confining pressure.** It was computed from the Strömgren density *after* that
   density was capped at the shell's inner value `shell_n0` — and `shell_n0` is
