@@ -27,7 +27,9 @@
 - The full-run goldens of `test_run_smoke.py`, `test_phase_boundary.py` and
   `test_phase_runner_fixtures.py` live in `test/goldens/*.json`. A PR that changes a result
   re-baselines them **in that PR**: `pytest --regen-goldens <test file>` (on Helix), review the JSON
-  diff, write the reason in the test's history comment and the commit message.
+  diff, write the reason in the test's history comment and the commit message. The smoke test's
+  bar is rel 1e-3 (since 2026-11-07), so it fails only when a change really moves the exit state;
+  exact equivalence is checked by the full-run comparison of the PR's author, not in CI.
 - A few tempdir-dependent tests flake **only under the Claude Code sandbox** (where `/tmp` is not
   writable) — not a real regression. Re-run with `TMPDIR` pointing at a writable dir before
   treating them as failures; never "fix" the test for the sandbox.
