@@ -3,7 +3,8 @@
 # hden 0, 'abundances hii region' with its default grains, cosmic ray background -- the non-CIE cube's own gas (Cloudy
 # 23.01 agrees to 0.005 dex). Lambda_GF12: coolingCIE_3_Gnat-Ferland2012.dat. f: the median dust-mass fraction left in
 # evaporated shell gas crossing the conduction zone, from thermal sputtering along TRINITY's own bubble profiles
-# (1 / 0.990 / 0.715 / 0.041 / 0 at 10^5 / 5.5 / 6 / 6.5 / 6.6 K, linear in log T). Above 10^6.6 K: curve 3's nodes.
+# (1 / 0.990 / 0.715 / 0.041 / 0 at 10^5 / 5.5 / 6 / 6.5 / 6.6 K, linear in log T). Above 10^6.6 K: curve 3's nodes
+# with log T written to 0.01 (within 0.0017 dex of curve 3).
 4.00 -23.0311
 4.02 -22.9082
 4.04 -22.7654

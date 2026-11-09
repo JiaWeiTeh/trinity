@@ -4,6 +4,7 @@
   separately, bubble_luminosity.py L2/L3);
 * L1's rate between the cube's top (10^5.5 K) and the CIE grid's next node equals get_dudt's bridge there.
 """
+import gc
 import os
 
 import numpy as np
@@ -43,7 +44,9 @@ def _present(p, logT_lo, logT_hi, k=200, seed=1):
     cool, heat = p["cStruc_cooling_nonCIE"].value, p["cStruc_heating_nonCIE"].value
     rng = np.random.default_rng(seed)
     out = []
-    while len(out) < k:
+    for _ in range(1000 * k):
+        if len(out) == k:
+            break
         x = np.array(
             [
                 rng.uniform(cool.ndens[0], cool.ndens[-1]),
@@ -53,6 +56,8 @@ def _present(p, logT_lo, logT_hi, k=200, seed=1):
         )
         if np.isfinite(cool.interp(x)[0]) and np.isfinite(heat.interp(x)[0]):
             out.append(x)
+    if len(out) < k:
+        pytest.skip("too few present cells in the sampled range")
     return np.array(out)
 
 
@@ -72,7 +77,7 @@ def test_ode_reads_the_cube_as_the_loss_integrals_do(params):
 def test_L1_band_rate_is_the_ode_bridge(params):
     lo, _ = ncc._noncie_cutoffs(params["cStruc_cooling_nonCIE"].value)
     hi = ncc._cie_tcutoff(params["cStruc_cooling_CIE_logT"].value)
-    assert 0 < hi - lo < 0.1  # the default curve 3: 5.5 -> 5.5481
+    assert 0 < hi - lo < 0.1  # the default curve 11: 5.5 -> 5.52 (curve 3: 5.5481)
     pts = _present(params, lo, lo)  # (n, Phi) where the cube's top row is present
     logT = np.linspace(lo, hi, len(pts) + 2)[1:-1]  # strictly inside the bridge
     n_au = 10 ** pts[:, 0] * cvt.ndens_cgs2au
@@ -120,14 +125,29 @@ def test_missing_cube_cell_raises(params):
     """A bridge point whose (n, Phi) falls in a missing (NaN) cell of the cube's top row is a solver error, not a NaN L1."""
     cool = params["cStruc_cooling_nonCIE"].value
     lo, _ = ncc._noncie_cutoffs(cool)
-    rng = np.random.default_rng(2)
-    while True:
-        x = np.array(
-            [rng.uniform(cool.ndens[0], cool.ndens[-1]), lo, rng.uniform(cool.phi[0], cool.phi[-1])]
-        )
-        if not np.isfinite(cool.interp(x)[0]):
-            break
+    j = int(np.argmin(np.abs(np.asarray(cool.temp) - lo)))
+    missing = np.argwhere(np.isnan(np.asarray(cool.datacube)[:, j, :]))
+    if missing.size == 0:
+        pytest.skip("the cube's top row has no missing cell")
+    i, k = missing[0]
+    x = np.array([cool.ndens[i], lo, cool.phi[k]])
     n_au = np.array([10 ** x[0] * cvt.ndens_cgs2au])
     r = np.sqrt(params["Qi"].value / (4 * np.pi * 10 ** x[2] * cvt.phi_cgs2au)) * np.ones(1)
     with pytest.raises(BL.BubbleSolverError):
         BL._seam_band_rate(params, n_au, np.array([10 ** (lo + 0.01)]), r)
+
+
+def test_cie_tcutoff_follows_the_array():
+    """The CIE cutoff cache must not hand one curve's cutoff to another curve's array (a freed array's id is reused)."""
+    files = {
+        k: os.path.join(REPO, "lib", "default", "CIE", f)
+        for k, f in (
+            (3, "coolingCIE_3_Gnat-Ferland2012.dat"),
+            (11, "coolingCIE_11_HII-dusty-census_Z1.dat"),
+        )
+    }
+    for i in range(40):
+        lt = np.loadtxt(files[3 if i % 2 else 11], unpack=True)[0]
+        assert ncc._cie_tcutoff(lt) == lt[lt > 5.5].min()
+        del lt
+        gc.collect()

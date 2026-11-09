@@ -26,9 +26,11 @@ import trinity._functions.unit_conversions as cvt
 # grids, which are fixed for a run. Cache them so the max/min runs once per grid
 # (re)build instead of on every call. Bit-identical: the SAME reduction over the
 # SAME array. (HOTPATH F2.3.)
-_CIE_TCUTOFF_CACHE: dict = {}   # keyed by id(logT_CIE); logT_CIE is built once at
-                                # startup (main.py) and never replaced, so its id
-                                # is stable for the whole run -> no id-reuse hazard.
+_CIE_TCUTOFF_CACHE: dict = {}   # id(logT_CIE) -> (logT_CIE, cutoff). The array is kept
+                                # and checked by identity: a freed array's id can be
+                                # reused by another curve's array in the same process.
+                                # ponytail: keeps each grid array alive (KB per curve
+                                # loaded); bound it if a process loads thousands.
 
 
 def _noncie_cutoffs(cooling_nonCIE):
@@ -48,13 +50,13 @@ def _noncie_cutoffs(cooling_nonCIE):
 
 
 def _cie_tcutoff(logT_CIE):
-    """min(logT_CIE[logT_CIE > 5.5]) for the CIE temp grid, cached by array id."""
+    """min(logT_CIE[logT_CIE > 5.5]) for the CIE temp grid, cached per array object."""
     key = id(logT_CIE)
     cached = _CIE_TCUTOFF_CACHE.get(key)
-    if cached is None:
-        cached = min(logT_CIE[logT_CIE > 5.5])
+    if cached is None or cached[0] is not logT_CIE:
+        cached = (logT_CIE, min(logT_CIE[logT_CIE > 5.5]))
         _CIE_TCUTOFF_CACHE[key] = cached
-    return cached
+    return cached[1]
 
 
 # get_dudt evaluates the cooling tables at ONE scalar point per bubble-ODE RHS call.
