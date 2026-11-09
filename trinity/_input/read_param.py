@@ -460,8 +460,24 @@ def read_param(path2file):
     # preset keyed on ZCloud, so it stays inline rather than in a resolver).
     # Integer-index preset {1, 2, 3} (under ZCloud == 1) selects between the
     # bundled CIE tables; ZCloud == 0.15 auto-pins to the Sutherland-Dopita
-    # file. All resolved paths live under lib/default/CIE/.
-    if params['ZCloud'].value == 1:
+    # file. Any other value is a path to a two-column CIE file, used as given.
+    try:
+        float(params['path_cooling_CIE'].value)
+        cie_is_preset = True
+    except (TypeError, ValueError):
+        cie_is_preset = False
+    if not cie_is_preset:
+        # An explicit file: used as given at any ZCloud, a relative path taken from the repository root.
+        # The integer presets below are unchanged.
+        cie_path = Path(str(params['path_cooling_CIE'].value)).expanduser()
+        if not cie_path.is_absolute():
+            cie_path = _REPO_ROOT / cie_path
+        if not cie_path.is_file():
+            raise ParameterFileError(
+                f"path_cooling_CIE={params['path_cooling_CIE'].value!r}: no such file ({cie_path})."
+            )
+        params['path_cooling_CIE'].value = str(cie_path)
+    elif params['ZCloud'].value == 1:
         cie_files = {
             1: 'lib/default/CIE/coolingCIE_1_Cloudy.dat',
             2: 'lib/default/CIE/coolingCIE_2_Cloudy_grains.dat',

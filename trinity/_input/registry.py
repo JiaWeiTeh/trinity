@@ -581,7 +581,7 @@ SPECS: tuple[ParamSpec, ...] = (
     ParamSpec(name='cool_alpha', default='0.6', info='Cooling related values. alpha = v2*t_now/R2', category='input_solver', unit=None),
     ParamSpec(name='cool_beta', default='0.8', info='Cooling related values. beta = - dPb/dt.', category='input_solver', unit=None),
     ParamSpec(name='cool_delta', default='-6/35', info='Cooling related values. delta = dT/dt.', category='input_solver', unit=None),
-    ParamSpec(name='path_cooling_CIE', default='3', info='Selects the CIE (T > 10^5.5 K) cooling curve.', category='input_cooling', unit=None, exclude_from_snapshot=True, metadata_exclude=True),
+    ParamSpec(name='path_cooling_CIE', default='3', info='Selects the CIE (T > 10^5.5 K) cooling curve: 1, 2 or 3 pick a bundled file at ZCloud 1 (ZCloud 0.15 auto-pins the Sutherland-Dopita file); any other value is a path to a two-column file (log10 T [K], log10 Lambda [erg cm^3 s^-1] per n_e n_H), relative to the repository root unless absolute, used at any ZCloud.', category='input_cooling', unit=None, exclude_from_snapshot=True, metadata_exclude=True),
     ParamSpec(name='path_cooling_nonCIE', default='def_dir', info='Folder containing the non-CIE (T < 10^5.5 K) OPIATE/CLOUDY cubes.', category='input_cooling', unit=None, exclude_from_snapshot=True, metadata_exclude=True, resolver=_resolve_path_cooling_nonCIE),
     ParamSpec(name='sps_path', default='def_path', info='Full path to an SPS data file. If def_path (default), TRINITY uses', category='input_sps', unit=None, exclude_from_snapshot=True, resolver=_resolve_sps_bundle),
     ParamSpec(name='sps_col_t', default='def_unset', info='', category='input_sps', unit=None, exclude_from_snapshot=True, consumed_by='sps_path'),
