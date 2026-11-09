@@ -18,7 +18,6 @@ from bisect import bisect_right as _bisect_right
 from itertools import product as _product
 
 import trinity.cooling.CIE.read_coolingcurve as CIE
-from trinity.cooling.CIE.read_coolingcurve import _scalar_evaluator
 import trinity._functions.unit_conversions as cvt
 
 
@@ -81,15 +80,18 @@ def _find_interval(grid, x):
     return n2 if i > n2 else i
 
 
-class _ScalarTrilinear:
-    """RegularGridInterpolator(method='linear', bounds_error=True) at one 3-D point."""
-    __slots__ = ('grids', 'lo', 'hi', 'values')
+class _ScalarTrilinearPair:
+    """Two RegularGridInterpolator(method='linear', bounds_error=True) on one grid (the cooling and the heating
+    cube) at one 3-D point: one interval search, then each cube's weighted sum formed exactly as scipy forms it
+    (same corner order, same 1*w0*w1*w2 weights, same left-to-right accumulation from 0)."""
+    __slots__ = ('grids', 'lo', 'hi', 'v_cool', 'v_heat')
 
-    def __init__(self, rgi):
-        self.grids = [list(map(float, g)) for g in rgi.grid]
+    def __init__(self, rgi_cool, rgi_heat):
+        self.grids = [list(map(float, g)) for g in rgi_cool.grid]
         self.lo = [g[0] for g in self.grids]
         self.hi = [g[-1] for g in self.grids]
-        self.values = rgi.values
+        self.v_cool = rgi_cool.values
+        self.v_heat = rgi_heat.values
 
     def __call__(self, x0, x1, x2):
         idx, nd = [], []
@@ -100,14 +102,30 @@ class _ScalarTrilinear:
             i = _find_interval(g, x)
             idx.append(i)
             nd.append((x - g[i]) / (g[i + 1] - g[i]))
-        v = self.values
-        value = 0.0
+        cool = 0.0
+        heat = 0.0
         for (i0, w0), (i1, w1), (i2, w2) in _product(
                 ((idx[0], 1 - nd[0]), (idx[0] + 1, nd[0])),
                 ((idx[1], 1 - nd[1]), (idx[1] + 1, nd[1])),
                 ((idx[2], 1 - nd[2]), (idx[2] + 1, nd[2]))):
-            value = value + v[i0, i1, i2] * (1.0 * w0 * w1 * w2)
-        return value
+            w = 1.0 * w0 * w1 * w2
+            cool = cool + self.v_cool[i0, i1, i2] * w
+            heat = heat + self.v_heat[i0, i1, i2] * w
+        return cool, heat
+
+
+def _net_nonCIE(cooling_nonCIE, heating_nonCIE, logn, logT, logphi):
+    """Net cooling (cool - heat) [erg cm^-3 s^-1] from the non-CIE cube at one point, read as the loss integrals
+    read it (bubble_luminosity.py, L2 and L3): log10 cool and log10 heat interpolated separately, then
+    exponentiated. Interpolating the net value instead reads up to +0.24 dex high between density nodes
+    (docs/dev/cooling-tables/FINDINGS.md 1.2, item 2). The evaluator is cached on the cooling cube; both cubes
+    are rebuilt together (read_cloudy.get_coolingStructure), so a fresh cube gets a fresh evaluator."""
+    pair = getattr(cooling_nonCIE, '_pair_eval', None)
+    if pair is None:
+        pair = _ScalarTrilinearPair(cooling_nonCIE.interp, heating_nonCIE.interp)
+        cooling_nonCIE._pair_eval = pair
+    log_cool, log_heat = pair(logn, logT, logphi)
+    return 10 ** log_cool - 10 ** log_heat
 
 
 def get_dudt(age, ndens, T, phi, params_dict):
@@ -152,8 +170,7 @@ def get_dudt(age, ndens, T, phi, params_dict):
     
     
     cooling_nonCIE = params_dict['cStruc_cooling_nonCIE'].value
-    # heating_nonCIE = params_dict['cStruc_heating_nonCIE'].value
-    netcool_interp = params_dict['cStruc_net_nonCIE_interpolation'].value
+    heating_nonCIE = params_dict['cStruc_heating_nonCIE'].value
     
     CIE_interp = params_dict['cStruc_cooling_CIE_interpolation'].value
     logT_CIE = params_dict['cStruc_cooling_CIE_logT'].value
@@ -207,7 +224,7 @@ def get_dudt(age, ndens, T, phi, params_dict):
         # print(cooling_nonCIE.phi)
         # print(netcooling)
         # print(ndens, T, phi)
-        dudt = _scalar_evaluator(netcool_interp, _ScalarTrilinear)(np.log10(ndens), logT, np.log10(phi))
+        dudt = _net_nonCIE(cooling_nonCIE, heating_nonCIE, np.log10(ndens), logT, np.log10(phi))
         # return in negative sign for convension (since the rate of change is negative due to net cooling)
         return -1 * dudt * cvt.dudt_cgs2au
         
@@ -232,7 +249,7 @@ def get_dudt(age, ndens, T, phi, params_dict):
         # create interpolation function (depreciated)
         # f_dudt = scipy.interpolate.RegularGridInterpolator((cooling_nonCIE.ndens, cooling_nonCIE.temp, cooling_nonCIE.phi), netcooling)
         # get net cooling rate
-        dudt_nonCIE = _scalar_evaluator(netcool_interp, _ScalarTrilinear)(np.log10(ndens), nonCIE_Tcutoff, np.log10(phi))
+        dudt_nonCIE = _net_nonCIE(cooling_nonCIE, heating_nonCIE, np.log10(ndens), nonCIE_Tcutoff, np.log10(phi))
         
         # =============================================================================
         # This part is just for CIE
