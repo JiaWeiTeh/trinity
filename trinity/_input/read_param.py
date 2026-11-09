@@ -458,7 +458,7 @@ def read_param(path2file):
 
     # Cooling directory - CIE (NOT a def_* sentinel: an integer-index
     # preset keyed on ZCloud, so it stays inline rather than in a resolver).
-    # Integer-index preset {1, 2, 3} (under ZCloud == 1) selects between the
+    # Integer-index preset {1, 2, 3, 11} (under ZCloud == 1) selects between the
     # bundled CIE tables; ZCloud == 0.15 auto-pins to the Sutherland-Dopita
     # file. Any other value is a path to a two-column CIE file, used as given.
     try:
@@ -481,7 +481,8 @@ def read_param(path2file):
         cie_files = {
             1: 'lib/default/CIE/coolingCIE_1_Cloudy.dat',
             2: 'lib/default/CIE/coolingCIE_2_Cloudy_grains.dat',
-            3: 'lib/default/CIE/coolingCIE_3_Gnat-Ferland2012.dat'
+            3: 'lib/default/CIE/coolingCIE_3_Gnat-Ferland2012.dat',
+            11: 'lib/default/CIE/coolingCIE_11_HII-dusty-census_Z1.dat',
         }
         cie_choice = int(params['path_cooling_CIE'].value)
         if cie_choice in cie_files:
