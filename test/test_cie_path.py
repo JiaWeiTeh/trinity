@@ -18,6 +18,7 @@ _PRESETS = {
     1: "coolingCIE_1_Cloudy.dat",
     2: "coolingCIE_2_Cloudy_grains.dat",
     3: "coolingCIE_3_Gnat-Ferland2012.dat",
+    11: "coolingCIE_11_HII-dusty-census_Z1.dat",
 }
 
 
@@ -28,8 +29,8 @@ def _read(tmp_path, value=None):
     return read_param(str(f))["path_cooling_CIE"].value
 
 
-def test_default_is_curve_3(tmp_path):
-    assert _read(tmp_path) == os.path.join(_CIE, _PRESETS[3])
+def test_default_is_curve_11(tmp_path):
+    assert _read(tmp_path) == os.path.join(_CIE, _PRESETS[11])
 
 
 @pytest.mark.parametrize("k", sorted(_PRESETS))

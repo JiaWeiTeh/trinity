@@ -64,8 +64,10 @@ def _expected_noncie(params, T):
     order, incl. the in-place /= round-trip) so equality is bit-for-bit."""
     nd_eff = (_NDENS_CGS * cvt.ndens_cgs2au) / cvt.ndens_cgs2au
     ph_eff = (_PHI_CGS * cvt.phi_cgs2au) / cvt.phi_cgs2au
-    netcool = params["cStruc_net_nonCIE_interpolation"].value
-    dudt = netcool([np.log10(nd_eff), np.log10(T), np.log10(ph_eff)])[0]
+    x = [np.log10(nd_eff), np.log10(T), np.log10(ph_eff)]
+    cool = params["cStruc_cooling_nonCIE"].value.interp(x)[0]
+    heat = params["cStruc_heating_nonCIE"].value.interp(x)[0]
+    dudt = 10 ** cool - 10 ** heat   # the cube as the loss integrals read it (cooling-tables/SEAM_PLAN.md)
     return -1 * dudt * cvt.dudt_cgs2au
 
 

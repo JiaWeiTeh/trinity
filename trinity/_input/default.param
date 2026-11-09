@@ -218,8 +218,8 @@ sps_col_L_FUV    def_unset
 # Cooling Tables
 # ==============================================================================
 
-# INFO: Selects the CIE (T > 10^5.5 K) cooling curve: 1, 2 or 3 pick a bundled file at ZCloud 1 (ZCloud 0.15 auto-pins the Sutherland-Dopita file); any other value is a path to a two-column file (log10 T [K], log10 Lambda [erg cm^3 s^-1] per n_e n_H), relative to the repository root unless absolute, used at any ZCloud.
-path_cooling_CIE    3
+# INFO: Selects the CIE (T > 10^5.5 K) cooling curve: 1, 2, 3 or 11 (the default: dusty HII-region gas where its grains survive, Gnat & Ferland 2012 where they are sputtered) pick a bundled file at ZCloud 1 (ZCloud 0.15 auto-pins the Sutherland-Dopita file); any other value is a path to a two-column file (log10 T [K], log10 Lambda [erg cm^3 s^-1] per n_e n_H), relative to the repository root unless absolute, used at any ZCloud.
+path_cooling_CIE    11
 
 # INFO: Folder containing the non-CIE (T < 10^5.5 K) OPIATE/CLOUDY cubes.
 path_cooling_nonCIE    def_dir

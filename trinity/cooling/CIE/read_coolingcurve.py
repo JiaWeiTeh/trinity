@@ -77,6 +77,9 @@ def get_Lambda(T, cooling_CIE_interpolation, metallicity):
             Includes the evaporative (sublimation) cooling of icy interstellar
             grains (occurs e.g., when heated by cosmic-ray particle).
         3: Gnat and Ferland 2012 (slightly interpolated for values).
+        11 (the default): Cloudy HII-region gas with its grains, weighted by
+            the dust fraction that survives sputtering in the conduction
+            zone, handing over to Gnat and Ferland 2012 by 10^6.6 K.
         4: Sutherland and Dopita 1993, for [Fe/H] = -1. Auto-pinned when
             ZCloud == 0.15 regardless of `path_cooling_CIE`.
 

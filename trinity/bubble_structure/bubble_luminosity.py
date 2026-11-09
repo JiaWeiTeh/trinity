@@ -774,6 +774,13 @@ def _bubble_luminosity(params, R1, Pb, r2Prime, initial_conditions,
     Lambda_bubble = 10**(cooling_CIE(np.log10(T_bubble))) * cvt.Lambda_cgs2au
 
     integrand_bubble = params['chi_e'].value * n_bubble**2 * Lambda_bubble * 4 * np.pi * r_bubble**2
+    # Below the CIE grid's first node above 10^5.5 K the structure equation bridges the non-CIE cube and the
+    # CIE curve (net_coolingcurve.get_dudt); use the same rate on those points, so the profile and its loss
+    # see one cooling function (docs/dev/cooling-tables/SEAM_PLAN.md).
+    band = np.log10(T_bubble) < net_coolingcurve._cie_tcutoff(params['cStruc_cooling_CIE_logT'].value)
+    if np.any(band):
+        integrand_bubble[band] = (_seam_band_rate(params, n_bubble[band], T_bubble[band], r_bubble[band])
+                                  * 4 * np.pi * r_bubble[band]**2)
     # calculate power loss due to cooling
     L_bubble = np.abs(_trapezoid(integrand_bubble, x=r_bubble))
     # intermediate result for calculation of average temperature [K pc3]
@@ -948,6 +955,29 @@ def _bubble_luminosity(params, R1, Pb, r2Prime, initial_conditions,
         Pb=Pb,
         bubble_r_Tb=bubble_r_Tb,
     )
+
+
+def _seam_band_rate(params, n, T, r):
+    """Net cooling rate [code units, positive = cooling] that the structure equation (net_coolingcurve.get_dudt)
+    uses at points with log10 T below the CIE grid's first node above 10^5.5 K (CIE_Tcutoff): the non-CIE cube's
+    rate at its top (nonCIE_Tcutoff) bridged linearly in log T to the CIE rate at CIE_Tcutoff, written as
+    np.interp writes it. Arrays in (n [pc^-3], T [K], r [pc]), array out. A missing cube cell raises
+    BubbleSolverError, as the structure equation fails there."""
+    cooling_nonCIE = params['cStruc_cooling_nonCIE'].value
+    heating_nonCIE = params['cStruc_heating_nonCIE'].value
+    lo, _ = net_coolingcurve._noncie_cutoffs(cooling_nonCIE)
+    hi = net_coolingcurve._cie_tcutoff(params['cStruc_cooling_CIE_logT'].value)
+    n_cgs = n / cvt.ndens_cgs2au
+    x = np.transpose([np.log10(n_cgs), np.full(n_cgs.size, lo),
+                      np.log10(params['Qi'].value / (4 * np.pi * r**2) / cvt.phi_cgs2au)])
+    top = 10 ** cooling_nonCIE.interp(x) - 10 ** heating_nonCIE.interp(x)
+    cie = params['chi_e'].value * n_cgs**2 * 10 ** params['cStruc_cooling_CIE_interpolation'].value(hi)
+    slope = (cie - top) / (hi - lo)
+    rate = (slope * (np.clip(np.log10(T), lo, hi) - lo) + top) * cvt.dudt_cgs2au
+    if not np.all(np.isfinite(rate)):
+        # the cube's top row has missing (NaN) cells; the structure equation fails there too
+        raise BubbleSolverError('non-CIE cube undefined at an L1 bridge point (n, Phi outside the table)')
+    return rate
 
 
 def _cie_switch_radius(fT_interp, r_array, i, r_interp):
