@@ -976,7 +976,7 @@ def _seam_band_rate(params, n, T, r):
     rate = (slope * (np.clip(np.log10(T), lo, hi) - lo) + top) * cvt.dudt_cgs2au
     if not np.all(np.isfinite(rate)):
         # the cube's top row has missing (NaN) cells; the structure equation fails there too
-        raise BubbleSolverError('non-CIE cube undefined at an L1 bridge point (n, Phi outside the table)')
+        raise BubbleSolverError('non-CIE cube undefined at an L1 bridge point (a missing cell of its top row)')
     return rate
 
 
