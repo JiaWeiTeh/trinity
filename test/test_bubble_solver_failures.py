@@ -134,3 +134,47 @@ def test_second_duplicate_step_failure_is_ok_false(monkeypatch):
     assert calls == ["LSODA", "Radau"]
     assert ok is False and sol is None and np.isnan(psoln).all()
     assert "Radau retry" in info["message"]
+
+
+def _oscillator_rhs(calls):
+    """T'' = -400 T: needs hundreds of RHS calls over the test span, so a cap of 5 must fire."""
+    def rhs(r, y, params, Pb):
+        calls.append(r)
+        return [0.0, y[2], -400.0 * y[1]]
+    return rhs
+
+
+def test_work_cap_returns_ok_false(monkeypatch):
+    """An integration that needs more than _BUBBLE_MAX_RHS_CALLS RHS calls is
+    reported as ok=False (the failed-solve contract) instead of running on."""
+    calls = []
+    monkeypatch.setattr(BL, "_get_bubble_ODE", _oscillator_rhs(calls))
+    monkeypatch.setattr(BL, "_BUBBLE_MAX_RHS_CALLS", 5)
+    r = np.linspace(1.0, 0.5, 40)
+    psoln, ok, info, sol = BL._solve_bubble_structure([1.0, 1.0, -1.0], r, None, None)
+    assert ok is False
+    assert sol is None
+    assert np.isnan(psoln).all()
+    assert "work cap" in info["message"]
+    assert len(calls) == 5          # the RHS is not evaluated again after the cap
+
+
+def test_work_cap_is_inert_below_the_cap(monkeypatch):
+    """The same solve with the production cap succeeds: counting alone changes nothing."""
+    calls = []
+    monkeypatch.setattr(BL, "_get_bubble_ODE", _oscillator_rhs(calls))
+    r = np.linspace(1.0, 0.5, 40)
+    psoln, ok, info, sol = BL._solve_bubble_structure([1.0, 1.0, -1.0], r, None, None)
+    assert ok is True
+    assert 5 < len(calls) < BL._BUBBLE_MAX_RHS_CALLS
+    # T(r) = cos(20 (r - 1)) - sin(20 (r - 1)) / 20, at r = 0.5
+    np.testing.assert_allclose(psoln[-1, 1], np.cos(10.0) + np.sin(10.0) / 20.0, rtol=1e-5)
+
+
+def test_work_cap_in_the_residual_solve_is_the_fail_residual(monkeypatch):
+    """In the dMdt residual solve the cap returns _SOLVER_FAIL_RESIDUAL."""
+    monkeypatch.setattr(BL, "_get_bubble_ODE", _oscillator_rhs([]))
+    monkeypatch.setattr(BL, "_get_bubble_ODE_initial_conditions",
+                        lambda dMdt, params, Pb, R1: (1.0, 1.0, -1.0, 1.0))
+    monkeypatch.setattr(BL, "_BUBBLE_MAX_RHS_CALLS", 5)
+    assert BL._get_velocity_residuals(1.0, None, None, 0.5) == BL._SOLVER_FAIL_RESIDUAL

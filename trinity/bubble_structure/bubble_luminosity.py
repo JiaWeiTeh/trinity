@@ -107,6 +107,18 @@ _RESIDUAL_RTOL = 1e-6
 # conservative pick.
 _RESIDUAL_NPTS = 500
 
+# Work cap for ONE bubble-structure integration, in RHS evaluations. scipy's
+# solve_ivp(LSODA) has no step limit. An infeasible trial dMdt can send T far
+# below the _T_INIT_BOUNDARY anchor, where the T**-5/2 terms diverge and the
+# step falls below float resolution in r: the solve then never returns (Paper II
+# v6 campaign, 2026-11-10: hours at 99 % CPU, r unchanged to 17 digits). Past the
+# cap the solve is reported through the existing failed-solve contract (rhs_error
+# -> _SOLVER_FAIL_RESIDUAL / ok=False). Healthy integrations measured at most
+# 885_099 calls (200-run census), so a run that never reaches the cap is unchanged.
+# NOT a step floor: healthy solves cross the conduction layer in sub-resolution
+# steps (docs/dev/performance/BUBBLE_CONDUCTION_STIFFNESS.md).
+_BUBBLE_MAX_RHS_CALLS = 10_000_000
+
 # Number of points used to sample the dense-output solution across the
 # conduction band for the L_conduction / Tavg_conduction trapezoids. The
 # integrand is smooth and the sampled solution is exact, so the trapezoid
@@ -334,9 +346,17 @@ def _get_velocity_residuals(dMdt_init, params, Pb: float, R1: float) -> float:
         return _SOLVER_FAIL_RESIDUAL
     rhs_error = None
 
+    n_rhs = 0
+
     def _rhs(r, y):
-        nonlocal rhs_error
+        nonlocal rhs_error, n_rhs
         if rhs_error is not None:
+            return np.zeros_like(y, dtype=float)
+        n_rhs += 1
+        if n_rhs > _BUBBLE_MAX_RHS_CALLS:
+            rhs_error = (f'bubble ODE work cap: more than {_BUBBLE_MAX_RHS_CALLS} RHS calls '
+                         f'(r={r!r}, T={y[1]!r})')
+            logger.warning(rhs_error)
             return np.zeros_like(y, dtype=float)
         try:
             return _get_bubble_ODE(r, y, params, Pb)
@@ -496,9 +516,17 @@ def _solve_bubble_structure(initial_conditions, r_array, params, Pb,
     # convert that abort into the same ok=False contract as a solver failure.
     rhs_error = None
 
+    n_rhs = 0
+
     def _rhs(r, y):
-        nonlocal rhs_error
+        nonlocal rhs_error, n_rhs
         if rhs_error is not None:
+            return np.zeros_like(y, dtype=float)
+        n_rhs += 1
+        if n_rhs > _BUBBLE_MAX_RHS_CALLS:
+            rhs_error = (f'bubble ODE work cap: more than {_BUBBLE_MAX_RHS_CALLS} RHS calls '
+                         f'(r={r!r}, T={y[1]!r})')
+            logger.warning(rhs_error)
             return np.zeros_like(y, dtype=float)
         try:
             return _get_bubble_ODE(r, y, params, Pb)
@@ -533,6 +561,7 @@ def _solve_bubble_structure(initial_conditions, r_array, params, Pb,
                 raise
             logger.debug(f"bubble structure: LSODA raised ({e}); retrying with Radau")
             rhs_error = None
+            n_rhs = 0
             try:
                 sol = _integrate('Radau')
             except ValueError as e2:
