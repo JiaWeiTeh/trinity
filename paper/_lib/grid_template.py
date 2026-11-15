@@ -109,6 +109,7 @@ from trinity._output.trinity_reader import (
     find_all_simulations,
     organize_simulations_for_grid,
     get_unique_ndens,
+    sfe_from_token,
 )
 
 
@@ -245,8 +246,8 @@ def _mcloud_label_short(mCloud: str) -> str:
 
 def _sfe_title(sfe: str) -> str:
     """Column title for an SFE tag, e.g. '010' → r'$\\epsilon=0.10$'."""
-    eps = int(sfe) / 100.0
-    return rf"$\epsilon={eps:.2f}$"
+    eps = sfe_from_token(sfe)
+    return rf"$\epsilon={eps:.2f}$" if round(eps, 2) == eps else rf"$\epsilon={eps:g}$"
 
 
 def _range_tag(prefix: str, values, key=float) -> str:
@@ -270,7 +271,7 @@ def build_param_tag(mCloud_list, sfe_list, ndens) -> str:
     """
     parts = []
     m_tag = _range_tag("M", mCloud_list, key=float)
-    sfe_tag = _range_tag("sfe", sfe_list, key=int)
+    sfe_tag = _range_tag("sfe", sfe_list, key=sfe_from_token)
     if m_tag:
         parts.append(m_tag)
     if sfe_tag:
