@@ -18,6 +18,7 @@ paper/plots/
 
 # prelimenary.
 docs/dev
+docs/audit/
 to-be-deleted/
 Claude outputs/
 
@@ -35,6 +36,7 @@ paper/hamed/
 paper/pineda/
 paper/website/
 paper/janice/
+paper/liangFH/
 # referee-revision staging area (new analysis + HPC control-sweep harness; review before wiring into src/)
 paper/methods/upgrade/
 test/test_barnes_population.py
