@@ -2,7 +2,7 @@
   "Pb": 21357664.417230815,
   "R1": 1.4216052950363622,
   "_comment": "genuinely-stiff bubble state for test_dR2min_magic_number Tier 2; captured by capture_stiff_dR2_state.py",
-  "base_param": "docs/dev/performance/conduction_stiff_5e9_sfe001.param",
+  "base_param": "test/data/conduction_stiff_5e9_sfe001.param",
   "dMdt_converged": 938048.6360349662,
   "dR2_over_R2": 1.1847885665008036e-10,
   "param_values": {
