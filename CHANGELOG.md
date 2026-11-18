@@ -22,6 +22,12 @@ First public release.
 
 ### Added
 
+- Seeded inputs (`seed_*` keys, `trinity/_input/seed.py`): a run can be started from the cluster's ionising
+  photon rate `seed_Qi`, bolometric luminosity `seed_Lbol`, H-alpha luminosity `seed_LHa` (with `seed_fesc`) or
+  stellar mass `seed_mCluster`, at a stated age `seed_age`, in a cloud (`mCloud` with `nCore`, `seed_rCloud` or
+  `seed_Sigma`) or in a uniform medium without a cloud (`seed_gas ism` with `nISM`, `PISM`). The keys are
+  rewritten into `sfe`, `mCloud`, `nCore`, `TCloud` and `rCloud_max` at load; `metadata.json` records the
+  equivalent plain keys in `seed_canonical`. Example: `param/qh0_ism_example.param`.
 - Covering-fraction leak (`coverFraction`, Cf): geometry-set energy/mass leak
   where hot gas vents through the open `(1-Cf)*4*pi*R2^2` area at the interior
   sound speed. `Cf=1` recovers the sealed (Weaver) bubble exactly.
