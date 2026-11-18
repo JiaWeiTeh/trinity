@@ -50,5 +50,58 @@ def test_theta_target_is_double_count_free():
     assert eff < (Lcool + Lleak) + theta * Lmech  # strictly below the double-count sink
 
 
+# --- F2: the phase-1b cooling_balance trigger (run_energy_implicit_phase.trigger_Lloss) ---------
+class _P:
+    """Minimal stand-in for a params entry (only .value is read)."""
+
+    def __init__(self, value):
+        self.value = value
+
+
+class _Props:
+    """Minimal stand-in for BubbleProperties (only bubble_LTotal is read)."""
+
+    def __init__(self, LTotal):
+        self.bubble_LTotal = LTotal
+
+
+def _params(mode, fmix, Lloss_stored, Leak, theta=0.0):
+    return {'cooling_boost_mode': _P(mode), 'cooling_boost_fmix': _P(fmix),
+            'cooling_boost_theta': _P(theta), 'bubble_Lloss': _P(Lloss_stored),
+            'bubble_Leak': _P(Leak)}
+
+
+def test_trigger_no_root_segment_holds_stored_loss_without_reboost():
+    # F2: bubble_Lloss is stored already boosted (f*Lcool + Lleak = 4*3 + 0.5 = 12.5). A no-root
+    # segment (bubble_props None) must use it as is, not 4*12.5 = f^2*Lcool + f*Lleak = 50.
+    from trinity.phase1b_energy_implicit.run_energy_implicit_phase import trigger_Lloss
+    stored = effective_Lloss("multiplier", 4.0, 0.0, Lcool=3.0, Lleak=0.5, Lmech=10.0)
+    assert stored == 12.5
+    assert trigger_Lloss(_params("multiplier", 4.0, stored, 0.5), None, 10.0) == 12.5
+
+
+def test_trigger_with_props_boosts_once():
+    from trinity.phase1b_energy_implicit.run_energy_implicit_phase import trigger_Lloss
+    p = _params("multiplier", 4.0, float("nan"), 0.5)
+    assert trigger_Lloss(p, _Props(3.0), 10.0) == 0.5 + 4.0 * 3.0
+
+
+def test_trigger_default_mode_unchanged():
+    # 'none': with props -> Lcool + Lleak; without -> the stored value, exactly as before the fix
+    from trinity.phase1b_energy_implicit.run_energy_implicit_phase import trigger_Lloss
+    assert trigger_Lloss(_params("none", 1.0, 7.25, 0.5), _Props(3.0), 10.0) == 3.5
+    assert trigger_Lloss(_params("none", 1.0, 7.25, 0.5), None, 10.0) == 7.25
+
+
+def test_trigger_no_root_theta_target_follows_current_lmech():
+    # theta_target's max is idempotent, so the no-root segment keeps re-applying it: the target
+    # follows the current Lgain (stored = max(3 + 0.5, 0.5 * 10) = 5.0)
+    from trinity.phase1b_energy_implicit.run_energy_implicit_phase import trigger_Lloss
+    stored = effective_Lloss("theta_target", 1.0, 0.5, Lcool=3.0, Lleak=0.5, Lmech=10.0)
+    assert stored == 5.0
+    assert trigger_Lloss(_params("theta_target", 1.0, stored, 0.5, theta=0.5), None, 20.0) == 10.0
+    assert trigger_Lloss(_params("theta_target", 1.0, stored, 0.5, theta=0.5), None, 4.0) == 5.0
+
+
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-q"]))

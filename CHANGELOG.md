@@ -157,6 +157,10 @@ composition is set by `x_He` and the ionisation states `Z_He` (hot bubble) and
 
 ### Fixed
 
+- The phase-1b cooling-balance trigger no longer applies the opt-in cooling boost twice. In a segment where the
+  bubble solve finds no root it falls back to the stored loss, which is already boosted, and boosted it again
+  (`cooling_boost_mode multiplier`: f_mix² L_cool + f_mix L_leak), so phase 1b could end early. Under `multiplier`
+  the stored loss is now held as it is; `none` and `theta_target` are unchanged.
 - Old free-streaming seeds no longer lose the energy-driven phase. When the
   phase-0 seed time `dt_phase0` exceeds 1/3 kyr (weak winds, large M*/n), the R1
   switch-on ramp now spans `3·dt_phase0` instead of a fixed 1 kyr, and phase 1a
