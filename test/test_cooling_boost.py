@@ -103,5 +103,43 @@ def test_trigger_no_root_theta_target_follows_current_lmech():
     assert trigger_Lloss(_params("theta_target", 1.0, stored, 0.5, theta=0.5), None, 4.0) == 5.0
 
 
+
+# --- F3 (docs/dev/cooling-enhance-suppress/PLAN.md): the cooling-boost knobs are validated ---
+from trinity._input.errors import ParameterFileError  # noqa: E402
+from trinity._input.registry import (  # noqa: E402
+    REGISTRY,
+    _validate_C_thermal,
+    _validate_cooling_boost_fmix,
+    _validate_cooling_boost_kappa,
+    _validate_cooling_boost_mode,
+    _validate_cooling_boost_theta,
+)
+
+_F3 = {
+    "cooling_boost_mode": (_validate_cooling_boost_mode, [None, "none", "multiplier", "theta_target"],
+                           ["multiplyer", "Multiplier", "", 4.0]),
+    "cooling_boost_fmix": (_validate_cooling_boost_fmix, [1.0, 1, 2.5, 4.0], [0.0, 0.5, -2.0, True, "4", float("nan")]),
+    "cooling_boost_theta": (_validate_cooling_boost_theta, [0.0, 0.5, 0.96], [1.0, -0.1, 1.5, False, float("inf")]),
+    "cooling_boost_kappa": (_validate_cooling_boost_kappa, [1.0, 0.05, 0.2, 16, "auto", "AUTO"], [0.0, -1.0, "x", True]),
+    "C_thermal": (_validate_C_thermal, [6e-7, 1.2e-6], [0.0, -6e-7, None, float("nan")]),
+}
+
+
+@pytest.mark.parametrize("name", sorted(_F3))
+def test_f3_validator_is_attached(name):
+    assert REGISTRY[name].validator is _F3[name][0]
+
+
+@pytest.mark.parametrize("name,value", [(n, v) for n, (_, ok, _) in sorted(_F3.items()) for v in ok])
+def test_f3_validator_accepts(name, value):
+    _F3[name][0](value, {})  # must not raise
+
+
+@pytest.mark.parametrize("name,value", [(n, v) for n, (_, _, bad) in sorted(_F3.items()) for v in bad])
+def test_f3_validator_refuses(name, value):
+    with pytest.raises(ParameterFileError):
+        _F3[name][0](value, {})
+
+
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-q"]))

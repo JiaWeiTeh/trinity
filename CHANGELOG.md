@@ -52,6 +52,9 @@ First public release.
 
 ### Changed
 
+- `cooling_boost_mode`, `cooling_boost_fmix`, `cooling_boost_theta`, `cooling_boost_kappa` and `C_thermal` are
+  validated when a `.param` file is read: an unknown mode, f_mix < 1, θ outside [0, 1), κ ≤ 0 (other than `auto`)
+  or C_thermal ≤ 0 is refused. An unknown mode used to fall back silently to no boost.
 - The PDR layer's surface-temperature table (default `TShell_neu auto`) is now the Wolfire-Kaufman 2020 models'
   gas temperature at A_V = 0.01, as the PDR Toolbox distributes it (wk2020, Z = 1, constant density; Pound & Wolfire
   2023): `lib/default/pdr/wk2020_ts_grid.csv`, 0.125 dex in n and G0 over K99's range, 9.46-7860 K. It replaces
