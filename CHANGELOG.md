@@ -160,6 +160,9 @@ composition is set by `x_He` and the ionisation states `Z_He` (hot bubble) and
 
 ### Fixed
 
+- The bubble's radiative loss integrals (L1, L2, L3) keep their sign. A slice where photoionisation heating exceeds
+  cooling now lowers the loss; `np.abs` counted it as a loss. Where every slice cools on net the result is
+  bit-identical to before.
 - `cooling_boost_mode multiplier` and `theta_target` now act on the bubble energy equation of phases 1a and 1c and
   of the swept transition, as they already did in phase 1b. Those phases subtracted the unboosted loss, so dE_b/dt
   stepped at each hand-off. This moves every boosted run: `simple_cluster` at `cooling_boost_fmix 4` now leaves

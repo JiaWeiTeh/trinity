@@ -151,3 +151,32 @@ def test_cie_tcutoff_follows_the_array():
         assert ncc._cie_tcutoff(lt) == lt[lt > 5.5].min()
         del lt
         gc.collect()
+
+
+# --- F4 (docs/dev/cooling-enhance-suppress/PLAN.md): the loss integrals keep their sign ---
+@pytest.mark.parametrize("descending", [False, True])
+def test_loss_integral_keeps_the_sign_of_net_heating(descending):
+    r = np.linspace(1.0, 2.0, 50)
+    net_cooling = 3.0 * r**2            # positive = cooling (L1, the CIE part of L3)
+    net_heating = 2.0 * r**2            # (heat - cool) 4 pi r^2 > 0: a heating-dominated slice
+    if descending:
+        r, net_cooling, net_heating = r[::-1], net_cooling[::-1], net_heating[::-1]
+    assert BL._loss_integral(net_cooling, r) == pytest.approx(7.0, rel=1e-3)
+    assert BL._loss_integral(-net_cooling, r, cooling_positive=False) == pytest.approx(7.0, rel=1e-3)
+    assert BL._loss_integral(net_heating, r, cooling_positive=False) == pytest.approx(-14.0 / 3.0, rel=1e-3)
+    assert BL._loss_integral(-net_heating, r) == pytest.approx(-14.0 / 3.0, rel=1e-3)
+
+
+@pytest.mark.parametrize("descending", [False, True])
+def test_loss_integral_is_bit_identical_to_abs_where_the_slice_cools(descending):
+    rng = np.random.default_rng(7)
+    r = np.sort(rng.uniform(0.1, 3.0, 400))
+    cool = rng.uniform(1e-3, 1e3, 400) * r**2
+    if descending:
+        r, cool = r[::-1], cool[::-1]
+    old = np.abs(BL._trapezoid(cool, x=r))
+    assert BL._loss_integral(cool, r) == old
+    assert BL._loss_integral(-cool, r, cooling_positive=False) == old
+    for cooling_positive in (True, False):
+        zero = BL._loss_integral(np.zeros_like(r), r, cooling_positive=cooling_positive)
+        assert zero == 0.0 and np.copysign(1.0, zero) == 1.0   # +0.0, as abs() gave it
