@@ -1516,14 +1516,15 @@ def parse_simulation_params(folder_name: str) -> Optional[Dict[str, str]]:
     Returns
     -------
     dict or None
-        {'mCloud': '1e7', 'sfe': '020', 'ndens': '1e4'} or None if no match
+        {'mCloud': '1e7', 'sfe': '020', 'ndens': '1e4'} or None if no match. A non-whole
+        percent keeps its decimals: '1e5_sfe000p5_n1e4' -> sfe '000p5' (see sfe_from_token).
     """
     import re
     # Pattern: optional 'm' prefix, mCloud, _sfe{sfe}, _n{ndens}
     # ndens can be scientific notation (1e4) or plain integer/float (50, 500)
     # Also handle _modified suffix or profile tags like _PL0, _BE14
     match = re.search(
-        r'm?(\d+\.?\d*e\d+)_sfe(\d+)_n(\d+\.?\d*(?:e\d+)?)',
+        r'm?(\d+\.?\d*e\d+)_sfe(\d+(?:p\d+)?)_n(\d+\.?\d*(?:e\d+)?)',
         folder_name,
         re.IGNORECASE
     )
@@ -1534,6 +1535,14 @@ def parse_simulation_params(folder_name: str) -> Optional[Dict[str, str]]:
             'ndens': match.group(3)
         }
     return None
+
+
+def sfe_from_token(token: str) -> float:
+    """The run-name sfe token as a fraction: '010' -> 0.1, '000p5' -> 0.005.
+
+    The token is written by sweep_parser.generate_run_name.
+    """
+    return float(token.replace('p', '.')) / 100
 
 
 def get_unique_ndens(sim_files: List[Path]) -> List[str]:
@@ -1626,7 +1635,7 @@ def organize_simulations_for_grid(
 
     # Sort by numerical value
     mCloud_list = sorted(mCloud_set, key=lambda x: float(x))
-    sfe_list = sorted(sfe_set, key=lambda x: int(x))
+    sfe_list = sorted(sfe_set, key=sfe_from_token)
     ndens_list = sorted(ndens_set, key=lambda x: float(x))
 
     return {
@@ -1674,7 +1683,7 @@ def info_simulations(folder_path) -> Dict:
 
     return {
         'mCloud': sorted(mCloud_set, key=lambda x: float(x)),
-        'sfe': sorted(sfe_set, key=lambda x: int(x)),
+        'sfe': sorted(sfe_set, key=sfe_from_token),
         'ndens': sorted(ndens_set, key=lambda x: float(x)),
         'count': len(sim_files)
     }
