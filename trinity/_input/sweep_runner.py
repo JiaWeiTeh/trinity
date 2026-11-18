@@ -131,6 +131,12 @@ def _validate_sweep_combination(params_dict):
     if dens_profile not in ('densPL', 'densBE'):
         return None
 
+    # Seeded gas (trinity/_input/seed.py): nCore and, for a uniform medium, mCloud are derived when the .param is
+    # loaded, so the raw values here are not the cloud that will run. The load and run.py validate the real one.
+    if (params_dict.get('seed_gas') == 'ism' or params_dict.get('seed_rCloud') is not None
+            or params_dict.get('seed_Sigma') is not None):
+        return None
+
     mCloud = params_dict.get('mCloud')
     nCore_cgs = params_dict.get('nCore')
     if mCloud is None or nCore_cgs is None:

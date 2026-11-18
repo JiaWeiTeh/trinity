@@ -1,0 +1,12 @@
+# A cluster known only by its ionising photon rate, in a uniform medium (to be copied to param/ in Phase 6).
+# Run:  python run.py param/qh0_ism_example.param
+#
+# seed_Qi   Q(H0) emitted by the stars [1/s] at the age seed_age [Myr] (default 0). The cluster mass is whatever
+#           gives this rate on the stellar table of the run; here 1e50 /s is 1.85e3 Msun.
+# seed_gas  ism = no cloud: gas of density nISM [cm^-3] and pressure PISM [K cm^-3] everywhere, out to stop_r [pc].
+seed_Qi    1e50
+seed_gas    ism
+nISM    100
+PISM    1e5
+stop_r    200
+stop_t    10

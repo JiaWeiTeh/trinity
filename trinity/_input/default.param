@@ -104,6 +104,40 @@ rCore    0.01
 # UNIT: [pc]
 rCloud_max    200
 
+# INFO: Seeded cluster (trinity/_input/seed.py): ionising photon rate Q(H0) emitted by the stars at the cluster age seed_age. The cluster mass is set so that the stellar table of the run (sps_path, sps_refmass) gives this rate at that age; sfe is then derived, so do not set sfe. Give the rate the stars emit: a rate derived from H-alpha misses the photons that escaped or went to dust (use seed_LHa with seed_fesc). At most one of seed_Qi, seed_Lbol, seed_LHa, seed_mCluster. None = not seeded.
+# UNIT: [s**-1]
+seed_Qi    None
+
+# INFO: Seeded cluster: bolometric luminosity of the stars at the cluster age seed_age; used as seed_Qi is, with the L_bol column of the stellar table. None = not seeded.
+# UNIT: [erg*s**-1]
+seed_Lbol    None
+
+# INFO: Seeded cluster: extinction-corrected H-alpha luminosity of the region at the cluster age seed_age. Converted to an ionising photon rate with case B at 1e4 K (7.31e11 photons per erg; Kennicutt 1998, ARA&A 36, 189, eq. 2), divided by (1 - seed_fesc), and then used as seed_Qi is. None = not seeded.
+# UNIT: [erg*s**-1]
+seed_LHa    None
+
+# INFO: Seeded cluster: stellar mass of the cluster, given directly (no table lookup, no seed_age); sfe is derived as seed_mCluster / mCloud. None = not seeded.
+# UNIT: [Msun]
+seed_mCluster    None
+
+# INFO: Cluster age at which seed_Qi, seed_Lbol or seed_LHa holds. The run still starts at t = 0 and follows the whole stellar table; the seeded value is met at t = seed_age. 0 (default) = the zero-age value. On the bundled Starburst99 table Q(H0) per unit mass stays within 9 per cent below and 26 per cent above its zero-age value up to 4 Myr and falls by a factor 60 between 5 and 10 Myr, so the age matters for older regions.
+# UNIT: [Myr]
+seed_age    0
+
+# INFO: With seed_LHa only: the share of the ionising photons that make no H-alpha in the region (escaped, or absorbed by dust), in [0, 1). The photon rate from H-alpha is divided by (1 - seed_fesc).
+seed_fesc    0
+
+# INFO: How the gas is given. 'cloud' (default): mCloud, nCore and the profile keys as usual. 'ism': no cloud, a uniform medium of density nISM out to stop_r, whose pressure PISM acts on the shell while the shell absorbs every ionising photon (when photons leak, the gas ahead is taken as photoionised); needs a seeded cluster and a finite stop_r, and mCloud, nCore, sfe and TCloud must not be set. It is run as a uniform cloud whose edge lies at 2 x stop_r, with nCore = nISM and TCloud carrying PISM inside it (trinity/_input/seed.py); keep stop_r near the size of interest, the stand-in cloud's mass grows as stop_r cubed.
+seed_gas    cloud
+
+# INFO: Uniform clouds (dens_profile densPL, densPL_alpha 0) under seed_gas cloud: the cloud radius, given instead of nCore. nCore is derived from the gas left after star formation, n_H = 3 M_gas / (4 pi seed_rCloud^3 mu_convert); do not set nCore. None = off.
+# UNIT: [pc]
+seed_rCloud    None
+
+# INFO: Uniform clouds under seed_gas cloud: the mean surface density of the gas left after star formation, M_gas / (pi rCloud^2), given instead of nCore; the radius and then nCore follow as for seed_rCloud. Not with seed_rCloud or nCore. None = off.
+# UNIT: [Msun*pc**-2]
+seed_Sigma    None
+
 # INFO: Which P_HII closure to use. 'c3c' (default, shipped): the confinement regime switch on the CAVITY Stroemgren density -- exactly 0.0 while the ionised gas is confined, P_C3a once it is not (get_bubbleParams.get_phii_c3c). 'front' (option C, D16 ruled 2026-09-11): the pressure AT the ionisation front, (mu_c/mu_i)*n_IF*k_B*T_ion, applied by the caller over 4*pi*R_IF**2 on the neutral rind with NO Pb or P_ram added, and exactly 0.0 on a fully ionised shell (get_bubbleParams.get_phii_front). The two differ in area, in composition and in which body is driven, so they are not interchangeable magnitudes -- see  'o1' and 'k11' are MEASURED CANDIDATES, not options: both drive the neutral rind over 4*pi*R_IF**2 like 'front' but source the skin density differently -- 'o1' from the shell's inner boundary (P_conf/p_ref), 'k11' from Geen 2019's coupled wind+photon root. O1 FAILS the photoionisation-only limit by construction (test_phii_limits.py L1/L1b/L2) and is kept only so that result stays measurable; do not select it for science. See docs/dev/phii-identity/PLAN.md 0.0.5 Step 3. 'swept' (PLAN.md 0.0.11, Steps 4-6, 2026-10-22/25): the swept-mass formulation in the IMPLICIT, TRANSITION and MOMENTUM phases -- the shell's outer radius r_s and its gas speed u are evolved, the mass is the cloud mass inside r_s, R2 is root-found each segment so the shell solve ends at r_s, and the drive is the profile's own outer pressure (no P_HII); the outer edge runs at the isothermal-jump speed where the gas ahead is warm cloud gas, and at the gas speed past rCloud (rs_dot). In the implicit phase the inner pressure is the bubble's own (switch-on ramp included) and the beta/delta solve sees the bubble wall's speed dR2/dt from successive roots (cool_alpha = t dR2/dt / R2); in transition the inner pressure is max(P_th, P_ram) and its energy equation sees the same wall speed. The energy phase (1a) is c3c; swept takes over at 1b entry (trinity/phase2_momentum/swept.py).
 phii_scheme    c3c
 

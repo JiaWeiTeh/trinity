@@ -31,6 +31,7 @@ from trinity._input.registry import (
     validate_all,
     validate_companions,
 )
+from trinity._input.seed import apply_seed
 
 # Anchor bundled-asset lookups to the repo root, not the CWD: users may launch
 # run.py from anywhere, and the `lib/default/...` defaults must still resolve.
@@ -534,6 +535,12 @@ def read_param(path2file):
     # straight from the spec and bypasses Step 9's sweep, matching the
     # pre-Phase-9 behavior where Step 10 also constructed post-sweep.
     materialize_runtime(params)
+
+    # Seeded inputs (trinity/_input/seed.py): a cluster given by Q(H0), a luminosity or its mass, and gas given
+    # as a cloud with a stated size or as a uniform medium, rewritten into sfe / mCloud / nCore / TCloud /
+    # rCloud_max. Values are mutated in place (the guard below allows that); a .param without a seed_* key
+    # returns at the first line.
+    apply_seed(params, user_dict, merged_dict)
 
     # =============================================================================
     # Guard: runtime init must not silently overwrite default.param keys
