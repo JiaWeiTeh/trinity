@@ -255,5 +255,16 @@ def test_segment0_exit_is_not_the_frozen_closed_form(tmp_path):
     )
 
 
+# --- F1 (docs/dev/cooling-enhance-suppress/PLAN.md): the opt-in cooling boost reaches this energy equation ---
+def test_cooling_boost_reaches_the_energy_equation(pure_ode):
+    """Under multiplier the 1a/1c energy equation loses f_mix * L_cool, as phase 1b does; none is unchanged."""
+    _, _, Ed_none = pure_ode(_snapshot())
+    _, _, Ed_f4 = pure_ode(_snapshot(cooling_boost_mode="multiplier", cooling_boost_fmix=4.0))
+    _, _, Ed_f1 = pure_ode(_snapshot(cooling_boost_mode="multiplier", cooling_boost_fmix=1.0))
+    L_cool = _snapshot().bubble_LTotal
+    assert Ed_none - Ed_f4 == pytest.approx(3.0 * L_cool, rel=1e-6)
+    assert Ed_f1 == Ed_none  # sealed bubble (Cf = 1, no leak): f_mix = 1 is exactly the resolved model
+
+
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-q"]))

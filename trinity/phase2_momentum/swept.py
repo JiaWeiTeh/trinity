@@ -928,6 +928,9 @@ def run_phase_transition_swept(params):
         R2a, rsa, K, F_rad, M_floor, z = root['R2'], rs, root['K'], params['F_rad'].value, Ms, zeta
         m_ev = get_bubbleParams.evaporated_mass(params)   # shell_mass_net: 1b's last value (PLAN D-MB5); 0.0 when off
         L_bubble, Cf = params['bubble_LTotal'].value, params['coverFraction'].value
+        # F1: the opt-in cooling boost reaches this energy equation as in 1b; 'none' skips it (byte-identical)
+        from trinity.phase1b_energy_implicit.get_betadelta import effective_Lloss_from_params
+        boosted = (getattr(params.get('cooling_boost_mode', None), 'value', 'none') or 'none') != 'none'
 
         def rhs(t, y):
             r, v, E = max(y[0], 1e-10), y[1], y[2]
@@ -937,8 +940,11 @@ def run_phase_transition_swept(params):
             F = FOUR_PI * R2t**2 * Pc + K - FOUR_PI * r**2 * p_ext(r, fabs_ion, params) + F_rad
             U_t = edge_speed(v, r, fabs_ion, params)
             m, md = swept_mass(r, U_t, M_floor, v <= 0.0, params)
-            Ed = (fb_t.Lmech_total - L_bubble - FOUR_PI * R2t**2 * Pc * z * U_t
-                  - get_bubbleParams.get_leak_luminosity(Cf, R2t, Pc, c_sound, gamma))
+            L_leak = get_bubbleParams.get_leak_luminosity(Cf, R2t, Pc, c_sound, gamma)
+            L_b = (effective_Lloss_from_params(params, L_bubble, L_leak, fb_t.Lmech_total) - L_leak
+                   if boosted else L_bubble)
+            Ed = (fb_t.Lmech_total - L_b - FOUR_PI * R2t**2 * Pc * z * U_t
+                  - L_leak)
             Ed_sc = -E / (R2t / c_sound) if c_sound > 0 else 0.0
             mn = m - m_ev                                    # the shell's own mass
             return np.array([U_t, (F - G * mn / r**2 * (mCluster + m_ev + 0.5 * mn) - md * v) / mn, min(Ed, Ed_sc)])

@@ -157,6 +157,11 @@ composition is set by `x_He` and the ionisation states `Z_He` (hot bubble) and
 
 ### Fixed
 
+- `cooling_boost_mode multiplier` and `theta_target` now act on the bubble energy equation of phases 1a and 1c and
+  of the swept transition, as they already did in phase 1b. Those phases subtracted the unboosted loss, so dE_b/dt
+  stepped at each hand-off. This moves every boosted run: `simple_cluster` at `cooling_boost_fmix 4` now leaves
+  phase 1b at 0.060 Myr instead of 0.0047 Myr and reaches 1.41 pc instead of 0.77 pc before it recollapses. Runs
+  with the default `none` are byte-identical.
 - The phase-1b cooling-balance trigger no longer applies the opt-in cooling boost twice. In a segment where the
   bubble solve finds no root it falls back to the stored loss, which is already boosted, and boosted it again
   (`cooling_boost_mode multiplier`: f_mix² L_cool + f_mix L_leak), so phase 1b could end early. Under `multiplier`
