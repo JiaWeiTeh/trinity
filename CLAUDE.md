@@ -3,7 +3,7 @@
 TRINITY (`trinity-sf`) is a feedback-driven bubble-evolution astrophysics code. For a given
 giant-molecular-cloud mass, star-formation efficiency, density profile, and ambient medium, it
 integrates an expanding feedback bubble — shell radius, velocity, thermal state, force budget —
-through its phase transitions and stopping fate. Pure Python (≥3.9), no compile step.
+through its phase transitions and stopping fate. Pure Python (≥3.11), no compile step.
 
 This file holds the project facts to load every session, then the behavioral rules.
 

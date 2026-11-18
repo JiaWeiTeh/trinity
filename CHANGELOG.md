@@ -52,6 +52,8 @@ First public release.
 
 ### Changed
 
+- TRINITY needs Python ≥ 3.11 and scipy ≥ 1.17.1; CI tests 3.11 and 3.12. Before 1.17, scipy's LSODA was the old
+  Fortran code, which stops the Strömgren start in a dense core after 12 rows.
 - `cooling_boost_mode`, `cooling_boost_fmix`, `cooling_boost_theta`, `cooling_boost_kappa` and `C_thermal` are
   validated when a `.param` file is read: an unknown mode, f_mix < 1, θ outside [0, 1), κ ≤ 0 (other than `auto`)
   or C_thermal ≤ 0 is refused. An unknown mode used to fall back silently to no boost.

@@ -8,7 +8,7 @@ version = "1.0.0"
 description = "TRINITY: A stellar feedback and bubble evolution simulation code"
 readme = "README.md"
 license = {text = "GPL-3.0-only"}
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 authors = [
     {name = "Jia Wei Teh"},
 ]
@@ -26,8 +26,6 @@ classifiers = [
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering :: Astronomy",
@@ -36,7 +34,10 @@ classifiers = [
 
 dependencies = [
     "numpy>=1.20.0,<2",
-    "scipy>=1.7.0,<2",
+    # scipy >= 1.17.1: older scipy runs LSODA from the old Fortran code, which stops the Stromgren
+    # start in a dense core early ("Unexpected istate in LSODA"); 1.17 rewrote it in C. 1.17.1 is the version tested.
+    # scipy 1.17 needs Python >= 3.11; scipy 1.18 needs numpy >= 2, so with the numpy cap pip picks 1.17.x.
+    "scipy>=1.17.1,<2",
     "astropy>=5.0,<8",
     "matplotlib>=3.5.0,<4",
     "pandas>=1.3.0,<3",
@@ -83,7 +84,7 @@ exclude = [
 
 [tool.black]
 line-length = 100
-target-version = ['py39', 'py310', 'py311', 'py312']
+target-version = ['py311', 'py312']
 include = '\.pyi?$'
 exclude = '''
 /(
@@ -99,7 +100,7 @@ exclude = '''
 '''
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.11"
 warn_return_any = true
 warn_unused_configs = true
 ignore_missing_imports = true
