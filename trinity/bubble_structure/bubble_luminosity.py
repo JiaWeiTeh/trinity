@@ -811,7 +811,7 @@ def _bubble_luminosity(params, R1, Pb, r2Prime, initial_conditions,
         integrand_bubble[band] = (_seam_band_rate(params, n_bubble[band], T_bubble[band], r_bubble[band])
                                   * 4 * np.pi * r_bubble[band]**2)
     # calculate power loss due to cooling
-    L_bubble = np.abs(_trapezoid(integrand_bubble, x=r_bubble))
+    L_bubble = _loss_integral(integrand_bubble, r_bubble)
     # intermediate result for calculation of average temperature [K pc3]
     Tavg_bubble = np.abs(_trapezoid(r_bubble**2 * T_bubble, x=r_bubble))
 
@@ -853,12 +853,12 @@ def _bubble_luminosity(params, R1, Pb, r2Prime, initial_conditions,
         heat_cond = 10 ** heating_nonCIE.interp(
             np.transpose(np.log10([n_cond / cvt.ndens_cgs2au, T_cond, phi_cond / cvt.phi_cgs2au]))
         )
-        # net cooling rate [au]
+        # net heating rate [au], heat - cool: positive = heating
         dudt_cond = (heat_cond - cool_cond) * cvt.dudt_cgs2au
         # integrand [au]
         integrand_cond = dudt_cond * 4 * np.pi * r_conduction**2
         # calculate power loss due to cooling [au]
-        L_conduction = np.abs(_trapezoid(integrand_cond, x=r_conduction))
+        L_conduction = _loss_integral(integrand_cond, r_conduction, cooling_positive=False)
         # intermediate result for calculation of average temperature
         Tavg_conduction = np.abs(_trapezoid(r_conduction**2 * T_cond, x=r_conduction))
 
@@ -898,13 +898,13 @@ def _bubble_luminosity(params, R1, Pb, r2Prime, initial_conditions,
             Lambda_int = 10**(cooling_CIE(np.log10(T_interm[mask]))) * cvt.Lambda_cgs2au
             integrand_int = params['chi_e'].value * n_interm[mask]**2 * Lambda_int * 4 * np.pi * r_interm[mask]**2
         # calculate power loss due to cooling
-        L_intermediate += np.abs(_trapezoid(integrand_int, x=r_interm[mask]))
+        L_intermediate += _loss_integral(integrand_int, r_interm[mask], cooling_positive=(regime == 'CIE'))
 
     Tavg_intermediate = np.abs(_trapezoid(r_interm**2 * T_interm, x=r_interm))
 
     # f_A scales the interface-band losses consistently with the in-ODE source boost
     # (edit site 1). L1 (CIE interior) and L_leak are deliberately NOT scaled (no mixing
-    # interface there / bulk escape). |int f*g| = f*|int g| for constant f, so component
+    # interface there / bulk escape). int f*g = f*int g for constant f, so component
     # scaling equals the screen's L_eff = L1 + fA*(L2+L3) while keeping the dataclass,
     # the beta-delta residual (Lcool), dictionary logging and the harvest chain consistent.
     # The fA != 1.0 guard keeps the default path byte-identical.
@@ -984,6 +984,20 @@ def _bubble_luminosity(params, R1, Pb, r2Prime, initial_conditions,
         Pb=Pb,
         bubble_r_Tb=bubble_r_Tb,
     )
+
+
+def _loss_integral(integrand, r, cooling_positive=True):
+    """Radiative loss of one zone: the integral of `integrand` over r, taken towards larger r whatever order the slice
+    is stored in (r_bubble and r_conduction descend, r_interm ascends). `integrand` is positive for cooling
+    (chi_e n^2 Lambda 4 pi r^2) or, with cooling_positive=False, positive for heating ((heat - cool) 4 pi r^2); the
+    result is positive for net cooling and negative for net heating.
+
+    F4 (docs/dev/cooling-enhance-suppress/PLAN.md): replaces np.abs(trapezoid), which booked a net-heating slice as a
+    loss. Where the slice cools on net the value is bit-identical to abs(): only the sign flips (0.0 - s is exact),
+    and a zero comes out +0.0, as abs() gave it."""
+    s = _trapezoid(integrand, x=r)
+    descending = r.size > 1 and r[-1] < r[0]
+    return (0.0 - s) if descending == cooling_positive else (s + 0.0)
 
 
 def _seam_band_rate(params, n, T, r):

@@ -28,15 +28,6 @@ _BASE = os.path.join(_REPO, "param", "simple_cluster.param")
 _FIXTURE = os.path.join(_REPO, "test", "data", "residual_resample_fixture.json")
 _PATH_SKIP = {"path_cooling_CIE", "path_cooling_nonCIE", "sps_path", "path2output"}
 
-# The fixture is tracked, but its ``base_param`` points into docs/dev, which is untracked
-# (local-only). Only the two full-solve tests need it; the rest of this module runs normally.
-with open(_FIXTURE) as _fh:
-    _BASE_PARAM = os.path.join(_REPO, json.load(_fh)["base_param"])
-_needs_base_param = pytest.mark.skipif(
-    not os.path.isfile(_BASE_PARAM),
-    reason="docs/dev is untracked (local-only); fixture base_param unavailable",
-)
-
 
 def _build_full_params(fixture_path):
     """Full params (cooling cubes rebuilt) from a distilled state fixture.
@@ -156,7 +147,6 @@ def test_rhs_zero_is_the_conduction_only_structure(monkeypatch):
 
 # --- edit site E2b: every component scales ------------------------------------
 
-@_needs_base_param
 def test_loss_components_scale_together(monkeypatch):
     # ~3 s each: full bubble solves. Freeze the profile (net_coolingcurve.get_dudt untouched by
     # the scale: set it to the identity path by using f = 1 in the ODE via a monkeypatched
@@ -191,7 +181,6 @@ def test_loss_components_scale_together(monkeypatch):
     assert l1z == 0.0 and l2z == 0.0 and l3z == 0.0 and ltz == 0.0
 
 
-@_needs_base_param
 def test_full_solve_runs_at_zero():
     # the structure solve itself (RHS scaled, f = 0) must return a finite profile: the limit the
     # ladder's S000 arm relies on. A solver failure here is a plan bug, not a physics result.

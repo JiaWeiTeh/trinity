@@ -4,7 +4,7 @@
 [![Docs](https://img.shields.io/badge/docs-trinity--web-brightgreen.svg)](https://jiaweiteh.github.io/trinity-web/)
 [![A&A](https://img.shields.io/badge/A%26A-714%2C%20A226-blue.svg)](https://doi.org/10.1051/0004-6361/202661074)
 [![arXiv](https://img.shields.io/badge/arXiv-2605.27517-b31b1b.svg)](https://arxiv.org/abs/2605.27517)
-[![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 
 TRINITY is a feedback-driven bubble evolution code. For a given
@@ -27,7 +27,7 @@ pip install -r requirements.txt
 python run.py param/simple_cluster.param
 ```
 
-Pure Python 3.9 or newer, with no compilation step. The
+Pure Python 3.11 or newer, with no compilation step. The
 [Running TRINITY](https://jiaweiteh.github.io/trinity-web/?view=docs&page=running)
 guide covers parameter files, parameter sweeps (including SLURM job arrays on a
 cluster), and the output layout.

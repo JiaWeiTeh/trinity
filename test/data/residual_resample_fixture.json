@@ -2,7 +2,7 @@
  "Pb": 106788285.04106504,
  "R1": 0.000524262097028857,
  "_comment": "Distilled from docs/dev/performance/data/states/state_mock_hybr_energy_0000.pkl (config=mock_hybr, phase=energy, call_index=0). Scalar param_values only; the 5 large arrays and non-JSON objects (interp/cubes) are dropped -- the test rebuilds the CIE table (from path_cooling_CIE) and the non-CIE cubes deterministically via read_param(base_param)+get_coolingStructure, mirroring docs/dev/performance/harness/replay_from_dump.py:load_state. dMdt_converged is the CSV-verified fsolve root (data/bubble_resample_mock_hybr.csv, call_index 0); the pickle bubble_dMdt is nan because the state is dumped before fsolve converges.",
- "base_param": "docs/dev/transition/harness/mock_hybr.param",
+ "base_param": "test/data/mock_hybr.param",
  "call_index": 0,
  "config": "mock_hybr",
  "dMdt_converged": 3.860059892659629,

@@ -116,6 +116,11 @@ class ODESnapshot:
     # shell_mass_net: the shell gas evaporated into the bubble [Msun] (get_bubbleParams.evaporated_mass); 0.0 = off
     evaporated_mass: float = 0.0
 
+    # opt-in cooling boost (get_betadelta.effective_Lloss); 'none' leaves the energy equation untouched
+    cooling_boost_mode: str = 'none'
+    cooling_boost_fmix: float = 1.0
+    cooling_boost_theta: float = 0.0
+
 
 def create_ODE_snapshot(params, shell_props) -> ODESnapshot:
     """
@@ -170,6 +175,9 @@ def create_ODE_snapshot(params, shell_props) -> ODESnapshot:
         c_sound=params['c_sound'].value,
         dt_switchon=params['dt_switchon'].value if 'dt_switchon' in params else None,
         evaporated_mass=get_bubbleParams.evaporated_mass(params),
+        cooling_boost_mode=getattr(params.get('cooling_boost_mode', None), 'value', 'none') or 'none',
+        cooling_boost_fmix=float(getattr(params.get('cooling_boost_fmix', None), 'value', 1.0)),
+        cooling_boost_theta=float(getattr(params.get('cooling_boost_theta', None), 'value', 0.0)),
     )
 
 
@@ -345,6 +353,13 @@ def get_ODE_Edot_pure(t: float, y: list, snapshot: ODESnapshot, params_for_feedb
     L_leak = get_bubbleParams.get_leak_luminosity(
         snapshot.coverFraction, R2, press_bubble, snapshot.c_sound, snapshot.gamma_adia
     )
+    if snapshot.cooling_boost_mode != 'none':
+        # F1 (docs/dev/cooling-enhance-suppress/PLAN.md): the opt-in boost reaches this energy equation (1a, 1c)
+        # as it reaches 1b's, through the same effective_Lloss; the leak stays its own term. Imported here, as
+        # run_energy_phase.py does; 'none' never enters, so the default is byte-identical.
+        from trinity.phase1b_energy_implicit.get_betadelta import effective_Lloss
+        L_bubble = effective_Lloss(snapshot.cooling_boost_mode, snapshot.cooling_boost_fmix,
+                                   snapshot.cooling_boost_theta, L_bubble, L_leak, Lmech_total) - L_leak
     Ed = (Lmech_total - L_bubble) - (4 * np.pi * R2**2 * press_bubble) * v2 - L_leak
 
     logger.debug(f'Pure ODE: t={t:.6f}, R2={R2:.6e}, v2={v2:.6e}, Eb={Eb:.6e}')

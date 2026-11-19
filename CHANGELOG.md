@@ -52,6 +52,11 @@ First public release.
 
 ### Changed
 
+- TRINITY needs Python ≥ 3.11 and scipy ≥ 1.17.1; CI tests 3.11 and 3.12. Before 1.17, scipy's LSODA was the old
+  Fortran code, which stops the Strömgren start in a dense core after 12 rows.
+- `cooling_boost_mode`, `cooling_boost_fmix`, `cooling_boost_theta`, `cooling_boost_kappa` and `C_thermal` are
+  validated when a `.param` file is read: an unknown mode, f_mix < 1, θ outside [0, 1), κ ≤ 0 (other than `auto`)
+  or C_thermal ≤ 0 is refused. An unknown mode used to fall back silently to no boost.
 - The PDR layer's surface-temperature table (default `TShell_neu auto`) is now the Wolfire-Kaufman 2020 models'
   gas temperature at A_V = 0.01, as the PDR Toolbox distributes it (wk2020, Z = 1, constant density; Pound & Wolfire
   2023): `lib/default/pdr/wk2020_ts_grid.csv`, 0.125 dex in n and G0 over K99's range, 9.46-7860 K. It replaces
@@ -157,6 +162,18 @@ composition is set by `x_He` and the ionisation states `Z_He` (hot bubble) and
 
 ### Fixed
 
+- The bubble's radiative loss integrals (L1, L2, L3) keep their sign. A slice where photoionisation heating exceeds
+  cooling now lowers the loss; `np.abs` counted it as a loss. Where every slice cools on net the result is
+  bit-identical to before.
+- `cooling_boost_mode multiplier` and `theta_target` now act on the bubble energy equation of phases 1a and 1c and
+  of the swept transition, as they already did in phase 1b. Those phases subtracted the unboosted loss, so dE_b/dt
+  stepped at each hand-off. This moves every boosted run: `simple_cluster` at `cooling_boost_fmix 4` now leaves
+  phase 1b at 0.060 Myr instead of 0.0047 Myr and reaches 1.41 pc instead of 0.77 pc before it recollapses. Runs
+  with the default `none` are byte-identical.
+- The phase-1b cooling-balance trigger no longer applies the opt-in cooling boost twice. In a segment where the
+  bubble solve finds no root it falls back to the stored loss, which is already boosted, and boosted it again
+  (`cooling_boost_mode multiplier`: f_mix² L_cool + f_mix L_leak), so phase 1b could end early. Under `multiplier`
+  the stored loss is now held as it is; `none` and `theta_target` are unchanged.
 - Old free-streaming seeds no longer lose the energy-driven phase. When the
   phase-0 seed time `dt_phase0` exceeds 1/3 kyr (weak winds, large M*/n), the R1
   switch-on ramp now spans `3·dt_phase0` instead of a fixed 1 kyr, and phase 1a

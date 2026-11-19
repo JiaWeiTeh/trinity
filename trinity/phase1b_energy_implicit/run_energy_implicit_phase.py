@@ -468,6 +468,29 @@ def cap_dt_by_delta(dt_segment: float, delta: float, t_now: float) -> float:
     return dt_segment
 
 
+def trigger_Lloss(params, bubble_props, Lgain) -> float:
+    """The effective loss the cooling_balance trigger compares with Lgain.
+
+    With this segment's bubble properties: the resolved cooling plus the leak, boosted once by
+    effective_Lloss_from_params, the same loss the residual and the energy ODE use. Without them
+    (a no-root segment): the last physical segment's ``bubble_Lloss``, which is stored already
+    boosted (get_betadelta). Under 'multiplier' it is held as is: boosting it again counted f_mix
+    twice (f_mix**2 * Lcool + f_mix * Lleak; F2 in docs/dev/cooling-enhance-suppress/PLAN.md).
+    'none' (stored + 0.0) and 'theta_target' (max(stored, theta * Lgain), which follows the current
+    Lmech and counts nothing twice, since the max is idempotent) keep the call they had before.
+    """
+    if bubble_props is not None:
+        bubble_Leak = params.get('bubble_Leak', None)
+        _leak = (bubble_Leak.value
+                 if (bubble_Leak is not None and hasattr(bubble_Leak, 'value')) else 0.0)
+        return effective_Lloss_from_params(params, bubble_props.bubble_LTotal, _leak, Lgain)
+    Lloss_param = params.get('bubble_Lloss', None)
+    stored = Lloss_param.value if Lloss_param and hasattr(Lloss_param, 'value') else 0.0
+    if (getattr(params.get('cooling_boost_mode', None), 'value', 'none') or 'none') == 'multiplier':
+        return stored
+    return effective_Lloss_from_params(params, stored, 0.0, Lgain)
+
+
 def get_monitor_values(params) -> dict:
     """
     Extract current values of monitored parameters.
@@ -1424,16 +1447,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         # Routed through effective_Lloss_from_params so the opt-in cooling boost
         # feeds the trigger the SAME effective loss as the residual + ODE
         # (default 'none' -> Lcool + leak, byte-identical).
-        if bubble_props is not None:
-            _Lcool = bubble_props.bubble_LTotal
-            bubble_Leak = params.get('bubble_Leak', None)
-            _leak = (bubble_Leak.value
-                     if (bubble_Leak is not None and hasattr(bubble_Leak, 'value')) else 0.0)
-            Lloss = effective_Lloss_from_params(params, _Lcool, _leak, Lgain)
-        else:
-            Lloss_param = params.get('bubble_Lloss', None)
-            _Lcool = Lloss_param.value if Lloss_param and hasattr(Lloss_param, 'value') else 0.0
-            Lloss = effective_Lloss_from_params(params, _Lcool, 0.0, Lgain)
+        Lloss = trigger_Lloss(params, bubble_props, Lgain)
 
         # Get threshold from params (default 0.05)
         phase_switch_threshold = params.get('phaseSwitch_LlossLgain', None)
