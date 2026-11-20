@@ -53,7 +53,7 @@ def test_keys_the_notebook_plots_are_present(outputs, name):
     """Guard the specific keys examples/quickstart.ipynb reads."""
     keys = outputs[name].keys   # a property, not a method
     for key in ('t_now', 'R2', 'v2', 'current_phase',
-                'F_grav', 'F_ram', 'F_HII', 'F_rad'):
+                'F_grav', 'F_ram', 'F_HII', 'F_rad', 'shell_fEscLyC_total'):
         assert key in keys, f'{key} missing from examples/runs/{name}/'
 
 
@@ -63,18 +63,27 @@ def test_run_reached_a_terminal_state(outputs, name):
     assert outputs[name].termination, f'{name} has no termination block — it did not finish'
 
 
+# The phases each shipped run reaches before it stops. The uniform cloud is still
+# energy-driven at its 15 Myr stop_t, so it never reaches transition or momentum.
+PHASES = {
+    'homogeneous': {'energy', 'implicit'},
+    'powerlaw': {'energy', 'implicit', 'transition', 'momentum'},
+    'bonnor_ebert': {'energy', 'implicit', 'transition', 'momentum'},
+}
+
+
 @pytest.mark.parametrize('name', NAMES)
 def test_thinning_preserved_every_phase(outputs, name):
     """Thinning drops snapshots, so check no phase was thinned out of existence.
 
-    The notebook shades plots by phase and the whole point of these runs is that they
-    show the full lifecycle; losing one to an over-aggressive --every would be silent.
+    The notebook shades plots by phase; losing one to an over-aggressive --every
+    would be silent.
     """
     phases = set(outputs[name].get('current_phase', as_array=False))
-    missing = {'energy', 'implicit', 'transition', 'momentum'} - phases
+    missing = PHASES[name] - phases
     assert not missing, (
         f'{name} is missing {sorted(missing)} — it was thinned too aggressively, '
-        f'or did not run the full lifecycle'
+        f'or did not reach it before stopping'
     )
 
 
