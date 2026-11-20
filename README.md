@@ -29,8 +29,9 @@ python run.py param/simple_cluster.param
 
 Pure Python 3.11 or newer, with no compilation step. The
 [Running TRINITY](https://jiaweiteh.github.io/trinity-web/?view=docs&page=running)
-guide covers parameter files, parameter sweeps (including SLURM job arrays on a
-cluster), and the output layout.
+guide covers parameter files and parameter sweeps (including SLURM job arrays on a
+cluster), and [Output](https://jiaweiteh.github.io/trinity-web/?view=docs&page=output)
+covers the files a run writes.
 
 ## Reproducing the figures
 

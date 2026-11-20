@@ -1,121 +1,113 @@
 # examples
 
-Three finished TRINITY runs, and a notebook that reads them. All are committed so that
+Three finished TRINITY runs and a notebook that reads them. Both are committed, so
 `quickstart.ipynb` works on a fresh clone with no simulation to run first.
 
 ```
 examples/
-├── quickstart.ipynb     tutorial notebook (committed with its outputs, so GitHub renders it)
-├── runs/                three finished runs, each dictionary.jsonl + metadata.json
+├── quickstart.ipynb     the tutorial notebook, committed with its outputs so GitHub shows it
+├── runs/                three finished runs, each a dictionary.jsonl and a metadata.json
 │   ├── homogeneous/       uniform cloud
-│   ├── powerlaw/          rho ~ r^-2
+│   ├── powerlaw/          n ~ r^-2
 │   └── bonnor_ebert/      Bonnor-Ebert sphere
-├── thin_run.py          de-duplicates, sorts and thins a run before committing it
-├── export_web.sh        renders the notebook into the website
-└── web/                 ← derived, gitignored: mirrors trinity-web's layout
+├── thin_run.py          sorts, de-duplicates and thins a run before it is committed
+├── export_web.sh        turns the notebook into a page of the website
+└── web/                 written by export_web.sh, gitignored
 ```
 
-`test/test_example_run.py` lives in the test suite rather than here, so `pytest` picks it up.
+`test/test_example_run.py` opens the three runs with the current reader on every `pytest`
+run.
 
 ## Running the notebook
 
 ```bash
-pip install -r requirements.txt jupyter
+pip install -r requirements.txt jupyter smplotlib
 jupyter lab examples/quickstart.ipynb
 ```
 
-To re-run it without opening the interface — useful when refreshing the committed
-outputs, or if your Jupyter install is unhappy:
+`smplotlib` sets the plot style. Without it the notebook still runs, with matplotlib's
+default style.
+
+The first cell finds the top of the repository and puts it on `sys.path`. You can start
+Jupyter from any folder inside the clone, and you do not have to install TRINITY as a
+package.
+
+To run every cell without opening the interface:
 
 ```bash
 python -m jupyter nbconvert --to notebook --execute --inplace \
     --ExecutePreprocessor.timeout=300 examples/quickstart.ipynb
 ```
 
-Do not set `MPLBACKEND=Agg` when you do: it overrides the inline backend and the
-notebook is written out with no figures in it, silently.
+Leave `MPLBACKEND` unset when you do this. With `MPLBACKEND=Agg` the notebook is written
+with no figures in it, and nothing warns you.
 
-The first cell walks up from the working directory to find the repository root and puts
-it on `sys.path`, so the notebook runs whether you launch jupyter at the top level or
-inside `examples/`, and without `pip install -e .` first — `requirements.txt` installs
-the scientific stack but not TRINITY itself.
+## The three runs
 
-The reader wants the `.jsonl` path and picks up `metadata.json` from the same folder,
-which is why a run directory has to travel as a whole.
+All three clouds have a mass of 10^6 Msun and a star-formation efficiency of 1%. They
+differ in how the gas is arranged. The parameter files are
+`param/cloud_example_homogeneous.param`, `param/cloud_example_PL.param` and
+`param/cloud_example_BE.param`. The power-law and Bonnor-Ebert runs go through the
+energy-driven, transition and momentum-driven phases; the uniform cloud is still
+energy-driven when it stops at 15 Myr. The notebook's section "Three clouds, three
+histories" shows how each of them ends.
 
-## What the shipped runs are
+`param/simple_cluster.param`, the run in the top-level README, is not one of them.
 
-The three tracked density-profile examples, identical in cloud mass (10^6 M☉) and
-star-formation efficiency (1%) so that the profile is the only thing that differs. All
-three run the full lifecycle — energy-driven, transition, momentum-driven — and end
-differently: the uniform cloud is still expanding at the 15 Myr stopping time, while the
-power-law and Bonnor-Ebert shells both collapse, at ~1.9 and ~4.0 Myr.
+## Regenerating the runs
 
-The README quickstart (`simple_cluster`) is deliberately *not* among them. It blows out of
-its 1.7 pc cloud almost immediately and stays energy-driven for the rest of the run, so it
-never demonstrates a phase transition or a stopping fate.
-
-## Regenerating them
+Run the three parameter files from the top of the repository. They are independent, so
+they can run at the same time in three terminals:
 
 ```bash
 python run.py param/cloud_example_homogeneous.param
 python run.py param/cloud_example_PL.param
 python run.py param/cloud_example_BE.param
+```
 
-python examples/thin_run.py outputs/cloud_example_homogeneous examples/runs/homogeneous  --every 6
-python examples/thin_run.py outputs/cloud_example_PL          examples/runs/powerlaw     --every 4
-python examples/thin_run.py outputs/cloud_example_BE          examples/runs/bonnor_ebert --every 4
+Then thin each one into `examples/runs/` and run the test:
+
+```bash
+python examples/thin_run.py outputs/cloud_example_homogeneous examples/runs/homogeneous  --every N
+python examples/thin_run.py outputs/cloud_example_PL          examples/runs/powerlaw     --every N
+python examples/thin_run.py outputs/cloud_example_BE          examples/runs/bonnor_ebert --every N
 
 pytest test/test_example_run.py
 ```
 
-`thin_run.py` does three things, and only the last one loses anything:
+`thin_run.py` does three things and prints what each one did:
 
-1. **De-duplicates.** Raw output repeats snapshots — the homogeneous run wrote 908 lines
-   of which 424 were byte-identical repeats, leaving 483 distinct ones. The other two had
-   none. This is a known defect in the snapshot writer, not something you did wrong.
-2. **Sorts by time.** Snapshots are written in buffer-flush order, not chronological
-   order, so anything plotting a raw run in file order gets a zig-zag.
-3. **Thins.** Keeps every Nth of what remains, so the runs fit in a git repository. Each
-   kept snapshot is byte-for-byte what TRINITY wrote; the first and last are always kept.
+1. It drops repeated snapshots. A run can write the same snapshot more than once.
+2. It sorts the snapshots by time. A run writes them in the order its buffer is flushed.
+3. It keeps every Nth snapshot, and always the first and the last. Every snapshot it
+   keeps is exactly what TRINITY wrote.
 
-The `--every` values differ because the runs differ in length — 483 / 251 / 282 snapshots
-after de-duplication. The values above land them at 82 / 64 / 72 snapshots, about 5.3 MB
-in total. Raise them for a smaller repository, but re-run `pytest` afterwards:
-`test_thinning_preserved_every_phase` fails if a phase gets thinned out of existence, and
-`test_snapshots_are_chronological_and_unique` fails if raw output slips through unsorted.
-- **Why not `simplify_npoints`.** Lowering it shrinks the profile arrays instead, and at 20
-  points the code itself warns that the reconstruction has dropped below its R² ≥ 0.90
-  fidelity bar (hundreds of warnings, some as low as R² = 0.42). Coarser time sampling
-  costs nothing inside a snapshot; coarser profiles cost accuracy. Thin the snapshots.
+Replace each `N` with the number that leaves that run about 70 snapshots: its snapshot
+count after de-duplication, divided by 70. `thin_run.py` prints both counts, so a first
+pass with `--every 1` tells you what to divide. That holds the three runs to a few MB in
+total. Run `pytest` afterwards: `test_thinning_preserved_every_phase` fails if a whole
+phase was thinned away.
 
-De-duplicating and sorting are the two steps your own raw run will not match. Everything
-else — the physics, the units, the profile arrays — is exactly what TRINITY wrote.
+Thin the snapshots and leave `simplify_npoints` at its default. A lower `simplify_npoints`
+makes the files smaller too, but it does so by coarsening the profiles inside every
+snapshot.
 
-## Handing the notebook to the website
+## Sending the notebook to the website
 
 ```bash
 ./examples/export_web.sh
 cp -R examples/web/. ../trinity-web/
 ```
 
-The export runs the notebook itself before converting it, and refuses to continue if any
-cell came back empty. Converting an unexecuted notebook produces a page of code with no
-results and no figures — which looks perfectly fine until you read it.
+The script runs the notebook first and stops if a code cell produced no output. It then
+writes the notebook as a markdown page, with its figures and a copy of the `.ipynb`, into
+`examples/web/`. That folder has the same layout as the trinity-web repository, so the
+copy puts every file in its place.
 
-The export writes markdown, not HTML, so the website renders the notebook as one of its
-own documentation pages — the site's typography, its code blocks and copy button, its
-"on this page" rail, its KaTeX. `examples/web/` mirrors trinity-web's own layout
-(`src/docs/` for the page, `public/notebook/` for the figures and the downloadable
-`.ipynb`), so the copy above puts each file where it belongs in one command. It is
-gitignored here because it is derived — the published copy belongs in trinity-web.
+The run data stays here. A visitor who downloads the notebook needs this repository to
+run it, so the website links to the repository and serves no copy of the runs.
 
-The run data deliberately does **not** go to the website. A visitor who downloads the
-notebook needs the `trinity` package to run it anyway, so the site links to this repository
-rather than serving a copy of the dataset.
+## If the test fails
 
-## If the notebook breaks
-
-`test/test_example_run.py` opens this run with the current reader on every `pytest` run. If
-it fails after a change to the output schema, regenerate the example with the commands
-above rather than adjusting the test.
+`test/test_example_run.py` fails when the output format has moved on from the committed
+runs. Regenerate the runs with the commands above and leave the test as it is.

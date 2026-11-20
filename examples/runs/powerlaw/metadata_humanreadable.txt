@@ -2,8 +2,8 @@
 TRINITY run: cloud_example_PL
 ============================================================
 Status   : ✓ SUCCESS  (shell_collapsed)
-Detail   : Small radius reached (event)
-At       : 2026-08-17 10:06:26
+Detail   : Small radius reached (event): R2 < 0.815 pc (0.1 x R2_max 8.15 pc; coll_r 1 pc not used)
+At       : 2026-11-20 21:47:28
 
 ------------------------------------------------------------
 Cloud
@@ -20,25 +20,31 @@ Cloud
   ZCloud        : 1.00  Z☉
 
 ------------------------------------------------------------
-Final state  [t = 1.882 Myr]
+Final state  [t = 1.968 Myr]
 ------------------------------------------------------------
-  R2            : 1.500 pc
-  v2            : -34.691 km/s    (-3.548e+01 pc/Myr)
-  shell_mass    : 5.082e+05 Msun
-  shell_nMax    : 5.610e+05 cm⁻³    (1.648e+61 pc⁻³)
-  Pb            : 2.727e+07 K cm⁻³ (P/k_B)    (5.818e+03 internal)
+  R2            : 0.815 pc
+  v2            : -50.542 km/s    (-5.169e+01 pc/Myr)
+  shell_mass    : 5.238e+05 Msun
+  shell_nMax    : 1.822e+07 cm⁻³    (5.353e+62 pc⁻³)
+  Pb            : 9.284e+07 K cm⁻³ (P/k_B)    (1.981e+04 internal)
   Eb            : 0.000e+00 erg    (0.000e+00 internal)
-  T0            : 2.314e+06 K
-  bubble_Tavg   : 6.049e+06 K
+  T0            : 2.136e+06 K
+  bubble_Tavg   : 5.643e+06 K
   phase         : momentum
   collapsed     : yes
   dissolved     : no
+  collapse_r    : 0.815 pc (frac_R2max)
+  channel       : cooling_balance
 
 ------------------------------------------------------------
 Termination diagnostics
 ------------------------------------------------------------
   reason        : Normal exit / atexit
-  large changes : 1
-    - Shell peak density: +2.62e+05 (+87.3%)
+  large changes : 5
+    - Inner radius: -1.18 (+59.2%)
+    - Outer radius: -1.18 (+59.2%)
+    - Shell radius: -1.36 (+59.3%)
+    - Bubble pressure: +7.74e+07 (+502.1%)
+    - Shell peak density: +1.53e+07 (+525.1%)
   NaN values    : cool_beta, cool_delta, t_previousCoolingUpdate, bubble_LTotal, bubble_L1Bubble, bubble_L2Conduction, bubble_L3Intermediate, v_neg_frac_thick (+12 more)
 ============================================================
