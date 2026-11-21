@@ -257,3 +257,22 @@ def test_solver_flags_accumulate_once():
     events.add_solver_flag(p, "no_physical_root_handoff")
     events.add_solver_flag(p, "cost_cap")
     assert p["solver_flags"].value == "cost_cap,no_physical_root_handoff"
+
+
+def test_transition_phase_ends_where_eb_reaches_zero():
+    """S6 (B7, ruled 2026-11-21): besides its floor, 1c carries a terminal Eb = 0 event, for a 1c entered below the
+    floor; it ends the phase only (the runners put Eb at the floor and go on to momentum)."""
+    p = {"rCloud": _param(20.0), "stop_r": _param(500.0), **_collapse_params()}
+    zero = [e for e in events.build_transition_phase_events(p) if e.name == "energy_zero"]
+    assert len(zero) == 1
+    assert zero[0].terminal is True and zero[0].direction == -1 and zero[0].is_simulation_ending is False
+    assert zero[0](0.0, _y(Eb=5.0)) == 5.0 and zero[0](0.0, _y(Eb=-1.0)) == -1.0
+
+
+def test_an_event_past_the_list_ends_a_segment_only():
+    """S7: a swept solve carries its mode switch past the phase's own events; check_event_termination reads only the
+    phase's events, so the switch ends the segment and not the phase."""
+    sign = events.make_velocity_sign_event(terminal=True)
+    sol = SimpleNamespace(t_events=[np.array([]), np.array([0.5])],
+                          y_events=[np.empty((0, 3)), np.array([[1.0, 0.0, 2.0]])])
+    assert events.check_event_termination(sol, [sign]).triggered is False

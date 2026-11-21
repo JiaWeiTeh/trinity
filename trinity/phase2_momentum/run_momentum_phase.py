@@ -49,7 +49,6 @@ MomentumPhaseResults : dataclass
 """
 
 import numpy as np
-import scipy.integrate
 import logging
 import traceback
 from dataclasses import dataclass
@@ -71,6 +70,7 @@ from trinity.cloud_properties import density_profile
 # Import centralized event functions
 from trinity.phase_general.phase_events import (
     build_momentum_phase_events,
+    solve_segment,
     update_collapse_radius,
     collapse_reason,
     check_event_termination,
@@ -125,7 +125,10 @@ ADAPTIVE_MONITOR_KEYS = [
 # ODE solver settings
 ODE_RTOL = 1e-6      # Relative tolerance
 ODE_ATOL = 1e-8      # Absolute tolerance
-ODE_MIN_STEP = 1e-6  # Minimum step size (Myr)
+# S8 (docs/dev/turnaround-stall/solver-defects.md, ruled 2026-11-21): 0, which is what ran: scipy 1.17's LSODA never
+# applies min_step (scipy issue 25827), and where it does, LSODA fails at the floor instead of going on. The RHS
+# budget of phase_events.solve_segment bounds a pinned step.
+ODE_MIN_STEP = 0.0
 ODE_MAX_STEP = DT_SEGMENT_MIN / 5  # Max step = 2e-5 Myr (ensures >=5 steps per segment)
 ODE_METHOD = 'LSODA' # Auto-switches stiff/non-stiff
 
@@ -783,7 +786,7 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
             if ODE_METHOD == 'LSODA':
                 solver_kwargs['min_step'] = ODE_MIN_STEP
 
-            sol = scipy.integrate.solve_ivp(**solver_kwargs)
+            sol = solve_segment(params, solver_kwargs)   # S8: under the RHS budget
         except Exception as e:
             logger.error(f"solve_ivp failed at t={t_now:.6e}: {e}")
             termination_reason = f"solver_error: {e}"

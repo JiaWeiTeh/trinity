@@ -56,7 +56,10 @@ Events are created via factory functions that capture phase-specific parameters:
 @author: TRINITY Team
 """
 
+import functools
 import numpy as np
+import scipy.integrate
+import scipy.optimize
 import logging
 from dataclasses import dataclass
 from typing import List, Optional, Callable, Tuple, Any
@@ -477,8 +480,9 @@ def check_event_termination(sol, events: List[Callable]) -> EventResult:
     # end the phase nor pre-empt the terminal event that did stop it. From
     # 2026-01-22 (2f3182da) to 2026-09-30 phase 1b's velocity_sign (index 0) did
     # both, and 1b ended at the shell's first turnaround.
-    for i, (t_ev, y_ev) in enumerate(zip(sol.t_events, sol.y_events)):
-        event = events[i]
+    # zipped with events: a solve may carry events past this list (the swept mode switch, S7), which end a segment
+    # only and are the runner's to read
+    for i, (t_ev, y_ev, event) in enumerate(zip(sol.t_events, sol.y_events, events)):
         if len(t_ev) > 0 and getattr(event, 'terminal', False):
             return EventResult(
                 triggered=True,
@@ -556,6 +560,61 @@ def add_solver_flag(params, token: str) -> None:
     flags = [f for f in params['solver_flags'].value.split(',') if f]
     if token not in flags:
         params['solver_flags'].value = ','.join(flags + [token])
+
+
+# S8 (docs/dev/turnaround-stall/solver-defects.md, ruled 2026-11-21): a segment solve may make at most
+# SEGMENT_RHS_BASE + SEGMENT_RHS_PER_MYR (t1 - t0) RHS calls, 10 calls per 1e-6 Myr (1 yr) of segment on top of 5e4, so a
+# solve whose steps average below ~1 yr is cut (LSODA held h near 1e-17 Myr on the stalls of 2026-11-20; the largest
+# healthy segment took 3171 calls). min_step cannot do it: scipy 1.17's LSODA never applies it (scipy issue 25827), and
+# where it does LSODA fails at the floor. Past the budget the RHS raises, which ends the solve at once (returning zeros
+# does not: B7, 2026-11-21, a pinned LSODA kept its 9e-18 Myr step on a zero RHS for 2e7 calls), and the segment is
+# redone once with Radau; if Radau runs out or fails too, the run ends (ERROR_SOLVER). Solver flags: rhs_budget (a solve
+# ran out, or its Radau retry failed), rhs_budget_end (the run ended on it).
+SEGMENT_RHS_BASE = 50_000
+SEGMENT_RHS_PER_MYR = 1e7
+
+
+class RHSBudgetExceeded(Exception):
+    """Raised by solve_segment's RHS past the budget (S8): it ends the solve at once."""
+
+
+def solve_segment(params, kwargs):
+    """scipy.integrate.solve_ivp(**kwargs) under the RHS budget (S8, above). Returns the solution; a failed one (and the
+    run's end set) when the Radau retry runs out or fails. Errors other than the budget propagate as before."""
+    t0, t1 = kwargs['t_span']
+    cap = SEGMENT_RHS_BASE + SEGMENT_RHS_PER_MYR * abs(t1 - t0)
+    fun, first = kwargs['fun'], kwargs['method']
+    for method in dict.fromkeys((first, 'Radau')):
+        n = [0]
+
+        @functools.wraps(fun)
+        def counted(t, y):
+            n[0] += 1
+            if n[0] > cap:
+                raise RHSBudgetExceeded(f"{cap:.0f} RHS calls")
+            return fun(t, y)
+        kw = dict(kwargs, fun=counted, method=method)
+        if method != 'LSODA':
+            kw.pop('min_step', None)
+        try:
+            sol = scipy.integrate.solve_ivp(**kw)
+        except Exception:
+            if n[0] <= cap:
+                raise                   # not the budget: the runner handles it as before
+            sol = None
+        if n[0] <= cap and (method == first or sol.success):
+            return sol
+        why = f"ran out of its RHS budget ({cap:.0f} calls)" if n[0] > cap else f"failed ({sol.message})"
+        add_solver_flag(params, 'rhs_budget')
+        logger.warning(f"[S8] {method} segment [{t0:.9e}, {t1:.9e}] Myr {why}"
+                       + ("" if method == 'Radau' else "; redoing it with Radau"))
+    add_solver_flag(params, 'rhs_budget_end')
+    msg = f"RHS budget exhausted at t={t0:.6e} Myr (LSODA, then Radau)"
+    params['EndSimulationDirectly'].value = True
+    params['SimulationEndCode'].value = SimulationEndCode.ERROR_SOLVER.code
+    params['SimulationEndReason'].value = msg
+    return scipy.optimize.OptimizeResult(t=np.array([]), y=np.empty((len(kwargs['y0']), 0)), t_events=None,
+                                         y_events=None, success=False, status=-1, message=msg)
 
 
 # =============================================================================
@@ -677,6 +736,11 @@ def build_transition_phase_events(params, energy_floor: float = 1e3) -> List[Cal
     # Only add max_radius event if stop_r is set
     if stop_r is not None and stop_r > 0:
         events.append(make_max_radius_event(stop_r))
+
+    # S6 (docs/dev/turnaround-stall/solver-defects.md, ruled 2026-11-21): a 1c entered below its floor (S4) has no
+    # downward floor crossing left, and its Eb could run through zero inside a segment; 1c ends where Eb reaches 0.
+    # The runners then put Eb at the floor, as after a turnaround, so the exit row's bubble calls stay finite.
+    events.append(make_energy_floor_event(0.0, y_index=2, name="energy_zero"))
 
     logger.debug(f"Transition phase events: energy_floor={energy_floor:.2e} (AU)")
     return events

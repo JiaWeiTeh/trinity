@@ -47,7 +47,6 @@ TransitionPhaseResults : dataclass
 """
 
 import numpy as np
-import scipy.integrate
 import scipy.optimize
 import logging
 from typing import Tuple
@@ -78,6 +77,7 @@ import trinity.bubble_structure.get_bubbleParams as get_bubbleParams
 # Import centralized event functions
 from trinity.phase_general.phase_events import (
     build_transition_phase_events,
+    solve_segment,
     update_collapse_radius,
     collapse_reason,
     check_event_termination,
@@ -146,7 +146,10 @@ ADAPTIVE_MONITOR_KEYS = [
 # ODE solver settings
 ODE_RTOL = 1e-6      # Relative tolerance
 ODE_ATOL = 1e-8      # Absolute tolerance
-ODE_MIN_STEP = 1e-6  # Minimum step size (Myr)
+# S8 (docs/dev/turnaround-stall/solver-defects.md, ruled 2026-11-21): 0, which is what ran: scipy 1.17's LSODA never
+# applies min_step (scipy issue 25827), and where it does, LSODA fails at the floor instead of going on. The RHS
+# budget of phase_events.solve_segment bounds a pinned step.
+ODE_MIN_STEP = 0.0
 ODE_MAX_STEP = DT_SEGMENT_MIN / 5  # Max step = 2e-5 Myr (ensures >=5 steps per segment)
 ODE_METHOD = 'LSODA' # Auto-switches stiff/non-stiff
 
@@ -686,7 +689,7 @@ def run_phase_transition(params) -> TransitionPhaseResults:
             if ODE_METHOD == 'LSODA':
                 solver_kwargs['min_step'] = ODE_MIN_STEP
 
-            sol = scipy.integrate.solve_ivp(**solver_kwargs)
+            sol = solve_segment(params, solver_kwargs)   # S8: under the RHS budget
         except Exception as e:
             logger.error(f"solve_ivp failed at t={t_now:.6e}: {e}")
             termination_reason = f"solver_error: {e}"
@@ -717,7 +720,7 @@ def run_phase_transition(params) -> TransitionPhaseResults:
             # Apply event result to params
             apply_event_result(params, event_result, t_now, event_result.y,
                               state_keys=['R2', 'v2', 'Eb'])
-            if event_result.name == 'velocity_sign':
+            if event_result.name in ('velocity_sign', 'energy_zero'):   # S6: Eb at 0 goes to the floor too
                 # Turnaround: straight to momentum, whatever Eb is left (ruled
                 # 2026-10-01, an approximation); Eb_handoff keeps what was dropped
                 # (not overwritten when 1b already handed over at the floor).

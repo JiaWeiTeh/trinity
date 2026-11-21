@@ -129,12 +129,12 @@ def test_swept_1b_rhs_moves_and_weighs_the_net_mass(monkeypatch):
     R2, R1, Pb, Mdot = 0.35505674869183823, 0.1416187661149576, 43042.84780371602, 2562.2073557856893
     fb = SimpleNamespace(Lmech_total=20282258.66281576, v_mech_total=3739.330388145636)
     monkeypatch.setattr(SW, "get_current_sps_feedback", lambda t, params: fb)
-    monkeypatch.setattr(SW, "edge_speed", lambda v, r, fabs_ion, params: v)
     monkeypatch.setattr(SW, "p_ext", lambda r, fabs_ion, params, turbulent=True: 0.0)
     monkeypatch.setattr(SW, "_p_conf", lambda R2t, E, fb_t, params, phase, t: (Pb, R1))
     monkeypatch.setattr(GB, "compute_R1_Pb", lambda *a: (R1, Pb))
     swept = {}
-    monkeypatch.setattr(SW, "swept_mass", lambda r, U, M_floor, frozen, params: (swept["m"], Mdot))
+    # S7 (B7): the RHS takes (U, m, Mdot) from mode_rates; here U = u and the given m and Mdot, as before
+    monkeypatch.setattr(SW, "mode_rates", lambda v, r, Ms, sweep, fabs_ion, params: (v, swept["m"], Mdot))
 
     def rhs(on, m, dm_cluster, M_floor=Ms, started=False):
         p = _params("implicit", on)
@@ -145,7 +145,7 @@ def test_swept_1b_rhs_moves_and_weighs_the_net_mass(monkeypatch):
         p["F_rad"].value = 12079.826019091612
         swept["m"] = m
         sw = object.__new__(SW.ImplicitSwept)
-        sw.root, sw.Ms, sw.fabs_ion = {"K": 4244.1644641410785, "R2": R2}, M_floor, 1.0
+        sw.root, sw.Ms, sw.fabs_ion, sw.sweep = {"K": 4244.1644641410785, "R2": R2}, M_floor, 1.0, True
         sw._closure, sw.tan, sw.zeta, sw.Eb0, sw.Rdot2 = (lambda r, E, M, t: R2), None, 1.0, Eb, 41.2
         return list(sw.rhs(p, 0.0, 0.0)(0.004594518710842068, np.array([rs, u, Eb, 1.0e6])))
 
