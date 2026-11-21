@@ -17,7 +17,8 @@ exported as K_s, F_rad_sh, P_outer). There is no P_HII: the photoionised gas's p
 The outer edge is the leading shock (ruling D-T2 (b), 2026-10-21): it runs at U = (u + sqrt(u^2 + 4 c0^2))/2,
 the isothermal jump at the gas ahead, c0^2 = P_ext / rho_amb at r_s, where 0 < c0 <= c_i and the gas ahead is cloud
 gas (r_s < rCloud; Step 7a, A1, 2026-10-26); elsewhere U = u. In a pressure-free cloud (TCloud 0, P_ext = 0) that is one speed exactly,
-and past the cloud the shell moves with its gas. Mass is swept at 4 pi r_s^2 rho_amb U and carried at u:
+and past the cloud the shell moves with its gas. Mass is swept at 4 pi r_s^2 rho_amb U and carried at u
+(since S7, 2026-11-21, only in the SWEEP mode: see sweep_mode; in COAST the mass is held and U = u):
 
     dr_s/dt = U,      du/dt = (F - F_grav - Mdot_s u) / M_s,      F_grav = G M_s (M_* + M_s/2) / r_s^2.
 
@@ -29,7 +30,6 @@ import logging
 import math
 
 import numpy as np
-import scipy.integrate
 import scipy.optimize
 
 import trinity._output.terminal_prints as terminal_prints
@@ -47,7 +47,7 @@ from trinity.phase2_momentum.run_momentum_phase import (
 )
 from trinity.phase_general.phase_events import (
     apply_event_result, build_momentum_phase_events, build_transition_phase_events, check_event_termination,
-    collapse_reason, update_collapse_radius,
+    collapse_reason, solve_segment, update_collapse_radius,
 )
 import trinity._functions.operations as operations
 from trinity.shell_structure.shell_structure import shell_structure_pure
@@ -91,15 +91,17 @@ def p_ext(r, fabs_ion, params, turbulent=True):
     return P
 
 
-def edge_speed(u, r, fabs_ion, params):
+def edge_speed(u, r, fabs_ion, params, sweep=False):
     """The outer edge's speed U for shell-gas speed u: the isothermal jump at the gas ahead (D-T2 (b)).
 
     Applies where u > 0, the gas ahead is cloud gas (r < rCloud; PLAN Step 7a, A1) and 0 < c0 <= c_i; elsewhere
     U = u. c0 = c_i exactly when photons escape inside the cloud (P_ext/rho = k T_ion / mu_ion_shell), so the cut
     carries a 1e-9 relative allowance for rounding. Past the cloud the dense shell moves with its gas, as in every
     single-speed shell model; a separately tracked weak front there (A2) is the future upgrade.
+    sweep=True (S7): the SWEEP mode's branch for any u, the jump continued smoothly through u = 0, so the segment the
+    u = 0 event ends sees one smooth RHS.
     """
-    if u <= 0.0 or r >= params['rCloud'].value:
+    if (u <= 0.0 and not sweep) or r >= params['rCloud'].value:
         return u
     rho = params['mu_convert'].value * _scalar(density_profile.get_density_profile(np.array([r]), params))
     if rho <= 0.0:
@@ -118,6 +120,55 @@ def swept_mass(r, U, M_floor, frozen, params):
     m, md = mass_profile.get_mass_profile(r, params, return_mdot=True, rdot=U)
     m, md = _scalar(m), _scalar(md)
     return (M_floor, 0.0) if m < M_floor else (m, md)
+
+
+# S7 (docs/dev/turnaround-stall/solver-defects.md, ruled 2026-11-21): the swept mass in two modes, each with a smooth
+# RHS, switched only at terminal events that end the segment (the next starts in the other mode). SWEEP: the edge at the
+# farthest radius it has reached, moving out, sweeping M(<r_s) at the jump speed. COAST: inside gas already swept, or
+# receding; the mass is held and the edge moves with its gas (U = u). SWEEP -> COAST where u falls through 0; COAST ->
+# SWEEP where the edge reaches unswept gas, M(<r_s) = M_s (1 + SWEEP_TOL). Both switches used to sit inside the RHS (the
+# frozen branch at u <= 0 with the segment-start mass, the M_floor clamp), and LSODA pinned its step on them.
+SWEEP_TOL = 1e-12          # relative mass margin of the COAST -> SWEEP event (and of the missed-event check)
+SWEEP_TOL_ENTRY = 1e-9     # at a phase entry: the hand-off's mass fixed point is converged to 1e-10 (initial_state)
+
+
+def sweep_mode(sweep, r, u, Ms, params):
+    """The mode of the segment starting at (r, u) with mass Ms: True SWEEP, False COAST. sweep is the mode carried from the
+    last segment (its events flip it), None at a phase entry. A receding shell coasts, a carried SWEEP stays one, and COAST
+    turns to SWEEP only past gas not yet swept (an event the solver missed)."""
+    if u <= 0.0:
+        return False
+    if sweep:
+        return True
+    tol = -SWEEP_TOL_ENTRY if sweep is None else SWEEP_TOL
+    return _scalar(mass_profile.get_mass_profile(r, params)) >= Ms * (1.0 + tol)
+
+
+def mode_rates(v, r, Ms, sweep, fabs_ion, params):
+    """(U, m, Mdot) of the RHS in a mode, smooth in (r, v) within it. SWEEP: the jump speed for any v (edge_speed's
+    sweep branch), m = M(<r), Mdot = 4 pi r^2 rho U. COAST: U = v, m = Ms, Mdot = 0."""
+    if not sweep:
+        return v, Ms, 0.0
+    U = edge_speed(v, r, fabs_ion, params, sweep=True)
+    m, md = mass_profile.get_mass_profile(r, params, return_mdot=True, rdot=U)
+    return U, _scalar(m), _scalar(md)
+
+
+def mode_event(sweep, Ms, params):
+    """The terminal event that ends a segment at its mode switch (y = (r_s, u, ...)): u falling through 0 in SWEEP, the
+    edge reaching unswept gas in COAST. 1b and 1c add it in COAST only: their SWEEP switch is velocity_sign's own
+    crossing, which ends the phase, and two terminal events with one root would leave the winner to solve_ivp's sort."""
+    if sweep:
+        def event(t, y):
+            return y[1]
+        event.direction = -1
+    else:
+        def event(t, y):
+            return _scalar(mass_profile.get_mass_profile(max(y[0], 1e-10), params)) / Ms - 1.0 - SWEEP_TOL
+        event.direction = 1
+    event.terminal = True
+    event.name = 'mode_switch'
+    return event
 
 
 _TRIAL_KEYS = ('R2', 'R1', 'Pb', 'shell_mass', 'bubble_mass', 'rShell')     # what _shell_at writes
@@ -347,16 +398,21 @@ def root_R2(rs, Ms, fb, params, guess=None, Eb=None, phase='transition', t=None)
                 return failed(f'upper bracket solve failed: {type(exc).__name__}: {exc}')
             up = hi                          # a trial the solve rejects: the last resort
             continue
-        if fhi > 0:
+        if fhi > 0 or up >= hi:            # S10: up >= hi with fhi <= 0 is the thin-shell limit below
             break
-        if up >= hi:
-            return failed(f'no bracket: f(lo)={flo:.3e} f(hi)={fhi:.3e}')
         lo, flo, up = up, fhi, min(4 * up, rs - 0.25 * (rs - up), hi)
     n0 = count['n']
-    try:
-        R2 = scipy.optimize.brentq(resid, lo, up, xtol=1e-10 * rs, maxiter=100)
-    except Exception as exc:  # noqa: BLE001
-        return failed(f'brentq: {exc}')
+    if fhi <= 0:
+        # S10 (docs/dev/turnaround-stall/solver-defects.md, ruled 2026-11-21): the residual is >= 0 at R2 = r_s (the
+        # shell has a thickness), so one still <= 0 at hi = r_s (1 - 1e-9) puts the root in the last 1e-9 r_s: the
+        # shell is thinner than that (dense starts: ~4e-12 pc at r_s 0.016 pc). R2 = hi, off by at most 1e-9 r_s.
+        R2 = hi
+        logger.info(f"[S10] thin-shell limit: R2 = r_s (1 - 1e-9) at r_s={rs:.6e} pc, residual {fhi:.3e} pc")
+    else:
+        try:
+            R2 = scipy.optimize.brentq(resid, lo, up, xtol=1e-10 * rs, maxiter=100)
+        except Exception as exc:  # noqa: BLE001
+            return failed(f'brentq: {exc}')
     iters = count['n'] - n0
     sp, Pc = _shell_at(R2, rs, Ms, fb, params, Eb, phase, t)
     count['n'] += 1
@@ -450,10 +506,12 @@ class ImplicitSwept:
         self.n_tan = self.n_fallback = self.n_recouple = self.n_capped = 0
         self.s_prev, self.t_prev, self.s_esc, self.t_seg, self.Eb0 = None, None, None, None, None   # Step 7b-2
         self.n_switch = 0
+        self.sweep = None      # S7: the mode (None until the first segment decides it)
 
     def segment_start(self, params, fb, t, Eb):
         """Mass, root, zeta and the speeds at the segment start; returns the root dict (ok=False on failure)."""
         self.Ms = max(self.Ms, swept_mass(self.rs, self.u, self.Ms, self.u <= 0.0, params)[0])
+        self.sweep = sweep_mode(self.sweep, self.rs, self.u, self.Ms, params)   # S7
         root = root_R2(self.rs, self.Ms, fb, params, guess=self.x_prev * self.rs, Eb=Eb, phase='implicit', t=t)
         if not root['ok']:
             return root
@@ -467,8 +525,7 @@ class ImplicitSwept:
             self.zeta = (root['R2'] - self.R2_last) / (self.rs - self.rs_last)
         self.R2_last, self.rs_last, self.root = root['R2'], self.rs, root
         self.fabs_ion = root['sp'].shell_fAbsorbedIon
-        self.U = edge_speed(self.u, self.rs, self.fabs_ion, params)
-        self.Mdot = swept_mass(self.rs, self.U, self.Ms, self.u <= 0.0, params)[1]
+        self.U, _, self.Mdot = mode_rates(self.u, self.rs, self.Ms, self.sweep, self.fabs_ion, params)   # S7
         # Step 7b-2: the escape indicator at this root (the previous one is kept for switch_dt)
         self.s_prev, self.t_prev = self.s_esc, self.t_seg
         self.s_esc, self.t_seg, self.Eb0 = escape_indicator(root['sp']), t, Eb
@@ -553,12 +610,13 @@ class ImplicitSwept:
     def y0(self, Eb, T0):
         return np.array([self.rs, self.u, Eb, T0])
 
-    def rhs(self, params, Ed, Td):
-        """The segment's RHS: (r_s, u) evolve with the live drive; T0 at its frozen delta rate, Eb at its beta/delta rate with
+    def rhs(self, params, Ed, delta):
+        """The segment's RHS: (r_s, u) evolve with the live drive; T0 with its delta, dT0/dt = delta T0 / t (S1,
+        docs/dev/turnaround-stall/solver-defects.md), Eb at its beta/delta rate with
         the wall's work live (Step 7b-2: the work charged at R2's own speed inside the segment, not the start speed)."""
-        from trinity.phase1b_energy_implicit.get_betadelta import compute_R1_Pb
+        from trinity.phase1b_energy_implicit.get_betadelta import compute_R1_Pb, delta2dTdt_pure
         K, F_rad = self.root['K'], params['F_rad'].value
-        M_floor, fabs_ion = self.Ms, self.fabs_ion
+        M_floor, fabs_ion, sweep = self.Ms, self.fabs_ion, self.sweep
         m_ev = get_bubbleParams.evaporated_mass(params)   # shell_mass_net: held over the segment (PLAN D-MB8); 0.0 when off
         get_bubbleParams.refuse_no_shell(m_ev, M_floor)  # the root saw the structure before; refuse here too (D-MB10)
         G, mCluster, gamma = params['G'].value, params['mCluster'].value, params['gamma_adia'].value
@@ -571,15 +629,15 @@ class ImplicitSwept:
         def f(t, y):
             r, v = max(y[0], 1e-10), y[1]
             fb_t = get_current_sps_feedback(t, params)       # live, as the c3c RHS
-            U_t = edge_speed(v, r, fabs_ion, params)
-            m, md = swept_mass(r, U_t, M_floor, v <= 0.0, params)
+            U_t, m, md = mode_rates(v, r, M_floor, sweep, fabs_ion, params)   # S7: one smooth RHS per mode
             R2t = closure(r, y[2], m, t)
             Pc, R1t = _p_conf(R2t, y[2], fb_t, params, 'implicit', t)
             F = FOUR_PI * R2t**2 * Pc + K - FOUR_PI * r**2 * p_ext(r, fabs_ion, params) + F_rad
             k_t = FOUR_PI * R2t**2 * get_bubbleParams.bubble_E2P(y[2], R2t, R1t, gamma)   # unramped Pb, as compute_R1_Pb
             _, Edot = live_rates(Ed, W0, k_t, U_t, md, tan, zeta)
             mn = m - m_ev                                    # the shell's own mass; the closure keeps the swept m
-            return np.array([U_t, (F - G * mn / r**2 * (mCluster + m_ev + 0.5 * mn) - md * v) / mn, Edot, Td])
+            return np.array([U_t, (F - G * mn / r**2 * (mCluster + m_ev + 0.5 * mn) - md * v) / mn, Edot,
+                             delta2dTdt_pure(t, y[3], delta)])
         return f
 
     def R2_at(self, r, Eb, M, t):
@@ -624,8 +682,8 @@ class ImplicitSwept:
         updateDict(params, root['sp'])
         self.root, self.rs_last = root, self.rs
         self.fabs_ion = root['sp'].shell_fAbsorbedIon
-        self.U = edge_speed(self.u, self.rs, self.fabs_ion, params)
-        self.Mdot = swept_mass(self.rs, self.U, self.Ms, self.u <= 0.0, params)[1]
+        self.sweep = sweep_mode(self.sweep, self.rs, self.u, self.Ms, params)   # S7
+        self.U, _, self.Mdot = mode_rates(self.u, self.rs, self.Ms, self.sweep, self.fabs_ion, params)
         self.to_params(params, fb, Eb)
         params.save_snapshot()
 
@@ -666,6 +724,7 @@ def run_phase_momentum_swept(params) -> MomentumPhaseResults:
         dt_floor = min(DT_SEGMENT_MIN, dt_segment)
     ode_events = build_momentum_phase_events(params)
     G, mCluster = params['G'].value, params['mCluster'].value
+    sweep = None   # S7: the mode, decided at the first segment and changed only at its events
 
     while t_now <= tmax and segment_count < MAX_SEGMENTS:
         segment_count += 1
@@ -683,6 +742,7 @@ def run_phase_momentum_swept(params) -> MomentumPhaseResults:
 
         # mass at the segment start: never decreasing, frozen while u <= 0 (D-T1)
         Ms = max(Ms, swept_mass(rs, u, Ms, u <= 0.0, params)[0])
+        sweep = sweep_mode(sweep, rs, u, Ms, params)   # S7: the mode this segment runs in
         root = root_R2(rs, Ms, fb, params, guess=x_prev * rs if x_prev else None)
         if not root['ok']:
             termination_reason = _end(params, f"swept_root_failed: {root['why']}", SimulationEndCode.ERROR_SOLVER,
@@ -692,8 +752,7 @@ def run_phase_momentum_swept(params) -> MomentumPhaseResults:
         sp = root['sp']
         updateDict(params, sp)
         fabs_ion = sp.shell_fAbsorbedIon
-        U = edge_speed(u, rs, fabs_ion, params)
-        _, Mdot = swept_mass(rs, U, Ms, u <= 0.0, params)
+        U, _, Mdot = mode_rates(u, rs, Ms, sweep, fabs_ion, params)   # S7
         _forces_to_params(params, root, rs, u, Ms, Mdot, U, fabs_ion, fb)
         if abs(root['L8']) > 1e-6:
             logger.warning(f"[swept] L8 = {root['L8']:.2e} at t={t_now:.6e} (shell identity, bar 1e-6)")
@@ -716,17 +775,17 @@ def run_phase_momentum_swept(params) -> MomentumPhaseResults:
             R2t = x * r
             F = (FOUR_PI * R2t**2 * get_bubbleParams.pRam(R2t, fb_t.Lmech_total, fb_t.v_mech_total) + K
                  - FOUR_PI * r**2 * p_ext(r, fabs_ion, params) + F_rad)
-            U_t = edge_speed(v, r, fabs_ion, params)
-            m, md = swept_mass(r, U_t, M_floor, v <= 0.0, params)
+            U_t, m, md = mode_rates(v, r, M_floor, sweep, fabs_ion, params)   # S7: one smooth RHS per mode
             return np.array([U_t, (F - G * m / r**2 * (mCluster + 0.5 * m) - md * v) / m])
 
         values_before = _monitor(params)
         solver_kwargs = dict(fun=rhs, t_span=(t_now, min(t_now + dt_segment, tmax)), y0=np.array([rs, u]),
-                             method=ODE_METHOD, rtol=ODE_RTOL, atol=ODE_ATOL, max_step=ODE_MAX_STEP, events=ode_events)
+                             method=ODE_METHOD, rtol=ODE_RTOL, atol=ODE_ATOL, max_step=ODE_MAX_STEP,
+                             events=ode_events + [mode_event(sweep, Ms, params)])   # S7: + the mode switch
         if ODE_METHOD == 'LSODA':
             solver_kwargs['min_step'] = ODE_MIN_STEP
         try:
-            sol = scipy.integrate.solve_ivp(**solver_kwargs)
+            sol = solve_segment(params, solver_kwargs)   # S8: under the RHS budget
         except Exception as e:
             logger.error(f"solve_ivp failed at t={t_now:.6e}: {e}")
             termination_reason = f"solver_error: {e}"
@@ -748,6 +807,9 @@ def run_phase_momentum_swept(params) -> MomentumPhaseResults:
             apply_event_result(params, event_result, t_now, event_result.y, state_keys=['rs_dyn', 'v2'])
             break
 
+        if sol.t_events[-1].size:   # S7: the segment ended at the mode switch; the next runs in the other mode
+            sweep = not sweep
+            logger.info(f"[S7] momentum mode -> {'SWEEP' if sweep else 'COAST'} at t={sol.t[-1]:.9e} Myr")
         rs, u, t_now = float(sol.y[0, -1]), float(sol.y[1, -1]), float(sol.t[-1])
         # the next guess only once the state has moved: a segment that breaks off (solver error) leaves the state
         # where it was, and the reconciliation must re-find the same root -- bit-identical, so save_snapshot's
@@ -820,9 +882,9 @@ def run_phase_momentum_swept(params) -> MomentumPhaseResults:
         root = root_R2(rs, Ms, fb, params, guess=x_prev * rs if x_prev else None)
         if root['ok']:
             updateDict(params, root['sp'])
-            U = edge_speed(u, rs, root['sp'].shell_fAbsorbedIon, params)
-            _forces_to_params(params, root, rs, u, Ms, swept_mass(rs, U, Ms, u <= 0.0, params)[1], U,
-                              root['sp'].shell_fAbsorbedIon, fb)
+            fa = root['sp'].shell_fAbsorbedIon
+            U, _, Mdot = mode_rates(u, rs, Ms, sweep_mode(sweep, rs, u, Ms, params), fa, params)   # S7
+            _forces_to_params(params, root, rs, u, Ms, Mdot, U, fa, fb)
             params.save_snapshot()
         else:
             logger.warning(f"[swept] phase-boundary reconciliation skipped: {root['why']}")
@@ -873,6 +935,7 @@ def run_phase_transition_swept(params):
     dt_segment, t_diss_onset = TP.DT_SEGMENT_INIT, np.inf
     ode_events = build_transition_phase_events(params, energy_floor=TP.ENERGY_FLOOR)
     G, mCluster = params['G'].value, params['mCluster'].value
+    sweep = None   # S7: the mode, decided at the first segment and changed only at its events
 
     while t_now <= tmax and segment_count < TP.MAX_SEGMENTS:
         segment_count += 1
@@ -892,6 +955,7 @@ def run_phase_transition_swept(params):
         params['c_sound'].value = c_sound
 
         Ms = max(Ms, swept_mass(rs, u, Ms, u <= 0.0, params)[0])
+        sweep = sweep_mode(sweep, rs, u, Ms, params)   # S7: the mode this segment runs in
         root = root_R2(rs, Ms, fb, params, guess=x_prev * rs if x_prev else None, Eb=Eb)
         if not root['ok']:
             termination_reason = _end(params, f"swept_root_failed: {root['why']}", SimulationEndCode.ERROR_SOLVER,
@@ -906,8 +970,7 @@ def run_phase_transition_swept(params):
         sp = root['sp']
         updateDict(params, sp)
         fabs_ion = sp.shell_fAbsorbedIon
-        U = edge_speed(u, rs, fabs_ion, params)
-        _, Mdot = swept_mass(rs, U, Ms, u <= 0.0, params)
+        U, _, Mdot = mode_rates(u, rs, Ms, sweep, fabs_ion, params)   # S7
         _forces_to_params(params, root, rs, u, Ms, Mdot, U, fabs_ion, fb, Eb)
         if abs(root['L8']) > 1e-6:
             logger.warning(f"[swept] L8 = {root['L8']:.2e} at t={t_now:.6e} (shell identity, bar 1e-6)")
@@ -938,8 +1001,7 @@ def run_phase_transition_swept(params):
             R2t = R2a + z * (r - rsa)
             Pc, _ = _p_conf(R2t, E, fb_t, params)
             F = FOUR_PI * R2t**2 * Pc + K - FOUR_PI * r**2 * p_ext(r, fabs_ion, params) + F_rad
-            U_t = edge_speed(v, r, fabs_ion, params)
-            m, md = swept_mass(r, U_t, M_floor, v <= 0.0, params)
+            U_t, m, md = mode_rates(v, r, M_floor, sweep, fabs_ion, params)   # S7: one smooth RHS per mode
             L_leak = get_bubbleParams.get_leak_luminosity(Cf, R2t, Pc, c_sound, gamma)
             L_b = (effective_Lloss_from_params(params, L_bubble, L_leak, fb_t.Lmech_total) - L_leak
                    if boosted else L_bubble)
@@ -952,11 +1014,11 @@ def run_phase_transition_swept(params):
         values_before = _monitor(params)
         solver_kwargs = dict(fun=rhs, t_span=(t_now, min(t_now + dt_segment, tmax)), y0=np.array([rs, u, Eb]),
                              method=TP.ODE_METHOD, rtol=TP.ODE_RTOL, atol=TP.ODE_ATOL, max_step=TP.ODE_MAX_STEP,
-                             events=ode_events)
+                             events=ode_events + ([] if sweep else [mode_event(sweep, Ms, params)]))   # S7, COAST
         if TP.ODE_METHOD == 'LSODA':
             solver_kwargs['min_step'] = TP.ODE_MIN_STEP
         try:
-            sol = scipy.integrate.solve_ivp(**solver_kwargs)
+            sol = solve_segment(params, solver_kwargs)   # S8: under the RHS budget
         except Exception as e:
             logger.error(f"solve_ivp failed at t={t_now:.6e}: {e}")
             termination_reason = f"solver_error: {e}"
@@ -979,7 +1041,7 @@ def run_phase_transition_swept(params):
             u_results.append(u)
             Eb_results.append(Eb)
             apply_event_result(params, event_result, t_now, event_result.y, state_keys=['rs_dyn', 'v2', 'Eb'])
-            if event_result.name == 'velocity_sign':
+            if event_result.name in ('velocity_sign', 'energy_zero'):   # S6: Eb at 0 goes to the floor too
                 # turnaround: straight to momentum, as the c3c transition (ruled 2026-10-01)
                 if Eb > TP.ENERGY_FLOOR:
                     params['Eb_handoff'].value = Eb
@@ -989,6 +1051,9 @@ def run_phase_transition_swept(params):
                 params['Eb'].value = Eb
             break
 
+        if not sweep and sol.t_events[-1].size:   # S7: the COAST segment reached unswept gas; the next sweeps
+            sweep = not sweep
+            logger.info(f"[S7] 1c mode -> {'SWEEP' if sweep else 'COAST'} at t={sol.t[-1]:.9e} Myr")
         rs, u, Eb, t_now = float(sol.y[0, -1]), float(sol.y[1, -1]), float(sol.y[2, -1]), float(sol.t[-1])
         x_prev = R2a / rsa  # only once the state has moved (see the momentum runner)
         Ms = max(Ms, _scalar(mass_profile.get_mass_profile(float(np.max(sol.y[0])), params)))
@@ -1067,9 +1132,9 @@ def run_phase_transition_swept(params):
             root = root_R2(rs, Ms, fb, params, guess=x_prev * rs if x_prev else None, Eb=Eb)
             if root['ok']:
                 updateDict(params, root['sp'])
-                U = edge_speed(u, rs, root['sp'].shell_fAbsorbedIon, params)
-                _forces_to_params(params, root, rs, u, Ms, swept_mass(rs, U, Ms, u <= 0.0, params)[1], U,
-                                  root['sp'].shell_fAbsorbedIon, fb, Eb)
+                fa = root['sp'].shell_fAbsorbedIon
+                U, _, Mdot = mode_rates(u, rs, Ms, sweep_mode(sweep, rs, u, Ms, params), fa, params)   # S7
+                _forces_to_params(params, root, rs, u, Ms, Mdot, U, fa, fb, Eb)
                 params.save_snapshot()
             else:
                 logger.warning(f"[swept] phase-boundary reconciliation skipped: {root['why']}")

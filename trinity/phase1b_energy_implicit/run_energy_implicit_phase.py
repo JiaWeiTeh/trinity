@@ -55,7 +55,6 @@ ImplicitPhaseResults : dataclass
 """
 
 import numpy as np
-import scipy.integrate
 import scipy.optimize
 import logging
 from collections import deque
@@ -97,6 +96,7 @@ from trinity.shell_structure.shell_structure import (
 # Import centralized event functions
 from trinity.phase_general.phase_events import (
     build_implicit_phase_events,
+    solve_segment,
     check_event_termination,
     apply_event_result,
     update_collapse_radius,
@@ -197,7 +197,10 @@ ADAPTIVE_MONITOR_KEYS = [
 # ODE solver settings
 ODE_RTOL = 1e-6      # Relative tolerance
 ODE_ATOL = 1e-8      # Absolute tolerance (relaxed from 1e-9)
-ODE_MIN_STEP = 1e-6  # Minimum step size (Myr)
+# S8 (docs/dev/turnaround-stall/solver-defects.md, ruled 2026-11-21): 0, which is what ran: scipy 1.17's LSODA never
+# applies min_step (scipy issue 25827), and where it does, LSODA fails at the floor instead of going on. The RHS
+# budget of phase_events.solve_segment bounds a pinned step.
+ODE_MIN_STEP = 0.0
 ODE_MAX_STEP = DT_SEGMENT_MIN / 5  # Max step = 2e-5 Myr (ensures >=5 steps per segment)
 
 # Solver method: 'LSODA' for stiff/non-stiff switching
@@ -806,7 +809,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
 
     # phii_scheme 'swept' (PLAN.md 0.0.11, Step 6): the loop below with swept hooks (`if sw:`); every c3c expression
     # is unchanged, and where the c3c lines compute something swept replaces, the swept value overrides it after
-    from trinity.phase2_momentum.swept import ImplicitSwept, is_swept
+    from trinity.phase2_momentum.swept import ImplicitSwept, is_swept, mode_event
     sw = ImplicitSwept(params) if is_swept(params) else None
 
     # Initialize state
@@ -1173,7 +1176,9 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         # ---------------------------------------------------------------------
 
         Ed = cool_beta_to_Ebdot_pure(beta, Pb, t_now, R1, R2, v2, Eb, feedback.pdot_total, feedback.pdotdot_total)
-        Td = delta2dTdt_pure(t_now, T0, delta)
+        # S1 (docs/dev/turnaround-stall/solver-defects.md, ruled 2026-11-21): T0 follows its delta as the power law T0 (t / t_now)^delta,
+        # dT0/dt = delta T0 / t live in T0 and t (the solve_ivp fun below). The fixed rate delta T0(t_now) / t_now drew
+        # a line that crossed zero once |delta| dt / t > 1.
 
         force_props = compute_forces_pure(R2, mShell, Pb, shell_props, params)
         params['F_grav'].value = force_props.F_grav
@@ -1240,6 +1245,11 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         if sw:
             values_before['rs_dyn'] = params['rs_dyn'].value
 
+        # S1: this segment's own delta caps its span, so T0 moves at most DT_DELTA_FRAC over it. The cap after the
+        # solve sizes the next segment from this one's delta, and the first segment (DT_SEGMENT_INIT) had no cap.
+        dt_segment = cap_dt_by_delta(dt_segment, delta, t_now)
+        if sw:
+            dt_run = min(dt_run, dt_segment)
         t_segment_end = min(t_now + (dt_run if sw else dt_segment), tmax)
         t_span = (t_now, t_segment_end)
         y0 = sw.y0(Eb, T0) if sw else np.array([R2, v2, Eb, T0])
@@ -1251,20 +1261,23 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         try:
             # Build solver kwargs (min_step only supported by LSODA)
             solver_kwargs = {
-                'fun': (sw.rhs(params, Ed, Td) if sw
-                        else (lambda t, y: get_ODE_implicit_pure(t, y, snapshot, params, Ed, Td))),
+                'fun': (sw.rhs(params, Ed, delta) if sw
+                        else (lambda t, y: get_ODE_implicit_pure(t, y, snapshot, params, Ed,
+                                                                 delta2dTdt_pure(t, y[3], delta)))),
                 't_span': t_span,
                 'y0': y0,
                 'method': ODE_METHOD,
                 'rtol': ODE_RTOL,
                 'atol': ODE_ATOL,
                 'max_step': ODE_MAX_STEP,
-                'events': ode_events,  # Event functions for safe termination
+                # Event functions for safe termination; swept in COAST: + the mode switch (S7), which ends the
+                # segment only (in SWEEP the switch is u through 0, velocity_sign's own crossing, which ends 1b)
+                'events': ode_events + ([mode_event(sw.sweep, sw.Ms, params)] if sw and not sw.sweep else []),
             }
             if ODE_METHOD == 'LSODA':
                 solver_kwargs['min_step'] = ODE_MIN_STEP
 
-            sol = scipy.integrate.solve_ivp(**solver_kwargs)
+            sol = solve_segment(params, solver_kwargs)   # S8: under the RHS budget
         except Exception as e:
             if str(e).startswith("shell_mass_net:"):    # D-MB10's refusal is not a solver failure: raise it, as c3c does
                 raise
@@ -1340,6 +1353,9 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         params['Eb'].value = Eb
         params['T0'].value = T0
         if sw:
+            if not sw.sweep and sol.t_events[-1].size:   # S7: the COAST segment reached unswept gas
+                sw.sweep = not sw.sweep
+                logger.info(f"[S7] 1b mode -> {'SWEEP' if sw.sweep else 'COAST'} at t={sol.t[-1]:.9e} Myr")
             sw.advance(params, sol.y[:, -1], np.max(sol.y[0]))
             sw.moved()
             R2, v2 = sw.R2_at(sw.rs, Eb, sw.Ms, t_now), sw.u   # the bubble radius the closure gives now, the gas speed
