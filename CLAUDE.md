@@ -153,17 +153,17 @@ mandatory banner paragraphs; the canonical templates plus the working rules for 
 ## Rosette paper: where things go
 
 All Rosette work belongs under `paper/rosette/`. The paper text is
-`paper/rosette/paper-plans/draft/merged/main.tex` and nowhere else — do not draft
+`paper/rosette/draft/main.tex` and nowhere else — do not draft
 prose in a scratch file, a chat reply, or a side document and leave it there.
 `paper-plans/draft/main.tex` and `paper-plans/draft/bib.bib` are the frozen
 2026-09-28 versions; do not edit or build them.
 
-`main.pdf` must always land beside `merged/main.tex`, where the author can open it.
+`main.pdf` must always land beside `draft/main.tex`, where the author can open it.
 If the build runs elsewhere (full disk, a second session editing the same file),
-copy the current `merged/` files in fresh and put `main.pdf` back; a stale copy
+copy the current `draft/` files in fresh and put `main.pdf` back; a stale copy
 of `bib.bib` in a build tree has already caused a citation to render silently
 as "?". `main.tex` reads `aa.bst` and `bib.bib` beside it (`\bibliography{bib}`); in
-`merged/`, `bib.bib` is a real file and the only bibliography (moved out of
+`draft/`, `bib.bib` is a real file and the only bibliography (moved out of
 `bibtex/` on 2026-10-11 at the author's request).
 
 Verify from the rendered PDF text, not the log: `grep -c "Citation.*undefined"`

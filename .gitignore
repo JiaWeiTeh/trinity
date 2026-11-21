@@ -37,6 +37,7 @@ paper/pineda/
 paper/website/
 paper/janice/
 paper/liangFH/
+paper/paper3/
 # referee-revision staging area (new analysis + HPC control-sweep harness; review before wiring into src/)
 paper/methods/upgrade/
 test/test_barnes_population.py
