@@ -8,7 +8,7 @@ replaces the cavity Stroemgren pressure with the pressure AT the ionisation fron
     P_front = (mu_c/mu_i) * n_IF * k_B * T_ion,
 
 applied by the caller over 4*pi*R_IF**2 on the neutral rind, with NO Pb or P_ram added.
-It lives behind `phii_scheme`, which defaults to the shipped 'c3c'.
+It lives behind `phii_scheme`, which defaults to 'swept' since 2026-11-23 ('c3c' before).
 
 WHAT IS PINNED HERE, and what each gate is FOR.
 
@@ -161,8 +161,10 @@ def test_never_negative_over_a_wide_sweep(p):
 
 
 # --------------------------------------------------------------- F5 the dispatcher
-def test_default_scheme_is_c3c(p):
-    assert str(p["phii_scheme"].value) == "c3c"
+def test_default_scheme_is_swept(p):
+    # 'swept' since 2026-11-23 (c3c retired as the default, still selectable). 'swept' dispatches to
+    # get_phii_c3c (phase 1a is c3c under swept), so the dispatcher test below holds unchanged.
+    assert str(p["phii_scheme"].value) == "swept"
 
 
 def test_dispatcher_matches_c3c_exactly_by_default(p):
