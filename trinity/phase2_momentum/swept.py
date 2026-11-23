@@ -130,13 +130,18 @@ def swept_mass(r, U, M_floor, frozen, params):
 # frozen branch at u <= 0 with the segment-start mass, the M_floor clamp), and LSODA pinned its step on them.
 SWEEP_TOL = 1e-12          # relative mass margin of the COAST -> SWEEP event (and of the missed-event check)
 SWEEP_TOL_ENTRY = 1e-9     # at a phase entry: the hand-off's mass fixed point is converged to 1e-10 (initial_state)
+# A phase entry at a turnaround (2026-11-23, paper/II-survey CHANGELOG): u is the previous phase's located u = 0 root,
+# +-1e-16..1e-11 pc/Myr, its sign round-off. Entered as SWEEP, the segment starts on its own u event, which LSODA's
+# event location can fail on (28 Paper II step-6 runs). At or below the solver's absolute tolerance it is at rest: COAST.
+U_REST_ENTRY = ODE_ATOL    # pc/Myr
 
 
 def sweep_mode(sweep, r, u, Ms, params):
     """The mode of the segment starting at (r, u) with mass Ms: True SWEEP, False COAST. sweep is the mode carried from the
-    last segment (its events flip it), None at a phase entry. A receding shell coasts, a carried SWEEP stays one, and COAST
-    turns to SWEEP only past gas not yet swept (an event the solver missed)."""
-    if u <= 0.0:
+    last segment (its events flip it), None at a phase entry. A receding shell coasts (at an entry, also one with
+    u <= U_REST_ENTRY), a carried SWEEP stays one, and COAST turns to SWEEP only past gas not yet swept (an event the
+    solver missed)."""
+    if u <= (U_REST_ENTRY if sweep is None else 0.0):
         return False
     if sweep:
         return True
@@ -788,10 +793,13 @@ def run_phase_momentum_swept(params) -> MomentumPhaseResults:
             sol = solve_segment(params, solver_kwargs)   # S8: under the RHS budget
         except Exception as e:
             logger.error(f"solve_ivp failed at t={t_now:.6e}: {e}")
-            termination_reason = f"solver_error: {e}"
+            # the run's last phase: an end code, or main writes UNKNOWN (code 99) with exit 0 (2026-11-23)
+            termination_reason = _end(params, f"solver_error: {e}", SimulationEndCode.ERROR_SOLVER,
+                                      f"momentum solve failed at t={t_now:.6e} Myr: {e}")
             break
         if not sol.success or len(sol.t) == 0:
-            termination_reason = f"solver_failed: {sol.message}"
+            termination_reason = _end(params, f"solver_failed: {sol.message}", SimulationEndCode.ERROR_SOLVER,
+                                      f"momentum solve failed at t={t_now:.6e} Myr: {sol.message}")
             break
 
         event_result = check_event_termination(sol, ode_events)

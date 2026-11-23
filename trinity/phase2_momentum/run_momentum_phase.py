@@ -790,10 +790,17 @@ def run_phase_momentum(params) -> MomentumPhaseResults:
         except Exception as e:
             logger.error(f"solve_ivp failed at t={t_now:.6e}: {e}")
             termination_reason = f"solver_error: {e}"
+            # the run's last phase: an end code, or main writes UNKNOWN (code 99) with exit 0 (2026-11-23)
+            params['SimulationEndReason'].value = f"momentum solve failed at t={t_now:.6e} Myr: {e}"
+            params['SimulationEndCode'].value = SimulationEndCode.ERROR_SOLVER.code
+            params['EndSimulationDirectly'].value = True
             break
 
         if not sol.success or len(sol.t) == 0:
             termination_reason = f"solver_failed: {sol.message}"
+            params['SimulationEndReason'].value = f"momentum solve failed at t={t_now:.6e} Myr: {sol.message}"
+            params['SimulationEndCode'].value = SimulationEndCode.ERROR_SOLVER.code
+            params['EndSimulationDirectly'].value = True
             break
 
         # ---------------------------------------------------------------------

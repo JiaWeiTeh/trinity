@@ -43,6 +43,10 @@ def test_sweep_mode_coasts_while_receding_and_sweeps_only_past_unswept_gas(param
     assert S.sweep_mode(False, r, 3.0, 0.5 * M, params) is True           # COAST past unswept gas (a missed event)
     assert S.sweep_mode(None, r, 3.0, M * (1 + 1e-10), params) is True    # phase entry: the hand-off's fixed point
     assert S.sweep_mode(None, r, 3.0, 2.0 * M, params) is False
+    # a phase entry at a turnaround: u is the previous phase's u = 0 root, its sign round-off (2026-11-23)
+    assert S.sweep_mode(None, r, 9.5e-16, 0.5 * M, params) is False
+    assert S.sweep_mode(None, r, 2.1e-13, M * (1 + 1e-10), params) is False
+    assert S.sweep_mode(True, r, 9.5e-16, 2.0 * M, params) is True       # mid-phase: unchanged
 
 
 def test_mode_rates_hold_the_mass_in_coast_and_sweep_it_at_the_jump_speed(params):
