@@ -580,7 +580,8 @@ class RHSBudgetExceeded(Exception):
 
 def solve_segment(params, kwargs):
     """scipy.integrate.solve_ivp(**kwargs) under the RHS budget (S8, above). Returns the solution; a failed one (and the
-    run's end set) when the Radau retry runs out or fails. Errors other than the budget propagate as before."""
+    run's end set) when the Radau retry runs out or fails. An LSODA segment whose event location raises is redone with
+    Radau too (solver flag event_retry). Other errors propagate as before."""
     t0, t1 = kwargs['t_span']
     cap = SEGMENT_RHS_BASE + SEGMENT_RHS_PER_MYR * abs(t1 - t0)
     fun, first = kwargs['fun'], kwargs['method']
@@ -596,16 +597,23 @@ def solve_segment(params, kwargs):
         kw = dict(kwargs, fun=counted, method=method)
         if method != 'LSODA':
             kw.pop('min_step', None)
+        miss = None
         try:
             sol = scipy.integrate.solve_ivp(**kw)
-        except Exception:
-            if n[0] <= cap:
+        except Exception as exc:
+            # scipy locates an event by brentq on the step's dense output; LSODA's misses the step start by its local
+            # error, so a segment begun on an event's root (u = 0+ at a turnaround) can raise here (2026-11-23,
+            # paper/II-survey CHANGELOG). Radau's dense output is exact at the step start: redo the segment with it.
+            if n[0] <= cap and method == 'LSODA' and isinstance(exc, ValueError) and 'different signs' in str(exc):
+                miss = exc
+            elif n[0] <= cap:
                 raise                   # not the budget: the runner handles it as before
             sol = None
-        if n[0] <= cap and (method == first or sol.success):
+        if sol is not None and n[0] <= cap and (method == first or sol.success):
             return sol
-        why = f"ran out of its RHS budget ({cap:.0f} calls)" if n[0] > cap else f"failed ({sol.message})"
-        add_solver_flag(params, 'rhs_budget')
+        why = (f"could not locate an event ({miss})" if miss else
+               f"ran out of its RHS budget ({cap:.0f} calls)" if n[0] > cap else f"failed ({sol.message})")
+        add_solver_flag(params, 'event_retry' if miss else 'rhs_budget')
         logger.warning(f"[S8] {method} segment [{t0:.9e}, {t1:.9e}] Myr {why}"
                        + ("" if method == 'Radau' else "; redoing it with Radau"))
     add_solver_flag(params, 'rhs_budget_end')
