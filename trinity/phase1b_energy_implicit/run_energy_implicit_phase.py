@@ -234,6 +234,20 @@ def classify_energy_collapse(Eb):
     return None
 
 
+def onezone_theta(Lloss, Lgain, Eb):
+    """B1 (docs/dev/turnaround-stall/PLAN.md, ruled 2026-11-20): the loss fraction a phase-1b turnaround freezes,
+    Lloss / Lgain as the last beta/delta solve stored them (the effective loss: cooling + leak, boosted once). None
+    when the bubble is spent (Eb <= 0 or not finite: classify_energy_collapse), when the fraction cannot be had (no
+    solve stored one, NaN, Lgain <= 0) or when it lies outside [0, 1): the turnaround then keeps the 2026-10-01 rule
+    (Eb to the floor, momentum)."""
+    if classify_energy_collapse(Eb) is not None:
+        return None
+    if Lloss is None or Lgain is None or not (np.isfinite(Lloss) and np.isfinite(Lgain)) or Lgain <= 0:
+        return None
+    theta = Lloss / Lgain
+    return float(theta) if 0.0 <= theta < 1.0 else None
+
+
 # =============================================================================
 # Force Properties Dataclass
 # =============================================================================
@@ -879,6 +893,9 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
     # Build events using centralized module
     # Returns (events_list, cooling_balance_factory)
     ode_events, cooling_balance_factory = build_implicit_phase_events(params)
+    # B1 (docs/dev/turnaround-stall/PLAN.md, ruled 2026-11-20): Lloss/Lgain frozen at a kept turnaround (one-zone mode,
+    # velocity_sign then leaves ode_events); None while 1b solves beta/delta
+    theta_1z = None
 
     # =============================================================================
     # Main loop (segment-based with adaptive stepping)
@@ -932,6 +949,11 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         # ---------------------------------------------------------------------
         feedback = get_current_sps_feedback(t_now, params)
         updateDict(params, feedback)
+        if theta_1z is not None:
+            # B1: the one-zone bubble's gain and loss, theta_1z of the live Lmech, set before the swept wall speed
+            # (ImplicitSwept.segment_start) reads them
+            params['bubble_Lgain'].value = feedback.Lmech_total
+            params['bubble_Lloss'].value = theta_1z * feedback.Lmech_total
 
         if sw:
             root = sw.segment_start(params, feedback, t_now, Eb)
@@ -971,143 +993,152 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         # so that Pb and bubble_mass are current when shell_structure_pure
         # reads them (bubble computation does not depend on shell).
         # ---------------------------------------------------------------------
-        rescue = rescue_allowed(betadelta_unconverged_streak)
-        n_solves += 1
-        betadelta_result = solve_betadelta_pure(
-            params['cool_beta'].value,
-            params['cool_delta'].value,
-            params,
-            rescue=rescue,
-            wide=n_solves <= WIDE_SEARCH_MAX_SOLVES,
-        )
-        if sw and sw.recouple(params, Eb, betadelta_result.L_gain, betadelta_result.L_loss):
-            # Step 7b-1: the wall speed with this solve's own luminosities moved > 1 %: solve once more with it
-            v2 = sw.Rdot2
-            params['v2'].value = v2
-            params['cool_alpha'].value = t_now / R2 * v2
+        if theta_1z is None:
+            rescue = rescue_allowed(betadelta_unconverged_streak)
             n_solves += 1
-            betadelta_result = solve_betadelta_pure(betadelta_result.beta, betadelta_result.delta, params, rescue=rescue,
-                                                    wide=n_solves <= WIDE_SEARCH_MAX_SOLVES)
-        # counted only where the cap changed something: the ladder would have run
-        # (a hybr 'structure solve failed' no-root) and was skipped
-        n_capped += (not rescue and betadelta_result.no_physical_root
-                     and 'structure solve failed' in (betadelta_result.no_root_reason or ''))
-        unsolvable = (betadelta_result.no_physical_root
-                      or not np.isfinite(betadelta_result.total_residual))
-        unsolvable_recent.append(unsolvable)
-        n_unsolvable += unsolvable
-
-        beta = betadelta_result.beta
-        delta = betadelta_result.delta
-
-        # Track solver outcomes for the end-of-phase summary.
-        betadelta_solve_count += 1
-        if betadelta_result.converged:
-            betadelta_converged_count += 1
-
-        # No physical (dMdt>0, valid-structure) root: the energy-driven solution
-        # is degenerate at this (beta, delta). One segment is logged and held;
-        # many in a row hand off (unsolvable_handoff, or unconverged_handoff after BETADELTA_DT_SHRINK_MAX_STREAK
-        # consecutive unconverged segments; below). bubble_properties is
-        # None here, so the structure values and the dMdt warm start below hold
-        # at the last physical segment.
-        if betadelta_result.no_physical_root:
-            betadelta_no_root_count += 1
-            no_root_streak += 1
-            if no_root_streak == 1:
-                no_root_streak_t0 = t_now
-            # First hit of a streak warns (as before); repeats are DEBUG, so a
-            # rejection burst no longer floods identical warnings while staying
-            # visible at the default level.
-            _nr_log = logger.warning if no_root_streak == 1 else logger.debug
-            _nr_log(
-                f"beta-delta: no physical (dMdt>0) root at segment "
-                f"{segment_count} (t={t_now:.6e} Myr, streak {no_root_streak}): "
-                f"{betadelta_result.no_root_reason}. Holding last physical "
-                f"dMdt={params['bubble_dMdt'].value:.3e} "
-                f"(Lgain={params['bubble_Lgain'].value:.3e}, "
-                f"Lloss={params['bubble_Lloss'].value:.3e}); implicit phase "
-                f"continues."
+            betadelta_result = solve_betadelta_pure(
+                params['cool_beta'].value,
+                params['cool_delta'].value,
+                params,
+                rescue=rescue,
+                wide=n_solves <= WIDE_SEARCH_MAX_SOLVES,
             )
-        else:
-            no_root_streak = 0
-            no_root_streak_t0 = None
-        no_root = unsolvable_handoff(unsolvable_recent)
-        lost_root = unconverged_handoff(betadelta_unconverged_streak, betadelta_result.converged, betadelta_solver)
-        if no_root or lost_root:
-            termination_reason = "no_physical_root_handoff"
-            add_solver_flag(params, termination_reason)
-            if no_root:
-                logger.warning(
-                    f"beta-delta: {sum(unsolvable_recent)} of the last "
-                    f"{len(unsolvable_recent)} segments had no physical (dMdt>0) root "
-                    f"or a non-finite residual (t={t_now:.6e} Myr, Lloss/Lgain="
-                    f"{params['bubble_Lloss'].value / max(params['bubble_Lgain'].value, 1e-300):.4f}). "
-                    f"The structure root has crossed to dMdt<0 — the "
-                    f"conduction-front condensation regime (McKee & Cowie 1977) — or "
-                    f"cannot be reached: handing off to the transition phase "
-                    f"(KAPPA_FREEZE_MECHANISM.md fix #1) [no_physical_root_handoff]."
+            if sw and sw.recouple(params, Eb, betadelta_result.L_gain, betadelta_result.L_loss):
+                # Step 7b-1: the wall speed with this solve's own luminosities moved > 1 %: solve once more with it
+                v2 = sw.Rdot2
+                params['v2'].value = v2
+                params['cool_alpha'].value = t_now / R2 * v2
+                n_solves += 1
+                betadelta_result = solve_betadelta_pure(betadelta_result.beta, betadelta_result.delta, params, rescue=rescue,
+                                                        wide=n_solves <= WIDE_SEARCH_MAX_SOLVES)
+            # counted only where the cap changed something: the ladder would have run
+            # (a hybr 'structure solve failed' no-root) and was skipped
+            n_capped += (not rescue and betadelta_result.no_physical_root
+                         and 'structure solve failed' in (betadelta_result.no_root_reason or ''))
+            unsolvable = (betadelta_result.no_physical_root
+                          or not np.isfinite(betadelta_result.total_residual))
+            unsolvable_recent.append(unsolvable)
+            n_unsolvable += unsolvable
+
+            beta = betadelta_result.beta
+            delta = betadelta_result.delta
+
+            # Track solver outcomes for the end-of-phase summary.
+            betadelta_solve_count += 1
+            if betadelta_result.converged:
+                betadelta_converged_count += 1
+
+            # No physical (dMdt>0, valid-structure) root: the energy-driven solution
+            # is degenerate at this (beta, delta). One segment is logged and held;
+            # many in a row hand off (unsolvable_handoff, or unconverged_handoff after BETADELTA_DT_SHRINK_MAX_STREAK
+            # consecutive unconverged segments; below). bubble_properties is
+            # None here, so the structure values and the dMdt warm start below hold
+            # at the last physical segment.
+            if betadelta_result.no_physical_root:
+                betadelta_no_root_count += 1
+                no_root_streak += 1
+                if no_root_streak == 1:
+                    no_root_streak_t0 = t_now
+                # First hit of a streak warns (as before); repeats are DEBUG, so a
+                # rejection burst no longer floods identical warnings while staying
+                # visible at the default level.
+                _nr_log = logger.warning if no_root_streak == 1 else logger.debug
+                _nr_log(
+                    f"beta-delta: no physical (dMdt>0) root at segment "
+                    f"{segment_count} (t={t_now:.6e} Myr, streak {no_root_streak}): "
+                    f"{betadelta_result.no_root_reason}. Holding last physical "
+                    f"dMdt={params['bubble_dMdt'].value:.3e} "
+                    f"(Lgain={params['bubble_Lgain'].value:.3e}, "
+                    f"Lloss={params['bubble_Lloss'].value:.3e}); implicit phase "
+                    f"continues."
                 )
             else:
-                logger.warning(
-                    f"beta-delta: no converged root for {betadelta_unconverged_streak + 1} consecutive segments "
-                    f"(t={t_now:.6e} Myr, accepted residual={betadelta_result.total_residual:.3e}): the dt and rescue "
-                    f"mitigation is spent and the energy-driven solution has ended (its root is lost); handing off "
-                    f"to the transition phase instead of carrying on in 1b (1c starts from this segment's state, its "
-                    f"last cooling luminosity included; PLAN.md Step 7b-4) [no_physical_root_handoff]."
+                no_root_streak = 0
+                no_root_streak_t0 = None
+            no_root = unsolvable_handoff(unsolvable_recent)
+            lost_root = unconverged_handoff(betadelta_unconverged_streak, betadelta_result.converged, betadelta_solver)
+            if no_root or lost_root:
+                termination_reason = "no_physical_root_handoff"
+                add_solver_flag(params, termination_reason)
+                if no_root:
+                    logger.warning(
+                        f"beta-delta: {sum(unsolvable_recent)} of the last "
+                        f"{len(unsolvable_recent)} segments had no physical (dMdt>0) root "
+                        f"or a non-finite residual (t={t_now:.6e} Myr, Lloss/Lgain="
+                        f"{params['bubble_Lloss'].value / max(params['bubble_Lgain'].value, 1e-300):.4f}). "
+                        f"The structure root has crossed to dMdt<0 — the "
+                        f"conduction-front condensation regime (McKee & Cowie 1977) — or "
+                        f"cannot be reached: handing off to the transition phase "
+                        f"(KAPPA_FREEZE_MECHANISM.md fix #1) [no_physical_root_handoff]."
+                    )
+                else:
+                    logger.warning(
+                        f"beta-delta: no converged root for {betadelta_unconverged_streak + 1} consecutive segments "
+                        f"(t={t_now:.6e} Myr, accepted residual={betadelta_result.total_residual:.3e}): the dt and rescue "
+                        f"mitigation is spent and the energy-driven solution has ended (its root is lost); handing off "
+                        f"to the transition phase instead of carrying on in 1b (1c starts from this segment's state, its "
+                        f"last cooling luminosity included; PLAN.md Step 7b-4) [no_physical_root_handoff]."
+                    )
+                if sw:
+                    # v2 holds the wall speed set at this segment's start; 1c continues the swept state, as advance wrote it
+                    params['rs_dyn'].value, params['v2'].value, params['shell_mass'].value = sw.rs, sw.u, sw.Ms
+                break
+
+            # Update params with new beta/delta
+            params['cool_beta'].value = beta
+            params['cool_delta'].value = delta
+
+            # Get bubble properties from result
+            bubble_props = betadelta_result.bubble_properties
+
+            # Update params with all bubble properties from the pure function result
+            # This is critical: without this, bubble_mass, bubble arrays, etc. remain stale
+            if bubble_props is not None:
+                updateDict(params, bubble_props)
+                # Diagnostic-only (WARPFIELD "Problem 2"): fraction of the bubble
+                # thickness flowing inward (v<0) during a re-pressurisation. Logged
+                # for monitoring; NOT used in any physics. docs/dev/archive/betadelta/stalling-energy-phase.md
+                params['v_neg_frac_thick'].value = _inflow_frac_thickness(
+                    getattr(bubble_props, 'bubble_v_arr', None),
+                    getattr(bubble_props, 'bubble_r_arr', None))
+                # freeze-watch: grep-able approach trace for the dMdt->0 crossing
+                # (KAPPA_FREEZE_MECHANISM.md). DEBUG-only, one line per segment.
+                logger.debug(
+                    f"freeze-watch: segment={segment_count} t={t_now:.6e} "
+                    f"dMdt={params['bubble_dMdt'].value:.6e} "
+                    f"Lloss/Lgain={params['bubble_Lloss'].value / max(params['bubble_Lgain'].value, 1e-300):.4f}"
                 )
-            if sw:
-                # v2 holds the wall speed set at this segment's start; 1c continues the swept state, as advance wrote it
-                params['rs_dyn'].value, params['v2'].value, params['shell_mass'].value = sw.rs, sw.u, sw.Ms
-            break
 
-        # Update params with new beta/delta
-        params['cool_beta'].value = beta
-        params['cool_delta'].value = delta
+            # Save residual diagnostics to dictionary (after ODE, not during)
+            params['betadelta_converged'].value = betadelta_result.converged
+            params['betadelta_total_residual'].value = betadelta_result.total_residual
+            betadelta_unconverged_streak = update_unconverged_streak(
+                betadelta_unconverged_streak, betadelta_result.converged,
+                t_now, betadelta_result.total_residual)
+            params['residual_deltaT'].value = betadelta_result.T_residual
+            params['residual_betaEdot'].value = betadelta_result.Edot_residual
+            if betadelta_result.Edot_from_beta is not None:
+                params['residual_Edot1_guess'].value = betadelta_result.Edot_from_beta
+            if betadelta_result.Edot_from_balance is not None:
+                params['residual_Edot2_guess'].value = betadelta_result.Edot_from_balance
+            if betadelta_result.T_bubble is not None:
+                params['residual_T1_guess'].value = betadelta_result.T_bubble
+            if betadelta_result.T0 is not None:
+                params['residual_T2_guess'].value = betadelta_result.T0
 
-        # Get bubble properties from result
-        bubble_props = betadelta_result.bubble_properties
-
-        # Update params with all bubble properties from the pure function result
-        # This is critical: without this, bubble_mass, bubble arrays, etc. remain stale
-        if bubble_props is not None:
-            updateDict(params, bubble_props)
-            # Diagnostic-only (WARPFIELD "Problem 2"): fraction of the bubble
-            # thickness flowing inward (v<0) during a re-pressurisation. Logged
-            # for monitoring; NOT used in any physics. docs/dev/archive/betadelta/stalling-energy-phase.md
-            params['v_neg_frac_thick'].value = _inflow_frac_thickness(
-                getattr(bubble_props, 'bubble_v_arr', None),
-                getattr(bubble_props, 'bubble_r_arr', None))
-            # freeze-watch: grep-able approach trace for the dMdt->0 crossing
-            # (KAPPA_FREEZE_MECHANISM.md). DEBUG-only, one line per segment.
-            logger.debug(
-                f"freeze-watch: segment={segment_count} t={t_now:.6e} "
-                f"dMdt={params['bubble_dMdt'].value:.6e} "
-                f"Lloss/Lgain={params['bubble_Lloss'].value / max(params['bubble_Lgain'].value, 1e-300):.4f}"
-            )
-
-        # Save residual diagnostics to dictionary (after ODE, not during)
-        params['betadelta_converged'].value = betadelta_result.converged
-        params['betadelta_total_residual'].value = betadelta_result.total_residual
-        betadelta_unconverged_streak = update_unconverged_streak(
-            betadelta_unconverged_streak, betadelta_result.converged,
-            t_now, betadelta_result.total_residual)
-        params['residual_deltaT'].value = betadelta_result.T_residual
-        params['residual_betaEdot'].value = betadelta_result.Edot_residual
-        if betadelta_result.Edot_from_beta is not None:
-            params['residual_Edot1_guess'].value = betadelta_result.Edot_from_beta
-        if betadelta_result.Edot_from_balance is not None:
-            params['residual_Edot2_guess'].value = betadelta_result.Edot_from_balance
-        if betadelta_result.T_bubble is not None:
-            params['residual_T1_guess'].value = betadelta_result.T_bubble
-        if betadelta_result.T0 is not None:
-            params['residual_T2_guess'].value = betadelta_result.T0
-
-        # Energy balance: luminosity gain and loss
-        if betadelta_result.L_gain is not None:
-            params['bubble_Lgain'].value = betadelta_result.L_gain
-        if betadelta_result.L_loss is not None:
-            params['bubble_Lloss'].value = betadelta_result.L_loss
+            # Energy balance: luminosity gain and loss
+            if betadelta_result.L_gain is not None:
+                params['bubble_Lgain'].value = betadelta_result.L_gain
+            if betadelta_result.L_loss is not None:
+                params['bubble_Lloss'].value = betadelta_result.L_loss
+        else:
+            # B1 (docs/dev/turnaround-stall/PLAN.md, ruled 2026-11-20): after a kept turnaround the bubble is one zone,
+            # with no structure solve; its gain and loss were set at the segment start (theta_1z of the live Lmech).
+            # beta and the bubble structure keep the last solve's values. delta 0 holds T0 (S1's dT0/dt = delta T0 / t,
+            # both RHS) and leaves cap_dt_by_delta inert (both calls).
+            bubble_props = None
+            delta = 0.0
+            params['cool_delta'].value = delta
 
         # ---------------------------------------------------------------------
         # Get R1 and Pb
@@ -1174,7 +1205,10 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         # Convert beta/delta to Ed, Td using pure functions
         # ---------------------------------------------------------------------
 
-        Ed = cool_beta_to_Ebdot_pure(beta, Pb, t_now, R1, R2, v2, Eb, feedback.pdot_total, feedback.pdotdot_total)
+        if theta_1z is None:
+            Ed = cool_beta_to_Ebdot_pure(beta, Pb, t_now, R1, R2, v2, Eb, feedback.pdot_total, feedback.pdotdot_total)
+        else:   # B1: Lgain - Lloss - 4 pi R2^2 v2 Pb, get_betadelta's Edot_from_balance (swept: the root R2, wall speed)
+            Ed = params['bubble_Lgain'].value - params['bubble_Lloss'].value - 4 * np.pi * R2**2 * v2 * Pb
         # S1 (docs/dev/turnaround-stall/solver-defects.md, ruled 2026-11-21): T0 follows its delta as the power law T0 (t / t_now)^delta,
         # dT0/dt = delta T0 / t live in T0 and t (the solve_ivp fun below). The fixed rate delta T0(t_now) / t_now drew
         # a line that crossed zero once |delta| dt / t > 1.
@@ -1270,8 +1304,10 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
                 'atol': ODE_ATOL,
                 'max_step': ODE_MAX_STEP,
                 # Event functions for safe termination; swept in COAST: + the mode switch (S7), which ends the
-                # segment only (in SWEEP the switch is u through 0, velocity_sign's own crossing, which ends 1b)
-                'events': ode_events + ([mode_event(sw.sweep, sw.Ms, params)] if sw and not sw.sweep else []),
+                # segment only (in SWEEP the switch is u through 0, velocity_sign's own crossing, which ends 1b;
+                # in B1's one-zone mode velocity_sign is gone, and SWEEP adds its own switch too)
+                'events': ode_events + ([mode_event(sw.sweep, sw.Ms, params)]
+                                        if sw and (not sw.sweep or theta_1z is not None) else []),
             }
             if ODE_METHOD == 'LSODA':
                 solver_kwargs['min_step'] = ODE_MIN_STEP
@@ -1321,6 +1357,26 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
             if sw:
                 sw.advance(params, event_result.y, np.max(sol.y[0]))
             if event_result.name == 'velocity_sign':
+                _theta = onezone_theta(params['bubble_Lloss'].value, params['bubble_Lgain'].value, Eb)
+                if _theta is not None:
+                    # B1 (docs/dev/turnaround-stall/PLAN.md, ruled 2026-11-20): keep Eb and go on in 1b as a one-zone
+                    # bubble at the last solve's loss fraction, frozen. The 2026-10-01 rule below zeroed bubbles still
+                    # held by the ambient pressure; it stays where there is no fraction or the bubble is spent.
+                    theta_1z, termination_reason = _theta, None
+                    ode_events = [ev for ev in ode_events if getattr(ev, 'name', '') != 'velocity_sign']
+                    betadelta_unconverged_streak = 0     # PLAN.md §2: no solve follows that could clear the dt guard
+                    no_root_streak = 0                   # nor a structure solve: the end-of-phase log reports no streak
+                    add_solver_flag(params, 'onezone_after_turnaround')
+                    logger.warning(
+                        f"Shell turned around at t={t_now:.6e} Myr (R2={R2:.4f} pc): Eb={Eb:.3e} kept, one-zone "
+                        f"bubble from here with Lloss/Lgain frozen at {theta_1z:.4f} [onezone_after_turnaround].")
+                    if sw:
+                        # in SWEEP, velocity_sign is SWEEP's own u -> 0 switch (S7): go on in COAST, as the momentum
+                        # runner does after it (sweep_mode would keep SWEEP for a located root u = +0)
+                        sw.sweep = False
+                        sw.moved()
+                        R2, v2 = sw.R2_at(sw.rs, Eb, sw.Ms, t_now), sw.u
+                    continue
                 # Turnaround: straight to momentum, whatever Eb is left (ruled
                 # 2026-10-01, an approximation). Eb to the floor as for the Eb<=0
                 # routing below, so 1c is skipped; Eb_handoff keeps what was dropped.
@@ -1352,7 +1408,8 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         params['Eb'].value = Eb
         params['T0'].value = T0
         if sw:
-            if not sw.sweep and sol.t_events[-1].size:   # S7: the COAST segment reached unswept gas
+            # S7: the COAST segment reached unswept gas; in B1's one-zone mode also the SWEEP segment reached u = 0
+            if (not sw.sweep or theta_1z is not None) and sol.t_events[-1].size:
                 sw.sweep = not sw.sweep
                 logger.info(f"[S7] 1b mode -> {'SWEEP' if sw.sweep else 'COAST'} at t={sol.t[-1]:.9e} Myr")
             sw.advance(params, sol.y[:, -1], np.max(sol.y[0]))
@@ -1477,7 +1534,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         # physics param -> main output stays byte-identical. The future *flip* would
         # replace the logging here with a real break. docs/dev/transition/pt4/R1_SHADOW_PLAN.md
         _rCloud = params['rCloud'].value
-        _edot_bal = betadelta_result.Edot_from_balance
+        _edot_bal = betadelta_result.Edot_from_balance if theta_1z is None else Ed   # B1: the one-zone balance
         _blowout, _ebpeak = evaluate_r1_shadow(R2, _rCloud, _edot_bal)
         shadow_rows.append({
             't_now': t_now, 'R2': R2, 'rCloud': _rCloud,

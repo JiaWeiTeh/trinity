@@ -22,7 +22,9 @@ Events are categorized by their consequence:
    - cooling_balance: L_cool ~ L_gain (implicit -> transition)
    - energy_floor: Eb < threshold (transition -> momentum)
    - velocity_sign: v2 crosses zero in 1a/1b/1c (shell turned around -> momentum,
-     Eb dropped to the floor; an approximation ruled 2026-10-01)
+     Eb dropped to the floor; an approximation ruled 2026-10-01). In 1b, since B1
+     (2026-11, docs/dev/turnaround-stall/PLAN.md), Eb is kept and the bubble goes on
+     as one zone when its loss fraction is known (solver flag onezone_after_turnaround)
 
 3. **Monitoring Events** (non-terminal; record a crossing only):
    - none in production since 2026-10-01; make_velocity_sign_event() still
@@ -303,7 +305,9 @@ def make_velocity_sign_event(y_index: int = 1, name: str = "velocity_sign",
 
     Used to detect collapse onset (v2 going from positive to negative). The phase
     builders make it terminal: since 2026-10-01 a turnaround in 1a/1b/1c ends the
-    phase and the runner drops Eb to the floor (straight to momentum).
+    phase and the runner drops Eb to the floor (straight to momentum). In 1b, since B1
+    (2026-11), only where the loss fraction is unknown or Eb is spent: otherwise 1b goes
+    on as a one-zone bubble without this event.
 
     Parameters
     ----------

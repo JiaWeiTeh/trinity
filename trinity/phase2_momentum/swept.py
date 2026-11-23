@@ -168,7 +168,8 @@ def mode_rates(v, r, Ms, sweep, fabs_ion, params):
 def mode_event(sweep, Ms, params):
     """The terminal event that ends a segment at its mode switch (y = (r_s, u, ...)): u falling through 0 in SWEEP, the
     edge reaching unswept gas in COAST. 1b and 1c add it in COAST only: their SWEEP switch is velocity_sign's own
-    crossing, which ends the phase, and two terminal events with one root would leave the winner to solve_ivp's sort."""
+    crossing, which ends the phase, and two terminal events with one root would leave the winner to solve_ivp's sort.
+    B1's one-zone 1b (velocity_sign dropped at a kept turnaround) adds it in both modes, as the momentum runner."""
     if sweep:
         def event(t, y):
             return y[1]
