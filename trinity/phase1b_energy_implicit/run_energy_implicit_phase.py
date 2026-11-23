@@ -605,10 +605,9 @@ def compute_forces_pure(
     else:
         P_ext = 0.0
 
-    # Add ISM pressure if shell extends beyond cloud
-    if rShell >= rCloud:
-        P_ext += PISM * k_B
     from trinity.cloud_properties import density_profile
+    # ISM pressure, bridged at rCloud by the density's tanh weight (B3, docs/dev/turnaround-stall/PLAN.md, 2026-11)
+    P_ext += PISM * k_B * density_profile.ism_weight(rShell, rCloud)
     P_ext += density_profile.get_press_cloud(rShell, FABSi, params)   # cloud gas ahead (TCloud, 10 K by default)
 
     # ==========================================================================

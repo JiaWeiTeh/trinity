@@ -346,7 +346,7 @@ PISM    0
 # UNIT: [K]
 TCloud    10
 
-# INFO: Virial parameter of the cloud's gas for its turbulent pressure on the shell INSIDE the cloud only: rho sigma^2 with sigma^2 = alphaVirCloud G M(<r) / (5 r), Krumholz & Matzner (2009) eq. 17, alpha_vir = 5 sigma^2 r / (G M(<r)) as Bertoldi & McKee (1992), sigma the total one-dimensional dispersion (thermal included, so the term adds rho sigma^2 minus the TCloud thermal pressure); M(<r) is the cloud gas inside r, the cluster not included (density_profile.get_press_cloud). The ambient ISM outside the cloud is PISM. 0 (default) = off. Experimental. docs/dev/phii-identity/weak-wind/PLAN.md section 11.3.
+# INFO: Virial parameter of the cloud's gas for its turbulent pressure on the shell INSIDE the cloud only: rho sigma^2 with sigma^2 = alphaVirCloud G M(<r) / (5 r), Krumholz & Matzner (2009) eq. 17, alpha_vir = 5 sigma^2 r / (G M(<r)) as Bertoldi & McKee (1992), sigma the total one-dimensional dispersion (thermal included, so the term adds rho sigma^2 minus the TCloud thermal pressure); M(<r) is the total mass inside r, stars included and spread like the gas as in McKee & Tan (2003, eq. A3): the cloud gas inside r / (1 - sfe) (density_profile.get_press_cloud). With it on, the cloud gas's whole pressure (the TCloud term too) fades with the density's tanh bridge at the cloud edge, out to 1.2 rCloud (B3). The ambient ISM outside the cloud is PISM. 0 (default) = off. Experimental. docs/dev/phii-identity/weak-wind/PLAN.md section 11.3.
 alphaVirCloud    0
 
 

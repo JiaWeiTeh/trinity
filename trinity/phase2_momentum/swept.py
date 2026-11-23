@@ -15,7 +15,8 @@ with K_s = INT 8 pi r P dr over the profile (the curvature term the c3c runner c
 exported as K_s, F_rad_sh, P_outer). There is no P_HII: the photoionised gas's pressure is inside P(r_s).
 
 The outer edge is the leading shock (ruling D-T2 (b), 2026-10-21): it runs at U = (u + sqrt(u^2 + 4 c0^2))/2,
-the isothermal jump at the gas ahead, c0^2 = P_ext / rho_amb at r_s, where 0 < c0 <= c_i and the gas ahead is cloud
+the isothermal jump at the gas ahead, c0^2 = P_th / rho_amb at r_s (the gas ahead's own thermal pressure: P_ext
+without turbulence and without P_ISM, D6 with B3), where 0 < c0 <= c_i and the gas ahead is cloud
 gas (r_s < rCloud; Step 7a, A1, 2026-10-26); elsewhere U = u. In a pressure-free cloud (TCloud 0, P_ext = 0) that is one speed exactly,
 and past the cloud the shell moves with its gas. Mass is swept at 4 pi r_s^2 rho_amb U and carried at u
 (since S7, 2026-11-21, only in the SWEEP mode: see sweep_mode; in COAST the mass is held and U = u):
@@ -82,11 +83,11 @@ def _scalar(x):
 
 
 def p_ext(r, fabs_ion, params, turbulent=True):
-    """External pressure at r, as the c3c runner has it: photoionised gas if photons escape, PISM past rCloud, and the
-    cloud gas's own pressure inside the cloud (density_profile.get_press_cloud; TCloud 10 K by default)."""
+    """External pressure at r, as the c3c runner has it: photoionised gas if photons escape, PISM bridged at rCloud
+    with the density's own tanh weight (B3, 2026-11; a step at rCloud before), and the cloud gas's own pressure inside
+    the cloud (density_profile.get_press_cloud; TCloud 10 K by default)."""
     P = _scalar(get_press_ion(r, params)) if fabs_ion < 1.0 else 0.0
-    if r >= params['rCloud'].value:
-        P += params['PISM'].value * params['k_B'].value
+    P += params['PISM'].value * params['k_B'].value * density_profile.ism_weight(r, params['rCloud'].value)
     P += density_profile.get_press_cloud(r, fabs_ion, params, turbulent)
     return P
 
@@ -95,7 +96,7 @@ def edge_speed(u, r, fabs_ion, params, sweep=False):
     """The outer edge's speed U for shell-gas speed u: the isothermal jump at the gas ahead (D-T2 (b)).
 
     Applies where u > 0, the gas ahead is cloud gas (r < rCloud; PLAN Step 7a, A1) and 0 < c0 <= c_i; elsewhere
-    U = u. c0 = c_i exactly when photons escape inside the cloud (P_ext/rho = k T_ion / mu_ion_shell), so the cut
+    U = u. c0 = c_i exactly when photons escape inside the cloud (P_ahead/rho = k T_ion / mu_ion_shell), so the cut
     carries a 1e-9 relative allowance for rounding. Past the cloud the dense shell moves with its gas, as in every
     single-speed shell model; a separately tracked weak front there (A2) is the future upgrade.
     sweep=True (S7): the SWEEP mode's branch for any u, the jump continued smoothly through u = 0, so the segment the
@@ -106,7 +107,12 @@ def edge_speed(u, r, fabs_ion, params, sweep=False):
     rho = params['mu_convert'].value * _scalar(density_profile.get_density_profile(np.array([r]), params))
     if rho <= 0.0:
         return u
-    c0_sq = p_ext(r, fabs_ion, params, turbulent=False) / rho   # thermal only: the jump is a sound-speed condition
+    # D6 (docs/dev/turnaround-stall/PLAN.md; with B3, 2026-11): c0^2 is the gas ahead's own thermal pressure over rho,
+    # without P_ISM. B3 bridges P_ISM into p_ext from 0.8 rCloud, where it would lift c0 above c_i when photons escape
+    # and switch the jump off. Inside the cloud this is p_ext(turbulent=False) at ef0ec37a, operation for operation.
+    P_ahead = ((_scalar(get_press_ion(r, params)) if fabs_ion < 1.0 else 0.0)
+               + density_profile.get_press_cloud(r, fabs_ion, params, False))
+    c0_sq = P_ahead / rho                                       # thermal only: the jump is a sound-speed condition
     c_i_sq = params['k_B'].value * params['TShell_ion'].value / params['mu_ion_shell'].value
     if not (0.0 < c0_sq <= c_i_sq * (1.0 + 1e-9)):
         return u

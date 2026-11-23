@@ -15,14 +15,16 @@ from trinity.phase0_init.get_InitCloudProp import get_InitCloudProp
 
 N_CORE = 1e4             # cm^-3: a uniform cloud, 241 Msun of gas after star formation (257.4 input), rCloud ~ 0.55 pc
 R_IN, R_OUT = 0.3, 2.0   # pc: inside and outside the cloud
+SFE = 16.4 / 257.4       # the cluster's share of the 257.4 Msun input, as _params writes it
 G_CGS = 6.6743e-8
 
 
 def _turb_cgs(alpha_vir, r_pc):
-    """rho sigma^2 [cgs] in the uniform cloud: sigma^2 = alpha G M(<r)/(5 r), M(<r) = (4 pi/3) rho r^3 (gas only)."""
+    """rho sigma^2 [cgs] in the uniform cloud: sigma^2 = alpha G M(<r)/(5 r), M(<r) = (4 pi/3) rho r^3 / (1 - sfe), the
+    total mass of McKee & Tan (2003, eq. A3), stars spread like the gas (A1, docs/dev/turnaround-stall)."""
     rho = 1.4 * cvt.CGS.m_H * N_CORE
     r = r_pc * cvt.pc2cm
-    return rho * alpha_vir * G_CGS * (4 * math.pi / 3) * rho * r ** 3 / (5 * r)
+    return rho * alpha_vir * G_CGS * (4 * math.pi / 3) * rho * r ** 3 / (5 * r) / (1.0 - SFE)
 
 
 def _params(tmp_path, **over):
@@ -71,7 +73,8 @@ def test_virial_term_is_rho_sigma_sq_minus_the_thermal_part(tmp_path):
 
 
 def test_virial_term_grows_as_r_squared_in_a_uniform_cloud(tmp_path):
-    """sigma^2 ~ M(<r)/r ~ r^2 with the gas mass alone; the cluster's mass would make it grow toward the centre."""
+    """sigma^2 ~ M(<r)/r ~ r^2 with the stars spread like the gas (A1); a central point cluster would make it grow
+    toward the centre."""
     P = _params(tmp_path, TCloud=0, alphaVirCloud=1)
     r1, r2 = 0.1, 0.4
     ratio = density_profile.get_press_cloud(r2, 0.5, P) / density_profile.get_press_cloud(r1, 0.5, P)
