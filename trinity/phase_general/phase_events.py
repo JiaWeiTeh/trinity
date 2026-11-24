@@ -21,12 +21,14 @@ Events are categorized by their consequence:
    - cloud_boundary: R2 > rCloud (energy phase -> implicit)
    - cooling_balance: L_cool ~ L_gain (implicit -> transition)
    - energy_floor: Eb < threshold (transition -> momentum)
-   - velocity_sign: v2 crosses zero in 1a/1b/1c (shell turned around -> momentum,
-     Eb dropped to the floor; an approximation ruled 2026-10-01)
+   - velocity_sign: v2 crosses zero in 1a/1b/1c, under turnaround_rule momentum
+     only (shell turned around -> momentum, Eb dropped to the floor; the
+     approximation ruled 2026-10-01)
 
 3. **Monitoring Events** (non-terminal; record a crossing only):
-   - none in production since 2026-10-01; make_velocity_sign_event() still
-     defaults to monitoring
+   - velocity_sign under turnaround_rule continue (the default since R0,
+     docs/dev/turnaround-stall/PLAN_R0.md): the phase goes on through a
+     turnaround with its energy; make_velocity_sign_event() defaults to this
 
 Usage
 -----
@@ -302,8 +304,10 @@ def make_velocity_sign_event(y_index: int = 1, name: str = "velocity_sign",
     Create event that triggers when velocity changes sign.
 
     Used to detect collapse onset (v2 going from positive to negative). The phase
-    builders make it terminal: since 2026-10-01 a turnaround in 1a/1b/1c ends the
-    phase and the runner drops Eb to the floor (straight to momentum).
+    builders make it terminal under turnaround_rule momentum only (the rule of
+    2026-10-01: a turnaround in 1a/1b/1c ends the phase and the runner drops Eb to
+    the floor, straight to momentum); under continue, the default, it only records
+    the crossing (turnaround_ends_phase).
 
     Parameters
     ----------
@@ -331,6 +335,13 @@ def make_velocity_sign_event(y_index: int = 1, name: str = "velocity_sign",
     event.reason_code = "velocity_sign_change"
     event.reason_message = "Shell turned around (v2 < 0)"
     return event
+
+
+def turnaround_ends_phase(params) -> bool:
+    """turnaround_rule (R0, docs/dev/turnaround-stall/PLAN_R0.md, ruled 2026-11-24). True under 'momentum', the
+    rule of 2026-10-01: a turnaround in 1a/1b/1c ends the phase and the runner drops Eb to the floor. False under
+    'continue', the default: velocity_sign only records the crossing and the phase goes on with its energy."""
+    return params['turnaround_rule'].value == 'momentum'
 
 
 def make_energy_collapse_event(Eb_segment_start: float,
@@ -637,7 +648,8 @@ def build_energy_phase_events(params) -> List[Callable]:
     - cloud_boundary: R2 > rCloud (phase ending)
     - min_radius: R2 < collapse_radius (simulation ending)
     - velocity_runaway: |v2| too large (simulation ending)
-    - velocity_sign: v2 crosses zero (phase ending -> momentum)
+    - velocity_sign: v2 crosses zero (phase ending -> momentum under turnaround_rule
+      momentum; a monitor only under continue, the default)
 
     Parameters
     ----------
@@ -656,7 +668,7 @@ def build_energy_phase_events(params) -> List[Callable]:
         make_cloud_boundary_event(rCloud),
         make_min_radius_event(min_r),
         make_velocity_runaway_event(MAX_VELOCITY_COLLAPSE, direction="collapse"),
-        make_velocity_sign_event(terminal=True),
+        make_velocity_sign_event(terminal=turnaround_ends_phase(params)),
     ]
 
     logger.debug(f"Energy phase events: cloud_boundary={rCloud:.2f} pc")
@@ -668,7 +680,8 @@ def build_implicit_phase_events(params) -> Tuple[List[Callable], Callable]:
     Build event list for implicit (cooling) phase.
 
     Events:
-    - velocity_sign: v2 crosses zero (phase ending -> momentum)
+    - velocity_sign: v2 crosses zero (phase ending -> momentum under turnaround_rule
+      momentum; a monitor only under continue, the default)
     - min_radius: R2 < collapse_radius (simulation ending)
     - max_radius: R2 > stop_r (simulation ending)
     - velocity_runaway: |v2| too large (simulation ending)
@@ -692,7 +705,7 @@ def build_implicit_phase_events(params) -> Tuple[List[Callable], Callable]:
     min_r = _collapse_radius_getter(params)
 
     events = [
-        make_velocity_sign_event(terminal=True),
+        make_velocity_sign_event(terminal=turnaround_ends_phase(params)),
         make_min_radius_event(min_r),
         make_velocity_runaway_event(MAX_VELOCITY_COLLAPSE, direction="collapse"),
     ]
@@ -716,7 +729,8 @@ def build_transition_phase_events(params, energy_floor: float = 1e3) -> List[Cal
     - min_radius: R2 < collapse_radius (simulation ending)
     - max_radius: R2 > stop_r (simulation ending)
     - velocity_runaway: |v2| too large (simulation ending)
-    - velocity_sign: v2 crosses zero (phase ending -> momentum)
+    - velocity_sign: v2 crosses zero (phase ending -> momentum under turnaround_rule
+      momentum; a monitor only under continue, the default)
 
     Parameters
     ----------
@@ -738,7 +752,7 @@ def build_transition_phase_events(params, energy_floor: float = 1e3) -> List[Cal
         make_energy_floor_event(energy_floor, y_index=2),
         make_min_radius_event(min_r),
         make_velocity_runaway_event(MAX_VELOCITY_COLLAPSE, direction="collapse"),
-        make_velocity_sign_event(terminal=True),
+        make_velocity_sign_event(terminal=turnaround_ends_phase(params)),
     ]
 
     # Only add max_radius event if stop_r is set

@@ -47,7 +47,7 @@ from trinity.phase2_momentum.run_momentum_phase import (
 )
 from trinity.phase_general.phase_events import (
     apply_event_result, build_momentum_phase_events, build_transition_phase_events, check_event_termination,
-    collapse_reason, solve_segment, update_collapse_radius,
+    collapse_reason, solve_segment, turnaround_ends_phase, update_collapse_radius,
 )
 import trinity._functions.operations as operations
 from trinity.shell_structure.shell_structure import shell_structure_pure
@@ -161,8 +161,10 @@ def mode_rates(v, r, Ms, sweep, fabs_ion, params):
 
 def mode_event(sweep, Ms, params):
     """The terminal event that ends a segment at its mode switch (y = (r_s, u, ...)): u falling through 0 in SWEEP, the
-    edge reaching unswept gas in COAST. 1b and 1c add it in COAST only: their SWEEP switch is velocity_sign's own
-    crossing, which ends the phase, and two terminal events with one root would leave the winner to solve_ivp's sort."""
+    edge reaching unswept gas in COAST. Under turnaround_rule momentum 1b and 1c add it in COAST only: their SWEEP
+    switch is then velocity_sign's own crossing, which ends the phase, and two terminal events with one root would
+    leave the winner to solve_ivp's sort. Under continue (R0, the default) velocity_sign only records the crossing,
+    and 1b and 1c add the switch in both modes, as the momentum runner."""
     if sweep:
         def event(t, y):
             return y[1]
@@ -942,6 +944,7 @@ def run_phase_transition_swept(params):
     t_results, R2_results, u_results, Eb_results = [tmin], [params['R2'].value], [u], [Eb]
     dt_segment, t_diss_onset = TP.DT_SEGMENT_INIT, np.inf
     ode_events = build_transition_phase_events(params, energy_floor=TP.ENERGY_FLOOR)
+    ta_continue = not turnaround_ends_phase(params)   # R0: under continue SWEEP too ends at its mode switch (u = 0)
     G, mCluster = params['G'].value, params['mCluster'].value
     sweep = None   # S7: the mode, decided at the first segment and changed only at its events
 
@@ -1022,7 +1025,8 @@ def run_phase_transition_swept(params):
         values_before = _monitor(params)
         solver_kwargs = dict(fun=rhs, t_span=(t_now, min(t_now + dt_segment, tmax)), y0=np.array([rs, u, Eb]),
                              method=TP.ODE_METHOD, rtol=TP.ODE_RTOL, atol=TP.ODE_ATOL, max_step=TP.ODE_MAX_STEP,
-                             events=ode_events + ([] if sweep else [mode_event(sweep, Ms, params)]))   # S7, COAST
+                             events=ode_events + ([mode_event(sweep, Ms, params)] if (not sweep or ta_continue)
+                                                  else []))   # S7: COAST; under continue (R0) SWEEP too
         if TP.ODE_METHOD == 'LSODA':
             solver_kwargs['min_step'] = TP.ODE_MIN_STEP
         try:
@@ -1059,7 +1063,8 @@ def run_phase_transition_swept(params):
                 params['Eb'].value = Eb
             break
 
-        if not sweep and sol.t_events[-1].size:   # S7: the COAST segment reached unswept gas; the next sweeps
+        # S7: the COAST segment reached unswept gas (the next sweeps); under continue (R0) also SWEEP reached u = 0
+        if (not sweep or ta_continue) and sol.t_events[-1].size:
             sweep = not sweep
             logger.info(f"[S7] 1c mode -> {'SWEEP' if sweep else 'COAST'} at t={sol.t[-1]:.9e} Myr")
         rs, u, Eb, t_now = float(sol.y[0, -1]), float(sol.y[1, -1]), float(sol.y[2, -1]), float(sol.t[-1])

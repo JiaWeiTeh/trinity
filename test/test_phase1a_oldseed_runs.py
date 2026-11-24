@@ -41,9 +41,11 @@ def _run(tmp_path, name, extra):
 def test_young_seed_phase1a_collapse_is_handed_to_momentum(tmp_path):
     # dt_phase0 = 0.309 kyr (window unchanged); 1a energy_collapse at ~1.4 kyr on 2bcfc345
     rows, meta, log = _run(tmp_path, "handoff",
-                           "mCloud 5e6\nsfe 0.5\nnCore 1e4\nFB_thermCoeffWind 0.01\nstop_t 0.004\n")
+                           "mCloud 5e6\nsfe 0.5\nnCore 1e4\nFB_thermCoeffWind 0.01\nstop_t 0.004\n"
+                           "turnaround_rule momentum\n")
     assert "routing to momentum via 1c, phase 1b skipped" in log
-    # Since 2026-10-01 a turnaround (v2 < 0) also hands off from 1a; whichever fires first.
+    # Since 2026-10-01 a turnaround (v2 < 0) also hands off from 1a; whichever fires first. Pinned to
+    # turnaround_rule momentum, that rule (R0; under continue the turnaround hands nothing off).
     channel = meta["final_state"]["transition_channel"]
     assert channel in ("energy_to_momentum", "velocity_sign_change")
     assert f"Implicit phase completed: {channel}" in log
