@@ -119,6 +119,20 @@ _RESIDUAL_NPTS = 500
 # steps (docs/dev/performance/BUBBLE_CONDUCTION_STIFFNESS.md).
 _BUBBLE_MAX_RHS_CALLS = 10_000_000
 
+# Temperature floor for ONE bubble-structure trial (S1,
+# docs/dev/bubble-solve-hang/PLAN_S1_T_FLOOR.md). A conductively heated interior
+# is hotter than its boundary (Weaver et al. 1977), so a valid profile rises
+# inward from the _T_INIT_BOUNDARY anchor (3e4 K). An infeasible trial dMdt
+# instead cools inward towards T = 0, where the T**-5/2 terms push LSODA's step
+# below float resolution; until 2026-11-23 only the RHS work cap above ended it
+# (~3.5 min per trial, hours when the beta-delta rescue ladder probes many). The
+# RHS now fails such a trial as soon as T < _T_FLOOR_FAIL, through the same
+# failed-solve contract as the cap. 1e3 K is 30x below the anchor. In the 200-run
+# census no trial that went below 1e3 K recovered (all 17 such cells fell below
+# 1 K) and no final structure went below 5.3e3 K (docs/dev/bubble-solve-hang/
+# data/census_calls.csv), so completed runs are expected to be unchanged (gated).
+_T_FLOOR_FAIL = 1.0e3
+
 # Number of points used to sample the dense-output solution across the
 # conduction band for the L_conduction / Tavg_conduction trapezoids. The
 # integrand is smooth and the sampled solution is exact, so the trapezoid
@@ -435,16 +449,19 @@ def _get_bubble_ODE(r_arr, initial_ODEs, params, Pb: float):
     """Bubble structure ODE (Equations 42-43 in Weaver+77)."""
     v, T, dTdr = initial_ODEs
 
-    if not np.isfinite(T) or np.abs(T - 0) < 1e-5:
-        # T has collapsed to ~zero (typically an infeasible trial dMdt during
-        # the fsolve probe). Raise a catchable error -- _solve_bubble_structure
+    if not np.isfinite(T) or T < _T_FLOOR_FAIL:
+        # T is below the _T_FLOOR_FAIL floor: an infeasible trial dMdt during the
+        # fsolve probe (cooling inward instead of rising from the anchor, or
+        # collapsed to ~zero). Raise a catchable error -- _solve_bubble_structure
         # converts it to its ok=False contract -- rather than sys.exit, which
         # bypasses every handler (SystemExit is not an Exception).
         # A NaN T is the same failed probe (weak winds at t0; D14, 2026-10-30):
         # get_dudt would raise a bare Exception that no phase-1a handler catches.
-        logger.debug(f'T~0 in bubble ODE RHS (T={T:.3e}); aborting solve')
+        logger.debug(f'T below the {_T_FLOOR_FAIL:g} K floor in bubble ODE RHS '
+                     f'(T={T:.3e}); aborting solve')
         raise BubbleSolverError(
-            f'temperature reached zero in bubble ODE RHS (T={T:.3e})')
+            f'temperature non-finite or below the {_T_FLOOR_FAIL:g} K floor in '
+            f'bubble ODE RHS (T={T:.3e})')
 
     ndens = Pb / ((params['mu_convert'].value / params['mu_ion'].value) * params['k_B'].value * T)
     phi = params['Qi'].value / (4 * np.pi * r_arr**2)
