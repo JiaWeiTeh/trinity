@@ -96,6 +96,7 @@ from trinity.shell_structure.shell_structure import (
 # Import centralized event functions
 from trinity.phase_general.phase_events import (
     build_implicit_phase_events,
+    turnaround_ends_phase,
     solve_segment,
     check_event_termination,
     apply_event_result,
@@ -880,6 +881,9 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
     # Build events using centralized module
     # Returns (events_list, cooling_balance_factory)
     ode_events, cooling_balance_factory = build_implicit_phase_events(params)
+    # R0 (turnaround_rule continue, the default): a turnaround does not end 1b, so a swept SWEEP segment ends at its
+    # own mode switch (u through 0) and the receding shell coasts, as in the momentum phase
+    ta_continue = not turnaround_ends_phase(params)
 
     # =============================================================================
     # Main loop (segment-based with adaptive stepping)
@@ -1270,9 +1274,11 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
                 'rtol': ODE_RTOL,
                 'atol': ODE_ATOL,
                 'max_step': ODE_MAX_STEP,
-                # Event functions for safe termination; swept in COAST: + the mode switch (S7), which ends the
-                # segment only (in SWEEP the switch is u through 0, velocity_sign's own crossing, which ends 1b)
-                'events': ode_events + ([mode_event(sw.sweep, sw.Ms, params)] if sw and not sw.sweep else []),
+                # Event functions for safe termination; swept: + the mode switch (S7), which ends the segment only.
+                # In SWEEP the switch is u through 0, velocity_sign's own crossing: under turnaround_rule momentum
+                # that ends 1b and the switch is left out; under continue (R0) SWEEP adds the switch too
+                'events': ode_events + ([mode_event(sw.sweep, sw.Ms, params)]
+                                        if sw and (not sw.sweep or ta_continue) else []),
             }
             if ODE_METHOD == 'LSODA':
                 solver_kwargs['min_step'] = ODE_MIN_STEP
@@ -1353,7 +1359,8 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         params['Eb'].value = Eb
         params['T0'].value = T0
         if sw:
-            if not sw.sweep and sol.t_events[-1].size:   # S7: the COAST segment reached unswept gas
+            # S7: the COAST segment reached unswept gas; under continue (R0) also the SWEEP segment reached u = 0
+            if (not sw.sweep or ta_continue) and sol.t_events[-1].size:
                 sw.sweep = not sw.sweep
                 logger.info(f"[S7] 1b mode -> {'SWEEP' if sw.sweep else 'COAST'} at t={sol.t[-1]:.9e} Myr")
             sw.advance(params, sol.y[:, -1], np.max(sol.y[0]))

@@ -225,7 +225,8 @@ def test_collapse_radius_is_min_of_cap_and_fraction_of_largest_radius():
 def test_min_radius_event_follows_the_live_collapse_radius():
     """The phase builders' min_radius event reads collapse_radius when called, so it
     moves with R2_max inside one phase; MIN_RADIUS_SAFETY floors it."""
-    p = {"rCloud": _param(20.0), "stop_r": _param(500.0), **_collapse_params()}
+    p = {"rCloud": _param(20.0), "stop_r": _param(500.0), "turnaround_rule": _param("momentum"),
+         **_collapse_params()}
     evs, _ = events.build_implicit_phase_events(p)
     min_r = next(e for e in evs if e.name == "min_radius")
     events.update_collapse_radius(p, 0.8)
@@ -238,9 +239,11 @@ def test_min_radius_event_follows_the_live_collapse_radius():
 
 @pytest.mark.parametrize("build", ["energy", "implicit", "transition"])
 def test_turnaround_ends_every_energy_carrying_phase(build):
-    """Ruled 2026-10-01: v2 < 0 goes straight to momentum, so 1a/1b/1c carry a
-    TERMINAL velocity_sign event (phase-ending, not run-ending); phase 2 has none."""
-    p = {"rCloud": _param(20.0), "stop_r": _param(500.0), **_collapse_params()}
+    """Ruled 2026-10-01, turnaround_rule momentum since R0: v2 < 0 goes straight to momentum, so 1a/1b/1c carry a
+    TERMINAL velocity_sign event (phase-ending, not run-ending); phase 2 has none. The default, continue, is in
+    test_turnaround_rule.py."""
+    p = {"rCloud": _param(20.0), "stop_r": _param(500.0), "turnaround_rule": _param("momentum"),
+         **_collapse_params()}
     evs = {"energy": lambda: events.build_energy_phase_events(p),
            "implicit": lambda: events.build_implicit_phase_events(p)[0],
            "transition": lambda: events.build_transition_phase_events(p)}[build]()
@@ -262,7 +265,8 @@ def test_solver_flags_accumulate_once():
 def test_transition_phase_ends_where_eb_reaches_zero():
     """S6 (B7, ruled 2026-11-21): besides its floor, 1c carries a terminal Eb = 0 event, for a 1c entered below the
     floor; it ends the phase only (the runners put Eb at the floor and go on to momentum)."""
-    p = {"rCloud": _param(20.0), "stop_r": _param(500.0), **_collapse_params()}
+    p = {"rCloud": _param(20.0), "stop_r": _param(500.0), "turnaround_rule": _param("momentum"),
+         **_collapse_params()}
     zero = [e for e in events.build_transition_phase_events(p) if e.name == "energy_zero"]
     assert len(zero) == 1
     assert zero[0].terminal is True and zero[0].direction == -1 and zero[0].is_simulation_ending is False
