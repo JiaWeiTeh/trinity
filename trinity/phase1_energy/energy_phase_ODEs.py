@@ -171,7 +171,7 @@ def create_ODE_snapshot(params, shell_props) -> ODESnapshot:
         include_PHII=params['include_PHII'].value,
         P_HII=params['P_HII'].value,
         phii_scheme=str(params['phii_scheme'].value),
-        coverFraction=params['coverFraction'].value,
+        coverFraction=get_bubbleParams.cover_fraction(params),   # vent_model reservoir: sealed before the vent
         c_sound=params['c_sound'].value,
         dt_switchon=params['dt_switchon'].value if 'dt_switchon' in params else None,
         evaporated_mass=get_bubbleParams.evaporated_mass(params),

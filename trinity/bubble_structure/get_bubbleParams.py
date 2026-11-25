@@ -239,7 +239,57 @@ def bubble_E2P(Eb, r2, r1, gamma):
     return Pb * cvt.Pb_cgs2au
 
 
-def get_leak_luminosity(coverFraction, R2, Pb, c_sound, gamma):
+# vent_model (docs/dev/leaky-reservoir/PLAN.md): what the hot gas does once the shell has vented.
+VENT_CHANNELS = ('blowout',)   # phase-1b exit reasons that open the shell; a new venting trigger adds its token here
+VENT_EPS = 1e-3                # vent_factor is continued linearly inside 1 - x < VENT_EPS (its slope is infinite at x = 1)
+
+
+def _val(params, key, default):
+    item = params.get(key, None)   # hand-built params (tests, harnesses) may lack the newer keys
+    return item.value if hasattr(item, 'value') else default
+
+
+def vent_model(params):
+    """The vent_model in force: 'vacuum' (also where the key is absent), 'ambient' or 'reservoir'."""
+    return _val(params, 'vent_model', 'vacuum')
+
+
+def vented(params):
+    """True once the shell has vented under vent_model 'ambient' or 'reservoir': phase 1b ended on a venting
+    trigger. transition_channel is '' through phases 1a and 1b (it is written after 1b's last snapshot), so this is
+    False in every 1a and 1b row, and always under 'vacuum'."""
+    return vent_model(params) != 'vacuum' and _val(params, 'transition_channel', '') in VENT_CHANNELS
+
+
+def cover_fraction(params):
+    """The closed fraction of the wall in force: coverFraction, except under vent_model 'reservoir' before the
+    shell has vented, where the wall is sealed (1.0)."""
+    if vent_model(params) == 'reservoir' and not vented(params):
+        return 1.0
+    return _val(params, 'coverFraction', 1.0)
+
+
+def vent_factor(x, gamma):
+    """psi(x) for x = P_out / Pb: the energy flux of isentropic flow from rest at Pb through an opening into the
+    pressure P_out, over its choked value (docs/dev/leaky-reservoir/PLAN.md 4.2). 1 while the flow is choked,
+    x <= x* = (2/(gamma+1))**(gamma/(gamma-1)) (0.487 for 5/3, i.e. Pb > 2.05 P_out); 0 for x >= 1; between,
+    Phi(x)/Phi(x*) with Phi(x) = x**(1/gamma) * sqrt(2/(gamma-1) * (1 - x**((gamma-1)/gamma))), continued linearly
+    to 0 inside 1 - x < VENT_EPS. Dimensionless in, dimensionless out."""
+    if x >= 1.0:
+        return 0.0
+    if x <= (2.0 / (gamma + 1.0)) ** (gamma / (gamma - 1.0)):
+        return 1.0
+    phi_star = (2.0 / (gamma + 1.0)) ** ((gamma + 1.0) / (2.0 * (gamma - 1.0)))
+
+    def phi(y):
+        return y ** (1.0 / gamma) * np.sqrt(2.0 / (gamma - 1.0) * (1.0 - y ** ((gamma - 1.0) / gamma)))
+
+    if x > 1.0 - VENT_EPS:
+        return float(phi(1.0 - VENT_EPS) / phi_star * (1.0 - x) / VENT_EPS)
+    return float(phi(x) / phi_star)
+
+
+def get_leak_luminosity(coverFraction, R2, Pb, c_sound, gamma, P_out=0.0):
     """
     Geometry-set covering-fraction energy leak (enthalpy flux through the
     open fraction of the bubble wall):
@@ -250,6 +300,12 @@ def get_leak_luminosity(coverFraction, R2, Pb, c_sound, gamma):
     sealed (Weaver) bubble and returns exactly 0. Hot gas escapes through the
     open area (1-Cf)*4*pi*R2**2 at the interior sound speed, carrying its
     enthalpy. See the leakage spec, Eq. (leak).
+
+    P_out [Msun/pc/Myr**2] is the pressure outside the holes (vent_model,
+    docs/dev/leaky-reservoir/PLAN.md 4.2). P_out <= 0 (the default) leaves
+    the expression above as it is, bit for bit; P_out > 0 multiplies it by
+    vent_factor(P_out / Pb, gamma), which is 1 while the flow is choked and
+    0 at Pb <= P_out.
 
     All quantities are in code units [Msun, pc, Myr]; the product
     Pb*c_sound*R2**2 already lands in the luminosity unit Msun*pc**2/Myr**3,
@@ -281,7 +337,10 @@ def get_leak_luminosity(coverFraction, R2, Pb, c_sound, gamma):
     # the leak from injecting energy when the bubble state is degenerate.
     if coverFraction >= 1.0 or Pb <= 0.0 or c_sound <= 0.0:
         return 0.0
-    return gamma / (gamma - 1.0) * (1.0 - coverFraction) * 4.0 * np.pi * R2**2 * Pb * c_sound
+    leak = gamma / (gamma - 1.0) * (1.0 - coverFraction) * 4.0 * np.pi * R2**2 * Pb * c_sound
+    if P_out > 0.0:
+        leak *= vent_factor(P_out / Pb, gamma)
+    return leak
 
 def pRam(r, Lmech, v_mech):
     """
