@@ -92,6 +92,33 @@ def p_ext(r, fabs_ion, params, turbulent=True):
     return P
 
 
+# vent_model (docs/dev/leaky-reservoir/PLAN.md, ruled 2026-11-25). Under 'vacuum', the default, vented() is False,
+# vent_floor() is 0.0 and every expression below evaluates as it did before.
+VENT_HANDOVER = 0.01   # phase 1c hands a vented bubble to momentum once P_th <= (1 + VENT_HANDOVER) P_out (L-13)
+
+
+def vent_floor(r, params, fabs_ion=None):
+    """The pressure [code units] a vented shell's interior cannot fall below, and the back-pressure of its leak
+    (PLAN 4.1, L-5): the outer face's own p_ext at r [pc]; 0.0 while the shell has not vented or under vent_model
+    'vacuum'. fabs_ion None: the last accepted shell solve's shell_fAbsorbedIon (the root-find's trial solves do
+    not write it, so the floor is a constant of one root-find)."""
+    if not get_bubbleParams.vented(params):
+        return 0.0
+    if fabs_ion is None:
+        fabs_ion = params['shell_fAbsorbedIon'].value
+    return p_ext(r, fabs_ion, params)
+
+
+def reservoir_cooling(L0, E0, V0, E, R2, R1):
+    """L_cool of the vented reservoir (PLAN 4.1, L-8): the loss L0 at the entry of phase 1c scaled as Pb^2 V, i.e.
+    as E^2 / V at the held temperature. V0 and the volume here are R2^3 - R1^3 [pc^3] (the 4 pi / 3 cancels); E0, E
+    in one unit; returns the unit of L0. 0.0 where there is no hot gas."""
+    V = R2**3 - R1**3
+    if not (E0 > 0.0 and V0 > 0.0 and E > 0.0 and V > 0.0):
+        return 0.0
+    return L0 * (E / E0)**2 * V0 / V
+
+
 def edge_speed(u, r, fabs_ion, params, sweep=False):
     """The outer edge's speed U for shell-gas speed u: the isothermal jump at the gas ahead (D-T2 (b)).
 
@@ -187,11 +214,14 @@ def mode_event(sweep, Ms, params):
 _TRIAL_KEYS = ('R2', 'R1', 'Pb', 'shell_mass', 'bubble_mass', 'rShell')     # what _shell_at writes
 
 
-def _p_conf(R2, Eb, fb, params, phase='transition', t=None):
+def _p_conf(R2, Eb, fb, params, phase='transition', t=None, rs=None):
     """(P_conf, R1) at the inner face (PLAN 0.0.11.3): P_ram in momentum (Eb None); max(P_th, P_ram) in transition;
-    in the implicit phase the bubble's own pressure at time t, the switch-on ramp included, exactly as its drive."""
+    in the implicit phase the bubble's own pressure at time t, the switch-on ramp included, exactly as its drive.
+    vent_model: with the outer radius rs given, the momentum interior is max(P_ram, vent_floor(rs)); the floor is
+    0.0 unless the shell has vented, and max(P_ram, 0.0) is P_ram itself."""
     if Eb is None:
-        return get_bubbleParams.pRam(R2, fb.Lmech_total, fb.v_mech_total), R2
+        P_ram = get_bubbleParams.pRam(R2, fb.Lmech_total, fb.v_mech_total)
+        return (P_ram if rs is None else max(P_ram, vent_floor(rs, params))), R2
     R1 = get_bubbleParams.solve_R1(R2, Eb, fb.Lmech_total, fb.v_mech_total)
     if phase == 'implicit':
         dt_on = params['dt_switchon'].value if 'dt_switchon' in params else None
@@ -207,7 +237,7 @@ def _shell_at(R2, rs, Ms, fb, params, Eb=None, phase='transition', t=None):
 
     With Eb given (implicit, transition) bubble_mass is left as the c3c runners leave it.
     """
-    Pc, R1 = _p_conf(R2, Eb, fb, params, phase, t)
+    Pc, R1 = _p_conf(R2, Eb, fb, params, phase, t, rs)
     params['R2'].value, params['R1'].value, params['Pb'].value = R2, R1, Pc
     params['shell_mass'].value = Ms
     if Eb is None:
@@ -479,6 +509,8 @@ def _forces_to_params(params, root, rs, u, Ms, Mdot, U, fabs_ion, fb, Eb=None, p
         params['Pb'].value = get_bubbleParams.bubble_E2P(Eb, R2, params['R1'].value, params['gamma_adia'].value)
         params['P_ram'].value = (0.0 if phase == 'implicit'
                                  else get_bubbleParams.pRam(R2, fb.Lmech_total, fb.v_mech_total))
+    elif get_bubbleParams.vented(params):   # momentum, vented: P_drive and Pb carry the floor, P_ram the wind's own
+        params['P_ram'].value = get_bubbleParams.pRam(R2, fb.Lmech_total, fb.v_mech_total)
     params['press_HII_in'].value = Pext
     params['F_ram_wind'].value, params['F_ram_SN'].value = fb.pdot_W, fb.pdot_SN
     params['rs_dyn'].value, params['v2'].value, params['rs_dot'].value = rs, u, U
@@ -738,6 +770,7 @@ def run_phase_momentum_swept(params) -> MomentumPhaseResults:
     ode_events = build_momentum_phase_events(params)
     G, mCluster = params['G'].value, params['mCluster'].value
     sweep = None   # S7: the mode, decided at the first segment and changed only at its events
+    vented = get_bubbleParams.vented(params)   # vent_model: fixed for the phase (1b's exit reason)
 
     while t_now <= tmax and segment_count < MAX_SEGMENTS:
         segment_count += 1
@@ -786,8 +819,12 @@ def run_phase_momentum_swept(params) -> MomentumPhaseResults:
             r, v = max(y[0], 1e-10), y[1]
             fb_t = get_current_sps_feedback(t, params)       # live, as the c3c RHS (SN turn-on mid-segment)
             R2t = x * r
-            F = (FOUR_PI * R2t**2 * get_bubbleParams.pRam(R2t, fb_t.Lmech_total, fb_t.v_mech_total) + K
-                 - FOUR_PI * r**2 * p_ext(r, fabs_ion, params) + F_rad)
+            P_in = get_bubbleParams.pRam(R2t, fb_t.Lmech_total, fb_t.v_mech_total)
+            P_out = p_ext(r, fabs_ion, params)
+            if vented:   # vent_model: a vented shell's interior does not fall below the outside pressure
+                P_in = max(P_in, P_out)
+            F = (FOUR_PI * R2t**2 * P_in + K
+                 - FOUR_PI * r**2 * P_out + F_rad)
             U_t, m, md = mode_rates(v, r, M_floor, sweep, fabs_ion, params)   # S7: one smooth RHS per mode
             return np.array([U_t, (F - G * m / r**2 * (mCluster + 0.5 * m) - md * v) / m])
 
@@ -888,7 +925,7 @@ def run_phase_momentum_swept(params) -> MomentumPhaseResults:
         # a dissolved shell has no outer radius to root-find to (the solve returns the previous rShell):
         # as the c3c runner, one solve at the last R2, then the final snapshot
         R2 = params['R2'].value
-        params['Pb'].value = get_bubbleParams.pRam(R2, fb.Lmech_total, fb.v_mech_total)
+        params['Pb'].value = _p_conf(R2, None, fb, params, rs=rs)[0]   # P_ram, or the floor once vented
         params['R1'].value = R2
         params['bubble_mass'].value = get_bubbleParams.mass_freeWind(R2, fb.Lmech_total, fb.v_mech_total)
         updateDict(params, shell_structure_pure(params))
@@ -953,8 +990,15 @@ def run_phase_transition_swept(params):
     ta_continue = not turnaround_ends_phase(params)   # R0: under continue SWEEP too ends at its mode switch (u = 0)
     G, mCluster = params['G'].value, params['mCluster'].value
     sweep = None   # S7: the mode, decided at the first segment and changed only at its events
+    # vent_model (docs/dev/leaky-reservoir/PLAN.md 4.1): vented = 1b ended on a venting trigger under 'ambient' or
+    # 'reservoir'; reservoir = this phase is the leaky reservoir. Both False under 'vacuum'. The reservoir may last
+    # for Myr, so it takes the momentum runner's segment cap.
+    vented = get_bubbleParams.vented(params)
+    reservoir = vented and get_bubbleParams.vent_model(params) == 'reservoir'
+    L_cool0 = E0 = V0 = None
+    max_segments = MAX_SEGMENTS if reservoir else TP.MAX_SEGMENTS
 
-    while t_now <= tmax and segment_count < TP.MAX_SEGMENTS:
+    while t_now <= tmax and segment_count < max_segments:
         segment_count += 1
         nSnap_rCloud = params['stop_at_rCloud_nSnap'].value
         if (nSnap_rCloud is not None and rs > params['rCloud'].value
@@ -992,6 +1036,16 @@ def run_phase_transition_swept(params):
         if abs(root['L8']) > 1e-6:
             logger.warning(f"[swept] L8 = {root['L8']:.2e} at t={t_now:.6e} (shell identity, bar 1e-6)")
         logger.debug(f"[swept] transition t={t_now:.6e}: zeta={zeta:.6g}, R2/r_s={root['R2'] / rs:.6g}")
+        if reservoir:
+            if V0 is None:   # the entry state, once: the loop re-reads bubble_LTotal at every segment
+                L_cool0, E0, V0 = params['bubble_LTotal'].value, Eb, root['R2']**3 - params['R1'].value**3
+            # the row's leak and total loss as the RHS below forms them at this segment's start (existing keys; the
+            # cooling is the resolved one, before any opt-in cooling boost)
+            params['bubble_Leak'].value = get_bubbleParams.get_leak_luminosity(
+                get_bubbleParams.cover_fraction(params), root['R2'], root['Pc'], c_sound, gamma,
+                p_ext(rs, fabs_ion, params))
+            params['bubble_Lloss'].value = (reservoir_cooling(L_cool0, E0, V0, Eb, root['R2'], params['R1'].value)
+                                            + params['bubble_Leak'].value)
 
         _save_count_before = params.save_count
         params.save_snapshot()
@@ -1007,7 +1061,7 @@ def run_phase_transition_swept(params):
         # Rdot2 = zeta U the work term charges (a held R2/r_s would grow it at (R2/r_s) U instead)
         R2a, rsa, K, F_rad, M_floor, z = root['R2'], rs, root['K'], params['F_rad'].value, Ms, zeta
         m_ev = get_bubbleParams.evaporated_mass(params)   # shell_mass_net: 1b's last value (PLAN D-MB5); 0.0 when off
-        L_bubble, Cf = params['bubble_LTotal'].value, params['coverFraction'].value
+        L_bubble, Cf = params['bubble_LTotal'].value, get_bubbleParams.cover_fraction(params)
         # F1: the opt-in cooling boost reaches this energy equation as in 1b; 'none' skips it (byte-identical)
         from trinity.phase1b_energy_implicit.get_betadelta import effective_Lloss_from_params
         boosted = (getattr(params.get('cooling_boost_mode', None), 'value', 'none') or 'none') != 'none'
@@ -1016,17 +1070,24 @@ def run_phase_transition_swept(params):
             r, v, E = max(y[0], 1e-10), y[1], y[2]
             fb_t = get_current_sps_feedback(t, params)       # live, as the c3c RHS
             R2t = R2a + z * (r - rsa)
-            Pc, _ = _p_conf(R2t, E, fb_t, params)
-            F = FOUR_PI * R2t**2 * Pc + K - FOUR_PI * r**2 * p_ext(r, fabs_ion, params) + F_rad
+            Pc, R1t = _p_conf(R2t, E, fb_t, params)
+            P_out = p_ext(r, fabs_ion, params)
+            F = FOUR_PI * R2t**2 * Pc + K - FOUR_PI * r**2 * P_out + F_rad
             U_t, m, md = mode_rates(v, r, M_floor, sweep, fabs_ion, params)   # S7: one smooth RHS per mode
-            L_leak = get_bubbleParams.get_leak_luminosity(Cf, R2t, Pc, c_sound, gamma)
-            L_b = (effective_Lloss_from_params(params, L_bubble, L_leak, fb_t.Lmech_total) - L_leak
-                   if boosted else L_bubble)
+            # vent_model: once vented the leak feels the outside pressure; in the reservoir the cooling follows Pb^2 V
+            L_leak = get_bubbleParams.get_leak_luminosity(Cf, R2t, Pc, c_sound, gamma, P_out if vented else 0.0)
+            L_cool = reservoir_cooling(L_cool0, E0, V0, E, R2t, R1t) if reservoir else L_bubble
+            L_b = (effective_Lloss_from_params(params, L_cool, L_leak, fb_t.Lmech_total) - L_leak
+                   if boosted else L_cool)
             Ed = (fb_t.Lmech_total - L_b - FOUR_PI * R2t**2 * Pc * z * U_t
                   - L_leak)
-            Ed_sc = -E / (R2t / c_sound) if c_sound > 0 else 0.0
+            if not reservoir:   # the sound-crossing drain; once vented ('ambient') it stops at the outside pressure
+                Ed_sc = -E / (R2t / c_sound) if c_sound > 0 else 0.0
+                if vented and P_out > 0.0 and Pc > 0.0:
+                    Ed_sc *= 1.0 - P_out / Pc
+                Ed = min(Ed, Ed_sc)
             mn = m - m_ev                                    # the shell's own mass
-            return np.array([U_t, (F - G * mn / r**2 * (mCluster + m_ev + 0.5 * mn) - md * v) / mn, min(Ed, Ed_sc)])
+            return np.array([U_t, (F - G * mn / r**2 * (mCluster + m_ev + 0.5 * mn) - md * v) / mn, Ed])
 
         values_before = _monitor(params)
         solver_kwargs = dict(fun=rhs, t_span=(t_now, min(t_now + dt_segment, tmax)), y0=np.array([rs, u, Eb]),
@@ -1110,6 +1171,13 @@ def run_phase_transition_swept(params):
         if Eb < TP.ENERGY_FLOOR:
             termination_reason = "energy_floor"
             break
+        if vented:   # vent_model: the bubble has reached the outside pressure; momentum holds it there (L-13)
+            P_out = p_ext(rs, fabs_ion, params)
+            if P_out > 0.0 and P_th <= (1.0 + VENT_HANDOVER) * P_out:
+                termination_reason = "vent_floor"
+                logger.info(f"Vented bubble at the outside pressure (P_th/P_out = {P_th / P_out:.4f}), transitioning to "
+                            f"momentum (t={t_now:.4e}, Eb={Eb:.4e})")
+                break
         if u < 0 and rs < rs_prev:
             params['isCollapse'].value = True
         elif u > 0 and rs > rs_prev:
@@ -1146,6 +1214,9 @@ def run_phase_transition_swept(params):
             updateDict(params, shell_structure_pure(params))
             params['Pb'].value = get_bubbleParams.bubble_E2P(Eb, R2, params['R1'].value, gamma)
             params['rs_dyn'].value, params['v2'].value, params['shell_mass'].value = rs, u, Ms
+            if reservoir and V0 is not None:   # this row keeps the last segment's R2, P_drive and leak
+                params['bubble_Lloss'].value = (reservoir_cooling(L_cool0, E0, V0, Eb, R2, params['R1'].value)
+                                                + params['bubble_Leak'].value)
             params.save_snapshot()
         else:
             root = root_R2(rs, Ms, fb, params, guess=x_prev * rs if x_prev else None, Eb=Eb)
@@ -1154,12 +1225,19 @@ def run_phase_transition_swept(params):
                 fa = root['sp'].shell_fAbsorbedIon
                 U, _, Mdot = mode_rates(u, rs, Ms, sweep_mode(sweep, rs, u, Ms, params), fa, params)   # S7
                 _forces_to_params(params, root, rs, u, Ms, Mdot, U, fa, fb, Eb)
+                if reservoir and V0 is not None:   # the exit row's leak and loss, as in the loop
+                    params['bubble_Leak'].value = get_bubbleParams.get_leak_luminosity(
+                        get_bubbleParams.cover_fraction(params), root['R2'], root['Pc'], c_sound, gamma,
+                        p_ext(rs, fa, params))
+                    params['bubble_Lloss'].value = (
+                        reservoir_cooling(L_cool0, E0, V0, Eb, root['R2'], params['R1'].value)
+                        + params['bubble_Leak'].value)
                 params.save_snapshot()
             else:
                 logger.warning(f"[swept] phase-boundary reconciliation skipped: {root['why']}")
 
     if termination_reason is None:
-        termination_reason = "max_segments" if segment_count >= TP.MAX_SEGMENTS else "unknown"
+        termination_reason = "max_segments" if segment_count >= max_segments else "unknown"
     (logger.warning if termination_reason == "unknown" else logger.info)(
         f"Transition phase (swept) completed: {termination_reason}; t={t_now:.12e} Myr, r_s={rs:.12e} pc, "
         f"u={u:.12e} pc/Myr, M_s={Ms:.12e} Msun, Eb={Eb:.6e}, segments {segment_count}")

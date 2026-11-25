@@ -963,7 +963,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         # sealed-bubble trajectory is reproduced exactly.
         # ---------------------------------------------------------------------
         params['bubble_Leak'].value = get_bubbleParams.get_leak_luminosity(
-            params['coverFraction'].value,
+            get_bubbleParams.cover_fraction(params),   # vent_model reservoir: sealed before the vent
             params['R2'].value,
             params['Pb'].value,
             params['c_sound'].value,

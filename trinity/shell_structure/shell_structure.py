@@ -1042,8 +1042,7 @@ def shell_structure_pure(params) -> ShellProperties:
     # Sky-partition totals (see ShellProperties).  The shell solve above is a single
     # covered ray and knows nothing about Cf; the partition is applied here, once.
     # =============================================================================
-    _cf_item = params.get('coverFraction', None)
-    _Cf = _cf_item.value if hasattr(_cf_item, 'value') else 1.0
+    _Cf = get_bubbleParams.cover_fraction(params)   # the closed fraction in force (vent_model reservoir: 1 before the vent)
     shell_fLeak = 1.0 - _Cf
     if is_shellDissolved:
         # No absorber at all: every photon leaves, through holes or through nothing.
