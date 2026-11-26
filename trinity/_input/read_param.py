@@ -97,7 +97,7 @@ def derive_ism(typed, PISM, nISM, sigma_key, mu_H, k_B):
     origin = (f"{'nISM from PISM' if has_P else 'PISM from nISM'}: nISM={nISM!r} cm^-3, PISM={PISM!r} K cm^-3, "
               f"sigma_eff={sigma!r} km/s ({'fit' if sigma_key == 'fit' else 'constant'})")
     if extrapolated:
-        origin += "; extrapolated: PISM outside the fit's anchors 7.8e2-6.7e7 K cm^-3"
+        origin += "; PISM outside the fit's anchors 7.8e2-6.7e7 K cm^-3: extrapolated"
     return PISM, nISM, origin, extrapolated
 
 

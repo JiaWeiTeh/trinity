@@ -59,12 +59,12 @@ def test_a_constant_sigma_eff():
 def test_the_fit_outside_its_anchors_is_flagged(tmp_path, caplog):
     for P, out in ((7.7e2, True), (7.8e2, False), (1e6, False), (6.7e7, False), (1e8, True), (5e9, True)):
         _, _, origin, flag = derive_ism({'PISM'}, P, 1.0, 'fit', MU_H, K_B)
-        assert flag is out and origin.endswith("anchors 7.8e2-6.7e7 K cm^-3") is out
+        assert flag is out and origin.endswith("anchors 7.8e2-6.7e7 K cm^-3: extrapolated") is out
     assert derive_ism({'PISM'}, 5e9, 1.0, 20.0, MU_H, K_B)[3] is False      # a constant sigma_eff has no anchors
     # read_param: the flag in ISM_relation (metadata.json) and one WARNING at load
     with caplog.at_level('WARNING', logger='trinity._input.read_param'):
         P = _read(tmp_path, "x", mCloud="1e5", sfe="0.3", PISM="1e8")
-    assert P['ISM_relation'].value.endswith("anchors 7.8e2-6.7e7 K cm^-3")
+    assert P['ISM_relation'].value.endswith("anchors 7.8e2-6.7e7 K cm^-3: extrapolated")
     assert sum('outside its anchors' in r.getMessage() for r in caplog.records if r.levelname == 'WARNING') == 1
 
 
@@ -153,6 +153,31 @@ def test_read_param_log_lines_are_held_and_replayed(tmp_path):
     finally:
         root.removeHandler(grab)
         root.setLevel(level)
+
+
+def test_replay_echoes_warnings_to_stderr_when_asked(capsys):
+    """A run whose log has no console (log_console False) still shows read_param's WARNINGs on stderr."""
+    from trinity._functions.logging_setup import HeldRecords
+    lg = __import__('logging').getLogger('trinity._input.read_param')
+    held = HeldRecords()
+    with held:
+        lg.info('an info line')
+        lg.warning('a warning line')
+    held.replay(echo_stderr=True)
+    err = capsys.readouterr().err
+    assert 'a warning line' in err and 'an info line' not in err
+
+
+def test_run_py_replays_held_warnings_when_setup_logging_fails(tmp_path, caplog):
+    """run.py: a failure between read_param and setup_logging (here a bad log_level) still emits read_param's WARNINGs."""
+    import argparse
+    import run
+    par = tmp_path / "f.param"
+    par.write_text(f"model_name f\npath2output {tmp_path / 'f'}\nmCloud 1e5\nsfe 0.3\nPISM 1e8\nlog_level verbose\n")
+    caplog.set_level('WARNING')
+    with pytest.raises(AttributeError):
+        run.run_single(argparse.Namespace(path2param=str(par)))
+    assert sum('outside its anchors' in r.getMessage() for r in caplog.records) == 1
 
 
 def test_the_keys():
