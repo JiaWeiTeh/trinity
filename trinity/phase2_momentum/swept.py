@@ -1039,6 +1039,7 @@ def run_phase_transition_swept(params):
         if reservoir:
             if V0 is None:   # the entry state, once: the loop re-reads bubble_LTotal at every segment
                 L_cool0, E0, V0 = params['bubble_LTotal'].value, Eb, root['R2']**3 - params['R1'].value**3
+                get_bubbleParams.store_vent_column(params)   # cover_law sigma: the column at the vent (C_f = 1)
             # the row's leak and total loss as the RHS below forms them at this segment's start (existing keys; the
             # cooling is the resolved one, before any opt-in cooling boost)
             params['bubble_Leak'].value = get_bubbleParams.get_leak_luminosity(
@@ -1062,6 +1063,7 @@ def run_phase_transition_swept(params):
         R2a, rsa, K, F_rad, M_floor, z = root['R2'], rs, root['K'], params['F_rad'].value, Ms, zeta
         m_ev = get_bubbleParams.evaporated_mass(params)   # shell_mass_net: 1b's last value (PLAN D-MB5); 0.0 when off
         L_bubble, Cf = params['bubble_LTotal'].value, get_bubbleParams.cover_fraction(params)
+        cf_sigma = reservoir and get_bubbleParams.cover_law(params) == 'sigma'   # CF_LAW_PLAN D-7: C_f per RHS call
         # F1: the opt-in cooling boost reaches this energy equation as in 1b; 'none' skips it (byte-identical)
         from trinity.phase1b_energy_implicit.get_betadelta import effective_Lloss_from_params
         boosted = (getattr(params.get('cooling_boost_mode', None), 'value', 'none') or 'none') != 'none'
@@ -1075,7 +1077,8 @@ def run_phase_transition_swept(params):
             F = FOUR_PI * R2t**2 * Pc + K - FOUR_PI * r**2 * P_out + F_rad
             U_t, m, md = mode_rates(v, r, M_floor, sweep, fabs_ion, params)   # S7: one smooth RHS per mode
             # vent_model: once vented the leak feels the outside pressure; in the reservoir the cooling follows Pb^2 V
-            L_leak = get_bubbleParams.get_leak_luminosity(Cf, R2t, Pc, c_sound, gamma, P_out if vented else 0.0)
+            Cf_t = get_bubbleParams.cover_fraction(params, r, m - m_ev) if cf_sigma else Cf   # the shell's own mass
+            L_leak = get_bubbleParams.get_leak_luminosity(Cf_t, R2t, Pc, c_sound, gamma, P_out if vented else 0.0)
             L_cool = reservoir_cooling(L_cool0, E0, V0, E, R2t, R1t) if reservoir else L_bubble
             L_b = (effective_Lloss_from_params(params, L_cool, L_leak, fb_t.Lmech_total) - L_leak
                    if boosted else L_cool)

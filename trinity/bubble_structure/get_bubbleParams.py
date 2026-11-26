@@ -9,8 +9,10 @@ This script contains useful functions that help compute properties and parameter
 of the bubble. grep "Section" so jump between different sections.
 """
 # libraries
+import functools
 import numpy as np
 import scipy.optimize
+import scipy.special
 import logging
 import astropy.units as u
 import trinity._functions.unit_conversions as cvt
@@ -261,12 +263,75 @@ def vented(params):
     return vent_model(params) != 'vacuum' and _val(params, 'transition_channel', '') in VENT_CHANNELS
 
 
-def cover_fraction(params):
+def cover_fraction(params, r=None, m=None):
     """The closed fraction of the wall in force: coverFraction, except under vent_model 'reservoir' before the
-    shell has vented, where the wall is sealed (1.0)."""
+    shell has vented, where the wall is sealed (1.0). Under cover_law 'sigma' (docs/dev/leaky-reservoir/CF_LAW_PLAN.md)
+    the closed fraction after the vent is cf_law of the column at the vent over the column now, the shell's own
+    mass m [Msun] over 4 pi r**2 with r [pc] its outer radius (without r: the row's, shell_column); 1.0 until the
+    column at the vent is stored (store_vent_column)."""
     if vent_model(params) == 'reservoir' and not vented(params):
         return 1.0
+    if cover_law(params) == 'sigma':
+        Sigma_v = _val(params, '_cf_Sigma_vent', 0.0)
+        if Sigma_v <= 0.0:
+            return 1.0
+        return cf_law(Sigma_v / shell_column(params, r, m), params['cf_half_radius'].value)
     return _val(params, 'coverFraction', 1.0)
+
+
+# cover_law 'sigma' (CF_LAW_PLAN.md §1, D-1 to D-9 ruled 2026-11-26). The shell's column varies over the sky as a
+# log-normal of width CF_SIGMA about its mean Sigma; a direction is open where its column is below a threshold, and
+# at fixed mass per direction every column scales with Sigma. Of the sky closed at the vent, the part still closed
+# once the mean has fallen from Sigma_v to Sigma is Phi(-(y + a)/sigma) / Phi(-a/sigma), y = ln(Sigma_v/Sigma) (the
+# erfc ratio of CF_LAW_PLAN §1, written with the normal CDF so that both tails stay finite), clipped at 1: a shell
+# whose column grows again (sweep-up, a turnaround) re-closes. a is set by h = cf_half_radius.
+# ponytail: sigma is fixed at 1.5 (Raskutti et al. 2016, arXiv:1608.04469, sec. 4.2.2: 1-1.5 in simulations); at
+# fixed h it moves C_f by at most 0.16 (h = 2, sigma 0.75-2). Promote to a key if a referee asks (D-4).
+CF_SIGMA = 1.5
+
+
+def cover_law(params):
+    """The cover_law in force: 'constant' (also where the key is absent) or 'sigma'."""
+    return _val(params, 'cover_law', 'constant')
+
+
+def shell_column(params, r=None, m=None):
+    """The shell's mean column [Msun pc^-2]: its own mass m [Msun] over 4 pi r**2, r [pc] its outer radius. Without
+    r, the row's: (shell_mass - evaporated_mass) over 4 pi rs_dyn**2 (phii_scheme swept writes rs_dyn)."""
+    if r is None:
+        r, m = params['rs_dyn'].value, params['shell_mass'].value - evaporated_mass(params)
+    return m / (4.0 * np.pi * r**2)
+
+
+def store_vent_column(params):
+    """cover_law 'sigma': store the row's shell_column as the column at the vent, once; a no-op otherwise. Call it
+    where the shell vents (today the first phase-1c segment of a vented reservoir; CF_LAW_PLAN.md §8.1), after the
+    vent row's shell_mass and rs_dyn are written (in swept, after _forces_to_params) and with current_phase set to
+    the phase of that row, whose evaporated_mass rule the stored column then carries."""
+    if cover_law(params) == 'sigma' and params['_cf_Sigma_vent'].value <= 0.0:
+        params['_cf_Sigma_vent'].value = shell_column(params)
+
+
+def _cf_log(y, a, sigma):
+    """ln C_f before the clip, at y = ln(Sigma_v/Sigma)."""
+    return scipy.special.log_ndtr(-(y + a) / sigma) - scipy.special.log_ndtr(-a / sigma)
+
+
+@functools.lru_cache(maxsize=None)
+def cf_offset(h, sigma=CF_SIGMA):
+    """a(h, sigma), at which C_f = 1/2 at y = 2 ln h (h vent radii if the shell sweeps no more mass). For y > 0,
+    ln C_f falls monotonically in a, from 0 at a -> -inf to -inf, so there is one root, and the bracket holds a sign
+    change for any h > 1 (at its top ln C_f < -(2 + 100 y/sigma)/2)."""
+    y = 2.0 * np.log(h)
+    return scipy.optimize.brentq(lambda a: _cf_log(y, a, sigma) - np.log(0.5),
+                                 -y - 50.0 * sigma, 50.0 * sigma + sigma**2 / y, xtol=1e-14)
+
+
+def cf_law(sigma_ratio, h, sigma=CF_SIGMA):
+    """C_f after the vent at sigma_ratio = Sigma_v/Sigma: exactly 1 at sigma_ratio 1 and below, 1/2 at h**2, -> 0 as
+    the column thins. Dimensionless in, dimensionless out. The clip is taken on ln C_f, so a column far above the
+    vent's cannot overflow exp."""
+    return float(np.exp(min(0.0, _cf_log(np.log(sigma_ratio), cf_offset(h, sigma), sigma))))
 
 
 def vent_factor(x, gamma):
