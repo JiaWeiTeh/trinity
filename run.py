@@ -157,45 +157,57 @@ def run_single(args):
     from trinity._input import read_param
     from trinity._output import header
 
-    params = read_param.read_param(args.path2param)
+    # read_param runs before the run's log exists (setup_logging needs its path2output and log_level): hold its log
+    # records and replay them below, so its INFO lines reach trinity.log too (dropped before 2026-11-26). Its WARNINGs
+    # also still go to stderr when the run's log has no console. If anything fails before setup_logging has set up the
+    # run's log (a bad log_level, an import), the held records are replayed at once, so no warning is lost.
+    from trinity._functions.logging_setup import HeldRecords
+    held = HeldRecords()
+    try:
+        with held:
+            params = read_param.read_param(args.path2param)
 
-    header.show_param(params)
+        header.show_param(params)
 
 
-    from trinity import main
+        from trinity import main
 
-    # main_dict = create_dictionary.create()
+        # main_dict = create_dictionary.create()
 
 
-    # =================================================================
-    # Reconfigure logging with params settings
-    # =================================================================
-    # Now reconfigure with user's preferred log level from params
-    from trinity._functions.logging_setup import setup_logging
+        # =================================================================
+        # Reconfigure logging with params settings
+        # =================================================================
+        # Now reconfigure with user's preferred log level from params
+        from trinity._functions.logging_setup import setup_logging
 
-    # Get log_level from params (default to INFO if not set)
-    log_level = 'INFO'
-    if 'log_level' in params:
-        log_level = params['log_level'].value if hasattr(params['log_level'], 'value') else params['log_level']
+        # Get log_level from params (default to INFO if not set)
+        log_level = 'INFO'
+        if 'log_level' in params:
+            log_level = params['log_level'].value if hasattr(params['log_level'], 'value') else params['log_level']
 
-    # Get log_console from params (default to True if not set)
-    log_console = True
-    if 'log_console' in params:
-        log_console = params['log_console'].value if hasattr(params['log_console'], 'value') else params['log_console']
+        # Get log_console from params (default to True if not set)
+        log_console = True
+        if 'log_console' in params:
+            log_console = params['log_console'].value if hasattr(params['log_console'], 'value') else params['log_console']
 
-    # Get log_file from params (default to True if not set)
-    log_file = True
-    if 'log_file' in params:
-        log_file = params['log_file'].value if hasattr(params['log_file'], 'value') else params['log_file']
+        # Get log_file from params (default to True if not set)
+        log_file = True
+        if 'log_file' in params:
+            log_file = params['log_file'].value if hasattr(params['log_file'], 'value') else params['log_file']
 
-    logger = setup_logging(
-        log_level=log_level,
-        console_output=log_console,
-        file_output=log_file,
-        log_file_path=params['path2output'].value,
-        log_file_name='trinity.log',
-        use_colors=True,
-    )
+        logger = setup_logging(
+            log_level=log_level,
+            console_output=log_console,
+            file_output=log_file,
+            log_file_path=params['path2output'].value,
+            log_file_name='trinity.log',
+            use_colors=True,
+        )
+    except BaseException:
+        held.replay()
+        raise
+    held.replay(echo_stderr=not log_console)
     logger.info(f"Parameter file loaded: {args.path2param}")
     logger.info(f"Log level set to: {log_level}")
     logger.info(f"Console output: {log_console}, File output: {log_file}")

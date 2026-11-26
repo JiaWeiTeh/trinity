@@ -18,6 +18,7 @@ Key features:
 """
 
 import logging
+import math
 import sys
 from pathlib import Path
 from fractions import Fraction
@@ -39,6 +40,65 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 
 # Initialize logger for this module
 logger = logging.getLogger(__name__)
+
+
+# The ambient ISM's density follows its pressure through its effective velocity dispersion (sigma_eff_ISM;
+# docs/dev/ism-sigma-eff/PLAN.md): nISM = PISM k_B / (mu_H m_H sigma_eff^2), with nISM the hydrogen-nuclei density as
+# everywhere in TRINITY. 'fit' is Paper II's fit C to 41 midplane anchors of disc and nuclear-ring simulations
+# (Ostriker & Kim 2022, Table 2; Kim et al. 2024, Tables 2-3; Moon et al. 2021, Tables 2-3, with the magnetic lift
+# 1.31): sigma_eff = 8.74 km/s (P/k / 1e4 K cm^-3)^0.123, anchored at P/k 7.8e2 to 6.7e7 K cm^-3
+# (paper/II-survey/harness/br_sigma_eff_fit.py). These three-figure constants define the relation (ruled 2026-11-26;
+# the full-precision fit, 8.7431 km/s and 0.12339, gives n at most 1.1 per cent lower up to 5e9 K cm^-3).
+SIGMA_EFF_FIT_KMS = 8.74
+SIGMA_EFF_FIT_BETA = 0.123
+SIGMA_EFF_FIT_P0 = 1.0e4                   # K cm^-3
+SIGMA_EFF_FIT_RANGE = (7.8e2, 6.7e7)       # K cm^-3, the anchors
+
+
+def derive_ism(typed, PISM, nISM, sigma_key, mu_H, k_B):
+    """The ambient ISM's PISM [K cm^-3] and nISM [cm^-3] after the sigma_eff_ISM rule, in input units.
+
+    typed: the keys the .param sets; mu_H: mass per hydrogen nucleus [m_H]; k_B [erg/K].
+    Returns (PISM, nISM, origin, extrapolated); origin goes to metadata.json as ISM_relation.
+    A PISM given alone sets nISM (PISM 0 keeps nISM, D-a). An nISM given alone sets PISM only when the .param also sets
+    sigma_eff_ISM, since an nISM alone meant PISM 0 in every run before (D-d, 2026-11-26). Both given, neither, or
+    'off': both as they are.
+    """
+    if isinstance(sigma_key, bool) or not (sigma_key in ('fit', 'off') or (
+            isinstance(sigma_key, (int, float)) and math.isfinite(sigma_key) and sigma_key > 0)):
+        raise ParameterFileError(
+            f"sigma_eff_ISM must be 'fit', 'off' or a positive number (km/s), got {sigma_key!r}.")
+    has_P, has_n = 'PISM' in typed, 'nISM' in typed
+    if sigma_key == 'off':
+        return PISM, nISM, 'off', False
+    if has_P == has_n:
+        return PISM, nISM, ('given' if has_P else 'default'), False
+    if has_n and 'sigma_eff_ISM' not in typed:
+        return PISM, nISM, 'nISM only', False
+    key, value = ('PISM', PISM) if has_P else ('nISM', nISM)
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0:
+        raise ParameterFileError(
+            f"{key} must be a finite number >= 0 for sigma_eff_ISM to set the other, got {value!r}.")
+    if value == 0:
+        return PISM, nISM, f'{key} 0', False
+    T_kms = mu_H * cvt.M_H_CGS * 1.0e10 / k_B          # mu_H m_H (1 km/s)^2 / k_B [K]
+    if sigma_key == 'fit':
+        if not has_P:   # n = (P0 / T0) (P / P0)^(1 - 2 beta) with T0 = T_kms s0^2, solved for P
+            T0 = T_kms * SIGMA_EFF_FIT_KMS ** 2
+            PISM = SIGMA_EFF_FIT_P0 * (nISM * T0 / SIGMA_EFF_FIT_P0) ** (1.0 / (1.0 - 2.0 * SIGMA_EFF_FIT_BETA))
+        sigma = SIGMA_EFF_FIT_KMS * (PISM / SIGMA_EFF_FIT_P0) ** SIGMA_EFF_FIT_BETA
+    else:
+        sigma = float(sigma_key)
+    if has_P:
+        nISM = PISM / (T_kms * sigma ** 2)
+    elif sigma_key != 'fit':
+        PISM = nISM * T_kms * sigma ** 2
+    extrapolated = sigma_key == 'fit' and not SIGMA_EFF_FIT_RANGE[0] <= PISM <= SIGMA_EFF_FIT_RANGE[1]
+    origin = (f"{'nISM from PISM' if has_P else 'PISM from nISM'}: nISM={nISM!r} cm^-3, PISM={PISM!r} K cm^-3, "
+              f"sigma_eff={sigma!r} km/s ({'fit' if sigma_key == 'fit' else 'constant'})")
+    if extrapolated:
+        origin += "; PISM outside the fit's anchors 7.8e2-6.7e7 K cm^-3: extrapolated"
+    return PISM, nISM, origin, extrapolated
 
 
 def read_param(path2file):
@@ -242,6 +302,20 @@ def read_param(path2file):
             # Use default
             merged_dict[key] = (info, unit, default_val)
     
+    # The ambient ISM (sigma_eff_ISM): one of PISM / nISM from the other, here on the values as typed, so that Step 4
+    # converts a derived value exactly as a typed one and seed.py, which reads merged_dict, sees it too.
+    _ism_typed = {k for k in ('PISM', 'nISM', 'sigma_eff_ISM') if k in user_dict}
+    _muH_ism = float(1 + 4 * Fraction(merged_dict['x_He'][2]).limit_denominator(10**6))   # Step 6's mu_convert [m_H]
+    _P_ism, _n_ism, _ism_origin, _ism_extrapolated = derive_ism(
+        _ism_typed, merged_dict['PISM'][2], merged_dict['nISM'][2], merged_dict['sigma_eff_ISM'][2], _muH_ism,
+        merged_dict['k_B'][2])
+    merged_dict['PISM'] = merged_dict['PISM'][:2] + (_P_ism,)
+    merged_dict['nISM'] = merged_dict['nISM'][:2] + (_n_ism,)
+    if _ism_extrapolated:
+        logger.warning(f"sigma_eff_ISM: the fit is used outside its anchors (PISM 7.8e2-6.7e7 K cm^-3): {_ism_origin}")
+    elif _ism_origin not in ('off', 'given', 'default'):
+        logger.info(f"sigma_eff_ISM: ISM_relation = {_ism_origin}")
+
     # Report which parameters were overridden
     overridden = [k for k in user_dict.keys()]
     if overridden:
@@ -346,6 +420,11 @@ def read_param(path2file):
               'load from x_He, Z_He_shell. Multiplies n_H^2 in shell recombination '
               'and the Stroemgren balance.'),
         ori_units='dimensionless',
+    )
+    params['ISM_relation'] = DescribedItem(
+        value=_ism_origin,
+        info="How nISM and PISM were set (sigma_eff_ISM, read_param Step 3): off, given, default, nISM only, PISM 0, nISM 0, or the derived key with both values in input units (floats as repr) and sigma_eff; it ends in extrapolated when the fit is used outside its anchors.",
+        ori_units='N/A',
     )
 
     # ---- caseB_alpha is now TIED to TShell_ion (PLAN.md W62) --------------------

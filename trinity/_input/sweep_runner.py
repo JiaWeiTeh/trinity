@@ -151,7 +151,21 @@ def _validate_sweep_combination(params_dict):
     mu_factor = convert2au('m_H')
 
     mu = float(params_dict.get('mu_convert', 1.4)) * mu_factor
-    nISM = float(params_dict.get('nISM', 1.0)) * ndens_factor
+    # The run's ambient density (sigma_eff_ISM): read_param sets nISM from a PISM given alone, so this check
+    # does too. ponytail: the defaults (PISM 0, nISM 1, x_He 0.1, k_B, 'fit') are repeated here, as mu_convert's
+    # 1.4 above is; read them from the registry if a default ever moves.
+    from fractions import Fraction
+    from trinity._input.read_param import derive_ism
+    typed = {k for k in ('PISM', 'nISM', 'sigma_eff_ISM') if k in params_dict}
+    try:
+        x_He = Fraction(float(params_dict.get('x_He', 0.1))).limit_denominator(10**6)
+        _, nISM_cgs, _, _ = derive_ism(
+            typed, float(params_dict.get('PISM', 0.0)), float(params_dict.get('nISM', 1.0)),
+            params_dict.get('sigma_eff_ISM', 'fit'), float(1 + 4 * x_He),
+            float(params_dict.get('k_B', 1.380649e-16)))
+    except Exception:
+        return None          # a bad ambient is reported when read_param loads the run
+    nISM = nISM_cgs * ndens_factor
 
     kwargs = dict(
         mCloud=float(mCloud),

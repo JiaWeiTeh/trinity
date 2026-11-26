@@ -327,6 +327,61 @@ def setup_logging(
     return root_logger
 
 
+class HeldRecords(logging.Handler):
+    """Hold the log records of the 'trinity' loggers until the run's log exists, then replay them.
+
+    run.py reads the .param (read_param) before setup_logging can open trinity.log, which needs the run's
+    path2output and log_level, so until 2026-11-26 read_param's INFO lines were dropped and its WARNINGs reached only
+    stderr. Use as ``with held: params = read_param(...)``, then ``held.replay(echo_stderr=not log_console)`` after
+    setup_logging. If the block raises, the held records are replayed at once through the handlers there are, so no
+    warning is lost; run.py does the same if anything fails before setup_logging has set up the run's log.
+    """
+
+    def __init__(self, name='trinity'):
+        super().__init__(logging.DEBUG)
+        self.records = []
+        self._logger = logging.getLogger(name)
+
+    def emit(self, record):
+        self.records.append(record)
+
+    def __enter__(self):
+        lg = self._logger
+        self._saved = (lg.level, lg.propagate)
+        lg.setLevel(logging.DEBUG)    # hold every record; replay() applies the run's own level
+        lg.propagate = False          # nothing reaches the interim handlers while held
+        lg.addHandler(self)
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        lg = self._logger
+        lg.removeHandler(self)
+        lg.setLevel(self._saved[0])
+        lg.propagate = self._saved[1]
+        if exc_type is not None:
+            self.replay()
+        return False
+
+    def replay(self, echo_stderr=False):
+        """Send the held records through the handlers configured now, at their loggers' levels now.
+
+        echo_stderr: also write WARNING and up to stderr, where they went before the hold (run.py's basicConfig), for
+        a run whose log has no console (log_console False), so a terminal or a Slurm log still shows them.
+        """
+        echo = None
+        if echo_stderr:
+            echo = logging.StreamHandler(sys.stderr)
+            echo.setFormatter(logging.Formatter("%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+                                                datefmt='%Y-%m-%d %H:%M:%S'))   # run.py's basicConfig format
+        for record in self.records:
+            lg = logging.getLogger(record.name)
+            if lg.isEnabledFor(record.levelno):
+                lg.handle(record)
+            if echo is not None and record.levelno >= logging.WARNING:
+                echo.handle(record)
+        self.records = []
+
+
 def get_module_logger(name: str) -> logging.Logger:
     """
     Get a logger for a specific module.
