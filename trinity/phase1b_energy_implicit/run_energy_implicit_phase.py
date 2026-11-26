@@ -318,6 +318,30 @@ def r1_transition_decision(active_triggers, blowout_fired, ebpeak_fired):
     return None
 
 
+def rt_count_step(N, t_prev, u_prev, t_now, u_now, delta):
+    """One segment of the e-fold count N_Delta of blowout_rule rt (Paper II Sect. 2.6, Eq. 8;
+    docs/dev/turnaround-stall/PLAN_RT.md): a Rayleigh-Taylor ripple as long as the shell is thick
+    (wavenumber 1/delta) grows at sqrt(a / delta) while the shell accelerates at a > 0, so
+    N += sqrt(max(a, 0) / delta) dt, with a = (u_now - u_prev) / dt the mean acceleration over the
+    segment [pc Myr^-2] and delta the shell's thickness [pc]. A decelerating segment adds nothing and
+    takes nothing away (a stable face keeps a ripple's amplitude); a segment of zero length or a
+    non-positive delta leaves N as it is.
+    """
+    dt = t_now - t_prev
+    if not (dt > 0 and delta > 0):
+        return N
+    a = (u_now - u_prev) / dt
+    return N + float(np.sqrt(max(a, 0.0) / delta)) * dt
+
+
+def rt_gate(N, growth_factor, Pb, P_ism, rs, r_cloud):
+    """The gate of blowout_rule rt (Paper II Sect. 2.6, Eq. 9): the ripple has grown by more than
+    growth_factor (N > ln G), the bubble can push hot gas out (Pb > P_ism; both pressures in one unit),
+    and the shell's outer edge is outside the cloud (rs > r_cloud), so a hole opens onto ambient gas; a
+    shell that has fallen back inside the cloud keeps its count but does not vent there (ruled 2026-11-26)."""
+    return bool(N > np.log(growth_factor) and Pb > P_ism and rs > r_cloud)
+
+
 def compute_max_dex_change(params_before: dict, params_after: dict, keys: list) -> float:
     """
     Compute the maximum dex (log10) change across monitored parameters.
@@ -849,6 +873,16 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
     # Active transition criteria (parsed + validated once; default {'cooling_balance'}
     # reproduces current behavior exactly). Comma-separated set allows >1 trigger.
     active_triggers = parse_transition_triggers(params['transition_trigger'].value)
+    # blowout_rule rt (Paper II Sect. 2.6; docs/dev/turnaround-stall/PLAN_RT.md): the blowout route vents once a
+    # Rayleigh-Taylor ripple has grown. The e-fold count, whether it has started (with the first segment whose outer
+    # edge r_s starts past the cloud edge, which it counts), and (t, u) at the start of the next segment (the 1b
+    # start, then each check's end state). It reads the swept shell's thickness r_s - R2 (the registry refuses rt
+    # under any other phii_scheme; this guards hand-built params)
+    rt_rule = ('blowout' in active_triggers and 'blowout_rule' in params
+               and params['blowout_rule'].value == 'rt')
+    if rt_rule and not sw:
+        raise ValueError("blowout_rule 'rt' needs phii_scheme swept (it reads the shell's thickness r_s - R2)")
+    rt_N, rt_on, rt_prev = 0.0, False, ((t_now, sw.u) if sw else None)
     betadelta_solver = _get_betadelta_solver(params)    # the lost-root hand-off (unconverged_handoff) is for 'hybr' only
 
     # Adaptive time stepping
@@ -1510,7 +1544,30 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
         # A non-default set (e.g. {'cooling_balance','blowout'}) makes the transition
         # fire on whichever listed criterion occurs first; main.py then proceeds to
         # phase 1c (same hand-off path, gated only by EndSimulationDirectly).
-        _drive = r1_transition_decision(active_triggers, _blowout, _ebpeak)
+        # --- blowout_rule rt (OPT-IN): the Rayleigh-Taylor count, read from the state only; geometric -> nothing runs.
+        # u = v2 = sw.u is the gas speed at this segment's end, so a is the segment's mean acceleration. The thickness,
+        # Pb and the edge test are this segment's start values (its root R2 and r_s, the values of its snapshot row):
+        # the closure's R2 at the end is an extrapolation whose error can reach the thickness itself.
+        # ponytail: Pb is one segment stale at the check (accepted 2026-11-26, PLAN_RT.md RT.3); a vent with Pb near
+        # PISM that looks wrong starts here. Upgrade: decide at the next segment's start, after its bubble solve.
+        _rt = False
+        if rt_rule:
+            _R2s, _rss = sw.root['R2'], sw.rs_last
+            # the count starts with the first segment whose outer edge r_s starts past the cloud edge, and counts it:
+            # the push turns unbalanced once the leading edge sweeps ambient gas (ruled 2026-11-26)
+            rt_on = rt_on or (_rCloud is not None and 0 < _rCloud < _rss)
+            if rt_on:
+                rt_N = rt_count_step(rt_N, rt_prev[0], rt_prev[1], t_now, v2, max(_rss - _R2s, 1e-6 * _R2s))
+                _rt = rt_gate(rt_N, params['rt_growth_factor'].value, params['Pb'].value,
+                              params['PISM'].value * params['k_B'].value, _rss, _rCloud)
+                if _rt:
+                    _to_K = params['k_B'].value * cvt.ndens_cgs2au   # code pressure per K cm^-3
+                    logger.info(f"rt: N_Delta={rt_N:.9g} > ln G={np.log(params['rt_growth_factor'].value):.6g} "
+                                f"with Pb/k_B={params['Pb'].value / _to_K:.6g} (this segment's start) > "
+                                f"PISM={params['PISM'].value * params['k_B'].value / _to_K:.6g} K cm^-3 at "
+                                f"t={t_now:.6e} Myr")
+            rt_prev = (t_now, v2)                     # the next segment starts here
+        _drive = r1_transition_decision(active_triggers, _rt if rt_rule else _blowout, _ebpeak)
         if _drive is not None:
             termination_reason = _drive
             logger.info(f"R1 transition (transition_trigger="

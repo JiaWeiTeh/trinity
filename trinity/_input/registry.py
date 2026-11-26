@@ -284,6 +284,41 @@ def _validate_vent_model(value, params) -> None:
                        "no drain). Set coverFraction to the closed fraction after the vent, e.g. 0.5.")
 
 
+def _validate_blowout_rule(value, params) -> None:
+    """How the blowout token decides (Paper II Sect. 2.6; docs/dev/turnaround-stall/PLAN_RT.md): 'geometric' or 'rt'
+    (exact lower-case names). 'rt' reads the shell's thickness r_s - R2, which only phii_scheme swept evolves, and acts
+    only on the blowout route, so it is refused without blowout (or r1) in transition_trigger."""
+    from trinity._input.errors import ParameterFileError
+    if value not in ('geometric', 'rt'):
+        raise ParameterFileError(f"Invalid blowout_rule '{value}'. Must be one of ['geometric', 'rt'].")
+    if value == 'geometric':
+        return
+
+    def get(key, default):
+        return params[key].value if key in params else default
+    if str(get('phii_scheme', 'swept')).strip().lower() != 'swept':
+        raise ParameterFileError(f"blowout_rule 'rt' needs phii_scheme swept (got '{get('phii_scheme', '')}').")
+    if str(get('start_scheme', 'weaver')).strip().lower() == 'stromgren':
+        raise ParameterFileError("blowout_rule 'rt' has no effect under start_scheme stromgren (no energy phases, so "
+                                 "no blowout).")
+    if str(get('start_scheme', 'weaver')).strip().lower() == 'auto':
+        logger.warning("blowout_rule 'rt' with start_scheme auto: if the run takes the Stroemgren start there are no "
+                       "energy phases, no blowout and the rule does nothing.")
+    tokens = {t.strip() for t in str(get('transition_trigger', '')).split(',')}
+    if not tokens & {'blowout', 'r1'}:
+        raise ParameterFileError(
+            f"blowout_rule 'rt' decides the blowout route, so transition_trigger needs blowout (or r1); got "
+            f"'{get('transition_trigger', '')}'.")
+
+
+def _validate_rt_growth_factor(value, params) -> None:
+    """G of blowout_rule rt: the factor by which a Rayleigh-Taylor ripple as long as the shell is thick must grow
+    before the shell vents (Paper II Sect. 2.6). A finite number above 1 (ln G > 0; inf would never vent)."""
+    from trinity._input.errors import ParameterFileError
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not 1 < value < float('inf'):
+        raise ParameterFileError(f"Invalid rt_growth_factor '{value}'. Must be a finite number above 1 (e.g. 100).")
+
+
 def _validate_start_scheme(value, params) -> None:
     """Selects how the integration starts (docs/dev/phii-identity/weak-wind/PLAN.md section 4):
     'weaver' (default, shipped) from the free-streaming wind into phase 1a; 'stromgren'
@@ -663,7 +698,9 @@ SPECS: tuple[ParamSpec, ...] = (
     ParamSpec(name='TCloud', default='10', info="Temperature of the cloud's own (molecular) gas, for its thermal pressure on the shell INSIDE the cloud: (mu_convert/mu_mol) n(r) k_B TCloud while every ionising photon is absorbed (density_profile.get_press_cloud). Default 10 K (cold molecular gas) since 2026-10-29 (gate G-CP3); it was 0 before. 0 = no pressure from the cloud gas. Outside the cloud the ambient pressure is PISM. docs/dev/phii-identity/weak-wind/PLAN.md section 11.", category='input_constants', unit='K', exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='alphaVirCloud', default='0', info="Virial parameter of the cloud's gas for its turbulent pressure on the shell INSIDE the cloud only: rho sigma^2 with sigma^2 = alphaVirCloud G M(<r) / (5 r), Krumholz & Matzner (2009) eq. 17, alpha_vir = 5 sigma^2 r / (G M(<r)) as Bertoldi & McKee (1992), sigma the total one-dimensional dispersion (thermal included, so the term adds rho sigma^2 minus the TCloud thermal pressure); M(<r) is the total mass inside r, stars included and spread like the gas as in McKee & Tan (2003, eq. A3): the cloud gas inside r / (1 - sfe) (density_profile.get_press_cloud). With it on, the cloud gas's whole pressure (the TCloud term too) fades with the density's tanh bridge at the cloud edge, out to 1.2 rCloud (B3). The ambient ISM outside the cloud is PISM. 0 (default) = off. Experimental. docs/dev/phii-identity/weak-wind/PLAN.md section 11.3.", category='input_constants', unit=None, exclude_from_snapshot=True, run_const=True),
     ParamSpec(name='phaseSwitch_LlossLgain', default='0.05', info='When (Lgain-Lloss)/Lgain approaches this value, begin momentum-driving phase.', category='input_solver', unit=None, exclude_from_snapshot=True, run_const=True),
-    ParamSpec(name='transition_trigger', default='cooling_balance', info="Energy->momentum transition criteria, COMMA-SEPARATED (fires on whichever occurs first). Tokens: 'cooling_balance' (default = current behavior), 'blowout' (R2>rCloud), 'ebpeak' (net energy Edot_from_balance<=0); 'r1' aliases 'blowout,ebpeak'. e.g. 'cooling_balance,blowout'. Non-default sets DRIVE the R1 transition (docs/dev/transition/pt4/R1_SHADOW_PLAN.md).", category='input_solver', unit=None, exclude_from_snapshot=True, run_const=True),
+    ParamSpec(name='transition_trigger', default='cooling_balance', info="Energy->momentum transition criteria, COMMA-SEPARATED (fires on whichever occurs first). Tokens: 'cooling_balance' (default = current behavior), 'blowout' (R2>rCloud, or the Rayleigh-Taylor rule: see blowout_rule), 'ebpeak' (net energy Edot_from_balance<=0); 'r1' aliases 'blowout,ebpeak'. e.g. 'cooling_balance,blowout'. Non-default sets DRIVE the R1 transition (docs/dev/transition/pt4/R1_SHADOW_PLAN.md).", category='input_solver', unit=None, exclude_from_snapshot=True, run_const=True),
+    ParamSpec(name='blowout_rule', default='geometric', info="How the 'blowout' token of transition_trigger decides that the shell vents (Paper II Sect. 2.6, docs/dev/turnaround-stall/PLAN_RT.md). 'geometric' (the default): as soon as R2 > rCloud. 'rt': once a Rayleigh-Taylor ripple as long as the shell is thick has grown by rt_growth_factor while Pb > PISM, counted from the first segment whose outer edge r_s is past rCloud, and only while r_s is past rCloud; a shell that decelerates past the edge, or whose bubble is under-pressured, stays sealed. 'rt' needs phii_scheme swept and blowout (or r1) in transition_trigger. The channel is 'blowout' under both rules.", category='input_solver', unit=None, exclude_from_snapshot=True, run_const=True, validator=_validate_blowout_rule),
+    ParamSpec(name='rt_growth_factor', default='100', info="The factor G by which a Rayleigh-Taylor ripple as long as the shell is thick must grow before the shell vents under blowout_rule 'rt' (Paper II Sect. 2.6, docs/dev/turnaround-stall/PLAN_RT.md): from the first segment with the shell edge r_s past rCloud, the shell vents once N = sum over segments of sqrt(max(a, 0)/Delta) dt exceeds ln G while Pb > PISM, with a the shell's mean acceleration over the segment and Delta = r_s - R2 its thickness. Used only with blowout_rule 'rt'. 100 is a seed ripple of 1 per cent of the thickness; must be finite and above 1.", category='input_solver', unit=None, exclude_from_snapshot=True, run_const=True, validator=_validate_rt_growth_factor),
     ParamSpec(name='turnaround_rule', default='continue', info="What a turnaround (the shell's speed v2 falling through 0) does in phases 1a, 1b and 1c. 'continue' (the default since R0, docs/dev/turnaround-stall/PLAN_R0.md): the phase goes on and the bubble keeps its energy, so a confined shell can recede and re-expand about pressure balance; under phii_scheme swept a receding shell coasts (its mass held) from u = 0 on, as in the momentum phase. 'momentum' (the rule from 2026-10-01 to R0; retired, still selectable, and it reproduces the runs made under it): the phase ends at the turnaround, Eb drops to the floor (Eb_handoff keeps it) and the run goes on in momentum (transition_channel velocity_sign_change).", category='input_solver', unit=None, exclude_from_snapshot=True, run_const=True, validator=_validate_turnaround_rule),
     ParamSpec(name='vent_model', default='vacuum', info="What the hot gas does once the shell has vented, that is once phase 1b has ended on a venting token of transition_trigger (blowout); phii_scheme swept only (docs/dev/leaky-reservoir/PLAN.md). 'vacuum' (the default, the code as it was): phase 1c drains the bubble to zero over a sound-crossing time and the momentum phase keeps only the wind's ram pressure inside. 'ambient': the drain stops at the pressure the shell's outer face feels (P_out: PISM past the cloud edge, plus the photoionised gas ahead when photons escape), the run goes on to the momentum phase once the bubble is within 1 per cent of it, and the interior is held at max(P_ram, P_out) from then on. 'reservoir': the same hand-over and floor, and in phase 1c the bubble leaks through the open fraction 1 - coverFraction at its sound speed, throttled by the isentropic nozzle factor of P_out/Pb (1 while choked, Pb > 2.05 P_out; 0 at Pb = P_out), in place of the sound-crossing drain; its cooling follows Pb^2 V from the value at the vent, and coverFraction acts only from the vent on (the wall is sealed before). Both new modes are refused without a venting token in transition_trigger, since no shell would then count as vented.", category='input_solver', unit=None, exclude_from_snapshot=True, run_const=True, validator=_validate_vent_model),
     ParamSpec(name='cooling_boost_mode', default='none', info="Opt-in unresolved-interface-cooling boost (Paper-II note, docs/dev/transition/pdv-trigger/PLAN.md). 'none' (default) = resolved cooling unchanged, BYTE-IDENTICAL. 'multiplier' = Lleak + cooling_boost_fmix*Lcool. 'theta_target' = max(Lcool+Lleak, cooling_boost_theta*Lmech) (tops up to a target loss fraction, single-count). The boosted loss feeds the beta-delta residual, the energy ODE, AND the transition trigger consistently. Never a (1-theta)*Lmech input rescale on top of Lcool -- that double-counts. FALLBACK: 'multiplier' is superseded for L21b *calibration* by cooling_boost_fA (docs/dev/transition/pdv-trigger/FA_STATE_COUPLED.md); retained as a supported opt-in mechanism and bench control arm.", category='input_solver', unit=None, exclude_from_snapshot=True, run_const=True, validator=_validate_cooling_boost_mode),
