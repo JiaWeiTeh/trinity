@@ -180,6 +180,51 @@ def test_run_py_replays_held_warnings_when_setup_logging_fails(tmp_path, caplog)
     assert sum('outside its anchors' in r.getMessage() for r in caplog.records) == 1
 
 
+def test_absurd_values_are_refused_not_crashed():
+    """Float limits (underflow to 0, overflow) give a ParameterFileError, not a ZeroDivision/Overflow traceback."""
+    for typed, P, n, key in (({'PISM'}, 1e-320, 1.0, 'fit'), ({'PISM'}, 1e5, 1.0, 1e-200), ({'PISM'}, 1e5, 1.0, 1e200),
+                             ({'PISM'}, 1e-320, 1.0, 10.0), ({'nISM', 'sigma_eff_ISM'}, 0.0, 1e300, 'fit'),
+                             ({'nISM', 'sigma_eff_ISM'}, 0.0, 1e300, 1e4)):
+        with pytest.raises(ParameterFileError, match='cannot set'):
+            derive_ism(typed, P, n, key, MU_H, K_B)
+
+
+def test_sweep_preflight_reports_a_bad_ambient():
+    """A bad ambient in a sweep is an invalid combination with its reason, not a skipped check."""
+    cell = {'mCloud': 1e5, 'sfe': 0.1, 'nCore': 300.0, 'dens_profile': 'densPL', 'densPL_alpha': 0.0}
+    for bad in (dict(PISM=-1.0), dict(PISM=1e5, sigma_eff_ISM='Fit')):
+        r = _validate_sweep_combination(dict(cell, **bad))
+        assert r is not None and not r.valid and any(e.startswith('ISM ambient: ') for e in r.errors), bad
+
+
+def test_a_handler_on_the_trinity_logger_sees_each_record_once():
+    """HeldRecords detaches the 'trinity' logger's own handlers while it holds: one copy, at the run's level."""
+    import logging
+    from trinity._functions.logging_setup import HeldRecords
+    seen = []
+
+    class Grab(logging.Handler):
+        def emit(self, record):
+            seen.append(record.getMessage())
+
+    lg, grab = logging.getLogger('trinity'), Grab()
+    level = lg.level
+    lg.addHandler(grab)
+    lg.setLevel(logging.INFO)
+    try:
+        held = HeldRecords()
+        with held:
+            logging.getLogger('trinity._input.read_param').info('once')
+            logging.getLogger('trinity._input.read_param').debug('below the level')
+        assert seen == []
+        assert grab in lg.handlers and lg.level == logging.INFO
+        held.replay()
+        assert seen == ['once']
+    finally:
+        lg.removeHandler(grab)
+        lg.setLevel(level)
+
+
 def test_the_keys():
     spec = {s.name: s for s in SPECS}
     assert spec['sigma_eff_ISM'].default == 'fit' and spec['sigma_eff_ISM'].run_const

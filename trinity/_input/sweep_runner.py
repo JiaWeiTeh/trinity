@@ -163,8 +163,9 @@ def _validate_sweep_combination(params_dict):
             typed, float(params_dict.get('PISM', 0.0)), float(params_dict.get('nISM', 1.0)),
             params_dict.get('sigma_eff_ISM', 'fit'), float(1 + 4 * x_He),
             float(params_dict.get('k_B', 1.380649e-16)))
-    except Exception:
-        return None          # a bad ambient is reported when read_param loads the run
+    except Exception as exc:     # read_param refuses this run too: say so before any job runs
+        from trinity.cloud_properties.validate_gmc import GMCValidationResult
+        return GMCValidationResult(valid=False, errors=[f"ISM ambient: {exc}"])
     nISM = nISM_cgs * ndens_factor
 
     kwargs = dict(

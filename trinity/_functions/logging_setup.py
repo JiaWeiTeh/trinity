@@ -347,7 +347,9 @@ class HeldRecords(logging.Handler):
 
     def __enter__(self):
         lg = self._logger
-        self._saved = (lg.level, lg.propagate)
+        self._saved = (lg.level, lg.propagate, lg.handlers[:])
+        for h in self._saved[2]:      # the logger's own handlers see each record once, at replay
+            lg.removeHandler(h)
         lg.setLevel(logging.DEBUG)    # hold every record; replay() applies the run's own level
         lg.propagate = False          # nothing reaches the interim handlers while held
         lg.addHandler(self)
@@ -356,6 +358,8 @@ class HeldRecords(logging.Handler):
     def __exit__(self, exc_type, exc, tb):
         lg = self._logger
         lg.removeHandler(self)
+        for h in self._saved[2]:
+            lg.addHandler(h)
         lg.setLevel(self._saved[0])
         lg.propagate = self._saved[1]
         if exc_type is not None:

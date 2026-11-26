@@ -82,17 +82,25 @@ def derive_ism(typed, PISM, nISM, sigma_key, mu_H, k_B):
     if value == 0:
         return PISM, nISM, f'{key} 0', False
     T_kms = mu_H * cvt.M_H_CGS * 1.0e10 / k_B          # mu_H m_H (1 km/s)^2 / k_B [K]
-    if sigma_key == 'fit':
-        if not has_P:   # n = (P0 / T0) (P / P0)^(1 - 2 beta) with T0 = T_kms s0^2, solved for P
-            T0 = T_kms * SIGMA_EFF_FIT_KMS ** 2
-            PISM = SIGMA_EFF_FIT_P0 * (nISM * T0 / SIGMA_EFF_FIT_P0) ** (1.0 / (1.0 - 2.0 * SIGMA_EFF_FIT_BETA))
-        sigma = SIGMA_EFF_FIT_KMS * (PISM / SIGMA_EFF_FIT_P0) ** SIGMA_EFF_FIT_BETA
-    else:
-        sigma = float(sigma_key)
-    if has_P:
-        nISM = PISM / (T_kms * sigma ** 2)
-    elif sigma_key != 'fit':
-        PISM = nISM * T_kms * sigma ** 2
+    try:
+        if sigma_key == 'fit':
+            if not has_P:   # n = (P0 / T0) (P / P0)^(1 - 2 beta) with T0 = T_kms s0^2, solved for P
+                T0 = T_kms * SIGMA_EFF_FIT_KMS ** 2
+                PISM = SIGMA_EFF_FIT_P0 * (nISM * T0 / SIGMA_EFF_FIT_P0) ** (1.0 / (1.0 - 2.0 * SIGMA_EFF_FIT_BETA))
+            sigma = SIGMA_EFF_FIT_KMS * (PISM / SIGMA_EFF_FIT_P0) ** SIGMA_EFF_FIT_BETA
+        else:
+            sigma = float(sigma_key)
+        if has_P:
+            nISM = PISM / (T_kms * sigma ** 2)
+        elif sigma_key != 'fit':
+            PISM = nISM * T_kms * sigma ** 2
+    except (ZeroDivisionError, OverflowError):      # float limits, e.g. PISM 1e-320 or sigma_eff_ISM 1e200
+        PISM = nISM = math.nan
+    derived = nISM if has_P else PISM
+    if not (math.isfinite(derived) and derived > 0):
+        raise ParameterFileError(
+            f"sigma_eff_ISM cannot set {'nISM' if has_P else 'PISM'} from {key}={value!r} with sigma_eff_ISM "
+            f"{sigma_key!r}: the result is not a finite positive number. Give both keys, or physical values.")
     extrapolated = sigma_key == 'fit' and not SIGMA_EFF_FIT_RANGE[0] <= PISM <= SIGMA_EFF_FIT_RANGE[1]
     origin = (f"{'nISM from PISM' if has_P else 'PISM from nISM'}: nISM={nISM!r} cm^-3, PISM={PISM!r} K cm^-3, "
               f"sigma_eff={sigma!r} km/s ({'fit' if sigma_key == 'fit' else 'constant'})")
