@@ -225,6 +225,7 @@ def test_reservoir_rows_describe_the_integrated_energy_equation(tmp_path, monkey
     runner that kept the shipped min() would fail here."""
     p, _ = _entry(tmp_path, f_thermal=3.0, stop_t=0.52)
     p["vent_model"].value, p["transition_channel"].value, p["coverFraction"].value = "reservoir", "blowout", 0.9
+    p["cover_law"].value = "constant"   # a fixed C_f: cover_law defaults to sigma since C1D_PLAN.md §10.3
     g = lambda k: p[k].value  # noqa: E731
     L0 = g("bubble_LTotal")
     starts, real = [], S.scipy.integrate.solve_ivp

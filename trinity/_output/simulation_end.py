@@ -72,6 +72,7 @@ class SimulationEndCode(Enum):
     LARGE_RADIUS = (2, "large_radius")
     RCLOUD_BOUNDARY = (3, "rcloud_boundary")
     SHELL_COLLAPSED = (4, "shell_collapsed")
+    SHELL_DISRUPTED = (5, "shell_disrupted")   # hole_forces: C_f < cf_disrupt (C1D_PLAN.md)
 
     # Parameter errors (10-19)
     ERROR_INVALID_PARAMS = (10, "error_invalid_params")

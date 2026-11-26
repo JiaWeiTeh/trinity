@@ -121,6 +121,10 @@ class ODESnapshot:
     cooling_boost_fmix: float = 1.0
     cooling_boost_theta: float = 0.0
 
+    # hole_forces (docs/dev/leaky-reservoir/C1D_PLAN.md D-2): the factor on the self-gravity, the real mass over the
+    # swept one (coverFraction with holes open from birth); 1.0 when off
+    self_gravity_cf: float = 1.0
+
 
 def create_ODE_snapshot(params, shell_props) -> ODESnapshot:
     """
@@ -141,9 +145,12 @@ def create_ODE_snapshot(params, shell_props) -> ODESnapshot:
     if shell_props.isDissolved:
         F_rad = 0.0
     else:
+        tau_IR = shell_props.shell_tauKappaRatio * params['dust_KappaIR'].value
+        if get_bubbleParams.hole_forces(params):   # C1D_PLAN §4.2: the IR photons leave through the holes
+            tau_IR = get_bubbleParams.ir_depth(tau_IR, get_bubbleParams.cover_fraction(params))
         F_rad = (shell_props.shell_fAbsorbedWeightedTotal
                  * params['Lbol'].value / params['c_light'].value
-                 * (1.0 + shell_props.shell_tauKappaRatio * params['dust_KappaIR'].value))
+                 * (1.0 + tau_IR))
 
     return ODESnapshot(
         shell_fAbsorbedIon=params['shell_fAbsorbedIon'].value,
@@ -178,6 +185,7 @@ def create_ODE_snapshot(params, shell_props) -> ODESnapshot:
         cooling_boost_mode=getattr(params.get('cooling_boost_mode', None), 'value', 'none') or 'none',
         cooling_boost_fmix=float(getattr(params.get('cooling_boost_fmix', None), 'value', 1.0)),
         cooling_boost_theta=float(getattr(params.get('cooling_boost_theta', None), 'value', 0.0)),
+        self_gravity_cf=(get_bubbleParams.cover_fraction(params) if get_bubbleParams.hole_forces(params) else 1.0),
     )
 
 
@@ -240,7 +248,8 @@ def get_ODE_Edot_pure(t: float, y: list, snapshot: ODESnapshot, params_for_feedb
     mShell = mShell - snapshot.evaporated_mass
 
     # Gravity force (self + cluster)
-    F_grav = snapshot.G * mShell / (R2**2) * (snapshot.mCluster + snapshot.evaporated_mass + 0.5 * mShell)
+    F_grav = snapshot.G * mShell / (R2**2) * (snapshot.mCluster + snapshot.evaporated_mass
+                                             + 0.5 * snapshot.self_gravity_cf * mShell)   # hole_forces D-2
 
     # Calculate R1 (inner bubble radius)
     R1 = get_bubbleParams.solve_R1(R2, Eb, Lmech_total, v_mech_total)
@@ -449,7 +458,7 @@ def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_
     )
 
     # Forces
-    F_grav = snapshot.G * mShell / (R2**2) * (snapshot.mCluster + 0.5 * mShell)
+    F_grav = snapshot.G * mShell / (R2**2) * (snapshot.mCluster + 0.5 * snapshot.self_gravity_cf * mShell)
 
     FABSi = snapshot.shell_fAbsorbedIon
     rShell = snapshot.rShell
