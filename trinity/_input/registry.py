@@ -279,7 +279,7 @@ def _validate_vent_model(value, params) -> None:
     if str(get('start_scheme', 'weaver')).strip().lower() == 'auto':
         logger.warning(f"vent_model '{value}' with start_scheme auto: if the run takes the Stroemgren start there "
                        "are no energy phases, the shell never vents and the mode does nothing.")
-    if value == 'reservoir' and get('coverFraction', 1.0) == 1.0:
+    if value == 'reservoir' and get('coverFraction', 1.0) == 1.0 and get('cover_law', 'constant') != 'sigma':
         logger.warning("vent_model reservoir with coverFraction 1.0: the shell stays sealed after the vent (no leak, "
                        "no drain). Set coverFraction to the closed fraction after the vent, e.g. 0.5.")
 
@@ -413,6 +413,38 @@ def _validate_coverFraction(value, params) -> None:
             f"Invalid coverFraction '{value}'. Must satisfy 0 < Cf <= 1 "
             f"(Cf=1 recovers the sealed bubble)."
         )
+
+
+def _validate_cover_law(value, params) -> None:
+    """cover_law (docs/dev/leaky-reservoir/CF_LAW_PLAN.md): 'constant' (the default: coverFraction as given) or
+    'sigma' (after the vent the closed fraction follows the shell's column, 1 at the vent). 'sigma' acts only in the
+    leaky reservoir and sets the closed fraction itself (D-6), so it is refused without vent_model reservoir and with
+    a coverFraction other than 1.0."""
+    from trinity._input.errors import ParameterFileError
+    if value not in ('constant', 'sigma'):
+        raise ParameterFileError(f"Invalid cover_law '{value}'. Must be one of ['constant', 'sigma'].")
+    if value == 'constant':
+        return
+
+    def get(key, default):
+        return params[key].value if key in params else default
+
+    if get('vent_model', 'vacuum') != 'reservoir':
+        raise ParameterFileError(
+            f"cover_law sigma needs vent_model reservoir (got '{get('vent_model', 'vacuum')}'): the law sets the "
+            "closed fraction of the leaky reservoir after the vent.")
+    if get('coverFraction', 1.0) != 1.0:
+        raise ParameterFileError(
+            f"cover_law sigma sets the closed fraction itself; leave coverFraction at 1.0 (got "
+            f"{get('coverFraction', 1.0)}).")
+
+
+def _validate_cf_half_radius(value, params) -> None:
+    """cf_half_radius h (cover_law sigma): the radius in vent radii at which C_f = 1/2 at fixed mass; a finite
+    number > 1."""
+    from trinity._input.errors import ParameterFileError
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not 1.0 < value < float('inf'):
+        raise ParameterFileError(f"Invalid cf_half_radius '{value}'. Must be a finite number > 1.")
 
 
 def _validate_phase1a_segFrac(value, params) -> None:
@@ -703,6 +735,8 @@ SPECS: tuple[ParamSpec, ...] = (
     ParamSpec(name='rt_growth_factor', default='100', info="The factor G by which a Rayleigh-Taylor ripple as long as the shell is thick must grow before the shell vents under blowout_rule 'rt' (Paper II Sect. 2.6, docs/dev/turnaround-stall/PLAN_RT.md): from the first segment with the shell edge r_s past rCloud, the shell vents once N = sum over segments of sqrt(max(a, 0)/Delta) dt exceeds ln G while Pb > PISM, with a the shell's mean acceleration over the segment and Delta = r_s - R2 its thickness. Used only with blowout_rule 'rt'. 100 is a seed ripple of 1 per cent of the thickness; must be finite and above 1.", category='input_solver', unit=None, exclude_from_snapshot=True, run_const=True, validator=_validate_rt_growth_factor),
     ParamSpec(name='turnaround_rule', default='continue', info="What a turnaround (the shell's speed v2 falling through 0) does in phases 1a, 1b and 1c. 'continue' (the default since R0, docs/dev/turnaround-stall/PLAN_R0.md): the phase goes on and the bubble keeps its energy, so a confined shell can recede and re-expand about pressure balance; under phii_scheme swept a receding shell coasts (its mass held) from u = 0 on, as in the momentum phase. 'momentum' (the rule from 2026-10-01 to R0; retired, still selectable, and it reproduces the runs made under it): the phase ends at the turnaround, Eb drops to the floor (Eb_handoff keeps it) and the run goes on in momentum (transition_channel velocity_sign_change).", category='input_solver', unit=None, exclude_from_snapshot=True, run_const=True, validator=_validate_turnaround_rule),
     ParamSpec(name='vent_model', default='vacuum', info="What the hot gas does once the shell has vented, that is once phase 1b has ended on a venting token of transition_trigger (blowout); phii_scheme swept only (docs/dev/leaky-reservoir/PLAN.md). 'vacuum' (the default, the code as it was): phase 1c drains the bubble to zero over a sound-crossing time and the momentum phase keeps only the wind's ram pressure inside. 'ambient': the drain stops at the pressure the shell's outer face feels (P_out: PISM past the cloud edge, plus the photoionised gas ahead when photons escape), the run goes on to the momentum phase once the bubble is within 1 per cent of it, and the interior is held at max(P_ram, P_out) from then on. 'reservoir': the same hand-over and floor, and in phase 1c the bubble leaks through the open fraction 1 - coverFraction at its sound speed, throttled by the isentropic nozzle factor of P_out/Pb (1 while choked, Pb > 2.05 P_out; 0 at Pb = P_out), in place of the sound-crossing drain; its cooling follows Pb^2 V from the value at the vent, and coverFraction acts only from the vent on (the wall is sealed before). Both new modes are refused without a venting token in transition_trigger, since no shell would then count as vented.", category='input_solver', unit=None, exclude_from_snapshot=True, run_const=True, validator=_validate_vent_model),
+    ParamSpec(name='cover_law', default='constant', info="How the closed fraction of the bubble wall evolves after the vent, under vent_model reservoir only (docs/dev/leaky-reservoir/CF_LAW_PLAN.md). 'constant' (the default): coverFraction from the vent on. 'sigma': it follows the shell's column, C_f = min(1, Phi(-(y + a)/sigma) / Phi(-a/sigma)) with Phi the normal distribution, y = ln(Sigma_v/Sigma), Sigma the shell's own mass over 4 pi r_s^2, Sigma_v its value at the vent, sigma = 1.5 the log-normal width of the column over the sky, and a set by cf_half_radius. C_f is 1 at the vent, falls as the shell thins and returns to 1 if the column grows again; it sets the leak in phase 1c and the photon budget of every later row. Needs vent_model reservoir and coverFraction 1.0.", category='input_solver', unit=None, exclude_from_snapshot=True, run_const=True, validator=_validate_cover_law),
+    ParamSpec(name='cf_half_radius', default='2', info="cover_law sigma only: h, the radius in vent radii at which C_f = 1/2 if the shell swept no more mass (h = 2: C_f = 0.88, 0.71, 0.5, 0.25 and 0.08 at 1.2, 1.5, 2, 3 and 5 vent radii). A finite number > 1; a very large value (1e6) keeps C_f at 1, the sealed reservoir.", category='input_solver', unit=None, exclude_from_snapshot=True, run_const=True, validator=_validate_cf_half_radius),
     ParamSpec(name='cooling_boost_mode', default='none', info="Opt-in unresolved-interface-cooling boost (Paper-II note, docs/dev/transition/pdv-trigger/PLAN.md). 'none' (default) = resolved cooling unchanged, BYTE-IDENTICAL. 'multiplier' = Lleak + cooling_boost_fmix*Lcool. 'theta_target' = max(Lcool+Lleak, cooling_boost_theta*Lmech) (tops up to a target loss fraction, single-count). The boosted loss feeds the beta-delta residual, the energy ODE, AND the transition trigger consistently. Never a (1-theta)*Lmech input rescale on top of Lcool -- that double-counts. FALLBACK: 'multiplier' is superseded for L21b *calibration* by cooling_boost_fA (docs/dev/transition/pdv-trigger/FA_STATE_COUPLED.md); retained as a supported opt-in mechanism and bench control arm.", category='input_solver', unit=None, exclude_from_snapshot=True, run_const=True, validator=_validate_cooling_boost_mode),
     ParamSpec(name='cooling_boost_fmix', default='1.0', info='Multiplier on the resolved cooling integral when cooling_boost_mode=multiplier (f_mix >= 1). Default 1.0 = no boost. FALLBACK: superseded for L21b *calibration* by cooling_boost_fA (docs/dev/transition/pdv-trigger/FA_STATE_COUPLED.md); retained pending a state-coupled successor.', category='input_solver', unit=None, exclude_from_snapshot=True, run_const=True, validator=_validate_cooling_boost_fmix),
     ParamSpec(name='cooling_boost_theta', default='0.0', info='Target loss fraction theta = Lloss/Lmech when cooling_boost_mode=theta_target (0..1, with a ceiling theta_max<1 at GMC-core density). Default 0.0 = off.', category='input_solver', unit=None, exclude_from_snapshot=True, run_const=True, validator=_validate_cooling_boost_theta),
@@ -748,6 +782,7 @@ SPECS: tuple[ParamSpec, ...] = (
     ParamSpec(name='SimulationEndCode', default=None, info='Exit code (SimulationEndCode enum) for simulation completion', category='runtime_control', unit='N/A'),
     ParamSpec(name='_snapshots_after_rCloud', default=0, info='Snapshots saved with R2 > rCloud (used by stop_at_rCloud_nSnap)', category='runtime_control', unit='N/A', exclude_from_snapshot=True),
     ParamSpec(name='_shell_mass_net_on', default=False, info='shell_mass_net latch (D-MB18): True once the bubble has held less than the swept mass in 1b/1c; from then on its mass comes off the shell (get_bubbleParams.evaporated_mass)', category='runtime_control', unit='N/A', exclude_from_snapshot=True),
+    ParamSpec(name='_cf_Sigma_vent', default=0.0, info='cover_law sigma: the shell column at the vent [Msun pc^-2], stored once at the first phase-1c segment of a vented reservoir (get_bubbleParams.store_vent_column); 0.0 = not yet', category='runtime_control', unit='Msun/pc**2', exclude_from_snapshot=True),
     ParamSpec(name='dt_switchon', default=None, info='R1 switch-on ramp window, set at phase-1a entry to max(1e-3 Myr, 3*dt_phase0); None means 1e-3 (get_bubbleParams.switchon_window, docs/dev/switchon-successor/PLAN.md)', category='runtime_control', unit='Myr', exclude_from_snapshot=True),
     ParamSpec(name='energy_handoff_1a', default=False, info='Phase 1a handed a spent bubble (Eb collapse) to momentum; phase 1b is skipped and the run continues 1c -> 2 (docs/dev/transition/pdv-trigger/HIMASS_HANDOFF_PLAN.md)', category='runtime_control', unit='N/A', exclude_from_snapshot=True),
     ParamSpec(name='transition_channel', default='', info="How the energy-driven phase ended (phase 1b's exit reason, or phase 1a's when 1b was skipped): cooling_balance is the normal way; velocity_sign_change (shell turned around, Eb dropped to the floor; turnaround_rule momentum only), energy_to_momentum (Eb spent) and no_physical_root_handoff (bubble structure unsolvable in >= 50 of the last 60 segments) are forced hand-offs to momentum", category='runtime_control', unit='N/A', exclude_from_snapshot=True),
