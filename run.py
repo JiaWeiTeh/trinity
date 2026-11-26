@@ -157,7 +157,12 @@ def run_single(args):
     from trinity._input import read_param
     from trinity._output import header
 
-    params = read_param.read_param(args.path2param)
+    # read_param runs before the run's log exists (setup_logging needs its path2output and log_level): hold its log
+    # records and replay them below, so its INFO lines reach trinity.log too (dropped before 2026-11-26).
+    from trinity._functions.logging_setup import HeldRecords
+    held = HeldRecords()
+    with held:
+        params = read_param.read_param(args.path2param)
 
     header.show_param(params)
 
@@ -196,6 +201,7 @@ def run_single(args):
         log_file_name='trinity.log',
         use_colors=True,
     )
+    held.replay()
     logger.info(f"Parameter file loaded: {args.path2param}")
     logger.info(f"Log level set to: {log_level}")
     logger.info(f"Console output: {log_console}, File output: {log_file}")
