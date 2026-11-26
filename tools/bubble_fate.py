@@ -152,6 +152,8 @@ CLEARED = {
 SHELL = {
     "intact": "the swept shell is still a distinct overdensity",
     "dissolved": "shell_nMax fell below nISM for stop_t_diss (default 1 Myr) continuously",
+    "disrupted": "hole_forces on: the closed fraction C_f fell below cf_disrupt (default 0.1), so the dense gas left "
+    "no longer covers enough of the sky to be one shell (end code 5)",
 }
 
 STOPS = {
@@ -209,6 +211,24 @@ CAUSES: Sequence[Cause] = (
         "not necessarily coll_r). This is a completed collapse.",
         trap="Says NOTHING about whether the cloud was cleared first -- 27.1% of these "
         "runs carry broke_out=True. Those are 'recaptured', not 'recollapsed'.",
+    ),
+    Cause(
+        code=5,
+        outcome="shell_disrupted",
+        details=("Shell disrupted",),
+        stop="physical",
+        condition="hole_forces on and the row's closed fraction cover_fraction(params) < cf_disrupt (default 0.1), "
+        "checked after the row is written (docs/dev/leaky-reservoir/C1D_PLAN.md, 2026-11-26)",
+        phases="transition (1c), momentum (2); phii_scheme swept only",
+        sites=(
+            "phase2_momentum/swept.py: run_phase_transition_swept and run_phase_momentum_swept, right after the "
+            "reached_tmax check (get_bubbleParams.disrupted)",
+        ),
+        sets_flags="EndSimulationDirectly=True",
+        means="The holes cover more than 1 - cf_disrupt of the sky: the dense gas left is clumps, not one shell, "
+        "and the one-shell model stops. A completed, physical end.",
+        trap="Not 'dissolved': the density contrast may still be high; it is the covered area that is gone. R2 at "
+        "the end is where the shell came apart, not a final size.",
     ),
     Cause(
         code=0,
@@ -476,6 +496,15 @@ REPORTS: Sequence[Report] = (
         False,
     ),
     Report(
+        "shell_disrupted",
+        "shell=disrupted (any motion, any cleared)",
+        "hole_forces on: the closed fraction of the shell fell below cf_disrupt (0.1) and the run ended (end code "
+        "5). The holes cover nearly the whole sky; the dense gas left is clumps. Report `cleared` alongside it.",
+        "Not 'shell_dissolved' (that is the density contrast against nISM) and not a final size: R2 at the end is "
+        "where the shell came apart.",
+        False,
+    ),
+    Report(
         "radius_capped",
         "stop=wall, motion != contracting",
         "Hit the stop_r = 500 pc wall. Physically a `breakout`, held separate so a "
@@ -525,6 +554,7 @@ REPORT_ORDER: Sequence[str] = (
     "expanding",
     "breakout",
     "shell_dissolved",
+    "shell_disrupted",
     "radius_capped",
     "unresolved_infall",
     "unresolved",
@@ -539,6 +569,7 @@ REPORT_COLORS: Mapping[str, str] = {
     "expanding": "#a6bddb",
     "breakout": "#2c7fb8",
     "shell_dissolved": "#7fcdbb",
+    "shell_disrupted": "#41b6c4",
     "radius_capped": "#74c476",
     # the two non-fates are both grey: they are the same epistemic class.
     # unresolved_infall is the darker of the pair, matching the "inward" end
@@ -712,7 +743,8 @@ def shell_of(row: Mapping[str, Any]) -> str:
     """Axis 3: is the swept shell still a distinct overdensity."""
     if _truthy(row.get("isDissolved")):
         return "dissolved"
-    return "dissolved" if _outcome_of(row) == "shell_dissolved" else "intact"
+    out = _outcome_of(row)
+    return "dissolved" if out == "shell_dissolved" else "disrupted" if out == "shell_disrupted" else "intact"
 
 
 def stop_of(row: Mapping[str, Any]) -> str:
@@ -745,6 +777,11 @@ def _report_rules():
             "shell_dissolved",
             "shell == dissolved",
             lambda m, c, s, st: s == "dissolved",
+        ),
+        (
+            "shell_disrupted",
+            "shell == disrupted",
+            lambda m, c, s, st: s == "disrupted",
         ),
         (
             "recaptured",
@@ -905,6 +942,8 @@ def _plausible(cause: Cause, report: str) -> bool:
                 if cause.outcome == "shell_dissolved" and shell != "dissolved":
                     continue
                 if cause.outcome != "shell_dissolved" and shell == "dissolved":
+                    continue
+                if (cause.outcome == "shell_disrupted") != (shell == "disrupted"):
                     continue
                 for name, _w, pred in REPORT_TABLE:
                     if pred(motion, cleared, shell, cause.stop):

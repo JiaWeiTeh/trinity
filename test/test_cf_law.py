@@ -134,7 +134,7 @@ def test_column_and_hook_outside_the_law():
 def test_keys_and_defaults():
     spec = {s.name: s for s in SPECS}
     law, h, sv = spec["cover_law"], spec["cf_half_radius"], spec["_cf_Sigma_vent"]
-    assert law.default == "constant" and law.validator is _validate_cover_law
+    assert law.default == "sigma" and law.validator is _validate_cover_law   # the default since C1D_PLAN §10.3
     assert h.default == "2" and h.validator is _validate_cf_half_radius
     for s in (law, h):
         assert s.run_const is True and s.exclude_from_snapshot is True and s.category == "input_solver"
@@ -150,11 +150,10 @@ def test_cover_law_validator():
     for bad in ("Sigma", "lognormal", "", None, 1.0):
         with pytest.raises(ParameterFileError):
             _validate_cover_law(bad, ok)
-    for model in ("vacuum", "ambient"):                                               # D-6: reservoir only
-        with pytest.raises(ParameterFileError):
-            _validate_cover_law("sigma", _ns(vent_model=model, coverFraction=1.0))
-    with pytest.raises(ParameterFileError):
-        _validate_cover_law("sigma", {})
+    for model in ("vacuum", "ambient"):   # the law acts in the reservoir only: elsewhere accepted, a no-op (C1D §10.3)
+        _validate_cover_law("sigma", _ns(vent_model=model, coverFraction=1.0))
+        _validate_cover_law("sigma", _ns(vent_model=model, coverFraction=0.77))
+    _validate_cover_law("sigma", {})                                                  # vent_model falls back to vacuum
     with pytest.raises(ParameterFileError):                                           # one source of C_f
         _validate_cover_law("sigma", _ns(vent_model="reservoir", coverFraction=0.5))
 
@@ -239,7 +238,8 @@ def test_reservoir_rows_and_rhs_follow_the_law(tmp_path, monkeypatch):
     """A column at the vent three times the entry's (as if the shell had already thinned): C_f ~ 0.6 from the first row.
     Each row's shell_fLeak and leak use the law at the row's column; the integrated dEb/dt at the first segment start
     is L_mech - L_cool - 4 pi R2^2 P_b U - L_leak with that leak; the RHS asks for C_f at its own (r, m); the stored
-    column is not overwritten."""
+    column is not overwritten. It runs under the registry defaults, cover_law sigma and hole_forces on (C1D_PLAN.md
+    §10.3), so the RHS's C_f calls come from hole_mass and the leak line."""
     p = _entry(tmp_path)
     m_b = p["bubble_mass"].value
     Sv = 3.0 * ((p["shell_mass"].value - m_b) / (4.0 * math.pi * p["rs_dyn"].value ** 2))
@@ -250,7 +250,9 @@ def test_reservoir_rows_and_rhs_follow_the_law(tmp_path, monkeypatch):
 
     def spy_ivp(*a, **kw):                   # the runner's segment solves: their RHS at the segment start
         if not a and len(kw.get("y0", ())) == 3 and "events" in kw:
-            starts.append((kw["y0"].copy(), kw["fun"](kw["t_span"][0], kw["y0"])))
+            n0 = len(calls)                  # the C_f calls of this RHS evaluation only (hole_mass asks too)
+            d = kw["fun"](kw["t_span"][0], kw["y0"])
+            starts.append((kw["y0"].copy(), d, [c for c in calls[n0:] if c[0] is not None]))
         return real_ivp(*a, **kw)
 
     def spy_cf(params, r=None, m=None):
@@ -270,12 +272,15 @@ def test_reservoir_rows_and_rhs_follow_the_law(tmp_path, monkeypatch):
         assert r["shell_fLeak"] == pytest.approx(1.0 - cf, abs=1e-12)
         leak = G.get_leak_luminosity(cf, r["R2"], r["Pb"], r["c_sound"], g("gamma_adia"), r["press_HII_in"])
         assert r["bubble_Leak"] == pytest.approx(leak, rel=1e-9, abs=1e-30)
-    r, (y0, d) = tr[0], starts[0]
+    r, (y0, d, rhs_calls) = tr[0], starts[0]
     assert 1.0 - r["shell_fLeak"] < 0.9                                             # the law acts in this test
     assert (r["rs_dyn"], r["v2"], r["Eb"]) == tuple(y0)
-    # the first RHS call is the spy's at the first segment start: C_f at its own (r, m), which equals the row's up to the
-    # hand-off mass fixed point (1e-10); the energy equation is checked with the RHS's own C_f
-    r_rhs, m_rhs = next((x, mx) for x, mx in calls if x is not None)
+    # the calls made inside the spy's RHS evaluation at the first segment start: C_f at the RHS's own (r, m), which
+    # equals the row's up to the hand-off mass fixed point (1e-10); under the defaults hole_mass and the leak line both
+    # ask, at the same (r, m); the energy equation is checked with that C_f
+    assert rhs_calls
+    r_rhs, m_rhs = rhs_calls[0]
+    assert all(c == (r_rhs, m_rhs) for c in rhs_calls)
     assert r_rhs == y0[0]
     # D-8: the RHS hands the law the shell's own mass, its mass minus the evaporated mass (SWEEP: M(<r); COAST: Ms,
     # which equals M(<r) to the hand-off's 1e-10 at this entry); m alone would be 10 % off

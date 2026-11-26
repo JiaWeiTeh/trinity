@@ -268,10 +268,11 @@ def cover_fraction(params, r=None, m=None):
     shell has vented, where the wall is sealed (1.0). Under cover_law 'sigma' (docs/dev/leaky-reservoir/CF_LAW_PLAN.md)
     the closed fraction after the vent is cf_law of the column at the vent over the column now, the shell's own
     mass m [Msun] over 4 pi r**2 with r [pc] its outer radius (without r: the row's, shell_column); 1.0 until the
-    column at the vent is stored (store_vent_column)."""
+    column at the vent is stored (store_vent_column). The law acts under vent_model 'reservoir' only; elsewhere
+    coverFraction holds under either law (C1D_PLAN.md §10.3: cover_law defaults to 'sigma')."""
     if vent_model(params) == 'reservoir' and not vented(params):
         return 1.0
-    if cover_law(params) == 'sigma':
+    if cover_law(params) == 'sigma' and vent_model(params) == 'reservoir':
         Sigma_v = _val(params, '_cf_Sigma_vent', 0.0)
         if Sigma_v <= 0.0:
             return 1.0
@@ -291,7 +292,8 @@ CF_SIGMA = 1.5
 
 
 def cover_law(params):
-    """The cover_law in force: 'constant' (also where the key is absent) or 'sigma'."""
+    """The cover_law in force: 'constant' or 'sigma'. The registry's default is 'sigma' (C1D_PLAN.md §10.3); hand-built
+    params without the key (older tests, harnesses) read 'constant', the behaviour they were written for."""
     return _val(params, 'cover_law', 'constant')
 
 
@@ -310,6 +312,75 @@ def store_vent_column(params):
     the phase of that row, whose evaporated_mass rule the stored column then carries."""
     if cover_law(params) == 'sigma' and params['_cf_Sigma_vent'].value <= 0.0:
         params['_cf_Sigma_vent'].value = shell_column(params)
+
+
+def hole_forces(params):
+    """True under hole_forces 'on' and phii_scheme swept (docs/dev/leaky-reservoir/C1D_PLAN.md): the forces on the
+    shell see its holes. 'on' is the registry's default since 2026-11-26 (§10.3); other schemes have no
+    implementation, so the key is a no-op there. Hand-built params without the key read 'off'."""
+    return (_val(params, 'hole_forces', 'off') == 'on'
+            and str(_val(params, 'phii_scheme', 'swept')).strip().lower() == 'swept')
+
+
+def ir_depth(tau, Cf):
+    """hole_forces (C1D_PLAN.md §4.2, D-3): the IR optical depth of the trapping factor 1 + tau once holes cover
+    1 - Cf of the sky. A re-emitted photon that meets the shell leaves through it with chance T = 1/(1 + tau) and
+    then finds a hole with chance 1 - Cf, so the hits per covered steradian are (1 + tau)/(1 + (1 - Cf) tau) and the
+    depth is Cf tau/(1 + (1 - Cf) tau): tau at Cf = 1 (exactly, in floating point), Cf tau when thin, Cf/(1 - Cf)
+    when thick. Dimensionless. The plan's own derivation: no paper read gives a covering-fraction form."""
+    return Cf * tau / (1.0 + (1.0 - Cf) * tau)
+
+
+def hole_mass(params, r, Ms, m_ev):
+    """hole_forces (C1D_PLAN.md §4, D-1, D-2): (k, M_r) for a shell of outer radius r [pc], swept mass Ms [Msun] and
+    evaporated mass m_ev [Msun]. k is the closed fraction that feels the surface forces and sweeps gas, M_r [Msun]
+    the real mass that gravity and inertia act on: du/dt = (k F - G M_r/r^2 (M_* + m_ev + M_r/2) - k Mdot u)/M_r,
+    with F today's force per covered steradian (times 4 pi). Off: (1.0, Ms - m_ev), today's terms bit for bit. On,
+    holes open from birth (vent_model vacuum, ambient): (C_f, C_f (Ms - m_ev)), today's per-steradian forces with the
+    self-gravity on the real mass (Harper-Clark & Murray 2009, ApJ 693, 1696, eq. 9). On, vent_model reservoir:
+    (C_f, Ms - m_ev - D), D the gas the holes did not sweep since the vent (hole_deficit); D = 0 and C_f = 1 before
+    it. C_f is cover_fraction at (r, Ms - m_ev), per call under cover_law sigma (D-5): the law reads the swept
+    column, since the still-covered directions sweep as every direction does without holes (ruled 2026-11-26
+    21:1x, C1D_PLAN.md §10.3; the real-column reading D-4' is superseded)."""
+    mn = Ms - m_ev
+    if not hole_forces(params):
+        return 1.0, mn
+    if vent_model(params) != 'reservoir':
+        Cf = cover_fraction(params, r, mn)
+        return Cf, Cf * mn
+    return cover_fraction(params, r, mn), mn - _hole_D(params, Ms)
+
+
+def _hole_D(params, Ms):
+    """The deficit D [Msun] at swept mass Ms after the row hole_deficit last advanced: D + (1 - C_f)(Ms - Ms_seg)
+    with D, C_f and Ms_seg held at that row; 0.0 before the vent (and always under hole_forces off)."""
+    Ms_seg = _val(params, '_hole_Ms_seg', 0.0)
+    if Ms_seg <= 0.0:
+        return 0.0
+    return params['_hole_D'].value + (1.0 - params['_hole_Cf_seg'].value) * (Ms - Ms_seg)
+
+
+def hole_deficit(params, Ms):
+    """hole_forces after a vent (vent_model reservoir; C1D_PLAN.md §4, D-4): advance the deficit D, the gas the holes
+    did not sweep, to a row of swept mass Ms [Msun]. The holes sweep nothing, so dD = (1 - C_f) dMs, summed per
+    row, D += (1 - C_f,prev)(Ms - Ms_prev), with this row's C_f (cover_fraction of the row) held for the next step,
+    so the rows rebuild D exactly. D starts at 0 at the first row that has vented: up to there the shell had swept
+    every direction. Called by swept's _forces_to_params at the end of every row (rs_dyn and shell_mass written), so
+    the RHS that follows holds this row's state. A no-op when off, under vacuum or ambient, and before the vent.
+    store_vent_column is left as cf_law has it: vented() marks the vent here, at any vent point."""
+    if not (hole_forces(params) and vent_model(params) == 'reservoir' and vented(params)):
+        return
+    params['_hole_D'].value = _hole_D(params, Ms)
+    params['_hole_Ms_seg'].value = Ms
+    params['_hole_Cf_seg'].value = cover_fraction(params)   # the row's
+
+
+def disrupted(params):
+    """hole_forces (C1D_PLAN.md §10.3, E2): True once the shell's closed fraction (the row's cover_fraction) is below
+    cf_disrupt (0.1 by default, ruled 2026-11-26): the holes then cover so much of the sky that the dense gas left no
+    longer forms a shell, and the swept 1c and momentum runners end the run (SimulationEndCode.SHELL_DISRUPTED).
+    False under hole_forces off."""
+    return hole_forces(params) and cover_fraction(params) < _val(params, 'cf_disrupt', 0.1)
 
 
 def _cf_log(y, a, sigma):

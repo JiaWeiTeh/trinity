@@ -359,12 +359,16 @@ def layer_terms(sp, R2, Pc, params):
     return K, F_rad_sh, P_out, L8
 
 
-def f_rad(sp, params):
-    """Radiation force on the shell, exactly as the c3c momentum runner computes it."""
+def f_rad(sp, params, Cf=1.0):
+    """Radiation force on the shell, exactly as the c3c momentum runner computes it; under hole_forces the IR depth
+    sees the holes, Cf the closed fraction (get_bubbleParams.ir_depth, docs/dev/leaky-reservoir/C1D_PLAN.md §4.2)."""
     if sp.isDissolved:
         return 0.0
+    tau = sp.shell_tauKappaRatio * params['dust_KappaIR'].value
+    if get_bubbleParams.hole_forces(params):
+        tau = get_bubbleParams.ir_depth(tau, Cf)
     return (sp.shell_fAbsorbedWeightedTotal * params['Lbol'].value / params['c_light'].value
-            * (1.0 + sp.shell_tauKappaRatio * params['dust_KappaIR'].value))
+            * (1.0 + tau))
 
 
 def root_R2(rs, Ms, fb, params, guess=None, Eb=None, phase='transition', t=None):
@@ -498,9 +502,12 @@ def _forces_to_params(params, root, rs, u, Ms, Mdot, U, fabs_ion, fb, Eb=None, p
     Pext = p_ext(rs, fabs_ion, params)
     params['shell_mass'].value, params['shell_massDot'].value = Ms, Mdot
     m_ev = get_bubbleParams.evaporated_mass(params)          # shell_mass_net (mass-budget/PLAN.md); 0.0 when off
-    params['F_grav'].value = params['G'].value * (Ms - m_ev) / rs**2 * (params['mCluster'].value + m_ev + 0.5 * (Ms - m_ev))
+    # hole_forces (C1D_PLAN §4, D-6): the columns keep their meaning per covered steradian (times 4 pi); F_grav is the
+    # gravity on the real mass per covered sky, M_r / k. Off: k = 1.0, M_r = Ms - m_ev, today's column bit for bit
+    k, Mr = get_bubbleParams.hole_mass(params, rs, Ms, m_ev)
+    params['F_grav'].value = params['G'].value * (Mr / k) / rs**2 * (params['mCluster'].value + m_ev + 0.5 * Mr)
     params['F_ram'].value = FOUR_PI * R2**2 * Pc
-    params['F_rad'].value = f_rad(sp, params)
+    params['F_rad'].value = f_rad(sp, params, k)
     params['F_ion_in'].value = FOUR_PI * rs**2 * Pext
     params['P_HII'].value, params['F_HII'].value = 0.0, 0.0
     params['n_IF'].value, params['R_IF'].value = sp.n_IF, sp.R_IF
@@ -517,6 +524,7 @@ def _forces_to_params(params, root, rs, u, Ms, Mdot, U, fabs_ion, fb, Eb=None, p
     params['K_s'].value, params['F_rad_sh'].value, params['P_outer'].value = root['K'], root['F_rad_sh'], root['P_out']
     params['swept_root_iter'].value, params['swept_root_resid'].value = root['iters'], root['resid']
     params['n_shell_solves'].value = root['nsolve']
+    get_bubbleParams.hole_deficit(params, Ms)   # hole_forces after a vent (C1D_PLAN §4, D-4); a no-op otherwise
 
 
 def _end(params, reason, code, message):
@@ -680,8 +688,10 @@ class ImplicitSwept:
             F = FOUR_PI * R2t**2 * Pc + K - FOUR_PI * r**2 * p_ext(r, fabs_ion, params) + F_rad
             k_t = FOUR_PI * R2t**2 * get_bubbleParams.bubble_E2P(y[2], R2t, R1t, gamma)   # unramped Pb, as compute_R1_Pb
             _, Edot = live_rates(Ed, W0, k_t, U_t, md, tan, zeta)
-            mn = m - m_ev                                    # the shell's own mass; the closure keeps the swept m
-            return np.array([U_t, (F - G * mn / r**2 * (mCluster + m_ev + 0.5 * mn) - md * v) / mn, Edot,
+            # hole_forces (C1D_PLAN §4): k C_f on the surface forces and the sweep, gravity and inertia on the real
+            # mass Mr; off: (1.0, m - m_ev), today's terms. The closure keeps the swept m
+            k, Mr = get_bubbleParams.hole_mass(params, r, m, m_ev)
+            return np.array([U_t, (k * F - G * Mr / r**2 * (mCluster + m_ev + 0.5 * Mr) - k * md * v) / Mr, Edot,
                              delta2dTdt_pure(t, y[3], delta)])
         return f
 
@@ -812,6 +822,12 @@ def run_phase_momentum_swept(params) -> MomentumPhaseResults:
         if tmax is not None and t_now >= tmax:
             termination_reason = _end(params, "reached_tmax", SimulationEndCode.STOPPING_TIME, 'Stopping time reached')
             break
+        if get_bubbleParams.disrupted(params):   # hole_forces: too little covered sky for a shell (C1D_PLAN §10.3)
+            termination_reason = _end(params, "shell_disrupted", SimulationEndCode.SHELL_DISRUPTED,
+                                      f"Shell disrupted: closed fraction C_f = "
+                                      f"{get_bubbleParams.cover_fraction(params):.3g} < cf_disrupt "
+                                      f"{params['cf_disrupt'].value}")
+            break
 
         x, K, F_rad, M_floor = root['R2'] / rs, root['K'], params['F_rad'].value, Ms
 
@@ -826,7 +842,8 @@ def run_phase_momentum_swept(params) -> MomentumPhaseResults:
             F = (FOUR_PI * R2t**2 * P_in + K
                  - FOUR_PI * r**2 * P_out + F_rad)
             U_t, m, md = mode_rates(v, r, M_floor, sweep, fabs_ion, params)   # S7: one smooth RHS per mode
-            return np.array([U_t, (F - G * m / r**2 * (mCluster + 0.5 * m) - md * v) / m])
+            k, Mr = get_bubbleParams.hole_mass(params, r, m, 0.0)   # hole_forces (C1D_PLAN §4); off: (1.0, m)
+            return np.array([U_t, (k * F - G * Mr / r**2 * (mCluster + 0.5 * Mr) - k * md * v) / Mr])
 
         values_before = _monitor(params)
         solver_kwargs = dict(fun=rhs, t_span=(t_now, min(t_now + dt_segment, tmax)), y0=np.array([rs, u]),
@@ -1057,6 +1074,12 @@ def run_phase_transition_swept(params):
         if tmax is not None and t_now >= tmax:
             termination_reason = _end(params, "reached_tmax", SimulationEndCode.STOPPING_TIME, 'Stopping time reached')
             break
+        if get_bubbleParams.disrupted(params):   # hole_forces: too little covered sky for a shell (C1D_PLAN §10.3)
+            termination_reason = _end(params, "shell_disrupted", SimulationEndCode.SHELL_DISRUPTED,
+                                      f"Shell disrupted: closed fraction C_f = "
+                                      f"{get_bubbleParams.cover_fraction(params):.3g} < cf_disrupt "
+                                      f"{params['cf_disrupt'].value}")
+            break
 
         # R2 moves with r_s at the slope zeta over the segment, so the bubble volume in P_th changes at the same
         # Rdot2 = zeta U the work term charges (a held R2/r_s would grow it at (R2/r_s) U instead)
@@ -1076,6 +1099,7 @@ def run_phase_transition_swept(params):
             P_out = p_ext(r, fabs_ion, params)
             F = FOUR_PI * R2t**2 * Pc + K - FOUR_PI * r**2 * P_out + F_rad
             U_t, m, md = mode_rates(v, r, M_floor, sweep, fabs_ion, params)   # S7: one smooth RHS per mode
+            k, Mr = get_bubbleParams.hole_mass(params, r, m, m_ev)   # hole_forces (C1D_PLAN §4); off: (1.0, m - m_ev)
             # vent_model: once vented the leak feels the outside pressure; in the reservoir the cooling follows Pb^2 V
             Cf_t = get_bubbleParams.cover_fraction(params, r, m - m_ev) if cf_sigma else Cf   # the shell's own mass
             L_leak = get_bubbleParams.get_leak_luminosity(Cf_t, R2t, Pc, c_sound, gamma, P_out if vented else 0.0)
@@ -1089,8 +1113,7 @@ def run_phase_transition_swept(params):
                 if vented and P_out > 0.0 and Pc > 0.0:
                     Ed_sc *= 1.0 - P_out / Pc
                 Ed = min(Ed, Ed_sc)
-            mn = m - m_ev                                    # the shell's own mass
-            return np.array([U_t, (F - G * mn / r**2 * (mCluster + m_ev + 0.5 * mn) - md * v) / mn, Ed])
+            return np.array([U_t, (k * F - G * Mr / r**2 * (mCluster + m_ev + 0.5 * Mr) - k * md * v) / Mr, Ed])
 
         values_before = _monitor(params)
         solver_kwargs = dict(fun=rhs, t_span=(t_now, min(t_now + dt_segment, tmax)), y0=np.array([rs, u, Eb]),

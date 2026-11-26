@@ -57,8 +57,10 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 # One arm of docs/dev/rosette-cf/rosette_cf_survey_PISM1e5_fmix.param. Every
 # line that deviates from TRINITY's defaults is load-bearing for reaching phases
 # 1c/2 — see the module docstring. stop_t = 0.02 Myr sits just past the momentum
-# hand-off at t = 0.0087 so the fixture stays ~2 minutes.
+# hand-off at t = 0.0087 so the fixture stays ~2 minutes. hole_forces off keeps the golden of this arm (the key
+# defaults to on since 2026-11-26, docs/dev/leaky-reservoir/C1D_PLAN.md §10.3, and coverFraction is 0.70 here).
 _FIXTURE_PARAM = """\
+hole_forces           off
 mCloud                1e4
 sfe                   0.1
 nCore                 5e2
