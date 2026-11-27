@@ -299,7 +299,11 @@ def cover_law(params):
 
 def shell_column(params, r=None, m=None):
     """The shell's mean column [Msun pc^-2]: its own mass m [Msun] over 4 pi r**2, r [pc] its outer radius. Without
-    r, the row's: (shell_mass - evaporated_mass) over 4 pi rs_dyn**2 (phii_scheme swept writes rs_dyn)."""
+    r, the row's: (shell_mass - evaporated_mass) over 4 pi rs_dyn**2 (phii_scheme swept writes rs_dyn).
+    This is the column a ray from the cluster crosses, NOT a cloud surface density: the same mass at the same radius
+    has the projected surface density m / (pi r**2), four times larger. Paper II's Sigma = mCloud_input / (pi rCloud**2)
+    (stars included) and seed_Sigma = M_gas / (pi rCloud**2) are projected; the cloud's gas swept into a shell at
+    rCloud has shell_column = seed_Sigma / 4 = (1 - sfe) Sigma / 4 (Raskutti et al. 2016, sec. 4.1)."""
     if r is None:
         r, m = params['rs_dyn'].value, params['shell_mass'].value - evaporated_mass(params)
     return m / (4.0 * np.pi * r**2)
