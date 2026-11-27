@@ -82,25 +82,39 @@ def test_energy_collapsed_endcode_is_inspection_required():
 
 
 # --- Energy-collapse ROUTING (docs/dev/transition/pdv-trigger/HIMASS_HANDOFF_PLAN.md) ---
-# When an energy-driven bubble collapses, a FINITE Eb<=0 is an energy->momentum
-# transition (Pb has floored to ~P_ram) and must route to the momentum phase, NOT
-# dead-stop. Only a NON-FINITE Eb is unrecoverable and keeps ENERGY_COLLAPSED.
+# A spent bubble (Pb <= phaseSwitch_PbPram * P_ram(R2), or a FINITE Eb <= 0) is an
+# energy->momentum transition and must route to the momentum phase, NOT dead-stop.
+# Only a NON-FINITE Eb is unrecoverable and keeps ENERGY_COLLAPSED. A strong wind:
+# 3e8 code units (1.8e38 erg/s) at 2e3 pc/Myr, R2 = 20 pc; a young weak wind: 1e36
+# erg/s, its Weaver bubble at 1e-3 Myr (Eb = (5/11) L t, R2 = 0.104 pc).
+_STRONG = dict(R2=20.0, Lmech_total=3e8, v_mech_total=2e3, gamma=5 / 3, PbPram=1.01)
+_L_WEAK = 1e36 / (cvt.E_au2cgs / cvt.Myr2s)   # erg/s -> Msun pc^2 / Myr^3
+
+
+def _classify(Eb, **kw):
+    from trinity.phase1b_energy_implicit.run_energy_implicit_phase import classify_energy_collapse
+    return classify_energy_collapse(Eb, **{**_STRONG, **kw})
+
 
 def test_classify_energy_collapse_routes_finite_collapse_to_momentum():
-    from trinity.phase1b_energy_implicit.run_energy_implicit_phase import classify_energy_collapse
-    assert classify_energy_collapse(0.0) == 'momentum'
-    assert classify_energy_collapse(-9.143e8) == 'momentum'   # the fail_repro collapse value
+    assert _classify(0.0) == 'momentum'
+    assert _classify(-9.143e8) == 'momentum'   # the fail_repro collapse value
+    assert _classify(-1.0, Lmech_total=0.0, v_mech_total=0.0) == 'momentum'   # no wind: Eb <= 0 alone
+
+
+def test_classify_energy_collapse_routes_a_spent_bubble_to_momentum():
+    assert _classify(1e3) == 'momentum'   # Pb = 1.0002 P_ram(R2) for the strong wind
 
 
 def test_classify_energy_collapse_stops_only_on_nonfinite():
-    from trinity.phase1b_energy_implicit.run_energy_implicit_phase import classify_energy_collapse
-    assert classify_energy_collapse(np.nan) == 'stop'
-    assert classify_energy_collapse(np.inf) == 'stop'
-    assert classify_energy_collapse(-np.inf) == 'stop'
+    assert _classify(np.nan) == 'stop'
+    assert _classify(np.inf) == 'stop'
+    assert _classify(-np.inf) == 'stop'
 
 
 def test_classify_energy_collapse_none_while_energy_driven():
-    from trinity.phase1b_energy_implicit.run_energy_implicit_phase import classify_energy_collapse
-    # A healthy, finite, positive Eb must NOT route or stop -> byte-identical (G0).
-    assert classify_energy_collapse(1.0e8) is None
-    assert classify_energy_collapse(1e-6) is None
+    assert _classify(1.0e8) is None   # Pb = 33.5 P_ram(R2)
+    # a young weak-wind bubble BELOW the old 1e3 floor still drives: Pb = 9.07 P_ram(R2)
+    Eb_weak = 5 / 11 * _L_WEAK * 1e-3
+    assert Eb_weak < 1e3
+    assert _classify(Eb_weak, R2=0.104, Lmech_total=_L_WEAK) is None

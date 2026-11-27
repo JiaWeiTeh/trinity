@@ -568,6 +568,25 @@ def pRam(r, Lmech, v_mech):
     return Lmech / (2 * np.pi * r**2 * v_mech)
 
 
+def bubble_spent(Eb, R2, Lmech_total, v_mech_total, gamma, PbPram, P_b=None):
+    """True once the hot bubble pushes no harder than the free wind would: Pb <= PbPram * P_ram(R2).
+
+    The energy -> momentum hand-off of phases 1a, 1b and 1c (phaseSwitch_PbPram;
+    docs/dev/main-code-change/PLAN_SPENT_BUBBLE.md). solve_R1 puts the wind termination shock where the wind's
+    ram pressure equals Pb, so at gamma 5/3 Pb = P_ram(R1) >= P_ram(R2) and Pb / P_ram(R2) = (R2/R1)^2: the test
+    asks whether the hot layer has shrunk onto the shell (R1 >= R2 / sqrt(PbPram)), whatever the wind's strength.
+    A fixed energy floor cannot ask this: a young weak-wind bubble holds less than 1e3 (1.9e46 erg) while Pb is
+    still many times P_ram. Eb <= 0 always counts as spent, also with no wind (P_ram = 0). P_b, when the caller
+    has it, is Pb at (Eb, R2) and saves the R1 solve.
+    """
+    if Eb <= 0:
+        return True
+    if P_b is None:
+        P_b = bubble_E2P(Eb, R2, solve_R1(R2, Eb, Lmech_total, v_mech_total), gamma)
+    P_ram = pRam(R2, Lmech_total, v_mech_total) if Lmech_total > 0 and v_mech_total > 0 and R2 > 0 else 0.0
+    return P_b <= PbPram * P_ram
+
+
 def mass_freeWind(r, Lmech, v_mech):
     """Mass of freely streaming wind in transit inside radius r [Msun].
 
@@ -1016,9 +1035,9 @@ def get_effective_bubble_pressure(current_phase, Eb, R2, R1, gamma,
     elif current_phase == 'transition':
         # Transition phase: use max(P_thermal, P_ram) to ensure smooth
         # handoff to momentum phase.  As Eb decays on the sound-crossing
-        # timescale, P_thermal drops while P_ram stays roughly constant.
-        # By the time Eb hits the energy floor, P_ram already dominates,
-        # so switching to momentum phase (P_ram only) is continuous.
+        # timescale, P_thermal (= P_ram(R1) >= P_ram(R2)) drops toward P_ram.
+        # The phase ends once P_thermal <= phaseSwitch_PbPram * P_ram (bubble_spent),
+        # so switching to momentum phase (P_ram only) is continuous to that factor.
         P_thermal = bubble_E2P(Eb, R2, R1, gamma)
         P_ram = pRam(R2, Lmech_total, v_mech_total)
         P_eff = max(P_thermal, P_ram)

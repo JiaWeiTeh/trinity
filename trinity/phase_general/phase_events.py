@@ -83,9 +83,9 @@ MAX_VELOCITY_EXPANSION = 1000.0  # pc/Myr (~978 km/s) - extreme outward velocity
 # bubble counts as collapsed. Bounded on both sides by measurement, not chosen:
 # see make_energy_collapse_event and docs/dev/phase1a-stiffness/PLAN.md.
 ENERGY_COLLAPSE_FRAC = 1e-3
-# The Eb [Msun pc^2 / Myr^2] phase 1c ends at, and the Eb a forced hand-off to momentum (turnaround, spent
-# bubble) leaves so the exit rows' bubble calls stay finite and 1c is skipped. 1e3 = 1.9e46 erg. One constant
-# for phases 1a, 1b and 1c (it was two equal constants, in 1c and 1b).
+# The Eb [Msun pc^2 / Myr^2] a forced hand-off to momentum (turnaround, spent bubble) leaves, so the exit rows'
+# bubble calls stay finite and phase 1c is skipped. 1e3 = 1.9e46 erg. A placeholder, not a physics floor: when
+# the bubble is spent is decided by phaseSwitch_PbPram (get_bubbleParams.bubble_spent).
 ENERGY_FLOOR = 1e3
 
 
@@ -297,7 +297,7 @@ def make_energy_floor_event(energy_floor: float, y_index: int = 2,
     event.direction = -1  # Only trigger when Eb crosses threshold from above
     event.name = name
     event.is_simulation_ending = False  # Phase ending, not simulation ending
-    event.reason_code = "energy_floor"
+    event.reason_code = name   # 'energy_zero' for 1c's Eb = 0 event, not the retired floor's name
     event.reason_message = "Bubble energy below threshold"
     return event
 
@@ -678,12 +678,12 @@ def build_implicit_phase_events(params) -> List[Callable]:
     return events
 
 
-def build_transition_phase_events(params, energy_floor: float = ENERGY_FLOOR) -> List[Callable]:
+def build_transition_phase_events(params) -> List[Callable]:
     """
     Build event list for transition phase.
 
-    Events:
-    - energy_floor: Eb < threshold (phase ending -> momentum)
+    Events (the phase's own end, the spent bubble, is checked between segments):
+    - energy_zero: Eb reaches 0 inside a segment (phase ending -> momentum)
     - min_radius: R2 < collapse_radius (simulation ending)
     - max_radius: R2 > stop_r (simulation ending)
     - velocity_runaway: |v2| too large (simulation ending)
@@ -694,8 +694,6 @@ def build_transition_phase_events(params, energy_floor: float = ENERGY_FLOOR) ->
     ----------
     params : dict
         Parameter dictionary with collapse_radius, stop_r, etc.
-    energy_floor : float
-        Minimum energy threshold (code/AU units, Msun*pc^2/Myr^2). Default ENERGY_FLOOR.
 
     Returns
     -------
@@ -707,7 +705,6 @@ def build_transition_phase_events(params, energy_floor: float = ENERGY_FLOOR) ->
     min_r = _collapse_radius_getter(params)
 
     events = [
-        make_energy_floor_event(energy_floor, y_index=2),
         make_min_radius_event(min_r),
         make_velocity_runaway_event(MAX_VELOCITY_COLLAPSE, direction="collapse"),
         make_velocity_sign_event(terminal=turnaround_ends_phase(params)),
@@ -717,12 +714,12 @@ def build_transition_phase_events(params, energy_floor: float = ENERGY_FLOOR) ->
     if stop_r is not None and stop_r > 0:
         events.append(make_max_radius_event(stop_r))
 
-    # S6 (docs/dev/turnaround-stall/solver-defects.md, ruled 2026-11-21): a 1c entered below its floor (S4) has no
-    # downward floor crossing left, and its Eb could run through zero inside a segment; 1c ends where Eb reaches 0.
-    # The runners then put Eb at the floor, as after a turnaround, so the exit row's bubble calls stay finite.
+    # S6 (docs/dev/turnaround-stall/solver-defects.md, ruled 2026-11-21): 1c ends where Eb reaches 0 inside a
+    # segment (the spent-bubble test runs between segments). The runners then put Eb at ENERGY_FLOOR, as after a
+    # turnaround, so the exit row's bubble calls stay finite.
     events.append(make_energy_floor_event(0.0, y_index=2, name="energy_zero"))
 
-    logger.debug(f"Transition phase events: energy_floor={energy_floor:.2e} (AU)")
+    logger.debug(f"Transition phase events: stop_r={stop_r}")
     return events
 
 

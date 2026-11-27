@@ -396,8 +396,8 @@ def run_phase_transition(params) -> TransitionPhaseResults:
     Run the transition phase using solve_ivp.
 
     This phase bridges energy-driven and momentum-driven expansion.
-    Energy decays on the sound-crossing timescale until it reaches
-    a floor value, then momentum phase begins.
+    Energy decays on the sound-crossing timescale until the bubble is spent
+    (Pb <= phaseSwitch_PbPram * P_ram(R2)), then momentum phase begins.
 
     Parameters
     ----------
@@ -502,8 +502,8 @@ def run_phase_transition(params) -> TransitionPhaseResults:
     # =============================================================================
 
     # Build events using centralized module
-    # Transition phase events: energy_floor (phase ending), min_radius, velocity_runaway
-    ode_events = build_transition_phase_events(params, energy_floor=ENERGY_FLOOR)
+    # Transition phase events: energy_zero (phase ending), min_radius, velocity_runaway
+    ode_events = build_transition_phase_events(params)
 
     # =============================================================================
     # Main loop (segment-based with adaptive stepping)
@@ -807,12 +807,18 @@ def run_phase_transition(params) -> TransitionPhaseResults:
         # Check termination conditions
         # ---------------------------------------------------------------------
 
-        # Phase transition criterion: the energy floor. (A ram-pressure exit, P_ram(R2)/(Pb + P_ram(R2)) > 0.9, was
-        # removed: solve_R1 makes Pb = P_ram(R1) >= P_ram(R2) at gamma 5/3, so that fraction never passed 1/2.
-        # docs/dev/main-code-change/PLAN_SPENT_BUBBLE.md)
-        if Eb < ENERGY_FLOOR:
-            termination_reason = "energy_floor"
-            logger.info(f"Energy dropped below floor ({ENERGY_FLOOR}), transitioning to momentum")
+        # Phase transition criterion: the bubble is spent, Pb <= phaseSwitch_PbPram * P_ram(R2)
+        # (get_bubbleParams.bubble_spent). It replaced a fixed energy floor (Eb < 1e3), which a weak
+        # wind reaches while Pb is still many times P_ram, and a ram-pressure fraction > 0.9, which
+        # solve_R1 makes unreachable (Pb = P_ram(R1) >= P_ram(R2): the fraction stays <= 1/2).
+        # docs/dev/main-code-change/PLAN_SPENT_BUBBLE.md
+        feedback_post = get_current_sps_feedback(t_now, params)
+        if np.isfinite(Eb) and get_bubbleParams.bubble_spent(
+                Eb, R2, feedback_post.Lmech_total, feedback_post.v_mech_total,
+                params['gamma_adia'].value, params['phaseSwitch_PbPram'].value):
+            termination_reason = "bubble_spent"
+            logger.info(f"Bubble spent (Pb <= phaseSwitch_PbPram * P_ram), transitioning to momentum "
+                        f"(t={t_now:.4e}, Eb={Eb:.4e})")
             break
 
         # Collapse detection: velocity negative AND radius decreasing.

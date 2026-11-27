@@ -379,7 +379,7 @@ def run_energy(params):
             return energy_phase_ODEs.get_ODE_Edot_pure(t, y, snapshot, params)
 
         # In-band energy-collapse guard, rebuilt per segment because its
-        # reference is this segment's starting Eb. The Eb<=0 check below runs
+        # reference is this segment's starting Eb. The spent-bubble check below runs
         # only *between* segments and Eb never actually reaches 0 -- it pins at
         # a small positive value on a stiff manifold the explicit solver cannot
         # cross, so without this the run grinds instead of stopping.
@@ -463,14 +463,18 @@ def run_energy(params):
         # Energy-driven collapse in the early (1a) phase: a massive/dense cloud can
         # lose the bubble's thermal energy (PdV work on a heavy shell, radiation
         # pushing the shell past v_wind/2, or radiative cooling) faster than the wind
-        # resupplies it, so Eb falls through zero. The energy-driven model is then
-        # invalid (it would drive R1->R2 and divide-by-zero -> Eb=nan). A finite
-        # collapse is routed to the momentum phase exactly as 1b routes it
+        # resupplies it, until Pb <= phaseSwitch_PbPram * P_ram(R2) or Eb falls through
+        # zero (past it the energy-driven model would divide by zero -> Eb=nan). A spent
+        # bubble is routed to the momentum phase exactly as 1b routes it
         # (classify_energy_collapse); only a non-finite Eb stops the run. Routing was
         # deferred as "rare" until 2026-09-30; the v4 survey grid had 7,968 such runs.
-        # See docs/dev/transition/pdv-trigger/HIMASS_HANDOFF_PLAN.md.
-        if np.isfinite(Eb) and Eb <= 0:
-            Eb = _handoff_spent_bubble(params, t_now, R2, v2, "Eb <= 0 after a segment")
+        # See docs/dev/transition/pdv-trigger/HIMASS_HANDOFF_PLAN.md and
+        # docs/dev/main-code-change/PLAN_SPENT_BUBBLE.md.
+        _fb = get_current_sps_feedback(t_now, params)
+        if np.isfinite(Eb) and get_bubbleParams.bubble_spent(Eb, R2, _fb.Lmech_total, _fb.v_mech_total,
+                                                             params['gamma_adia'].value,
+                                                             params['phaseSwitch_PbPram'].value):
+            Eb = _handoff_spent_bubble(params, t_now, R2, v2, "bubble spent after a segment")
             break
         if not np.isfinite(Eb):
             # reason text kept verbatim from before the handoff (read by tools/bubble_fate.py)

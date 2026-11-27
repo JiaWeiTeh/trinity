@@ -374,7 +374,7 @@ CAUSES: Sequence[Cause] = (
         stop="unknown",
         condition="no site ever set SimulationEndCode -- the run fell out of every phase "
         "through a no-code exit (solver_error, solver_failed, max_segments, "
-        "energy_floor, cooling_balance, no_physical_root_handoff)",
+        "bubble_spent, cooling_balance, no_physical_root_handoff)",
         phases="any",
         sites=("_output/simulation_end.py:192-196 (the fallback)",),
         sets_flags="none",

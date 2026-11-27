@@ -245,11 +245,14 @@ def test_solver_flags_accumulate_once():
 
 
 def test_transition_phase_ends_where_eb_reaches_zero():
-    """S6 (B7, ruled 2026-11-21): besides its floor, 1c carries a terminal Eb = 0 event, for a 1c entered below the
-    floor; it ends the phase only (the runners put Eb at the floor and go on to momentum)."""
+    """S6 (B7, ruled 2026-11-21): 1c carries a terminal Eb = 0 event (its spent-bubble end is checked between
+    segments, and it has no fixed-floor event); it ends the phase only (the runners put Eb at ENERGY_FLOOR and go on
+    to momentum)."""
     p = {"rCloud": _param(20.0), "stop_r": _param(500.0), "turnaround_rule": _param("momentum"),
          **_collapse_params()}
-    zero = [e for e in events.build_transition_phase_events(p) if e.name == "energy_zero"]
+    evs = events.build_transition_phase_events(p)
+    assert not any(e.name == "energy_floor" for e in evs)
+    zero = [e for e in evs if e.name == "energy_zero"]
     assert len(zero) == 1
     assert zero[0].terminal is True and zero[0].direction == -1 and zero[0].is_simulation_ending is False
     assert zero[0](0.0, _y(Eb=5.0)) == 5.0 and zero[0](0.0, _y(Eb=-1.0)) == -1.0
