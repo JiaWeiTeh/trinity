@@ -435,7 +435,7 @@ REPORTS: Sequence[Report] = (
         "true, in that order. 27.1% of shell_collapsed runs on the v2 grid.",
         "Not 'recollapsed' -- the cloud WAS opened. Not 'dispersed' either -- it "
         "closed again. Counting these as either one loses the mechanism, which is "
-        "ambient recapture after clearing (P_ISM is gated on breakout).",
+        "ambient recapture after clearing (P_ISM is gated on the cloud edge).",
         False,
     ),
     Report(
@@ -476,7 +476,7 @@ REPORTS: Sequence[Report] = (
         True,
     ),
     Report(
-        "breakout",
+        "expanding_beyond",
         "cleared=yes, motion=expanding, stop=clock or edge",
         "Cleared the cloud edge and still moving outward at the end. THIS is what "
         "'the cloud was dispersed by the bubble' means.",
@@ -507,7 +507,7 @@ REPORTS: Sequence[Report] = (
     Report(
         "radius_capped",
         "stop=wall, motion != contracting",
-        "Hit the stop_r = 500 pc wall. Physically a `breakout`, held separate so a "
+        "Hit the stop_r = 500 pc wall. Physically an `expanding_beyond`, held separate so a "
         "right-censored radius can never be quoted as a size.",
         "Not a fate at all, strictly -- it is a measurement limit. 22.9% of the v2 "
         "grid sits on this wall.",
@@ -552,7 +552,7 @@ REPORT_ORDER: Sequence[str] = (
     "stalled",
     "stalled_beyond",
     "expanding",
-    "breakout",
+    "expanding_beyond",
     "shell_dissolved",
     "shell_disrupted",
     "radius_capped",
@@ -567,7 +567,7 @@ REPORT_COLORS: Mapping[str, str] = {
     "stalled": "#fec44f",
     "stalled_beyond": "#fee391",
     "expanding": "#a6bddb",
-    "breakout": "#2c7fb8",
+    "expanding_beyond": "#2c7fb8",
     "shell_dissolved": "#7fcdbb",
     "shell_disrupted": "#41b6c4",
     "radius_capped": "#74c476",
@@ -815,7 +815,7 @@ def _report_rules():
             lambda m, c, s, st: st == "wall",
         ),
         (
-            "breakout",
+            "expanding_beyond",
             "cleared == yes and motion == expanding",
             lambda m, c, s, st: c == "yes" and m == "expanding",
         ),
@@ -972,7 +972,7 @@ def _print_reports() -> None:
         print(_wrap("%-24s %s" % (k, v), indent=""))
     print("\nThe word 'dispersed' appears in NEITHER vocabulary. It was doing three")
     print("jobs at once (cloud cleared / shell still expanding / shell dissolved).")
-    print("Use 'breakout' for the bubble, 'cleared' for the cloud, and say which.")
+    print("Use 'expanding_beyond' for the bubble, 'cleared' for the cloud, and say which.")
 
 
 def _print_matrix() -> None:
