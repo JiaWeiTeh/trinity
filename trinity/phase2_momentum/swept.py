@@ -84,10 +84,12 @@ def _scalar(x):
 
 def p_ext(r, fabs_ion, params, turbulent=True):
     """External pressure at r, as the c3c runner has it: photoionised gas if photons escape, PISM bridged at rCloud
-    with the density's own tanh weight (B3, 2026-11; a step at rCloud before), and the cloud gas's own pressure inside
-    the cloud (density_profile.get_press_cloud; TCloud 10 K by default)."""
+    with the density's own tanh weight (B3, 2026-11; a step at rCloud before), less the ambient's thermal part that the
+    photoionised gas replaces once photons escape (density_profile.get_press_ism_thermal, ism_thermal_share), and the
+    cloud gas's own pressure inside the cloud (density_profile.get_press_cloud; TCloud 10 K by default)."""
     P = _scalar(get_press_ion(r, params)) if fabs_ion < 1.0 else 0.0
     P += params['PISM'].value * params['k_B'].value * density_profile.ism_weight(r, params['rCloud'].value)
+    P -= density_profile.get_press_ism_thermal(r, fabs_ion, params)   # P_i replaces its thermal part
     P += density_profile.get_press_cloud(r, fabs_ion, params, turbulent)
     return P
 

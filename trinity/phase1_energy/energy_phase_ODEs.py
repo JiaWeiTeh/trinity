@@ -273,6 +273,7 @@ def get_ODE_Edot_pure(t: float, y: list, snapshot: ODESnapshot, params_for_feedb
 
     # ISM pressure, bridged at rCloud by the density's tanh weight (B3, docs/dev/turnaround-stall/PLAN.md, 2026-11)
     P_ext += snapshot.PISM * snapshot.k_B * density_profile.ism_weight(rShell, snapshot.rCloud)
+    P_ext -= density_profile.get_press_ism_thermal(rShell, FABSi, params_for_feedback)   # P_i replaces its thermal part
     P_ext += density_profile.get_press_cloud(rShell, FABSi, params_for_feedback)   # cloud gas ahead (TCloud, 10 K by default)
 
     # ==========================================================================
@@ -468,6 +469,7 @@ def compute_derived_quantities(t: float, y: list, snapshot: ODESnapshot, params_
         P_ext = 0.0
 
     P_ext += snapshot.PISM * snapshot.k_B * density_profile.ism_weight(rShell, snapshot.rCloud)   # B3: bridged
+    P_ext -= density_profile.get_press_ism_thermal(rShell, FABSi, params_for_feedback)   # P_i replaces its thermal part
     P_ext += density_profile.get_press_cloud(rShell, FABSi, params_for_feedback)   # cloud gas ahead (TCloud, 10 K by default)
 
     # ==========================================================================

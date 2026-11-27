@@ -28,6 +28,7 @@ import numpy as np
 
 # Import Bonnor-Ebert sphere module for r2xi conversion
 from trinity.cloud_properties.bonnorEbertSphere import r2xi as be_r2xi
+from trinity._functions.unit_conversions import ndens_cgs2au
 
 # =============================================================================
 # Helper functions for scalar/array consistency
@@ -238,3 +239,41 @@ def get_press_cloud(r, fabs_ion, params, turbulent=True):
         # Bertoldi & McKee's sigma is thermal + non-thermal, so only the non-thermal part rho sigma^2 - P_th is added
         P += max(params['mu_convert'].value * n * sigma_sq - P_th, 0.0)
     return P * (1.0 - ism_weight(r, params['rCloud'].value)) if fade else P
+
+
+# ism_thermal_share 'fit' (docs/dev/ism-double-count/PLAN.md section 4.4, rulings D-5..D-7, 2026-11-27): the thermal
+# share of the ambient's total pressure, P_th0 / P_ISM = A (P_ISM/k / 1e4 K cm^-3)^B, fitted on sigma_eff_ISM fit's own
+# anchors (Ostriker & Kim 2022; Kim et al. 2024; Moon et al. 2021). These three-figure values define the share.
+ISM_THERMAL_SHARE_A = 0.354
+ISM_THERMAL_SHARE_B = -0.337
+
+
+def get_press_ism_thermal(r, fabs_ion, params):
+    """The ambient's own thermal pressure [code units] at r [pc] that the photoionised gas ahead replaces, for the
+    caller to subtract from P_ISM w(r) (docs/dev/ism-double-count/PLAN.md, ruled 2026-11-27).
+
+    P_ISM is the ambient's total pressure (sigma_eff_ISM). Once ionising photons escape (fabs_ion < 1, where
+    get_press_ion adds P_i), P_i replaces the ambient's thermal pressure P_th0 but not its turbulent or magnetic part,
+    so P_ISM + P_i would count P_th0 twice; this returns P_th0 w(r), with w the B3 bridge (ism_weight):
+      P_th0 = min(s P_ISM, (mu_convert/mu_atom) nISM k_B TShell_ion),  s = min(1, A (P_ISM/k / 1e4 K cm^-3)^B),
+    the cap (D-5) being the ambient's own gas as neutral gas at T_i (P_i/2 at nISM with Z_He_shell 1), which keeps
+    P_out >= P_ISM for a hand-typed hot pair and never binds on sigma_eff_ISM fit's ambients at TShell_ion 8000 K
+    (it would below ~5.5e3 K: cap / (s P_ISM) is 1.45 at its minimum, at P/k 459 K cm^-3 where s reaches 1). 0 under 'off', with every photon
+    absorbed, with P_ISM 0, and inside 0.8 rCloud (w = 0), so the callers' sums are unchanged there bit for bit.
+    Hand-built params without the key: off. Fresh limit only: the ionised gas is taken at the ambient's density
+    (the relaxed limit, P_out -> P_ISM, is a caveat in PLAN section 2, not code)."""
+    if params is None or 'ism_thermal_share' not in params or params['ism_thermal_share'].value != 'fit':
+        return 0.0
+    if not fabs_ion < 1.0:                 # get_press_ion's own gate (NaN included)
+        return 0.0
+    PISM = params['PISM'].value if 'PISM' in params else 0.0
+    if not PISM > 0.0:
+        return 0.0
+    w = ism_weight(r, params['rCloud'].value)
+    if w == 0.0:
+        return 0.0
+    # PISM is P/k in code units (K pc^-3); the share's P/k is in K cm^-3
+    share = min(1.0, ISM_THERMAL_SHARE_A * (PISM / ndens_cgs2au / 1e4) ** ISM_THERMAL_SHARE_B)
+    k_B = params['k_B'].value
+    cap = params['mu_convert'].value / params['mu_atom'].value * params['nISM'].value * k_B * params['TShell_ion'].value
+    return w * min(share * PISM * k_B, cap)
