@@ -64,7 +64,7 @@ import scipy.integrate
 import scipy.optimize
 import logging
 from dataclasses import dataclass
-from typing import List, Optional, Callable, Tuple, Any
+from typing import List, Optional, Callable, Any
 
 from trinity._output.simulation_end import SimulationEndCode
 
@@ -83,6 +83,10 @@ MAX_VELOCITY_EXPANSION = 1000.0  # pc/Myr (~978 km/s) - extreme outward velocity
 # bubble counts as collapsed. Bounded on both sides by measurement, not chosen:
 # see make_energy_collapse_event and docs/dev/phase1a-stiffness/PLAN.md.
 ENERGY_COLLAPSE_FRAC = 1e-3
+# The Eb [Msun pc^2 / Myr^2] phase 1c ends at, and the Eb a forced hand-off to momentum (turnaround, spent
+# bubble) leaves so the exit rows' bubble calls stay finite and 1c is skipped. 1e3 = 1.9e46 erg. One constant
+# for phases 1a, 1b and 1c (it was two equal constants, in 1c and 1b).
+ENERGY_FLOOR = 1e3
 
 
 # =============================================================================
@@ -414,46 +418,6 @@ def make_energy_collapse_event(Eb_segment_start: float,
     return event
 
 
-def make_cooling_balance_event(threshold: float = 0.05, name: str = "cooling_balance"):
-    """
-    Create event factory for cooling balance detection.
-
-    Returns a factory that creates the actual event given current Lgain/Lloss.
-    This is needed because Lgain/Lloss change each segment.
-
-    NOTE: This event requires segment-level checking since Lgain/Lloss
-    are computed during segment setup, not available to solve_ivp.
-
-    Parameters
-    ----------
-    threshold : float
-        Ratio threshold. Event triggers when (Lgain - Lloss) / Lgain < threshold.
-    name : str
-        Name for identifying this event.
-
-    Returns
-    -------
-    factory : callable
-        Function that takes (Lgain, Lloss) and returns an event function.
-    """
-    def factory(Lgain: float, Lloss: float):
-        def event(t, y):
-            if Lgain <= 0:
-                return 1.0  # No event if no gain
-            ratio = (Lgain - Lloss) / Lgain
-            return ratio - threshold
-
-        event.terminal = True
-        event.direction = -1  # Trigger when ratio falls below threshold
-        event.name = name
-        event.is_simulation_ending = False  # Phase ending
-        event.reason_code = "cooling_balance"
-        event.reason_message = f"Cooling balance reached (L_cool ~ L_gain)"
-        return event
-
-    return factory
-
-
 # =============================================================================
 # Event Result Checking
 # =============================================================================
@@ -675,7 +639,7 @@ def build_energy_phase_events(params) -> List[Callable]:
     return events
 
 
-def build_implicit_phase_events(params) -> Tuple[List[Callable], Callable]:
+def build_implicit_phase_events(params) -> List[Callable]:
     """
     Build event list for implicit (cooling) phase.
 
@@ -686,8 +650,6 @@ def build_implicit_phase_events(params) -> Tuple[List[Callable], Callable]:
     - max_radius: R2 > stop_r (simulation ending)
     - velocity_runaway: |v2| too large (simulation ending)
 
-    Also returns cooling_balance factory for segment-level checking.
-
     Parameters
     ----------
     params : dict
@@ -697,8 +659,6 @@ def build_implicit_phase_events(params) -> Tuple[List[Callable], Callable]:
     -------
     events : list
         List of event functions for solve_ivp.
-    cooling_balance_factory : callable
-        Factory function to create cooling_balance event for each segment.
     """
     stop_r = params['stop_r'].value
 
@@ -714,13 +674,11 @@ def build_implicit_phase_events(params) -> Tuple[List[Callable], Callable]:
     if stop_r is not None and stop_r > 0:
         events.append(make_max_radius_event(stop_r))
 
-    cooling_factory = make_cooling_balance_event(threshold=0.05)
-
     logger.debug(f"Implicit phase events: stop_r={stop_r}")
-    return events, cooling_factory
+    return events
 
 
-def build_transition_phase_events(params, energy_floor: float = 1e3) -> List[Callable]:
+def build_transition_phase_events(params, energy_floor: float = ENERGY_FLOOR) -> List[Callable]:
     """
     Build event list for transition phase.
 
@@ -737,7 +695,7 @@ def build_transition_phase_events(params, energy_floor: float = 1e3) -> List[Cal
     params : dict
         Parameter dictionary with collapse_radius, stop_r, etc.
     energy_floor : float
-        Minimum energy threshold (code/AU units, Msun*pc^2/Myr^2). Default 1e3.
+        Minimum energy threshold (code/AU units, Msun*pc^2/Myr^2). Default ENERGY_FLOOR.
 
     Returns
     -------

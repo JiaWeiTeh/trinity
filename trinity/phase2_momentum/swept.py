@@ -1239,17 +1239,12 @@ def run_phase_transition_swept(params):
             reservoir = get_bubbleParams.vent_model(params) == 'reservoir'
             max_segments = MAX_SEGMENTS if reservoir else max_segments
 
-        # the c3c transition's exits, in its order: ram-dominated, energy floor, then the stops
+        # the c3c transition's exits, in its order: energy floor, then the stops (its ram-pressure exit was removed:
+        # P_th = P_ram(R1) >= P_ram(R2), so the fraction never passed 1/2; docs/dev/main-code-change/PLAN_SPENT_BUBBLE.md)
         fb_post = get_current_sps_feedback(t_now, params)
         R2e = R2a + z * (rs - rsa)
         P_th = get_bubbleParams.bubble_E2P(
             Eb, R2e, get_bubbleParams.solve_R1(R2e, Eb, fb_post.Lmech_total, fb_post.v_mech_total), gamma)
-        P_ram = get_bubbleParams.pRam(R2e, fb_post.Lmech_total, fb_post.v_mech_total)
-        if P_th + P_ram > 0 and P_ram / (P_th + P_ram) > 0.9:
-            termination_reason = "ram_dominated"
-            logger.info(f"Ram fraction {P_ram / (P_th + P_ram):.3f} > 0.9, transitioning to momentum "
-                        f"(t={t_now:.4e}, Eb={Eb:.4e})")
-            break
         if Eb < TP.ENERGY_FLOOR:
             termination_reason = "energy_floor"
             break

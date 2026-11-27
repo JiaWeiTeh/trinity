@@ -95,6 +95,7 @@ from trinity.shell_structure.shell_structure import (
 
 # Import centralized event functions
 from trinity.phase_general.phase_events import (
+    ENERGY_FLOOR,
     build_implicit_phase_events,
     turnaround_ends_phase,
     solve_segment,
@@ -206,11 +207,6 @@ ODE_MAX_STEP = DT_SEGMENT_MIN / 5  # Max step = 2e-5 Myr (ensures >=5 steps per 
 
 # Solver method: 'LSODA' for stiff/non-stiff switching
 ODE_METHOD = 'LSODA'
-
-# Energy handed to phase 1c when an energy-driven bubble collapses (Eb -> 0) or
-# turns around and is routed to momentum instead of dead-stopping. Matches phase1c
-# ENERGY_FLOOR (1e3), so 1c is skipped and the momentum phase starts at once.
-ENERGY_HANDOFF_FLOOR = 1e3
 
 
 def classify_energy_collapse(Eb):
@@ -913,8 +909,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
     # =============================================================================
 
     # Build events using centralized module
-    # Returns (events_list, cooling_balance_factory)
-    ode_events, cooling_balance_factory = build_implicit_phase_events(params)
+    ode_events = build_implicit_phase_events(params)
     # R0 (turnaround_rule continue, the default): a turnaround does not end 1b, so a swept SWEEP segment ends at its
     # own mode switch (u through 0) and the receding shell coasts, as in the momentum phase
     ta_continue = not turnaround_ends_phase(params)
@@ -1370,7 +1365,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
                     f"Shell turned around at t={t_now:.6e} Myr (R2={R2:.4f} pc): "
                     f"Eb={Eb:.3e} dropped to the floor -> momentum [velocity_sign_change]."
                 )
-                Eb = ENERGY_HANDOFF_FLOOR
+                Eb = ENERGY_FLOOR
                 params['Eb'].value = Eb
             break
 
@@ -1430,7 +1425,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
             # 1c's bubble calls stay finite and its floor check immediately transitions
             # to phase 2. Do NOT set EndSimulationDirectly -> main runs 1c -> momentum.
             params['Eb_handoff'].value = Eb
-            Eb = ENERGY_HANDOFF_FLOOR
+            Eb = ENERGY_FLOOR
             params['Eb'].value = Eb
             termination_reason = "energy_to_momentum"
             logger.warning(

@@ -56,7 +56,7 @@ def test_young_seed_phase1a_collapse_is_handed_to_momentum(tmp_path):
     assert "implicit" not in phases and "momentum" in phases
     last_energy = max(i for i, p in enumerate(phases) if p == "energy")
     handoff = rows[last_energy]
-    assert handoff["Eb"] == 1e3                      # ENERGY_HANDOFF_FLOOR
+    assert handoff["Eb"] == 1e3                      # phase_events.ENERGY_FLOOR
     assert handoff["isCollapse"] is False
     # swept (the default since 2026-11-23) writes its momentum entry state as a row at the
     # hand-off time (swept.py, before its first step); c3c's first row is after a step.

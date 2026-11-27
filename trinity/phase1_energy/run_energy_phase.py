@@ -41,6 +41,7 @@ from trinity.sps.update_feedback import get_current_sps_feedback
 
 # Import centralized event functions
 from trinity.phase_general.phase_events import (
+    ENERGY_FLOOR,
     build_energy_phase_events,
     check_event_termination,
     apply_event_result,
@@ -75,18 +76,17 @@ def _handoff_spent_bubble(params, t_now, R2, v2, why, channel="energy_to_momentu
     Phase-1a counterpart of 1b's energy_to_momentum routing
     (run_energy_implicit_phase.classify_energy_collapse): once Eb is gone, R1 -> R2
     and the shell is already pushed by the wind's ram pressure, so the momentum
-    phase is the right model. Sets Eb to 1b's ENERGY_HANDOFF_FLOOR (1c is then
+    phase is the right model. Sets Eb to ENERGY_FLOOR (phase_events; 1c is then
     skipped and phase 2 starts at once), clears the end flags the collapse
     event set, and marks energy_handoff_1a so phase 1b does not integrate a
     bubble that no longer exists. Returns the new Eb.
     docs/dev/transition/pdv-trigger/HIMASS_HANDOFF_PLAN.md, 2026-09-30.
     """
-    from trinity.phase1b_energy_implicit.run_energy_implicit_phase import ENERGY_HANDOFF_FLOOR
     params['t_now'].value = t_now
     params['R2'].value = R2
     params['v2'].value = v2
     params['Eb_handoff'].value = params['Eb'].value
-    params['Eb'].value = ENERGY_HANDOFF_FLOOR
+    params['Eb'].value = ENERGY_FLOOR
     params['energy_handoff_1a'].value = True
     params['transition_channel'].value = channel
     params['EndSimulationDirectly'].value = False
@@ -98,7 +98,7 @@ def _handoff_spent_bubble(params, t_now, R2, v2, why, channel="energy_to_momentu
         f"v2={v2:.3e} pc/Myr, Eb={params['Eb_handoff'].value:.3e} dropped to the floor): "
         f"routing to momentum via 1c, phase 1b skipped [{channel}]."
     )
-    return ENERGY_HANDOFF_FLOOR
+    return ENERGY_FLOOR
 
 
 def run_energy(params):

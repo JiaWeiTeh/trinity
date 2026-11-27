@@ -76,6 +76,7 @@ import trinity.bubble_structure.get_bubbleParams as get_bubbleParams
 
 # Import centralized event functions
 from trinity.phase_general.phase_events import (
+    ENERGY_FLOOR,
     build_transition_phase_events,
     solve_segment,
     update_collapse_radius,
@@ -96,7 +97,6 @@ DT_SEGMENT_INIT = 2e-3  # Myr - initial segment duration
 DT_SEGMENT_MIN = 1e-3  # Myr - minimum segment duration
 DT_SEGMENT_MAX = 5e-2   # Myr - maximum segment duration
 MAX_SEGMENTS = 5000
-ENERGY_FLOOR = 1e3  # Minimum energy before transition to momentum phase
 FOUR_PI = 4.0 * np.pi
 
 # Adaptive stepping parameters
@@ -807,26 +807,9 @@ def run_phase_transition(params) -> TransitionPhaseResults:
         # Check termination conditions
         # ---------------------------------------------------------------------
 
-        # Phase transition criterion: ram pressure dominates bubble pressure.
-        # Recompute Pb and P_ram at the post-ODE state so the check uses
-        # current values, not stale pre-ODE ones.
-        RAM_DOMINANCE_THRESHOLD = 0.9  # exit when P_ram/(P_b + P_ram) > this
-        feedback_post = get_current_sps_feedback(t_now, params)
-        gamma_adia = params['gamma_adia'].value
-        R1_post, Pb_post = compute_R1_Pb(R2, Eb, feedback_post.Lmech_total,
-                                          feedback_post.v_mech_total, gamma_adia)
-        P_ram_post = get_bubbleParams.pRam(R2, feedback_post.Lmech_total,
-                                            feedback_post.v_mech_total)
-        P_total = Pb_post + P_ram_post
-        if P_total > 0:
-            ram_fraction = P_ram_post / P_total
-            if ram_fraction > RAM_DOMINANCE_THRESHOLD:
-                termination_reason = "ram_dominated"
-                logger.info(f"Ram fraction {ram_fraction:.3f} > {RAM_DOMINANCE_THRESHOLD}, "
-                            f"transitioning to momentum (t={t_now:.4e}, Eb={Eb:.4e})")
-                break
-        
-        # Safety fallback: absolute energy floor
+        # Phase transition criterion: the energy floor. (A ram-pressure exit, P_ram(R2)/(Pb + P_ram(R2)) > 0.9, was
+        # removed: solve_R1 makes Pb = P_ram(R1) >= P_ram(R2) at gamma 5/3, so that fraction never passed 1/2.
+        # docs/dev/main-code-change/PLAN_SPENT_BUBBLE.md)
         if Eb < ENERGY_FLOOR:
             termination_reason = "energy_floor"
             logger.info(f"Energy dropped below floor ({ENERGY_FLOOR}), transitioning to momentum")

@@ -107,7 +107,7 @@ def test_swept_transition_runner_invariants(tmp_path, monkeypatch):
 def test_swept_momentum_continues_the_transition_state(tmp_path):
     p = _entry(tmp_path, f_thermal=0.05, stop_t=0.53)
     res = TP.run_phase_transition(p)
-    assert res.termination_reason in ("ram_dominated", "energy_floor")      # both hand the shell to momentum
+    assert res.termination_reason == "energy_floor"      # the drained bubble hands the shell to momentum
     assert not p["EndSimulationDirectly"].value
     t_x, rs_x, u_x, M_x = p["t_now"].value, p["rs_dyn"].value, p["v2"].value, p["shell_mass"].value
     p["current_phase"].value = "momentum"
