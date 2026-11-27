@@ -23,6 +23,10 @@ and past the cloud the shell moves with its gas. Mass is swept at 4 pi r_s^2 rho
 
     dr_s/dt = U,      du/dt = (F - F_grav - Mdot_s u) / M_s,      F_grav = G M_s (M_* + M_s/2) / r_s^2.
 
+With shell_mass_net and hole_forces on (get_bubbleParams.hole_mass, C1D_PLAN.md §4) the momentum equation reads
+du/dt = (k F - G M_r (M_* + m_ev + M_r/2) / r_s^2 - k Mdot_s u) / M_r: k = C_f the covered sky, M_r the real mass
+(M_s - m_ev when hole_forces is off, k = 1).
+
 R2/r_s, K_s and F_rad are held over a segment, as the c3c runner holds its shell solve (PLAN 0.0.11.3: one
 root-find per segment); P_ram, P_ext, the mass and the jump are evaluated at the live r_s.
 """
@@ -726,7 +730,7 @@ class ImplicitSwept:
             F = FOUR_PI * R2t**2 * Pc + K - FOUR_PI * r**2 * p_ext(r, fabs_ion, params) + F_rad
             k_t = FOUR_PI * R2t**2 * get_bubbleParams.bubble_E2P(y[2], R2t, R1t, gamma)   # unramped Pb, as compute_R1_Pb
             _, Edot = live_rates(Ed, W0, k_t, U_t, md, tan, zeta)
-            # hole_forces (C1D_PLAN §4): k C_f on the surface forces and the sweep, gravity and inertia on the real
+            # hole_forces (C1D_PLAN §4): k = C_f on the surface forces and the sweep, gravity and inertia on the real
             # mass Mr; off: (1.0, m - m_ev), today's terms. The closure keeps the swept m
             k, Mr = get_bubbleParams.hole_mass(params, r, m, m_ev)
             return np.array([U_t, (k * F - G * Mr / r**2 * (mCluster + m_ev + 0.5 * Mr) - k * md * v) / Mr, Edot,
@@ -863,11 +867,9 @@ def run_phase_momentum_swept(params) -> MomentumPhaseResults:
         if tmax is not None and t_now >= tmax:
             termination_reason = _end(params, "reached_tmax", SimulationEndCode.STOPPING_TIME, 'Stopping time reached')
             break
-        if get_bubbleParams.disrupted(params):   # hole_forces: too little covered sky for a shell (C1D_PLAN §10.3)
-            termination_reason = _end(params, "shell_disrupted", SimulationEndCode.SHELL_DISRUPTED,
-                                      f"Shell disrupted: closed fraction C_f = "
-                                      f"{get_bubbleParams.cover_fraction(params):.3g} < cf_disrupt "
-                                      f"{params['cf_disrupt'].value}")
+        reason = get_bubbleParams.disrupted_reason(params)   # hole_forces: too little covered sky, or no real mass
+        if reason:
+            termination_reason = _end(params, "shell_disrupted", SimulationEndCode.SHELL_DISRUPTED, reason)
             break
 
         x, K, F_rad, M_floor = root['R2'] / rs, root['K'], params['F_rad'].value, Ms
@@ -1123,11 +1125,9 @@ def run_phase_transition_swept(params):
         if tmax is not None and t_now >= tmax:
             termination_reason = _end(params, "reached_tmax", SimulationEndCode.STOPPING_TIME, 'Stopping time reached')
             break
-        if get_bubbleParams.disrupted(params):   # hole_forces: too little covered sky for a shell (C1D_PLAN §10.3)
-            termination_reason = _end(params, "shell_disrupted", SimulationEndCode.SHELL_DISRUPTED,
-                                      f"Shell disrupted: closed fraction C_f = "
-                                      f"{get_bubbleParams.cover_fraction(params):.3g} < cf_disrupt "
-                                      f"{params['cf_disrupt'].value}")
+        reason = get_bubbleParams.disrupted_reason(params)   # hole_forces: too little covered sky, or no real mass
+        if reason:
+            termination_reason = _end(params, "shell_disrupted", SimulationEndCode.SHELL_DISRUPTED, reason)
             break
 
         # R2 moves with r_s at the slope zeta over the segment, so the bubble volume in P_th changes at the same

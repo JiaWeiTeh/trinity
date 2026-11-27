@@ -1,6 +1,7 @@
 """hole_forces (docs/dev/leaky-reservoir/C1D_PLAN.md, rulings D-1 to D-9 of 2026-11-26 and the v2 rulings of §10.3):
-every force on the shell sees the holes in it; 'on' is the default, and under it the cf_law reads the swept column and a
-run ends as a disrupted shell (end code 5) once C_f falls below cf_disrupt. Under 'on' the swept equation of motion is du/dt = (k F - G M_r/r^2 (M_* + m_ev + M_r/2) - k Mdot u)/M_r
+every force on the shell sees the holes in it; 'on' is the default, and under it the cf_law reads the outbound column
+(the smallest swept column on the way out, since #796: test_cf_outbound.py) and a run ends as a disrupted shell (end
+code 5) once C_f falls below cf_disrupt or the real mass is gone. Under 'on' the swept equation of motion is du/dt = (k F - G M_r/r^2 (M_* + m_ev + M_r/2) - k Mdot u)/M_r
 with (k, M_r) = (C_f, C_f m) for holes open from birth and (C_f, m - D) after the vent of a leaky reservoir, D the gas the
 holes did not sweep; phase 1a puts its self-gravity on C_f m; the IR depth becomes C_f tau/(1 + (1 - C_f) tau). These
 tests pin the helpers (limits, the plan's numbers, the deficit quadrature), that 'off' and C_f = 1 give today's terms bit
@@ -333,6 +334,59 @@ def test_disrupted():
     law["_cf_Sigma_vent"].value = 1e4 / (4.0 * np.pi * 100.0)                # the vent's own column: C_f = 1
     assert not G.disrupted(law)
 
+
+
+# ---------------------------------------------------------------- guards (the final /xcheck of 2026-11-27, X1-X3)
+
+def _latch_flip():
+    """A vented reservoir in 1c whose shell_mass_net latch turns on only after D has grown: the bubble held 310 Msun,
+    more than the swept mass, until the shell swept 311 (C_f 0.5, constant law)."""
+    p = _vented(0.5, phii_scheme="swept", cover_law="constant", shell_mass_net=True, _shell_mass_net_on=False,
+                current_phase="transition", bubble_mass=310.0, shell_mass=100.0, rs_dyn=5.0, cf_disrupt=0.1)
+    for Ms in (100.0, 150.0, 200.0, 250.0, 300.0, 310.0):
+        p["shell_mass"].value = Ms
+        assert G.evaporated_mass(p) == 0.0
+        G.hole_deficit(p, Ms)
+    p["shell_mass"].value = 311.0
+    return p
+
+
+def test_no_real_mass_ends_as_a_disrupted_shell():
+    """X1 (ruled 2026-11-27: the run ends as disrupted): m_ev jumps to the bubble's 310 Msun while D = 105 Msun stays,
+    so M_r = 311 - 310 - 105 < 0. hole_mass holds M_r at 0 (no division by a negative mass) and the row is disrupted
+    with its own message; the C_f message is unchanged; off, the same state is a shell of 1 Msun."""
+    p = _latch_flip()
+    m_ev = G.evaporated_mass(p)
+    assert m_ev == 310.0
+    G.refuse_no_shell(m_ev, 311.0)                                   # shell_mass_net alone sees 1 Msun left
+    assert G.hole_mass(p, 6.0, 311.0, m_ev) == (0.5, 0.0)
+    assert G.disrupted(p) and G.disrupted_reason(p).startswith("Shell disrupted: no real shell mass left")
+    p["current_phase"].value = "momentum"                            # the momentum RHS passes m_ev = 0: a shell
+    assert not G.disrupted(p)
+    p["hole_forces"].value = "off"
+    assert G.hole_mass(p, 6.0, 311.0, m_ev) == (1.0, 1.0) and G.disrupted_reason(p) == ""
+    q = _vented(0.05, cf_disrupt=0.1)
+    assert G.disrupted_reason(q) == "Shell disrupted: closed fraction C_f = 0.05 < cf_disrupt 0.1"
+
+
+def test_cf_law_stays_positive_and_unchanged():
+    """X2: ln C_f is floored at CF_LN_FLOOR, so a column that thins far in one segment (h just above 1) gives a C_f
+    below cf_disrupt but above 0 (k = 0 divided before); everywhere above the floor the law is the min() form bit for
+    bit."""
+    assert 0.0 < G.cf_law(1.6, 1.0002) < 1e-300 and 0.0 < G.cf_law(1e300, 2.0) < 1e-300
+    for h in (1.05, 1.5, 2.0, 3.0, 10.0):
+        for x in np.logspace(-2.0, 6.0, 81):
+            y = G._cf_log(np.log(float(x)), G.cf_offset(h), G.CF_SIGMA)
+            if y > G.CF_LN_FLOOR:
+                assert G.cf_law(float(x), h) == float(np.exp(min(0.0, y)))
+
+
+def test_nan_fails_loudly():
+    """X3: a NaN column gives a NaN C_f (min() read it as a sealed shell, 1.0); a NaN radius takes the outer branch of
+    the outbound table instead of indexing past it."""
+    assert math.isnan(G.cf_law(float("nan"), 2.0))
+    tab = _ns(_cf_tab_r=[10.0, 12.0], _cf_tab_S=[5.0, 4.0])
+    assert G.outbound_column(tab, float("nan"), 3.0) == 3.0 and G.outbound_column(tab, float("nan"), 6.0) == 4.0
 
 # ---------------------------------------------------------------- the runner: phase 1c of a vented reservoir
 # (the transition-entry state of test_cf_law.py: simple_cluster, R2 = 0.6 rCloud, 10 km/s at 0.5 Myr, P_th = 3 P_ram,
