@@ -181,6 +181,8 @@ def apply_seed(params, user_dict, merged_dict):
         if closures == ['seed_rCloud']:
             r_cl = val('seed_rCloud')
         else:
+            # seed_Sigma is the projected GAS surface density M_gas / (pi r_cl^2): (1 - sfe) times Paper II's Sigma
+            # (stars included) and four times the shell column of cover_law sigma (get_bubbleParams.shell_column)
             r_cl = math.sqrt(m_gas / (math.pi * val('seed_Sigma')))
         put('nCore', 3.0 * m_gas / (4.0 * math.pi * r_cl**3 * mu) * cvt.ndens_au2cgs)
         if val('nCore') < val('nISM'):
