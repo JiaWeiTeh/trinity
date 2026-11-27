@@ -310,6 +310,7 @@ def cover_fraction(params, r=None, m=None):
 # ponytail: sigma is fixed at 1.5 (Raskutti et al. 2016, arXiv:1608.04469, sec. 4.2.2: 1-1.5 in simulations); at
 # fixed h it moves C_f by at most 0.16 (h = 2, sigma 0.75-2). Promote to a key if a referee asks (D-4).
 CF_SIGMA = 1.5
+CF_LN_FLOOR = -700.0   # ln C_f floor in cf_law: C_f >= 1e-304 > 0 (exp(-745) underflows to 0)
 
 
 def cover_law(params):
@@ -360,7 +361,7 @@ def outbound_column(params, r, S):
     if not rt:
         return S
     St = params['_cf_tab_S'].value
-    if r >= rt[-1]:
+    if not r < rt[-1]:   # NaN too: bisect would index past the table
         return min(St[-1], S)
     i = bisect.bisect_right(rt, r)   # rt[i - 1] <= r < rt[i]; inside the vent radius: the vent's column
     if i == 0:
@@ -378,8 +379,9 @@ def hole_forces(params):
 
 def ir_depth(tau, Cf):
     """hole_forces (C1D_PLAN.md §4.2, D-3): the IR optical depth of the trapping factor 1 + tau once holes cover
-    1 - Cf of the sky. A re-emitted photon that meets the shell leaves through it with chance T = 1/(1 + tau) and
-    then finds a hole with chance 1 - Cf, so the hits per covered steradian are (1 + tau)/(1 + (1 - Cf) tau) and the
+    1 - Cf of the sky. A re-emitted photon that meets the shell leaves through it with chance T = 1/(1 + tau);
+    otherwise it crosses the cavity and meets the wall again, the shell with chance Cf and a hole with chance 1 - Cf,
+    so the hits per covered steradian are (1 + tau)/(1 + (1 - Cf) tau) and the
     depth is Cf tau/(1 + (1 - Cf) tau): tau at Cf = 1 (exactly, in floating point), Cf tau when thin, Cf/(1 - Cf)
     when thick. Dimensionless. The plan's own derivation: no paper read gives a covering-fraction form."""
     return Cf * tau / (1.0 + (1.0 - Cf) * tau)
@@ -403,7 +405,9 @@ def hole_mass(params, r, Ms, m_ev):
     if vent_model(params) != 'reservoir':
         Cf = cover_fraction(params, r, mn)
         return Cf, Cf * mn
-    return cover_fraction(params, r, mn), mn - _hole_D(params, Ms)
+    # M_r <= 0 (the shell_mass_net latch turning on after the vent, while D stays) leaves no shell: held at 0 here and
+    # the row ends the run as disrupted (disrupted_reason); within a segment M_r only grows from its row value
+    return cover_fraction(params, r, mn), max(mn - _hole_D(params, Ms), 0.0)
 
 
 def _hole_D(params, Ms):
@@ -444,8 +448,26 @@ def disrupted(params):
     """hole_forces (C1D_PLAN.md §10.3, E2): True once the shell's closed fraction (the row's cover_fraction) is below
     cf_disrupt (0.1 by default, ruled 2026-11-26): the holes then cover so much of the sky that the dense gas left no
     longer forms a shell, and the swept 1c and momentum runners end the run (SimulationEndCode.SHELL_DISRUPTED).
-    False under hole_forces off."""
-    return hole_forces(params) and cover_fraction(params) < _val(params, 'cf_disrupt', 0.1)
+    Also True once the row's real mass M_r is gone (hole_mass; ruled 2026-11-27: the run ends as disrupted). False
+    under hole_forces off."""
+    return bool(disrupted_reason(params))
+
+
+def disrupted_reason(params):
+    """The end message of a disrupted shell for the row in params, '' when it is not disrupted (see disrupted)."""
+    if not hole_forces(params):
+        return ''
+    Cf, th = cover_fraction(params), _val(params, 'cf_disrupt', 0.1)
+    if Cf < th:
+        return f"Shell disrupted: closed fraction C_f = {Cf:.3g} < cf_disrupt {th}"
+    # with m_ev = 0 (shell_mass_net off, its latch not yet on, or the momentum phase) M_r = Ms - D >= Ms_vent > 0
+    m_ev = evaporated_mass(params)
+    if m_ev > 0.0:
+        Ms = params['shell_mass'].value
+        if hole_mass(params, params['rs_dyn'].value, Ms, m_ev)[1] <= 0.0:
+            return (f"Shell disrupted: no real shell mass left (swept {Ms:.3g} Msun, evaporated {m_ev:.3g}, "
+                    f"not swept by the holes {_hole_D(params, Ms):.3g})")
+    return ''
 
 
 def _cf_log(y, a, sigma):
@@ -467,7 +489,9 @@ def cf_law(sigma_ratio, h, sigma=CF_SIGMA):
     """C_f after the vent at sigma_ratio = Sigma_v/Sigma: exactly 1 at sigma_ratio 1 and below, 1/2 at h**2, -> 0 as
     the column thins. Dimensionless in, dimensionless out. The clip is taken on ln C_f, so a column far above the
     vent's cannot overflow exp."""
-    return float(np.exp(min(0.0, _cf_log(np.log(sigma_ratio), cf_offset(h, sigma), sigma))))
+    # np.clip, not min(0.0, x): a NaN column stays NaN (min would read it as sealed); the floor keeps C_f > 0, so a
+    # column that thins past it in one segment (h near 1) ends the run as disrupted instead of dividing by k = 0
+    return float(np.exp(np.clip(_cf_log(np.log(sigma_ratio), cf_offset(h, sigma), sigma), CF_LN_FLOOR, 0.0)))
 
 
 def vent_factor(x, gamma):
