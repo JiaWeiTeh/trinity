@@ -207,6 +207,7 @@ def test_floor_is_zero_until_vented_and_the_outside_pressure_after(tmp_path):
     assert S._p_conf(R2, None, fb, p)[0] == P_ram
     for model in ("ambient", "reservoir"):
         p["vent_model"].value, p["transition_channel"].value = model, "blowout"
+        p["vent_channel"].value = "blowout"                          # D-11: the held vent state (PLAN_SWITCH.md)
         floor = S.vent_floor(r, p, 1.0)                              # photons trapped: P_ISM alone out here
         assert floor == S.p_ext(r, 1.0, p) == pytest.approx(p["PISM"].value * p["k_B"].value, rel=1e-12)
         assert floor > P_ram                                         # so the max below is the floor, not P_ram
@@ -225,6 +226,7 @@ def test_reservoir_rows_describe_the_integrated_energy_equation(tmp_path, monkey
     runner that kept the shipped min() would fail here."""
     p, _ = _entry(tmp_path, f_thermal=3.0, stop_t=0.52)
     p["vent_model"].value, p["transition_channel"].value, p["coverFraction"].value = "reservoir", "blowout", 0.9
+    p["vent_channel"].value = "blowout"   # D-11: the held vent state (PLAN_SWITCH.md)
     p["cover_law"].value = "constant"   # a fixed C_f: cover_law defaults to sigma since C1D_PLAN.md §10.3
     g = lambda k: p[k].value  # noqa: E731
     L0 = g("bubble_LTotal")

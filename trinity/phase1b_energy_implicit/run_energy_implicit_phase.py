@@ -1711,6 +1711,12 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
 
     # Run-level record of how the energy phase ended (metadata final_state).
     params['transition_channel'].value = termination_reason
+    # D-11 (docs/dev/turnaround-stall/PLAN_SWITCH.md): a blowout exit vents the shell, from 1c's first row on, and the
+    # rt count goes on in 1c and momentum (R-a, ruled 2026-11-27); vacuum keeps the code as it was
+    if rt_rule:
+        params['_rt_N'].value, params['_rt_on'].value = rt_N, rt_on
+    if termination_reason in get_bubbleParams.VENT_CHANNELS and get_bubbleParams.vent_model(params) != 'vacuum':
+        get_bubbleParams.mark_vented(params, termination_reason, t_now, 'implicit', sw.rs if sw else R2, R2)
     params['n_unsolvable_segments'].value = n_unsolvable
     params['n_cost_capped_segments'].value = n_capped
     if n_capped:

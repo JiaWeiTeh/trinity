@@ -109,6 +109,42 @@ def vent_floor(r, params, fabs_ion=None):
     return p_ext(r, fabs_ion, params)
 
 
+def blowout_watch(params):
+    """D-11 (docs/dev/turnaround-stall/PLAN_SWITCH.md): True when a shell that has not vented is still tested for
+    blowout after phase 1b: vent_model ambient or reservoir, and blowout in transition_trigger. Under vacuum the test
+    is skipped (the code as it was)."""
+    from trinity.phase1b_energy_implicit.run_energy_implicit_phase import parse_transition_triggers   # 1b: import late
+    trig = getattr(params.get('transition_trigger', None), 'value', 'cooling_balance')
+    return (get_bubbleParams.vent_model(params) != 'vacuum' and not get_bubbleParams.vented(params)
+            and 'blowout' in parse_transition_triggers(trig))
+
+
+def blowout_after_1b(params, phase, t0, u0, rs0, R2s, Pb0, t1, u1, rs1, R2e):
+    """D-11 (PLAN_SWITCH.md): phase 1b's blowout test at the end of a 1c or momentum segment [t0, t1] [Myr] of a shell
+    that has not vented (blowout_watch). geometric: the end R2, R2e [pc], past rCloud (1b tests its end R2). rt (R-a):
+    the count carried from 1b (_rt_N, _rt_on) goes on as in 1b, from the segment's start values (outer edge rs0, inner
+    face R2s, Pb0 the row's Pb: the bubble's pressure in 1c, P_drive in momentum) and the speeds u0 -> u1 [pc/Myr].
+    On a vent it calls mark_vented (rs1 the end r_s) and returns True; the next row is the first vented one."""
+    from trinity.phase1b_energy_implicit.run_energy_implicit_phase import evaluate_r1_shadow, rt_count_step, rt_gate
+    rCloud = params['rCloud'].value
+    if getattr(params.get('blowout_rule', None), 'value', 'geometric') == 'rt':
+        params['_rt_on'].value = params['_rt_on'].value or (rCloud is not None and 0 < rCloud < rs0)
+        if not params['_rt_on'].value:
+            return False
+        params['_rt_N'].value = rt_count_step(params['_rt_N'].value, t0, u0, t1, u1, max(rs0 - R2s, 1e-6 * R2s))
+        P_ism = params['PISM'].value * params['k_B'].value
+        fired = rt_gate(params['_rt_N'].value, params['rt_growth_factor'].value, Pb0, P_ism, rs0, rCloud)
+        if fired:
+            logger.info(f"rt ({phase}, after 1b): N_Delta={params['_rt_N'].value:.9g} > ln G="
+                        f"{np.log(params['rt_growth_factor'].value):.6g} with Pb={Pb0:.6g} > PISM k_B={P_ism:.6g} "
+                        f"(code units, this segment's start) at t={t1:.6e} Myr")
+    else:
+        fired = evaluate_r1_shadow(R2e, rCloud, None)[0]
+    if fired:
+        get_bubbleParams.mark_vented(params, 'blowout', t1, phase, rs1, R2e)
+    return fired
+
+
 def reservoir_cooling(L0, E0, V0, E, R2, R1):
     """L_cool of the vented reservoir (PLAN 4.1, L-8): the loss L0 at the entry of phase 1c scaled as Pb^2 V, i.e.
     as E^2 / V at the held temperature. V0 and the volume here are R2^3 - R1^3 [pc^3] (the 4 pi / 3 cancels); E0, E
@@ -780,7 +816,8 @@ def run_phase_momentum_swept(params) -> MomentumPhaseResults:
     ode_events = build_momentum_phase_events(params)
     G, mCluster = params['G'].value, params['mCluster'].value
     sweep = None   # S7: the mode, decided at the first segment and changed only at its events
-    vented = get_bubbleParams.vented(params)   # vent_model: fixed for the phase (1b's exit reason)
+    vented = get_bubbleParams.vented(params)   # vent_model: held; set before this phase or at a segment's end below
+    watch = blowout_watch(params)              # D-11 (PLAN_SWITCH.md): a sealed shell can still vent in this phase
 
     while t_now <= tmax and segment_count < MAX_SEGMENTS:
         segment_count += 1
@@ -810,6 +847,8 @@ def run_phase_momentum_swept(params) -> MomentumPhaseResults:
         fabs_ion = sp.shell_fAbsorbedIon
         U, _, Mdot = mode_rates(u, rs, Ms, sweep, fabs_ion, params)   # S7
         _forces_to_params(params, root, rs, u, Ms, Mdot, U, fabs_ion, fb)
+        if vented and get_bubbleParams.vent_model(params) == 'reservoir':
+            get_bubbleParams.store_vent_column(params)   # P-5: the column at a vent first seen here (once)
         if abs(root['L8']) > 1e-6:
             logger.warning(f"[swept] L8 = {root['L8']:.2e} at t={t_now:.6e} (shell identity, bar 1e-6)")
 
@@ -830,6 +869,7 @@ def run_phase_momentum_swept(params) -> MomentumPhaseResults:
             break
 
         x, K, F_rad, M_floor = root['R2'] / rs, root['K'], params['F_rad'].value, Ms
+        t0, u0, rs0, Pb0 = t_now, u, rs, params['Pb'].value   # D-11: this segment's start (Pb = P_drive here)
 
         def rhs(t, y):
             r, v = max(y[0], 1e-10), y[1]
@@ -908,6 +948,10 @@ def run_phase_momentum_swept(params) -> MomentumPhaseResults:
         t_results.append(t_now)
         R2_results.append(params['R2'].value)
         u_results.append(u)
+
+        # D-11 (PLAN_SWITCH.md): blowout after 1b; from the next row on the interior holds the floor and C_f acts
+        if watch and blowout_after_1b(params, 'momentum', t0, u0, rs0, root['R2'], Pb0, t_now, u, rs, x * rs):
+            watch, vented = False, True
 
         # the c3c runner's rules, applied to r_s and u (PLAN 0.0.11.3)
         if u < 0 and rs < rs_prev:
@@ -1014,6 +1058,7 @@ def run_phase_transition_swept(params):
     reservoir = vented and get_bubbleParams.vent_model(params) == 'reservoir'
     L_cool0 = E0 = V0 = None
     max_segments = MAX_SEGMENTS if reservoir else TP.MAX_SEGMENTS
+    watch = blowout_watch(params)   # D-11 (PLAN_SWITCH.md): a sealed shell can still vent in this phase
 
     while t_now <= tmax and segment_count < max_segments:
         segment_count += 1
@@ -1053,9 +1098,11 @@ def run_phase_transition_swept(params):
         if abs(root['L8']) > 1e-6:
             logger.warning(f"[swept] L8 = {root['L8']:.2e} at t={t_now:.6e} (shell identity, bar 1e-6)")
         logger.debug(f"[swept] transition t={t_now:.6e}: zeta={zeta:.6g}, R2/r_s={root['R2'] / rs:.6g}")
+        if segment_count == 1:   # R-e (PLAN_SWITCH.md): 1c's entry state, where L_cool0 (1b's last cooling) belongs
+            E_in, V_in = Eb, root['R2']**3 - params['R1'].value**3
         if reservoir:
             if V0 is None:   # the entry state, once: the loop re-reads bubble_LTotal at every segment
-                L_cool0, E0, V0 = params['bubble_LTotal'].value, Eb, root['R2']**3 - params['R1'].value**3
+                L_cool0, E0, V0 = params['bubble_LTotal'].value, E_in, V_in   # R-e: 1c's entry, also after a late vent
                 get_bubbleParams.store_vent_column(params)   # cover_law sigma: the column at the vent (C_f = 1)
             # the row's leak and total loss as the RHS below forms them at this segment's start (existing keys; the
             # cooling is the resolved one, before any opt-in cooling boost)
@@ -1084,6 +1131,7 @@ def run_phase_transition_swept(params):
         # R2 moves with r_s at the slope zeta over the segment, so the bubble volume in P_th changes at the same
         # Rdot2 = zeta U the work term charges (a held R2/r_s would grow it at (R2/r_s) U instead)
         R2a, rsa, K, F_rad, M_floor, z = root['R2'], rs, root['K'], params['F_rad'].value, Ms, zeta
+        t0, u0, Pb0 = t_now, u, params['Pb'].value   # D-11: this segment's start, for blowout_after_1b
         m_ev = get_bubbleParams.evaporated_mass(params)   # shell_mass_net: 1b's last value (PLAN D-MB5); 0.0 when off
         L_bubble, Cf = params['bubble_LTotal'].value, get_bubbleParams.cover_fraction(params)
         cf_sigma = reservoir and get_bubbleParams.cover_law(params) == 'sigma'   # CF_LAW_PLAN D-7: C_f per RHS call
@@ -1182,6 +1230,12 @@ def run_phase_transition_swept(params):
         R2_results.append(R2a + z * (rs - rsa))
         u_results.append(u)
         Eb_results.append(Eb)
+
+        # D-11 / D-13 (PLAN_SWITCH.md): blowout after 1b; from the next row on this phase runs the vent_model's branch
+        if watch and blowout_after_1b(params, 'transition', t0, u0, rsa, R2a, Pb0, t_now, u, rs, R2a + z * (rs - rsa)):
+            watch, vented = False, True
+            reservoir = get_bubbleParams.vent_model(params) == 'reservoir'
+            max_segments = MAX_SEGMENTS if reservoir else max_segments
 
         # the c3c transition's exits, in its order: ram-dominated, energy floor, then the stops
         fb_post = get_current_sps_feedback(t_now, params)

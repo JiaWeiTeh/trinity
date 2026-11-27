@@ -258,10 +258,25 @@ def vent_model(params):
 
 
 def vented(params):
-    """True once the shell has vented under vent_model 'ambient' or 'reservoir': phase 1b ended on a venting
-    trigger. transition_channel is '' through phases 1a and 1b (it is written after 1b's last snapshot), so this is
-    False in every 1a and 1b row, and always under 'vacuum'."""
-    return vent_model(params) != 'vacuum' and _val(params, 'transition_channel', '') in VENT_CHANNELS
+    """True once the shell has vented under vent_model 'ambient' or 'reservoir' (D-11,
+    docs/dev/turnaround-stall/PLAN_SWITCH.md): vent_channel holds the route that opened it, set by mark_vented where
+    blowout fires (after 1b's last snapshot, or at the end of a 1c or momentum segment) and held. It is '' through
+    phases 1a and 1b, so this is False in every 1a and 1b row, and always under 'vacuum'. Hand-built params without
+    the key (older tests, harnesses) read transition_channel, the rule they were written for."""
+    if vent_model(params) == 'vacuum':
+        return False
+    item = params.get('vent_channel', None)
+    channel = item.value if hasattr(item, 'value') else _val(params, 'transition_channel', '')
+    return channel in VENT_CHANNELS
+
+
+def mark_vented(params, channel, t, phase, rs, R2):
+    """D-11 (PLAN_SWITCH.md): the shell vents through `channel`, decided at the end of a segment of `phase` at t [Myr]
+    with outer edge rs and inner face R2 [pc] there; the next row is the first vented one. Held: nothing unsets it."""
+    params['vent_channel'].value, params['t_vent'].value, params['isVented'].value = channel, t, True
+    logger.info(f"Shell vented ({channel}, blowout_rule {_val(params, 'blowout_rule', 'geometric')}, vent_model "
+                f"{vent_model(params)}) at the end of a {phase} segment: t={t:.9e} Myr, r_s={rs:.6g} pc, "
+                f"R2={R2:.6g} pc, rCloud={params['rCloud'].value:.6g} pc")
 
 
 def cover_fraction(params, r=None, m=None):
