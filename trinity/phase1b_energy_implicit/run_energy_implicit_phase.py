@@ -633,6 +633,7 @@ def compute_forces_pure(
     from trinity.cloud_properties import density_profile
     # ISM pressure, bridged at rCloud by the density's tanh weight (B3, docs/dev/turnaround-stall/PLAN.md, 2026-11)
     P_ext += PISM * k_B * density_profile.ism_weight(rShell, rCloud)
+    P_ext -= density_profile.get_press_ism_thermal(rShell, FABSi, params)   # P_i replaces its thermal part
     P_ext += density_profile.get_press_cloud(rShell, FABSi, params)   # cloud gas ahead (TCloud, 10 K by default)
 
     # ==========================================================================
