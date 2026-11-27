@@ -140,7 +140,7 @@ def test_velocity_runaway_is_unresolved():
 
 
 def test_still_expanding_is_not_cleared():
-    """'expanding' is a censoring; 'breakout' is a result. They must not
+    """'expanding' is a censoring; 'expanding_beyond' is a result. They must not
     share a word."""
     inside = BF.classify(_row(v2_final=20.0, R2_max=10.0, rCloud=20.0))
     assert inside["report"] == "expanding"
@@ -148,7 +148,7 @@ def test_still_expanding_is_not_cleared():
     assert inside["censored"] is True
 
     outside = BF.classify(_row(v2_final=20.0, R2_max=90.0, R2_final=90.0, rCloud=20.0))
-    assert outside["report"] == "breakout"
+    assert outside["report"] == "expanding_beyond"
     assert outside["cloud_outcome"] == "cleared"
 
 
@@ -239,7 +239,7 @@ def test_csv_string_values_are_handled():
             "end_reason": "stopping_time",
         }
     )
-    assert v["report"] == "breakout"
+    assert v["report"] == "expanding_beyond"
     assert BF._truthy("False") is False
     assert BF._truthy("nan") is False
     assert BF._num("nan") is None
