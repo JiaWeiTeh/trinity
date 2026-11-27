@@ -44,7 +44,7 @@ def _ns(**kw):
 def _vented(cf=0.5, **kw):
     """A vented leaky reservoir under hole_forces on with the deficit's keys at their defaults."""
     base = dict(hole_forces="on", vent_model="reservoir", transition_channel="blowout", coverFraction=cf,
-                _hole_D=0.0, _hole_Ms_seg=0.0, _hole_Cf_seg=1.0)
+                _hole_D=0.0, _hole_Ms_seg=0.0, _hole_Cf_seg=1.0, _cf_tab_r=None, _cf_tab_S=None)
     base.update(kw)
     return _ns(**base)
 
@@ -183,7 +183,7 @@ def test_the_law_reads_the_swept_column_under_on():
 def test_store_vent_column_is_untouched():
     """D-9 as checked against the code (C1D_PLAN §9.1): the deficit starts from vented(), so the cf_law hook keeps its
     signature (params only) and its once-only, cover_law-sigma-only behaviour, also under hole_forces on, and it never
-    writes the deficit's keys."""
+    writes the deficit's keys. Since 2026-11-27 it also starts the outbound table (CF_LAW_PLAN.md §11)."""
     assert list(inspect.signature(G.store_vent_column).parameters) == ["params"]
     p = _vented(0.5, cover_law="constant", _cf_Sigma_vent=0.0, rs_dyn=10.0, shell_mass=1e4)
     G.store_vent_column(p)
@@ -195,9 +195,11 @@ def test_store_vent_column_is_untouched():
     G.store_vent_column(p)
     Sv = p["_cf_Sigma_vent"].value
     assert Sv == 1e4 / (4.0 * np.pi * 10.0**2)
+    assert (p["_cf_tab_r"].value, p["_cf_tab_S"].value) == ([10.0], [Sv])   # the outbound table starts here
     p["shell_mass"].value, p["rs_dyn"].value = 2e4, 15.0
     G.store_vent_column(p)                                  # once only
     assert p["_cf_Sigma_vent"].value == Sv
+    assert p["_cf_tab_r"].value == [10.0]
     assert (p["_hole_D"].value, p["_hole_Ms_seg"].value, p["_hole_Cf_seg"].value) == held
 
 
@@ -382,6 +384,7 @@ def _run(tmp_path, holes, monkeypatch, sigma_vent=None):
         p["cover_law"].value, p["cf_half_radius"].value, p["coverFraction"].value = "sigma", 2.0, 1.0
         p["_cf_Sigma_vent"].value = sigma_vent * ((p["shell_mass"].value - p["bubble_mass"].value)
                                                   / (4.0 * math.pi * p["rs_dyn"].value ** 2))
+        p["_cf_tab_r"].value, p["_cf_tab_S"].value = [p["rs_dyn"].value], [p["_cf_Sigma_vent"].value]
     starts, real_ivp = {}, S.scipy.integrate.solve_ivp
 
     def spy_ivp(*a, **kw):                   # the runner's segment solves: their RHS at the segment start
@@ -410,19 +413,22 @@ def _accel(r, k, Mr):
 
 def test_sigma_reservoir_law_reads_the_swept_column(tmp_path, monkeypatch):
     """cover_law sigma with hole_forces on, a column at the vent three times the entry's (C_f ~ 0.6 from the first
-    row, as test_cf_law.py does): each row's shell_fLeak is 1 - C_f of the law at the row's swept column, with the
+    row, as test_cf_law.py does): each row's shell_fLeak is 1 - C_f of the law at the smallest swept column of the
+    rows so far (the outbound table, CF_LAW_PLAN.md §11: rows move out, the column grows, C_f is held), with the
     deficit rebuilt from the rows, D_k = D_{k-1} + (1 - C_f,{k-1}) (M_s,k - M_s,{k-1}), D = 0 at the first row; the
     RHS at each segment start uses the law's C_f at the row's SWEPT column as k (per call, D-5; v2) and the real mass
     M_s - m_ev - D; and the deficit grows."""
     p, tr, pairs = _run(tmp_path, "on", monkeypatch, sigma_vent=3.0)
     assert len(tr) >= 2 and len(pairs) >= 2
     m_b, Sv = p["bubble_mass"].value, p["_cf_Sigma_vent"].value
-    D, prev, real = 0.0, None, {}
+    assert all(b["rs_dyn"] > a["rs_dyn"] for a, b in zip(tr, tr[1:]))          # every row at a new radius
+    D, prev, real, Smin = 0.0, None, {}, Sv
     for r in tr:
         if prev is not None:
             D += prev["shell_fLeak"] * (r["shell_mass"] - prev["shell_mass"])
         Mr = r["shell_mass"] - m_b - D
-        cf = G.cf_law(Sv / ((r["shell_mass"] - m_b) / (4.0 * math.pi * r["rs_dyn"] ** 2)), 2.0)
+        Smin = min(Smin, (r["shell_mass"] - m_b) / (4.0 * math.pi * r["rs_dyn"] ** 2))
+        cf = G.cf_law(Sv / Smin, 2.0)
         assert r["shell_fLeak"] == pytest.approx(1.0 - cf, abs=1e-9)
         real[(r["rs_dyn"], r["v2"])] = (cf, Mr)
         prev = r

@@ -9,6 +9,7 @@ This script contains useful functions that help compute properties and parameter
 of the bubble. grep "Section" so jump between different sections.
 """
 # libraries
+import bisect
 import functools
 import numpy as np
 import scipy.optimize
@@ -269,14 +270,18 @@ def cover_fraction(params, r=None, m=None):
     the closed fraction after the vent is cf_law of the column at the vent over the column now, the shell's own
     mass m [Msun] over 4 pi r**2 with r [pc] its outer radius (without r: the row's, shell_column); 1.0 until the
     column at the vent is stored (store_vent_column). The law acts under vent_model 'reservoir' only; elsewhere
-    coverFraction holds under either law (C1D_PLAN.md §10.3: cover_law defaults to 'sigma')."""
+    coverFraction holds under either law (C1D_PLAN.md §10.3: cover_law defaults to 'sigma'). Under hole_forces on
+    the law reads outbound_column, so C_f never rises while the shell reaches new radii (CF_LAW_PLAN.md §11)."""
     if vent_model(params) == 'reservoir' and not vented(params):
         return 1.0
     if cover_law(params) == 'sigma' and vent_model(params) == 'reservoir':
         Sigma_v = _val(params, '_cf_Sigma_vent', 0.0)
         if Sigma_v <= 0.0:
             return 1.0
-        return cf_law(Sigma_v / shell_column(params, r, m), params['cf_half_radius'].value)
+        S = shell_column(params, r, m)
+        if hole_forces(params):   # an open direction sweeps no gas (CF_LAW_PLAN.md §11, ruled 2026-11-27)
+            S = outbound_column(params, params['rs_dyn'].value if r is None else r, S)
+        return cf_law(Sigma_v / S, params['cf_half_radius'].value)
     return _val(params, 'coverFraction', 1.0)
 
 
@@ -285,7 +290,8 @@ def cover_fraction(params, r=None, m=None):
 # at fixed mass per direction every column scales with Sigma. Of the sky closed at the vent, the part still closed
 # once the mean has fallen from Sigma_v to Sigma is Phi(-(y + a)/sigma) / Phi(-a/sigma), y = ln(Sigma_v/Sigma) (the
 # erfc ratio of CF_LAW_PLAN §1, written with the normal CDF so that both tails stay finite), clipped at 1: a shell
-# whose column grows again (sweep-up, a turnaround) re-closes. a is set by h = cf_half_radius.
+# whose column grows again (sweep-up, a turnaround) re-closes; under hole_forces on only by falling back inside the
+# radius where a hole opened (outbound_column, CF_LAW_PLAN §11). a is set by h = cf_half_radius.
 # ponytail: sigma is fixed at 1.5 (Raskutti et al. 2016, arXiv:1608.04469, sec. 4.2.2: 1-1.5 in simulations); at
 # fixed h it moves C_f by at most 0.16 (h = 2, sigma 0.75-2). Promote to a key if a referee asks (D-4).
 CF_SIGMA = 1.5
@@ -313,9 +319,38 @@ def store_vent_column(params):
     """cover_law 'sigma': store the row's shell_column as the column at the vent, once; a no-op otherwise. Call it
     where the shell vents (today the first phase-1c segment of a vented reservoir; CF_LAW_PLAN.md §8.1), after the
     vent row's shell_mass and rs_dyn are written (in swept, after _forces_to_params) and with current_phase set to
-    the phase of that row, whose evaporated_mass rule the stored column then carries."""
+    the phase of that row, whose evaporated_mass rule the stored column then carries. It also starts the outbound
+    table (outbound_column, read under hole_forces on only) at the vent's radius and column (CF_LAW_PLAN.md §11)."""
     if cover_law(params) == 'sigma' and params['_cf_Sigma_vent'].value <= 0.0:
         params['_cf_Sigma_vent'].value = shell_column(params)
+        params['_cf_tab_r'].value = [params['rs_dyn'].value]   # fresh lists: each run its own table
+        params['_cf_tab_S'].value = [params['_cf_Sigma_vent'].value]
+
+
+def outbound_column(params, r, S):
+    """hole_forces on (CF_LAW_PLAN.md §11, ruled 2026-11-27): the column [Msun pc^-2] cf_law reads at outer radius
+    r [pc] for a shell whose swept column there is S. An open direction sweeps no gas, so after it opens its column
+    only thins as r^-2 and it closes again only inside the radius at which it opened; a closed direction sweeps as
+    the whole shell does. The closed fraction at r is therefore cf_law at the smallest column the shell had on its
+    way out up to r: at or beyond the furthest row radius, min(that minimum, S); inside it, the outbound table
+    at r, whatever S is now (a shell falling back closes holes again, one moving out again over the same radii
+    reopens them on the same curve, so C_f cannot ratchet). The table (_cf_tab_r rising, _cf_tab_S) starts at the
+    vent (store_vent_column) and gains a row whenever a row reaches a new radius (hole_deficit). Params without a
+    table (a column at the vent set by hand) get S back. A per-direction Monte Carlo of this picture gives the same
+    C_f at every radius (harness/cfmono_mc_check.py). The lookup bisects the table and interpolates linearly, so a
+    call costs O(log rows). ponytail: the minimum is resolved per row: a dip and recovery of the column inside one
+    segment, or the outermost point of a turnaround segment between two rows, is missed; rows are the resolution
+    the law is gated at."""
+    rt = _val(params, '_cf_tab_r', None)
+    if not rt:
+        return S
+    St = params['_cf_tab_S'].value
+    if r >= rt[-1]:
+        return min(St[-1], S)
+    i = bisect.bisect_right(rt, r)   # rt[i - 1] <= r < rt[i]; inside the vent radius: the vent's column
+    if i == 0:
+        return St[0]
+    return St[i - 1] + (St[i] - St[i - 1]) * (r - rt[i - 1]) / (rt[i] - rt[i - 1])
 
 
 def hole_forces(params):
@@ -345,7 +380,8 @@ def hole_mass(params, r, Ms, m_ev):
     (C_f, Ms - m_ev - D), D the gas the holes did not sweep since the vent (hole_deficit); D = 0 and C_f = 1 before
     it. C_f is cover_fraction at (r, Ms - m_ev), per call under cover_law sigma (D-5): the law reads the swept
     column, since the still-covered directions sweep as every direction does without holes (ruled 2026-11-26
-    21:1x, C1D_PLAN.md §10.3; the real-column reading D-4' is superseded)."""
+    21:1x, C1D_PLAN.md §10.3; the real-column reading D-4' is superseded), through outbound_column, since the open
+    ones sweep nothing (CF_LAW_PLAN.md §11, ruled 2026-11-27)."""
     mn = Ms - m_ev
     if not hole_forces(params):
         return 1.0, mn
@@ -371,9 +407,19 @@ def hole_deficit(params, Ms):
     so the rows rebuild D exactly. D starts at 0 at the first row that has vented: up to there the shell had swept
     every direction. Called by swept's _forces_to_params at the end of every row (rs_dyn and shell_mass written), so
     the RHS that follows holds this row's state. A no-op when off, under vacuum or ambient, and before the vent.
-    store_vent_column is left as cf_law has it: vented() marks the vent here, at any vent point."""
+    store_vent_column is left as cf_law has it: vented() marks the vent here, at any vent point. Under cover_law
+    sigma a row at a new radius also extends the outbound table, and a row at the furthest row radius lowers its
+    entry (outbound_column, CF_LAW_PLAN.md §11), before the row's C_f is taken."""
     if not (hole_forces(params) and vent_model(params) == 'reservoir' and vented(params)):
         return
+    rt = _val(params, '_cf_tab_r', None)
+    if rt and params['rs_dyn'].value >= rt[-1]:   # at the furthest row radius or beyond: the smallest column so far
+        St, S = params['_cf_tab_S'].value, min(params['_cf_tab_S'].value[-1], shell_column(params))
+        if params['rs_dyn'].value > rt[-1]:
+            rt.append(params['rs_dyn'].value)
+            St.append(S)
+        else:   # a row repeating the furthest radius lowers its entry: the table holds what the row's C_f read
+            St[-1] = S
     params['_hole_D'].value = _hole_D(params, Ms)
     params['_hole_Ms_seg'].value = Ms
     params['_hole_Cf_seg'].value = cover_fraction(params)   # the row's
