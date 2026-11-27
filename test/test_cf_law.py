@@ -89,7 +89,8 @@ def test_law_is_the_conditional_probability_of_lognormal_columns():
 def _vented(law, **kw):
     base = dict(vent_model="reservoir", transition_channel="blowout", coverFraction=1.0, cover_law=law,
                 cf_half_radius=2.0, _cf_Sigma_vent=0.0, rs_dyn=12.0, shell_mass=3.0e4, bubble_mass=40.0,
-                current_phase="transition", shell_mass_net=True, _shell_mass_net_on=True)
+                current_phase="transition", shell_mass_net=True, _shell_mass_net_on=True,
+                _cf_tab_r=None, _cf_tab_S=None)   # the outbound table's keys (CF_LAW_PLAN.md §11)
     base.update(kw)
     return _ns(**base)
 
@@ -222,6 +223,21 @@ def _column(r):
     return (r["shell_mass"] - m_ev) / (4.0 * math.pi * r["rs_dyn"] ** 2)
 
 
+def _outbound(rows, Sv):
+    """Per row, the column cf_law reads under hole_forces on (get_bubbleParams.outbound_column): the table rebuilt
+    from the rows as store_vent_column (the first row) and hole_deficit (each later row at a new radius) build it."""
+    rt, St, out = [rows[0]["rs_dyn"]], [Sv], []
+    for r in rows:
+        x = r["rs_dyn"]
+        if x > rt[-1]:
+            rt.append(x)
+            St.append(min(St[-1], _column(r)))
+        elif x == rt[-1]:
+            St[-1] = min(St[-1], _column(r))
+        out.append(St[-1] if x >= rt[-1] else float(np.interp(x, rt, St)))
+    return out
+
+
 def test_first_reservoir_row_stores_the_column_and_is_sealed(tmp_path):
     p = _entry(tmp_path)
     TP.run_phase_transition(p)
@@ -230,8 +246,8 @@ def test_first_reservoir_row_stores_the_column_and_is_sealed(tmp_path):
     Sv = p["_cf_Sigma_vent"].value
     assert Sv == pytest.approx(_column(tr[0]), rel=1e-14)
     assert tr[0]["shell_fLeak"] == 0.0 and tr[0]["bubble_Leak"] == 0.0
-    for r in tr:
-        assert r["shell_fLeak"] == pytest.approx(1.0 - G.cf_law(Sv / _column(r), 2.0), abs=1e-12)
+    for r, Sig in zip(tr, _outbound(tr, Sv)):   # hole_forces on, the registry's default: the outbound column
+        assert r["shell_fLeak"] == pytest.approx(1.0 - G.cf_law(Sv / Sig, 2.0), abs=1e-12)
 
 
 def test_reservoir_rows_and_rhs_follow_the_law(tmp_path, monkeypatch):
@@ -239,11 +255,14 @@ def test_reservoir_rows_and_rhs_follow_the_law(tmp_path, monkeypatch):
     Each row's shell_fLeak and leak use the law at the row's column; the integrated dEb/dt at the first segment start
     is L_mech - L_cool - 4 pi R2^2 P_b U - L_leak with that leak; the RHS asks for C_f at its own (r, m); the stored
     column is not overwritten. It runs under the registry defaults, cover_law sigma and hole_forces on (C1D_PLAN.md
-    §10.3), so the RHS's C_f calls come from hole_mass and the leak line."""
+    §10.3), so the RHS's C_f calls come from hole_mass and the leak line. The column at the vent is set by hand, and
+    the test starts the outbound table at the entry as the hook would (CF_LAW_PLAN.md §11): the rows' column grows
+    inside the uniform cloud, so C_f is held at its entry value where the law alone would close holes again."""
     p = _entry(tmp_path)
     m_b = p["bubble_mass"].value
     Sv = 3.0 * ((p["shell_mass"].value - m_b) / (4.0 * math.pi * p["rs_dyn"].value ** 2))
     p["_cf_Sigma_vent"].value = Sv
+    p["_cf_tab_r"].value, p["_cf_tab_S"].value = [p["rs_dyn"].value], [Sv]   # the outbound table, as the hook
     g = lambda k: p[k].value  # noqa: E731
     L0 = g("bubble_LTotal")
     starts, calls, real_ivp, real_cf = [], [], S.scipy.integrate.solve_ivp, G.cover_fraction
@@ -267,8 +286,10 @@ def test_reservoir_rows_and_rhs_follow_the_law(tmp_path, monkeypatch):
     assert len(tr) >= 1 and len(starts) >= 1
     assert p["_cf_Sigma_vent"].value == Sv
     assert any(r is not None for r, _ in calls)                                     # D-7: per RHS call
-    for r in tr:
-        cf = G.cf_law(Sv / _column(r), 2.0)
+    assert len(tr) >= 2 and _column(tr[-1]) > _column(tr[0])                       # the column grows on the way out
+    assert tr[-1]["shell_fLeak"] == pytest.approx(tr[0]["shell_fLeak"], abs=1e-12)    # and C_f is held
+    for r, Sig in zip(tr, _outbound(tr, Sv)):
+        cf = G.cf_law(Sv / Sig, 2.0)
         assert r["shell_fLeak"] == pytest.approx(1.0 - cf, abs=1e-12)
         leak = G.get_leak_luminosity(cf, r["R2"], r["Pb"], r["c_sound"], g("gamma_adia"), r["press_HII_in"])
         assert r["bubble_Leak"] == pytest.approx(leak, rel=1e-9, abs=1e-30)
