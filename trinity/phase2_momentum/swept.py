@@ -1051,7 +1051,7 @@ def run_phase_transition_swept(params):
     zeta = 1.0
     t_results, R2_results, u_results, Eb_results = [tmin], [params['R2'].value], [u], [Eb]
     dt_segment, t_diss_onset = TP.DT_SEGMENT_INIT, np.inf
-    ode_events = build_transition_phase_events(params, energy_floor=TP.ENERGY_FLOOR)
+    ode_events = build_transition_phase_events(params)
     ta_continue = not turnaround_ends_phase(params)   # R0: under continue SWEEP too ends at its mode switch (u = 0)
     G, mCluster = params['G'].value, params['mCluster'].value
     sweep = None   # S7: the mode, decided at the first segment and changed only at its events
@@ -1239,19 +1239,17 @@ def run_phase_transition_swept(params):
             reservoir = get_bubbleParams.vent_model(params) == 'reservoir'
             max_segments = MAX_SEGMENTS if reservoir else max_segments
 
-        # the c3c transition's exits, in its order: ram-dominated, energy floor, then the stops
+        # the c3c transition's exits, in its order: the spent bubble, then the stops (get_bubbleParams.bubble_spent;
+        # docs/dev/main-code-change/PLAN_SPENT_BUBBLE.md)
         fb_post = get_current_sps_feedback(t_now, params)
         R2e = R2a + z * (rs - rsa)
         P_th = get_bubbleParams.bubble_E2P(
             Eb, R2e, get_bubbleParams.solve_R1(R2e, Eb, fb_post.Lmech_total, fb_post.v_mech_total), gamma)
-        P_ram = get_bubbleParams.pRam(R2e, fb_post.Lmech_total, fb_post.v_mech_total)
-        if P_th + P_ram > 0 and P_ram / (P_th + P_ram) > 0.9:
-            termination_reason = "ram_dominated"
-            logger.info(f"Ram fraction {P_ram / (P_th + P_ram):.3f} > 0.9, transitioning to momentum "
+        if get_bubbleParams.bubble_spent(Eb, R2e, fb_post.Lmech_total, fb_post.v_mech_total, gamma,
+                                         params['phaseSwitch_PbPram'].value, P_b=P_th):
+            termination_reason = "bubble_spent"
+            logger.info(f"Bubble spent (P_th <= phaseSwitch_PbPram * P_ram(R2)), transitioning to momentum "
                         f"(t={t_now:.4e}, Eb={Eb:.4e})")
-            break
-        if Eb < TP.ENERGY_FLOOR:
-            termination_reason = "energy_floor"
             break
         if vented:   # vent_model: the bubble has reached the outside pressure; momentum holds it there (L-13)
             P_out = p_ext(rs, fabs_ion, params)

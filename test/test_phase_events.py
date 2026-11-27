@@ -14,10 +14,6 @@ def _y(R2=2.0, v2=3.0, Eb=4.0):
     return np.array([R2, v2, Eb], dtype=float)
 
 
-def _cooling_balance(Lloss):
-    return events.make_cooling_balance_event(threshold=0.05)(100.0, Lloss)
-
-
 @pytest.mark.parametrize(
     ("event", "negative_y", "zero_y", "positive_y", "direction", "terminal", "ends_run"),
     [
@@ -77,15 +73,6 @@ def _cooling_balance(Lloss):
             False,
             False,
         ),
-        (
-            _cooling_balance(95.1),
-            _y(),
-            _y(),
-            _y(),
-            -1,
-            True,
-            False,
-        ),
     ],
 )
 def test_event_factories_cross_threshold(
@@ -97,13 +84,8 @@ def test_event_factories_cross_threshold(
     terminal,
     ends_run,
 ):
-    if event.name == "cooling_balance":
-        event = _cooling_balance(95.0)
-        negative_value = _cooling_balance(95.1)(0.0, negative_y)
-        positive_value = _cooling_balance(94.9)(0.0, positive_y)
-    else:
-        negative_value = event(0.0, negative_y)
-        positive_value = event(0.0, positive_y)
+    negative_value = event(0.0, negative_y)
+    positive_value = event(0.0, positive_y)
 
     assert negative_value < 0
     assert event(0.0, zero_y) == pytest.approx(0.0)
@@ -227,7 +209,7 @@ def test_min_radius_event_follows_the_live_collapse_radius():
     moves with R2_max inside one phase; MIN_RADIUS_SAFETY floors it."""
     p = {"rCloud": _param(20.0), "stop_r": _param(500.0), "turnaround_rule": _param("momentum"),
          **_collapse_params()}
-    evs, _ = events.build_implicit_phase_events(p)
+    evs = events.build_implicit_phase_events(p)
     min_r = next(e for e in evs if e.name == "min_radius")
     events.update_collapse_radius(p, 0.8)
     assert min_r(0.0, _y(R2=0.3)) == pytest.approx(0.1)
@@ -245,7 +227,7 @@ def test_turnaround_ends_every_energy_carrying_phase(build):
     p = {"rCloud": _param(20.0), "stop_r": _param(500.0), "turnaround_rule": _param("momentum"),
          **_collapse_params()}
     evs = {"energy": lambda: events.build_energy_phase_events(p),
-           "implicit": lambda: events.build_implicit_phase_events(p)[0],
+           "implicit": lambda: events.build_implicit_phase_events(p),
            "transition": lambda: events.build_transition_phase_events(p)}[build]()
     sign = [e for e in evs if e.name == "velocity_sign"]
     assert len(sign) == 1
@@ -263,11 +245,14 @@ def test_solver_flags_accumulate_once():
 
 
 def test_transition_phase_ends_where_eb_reaches_zero():
-    """S6 (B7, ruled 2026-11-21): besides its floor, 1c carries a terminal Eb = 0 event, for a 1c entered below the
-    floor; it ends the phase only (the runners put Eb at the floor and go on to momentum)."""
+    """S6 (B7, ruled 2026-11-21): 1c carries a terminal Eb = 0 event (its spent-bubble end is checked between
+    segments, and it has no fixed-floor event); it ends the phase only (the runners put Eb at ENERGY_FLOOR and go on
+    to momentum)."""
     p = {"rCloud": _param(20.0), "stop_r": _param(500.0), "turnaround_rule": _param("momentum"),
          **_collapse_params()}
-    zero = [e for e in events.build_transition_phase_events(p) if e.name == "energy_zero"]
+    evs = events.build_transition_phase_events(p)
+    assert not any(e.name == "energy_floor" for e in evs)
+    zero = [e for e in evs if e.name == "energy_zero"]
     assert len(zero) == 1
     assert zero[0].terminal is True and zero[0].direction == -1 and zero[0].is_simulation_ending is False
     assert zero[0](0.0, _y(Eb=5.0)) == 5.0 and zero[0](0.0, _y(Eb=-1.0)) == -1.0

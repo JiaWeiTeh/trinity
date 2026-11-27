@@ -76,6 +76,7 @@ import trinity.bubble_structure.get_bubbleParams as get_bubbleParams
 
 # Import centralized event functions
 from trinity.phase_general.phase_events import (
+    ENERGY_FLOOR,
     build_transition_phase_events,
     solve_segment,
     update_collapse_radius,
@@ -96,7 +97,6 @@ DT_SEGMENT_INIT = 2e-3  # Myr - initial segment duration
 DT_SEGMENT_MIN = 1e-3  # Myr - minimum segment duration
 DT_SEGMENT_MAX = 5e-2   # Myr - maximum segment duration
 MAX_SEGMENTS = 5000
-ENERGY_FLOOR = 1e3  # Minimum energy before transition to momentum phase
 FOUR_PI = 4.0 * np.pi
 
 # Adaptive stepping parameters
@@ -396,8 +396,8 @@ def run_phase_transition(params) -> TransitionPhaseResults:
     Run the transition phase using solve_ivp.
 
     This phase bridges energy-driven and momentum-driven expansion.
-    Energy decays on the sound-crossing timescale until it reaches
-    a floor value, then momentum phase begins.
+    Energy decays on the sound-crossing timescale until the bubble is spent
+    (Pb <= phaseSwitch_PbPram * P_ram(R2)), then momentum phase begins.
 
     Parameters
     ----------
@@ -502,8 +502,8 @@ def run_phase_transition(params) -> TransitionPhaseResults:
     # =============================================================================
 
     # Build events using centralized module
-    # Transition phase events: energy_floor (phase ending), min_radius, velocity_runaway
-    ode_events = build_transition_phase_events(params, energy_floor=ENERGY_FLOOR)
+    # Transition phase events: energy_zero (phase ending), min_radius, velocity_runaway
+    ode_events = build_transition_phase_events(params)
 
     # =============================================================================
     # Main loop (segment-based with adaptive stepping)
@@ -807,29 +807,18 @@ def run_phase_transition(params) -> TransitionPhaseResults:
         # Check termination conditions
         # ---------------------------------------------------------------------
 
-        # Phase transition criterion: ram pressure dominates bubble pressure.
-        # Recompute Pb and P_ram at the post-ODE state so the check uses
-        # current values, not stale pre-ODE ones.
-        RAM_DOMINANCE_THRESHOLD = 0.9  # exit when P_ram/(P_b + P_ram) > this
+        # Phase transition criterion: the bubble is spent, Pb <= phaseSwitch_PbPram * P_ram(R2)
+        # (get_bubbleParams.bubble_spent). It replaced a fixed energy floor (Eb < 1e3), which a weak
+        # wind reaches while Pb is still many times P_ram, and a ram-pressure fraction > 0.9, which
+        # solve_R1 makes unreachable (Pb = P_ram(R1) >= P_ram(R2): the fraction stays <= 1/2).
+        # docs/dev/main-code-change/PLAN_SPENT_BUBBLE.md
         feedback_post = get_current_sps_feedback(t_now, params)
-        gamma_adia = params['gamma_adia'].value
-        R1_post, Pb_post = compute_R1_Pb(R2, Eb, feedback_post.Lmech_total,
-                                          feedback_post.v_mech_total, gamma_adia)
-        P_ram_post = get_bubbleParams.pRam(R2, feedback_post.Lmech_total,
-                                            feedback_post.v_mech_total)
-        P_total = Pb_post + P_ram_post
-        if P_total > 0:
-            ram_fraction = P_ram_post / P_total
-            if ram_fraction > RAM_DOMINANCE_THRESHOLD:
-                termination_reason = "ram_dominated"
-                logger.info(f"Ram fraction {ram_fraction:.3f} > {RAM_DOMINANCE_THRESHOLD}, "
-                            f"transitioning to momentum (t={t_now:.4e}, Eb={Eb:.4e})")
-                break
-        
-        # Safety fallback: absolute energy floor
-        if Eb < ENERGY_FLOOR:
-            termination_reason = "energy_floor"
-            logger.info(f"Energy dropped below floor ({ENERGY_FLOOR}), transitioning to momentum")
+        if np.isfinite(Eb) and get_bubbleParams.bubble_spent(
+                Eb, R2, feedback_post.Lmech_total, feedback_post.v_mech_total,
+                params['gamma_adia'].value, params['phaseSwitch_PbPram'].value):
+            termination_reason = "bubble_spent"
+            logger.info(f"Bubble spent (Pb <= phaseSwitch_PbPram * P_ram), transitioning to momentum "
+                        f"(t={t_now:.4e}, Eb={Eb:.4e})")
             break
 
         # Collapse detection: velocity negative AND radius decreasing.

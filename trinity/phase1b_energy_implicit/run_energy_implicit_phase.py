@@ -95,6 +95,7 @@ from trinity.shell_structure.shell_structure import (
 
 # Import centralized event functions
 from trinity.phase_general.phase_events import (
+    ENERGY_FLOOR,
     build_implicit_phase_events,
     turnaround_ends_phase,
     solve_segment,
@@ -207,13 +208,8 @@ ODE_MAX_STEP = DT_SEGMENT_MIN / 5  # Max step = 2e-5 Myr (ensures >=5 steps per 
 # Solver method: 'LSODA' for stiff/non-stiff switching
 ODE_METHOD = 'LSODA'
 
-# Energy handed to phase 1c when an energy-driven bubble collapses (Eb -> 0) or
-# turns around and is routed to momentum instead of dead-stopping. Matches phase1c
-# ENERGY_FLOOR (1e3), so 1c is skipped and the momentum phase starts at once.
-ENERGY_HANDOFF_FLOOR = 1e3
 
-
-def classify_energy_collapse(Eb):
+def classify_energy_collapse(Eb, R2, Lmech_total, v_mech_total, gamma, PbPram):
     """Routing decision when the energy-driven bubble's Eb stops being viable.
 
     Pure (no global state) so the routing invariant is unit-testable, mirroring
@@ -221,16 +217,17 @@ def classify_energy_collapse(Eb):
 
     - ``'stop'``: ``Eb`` non-finite (nan/inf) -> unrecoverable, end on
       ``ENERGY_COLLAPSED`` (cannot hand a bad state to momentum).
-    - ``'momentum'``: ``Eb <= 0`` and finite -> thermal driving spent (as ``Eb->0``
-      the bubble pressure floors at ``~P_ram``, so the shell is already
-      momentum-driven); route to the momentum phase instead of dead-stopping.
-    - ``None``: ``Eb > 0`` and finite -> still energy-driven, no routing.
+    - ``'momentum'``: the bubble is spent, ``Pb <= PbPram * P_ram(R2)`` or ``Eb <= 0``
+      (get_bubbleParams.bubble_spent): the hot layer has shrunk onto the shell and the
+      wind's ram pressure drives it; route to the momentum phase instead of dead-stopping.
+    - ``None``: still energy-driven, no routing.
 
-    docs/dev/transition/pdv-trigger/HIMASS_HANDOFF_PLAN.md
+    docs/dev/transition/pdv-trigger/HIMASS_HANDOFF_PLAN.md,
+    docs/dev/main-code-change/PLAN_SPENT_BUBBLE.md
     """
     if not np.isfinite(Eb):
         return 'stop'
-    if Eb <= 0:
+    if get_bubbleParams.bubble_spent(Eb, R2, Lmech_total, v_mech_total, gamma, PbPram):
         return 'momentum'
     return None
 
@@ -913,8 +910,7 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
     # =============================================================================
 
     # Build events using centralized module
-    # Returns (events_list, cooling_balance_factory)
-    ode_events, cooling_balance_factory = build_implicit_phase_events(params)
+    ode_events = build_implicit_phase_events(params)
     # R0 (turnaround_rule continue, the default): a turnaround does not end 1b, so a swept SWEEP segment ends at its
     # own mode switch (u through 0) and the receding shell coasts, as in the momentum phase
     ta_continue = not turnaround_ends_phase(params)
@@ -1363,14 +1359,14 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
                 sw.advance(params, event_result.y, np.max(sol.y[0]))
             if event_result.name == 'velocity_sign':
                 # Turnaround: straight to momentum, whatever Eb is left (ruled
-                # 2026-10-01, an approximation). Eb to the floor as for the Eb<=0
+                # 2026-10-01, an approximation). Eb to the floor as for the spent-bubble
                 # routing below, so 1c is skipped; Eb_handoff keeps what was dropped.
                 params['Eb_handoff'].value = Eb
                 logger.warning(
                     f"Shell turned around at t={t_now:.6e} Myr (R2={R2:.4f} pc): "
                     f"Eb={Eb:.3e} dropped to the floor -> momentum [velocity_sign_change]."
                 )
-                Eb = ENERGY_HANDOFF_FLOOR
+                Eb = ENERGY_FLOOR
                 params['Eb'].value = Eb
             break
 
@@ -1401,15 +1397,17 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
             sw.moved()
             R2, v2 = sw.R2_at(sw.rs, Eb, sw.Ms, t_now), sw.u   # the bubble radius the closure gives now, the gas speed
 
-        # Energy-driven collapse: Eb has fallen through zero (a sink -- PdV work on a
-        # heavy shell, or radiative cooling -- outruns the wind). The energy-driven
-        # model is invalid past this point (it would drive R1->R2 and divide-by-zero
-        # in compute_R1_Pb). But this is an energy->momentum TRANSITION, not an ending:
-        # as Eb->0 the bubble pressure floors at ~P_ram (Pb = (g-1)Lmech/((4pi/3)R1^2 v)
-        # -> P_ram since R1->R2), so the shell is already momentum-driven. Route to the
-        # momentum phase via 1c instead of dead-stopping. See docs/dev/transition/
-        # pdv-trigger/HIMASS_HANDOFF_PLAN.md.
-        _collapse = classify_energy_collapse(Eb)
+        # Spent bubble: Pb <= phaseSwitch_PbPram * P_ram(R2), or Eb <= 0 (a sink -- PdV work
+        # on a heavy shell, or radiative cooling -- outruns the wind). The hot layer has
+        # shrunk onto the shell (R1 -> R2; past Eb = 0 the energy-driven model would
+        # divide by zero in compute_R1_Pb) and the wind's ram pressure drives the shell:
+        # an energy->momentum TRANSITION, not an ending. Route to the momentum phase via
+        # 1c instead of dead-stopping. See docs/dev/transition/pdv-trigger/
+        # HIMASS_HANDOFF_PLAN.md and docs/dev/main-code-change/PLAN_SPENT_BUBBLE.md.
+        _fb = get_current_sps_feedback(t_now, params)
+        _collapse = classify_energy_collapse(Eb, R2, _fb.Lmech_total, _fb.v_mech_total,
+                                             params['gamma_adia'].value,
+                                             params['phaseSwitch_PbPram'].value)
         if _collapse == 'stop':
             # Non-finite Eb (nan/inf) is unrecoverable -- cannot hand a bad state to
             # momentum; keep the clean stop.
@@ -1430,11 +1428,11 @@ def run_phase_energy(params) -> ImplicitPhaseResults:
             # 1c's bubble calls stay finite and its floor check immediately transitions
             # to phase 2. Do NOT set EndSimulationDirectly -> main runs 1c -> momentum.
             params['Eb_handoff'].value = Eb
-            Eb = ENERGY_HANDOFF_FLOOR
+            Eb = ENERGY_FLOOR
             params['Eb'].value = Eb
             termination_reason = "energy_to_momentum"
             logger.warning(
-                f"Energy-driven collapse at t={t_now:.6e} Myr (Eb<=0, R2={R2:.4f} pc, "
+                f"Bubble spent at t={t_now:.6e} Myr (Eb={params['Eb_handoff'].value:.3e}, R2={R2:.4f} pc, "
                 f"v2={v2:.3e} pc/Myr): thermal driving spent -> routing to momentum via 1c."
             )
             break

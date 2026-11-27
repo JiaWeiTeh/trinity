@@ -64,7 +64,7 @@ import scipy.integrate
 import scipy.optimize
 import logging
 from dataclasses import dataclass
-from typing import List, Optional, Callable, Tuple, Any
+from typing import List, Optional, Callable, Any
 
 from trinity._output.simulation_end import SimulationEndCode
 
@@ -83,6 +83,10 @@ MAX_VELOCITY_EXPANSION = 1000.0  # pc/Myr (~978 km/s) - extreme outward velocity
 # bubble counts as collapsed. Bounded on both sides by measurement, not chosen:
 # see make_energy_collapse_event and docs/dev/phase1a-stiffness/PLAN.md.
 ENERGY_COLLAPSE_FRAC = 1e-3
+# The Eb [Msun pc^2 / Myr^2] a forced hand-off to momentum (turnaround, spent bubble) leaves, so the exit rows'
+# bubble calls stay finite and phase 1c is skipped. 1e3 = 1.9e46 erg. A placeholder, not a physics floor: when
+# the bubble is spent is decided by phaseSwitch_PbPram (get_bubbleParams.bubble_spent).
+ENERGY_FLOOR = 1e3
 
 
 # =============================================================================
@@ -293,7 +297,7 @@ def make_energy_floor_event(energy_floor: float, y_index: int = 2,
     event.direction = -1  # Only trigger when Eb crosses threshold from above
     event.name = name
     event.is_simulation_ending = False  # Phase ending, not simulation ending
-    event.reason_code = "energy_floor"
+    event.reason_code = name   # 'energy_zero' for 1c's Eb = 0 event, not the retired floor's name
     event.reason_message = "Bubble energy below threshold"
     return event
 
@@ -412,46 +416,6 @@ def make_energy_collapse_event(Eb_segment_start: float,
     event.reason_message = "Energy-driven bubble collapsed (Eb fell to a fraction of segment start)"
     event.end_code = SimulationEndCode.ENERGY_COLLAPSED
     return event
-
-
-def make_cooling_balance_event(threshold: float = 0.05, name: str = "cooling_balance"):
-    """
-    Create event factory for cooling balance detection.
-
-    Returns a factory that creates the actual event given current Lgain/Lloss.
-    This is needed because Lgain/Lloss change each segment.
-
-    NOTE: This event requires segment-level checking since Lgain/Lloss
-    are computed during segment setup, not available to solve_ivp.
-
-    Parameters
-    ----------
-    threshold : float
-        Ratio threshold. Event triggers when (Lgain - Lloss) / Lgain < threshold.
-    name : str
-        Name for identifying this event.
-
-    Returns
-    -------
-    factory : callable
-        Function that takes (Lgain, Lloss) and returns an event function.
-    """
-    def factory(Lgain: float, Lloss: float):
-        def event(t, y):
-            if Lgain <= 0:
-                return 1.0  # No event if no gain
-            ratio = (Lgain - Lloss) / Lgain
-            return ratio - threshold
-
-        event.terminal = True
-        event.direction = -1  # Trigger when ratio falls below threshold
-        event.name = name
-        event.is_simulation_ending = False  # Phase ending
-        event.reason_code = "cooling_balance"
-        event.reason_message = f"Cooling balance reached (L_cool ~ L_gain)"
-        return event
-
-    return factory
 
 
 # =============================================================================
@@ -675,7 +639,7 @@ def build_energy_phase_events(params) -> List[Callable]:
     return events
 
 
-def build_implicit_phase_events(params) -> Tuple[List[Callable], Callable]:
+def build_implicit_phase_events(params) -> List[Callable]:
     """
     Build event list for implicit (cooling) phase.
 
@@ -686,8 +650,6 @@ def build_implicit_phase_events(params) -> Tuple[List[Callable], Callable]:
     - max_radius: R2 > stop_r (simulation ending)
     - velocity_runaway: |v2| too large (simulation ending)
 
-    Also returns cooling_balance factory for segment-level checking.
-
     Parameters
     ----------
     params : dict
@@ -697,8 +659,6 @@ def build_implicit_phase_events(params) -> Tuple[List[Callable], Callable]:
     -------
     events : list
         List of event functions for solve_ivp.
-    cooling_balance_factory : callable
-        Factory function to create cooling_balance event for each segment.
     """
     stop_r = params['stop_r'].value
 
@@ -714,18 +674,16 @@ def build_implicit_phase_events(params) -> Tuple[List[Callable], Callable]:
     if stop_r is not None and stop_r > 0:
         events.append(make_max_radius_event(stop_r))
 
-    cooling_factory = make_cooling_balance_event(threshold=0.05)
-
     logger.debug(f"Implicit phase events: stop_r={stop_r}")
-    return events, cooling_factory
+    return events
 
 
-def build_transition_phase_events(params, energy_floor: float = 1e3) -> List[Callable]:
+def build_transition_phase_events(params) -> List[Callable]:
     """
     Build event list for transition phase.
 
-    Events:
-    - energy_floor: Eb < threshold (phase ending -> momentum)
+    Events (the phase's own end, the spent bubble, is checked between segments):
+    - energy_zero: Eb reaches 0 inside a segment (phase ending -> momentum)
     - min_radius: R2 < collapse_radius (simulation ending)
     - max_radius: R2 > stop_r (simulation ending)
     - velocity_runaway: |v2| too large (simulation ending)
@@ -736,8 +694,6 @@ def build_transition_phase_events(params, energy_floor: float = 1e3) -> List[Cal
     ----------
     params : dict
         Parameter dictionary with collapse_radius, stop_r, etc.
-    energy_floor : float
-        Minimum energy threshold (code/AU units, Msun*pc^2/Myr^2). Default 1e3.
 
     Returns
     -------
@@ -749,7 +705,6 @@ def build_transition_phase_events(params, energy_floor: float = 1e3) -> List[Cal
     min_r = _collapse_radius_getter(params)
 
     events = [
-        make_energy_floor_event(energy_floor, y_index=2),
         make_min_radius_event(min_r),
         make_velocity_runaway_event(MAX_VELOCITY_COLLAPSE, direction="collapse"),
         make_velocity_sign_event(terminal=turnaround_ends_phase(params)),
@@ -759,12 +714,12 @@ def build_transition_phase_events(params, energy_floor: float = 1e3) -> List[Cal
     if stop_r is not None and stop_r > 0:
         events.append(make_max_radius_event(stop_r))
 
-    # S6 (docs/dev/turnaround-stall/solver-defects.md, ruled 2026-11-21): a 1c entered below its floor (S4) has no
-    # downward floor crossing left, and its Eb could run through zero inside a segment; 1c ends where Eb reaches 0.
-    # The runners then put Eb at the floor, as after a turnaround, so the exit row's bubble calls stay finite.
+    # S6 (docs/dev/turnaround-stall/solver-defects.md, ruled 2026-11-21): 1c ends where Eb reaches 0 inside a
+    # segment (the spent-bubble test runs between segments). The runners then put Eb at ENERGY_FLOOR, as after a
+    # turnaround, so the exit row's bubble calls stay finite.
     events.append(make_energy_floor_event(0.0, y_index=2, name="energy_zero"))
 
-    logger.debug(f"Transition phase events: energy_floor={energy_floor:.2e} (AU)")
+    logger.debug(f"Transition phase events: stop_r={stop_r}")
     return events
 
 

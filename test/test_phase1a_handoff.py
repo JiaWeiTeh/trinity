@@ -10,7 +10,7 @@ from types import SimpleNamespace
 
 from trinity._output.simulation_end import SimulationEndCode
 from trinity.phase1_energy.run_energy_phase import _handoff_spent_bubble
-from trinity.phase1b_energy_implicit.run_energy_implicit_phase import ENERGY_HANDOFF_FLOOR
+from trinity.phase_general.phase_events import ENERGY_FLOOR
 from trinity.phase_general.phase_events import make_energy_collapse_event
 
 
@@ -31,7 +31,7 @@ def _params():
 def test_handoff_clears_the_collapse_ending_and_marks_the_run():
     p = _params()
     Eb = _handoff_spent_bubble(p, 2.57e-3, 0.8647, 245.1, "test")
-    assert Eb == ENERGY_HANDOFF_FLOOR == p['Eb'].value
+    assert Eb == ENERGY_FLOOR == p['Eb'].value
     assert (p['t_now'].value, p['R2'].value, p['v2'].value) == (2.57e-3, 0.8647, 245.1)
     assert p['energy_handoff_1a'].value is True
     assert p['EndSimulationDirectly'].value is False
@@ -48,7 +48,7 @@ def test_turnaround_uses_the_same_handoff_under_its_own_channel():
     p['Eb'].value = 3.4e10
     _handoff_spent_bubble(p, 1.7e-3, 1.09, 0.0, "shell turned around",
                           channel="velocity_sign_change")
-    assert p['Eb'].value == ENERGY_HANDOFF_FLOOR and p['Eb_handoff'].value == 3.4e10
+    assert p['Eb'].value == ENERGY_FLOOR and p['Eb_handoff'].value == 3.4e10
     assert p['transition_channel'].value == 'velocity_sign_change'
 
 

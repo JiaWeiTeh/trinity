@@ -363,6 +363,9 @@ alphaVirCloud    0
 # INFO: When (Lgain-Lloss)/Lgain approaches this value, begin momentum-driving phase.
 phaseSwitch_LlossLgain    0.05
 
+# INFO: The bubble is spent, and the shell goes to the momentum phase, once its pressure is at most this many times the free wind's ram pressure at R2: Pb <= phaseSwitch_PbPram * P_ram(R2), or Eb <= 0. Checked after every segment of phases 1a, 1b and 1c; it ends 1c's drain in place of a fixed energy floor, which a young weak-wind bubble sits below. Pb = P_ram(R1) >= P_ram(R2) always, so 1 would wait for Eb = 0; healthy energy-driven bubbles stay above 1.14. A number in (1, 1.1) (docs/dev/main-code-change/PLAN_SPENT_BUBBLE.md).
+phaseSwitch_PbPram    1.01
+
 # INFO: Energy->momentum transition criteria, COMMA-SEPARATED (fires on whichever occurs first); each token is its own route, on or off (D-10, docs/dev/turnaround-stall/PLAN_SWITCH.md), and blowout also vents a sealed shell in phases 1c and momentum under vent_model ambient or reservoir. Tokens: 'cooling_balance' (default = current behavior), 'blowout' (R2>rCloud, or the Rayleigh-Taylor rule: see blowout_rule), 'ebpeak' (net energy Edot_from_balance<=0); 'r1' aliases 'blowout,ebpeak'. e.g. 'cooling_balance,blowout'. Non-default sets DRIVE the R1 transition (docs/dev/transition/pt4/R1_SHADOW_PLAN.md).
 transition_trigger    cooling_balance
 

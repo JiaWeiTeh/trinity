@@ -41,7 +41,7 @@ def test_continue_keeps_velocity_sign_as_a_monitor(build):
     for rule, terminal in (("continue", False), ("momentum", True)):
         p = _params(rule)
         evs = {"energy": lambda: events.build_energy_phase_events(p),
-               "implicit": lambda: events.build_implicit_phase_events(p)[0],
+               "implicit": lambda: events.build_implicit_phase_events(p),
                "transition": lambda: events.build_transition_phase_events(p)}[build]()
         sign = [e for e in evs if e.name == "velocity_sign"]
         assert len(sign) == 1 and sign[0].terminal is terminal
@@ -54,7 +54,7 @@ def test_continue_sweep_segment_ends_at_u0_without_ending_the_phase():
     the crossing) and check_event_termination reports no phase end. A shell at 10 pc moving out at 2 pc/Myr and
     decelerating at 1 pc/Myr^2 turns at t = 2 Myr (state R2, v2, Eb, T0 as in 1b)."""
     p = _params("continue")
-    ode_events = events.build_implicit_phase_events(p)[0]
+    ode_events = events.build_implicit_phase_events(p)
     sol = solve_ivp(lambda t, y: [y[1], -1.0, 0.0, 0.0], (0.0, 5.0), [10.0, 2.0, 1.0e6, 1.0e6],
                     events=ode_events + [mode_event(True, 1.0, None)], rtol=1e-10, atol=1e-12)
     assert sol.status == 1 and sol.t[-1] == pytest.approx(2.0, rel=1e-6)
