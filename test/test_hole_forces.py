@@ -365,6 +365,7 @@ def _entry(tmp_path, holes, stop_t=0.55):
     p["cool_alpha"].value = t0 / R2 * p["v2"].value
     p["phii_scheme"].value = "swept"
     p["vent_model"].value, p["transition_channel"].value = "reservoir", "blowout"
+    p["vent_channel"].value = "blowout"   # D-11: the held vent state (PLAN_SWITCH.md)
     p["coverFraction"].value, p["hole_forces"].value = 0.5, holes
     p["cover_law"].value = "constant"          # a fixed C_f (cover_law defaults to sigma since C1D_PLAN §10.3)
     S.updateDict(p, fb)

@@ -203,6 +203,7 @@ def _entry(tmp_path, stop_t=0.52):
     p["cool_alpha"].value = t0 / R2 * p["v2"].value
     p["phii_scheme"].value = "swept"
     p["vent_model"].value, p["transition_channel"].value = "reservoir", "blowout"
+    p["vent_channel"].value = "blowout"   # D-11: the held vent state (PLAN_SWITCH.md)
     p["cover_law"].value, p["cf_half_radius"].value = "sigma", 2.0
     S.updateDict(p, fb)                                     # the feedback at t0, as the runner sets it before its solves
     rs, Ms, u = S.initial_state(p, fb, p["Eb"].value)     # nothing stored yet, so its shell solves see C_f = 1
